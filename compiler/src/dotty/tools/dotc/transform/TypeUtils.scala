@@ -6,29 +6,49 @@ import TypeErasure.ErasedValueType
 import Types._
 import Contexts._
 import Symbols._
-import Decorators._
-import StdNames.nme
-import NameOps._
-import language.implicitConversions
 
 object TypeUtils {
-  implicit def decorateTypeUtils(tpe: Type): TypeUtils = new TypeUtils(tpe)
-}
+  /** A decorator that provides methods on types
+   *  that are needed in the transformer pipeline.
+   */
+  implicit class TypeUtilsOps(val self: Type) extends AnyVal {
 
-/** A decorator that provides methods on types
- *  that are needed in the transformer pipeline.
- */
-class TypeUtils(val self: Type) extends AnyVal {
-  import TypeUtils._
+    def isErasedValueType(implicit ctx: Context): Boolean =
+      self.isInstanceOf[ErasedValueType]
 
-  def isErasedValueType(implicit ctx: Context): Boolean =
-    self.isInstanceOf[ErasedValueType]
+    def isPrimitiveValueType(implicit ctx: Context): Boolean =
+      self.classSymbol.isPrimitiveValueClass
 
-  def isPrimitiveValueType(implicit ctx: Context): Boolean =
-    self.classSymbol.isPrimitiveValueClass
+    def ensureMethodic(implicit ctx: Context): Type = self match {
+      case self: MethodicType => self
+      case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
+    }
 
-  def ensureMethodic(implicit ctx: Context): Type = self match {
-    case self: MethodicType => self
-    case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
+    /** The arity of this tuple type, which can be made up of Unit, TupleX and `*:` pairs,
+     *  or -1 if this is not a tuple type.
+     */
+    def tupleArity(implicit ctx: Context): Int = self match {
+      case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+        val arity = tl.tupleArity
+        if (arity < 0) arity else arity + 1
+      case tp1 =>
+        if (tp1.isRef(defn.UnitClass)) 0
+        else if (defn.isTupleClass(tp1.classSymbol)) tp1.dealias.argInfos.length
+        else -1
+    }
+
+    /** The element types of this tuple type, which can be made up of Unit, TupleX and `*:` pairs */
+    def tupleElementTypes(implicit ctx: Context): List[Type] = self match {
+      case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+        hd :: tl.tupleElementTypes
+      case tp1 =>
+        if (tp1.isRef(defn.UnitClass)) Nil
+        else if (defn.isTupleClass(tp1.classSymbol)) tp1.dealias.argInfos
+        else throw new AssertionError("not a tuple")
+    }
+
+    /** The `*:` equivalent of an instantce of a Tuple class */
+    def toNestedPairs(implicit ctx: Context): Type =
+      (tupleElementTypes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
   }
 }

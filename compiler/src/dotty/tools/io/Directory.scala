@@ -9,9 +9,7 @@
 package dotty.tools.io
 
 import java.nio.file.{Files, Paths}
-import java.util.stream.Collectors
 
-import scala.collection.JavaConverters._
 
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
@@ -22,6 +20,12 @@ object Directory {
   def Current: Option[Directory] =
     if (userDir == "") None
     else Some(apply(userDir).normalize)
+
+  def inTempDirectory[T](fn: Directory => T): T = {
+    val temp = Directory(Files.createTempDirectory("temp"))
+    try fn(temp)
+    finally temp.deleteRecursively()
+  }
 
   def apply(path: String): Directory = apply(Paths.get(path))
   def apply(path: JPath): Directory = new Directory(path)

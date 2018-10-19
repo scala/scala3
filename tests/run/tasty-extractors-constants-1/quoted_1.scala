@@ -5,8 +5,7 @@ import scala.tasty.util._
 
 object Macros {
 
-  implicit transparent def testMacro: Unit =
-    ~impl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit inline def testMacro: Unit = ~impl
 
   def impl(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._

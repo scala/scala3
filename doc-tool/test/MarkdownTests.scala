@@ -1,6 +1,8 @@
 package dotty.tools
 package dottydoc
 
+import vulpix.TestConfiguration
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -8,13 +10,14 @@ import dotc.core.Contexts.{ Context, ContextBase, FreshContext }
 import dotc.core.Comments.{ ContextDoc, ContextDocstrings }
 import dottydoc.core.ContextDottydoc
 
-class MarkdownTests extends DottyDocTest {
+class MarkdownTests extends DottyDocTest with CheckFromSource {
   override implicit val ctx: FreshContext = {
     // TODO: check if can reuse parent instead of copy-paste
     val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
+    ctx.setSetting(ctx.settings.YcookComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.Ycheck, "all" :: Nil)
     // No wiki syntax!
@@ -22,7 +25,7 @@ class MarkdownTests extends DottyDocTest {
     ctx.setProperty(ContextDoc, new ContextDottydoc)
     ctx.setSetting(
       ctx.settings.classpath,
-      dotty.Jars.dottyLib
+      TestConfiguration.basicClasspath
     )
     base.initialize()(ctx)
     ctx
@@ -37,7 +40,7 @@ class MarkdownTests extends DottyDocTest {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -58,7 +61,7 @@ class MarkdownTests extends DottyDocTest {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -81,7 +84,7 @@ class MarkdownTests extends DottyDocTest {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -104,7 +107,7 @@ class MarkdownTests extends DottyDocTest {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -130,7 +133,7 @@ class MarkdownTests extends DottyDocTest {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -163,7 +166,7 @@ class MarkdownTests extends DottyDocTest {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -199,7 +202,7 @@ class MarkdownTests extends DottyDocTest {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -230,7 +233,7 @@ class MarkdownTests extends DottyDocTest {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -259,7 +262,7 @@ class MarkdownTests extends DottyDocTest {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -289,7 +292,7 @@ class MarkdownTests extends DottyDocTest {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")

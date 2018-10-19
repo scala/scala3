@@ -3,6 +3,8 @@ package tools
 package dotc
 package transform
 
+import vulpix.TestConfiguration
+
 import java.io._
 import java.nio.file.{Path => JPath}
 
@@ -15,7 +17,7 @@ import vulpix.TestConfiguration
 class PatmatExhaustivityTest {
   val testsDir = "tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
-  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat", "-classpath", TestConfiguration.classPath)
+  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
 
   private def compileFile(path: JPath) = {
     val stringBuffer = new StringWriter()

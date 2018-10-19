@@ -19,6 +19,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter(FrontEnd.name)("""class Foo""")
     .expectNoErrors
 
+  @Test def caseClassExtendsEnum =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |enum Foo {}
+        |case class Bar() extends Foo
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head
+        val CaseClassCannotExtendEnum(cls, parent) :: Nil = messages
+        assertEquals("Bar", cls.name.show)
+        assertEquals("Foo", parent.name.show)
+        assertEquals("<empty>", cls.owner.name.show)
+      }
+
   @Test def typeMismatch =
     checkMessagesAfter(FrontEnd.name) {
       """
@@ -207,9 +224,24 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
-      assertEquals("foo", tree.show)
+      val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+      assertEquals("foo", cycleSym.name.show)
     }
+
+  @Test def i1731 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |case class Foo[T](x: T)
+        |object Foo { def apply[T]() = Foo(null.asInstanceOf[T]) }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+        assertEquals("apply", cycleSym.name.show)
+      }
 
   @Test def recursiveMethodNeedsReturnType =
     checkMessagesAfter(FrontEnd.name) {
@@ -223,8 +255,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
-      assertEquals("i", tree.show)
+      val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+      assertEquals("i", cycleSym.name.show)
     }
 
   @Test def recursiveValueNeedsReturnType =
@@ -239,9 +271,26 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val RecursiveValueNeedsResultType(tree) :: Nil = messages
-      assertEquals("i", tree.show)
+      val RecursiveValueNeedsResultType(cycleSym) :: Nil = messages
+      assertEquals("i", cycleSym.name.show)
     }
+
+  @Test def recursiveValueNeedsReturnType2 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class Scope() {
+        |  lazy val i = j + 5
+        |  lazy val j = i
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val RecursiveValueNeedsResultType(cycleSym) :: Nil = messages
+        assertEquals("i", cycleSym.name.show)
+      }
 
   @Test def cyclicReferenceInvolving =
     checkMessagesAfter(FrontEnd.name) {
@@ -260,7 +309,85 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("value x", denot.show)
     }
 
-  @Test def cyclicReferenceInvolvingImplicit =
+  @Test def cyclicReferenceInvolving2 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class A {
+        |  implicit val x: T = ???
+        |  type T <: x.type // error: cyclic reference involving value x
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val CyclicReferenceInvolving(denot) :: Nil = messages
+        assertEquals("value x", denot.show)
+      }
+
+  @Test def mutualRecursionre_i2001 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class A {
+        |  def odd(x: Int) = if (x == 0) false else !even(x-1)
+        |  def even(x: Int) = if (x == 0) true else !odd(x-1) // error: overloaded or recursive method needs result type
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+        assertEquals("odd", cycleSym.name.show)
+      }
+
+  @Test def mutualRecursion_i2001a =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class A {
+        |  def odd(x: Int) = if (x == 0) false else !even(x-1)
+        |  def even(x: Int) = {
+        |    def foo = {
+        |      if (x == 0) true else !odd(x-1) // error: overloaded or recursive method needs result type
+        |    }
+        |    false
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+        assertEquals("odd", cycleSym.name.show)
+      }
+
+  @Test def mutualRecursion_i2001b =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class A {
+        |  def odd(x: Int) = if (x == 0) false else !even(x-1)
+        |  def even(x: Int) = {
+        |    val foo = {
+        |      if (x == 0) true else !odd(x-1) // error: overloaded or recursive method needs result type
+        |    }
+        |    false
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+        assertEquals("odd", cycleSym.name.show)
+      }
+
+  @Test def termMemberNeedsResultTypeForImplicitSearch =
     checkMessagesAfter(FrontEnd.name) {
       """
         |object implicitDefs {
@@ -276,9 +403,52 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val CyclicReferenceInvolvingImplicit(tree) :: Nil = messages
-      assertEquals("x", tree.name.show)
+      val TermMemberNeedsResultTypeForImplicitSearch(cycleSym) :: Nil = messages
+      assertEquals("x", cycleSym.name.show)
     }
+
+  @Test def implicitSearchForcesImplicitRetType_i4709 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |import scala.language.implicitConversions
+        |
+        |class Context
+        |class ContextBase { def settings = 1 }
+        |
+        |class Test {
+        |  implicit def toBase(ctx: Context): ContextBase = ???
+        |
+        |  def test(ctx0: Context) = {
+        |    implicit val ctx = { ctx0.settings; ??? }
+        |  }
+        |}
+      """.stripMargin
+    }
+    .expect{ (ictx, messages) =>
+      implicit val ctx: Context = ictx
+
+      assertMessageCount(1, messages)
+      val TermMemberNeedsResultTypeForImplicitSearch(cycleSym) :: Nil = messages
+      assertEquals("ctx", cycleSym.name.show)
+    }
+
+  @Test def implicitSearchForcesNonImplicitRetTypeOnExplicitImport_i3253 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |import Test.test
+        |
+        |object Test {
+        |  def test = "  " * 10
+        |}
+      """.stripMargin
+    }
+      .expect{ (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val TermMemberNeedsResultTypeForImplicitSearch(cycleSym) :: Nil = messages
+        assertEquals("test", cycleSym.name.show)
+      }
 
   @Test def superQualMustBeParent =
     checkMessagesAfter(FrontEnd.name) {
@@ -334,7 +504,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(namedImport, prevPrec)
     }
 
-  @Test def methodDoesNotTakePrameters =
+  @Test def methodDoesNotTakeParameters =
     checkMessagesAfter(FrontEnd.name) {
       """
         |object Scope {
@@ -353,7 +523,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method foo", msg.methodSymbol.show)
     }
 
-  @Test def methodDoesNotTakeMorePrameters =
+  @Test def methodDoesNotTakeMoreParameters =
     checkMessagesAfter(FrontEnd.name) {
       """
         |object Scope{
@@ -765,6 +935,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("class MyValue", valueClass.show)
     }
 
+  @Test def valueClassParameterMayNotBeCallByName =
+    checkMessagesAfter(RefChecks.name) {
+      """class MyValue(a: => Int) extends AnyVal"""
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassParameterMayNotBeCallByName(valueClass, param) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+      assertEquals("value a", param.show)
+    }
+
   @Test def onlyCaseClassOrCaseObjectAllowed =
     checkMessagesAfter(FrontEnd.name) {
       """case Foobar"""
@@ -826,7 +1008,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |
         |class B extends A {
-        |  transparent def bar(): Unit = super.foo()
+        |  inline def bar(): Unit = super.foo()
         |}
       """.stripMargin
     }
@@ -834,7 +1016,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
       val err :: Nil = messages
-      val SuperCallsNotAllowedTransparent(symbol) = err
+      val SuperCallsNotAllowedInlineable(symbol) = err
       assertEquals("method bar", symbol.show)
     }
 
@@ -935,7 +1117,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def noReturnInInline =
     checkMessagesAfter(FrontEnd.name) {
       """class BadFunction {
-        |  transparent def usesReturn: Int = { return 42 }
+        |  inline def usesReturn: Int = { return 42 }
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>
@@ -943,7 +1125,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assertMessageCount(1, messages)
 
-      val NoReturnFromTransparent(method) :: Nil = messages
+      val NoReturnFromInlineable(method) :: Nil = messages
       assertEquals("method usesReturn", method.show)
     }
 
@@ -1329,4 +1511,98 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(tailRegMessages, Set("variable", "value", "object", "class"))
     }
 
+  @Test def notAnExtractor() =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        | class Foo
+        | object Test {
+        |   def test(foo: Foo) = foo match {
+        |       case Foo(name) => ???
+        |   }
+        | }
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val NotAnExtractor(tree) = messages.head
+      assertEquals("Foo", tree.show)
+    }
+
+  @Test def memberWithSameNameAsStatic() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        |import scala.annotation.static
+        |class Camp {
+        |  val name = ""
+        |}
+        |object Camp {
+        |  @static val name = ""
+        |}
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[MemberWithSameNameAsStatic])
+      assertEquals(message.msg, "Companion classes cannot define members with same name as a @static member")
+    }
+
+  @Test def companionOfTraitWithMutableStatic() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        | import scala.annotation.static
+        | trait Test
+        | object Test {
+        |   @static var myStatic = ""
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[TraitCompanionWithMutableStatic])
+      assertEquals(
+        "Companion of traits cannot define mutable @static fields",
+        message.msg
+      )
+    }
+
+  @Test def lazyStaticField() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        | import scala.annotation.static
+        | class Test
+        | object Test {
+        |   @static lazy val myStatic = ""
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[LazyStaticField])
+      assertEquals(
+        "Lazy @static fields are not supported",
+        message.msg
+      )
+    }
+
+  @Test def staticOverridingNonStatic() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        | import scala.annotation.static
+        | trait Foo {
+        |   val foo = ""
+        | }
+        | class Test
+        | object Test extends Foo {
+        |   @static val foo = ""
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[StaticOverridingNonStaticMembers])
+      assertEquals(
+        "@static members cannot override or implement non-static ones",
+        message.msg
+      )
+    }
 }

@@ -5,10 +5,9 @@ package core
 import Types._, Contexts._, Symbols._, Decorators._
 import util.SimpleIdentityMap
 import collection.mutable
-import printing.{Printer, Showable}
+import printing.Printer
 import printing.Texts._
 import config.Config
-import collection.immutable.BitSet
 import reflect.ClassTag
 import annotation.tailrec
 
@@ -36,7 +35,7 @@ object OrderingConstraint {
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[T])(implicit ctx: Context): OrderingConstraint
     def initial: T
 
-    def apply(c: OrderingConstraint, poly: TypeLambda, idx: Int) = {
+    def apply(c: OrderingConstraint, poly: TypeLambda, idx: Int): T = {
       val es = entries(c, poly)
       if (es == null) initial else es(idx)
     }
@@ -80,7 +79,7 @@ object OrderingConstraint {
       map(prev, current, param.binder, param.paramNum, f)
   }
 
-  val boundsLens = new ConstraintLens[Type] {
+  val boundsLens: ConstraintLens[Type] = new ConstraintLens[Type] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[Type] =
       c.boundsMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[Type])(implicit ctx: Context): OrderingConstraint =
@@ -88,7 +87,7 @@ object OrderingConstraint {
     def initial = NoType
   }
 
-  val lowerLens = new ConstraintLens[List[TypeParamRef]] {
+  val lowerLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] =
       c.lowerMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[List[TypeParamRef]])(implicit ctx: Context): OrderingConstraint =
@@ -96,7 +95,7 @@ object OrderingConstraint {
     def initial = Nil
   }
 
-  val upperLens = new ConstraintLens[List[TypeParamRef]] {
+  val upperLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] =
       c.upperMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[List[TypeParamRef]])(implicit ctx: Context): OrderingConstraint =
@@ -191,8 +190,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def isLess(param1: TypeParamRef, param2: TypeParamRef): Boolean =
     upper(param1).contains(param2)
 
-  def nonParamBounds(param: TypeParamRef): TypeBounds =
-    entry(param).asInstanceOf[TypeBounds]
+  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+    entry(param).bounds
 
   def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
     (nonParamBounds(param).lo /: minLower(param))(_ | _)
@@ -501,7 +500,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       }
     }
 
-  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context) = {
+  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): OrderingConstraint = {
     def merge[T](m1: ArrayValuedMap[T], m2: ArrayValuedMap[T], join: (T, T) => T): ArrayValuedMap[T] = {
       var merged = m1
       def mergeArrays(xs1: Array[T], xs2: Array[T]) = {

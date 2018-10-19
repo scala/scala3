@@ -3,9 +3,9 @@ package dotc
 package ast
 
 import core._
-import Types._, Contexts._, Constants._, Names._, Flags._
-import SymDenotations._, Symbols._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._
+import Types._, Contexts._
+import Symbols._, Annotations._, Trees._, Symbols._
+import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import core.tasty.TreePickler.Hole
 
@@ -42,7 +42,7 @@ class TreeTypeMap(
   import tpd._
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
-  def mapOwner(sym: Symbol) = sym.subst(oldOwners, newOwners)
+  def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
 
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
@@ -59,7 +59,7 @@ class TreeTypeMap(
     }
   }
 
-  def mapType(tp: Type) =
+  def mapType(tp: Type): Type =
     mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
@@ -116,6 +116,11 @@ class TreeTypeMap(
           val guard1 = tmap.transform(guard)
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
+        case labeled @ Labeled(bind, expr) =>
+          val tmap = withMappedSyms(bind.symbol :: Nil)
+          val bind1 = tmap.transformSub(bind)
+          val expr1 = tmap.transform(expr)
+          cpy.Labeled(labeled)(bind1, expr1)
         case Hole(n, args) =>
           Hole(n, args.mapConserve(transform)).withPos(tree.pos).withType(mapType(tree.tpe))
         case tree1 =>
@@ -123,7 +128,7 @@ class TreeTypeMap(
       }
   }
 
-  override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context) =
+  override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context): List[Tree] =
     transformDefs(trees)._2
 
   def transformDefs[TT <: tpd.Tree](trees: List[TT])(implicit ctx: Context): (TreeTypeMap, List[TT]) = {

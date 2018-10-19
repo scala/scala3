@@ -27,7 +27,7 @@ trait ParamInfo {
    *  For type lambda parameters, it's the same as `paramInfos` as
    *  `asSeenFrom` has already been applied to the whole type lambda.
    */
-  def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): Type
+  def paramInfoAsSeenFrom(prefix: Type)(implicit ctx: Context): Type
 
   /** The parameter bounds, or the completer if the type parameter
    *  is an as-yet uncompleted symbol.

@@ -61,14 +61,6 @@ if [ ! -x "$JAVACMD" ] ; then
   exit 1
 fi
 
-# parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
-JAVA_VERSION=$("$JAVACMD" -version 2>&1 | grep ' version "' | tr '\r' '\n' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
-
-if [ "$JAVA_VERSION" != "1.8" ] ; then
-  echo "Error: Java 8 is required, actual $JAVA_VERSION"
-  exit 1
-fi
-
 if [ -z "$JAVA_HOME" ] ; then
   echo "Warning: JAVA_HOME environment variable is not set."
 fi
@@ -119,7 +111,7 @@ SCALA_ASM=$(find_lib "*scala-asm*")
 SCALA_LIB=$(find_lib "*scala-library*")
 SCALA_XML=$(find_lib "*scala-xml*")
 SBT_INTF=$(find_lib "*compiler-interface*")
-JLINE=$(find_lib "*jline-3*")
+JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
 

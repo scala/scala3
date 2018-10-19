@@ -2,7 +2,7 @@
   "name": "dotty",
   "displayName": "Dotty Language Server",
   "description": "IDE integration for Dotty, the experimental Scala compiler",
-  "version": "0.1.5",
+  "version": "0.1.7-snapshot",
   "license": "BSD-3-Clause",
   "publisher": "lampepfl",
   "repository": {
@@ -11,7 +11,7 @@
   },
   "icon": "images/dotty-logo.png",
   "engines": {
-    "vscode": "^1.25.1"
+    "vscode": "^1.27.0"
   },
   "categories": [
     "Languages"
@@ -24,25 +24,53 @@
   ],
   "main": "./out/src/extension",
   "activationEvents": [
+    "onLanguage:scala",
     "workspaceContains:.dotty-ide.json"
   ],
-  "languages": [
-    {
-      "id": "scala",
-      "extensions": [
-        ".scala"
-      ],
-      "aliases": [
-        "Scala"
-      ]
-    }
-  ],
   "contributes": {
+    "languages": [
+      {
+        "id": "scala",
+        "extensions": [
+          ".scala",
+          ".sc"
+        ],
+        "aliases": [
+          "Scala"
+        ]
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Dotty configuration",
+      "properties": {
+        "dotty.runWorksheetOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, saving a worksheet will also run it."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "dotty.worksheet.run",
+        "title": "Run worksheet",
+        "category": "Scala"
+      },
+      {
+        "command": "dotty.worksheet.cancel",
+        "title": "Cancel running worksheet",
+        "category": "Scala"
+      }
+    ],
     "configurationDefaults": {
       "[scala]": {
         "editor.tabSize": 2,
         "editor.insertSpaces": true
       }
+    },
+    "files.associations": {
+      "*.sc": "scala"
     }
   },
   "scripts": {
@@ -50,20 +78,23 @@
     "vscode:prepublish": "npm install && ./node_modules/.bin/tsc -p ./",
     "compile": "./node_modules/.bin/tsc -p ./",
     "test": "node ./node_modules/vscode/bin/test",
-    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.3/coursier"
+    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.1.0-M7/coursier"
   },
   "extensionDependencies": [
-    "daltonjorge.scala"
+    "scala-lang.scala"
   ],
   "dependencies": {
-    "child-process-promise": "^2.2.1",
-    "vscode-languageclient": "^4.3.0",
-    "vscode-languageserver": "^4.3.0"
+    "promisify-child-process": "^2.1.2",
+    "compare-versions": "^3.4.0",
+    "vscode-languageclient": "^5.1.0",
+    "vscode-languageserver": "^5.1.0",
+    "vscode-jsonrpc": "4.0.0"
   },
   "devDependencies": {
+    "@types/compare-versions": "^3.0.0",
     "@types/mocha": "^5.2.5",
-    "@types/node": "^8.10.21",
+    "@types/node": "^8.10.32",
     "typescript": "^2.9.2",
-    "vscode": "^1.1.18"
+    "vscode": "^1.1.21"
   }
 }

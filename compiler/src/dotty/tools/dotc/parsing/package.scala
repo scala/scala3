@@ -7,6 +7,13 @@ import core.NameOps._
 
 package object parsing {
 
+  /**
+   * Compute the precedence of infix operator `operator` according to the SLS [§ 6.12.3][SLS].
+   * We implement [SIP-33][SIP-33] and give type operators the same precedence as term operators.
+   *
+   * [SLS]: https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#infix-operations
+   * [SIP-33]: https://docs.scala-lang.org/sips/priority-based-infix-type-precedence.html
+   */
   def precedence(operator: Name): Int =
     if (operator eq nme.ERROR) -1
     else {
@@ -26,8 +33,8 @@ package object parsing {
       }
     }
 
-  def minPrec = 0
-  def minInfixPrec = 1
-  def maxPrec = 11
+  def minPrec: Int = 0
+  def minInfixPrec: Int = 1
+  def maxPrec: Int = 11
 
 }

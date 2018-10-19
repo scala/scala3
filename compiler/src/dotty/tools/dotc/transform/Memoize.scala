@@ -3,11 +3,9 @@ package transform
 
 import core._
 import DenotTransformers._
-import Phases.Phase
 import Contexts.Context
 import SymDenotations.SymDenotation
 import Denotations._
-import Types._
 import Symbols._
 import SymUtils._
 import Constants._
@@ -18,7 +16,7 @@ import Flags._
 import Decorators._
 
 object Memoize {
-  val name = "memoize"
+  val name: String = "memoize"
 }
 
 /** Provides the implementations of all getters and setters, introducing
@@ -39,7 +37,7 @@ object Memoize {
 class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = Memoize.name
+  override def phaseName: String = Memoize.name
 
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
@@ -68,7 +66,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
    *  class that contains the concrete getter rather than the trait
    *  that defines it.
    */
-  override def runsAfter = Set(Mixin.name)
+  override def runsAfter: Set[String] = Set(Mixin.name)
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
@@ -105,7 +103,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         cpy.installAfter(thisPhase)
       }
 
-    val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Transparent)
+    val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
 
     def erasedBottomTree(sym: Symbol) = {
       if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))

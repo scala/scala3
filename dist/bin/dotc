@@ -28,7 +28,6 @@ fi
 source "$PROG_HOME/bin/common"
 
 default_java_opts="-Xmx768m -Xms768m"
-bootcp=true
 withCompiler=true
 
 CompilerMain=dotty.tools.dotc.Main
@@ -66,15 +65,11 @@ classpathArgs () {
   toolchain+="$DOTTY_COMP$PSEP"
 
   # jine
-  toolchain+="$JLINE$PSEP"
+  toolchain+="$JLINE_READER$PSEP"
   toolchain+="$JLINE_TERMINAL$PSEP"
   toolchain+="$JLINE_TERMINAL_JNA"
 
-  if [[ -n "$bootcp" ]]; then
-    jvm_cp_args="-Xbootclasspath/a:\"$toolchain\""
-  else
-    jvm_cp_args="-classpath \"$toolchain\""
-  fi
+  jvm_cp_args="-classpath \"$toolchain\""
 }
 
 while [[ $# -gt 0 ]]; do
@@ -92,8 +87,6 @@ case "$1" in
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
  -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
          -run) PROG_NAME="$ReplMain" && shift ;;
-      -bootcp) bootcp=true && shift ;;
-   -nobootcp) unset bootcp && shift ;;
       -colors) colors=true && shift ;;
    -no-colors) unset colors && shift ;;
   -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP" && shift ;;

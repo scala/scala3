@@ -1,24 +1,30 @@
 package dotty.tools.languageserver.util
 
-import dotty.tools.languageserver.util.Code.SourceWithPositions
+import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
 
 /**
- * Simulates an LSP client for test in a workspace defined by `sources`.
+ * Simulates an LSP client for test in a project defined by `sources`.
  *
- * @param sources The list of sources in the workspace
- * @param actions Unused
+ * @param sources The list of sources in the project
  */
-class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
+class CodeTester(projects: List[Project]) {
 
-  private val testServer = new TestServer(TestFile.testDir)
+  private val testServer = new TestServer(TestFile.testDir, projects)
 
-  private val files = sources.zipWithIndex.map { case (code, i) =>
-    testServer.openCode(code.text, s"Source$i.scala")
-  }
+  private val sources = for { project <- projects
+                              source <- project.sources } yield (project, source)
+
+  private val files =
+    for { project <- projects
+          (source, id) <- project.sources.zipWithIndex } yield source match {
+      case src @ TastyWithPositions(text, _) => testServer.openCode(text, project, src.sourceName(id), openInIDE = false)
+      case other => testServer.openCode(other.text, project, other.sourceName(id), openInIDE = true)
+    }
+
   private val positions: PositionContext = getPositions(files)
 
   /**
@@ -116,12 +122,54 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   def symbol(query: String, symbols: SymInfo*): this.type =
     doAction(new CodeSymbol(query, symbols))
 
+  /**
+   * Triggers running the worksheet specified by `marker`, verifies that the results of
+   * the run matches `expected`.
+   *
+   * @param marker   A marker a identifies the worksheet to evaluate.
+   * @param expected The expected output.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetRun
+   */
+  def run(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetRun(marker, expected, strict = true))
+
+  /**
+   * Triggers running the worksheet specified by `marker`, verifies that each line of output
+   * starts with `expected`.
+   *
+   * @param marker   A marker a identifies the worksheet to evaluate.
+   * @param expected The expected starts of output.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetRun
+   */
+  def runNonStrict(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetRun(marker, expected, strict = false))
+
+  /**
+   * Triggers running the worksheet specified by `marker`, then verifies that execution can be
+   * cancelled after `afterMs` milliseconds.
+   *
+   * @param marker   A marker that identifier the worksheet to evaluate.
+   * @param afterMs  The delay in milliseconds before cancelling execution.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetCancel
+   */
+  def cancelRun(marker: CodeMarker, afterMs: Long): this.type =
+    doAction(new WorksheetCancel(marker, afterMs))
+
   private def doAction(action: Action): this.type = {
     try {
-      action.execute()(testServer, positions)
+      action.execute()(testServer, testServer.client, positions)
     } catch {
       case ex: AssertionError =>
-        val sourcesStr = sources.zip(files).map{ case (source, file) => "// " + file.file + "\n" + source.text}.mkString("\n")
+        val sourcesStr =
+          sources.zip(files).map {
+            case ((project, source), file) =>
+              s"""// ${file.file} in project ${project.name}
+                 |${source.text}""".stripMargin
+          }.mkString(System.lineSeparator)
+
         val msg =
           s"""
             |
@@ -140,7 +188,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   private def getPositions(files: List[TestFile]): PositionContext = {
     val posSeq = {
       for {
-        (code, file) <- sources.zip(files)
+        ((_, code), file) <- sources.zip(files)
         (position, line, char) <- code.positions
       } yield position -> (file, line, char)
     }

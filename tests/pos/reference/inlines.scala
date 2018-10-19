@@ -1,14 +1,14 @@
 package inlines
 
 object Config {
-  transparent val logging = false
+  inline val logging = false
 }
 
 object Logger {
 
   private var indent = 0
 
-  transparent def log[T](msg: String)(op: => T): T =
+  inline def log[T](msg: String)(op: => T): T =
     if (Config.logging) {
       println(s"${"  " * indent}start $msg")
       indent += 1

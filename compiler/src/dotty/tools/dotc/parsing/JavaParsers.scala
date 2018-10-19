@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.FlagSet
 
-import scala.language.implicitConversions
 
 import JavaTokens._
 import JavaScanners._
@@ -15,7 +14,6 @@ import Parsers._
 import core._
 import Contexts._
 import Names._
-import NameOps._
 import Types._
 import Symbols._
 import ast.Trees._
@@ -24,7 +22,6 @@ import StdNames._
 import dotty.tools.dotc.reporting.diagnostic.messages.IdentifierExpected
 import dotty.tools.dotc.util.SourceFile
 import util.Positions._
-import annotation.switch
 import scala.collection.mutable.ListBuffer
 
 object JavaParsers {
@@ -33,7 +30,7 @@ object JavaParsers {
 
   class JavaParser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
 
-    val definitions = ctx.definitions
+    val definitions: Definitions = ctx.definitions
     import definitions._
 
     val in: JavaScanner = new JavaScanner(source)
@@ -90,11 +87,11 @@ object JavaParsers {
         skip()
     }
 
-    def errorTypeTree = TypeTree().withType(UnspecifiedErrorType) withPos Position(in.offset)
+    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType) withPos Position(in.offset)
 
     // --------- tree building -----------------------------
 
-    def scalaAnnotationDot(name: Name) = Select(scalaDot(nme.annotation), name)
+    def scalaAnnotationDot(name: Name): Select = Select(scalaDot(nme.annotation), name)
 
     def javaDot(name: Name): Tree =
       Select(rootDot(nme.java), name)
@@ -104,13 +101,13 @@ object JavaParsers {
 
     def javaLangObject(): Tree = javaLangDot(tpnme.Object)
 
-    def arrayOf(tpt: Tree) =
+    def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
 
-    def unimplementedExpr(implicit ctx: Context) =
+    def unimplementedExpr(implicit ctx: Context): Select =
       Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
 
-    def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean) = {
+    def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
         case (meth: DefDef) :: rest if meth.name == nme.CONSTRUCTOR => (meth, rest)
         case first :: rest =>
@@ -136,7 +133,7 @@ object JavaParsers {
     def makeParam(name: TermName, tpt: Tree, defaultValue: Tree = EmptyTree): ValDef =
       ValDef(name, tpt, defaultValue).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
 
-    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined) = {
+    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
       DefDef(nme.CONSTRUCTOR, tparams, List(vparams), TypeTree(), EmptyTree).withMods(Modifiers(flags))
     }
@@ -470,7 +467,7 @@ object JavaParsers {
       unimplementedExpr
     }
 
-    def definesInterface(token: Int) = token == INTERFACE || token == AT
+    def definesInterface(token: Int): Boolean = token == INTERFACE || token == AT
 
     def termDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = {
       val inInterface = definesInterface(parentToken)
@@ -673,7 +670,7 @@ object JavaParsers {
       }
     }
 
-    def interfacesOpt() =
+    def interfacesOpt(): List[Tree] =
       if (in.token == IMPLEMENTS) {
         in.nextToken()
         repsep(() => typ(), COMMA)
@@ -761,7 +758,7 @@ object JavaParsers {
       val idefs = members.toList ::: (sdefs flatMap forwarders)
       (sdefs, idefs)
     }
-    def annotationParents = List(
+    def annotationParents: List[Select] = List(
       scalaAnnotationDot(tpnme.Annotation),
       Select(javaLangDot(nme.annotation), tpnme.Annotation),
       scalaAnnotationDot(tpnme.ClassfileAnnotation)
@@ -847,7 +844,7 @@ object JavaParsers {
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
 
-    def enumConst(enumType: Tree) = {
+    def enumConst(enumType: Tree): ValDef = {
       annotations()
       atPos(in.offset) {
         val name = ident()
@@ -905,6 +902,20 @@ object JavaParsers {
       val unit = atPos(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
       unit
+    }
+  }
+
+
+  /** OutlineJavaParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
+   *  must only have balanced braces). This is used to map class names to defining sources.
+   *  This is necessary even for Java, because the filename defining a non-public classes cannot be determined from the
+   *  classname alone.
+   */
+  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
+    override def skipBracesHook(): Option[Tree] = None
+    override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
+      skipBraces()
+      (List(EmptyValDef), List(EmptyTree))
     }
   }
 }

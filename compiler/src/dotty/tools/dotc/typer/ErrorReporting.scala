@@ -26,7 +26,7 @@ object ErrorReporting {
     ErrorType(msg)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 
   class Errors(implicit ctx: Context) {
@@ -51,7 +51,7 @@ object ErrorReporting {
         em"expected type $tp"
     }
 
-    def anonymousTypeMemberStr(tpe: Type) = {
+    def anonymousTypeMemberStr(tpe: Type): String = {
       val kind = tpe match {
           case _: TypeBounds => "type with bounds"
           case _: MethodOrPoly => "method"
@@ -60,7 +60,7 @@ object ErrorReporting {
         em"$kind $tpe"
     }
 
-    def overloadedAltsStr(alts: List[SingleDenotation]) =
+    def overloadedAltsStr(alts: List[SingleDenotation]): String =
       em"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
       em" ${alts map (_.info)}%\n %"
 
@@ -76,7 +76,7 @@ object ErrorReporting {
 
     def exprStr(tree: Tree): String = refStr(tree.tpe)
 
-    def takesNoParamsStr(tree: Tree, kind: String) =
+    def takesNoParamsStr(tree: Tree, kind: String): String =
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
       else
@@ -92,7 +92,7 @@ object ErrorReporting {
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
-    def whyNoMatchStr(found: Type, expected: Type) = {
+    def whyNoMatchStr(found: Type, expected: Type): String = {
       def dropJavaMethod(tp: Type): Type = tp match {
         case tp: PolyType =>
           tp.derivedLambdaType(resType = dropJavaMethod(tp.resultType))
@@ -113,7 +113,7 @@ object ErrorReporting {
         ""
     }
 
-    def typeMismatchMsg(found: Type, expected: Type, postScript: String = "") = {
+    def typeMismatchMsg(found: Type, expected: Type, postScript: String = ""): TypeMismatch = {
       // replace constrained TypeParamRefs and their typevars by their bounds where possible
       // the idea is that if the bounds are also not-subtypes of each other to report
       // the type mismatch on the bounds instead of the original TypeParamRefs, since

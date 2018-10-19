@@ -4,7 +4,7 @@ case class Location(owners: List[String])
 
 object Location {
 
-  implicit transparent def location: Location = ~impl
+  implicit inline def location: Location = ~impl
 
   def impl: Expr[Location] = {
     val list = List("a", "b", "c", "d", "e", "f")

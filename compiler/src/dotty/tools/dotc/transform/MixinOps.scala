@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, SymDenotations._, DenotTransformers._, Flags._
+import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
 import util.Positions._
 import SymUtils._
 import StdNames._, NameOps._
@@ -24,7 +24,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
-    res.addAnnotations(member.annotations)
+    res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res
   }
 
@@ -42,7 +42,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   /** Is `sym` a member of implementing class `cls`?
    *  The test is performed at phase `thisPhase`.
    */
-  def isCurrent(sym: Symbol) =
+  def isCurrent(sym: Symbol): Boolean =
     ctx.atPhase(thisPhase) { implicit ctx =>
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
       // this is a hot spot, where we spend several seconds while compiling stdlib
@@ -94,11 +94,12 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     else competingMethodsIterator(meth).find(needsPrimitiveForwarder)
   }
 
-  final val PrivateOrAccessor = Private | Accessor
-  final val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
+  final val PrivateOrAccessor: FlagSet = Private | Accessor
+  final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarder(target: Symbol) = (targs: List[Type]) => (vrefss: List[List[Tree]]) =>
-    superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
+  def forwarder(target: Symbol): List[Type] => List[List[Tree]] => Tree =
+    targs => vrefss =>
+      superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
     cls.baseClasses.iterator

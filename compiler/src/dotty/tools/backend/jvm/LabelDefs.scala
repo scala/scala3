@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase._
 
-import scala.collection.mutable
 
 /**
  * Verifies that each Label DefDef has only a single address to jump back and

@@ -14,19 +14,25 @@ class TastyPickler(val rootCls: ClassSymbol) {
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
 
-  val nameBuffer = new NameBuffer
+  val nameBuffer: NameBuffer = new NameBuffer
 
-  def newSection(name: String, buf: TastyBuffer) =
+  def newSection(name: String, buf: TastyBuffer): Unit =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
   def assembleParts(): Array[Byte] = {
-    def lengthWithLength(buf: TastyBuffer) = {
-      buf.assemble()
+    def lengthWithLength(buf: TastyBuffer) =
       buf.length + natSize(buf.length)
-    }
 
-    val uuidLow: Long = pjwHash64(nameBuffer.bytes)
-    val uuidHi: Long = sections.iterator.map(x => pjwHash64(x._2.bytes)).fold(0L)(_ ^ _)
+    nameBuffer.assemble()
+    sections.foreach(_._2.assemble())
+
+    val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
+    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes))
+
+    // Hash of name table and tree
+    val uuidLow: Long = nameBufferHash ^ treeSectionHash
+    // Hash of positions, comments and any additional section
+    val uuidHi: Long = otherSectionHashes.fold(0L)(_ ^ _)
 
     val headerBuffer = {
       val buf = new TastyBuffer(header.length + 24)
@@ -70,23 +76,6 @@ class TastyPickler(val rootCls: ClassSymbol) {
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  val treePkl = new TreePickler(this)
+  val treePkl: TreePickler = new TreePickler(this)
 
-  /** Returns a non-cryptographic 64-bit hash of the array.
-   *
-   *  from https://en.wikipedia.org/wiki/PJW_hash_function#Implementation
-   */
-  private def pjwHash64(data: Array[Byte]): Long = {
-    var h = 0L
-    var high = 0L
-    var i = 0
-    while (i < data.length) {
-      h = (h << 4) + data(i)
-      high = h & 0xF0000000L
-      h ^= high >> 24
-      h &= ~high
-      i += 1
-    }
-    h
-  }
 }

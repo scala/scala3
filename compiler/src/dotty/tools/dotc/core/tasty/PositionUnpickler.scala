@@ -3,16 +3,15 @@ package dotc
 package core
 package tasty
 
-
 import util.Positions._
-import collection.mutable
-import TastyBuffer.{Addr, NoAddr}
+import collection.{mutable, Map}
+import TastyBuffer.Addr
 
 /** Unpickler for tree positions */
 class PositionUnpickler(reader: TastyReader) {
   import reader._
 
-  private[tasty] lazy val positions = {
+  private[tasty] lazy val positions: Map[Addr, Position] = {
     val positions = new mutable.HashMap[Addr, Position]
     var curIndex = 0
     var curStart = 0
@@ -27,13 +26,13 @@ class PositionUnpickler(reader: TastyReader) {
       assert(curIndex >= 0)
       if (hasStart) curStart += readInt()
       if (hasEnd) curEnd += readInt()
-      positions(Addr(curIndex)) = 
+      positions(Addr(curIndex)) =
         if (hasPoint) Position(curStart, curEnd, curStart + readInt())
         else Position(curStart, curEnd)
     }
     positions
   }
 
-  def posAt(addr: Addr) = positions.getOrElse(addr, NoPosition)
+  def posAt(addr: Addr): Position = positions.getOrElse(addr, NoPosition)
 }
 

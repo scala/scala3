@@ -2,24 +2,11 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
 import Flags._
-import Types._
-import Constants.Constant
 import Contexts.Context
 import Symbols._
-import SymDenotations._
 import Decorators._
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import scala.collection.mutable
-import DenotTransformers._
-import typer.Checking
-import Names.Name
-import NameOps._
-import StdNames._
 
 
 /** A no-op transform that checks whether the compiled sources are re-entrant.
@@ -43,18 +30,18 @@ import StdNames._
 class CheckReentrant extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName = "checkReentrant"
+  override def phaseName: String = "checkReentrant"
 
   private[this] var shared: Set[Symbol] = Set()
   private[this] var seen: Set[ClassSymbol] = Set()
   private[this] var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(implicit ctx =>
-    ctx.requiredClass("dotty.tools.sharable"))
+    ctx.requiredClass("scala.annotation.internal.sharable"))
   private val unsharedAnnot = new CtxLazy(implicit ctx =>
-    ctx.requiredClass("dotty.tools.unshared"))
+    ctx.requiredClass("scala.annotation.internal.unshared"))
 
-  def isIgnored(sym: Symbol)(implicit ctx: Context) =
+  def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot())
 

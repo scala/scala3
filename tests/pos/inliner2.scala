@@ -3,7 +3,7 @@
 // for inlining due to the bug.
 class A {
   private var debug = false
-  transparent private def ifelse[T](cond: => Boolean, ifPart: => T, elsePart: => T): T =
+  inline private def ifelse[T](cond: => Boolean, ifPart: => T, elsePart: => T): T =
     if (cond) ifPart else elsePart
 
   final def bob1() = ifelse(debug, 1, 2)

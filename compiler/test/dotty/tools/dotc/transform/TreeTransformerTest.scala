@@ -16,7 +16,7 @@ class TreeTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends MiniPhase {
         override def phaseName: String = "empty"
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new MegaPhase(Array(new EmptyTransform))
       val transformed = transformer.transformUnit(tree)
@@ -34,7 +34,7 @@ class TreeTransformerTest extends DottyTest {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context): tpd.Tree = tpd.Literal(Constant(2))
         override def phaseName: String = "canReplaceConstant"
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new MegaPhase(Array(new ConstantTransform))
       val transformed = transformer.transformUnit(tree)
@@ -60,7 +60,7 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(2)))
         }
 
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new MegaPhase(Array(new Transformation))
       val tr = transformer.transformUnit(tree).toString
@@ -91,7 +91,7 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(2)))
         }
 
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       class Transformation2 extends MiniPhase {
         override def phaseName: String = "transformationOrder2"
@@ -102,7 +102,7 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(3)))
         }
 
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new MegaPhase(Array(new Transformation1, new Transformation2))
       val tr = transformer.transformUnit(tree).toString
@@ -135,7 +135,7 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.ValDef(tree)(rhs = transformFollowing(tpd.Literal(Constant(2))))
         }
 
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       var transformed2 = 0
       class Transformation2 extends MiniPhase {
@@ -166,7 +166,7 @@ class TreeTransformerTest extends DottyTest {
           transformFollowing(tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(3))))
         }
 
-        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
+        init(ctx.base, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new MegaPhase(Array(new Transformation1, new Transformation2))
       val tr = transformer.transformUnit(tree).toString

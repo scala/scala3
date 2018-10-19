@@ -2,13 +2,12 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._
 import Flags.JavaDefined
-import NameOps._
 import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
-import util.DotClass
+import transform.TypeUtils._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
@@ -33,6 +32,9 @@ import scala.annotation.tailrec
  */
 object TypeErasure {
 
+  private def erasureDependsOnArgs(tp: Type)(implicit ctx: Context) =
+    tp.isRef(defn.ArrayClass) || tp.isRef(defn.PairClass)
+
   /** A predicate that tests whether a type is a legal erased type. Only asInstanceOf and
    *  isInstanceOf may have types that do not satisfy the predicate.
    *  ErasedValueType is considered an erased type because it is valid after Erasure (it is
@@ -44,7 +46,8 @@ object TypeErasure {
     case tp: TypeRef =>
       val sym = tp.symbol
       sym.isClass &&
-      sym != defn.AnyClass && sym != defn.ArrayClass &&
+      !erasureDependsOnArgs(tp) &&
+      !defn.erasedToObject.contains(sym) &&
       !defn.isSyntheticFunctionClass(sym)
     case _: TermRef =>
       true
@@ -78,14 +81,14 @@ object TypeErasure {
    */
   abstract case class ErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
   extends CachedGroundType with ValueType {
-    override def computeHash(bs: Hashable.Binders) = doHash(bs, tycon, erasedUnderlying)
+    override def computeHash(bs: Hashable.Binders): Int = doHash(bs, tycon, erasedUnderlying)
   }
 
   final class CachedErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
     extends ErasedValueType(tycon, erasedUnderlying)
 
   object ErasedValueType {
-    def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context) = {
+    def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context): ErasedValueType = {
       assert(erasedUnderlying.exists)
       unique(new CachedErasedValueType(tycon, erasedUnderlying))
     }
@@ -178,6 +181,7 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
+    else if (sym.is(Label, butNot = Method)) erase.eraseResult(sym.info)(erasureCtx)
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
@@ -279,10 +283,8 @@ object TypeErasure {
 
           // Pick the last minimum to prioritise classes over traits
           minimums.lastOption match {
-            case Some(lub) if lub != defn.AnyClass && lub != defn.AnyValClass =>
-              lub.typeRef
-            case _ => // Any/AnyVal only exist before erasure
-              defn.ObjectType
+            case Some(lub) => valueErasure(lub.typeRef)
+            case _ => defn.ObjectType
           }
       }
   }
@@ -343,17 +345,17 @@ import TypeErasure._
  *  @param wildcardOK    Wildcards are acceptable (true when using the erasure
  *                       for computing a signature name).
  */
-class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) extends DotClass {
+class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) {
 
   /**  The erasure |T| of a type T. This is:
    *
    *   - For a refined type scala.Array+[T]:
    *      - if T is Nothing or Null, []Object
    *      - otherwise, if T <: Object, []|T|
-   *      - otherwise, if T is a type paramter coming from Java, []Object
+   *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
-   *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
+   *   - For a typeref scala.Any, scala.AnyVal, scala.Singleton, scala.Tuple, or scala.*: : |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
    *   - For a typeref scala.ImplicitFunctionN, | scala.FunctionN |
@@ -389,6 +391,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       if (tp.tycon.isRef(defn.ArrayClass)) eraseArray(tp)
+      else if (tp.tycon.isRef(defn.PairClass)) erasePair(tp)
       else if (tp.isRepeatedParam) apply(tp.underlyingIfRepeated(isJava))
       else apply(tp.superType)
     case _: TermRef | _: ThisType =>
@@ -419,9 +422,13 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp @ ClassInfo(pre, cls, parents, decls, _) =>
       if (cls is Package) tp
       else {
+        def eraseParent(tp: Type) = tp.dealias match {
+          case tp: AppliedType if tp.tycon.isRef(defn.PairClass) => defn.ObjectType
+          case _ => apply(tp)
+        }
         val erasedParents: List[Type] =
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
-          else parents.mapConserve(apply) match {
+          else parents.mapConserve(eraseParent) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), cls)
               val tr1 = if (cls is Trait) defn.ObjectType else tr
@@ -449,11 +456,18 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     else JavaArrayType(arrayErasure(elemtp))
   }
 
+  private def erasePair(tp: Type)(implicit ctx: Context): Type = {
+    val arity = tp.tupleArity
+    if (arity < 0) defn.ObjectType
+    else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
+    else defn.TupleXXLType
+  }
+
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
    *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
-  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case ExprType(rt) =>
       if (sym is Param) apply(tp)
         // Note that params with ExprTypes are eliminated by ElimByName,
@@ -491,7 +505,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       // constructor method should not be semi-erased.
       else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
       else this(tp)
-    case AppliedType(tycon, _) if !(tycon isRef defn.ArrayClass) =>
+    case AppliedType(tycon, _) if tycon.typeSymbol.isClass && !erasureDependsOnArgs(tycon) =>
       eraseResult(tycon)
     case _ =>
       this(tp)
@@ -499,7 +513,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass)
+      if (defn.erasedToObject.contains(cls))
         return defn.ObjectClass
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
@@ -533,7 +547,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           normalizeClass(sym.asClass).fullName.asTypeName
       case tp: AppliedType =>
         sigName(
-          if (tp.tycon.isRef(defn.ArrayClass)) this(tp)
+          if (erasureDependsOnArgs(tp.tycon)) this(tp)
           else if (tp.tycon.typeSymbol.isClass) tp.underlying
           else tp.superType)
       case ErasedValueType(_, underlying) =>

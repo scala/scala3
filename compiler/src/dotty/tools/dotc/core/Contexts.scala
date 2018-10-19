@@ -10,11 +10,7 @@ import Phases._
 import Types._
 import Symbols._
 import Scopes._
-import NameOps._
 import Uniques._
-import SymDenotations._
-import Comments._
-import util.Positions._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
@@ -25,11 +21,11 @@ import config.Config
 import reporting._
 import reporting.diagnostic.Message
 import collection.mutable
-import collection.immutable.BitSet
 import printing._
-import config.{JavaPlatform, Platform, ScalaSettings, Settings}
+import config.{JavaPlatform, Platform, ScalaSettings}
 
-import language.implicitConversions
+import scala.annotation.internal.sharable
+
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
 import util.Property.Key
@@ -85,7 +81,7 @@ object Contexts {
     val base: ContextBase
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
-    def outersIterator = new Iterator[Context] {
+    def outersIterator: Iterator[Context] = new Iterator[Context] {
       var current = thiscontext
       def hasNext = current != NoContext
       def next = { val c = current; current = current.outer; c }
@@ -93,12 +89,12 @@ object Contexts {
 
     /** The outer context */
     private[this] var _outer: Context = _
-    protected def outer_=(outer: Context) = _outer = outer
+    protected def outer_=(outer: Context): Unit = _outer = outer
     def outer: Context = _outer
 
     /** The current context */
     private[this] var _period: Period = _
-    protected def period_=(period: Period) = {
+    protected def period_=(period: Period): Unit = {
       assert(period.firstPhaseId == period.lastPhaseId, period)
       _period = period
     }
@@ -106,54 +102,54 @@ object Contexts {
 
     /** The scope nesting level */
     private[this] var _mode: Mode = _
-    protected def mode_=(mode: Mode) = _mode = mode
+    protected def mode_=(mode: Mode): Unit = _mode = mode
     def mode: Mode = _mode
 
     /** The current owner symbol */
     private[this] var _owner: Symbol = _
-    protected def owner_=(owner: Symbol) = _owner = owner
+    protected def owner_=(owner: Symbol): Unit = _owner = owner
     def owner: Symbol = _owner
 
     /** The current tree */
     private[this] var _tree: Tree[_ >: Untyped]= _
-    protected def tree_=(tree: Tree[_ >: Untyped]) = _tree = tree
+    protected def tree_=(tree: Tree[_ >: Untyped]): Unit = _tree = tree
     def tree: Tree[_ >: Untyped] = _tree
 
     /** The current scope */
     private[this] var _scope: Scope = _
-    protected def scope_=(scope: Scope) = _scope = scope
+    protected def scope_=(scope: Scope): Unit = _scope = scope
     def scope: Scope = _scope
 
     /** The current type comparer */
     private[this] var _typerState: TyperState = _
-    protected def typerState_=(typerState: TyperState) = _typerState = typerState
+    protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
     def typerState: TyperState = _typerState
 
     /** The current type assigner or typer */
     private[this] var _typeAssigner: TypeAssigner = _
-    protected def typeAssigner_=(typeAssigner: TypeAssigner) = _typeAssigner = typeAssigner
+    protected def typeAssigner_=(typeAssigner: TypeAssigner): Unit = _typeAssigner = typeAssigner
     def typeAssigner: TypeAssigner = _typeAssigner
 
     /** The currently active import info */
     private[this] var _importInfo: ImportInfo = _
-    protected def importInfo_=(importInfo: ImportInfo) = _importInfo = importInfo
+    protected def importInfo_=(importInfo: ImportInfo): Unit = _importInfo = importInfo
     def importInfo: ImportInfo = _importInfo
 
     /** The current bounds in force for type parameters appearing in a GADT */
     private[this] var _gadt: GADTMap = _
-    protected def gadt_=(gadt: GADTMap) = _gadt = gadt
+    protected def gadt_=(gadt: GADTMap): Unit = _gadt = gadt
     def gadt: GADTMap = _gadt
 
     /** The history of implicit searches that are currently active */
     private[this] var _searchHistory: SearchHistory = null
-    protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
+    protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
     /** The current type comparer. This ones updates itself automatically for
      *  each new context.
      */
     private[this] var _typeComparer: TypeComparer = _
-    protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
+    protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
       if (_typeComparer.ctx ne this)
         _typeComparer = _typeComparer.copyIn(this)
@@ -164,7 +160,7 @@ object Contexts {
      *  Typically used for attributes that are read and written only in special situations.
      */
     private[this] var _moreProperties: Map[Key[Any], Any] = _
-    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
+    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
     def moreProperties: Map[Key[Any], Any] = _moreProperties
 
     def property[T](key: Key[T]): Option[T] =
@@ -176,7 +172,7 @@ object Contexts {
      *  slightly slower than a normal field access would be.
      */
     private var _store: Store = _
-    protected def store_=(store: Store) = _store = store
+    protected def store_=(store: Store): Unit = _store = store
     def store: Store = _store
 
     /** The compiler callback implementation, or null if no callback will be called. */
@@ -256,10 +252,10 @@ object Contexts {
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
 
-    final def withPhaseNoLater(phase: Phase) =
+    final def withPhaseNoLater(phase: Phase): Context =
       if (phase.exists && ctx.phase.id > phase.id) withPhase(phase) else ctx
 
-    final def withPhaseNoEarlier(phase: Phase) =
+    final def withPhaseNoEarlier(phase: Phase): Context =
       if (phase.exists && ctx.phase.id < phase.id) withPhase(phase) else ctx
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
@@ -304,6 +300,10 @@ object Contexts {
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
       (this.scope ne outer.scope) && !this.scope.isEmpty
+
+    /** Is this a context for typechecking an inlined body? */
+    def isInlineContext: Boolean =
+      typer.isInstanceOf[Inliner#InlineTyper]
 
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
@@ -365,13 +365,13 @@ object Contexts {
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
-    def exprContext(stat: Tree[_ >: Untyped], exprOwner: Symbol) =
+    def exprContext(stat: Tree[_ >: Untyped], exprOwner: Symbol): Context =
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else ctx.fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[_], sym: Symbol) = {
+    def importContext(imp: Import[_], sym: Symbol): FreshContext = {
       val impNameOpt = imp.expr match {
         case ref: RefTree[_] => Some(ref.name.asTermName)
         case _               => None
@@ -421,11 +421,37 @@ object Contexts {
         case None => fresh.dropProperty(key)
       }
 
-    override def toString = {
+    override def toString: String = {
       def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
       (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
     }
+
+    def typerPhase: Phase                  = base.typerPhase
+    def sbtExtractDependenciesPhase: Phase = base.sbtExtractDependenciesPhase
+    def picklerPhase: Phase                = base.picklerPhase
+    def refchecksPhase: Phase              = base.refchecksPhase
+    def patmatPhase: Phase                 = base.patmatPhase
+    def elimRepeatedPhase: Phase           = base.elimRepeatedPhase
+    def extensionMethodsPhase: Phase       = base.extensionMethodsPhase
+    def explicitOuterPhase: Phase          = base.explicitOuterPhase
+    def gettersPhase: Phase                = base.gettersPhase
+    def erasurePhase: Phase                = base.erasurePhase
+    def elimErasedValueTypePhase: Phase    = base.elimErasedValueTypePhase
+    def lambdaLiftPhase: Phase             = base.lambdaLiftPhase
+    def flattenPhase: Phase                = base.flattenPhase
+    def genBCodePhase: Phase               = base.genBCodePhase
+    def phases: Array[Phase]               = base.phases
+
+    def settings: ScalaSettings            = base.settings
+    def definitions: Definitions           = base.definitions
+    def platform: Platform                 = base.platform
+    def pendingUnderlying: mutable.HashSet[Type]   = base.pendingUnderlying
+    def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
+    def uniques: util.HashSet[Type]                = base.uniques
+    def nextId: Int                        = base.nextId
+
+    def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -497,7 +523,7 @@ object Contexts {
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(settingsState, value))
 
-    def setDebug = setSetting(base.settings.Ydebug, true)
+    def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
   implicit class ModeChanges(val c: Context) extends AnyVal {
@@ -518,7 +544,7 @@ object Contexts {
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
-  private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
+  private class InitialContext(val base: ContextBase, settingsGroup: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
@@ -527,14 +553,14 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     moreProperties = Map.empty
-    store = initialStore.updated(settingsStateLoc, settings.defaultState)
+    store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
   }
 
   @sharable object NoContext extends Context {
-    val base = null
+    val base: ContextBase = null
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
 
@@ -546,7 +572,7 @@ object Contexts {
                        with Phases.PhasesBase {
 
     /** The applicable settings */
-    val settings = new ScalaSettings
+    val settings: ScalaSettings = new ScalaSettings
 
     /** The initial context */
     val initialCtx: Context = new InitialContext(this, settings)
@@ -573,7 +599,7 @@ object Contexts {
     usePhases(List(SomePhase))
 
     /** The standard definitions */
-    val definitions = new Definitions
+    val definitions: Definitions = new Definitions
 
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
@@ -593,22 +619,22 @@ object Contexts {
     // Symbols state
 
     /** A counter for unique ids */
-    private[core] var _nextId = 0
+    private[core] var _nextId: Int = 0
 
-    def nextId = { _nextId += 1; _nextId }
+    def nextId: Int = { _nextId += 1; _nextId }
 
     // Types state
     /** A table for hash consing unique types */
-    private[core] val uniques = new util.HashSet[Type](Config.initialUniquesCapacity) {
+    private[core] val uniques: util.HashSet[Type] = new util.HashSet[Type](Config.initialUniquesCapacity) {
       override def hash(x: Type): Int = x.hash
       override def isEqual(x: Type, y: Type) = x.eql(y)
     }
 
     /** A table for hash consing unique applied types */
-    private[dotc] val uniqueAppliedTypes = new AppliedUniques
+    private[dotc] val uniqueAppliedTypes: AppliedUniques = new AppliedUniques
 
     /** A table for hash consing unique named types */
-    private[core] val uniqueNamedTypes = new NamedTypeUniques
+    private[core] val uniqueNamedTypes: NamedTypeUniques = new NamedTypeUniques
 
     private def uniqueSets = Map(
         "uniques" -> uniques,
@@ -634,13 +660,13 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying = new mutable.HashSet[Type]
+    private[core] val pendingUnderlying: mutable.HashSet[Type] = new mutable.HashSet[Type]
 
     /** A map from ErrorType to associated message computation. We use this map
      *  instead of storing message computations directly in ErrorTypes in order
      *  to avoid space leaks - the message computation usually captures a context.
      */
-    private[core] val errorTypeMsg = mutable.Map[ErrorType, () => Message]()
+    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, () => Message] = mutable.Map()
 
     // Phases state
 
@@ -659,14 +685,14 @@ object Contexts {
 
     // Printers state
     /** Number of recursive invocations of a show method on current stack */
-    private[dotc] var toTextRecursions = 0
+    private[dotc] var toTextRecursions: Int = 0
 
     // Reporters state
-    private[dotc] var indent = 0
+    private[dotc] var indent: Int = 0
 
-    protected[dotc] val indentTab = "  "
+    protected[dotc] val indentTab: String = "  "
 
-    def reset() = {
+    def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
     }
@@ -677,30 +703,19 @@ object Contexts {
     @sharable private[this] var thread: Thread = null
 
     /** Check that we are on the same thread as before */
-    def checkSingleThreaded() =
+    def checkSingleThreaded(): Unit =
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
-  object Context {
-
-    /** Implicit conversion that injects all printer operations into a context */
-    implicit def toPrinter(ctx: Context): Printer = ctx.printer
-
-    /** implicit conversion that injects all ContextBase members into a context */
-    implicit def toBase(ctx: Context): ContextBase = ctx.base
-
-    // @sharable val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
-  }
-
-  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {
+  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) {
     private[this] var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)
-    def bounds = myBounds
+    def bounds: SimpleIdentityMap[Symbol, TypeBounds] = myBounds
   }
 
   @sharable object EmptyGADTMap extends GADTMap(SimpleIdentityMap.Empty) {
-    override def setBounds(sym: Symbol, b: TypeBounds) = unsupported("EmptyGADTMap.setBounds")
+    override def setBounds(sym: Symbol, b: TypeBounds): Unit = unsupported("EmptyGADTMap.setBounds")
   }
 }

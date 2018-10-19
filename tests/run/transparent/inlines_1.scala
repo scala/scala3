@@ -4,7 +4,7 @@ import collection.mutable
 object transparents {
   final val monitored = false
 
-  transparent def f(x: Int): Int = x * x
+  inline def f(x: Int): Int = x * x
 
   val hits = new mutable.HashMap[String, Int] {
     override def default(key: String): Int = 0
@@ -19,7 +19,7 @@ object transparents {
 
   @volatile private var stack: List[String] = Nil
 
-  transparent def track[T](fn: String)(op: => T) =
+  inline def track[T](fn: String)(op: => T) =
     if (monitored) {
       stack = fn :: stack
       record(fn)
@@ -31,9 +31,9 @@ object transparents {
     def f = "Outer.f"
     class Inner {
       val msg = " Inner"
-      transparent def m = msg
-      transparent def g = f
-      transparent def h = f ++ m
+      inline def m = msg
+      inline def g = f
+      inline def h = f ++ m
     }
     val inner = new Inner
   }
@@ -44,12 +44,12 @@ object transparents {
   }
 
   class TestPassing {
-    transparent def foo[A](x: A): (A, Int) = {
+    inline def foo[A](x: A): (A, Int) = {
       val c = new C[A](x)
       c.xx = c.x
       c.next(1)
     }
-    transparent def bar[A](x: A): (A, String) = {
+    inline def bar[A](x: A): (A, String) = {
       val c = new C[A](x)
       c.xx = c.x
       c.next("")

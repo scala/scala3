@@ -106,7 +106,7 @@ object Attachment {
       next = new Link(key, value, next)
     }
 
-    final def removeAllAttachments() =
+    final def removeAllAttachments(): Unit =
       next = null
   }
 }

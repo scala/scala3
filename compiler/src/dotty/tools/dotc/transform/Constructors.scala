@@ -6,22 +6,18 @@ import MegaPhase._
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
-import Phases._
 import ast._
 import Trees._
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
-import Types._
 import Decorators._
 import DenotTransformers._
-import util.Positions._
 import Constants.Constant
 import collection.mutable
 
 object Constructors {
-  val name = "constructors"
+  val name: String = "constructors"
 }
 
 /** This transform
@@ -34,8 +30,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   import tpd._
 
   override def phaseName: String = Constructors.name
-  override def runsAfter = Set(HoistSuperArgs.name)
-  override def runsAfterGroupsOf = Set(Memoize.name)
+  override def runsAfter: Set[String] = Set(HoistSuperArgs.name)
+  override def runsAfterGroupsOf: Set[String] = Set(Memoize.name)
     // Memoized needs to be finished because we depend on the ownerchain after Memoize
     // when checking whether an ident is an access in a constructor or outside it.
     // This test is done in the right-hand side of a value definition. If Memoize

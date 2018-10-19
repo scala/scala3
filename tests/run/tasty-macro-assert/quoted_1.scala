@@ -11,8 +11,8 @@ object Asserts {
 
   object Ops
 
-  transparent def macroAssert(cond: Boolean): Unit =
-    ~impl('(cond))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  inline def macroAssert(cond: => Boolean): Unit =
+    ~impl('(cond))
 
   def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
@@ -20,7 +20,7 @@ object Asserts {
     val tree = cond.toTasty
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
-      case Type.SymRef(DefDef("Ops", _, _, _, _), _) => true // TODO check that the parent is Asserts
+      case Type.SymRef(IsDefSymbol(sym), _) => sym.name == "Ops"// TODO check that the parent is Asserts
       case _ => false
     }
 
@@ -33,7 +33,7 @@ object Asserts {
     }
 
     tree match {
-      case Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
         op match {
           case "===" => '(assertEquals(~left.toExpr[Any], ~right.toExpr[Any]))
           case "!==" => '(assertNotEquals(~left.toExpr[Any], ~right.toExpr[Any]))

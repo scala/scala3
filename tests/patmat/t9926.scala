@@ -19,5 +19,5 @@ object Model {
   // if T contains type parameter, get its dimension types.
   //
   // actively decompose its dimensions, and then do subtype checking to
-  // see if the type paramter can be instantiated.
+  // see if the type parameter can be instantiated.
 }

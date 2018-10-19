@@ -3,7 +3,7 @@ trait Foo[A <: Foo[A]] {
 
   def next: A
 
-  transparent final def once: A = next
+  inline final def once: A = next
 
   def once1: A = once
 

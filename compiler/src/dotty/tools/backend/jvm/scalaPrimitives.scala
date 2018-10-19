@@ -14,7 +14,7 @@ import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
 
-import scala.collection.{ mutable, immutable }
+import scala.collection.immutable
 
 
 /** Scala primitive operations are represented as methods in `Any` and

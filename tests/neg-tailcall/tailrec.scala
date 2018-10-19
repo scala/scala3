@@ -36,6 +36,13 @@ class Winners {
     case Nil      => Nil
     case x :: xs  => succ3(xs, x :: acc)
   }
+
+  @tailrec final def succ4[T](x: Int): Int = succ4(x - 1)
+
+  class Tom[T] {
+    @tailrec final def succ5[U](other: Tom[U], x: Int): Int = other.succ5[U](other, x - 1)
+    @tailrec final def succ6(x: Int): Int = (new Tom[Int]).succ6(x - 1)
+  }
 }
 
 object Failures {
@@ -53,13 +60,5 @@ class Failures {
   @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {   // error
     case Nil      => Nil
     case x :: xs  => x :: fail2[T](xs)                // error
-  }
-
-  // unsafe
-  @tailrec final def fail3[T](x: Int): Int = fail3(x - 1) // error // error: recursive application has different type arguments
-
-  // unsafe
-  class Tom[T](x: Int) {
-    @tailrec final def fail4[U](other: Tom[U], x: Int): Int = other.fail4[U](other, x - 1) // error // error
   }
 }

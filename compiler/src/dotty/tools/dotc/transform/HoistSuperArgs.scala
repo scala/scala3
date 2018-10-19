@@ -11,12 +11,11 @@ import core.Flags._
 import core.Decorators._
 import collection.mutable
 import ast.Trees._
-import core.Names.TermName
 import core.NameKinds.SuperArgName
 import SymUtils._
 
 object HoistSuperArgs {
-  val name = "hoistSuperArgs"
+  val name: String = "hoistSuperArgs"
 }
 
 /** This phase hoists complex arguments of supercalls and this-calls out of the enclosing class.
@@ -44,9 +43,9 @@ object HoistSuperArgs {
 class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  def phaseName = HoistSuperArgs.name
+  def phaseName: String = HoistSuperArgs.name
 
-  override def runsAfter = Set(ByNameClosures.name)
+  override def runsAfter: Set[String] = Set(ByNameClosures.name)
     // By name closures need to be introduced first in order to be hoisted out here.
     // There's an interaction with by name closures in that the <cbn-arg> marker
     // application should not be hoisted, but be left at the point of call.
@@ -56,7 +55,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
    *  Hoisted superarg methods are collected in `superArgDefs`
    */
   class Hoister(cls: Symbol)(implicit ctx: Context) {
-    val superArgDefs = new mutable.ListBuffer[DefDef]
+    val superArgDefs: mutable.ListBuffer[DefDef] = new mutable.ListBuffer
 
     /** If argument is complex, hoist it out into its own method and refer to the
      *  method instead.

@@ -8,5 +8,5 @@
 	branch = dotty-library2.12
 [submodule "collection-strawman"]
 	path = collection-strawman
-	url = https://github.com/scala/collection-strawman.git
-	branch = master
+	url = https://github.com/dotty-staging/collection-strawman.git
+	branch = dotty

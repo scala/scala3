@@ -4,7 +4,7 @@ package transform
 import core._
 import ast.Trees._
 import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._, StdNames._
-import Decorators._, NameOps._
+import Decorators._
 import config.Printers.typr
 
 /** For all parameter accessors

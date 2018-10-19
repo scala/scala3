@@ -40,6 +40,9 @@ class CodeMarker(val name: String) extends Embedded {
   def toTextDocumentIdentifier: PosCtx[TextDocumentIdentifier] =
     new TextDocumentIdentifier(file.uri)
 
+  def toVersionedTextDocumentIdentifier: PosCtx[VersionedTextDocumentIdentifier] =
+    new VersionedTextDocumentIdentifier(file.uri, 0)
+
   def toReferenceParams(withDecl: Boolean): PosCtx[ReferenceParams] = {
     val rp = new ReferenceParams(new ReferenceContext(withDecl))
     rp.setTextDocument(toTextDocumentIdentifier)

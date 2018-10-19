@@ -5,7 +5,7 @@ package interactive
 import scala.io.Codec
 
 import ast.tpd
-import core._, core.Decorators.{sourcePos => _, _}
+import core._, core.Decorators.{sourcePos => _}
 import Contexts._, NameOps._, Symbols._, StdNames._
 import util._, util.Positions._
 
@@ -21,7 +21,11 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
     if (treePos.isZeroExtent || tree.name.toTermName == nme.ERROR)
       NoSourcePosition
     else {
-      val nameLength = tree.name.stripModuleClassSuffix.show.toString.length
+      // Constructors are named `<init>` in the trees, but `this` in the source.
+      val nameLength = tree.name match {
+        case nme.CONSTRUCTOR => nme.this_.toString.length
+        case other => other.stripModuleClassSuffix.show.toString.length
+      }
       val position = {
         // FIXME: This is incorrect in some cases, like with backquoted identifiers,
         //        see https://github.com/lampepfl/dotty/pull/1634#issuecomment-257079436
@@ -53,7 +57,7 @@ object SourceTree {
           Some(SourceTree(tree, sourceFile))
         case _ => None
       }
-      sourceTreeOfClass(sym.treeContaining(id))
+      sourceTreeOfClass(sym.rootTreeContaining(id))
     }
   }
 }

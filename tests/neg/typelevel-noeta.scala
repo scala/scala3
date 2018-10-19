@@ -2,12 +2,12 @@
 object Test {
   def anyValue[T]: T = ???
 
-  transparent def test(x: Int) = x match {
+  inline def test(x: Int) = x match {
     case _: Byte =>
     case _: Char =>
   }
 
-  transparent def test2() = 1 match {
+  inline def test2() = 1 match {
     case _: Byte =>
     case _: Char =>
   }

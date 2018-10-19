@@ -4,14 +4,15 @@ package ast
 
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
+import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
+
+import scala.annotation.internal.sharable
 
 object desugar {
   import untpd._
@@ -36,15 +37,15 @@ object desugar {
 // ----- DerivedTypeTrees -----------------------------------
 
   class SetterParamTree extends DerivedTypeTree {
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.info.resultType)
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.info.resultType)
   }
 
   class TypeRefTree extends DerivedTypeTree {
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.typeRef)
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.typeRef)
   }
 
   class TermRefTree extends DerivedTypeTree {
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.ref(sym)
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
   /** A type tree that computes its type from an existing parameter.
@@ -58,7 +59,7 @@ object desugar {
      *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
      *  in apply/unapply methods.
      */
-    override def ensureCompletions(implicit ctx: Context) =
+    override def ensureCompletions(implicit ctx: Context): Unit =
       if (!(ctx.owner is Package))
         if (ctx.owner.isClass) {
           ctx.owner.ensureCompleted()
@@ -80,7 +81,7 @@ object desugar {
      *
      *       parameter name  ==  reference name ++ suffix
      */
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = {
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = {
       val relocate = new TypeMap {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
@@ -113,7 +114,7 @@ object desugar {
     TypeDef(sym.name, new DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
-  def derivedTermParam(vdef: ValDef) =
+  def derivedTermParam(vdef: ValDef): ValDef =
     cpy.ValDef(vdef)(
       tpt = new DerivedFromParamTree("") withPos vdef.tpt.pos watching vdef)
 
@@ -149,7 +150,7 @@ object desugar {
     else vdef
   }
 
-  def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean = false)(implicit ctx: Context) =
+  def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean = false)(implicit ctx: Context): List[ValDef] =
     for (tpt <- tpts) yield {
        val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
        val epname = EvidenceParamName.fresh()
@@ -620,10 +621,10 @@ object desugar {
         case _ =>
           Nil
       }
-      cpy.TypeDef(cdef)(
+      cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths))
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)): TypeDef
     }
 
     // install the watch on classTycon
@@ -635,7 +636,7 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
-  val AccessOrSynthetic = AccessFlags | Synthetic
+  val AccessOrSynthetic: FlagSet = AccessFlags | Synthetic
 
   /** Expand
    *
@@ -761,7 +762,7 @@ object desugar {
   }
 
   /** Expand variable identifier x to x @ _ */
-  def patternVar(tree: Tree)(implicit ctx: Context) = {
+  def patternVar(tree: Tree)(implicit ctx: Context): Bind = {
     val Ident(name) = tree
     Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
   }
@@ -813,13 +814,30 @@ object desugar {
       makeOp(right, left, Position(op.pos.start, right.pos.end))
   }
 
+  /** Translate tuple expressions of arity <= 22
+   *
+   *     ()             ==>   ()
+   *     (t)            ==>   t
+   *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
+   */
+  def smallTuple(tree: Tuple)(implicit ctx: Context): Tree = {
+    val ts = tree.trees
+    val arity = ts.length
+    assert(arity <= Definitions.MaxTupleArity)
+    def tupleTypeRef = defn.TupleType(arity)
+    if (arity == 1) ts.head
+    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
+    else if (arity == 0) unitLiteral
+    else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
+  }
+
   /** Make closure corresponding to function.
    *      params => body
    *  ==>
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context) =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context): Block =
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isImplicit) ImplicitEmptyTree else EmptyTree))
@@ -834,7 +852,7 @@ object desugar {
    *
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context) = {
+  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
 
@@ -878,7 +896,7 @@ object desugar {
    *  following `fullName`. This is necessary so that we avoid reading an annotation from
    *  the classpath that is also compiled from source.
    */
-  def makeAnnotated(fullName: String, tree: Tree)(implicit ctx: Context) = {
+  def makeAnnotated(fullName: String, tree: Tree)(implicit ctx: Context): Annotated = {
     val parts = fullName.split('.')
     val ttree = ctx.typerPhase match {
       case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
@@ -889,7 +907,7 @@ object desugar {
       case _ =>
         TypeTree(ctx.requiredClass(fullName).typeRef)
     }
-    Annotated(tree, untpd.New(ttree, Nil))
+    Annotated(tree, New(ttree, Nil))
   }
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
@@ -907,13 +925,6 @@ object desugar {
 
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
-
-    /**    { label def lname(): Unit = rhs; call }
-     */
-    def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
-      val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label | Synthetic)
-      Block(ldef, call)
-    }
 
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
@@ -1139,26 +1150,10 @@ object desugar {
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
-      case Tuple(ts) =>
-        val arity = ts.length
-        def tupleTypeRef = defn.TupleType(arity)
-        if (arity > Definitions.MaxTupleArity) {
-          ctx.error(TupleTooLong(ts), tree.pos)
-          unitLiteral
-        } else if (arity == 1) ts.head
-        else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
-        else if (arity == 0) unitLiteral
-        else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
-      case WhileDo(cond, body) =>
-        // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
-        val call = Apply(Ident(nme.WHILE_PREFIX), Nil).withPos(tree.pos)
-        val rhs = If(cond, Block(body, call), unitLiteral)
-        labelDefAndCall(nme.WHILE_PREFIX, rhs, call)
       case DoWhile(body, cond) =>
-        // { label def doWhile$(): Unit = { body; if (cond) doWhile$() } ; doWhile$() }
-        val call = Apply(Ident(nme.DO_WHILE_PREFIX), Nil).withPos(tree.pos)
-        val rhs = Block(body, If(cond, call, unitLiteral))
-        labelDefAndCall(nme.DO_WHILE_PREFIX, rhs, call)
+        // while ({ { body }; { cond } }) { () }
+        // the inner blocks are there to protect the scopes of body and cond from each other
+        WhileDo(Block(Block(Nil, body), Block(Nil, cond)), Literal(Constant(())))
       case ForDo(enums, body) =>
         makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
       case ForYield(enums, body) =>

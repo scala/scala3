@@ -115,7 +115,7 @@ trait Page {
     val withoutYaml = virtualFile(
       if (content.startsWith("---\n")) {
         val str =
-          content.lines
+          content.linesIterator
           .drop(1)
           .dropWhile(line => line != "---" && line != "...")
           .drop(1).mkString("\n")

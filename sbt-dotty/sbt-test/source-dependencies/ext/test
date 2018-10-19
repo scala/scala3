@@ -1,7 +1,0 @@
-# initial compilation
-> checkIterations 1
-
-# no further compilation should be necessary, since nothing changed
-# previously, a dependency on a jar in <java.home>lib/ext/ would
-# always force recompilation
-> checkIterations 1

@@ -1,10 +1,10 @@
 import scala.quoted._
-import scala.tasty.{Tasty, TopLevelSplice}
+import scala.tasty.Tasty
 
 object SourceFiles {
 
-  implicit transparent def getThisFile: String =
-    ~getThisFileImpl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit inline def getThisFile: String =
+    ~getThisFileImpl
 
   private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {
     import tasty._

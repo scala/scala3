@@ -45,9 +45,7 @@ List(25, 30, 20, 43, 44)
 
 {
   val arr: scala.Array[scala.Array[scala.Int]] = {
-    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)({
-      scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]])
-    })
+    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)(scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]]))
     array.update(0, {
       val array$2: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
       array$2.update(0, 5)
@@ -111,9 +109,7 @@ List(25, 30, 20, 43, 44)
 
 {
   val arr: scala.Array[scala.Array[scala.Int]] = {
-    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)({
-      scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]])
-    })
+    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)(scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]]))
     array.update(0, {
       val array$2: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
       array$2.update(0, 5)
@@ -177,9 +173,7 @@ List(25, 30, 20, 43, 44)
 
 {
   val arr: scala.Array[scala.Array[scala.Int]] = {
-    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)({
-      scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]])
-    })
+    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)(scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]]))
     array.update(0, {
       val array$2: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
       array$2.update(0, 5)

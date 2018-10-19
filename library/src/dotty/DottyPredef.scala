@@ -24,12 +24,12 @@ object DottyPredef {
    */
   abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
 
-  @forceInline final def assert(assertion: Boolean, message: => Any): Unit = {
+  @forceInline final def assert(assertion: => Boolean, message: => Any): Unit = {
     if (!assertion)
       assertFail(message)
   }
 
-  @forceInline final def assert(assertion: Boolean): Unit = {
+  @forceInline final def assert(assertion: => Boolean): Unit = {
     if (!assertion)
       assertFail()
   }

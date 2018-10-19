@@ -1,8 +1,8 @@
-import dotty.tools.dotc.quoted.Toolbox._
+import scala.quoted.Toolbox.Default._
 import scala.quoted._
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
     val x: Expr[Int] = '(3)
 
@@ -13,5 +13,5 @@ object Test {
     println(f4(x).show)
   }
 
-  transparent def inlineLambda: Int => Int = x => x + x
+  inline def inlineLambda: Int => Int = x => x + x
 }

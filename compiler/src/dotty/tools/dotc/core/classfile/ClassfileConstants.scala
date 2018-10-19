@@ -334,7 +334,7 @@ object ClassfileConstants {
   import Flags._
   abstract class FlagTranslation {
 
-    protected def baseFlags(jflags: Int) = EmptyFlags
+    protected def baseFlags(jflags: Int): FlagSet = EmptyFlags
     protected def isClass: Boolean = false
 
     private def translateFlag(jflag: Int): FlagSet = (jflag: @switch) match {
@@ -368,13 +368,13 @@ object ClassfileConstants {
 
     def flags(jflags: Int): FlagSet = translateFlags(jflags, baseFlags(jflags))
   }
-  val classTranslation = new FlagTranslation {
+  val classTranslation: FlagTranslation = new FlagTranslation {
     override def isClass = true
   }
-  val fieldTranslation = new FlagTranslation {
+  val fieldTranslation: FlagTranslation = new FlagTranslation {
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags
   }
-  val methodTranslation = new FlagTranslation {
+  val methodTranslation: FlagTranslation = new FlagTranslation {
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags
   }
 }

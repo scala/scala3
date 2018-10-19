@@ -5,19 +5,14 @@ import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
-import core.Types._
 import core.Flags._
 import core.Decorators._
-import core.SymDenotations._
 import core.StdNames.nme
 import core.Names._
-import core.NameOps._
 import core.NameKinds.TempResultName
 import ast.Trees._
-import SymUtils._
 import util.Store
-import collection.{ mutable, immutable }
-import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
+import collection.mutable
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
@@ -31,7 +26,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   private var Captured: Store.Location[collection.Set[Symbol]] = _
   private def captured(implicit ctx: Context) = ctx.store(Captured)
 
-  override def initContext(ctx: FreshContext) =
+  override def initContext(ctx: FreshContext): Unit =
     Captured = ctx.addLocation(Set.empty)
 
   private class RefInfo(implicit ctx: Context) {
@@ -76,7 +71,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     }
   }
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
     val captured = (new CollectCaptured)
       .runOver(ctx.compilationUnit.tpdTree)(ctx.withPhase(thisPhase))
     ctx.fresh.updateStore(Captured, captured)
@@ -93,7 +88,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     else refMap(defn.ObjectClass)
   }
 
-  override def prepareForValDef(vdef: ValDef)(implicit ctx: Context) = {
+  override def prepareForValDef(vdef: ValDef)(implicit ctx: Context): Context = {
     val sym = vdef.symbol(ctx.withPhase(thisPhase))
     if (captured contains sym) {
       val newd = sym.denot(ctx.withPhase(thisPhase)).copySymDenotation(

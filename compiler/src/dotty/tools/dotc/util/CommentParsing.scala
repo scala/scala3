@@ -130,7 +130,7 @@ object CommentParsing {
   /** The first start tag of a list of tag intervals,
    *  or the end of the whole comment string - 2 if list is empty
    */
-  def startTag(str: String, sections: List[(Int, Int)]) = sections match {
+  def startTag(str: String, sections: List[(Int, Int)]): Int = sections match {
     case Nil             => str.length - 2
     case (start, _) :: _ => start
   }
@@ -216,7 +216,7 @@ object CommentParsing {
   }
 
   /** Cleanup section text */
-  def cleanupSectionText(str: String) = {
+  def cleanupSectionText(str: String): String = {
     var result = str.trim.replaceAll("\n\\s+\\*\\s+", " \n")
     while (result.endsWith("\n"))
       result = result.substring(0, str.length - 1)

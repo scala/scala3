@@ -7,7 +7,6 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   def showTree(tree: Tree)(implicit ctx: Context): String =
     new Buffer().visitTree(tree).result()
-
   def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
     new Buffer().visitCaseDef(caseDef).result()
 
@@ -22,6 +21,9 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   def showConstant(const: Constant)(implicit ctx: Context): String =
     new Buffer().visitConstant(const).result()
+
+  def showSymbol(symbol: Symbol)(implicit ctx: Context): String =
+    new Buffer().visitSymbol(symbol).result()
 
   private class Buffer(implicit ctx: Context) { self =>
 
@@ -62,12 +64,16 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Term.Match(" += selector += ", " ++= cases += ")"
       case Term.Return(expr) =>
         this += "Term.Return(" += expr += ")"
+      case Term.While(cond, body) =>
+        this += "Term.While(" += cond += ", " += body += ")"
       case Term.Try(block, handlers, finalizer) =>
         this += "Term.Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
       case Term.Repeated(elems) =>
         this += "Term.Repeated(" ++= elems += ")"
       case Term.Inlined(call, bindings, expansion) =>
-        this += "Term.Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
+        this += "Term.Inlined("
+        visitOption(call, visitTermOrTypeTree)
+        this += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
       case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
@@ -76,10 +82,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeDef(\"" += name += "\", " += rhs += ")"
       case ClassDef(name, constr, parents, self, body) =>
         this += "ClassDef(\"" += name += "\", " += constr += ", "
-        visitList[Parent](parents, {
-          case parent @ Term() => this += parent
-          case parent @ TypeTree() => this += parent
-        })
+        visitList[TermOrTypeTree](parents, visitTermOrTypeTree)
         this += ", " += self += ", " ++= body += ")"
       case PackageDef(name, owner) =>
         this += "PackageDef(\"" += name += "\", " += owner += ")"
@@ -92,12 +95,12 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def visitTypeTree(x: TypeOrBoundsTree): Buffer = x match {
       case TypeTree.Synthetic() =>
         this += "TypeTree.Synthetic()"
-      case TypeTree.TypeIdent(name) =>
-        this += "TypeTree.TypeIdent(\"" += name += "\")"
-      case TypeTree.TermSelect(qualifier, name) =>
-        this += "TypeTree.TermSelect(" += qualifier += ", \"" += name += "\")"
-      case TypeTree.TypeSelect(qualifier, name) =>
-        this += "TypeTree.TypeSelect(" += qualifier += ", \"" += name += "\")"
+      case TypeTree.Ident(name) =>
+        this += "TypeTree.Ident(\"" += name += "\")"
+      case TypeTree.Select(qualifier, name) =>
+        this += "TypeTree.Select(" += qualifier += ", \"" += name += "\")"
+      case TypeTree.Project(qualifier, name) =>
+        this += "TypeTree.Project(" += qualifier += ", \"" += name += "\")"
       case TypeTree.Singleton(ref) =>
         this += "TypeTree.Singleton(" += ref += ")"
       case TypeTree.And(left, right) =>
@@ -140,6 +143,11 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Pattern.TypeTest(" += tpt += ")"
     }
 
+    def visitTermOrTypeTree(x: TermOrTypeTree): Buffer = x match {
+      case IsTerm(termOrTypeTree) => this += termOrTypeTree
+      case IsTypeTree(termOrTypeTree) => this += termOrTypeTree
+    }
+
     def visitConstant(x: Constant): Buffer = x match {
       case Constant.Unit() => this += "Constant.Unit()"
       case Constant.Null() => this += "Constant.Null()"
@@ -153,23 +161,14 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Double(value) => this += "Constant.Double(" += value += ")"
       case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
       case Constant.ClassTag(value) => this += "Constant.ClassTag(" += value += ")"
+      case Constant.Symbol(value) => this += "Constant.Symbol('" += value.name += ")"
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
       case Type.ConstantType(value) =>
         this += "Type.ConstantType(" += value += ")"
       case Type.SymRef(sym, qual) =>
-        def visitName(sym: Definition): Buffer = sym match {
-          case ValDef(name, _, _) => this += "ValDef(\"" += name += "\", _, _)"
-          case DefDef(name, _, _, _, _) => this += "DefDef(\"" += name += "\", _, _, _, _)"
-          case TypeDef(name, _) => this += "TypeDef(\"" += name += "\", _)"
-          case ClassDef(name, _, _, _, _) => this += "ClassDef(\"" += name += "\", _, _, _, _)"
-          case PackageDef(name, _) => this += "PackageDef(\"" += name += "\", _)"
-          case _ => this += "#"
-        }
-        this += "Type.SymRef("
-        visitName(sym)
-        this += ", " += qual += ")"
+        this += "Type.SymRef(" += sym += ", " += qual += ")"
       case Type.TermRef(name, qual) =>
         this += "Type.TermRef(\"" += name += "\", " += qual += ")"
       case Type.TypeRef(name, qual) =>
@@ -187,7 +186,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.ByNameType(underlying) =>
         this += "Type.ByNameType(" += underlying += ")"
       case Type.ParamRef(binder, idx) =>
-        this += "Type.ParamRef(" += binder+= ", " += idx += ")"
+        this += "Type.ParamRef(" += binder += ", " += idx += ")"
       case Type.ThisType(tp) =>
         this += "Type.ThisType(" += tp += ")"
       case Type.SuperType(thistpe, supertpe) =>
@@ -223,6 +222,15 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
+    }
+
+    def visitSymbol(x: Symbol): Buffer = x match {
+      case IsPackageSymbol(x) => this += "IsPackageSymbol(<" += x.fullName += ">)"
+      case IsClassSymbol(x) => this += "IsClassSymbol(<" += x.fullName += ">)"
+      case IsDefSymbol(x) => this += "IsDefSymbol(<" += x.fullName += ">)"
+      case IsValSymbol(x) => this += "IsValSymbol(<" += x.fullName += ">)"
+      case IsTypeSymbol(x) => this += "IsTypeSymbol(<" += x.fullName += ">)"
+      case NoSymbol() => this += "NoSymbol()"
     }
 
     def +=(x: Boolean): Buffer = { sb.append(x); this }
@@ -280,6 +288,10 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     private implicit class ImportSelectorOps(buff: Buffer) {
       def ++=(x: List[ImportSelector]): Buffer = { visitList(x, visitImportSelector); buff }
+    }
+
+    private implicit class SymbolOps(buff: Buffer) {
+      def +=(x: Symbol): Buffer = { visitSymbol(x); buff }
     }
 
     private def visitOption[U](opt: Option[U], visit: U => Buffer): Buffer = opt match {

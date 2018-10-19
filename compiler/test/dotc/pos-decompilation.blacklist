@@ -1,80 +1,9 @@
-# Constant(Symbol)
-desugar.scala
-sip23-symbols.scala
-t389.scala
-t4812.scala
-t4579.scala
-
-# assertion failed: asTerm called on not-a-Term val <none>
-cls.scala
-escapes2.scala
-existentials-harmful.scala
-constrs.scala
-i2051.scala
-i2663.scala
-i1318.scala
-gui.scala
-i1756.scala
-i2218.scala
-objXfun.scala
-printTest.scala
-paramAliases.scala
-michel1.scala
-nested.scala
-philippe3.scala
-t115.scala
-t0017.scala
-t0055.scala
-t1075.scala
-t267.scala
-t247.scala
-t1226.scala
-t0039.scala
-t8324.scala
-t4062.scala
-t8177b.scala
-t803.scala
-t3071.scala
-t8177.scala
-tangledCompanion.scala
-templateParents.scala
-t5384.scala
-t9795.scala
-alias.scala
-t0032.scala
-supercalls.scala
-i1776.scala
-i3638.scala
-i618.scala
-
-# scala.MatchError: Type.RecursiveType
-i3647.scala
-
-# Stackoverflow
-avoid.scala
-i1047.scala
-i1181.scala
-
 # Stackoverflow on bootstrapped
 large.scala
 large2.scala
-
-# scala.MatchError: EmptyTree
-depfuntype.scala
-compound.scala
-implicit-dep.scala
-refinedSubtyping.scala
-zoo2.scala
-typers.scala
-apply-equiv.scala
-projections.scala
-lookuprefined.scala
 
 # NPE
 i2888.scala
 tcpoly_overloaded.scala
 tcpoly_boundedmonad.scala
 tcpoly_checkkinds_mix.scala
-
-# scala.MatchError: This
-infersingle.scala

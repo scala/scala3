@@ -6,6 +6,7 @@ object Config {
   final val cacheAsSeenFrom = true
   final val cacheMemberNames = true
   final val cacheImplicitScopes = true
+  final val cacheMatchReduced = true
 
   final val checkCacheMembersNamed = false
 
@@ -58,7 +59,7 @@ object Config {
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing
-   *  is not an error consdition.
+   *  is not an error condition.
    */
   final val failOnInstantiationToNothing = false
 
@@ -120,7 +121,7 @@ object Config {
 
   /** If this flag is set, it is checked that class type parameters are
    *  only references with NoPrefix or ThisTypes as prefixes. This option
-   *  is usally disabled, because there are still some legitimate cases where
+   *  is usually disabled, because there are still some legitimate cases where
    *  this can arise (e.g. for pos/Map.scala, in LambdaType.integrate).
    */
   final val checkTypeParamRefs = false

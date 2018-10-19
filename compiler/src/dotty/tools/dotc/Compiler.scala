@@ -3,17 +3,9 @@ package dotc
 
 import core._
 import Contexts._
-import Periods._
-import Symbols._
-import Types._
-import Scopes._
-import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
-import reporting.{ConsoleReporter, Reporter}
+import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
-import util.FreshNameCreator
-import core.DenotTransformers.DenotTransformer
-import core.Denotations.SingleDenotation
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
@@ -52,7 +44,6 @@ class Compiler {
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new LinkAll) ::            // Reload compilation units from TASTY for library code (if needed)
     List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil
 
@@ -60,14 +51,14 @@ class Compiler {
   protected def transformPhases: List[List[Phase]] =
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
-         new ElimPackagePrefixes) :: // Eliminate references to package prefixes in Select nodes
+         new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
+         new CookComments) ::        // Cook the comments: expand variables, doc, etc.
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ShortcutImplicits,      // Allow implicit functions without creating closures
-         new TailRec,                // Rewrite tail recursion to loops
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
@@ -96,6 +87,7 @@ class Compiler {
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
+         new TailRec,                // Rewrite tail recursion to loops
          new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals
          new Memoize,                // Add private fields to getters and setters
@@ -112,7 +104,7 @@ class Compiler {
     List(new Flatten,                // Lift all inner classes to package scope
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
-         new MoveStatics,            // Move static methods to companion classes
+         new MoveStatics,            // Move static methods from companion to the class itself
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
@@ -126,8 +118,8 @@ class Compiler {
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 
-  var runId = 1
-  def nextRunId = {
+  var runId: Int = 1
+  def nextRunId: Int = {
     runId += 1; runId
   }
 

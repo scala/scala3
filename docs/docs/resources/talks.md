@@ -17,11 +17,14 @@ transformations and more.
 
 Deep Dive with Dotty
 --------------------
-- (Mar 21, 2017) [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) by [Dmitry Petrashko](http://twitter.com/darkdimius).
+- (Mar 21, 2017) [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) by [Dmitry Petrashko](http://twitter.com/darkdimius) [\[meeting notes\]](http://dotty.epfl.ch/docs/internals/dotty-internals-1-notes.html). 
 This is a recorded meeting between EPFL and Waterloo, where we introduce first notions inside Dotty: Trees and Symbols.
 
 - (Mar 21, 2017) [Dotty Internals 2: Types](https://www.youtube.com/watch?v=3gmLIYlGbKc) by [Martin Odersky](http://twitter.com/odersky) and [Dmitry Petrashko](http://twitter.com/darkdimius).
 This is a recorded meeting between EPFL and Waterloo, where we introduce how types are represented inside Dotty.
+
+- (Jun 15, 2017) [Dotty Internals 3: Denotations](https://youtu.be/9iPA7zMRGKY) by [Martin Odersky](http://twitter.com/odersky) and [Dmitry Petrashko](http://twitter.com/darkdimius).
+This is a recorded meeting between EPFL and Waterloo, where we introduce denotations in Dotty.
 
 - (JVM Language Summit) [How do we make the Dotty compiler fast](https://www.youtube.com/watch?v=9xYoSwnSPz0) by [Dmitry Petrashko](http://twitter.com/darkdimius).
 [Dmitry Petrashko](http://twitter.com/darkdimius) gives a high-level introduction on what was done to make Dotty .

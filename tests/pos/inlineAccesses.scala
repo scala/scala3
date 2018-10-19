@@ -6,12 +6,12 @@ class C {
   private type T = C
   private var x = 0
 
-  transparent def f = {
+  inline def f = {
     x += 1
     x = x + 1
     x
   }
-  transparent def dup = new T
+  inline def dup = new T
 }
 
 object Test {

@@ -5,27 +5,19 @@ package core
 import Types._
 import Contexts._
 import Symbols._
-import SymDenotations.{LazyType, TypeParamsCompleter}
+import SymDenotations.LazyType
 import Decorators._
 import util.Stats._
-import util.common._
 import Names._
 import NameOps._
-import NameKinds._
-import Flags._
-import StdNames.tpnme
-import util.Positions.Position
-import config.Printers.{core, typr}
-import collection.mutable
 import dotty.tools.dotc.config.Config
-import java.util.NoSuchElementException
 
 object TypeApplications {
 
   type TypeParamInfo = ParamInfo.Of[TypeName]
 
   /** Assert type is not a TypeBounds instance and return it unchanged */
-  def noBounds(tp: Type) = tp match {
+  def noBounds(tp: Type): Type = tp match {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
     case _ => tp
   }
@@ -58,7 +50,7 @@ object TypeApplications {
    *  @param tycon     C
    */
   object EtaExpansion {
-    def apply(tycon: Type)(implicit ctx: Context) = {
+    def apply(tycon: Type)(implicit ctx: Context): Type = {
       assert(tycon.typeParams.nonEmpty, tycon)
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
@@ -112,10 +104,10 @@ object TypeApplications {
    */
   class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
     private[this] var available = (0 until args.length).toSet
-    var allReplaced = true
-    def hasWildcardArg(p: TypeParamRef) =
+    var allReplaced: Boolean = true
+    def hasWildcardArg(p: TypeParamRef): Boolean =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
-    def canReduceWildcard(p: TypeParamRef) =
+    def canReduceWildcard(p: TypeParamRef): Boolean =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
     def atNestedLevel(op: => Type): Type = {
       val saved = available
@@ -134,7 +126,7 @@ object TypeApplications {
         atNestedLevel(apply(arg))
     }
 
-    def apply(t: Type) = t match {
+    def apply(t: Type): Type = t match {
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case p: TypeParamRef if p.binder == tycon =>
@@ -168,14 +160,18 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  any type parameter that is-rebound by the refinement.
    */
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
+    def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
+      case prefix: ThisType => prefix.cls `eq` tycon.owner
+      case NoPrefix => true
+      case _ => false
+    }
     try self match {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
-        else if (!tsym.exists) self.info.typeParams
         else tsym.infoOrCompleter match {
-          case info: LazyType => info.completerTypeParams(tsym)
-          case info => info.typeParams
+          case info: LazyType if isTrivial(self.prefix, tsym) => info.completerTypeParams(tsym)
+          case _ => self.info.typeParams
         }
       case self: AppliedType =>
         if (self.tycon.typeSymbol.isClass) Nil
@@ -333,8 +329,8 @@ class TypeApplications(val self: Type) extends AnyVal {
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
-        case arg @ TypeAlias(alias) =>
-          arg.derivedTypeAlias(adaptArg(alias))
+        case arg: AliasingBounds =>
+          arg.derivedAlias(adaptArg(arg.alias))
         case arg @ TypeBounds(lo, hi) =>
           arg.derivedTypeBounds(adaptArg(lo), adaptArg(hi))
         case _ =>
@@ -397,8 +393,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         dealiased.derivedAndType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: OrType =>
         dealiased.derivedOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
-      case dealiased: TypeAlias =>
-        dealiased.derivedTypeAlias(dealiased.alias.appliedTo(args))
+      case dealiased: AliasingBounds =>
+        dealiased.derivedAlias(dealiased.alias.appliedTo(args))
       case dealiased: TypeBounds =>
         dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
@@ -423,17 +419,20 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
-  final def safeAppliedTo(args: List[Type])(implicit ctx: Context) = self match {
+  final def safeAppliedTo(args: List[Type])(implicit ctx: Context): Type = self match {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
       AppliedType(self, args)
     case _ =>
       appliedTo(args)
   }
 
-  /** Turns non-bounds types to type aliases */
+  /** Turns non-bounds types to type bounds.
+   *  A (possible lambda abstracted) match type is turned into an abstract type.
+   *  Every other type is turned into a type alias
+   */
   final def toBounds(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => self // this can happen for wildcard args
-    case _ => TypeAlias(self)
+    case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
@@ -462,19 +461,19 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(implicit ctx: Context): List[Type] = self match {
+  final def argInfos(implicit ctx: Context): List[Type] = self.stripTypeVar.stripAnnots match {
     case AppliedType(tycon, args) => args
     case _ => Nil
   }
 
   /** Argument types where existential types in arguments are disallowed */
-  def argTypes(implicit ctx: Context) = argInfos mapConserve noBounds
+  def argTypes(implicit ctx: Context): List[Type] = argInfos mapConserve noBounds
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
-  def argTypesLo(implicit ctx: Context) = argInfos.mapConserve(_.loBound)
+  def argTypesLo(implicit ctx: Context): List[Type] = argInfos.mapConserve(_.loBound)
 
   /** Argument types where existential types in arguments are approximated by their upper bound  */
-  def argTypesHi(implicit ctx: Context) = argInfos.mapConserve(_.hiBound)
+  def argTypesHi(implicit ctx: Context): List[Type] = argInfos.mapConserve(_.hiBound)
 
   /** If this is the image of a type argument; recover the type argument,
    *  otherwise NoType.

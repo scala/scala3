@@ -1,5 +1,5 @@
 object Test {
-  transparent def crash() = {
+  inline def crash() = {
     try {
       println("hi")
     } catch {

@@ -1,7 +1,7 @@
 package dotty.tools.dotc.profile
 
 import java.io.{FileWriter, PrintWriter}
-import java.lang.management.ManagementFactory
+import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.management.openmbean.CompositeData
@@ -9,6 +9,7 @@ import javax.management.{Notification, NotificationEmitter, NotificationListener
 
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.io.AbstractFile
 
 object Profiler {
   def apply()(implicit ctx: Context): Profiler =
@@ -20,7 +21,7 @@ object Profiler {
       new RealProfiler(reporter)
     }
 
-  private[profile] val emptySnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0)
+  private[profile] val emptySnap: ProfileSnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0)
 }
 
 case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, name:String, action:String, cause:String, threads:Long)
@@ -28,20 +29,20 @@ case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEn
 case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
                        idleTimeNanos:Long, cpuTimeNanos: Long, userTimeNanos: Long,
                        allocatedBytes:Long, heapBytes:Long) {
-  def updateHeap(heapBytes:Long) = {
+  def updateHeap(heapBytes:Long): ProfileSnap = {
     copy(heapBytes = heapBytes)
   }
 }
 case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpose:String, taskCount:Int, thread:Thread) {
-  def allocatedBytes = end.allocatedBytes - start.allocatedBytes
+  def allocatedBytes: Long = end.allocatedBytes - start.allocatedBytes
 
-  def userNs = end.userTimeNanos - start.userTimeNanos
+  def userNs: Long = end.userTimeNanos - start.userTimeNanos
 
-  def cpuNs = end.cpuTimeNanos - start.cpuTimeNanos
+  def cpuNs: Long = end.cpuTimeNanos - start.cpuTimeNanos
 
-  def idleNs = end.idleTimeNanos - start.idleTimeNanos
+  def idleNs: Long = end.idleTimeNanos - start.idleTimeNanos
 
-  def runNs = end.snapTimeNanos - start.snapTimeNanos
+  def runNs: Long = end.snapTimeNanos - start.snapTimeNanos
 
 
   private def toMillis(ns: Long) = ns / 1000000.0D
@@ -49,17 +50,17 @@ case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpos
   private def toMegaBytes(bytes: Long) = bytes / 1000000.0D
 
 
-  def wallClockTimeMillis = toMillis(end.snapTimeNanos - start.snapTimeNanos)
+  def wallClockTimeMillis: Double = toMillis(end.snapTimeNanos - start.snapTimeNanos)
 
-  def idleTimeMillis = toMillis(end.idleTimeNanos - start.idleTimeNanos)
+  def idleTimeMillis: Double = toMillis(end.idleTimeNanos - start.idleTimeNanos)
 
-  def cpuTimeMillis = toMillis(end.cpuTimeNanos - start.cpuTimeNanos)
+  def cpuTimeMillis: Double = toMillis(end.cpuTimeNanos - start.cpuTimeNanos)
 
-  def userTimeMillis = toMillis(end.userTimeNanos - start.userTimeNanos)
+  def userTimeMillis: Double = toMillis(end.userTimeNanos - start.userTimeNanos)
 
-  def allocatedMB = toMegaBytes(end.allocatedBytes - start.allocatedBytes)
+  def allocatedMB: Double = toMegaBytes(end.allocatedBytes - start.allocatedBytes)
 
-  def retainedHeapMB = toMegaBytes(end.heapBytes - start.heapBytes)
+  def retainedHeapMB: Double = toMegaBytes(end.heapBytes - start.heapBytes)
 }
 
 sealed trait Profiler {
@@ -80,12 +81,12 @@ private [profile] object NoOpProfiler extends Profiler {
 }
 private [profile] object RealProfiler {
   import scala.collection.JavaConverters._
-  val runtimeMx = ManagementFactory.getRuntimeMXBean
-  val memoryMx = ManagementFactory.getMemoryMXBean
-  val gcMx = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
-  val classLoaderMx = ManagementFactory.getClassLoadingMXBean
-  val compileMx = ManagementFactory.getCompilationMXBean
-  val threadMx = ExtendedThreadMxBean.proxy
+  val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
+  val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
+  val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
+  val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
+  val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
+  val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
   if (threadMx.isThreadCpuTimeSupported) threadMx.setThreadCpuTimeEnabled(true)
   private val idGen = new AtomicInteger()
 }
@@ -95,9 +96,9 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: C
     reporter.reportBackground(this, threadRange)
   }
 
-  def outDir = ctx.settings.outputDir.value
+  def outDir: AbstractFile = ctx.settings.outputDir.value
 
-  val id = RealProfiler.idGen.incrementAndGet()
+  val id: Int = RealProfiler.idGen.incrementAndGet()
   RealProfiler.gcMx foreach {
     case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
     case gc => println(s"Cant connect gcListener to ${gc.getClass}")
@@ -193,11 +194,11 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: C
 case class EventType(name: String)
 object EventType {
   //main thread with other tasks
-  val MAIN = EventType("main")
+  val MAIN: EventType = EventType("main")
   //other task ( background thread)
-  val BACKGROUND = EventType("background")
+  val BACKGROUND: EventType = EventType("background")
   //total for compile
-  val GC = EventType("GC")
+  val GC: EventType = EventType("GC")
 }
 
 sealed trait ProfileReporter {

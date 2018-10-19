@@ -1,6 +1,6 @@
 class D(x: Int) {
   class DD {
-    transparent def apply() = new DD()
+    inline def apply() = new DD()
   }
   val inner = new DD
 }

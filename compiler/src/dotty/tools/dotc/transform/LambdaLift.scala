@@ -8,18 +8,16 @@ import core.Contexts._
 import core.Types._
 import core.Flags._
 import core.Decorators._
-import core.StdNames.{nme, str}
+import core.StdNames.nme
 import core.Names._
 import core.NameOps._
 import core.NameKinds.ExpandPrefixName
-import core.Phases._
 import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Store
-import util.Positions._
-import collection.{ mutable, immutable }
-import collection.mutable.{ HashMap, HashSet, LinkedHashMap, LinkedHashSet, TreeSet }
+import collection.mutable
+import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
 
 object LambdaLift {
   import ast.tpd._
@@ -31,7 +29,7 @@ object LambdaLift {
     private type SymSet = TreeSet[Symbol]
 
     /** A map storing free variables of functions and classes */
-    val free = new LinkedHashMap[Symbol, SymSet]
+    val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
 
     /** A map storing the free variable proxies of functions and classes.
      *  For every function and class, this is a map from the free variables
@@ -58,7 +56,7 @@ object LambdaLift {
     private val outerParam = new HashMap[Symbol, Symbol]
 
     /** Buffers for lifted out classes and methods, indexed by owner */
-    val liftedDefs = new HashMap[Symbol, mutable.ListBuffer[Tree]]
+    val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
 
     /** A flag to indicate whether new free variables have been found */
     private[this] var changedFreeVars: Boolean = _
@@ -77,7 +75,7 @@ object LambdaLift {
       case None => Nil
     }
 
-    def proxyOf(sym: Symbol, fv: Symbol) = proxyMap.getOrElse(sym, Map.empty)(fv)
+    def proxyOf(sym: Symbol, fv: Symbol): Symbol = proxyMap.getOrElse(sym, Map.empty)(fv)
 
     def proxies(sym: Symbol): List[Symbol] =  freeVars(sym).map(proxyOf(sym, _))
 
@@ -291,7 +289,7 @@ object LambdaLift {
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
-        sym.name.rewrite {
+        sym.name.replace {
           case name: SimpleName => ExpandPrefixName(sym.owner.name.asTermName, name)
         }.freshened
       else sym.name.freshened
@@ -371,7 +369,7 @@ object LambdaLift {
       liftLocals()(ctx.withPhase(thisPhase.next))
     }
 
-    def currentEnclosure(implicit ctx: Context) =
+    def currentEnclosure(implicit ctx: Context): Symbol =
       ctx.owner.enclosingMethodOrClass
 
     private def inCurrentOwner(sym: Symbol)(implicit ctx: Context) =
@@ -418,7 +416,7 @@ object LambdaLift {
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 
-    def addFreeArgs(sym: Symbol, args: List[Tree])(implicit ctx: Context) =
+    def addFreeArgs(sym: Symbol, args: List[Tree])(implicit ctx: Context): List[Tree] =
       free get sym match {
         case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
         case _ => args
@@ -460,7 +458,7 @@ object LambdaLift {
       EmptyTree
     }
 
-    def needsLifting(sym: Symbol) = liftedOwner contains sym
+    def needsLifting(sym: Symbol): Boolean = liftedOwner contains sym
   }
 }
 
@@ -502,10 +500,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   /** the following two members override abstract members in Transform */
   val phaseName: String = "lambdaLift"
 
-  override def relaxedTypingInGroup = true
+  override def relaxedTypingInGroup: Boolean = true
     // Because it adds free vars as additional proxy parameters
 
-  override def runsAfterGroupsOf = Set(Constructors.name, HoistSuperArgs.name)
+  override def runsAfterGroupsOf: Set[String] = Set(Constructors.name, HoistSuperArgs.name)
     // Constructors has to happen before LambdaLift because the lambda lift logic
     // becomes simpler if it can assume that parameter accessors have already been
     // converted to parameters in super calls. Without this it is very hard to get
@@ -515,13 +513,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   private var Lifter: Store.Location[Lifter] = _
   private def lifter(implicit ctx: Context) = ctx.store(Lifter)
 
-  override def initContext(ctx: FreshContext) =
+  override def initContext(ctx: FreshContext): Unit =
     Lifter = ctx.addLocation[Lifter]()
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) =
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context =
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) = {
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
     tree.tpe match {
       case tpe @ TermRef(prefix, _) =>
@@ -540,13 +538,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context) =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Apply =
     cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withPos(tree.pos)
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context) =
+  override def transformClosure(tree: Closure)(implicit ctx: Context): Closure =
     cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
     val lft = lifter
     val paramsAdded =
@@ -556,20 +554,20 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     else paramsAdded
   }
 
-  override def transformReturn(tree: Return)(implicit ctx: Context) = tree.expr match {
+  override def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree.expr match {
     case Block(stats, value) =>
       Block(stats, Return(value, tree.from)).withPos(tree.pos)
     case _ =>
       tree
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context) = {
+  override def transformTemplate(tree: Template)(implicit ctx: Context): Template = {
     val cls = ctx.owner
     val lft = lifter
     val impl = lft.addFreeParams(tree, lft.proxies(cls)).asInstanceOf[Template]
     cpy.Template(impl)(body = impl.body ++ lft.liftedDefs.remove(cls).get)
   }
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context) =
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree =
     if (lifter.needsLifting(tree.symbol)) lifter.liftDef(tree) else tree
 }

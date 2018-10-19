@@ -25,6 +25,8 @@ sidebar:
               url: docs/reference/union-types.html
             - title: Type lambdas
               url: docs/reference/type-lambdas.html
+            - title: Match types
+              url: docs/reference/match-types.html
             - title: Implicit Function Types
               url: docs/reference/implicit-function-types.html
             - title: Dependent Function Types
@@ -43,7 +45,7 @@ sidebar:
               url: docs/reference/multiversal-equality.html
             - title: Trait Parameters
               url: docs/reference/trait-parameters.html
-            - title: Inlining with Transparent
+            - title: Inlining by Rewriting
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html
@@ -139,6 +141,8 @@ sidebar:
           url: docs/internals/syntax.html
         - title: Type System
           url: docs/internals/type-system.html
+        - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
+          url: docs/internals/dotty-internals-1-notes.html
     - title: Resources
       subsection:
         - title: Talks

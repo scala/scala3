@@ -46,7 +46,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
       if isRequiredFileType(entry)
     } yield createFileEntry(entry)
 
-  override private[dotty] def hasPackage(pkg: String) = findDirEntry(pkg).isDefined
+  override private[dotty] def hasPackage(pkg: String): Boolean = findDirEntry(pkg).isDefined
   override private[dotty] def list(inPackage: String): ClassPathEntries = {
     val foundDirEntry = findDirEntry(inPackage)
 

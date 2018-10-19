@@ -4,10 +4,12 @@ package printing
 
 import core._
 import Texts._, ast.Trees._
-import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Constant,
+import Types.Type, Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
 import typer.Implicits.SearchResult
 import typer.ImportInfo
+
+import scala.annotation.internal.sharable
 
 /** The base class of all printers
  */
@@ -15,10 +17,24 @@ abstract class Printer {
 
   private[this] var prec: Precedence = GlobalPrec
 
-  /** The current precedence level */
-  def currentPrecedence = prec
+  /** The current precedence level.
+   *  When pretty-printing arguments of operator `op`, `currentPrecedence` must equal `op`'s precedence level,
+   *  so that pretty-printing expressions using lower-precedence operators can insert parentheses automatically
+   *  by calling `changePrec`.
+   */
+  def currentPrecedence: Precedence = prec
 
-  /** Generate text using `op`, assuming a given precedence level `prec`. */
+  /** Generate text using `op`, assuming a given precedence level `prec`.
+   *
+   *  ### `atPrec` vs `changePrec`
+   *
+   *  This is to be used when changing precedence inside some sort of parentheses:
+   *  for instance, to print T[A]` use
+   *  `toText(T) ~ '[' ~ atPrec(GlobalPrec) { toText(A) } ~ ']'`.
+   *
+   *  If the presence of the parentheses depends on precedence, inserting them manually is most certainly a bug.
+   *  Use `changePrec` instead to generate them exactly when needed.
+   */
   def atPrec(prec: Precedence)(op: => Text): Text = {
     val outerPrec = this.prec
     this.prec = prec
@@ -28,11 +44,32 @@ abstract class Printer {
 
   /** Generate text using `op`, assuming a given precedence level `prec`.
    *  If new level `prec` is lower than previous level, put text in parentheses.
+   *
+   *  ### `atPrec` vs `changePrec`
+   *
+   *  To pretty-print `A op B`, you need something like
+   *  `changePrec(parsing.precedence(op, isType)) { toText(a) ~ op ~ toText(b) }` // BUGGY
+   *  that will insert parentheses around `A op B` if, for instance, the
+   *  preceding operator has higher precedence.
+   *
+   *  But that does not handle infix operators with left- or right- associativity.
+   *
+   *  If op and op' have the same precedence and associativity,
+   *  A op B op' C parses as (A op B) op' C if op and op' are left-associative, and as
+   *  A op (B op' C) if they're right-associative, so we need respectively
+   *  ```scala
+   *  val isType = ??? // is this a term or type operator?
+   *  val prec = parsing.precedence(op, isType)
+   *  // either:
+   *  changePrec(prec) { toText(a) ~ op ~ atPrec(prec + 1) { toText(b) } } // for left-associative op and op'
+   *  // or:
+   *  changePrec(prec) { atPrec(prec + 1) { toText(a) } ~ op ~ toText(b) } // for right-associative op and op'
+   *  ```
    */
   def changePrec(prec: Precedence)(op: => Text): Text =
     if (prec < this.prec) atPrec(prec) ("(" ~ op ~ ")") else atPrec(prec)(op)
 
-  /** The name, possibley with with namespace suffix if debugNames is set:
+  /** The name, possibly with with namespace suffix if debugNames is set:
    *  /L for local names, /V for other term names, /T for type names
    */
   def nameString(name: Name): String
@@ -112,15 +149,15 @@ abstract class Printer {
     atPrec(GlobalPrec) { elem.toText(this) }
 
   /** Render elements alternating with `sep` string */
-  def toText(elems: Traversable[Showable], sep: String) =
+  def toText(elems: Traversable[Showable], sep: String): Text =
     Text(elems map (_ toText this), sep)
 
   /** Render elements within highest precedence */
-  def toTextLocal(elems: Traversable[Showable], sep: String) =
+  def toTextLocal(elems: Traversable[Showable], sep: String): Text =
     atPrec(DotPrec) { toText(elems, sep) }
 
   /** Render elements within lowest precedence */
-  def toTextGlobal(elems: Traversable[Showable], sep: String) =
+  def toTextGlobal(elems: Traversable[Showable], sep: String): Text =
     atPrec(GlobalPrec) { toText(elems, sep) }
 
   /** Perform string or text-producing operation `op` so that only a

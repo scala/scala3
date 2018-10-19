@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import scala.collection.mutable
-import util.{SourcePosition, SourceFile}
+import util.SourceFile
 import core.Contexts.Context
 import diagnostic.MessageContainer
 

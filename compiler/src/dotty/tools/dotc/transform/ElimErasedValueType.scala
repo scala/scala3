@@ -3,13 +3,13 @@ package transform
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import MegaPhase._, Phases.Phase
-import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
+import MegaPhase._
+import Types._, Contexts._, Flags._, DenotTransformers._
+import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 
 object ElimErasedValueType {
-  val name = "elimErasedValueType"
+  val name: String = "elimErasedValueType"
 }
 
 /** This phase erases ErasedValueType to their underlying type.
@@ -25,7 +25,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
 
   override def phaseName: String = ElimErasedValueType.name
 
-  override def runsAfter = Set(Erasure.name)
+  override def runsAfter: Set[String] = Set(Erasure.name)
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = sym match {
     case sym: ClassSymbol if sym is ModuleClass =>

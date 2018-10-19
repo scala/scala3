@@ -6,19 +6,16 @@ import java.net.URI
 import java.io._
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
-import java.util.stream._
 import java.util.zip._
-import java.util.function._
 
 import scala.collection._
-import JavaConverters._
 import scala.io.Codec
 
-import dotty.tools.io.{ ClassPath, ClassRepresentation, PlainFile, VirtualFile }
+import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, PlainFile, VirtualFile }
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath._
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -26,13 +23,13 @@ import util._
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd._
-  import InteractiveDriver._
 
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
+    rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ctx = setup(settings.toArray, rootCtx)._2
     ctx.initialize()(ctx)
     ctx
@@ -118,10 +115,14 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
     case AggregateClassPath(cps) =>
-      val (zipCps, dirCps) = cps.partition(_.isInstanceOf[ZipArchiveFileLookup[_]])
-      // This will be wrong if any other subclass of ClassPath is either used,
-      // like `JrtClassPath` once we get Java 9 support
-      (zipCps.asInstanceOf[Seq[ZipArchiveFileLookup[_]]], dirCps.asInstanceOf[Seq[JFileDirectoryLookup[_]]])
+      // FIXME: We shouldn't assume that ClassPath doesn't have other
+      // subclasses. For now, the only other subclass is JrtClassPath on Java
+      // 9+, we can safely ignore it for now because it's only used for the
+      // standard Java library, but this will change once we start supporting
+      // adding entries to the modulepath.
+      val zipCps = cps.collect { case cp: ZipArchiveFileLookup[_] => cp }
+      val dirCps = cps.collect { case cp: JFileDirectoryLookup[_] => cp }
+      (zipCps, dirCps)
     case _ =>
       (Seq(), Seq())
   }
@@ -264,6 +265,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 }
 
 object InteractiveDriver {
-  def toUri(source: SourceFile) = Paths.get(source.file.path).toUri
+  def toUri(file: AbstractFile): URI = Paths.get(file.path).toUri
+  def toUri(source: SourceFile): URI = toUri(source.file)
 }
 

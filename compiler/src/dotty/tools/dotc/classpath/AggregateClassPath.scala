@@ -5,7 +5,6 @@ package dotty.tools
 package dotc.classpath
 
 import java.net.URL
-import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
 
@@ -66,11 +65,11 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override private[dotty] def sources(inPackage: String): Seq[SourceFileEntry] =
     getDistinctEntries(_.sources(inPackage))
 
-  override private[dotty] def hasPackage(pkg: String) = aggregates.exists(_.hasPackage(pkg))
+  override private[dotty] def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
   override private[dotty] def list(inPackage: String): ClassPathEntries = {
     val (packages, classesAndSources) = aggregates.map { cp =>
       try {
-        cp.list(inPackage)
+        cp.list(inPackage).toTuple
       } catch {
         case ex: java.io.IOException =>
           val e = new FatalError(ex.getMessage)

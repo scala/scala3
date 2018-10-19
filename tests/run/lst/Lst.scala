@@ -1,8 +1,5 @@
-package dotty.tools.dotc
-package util
+package lst
 
-import printing.{Printer, Texts}
-import Texts.Text
 import collection.mutable.{ListBuffer, StringBuilder}
 import collection.immutable.Map
 import reflect.ClassTag
@@ -18,7 +15,7 @@ import reflect.ClassTag
 class Lst[+T](val elems: Any) extends AnyVal { self =>
   import Lst._
 
-  transparent def locally[T](body: => T): T = body
+  inline def locally[T](body: => T): T = body
 
   def length: Int = elems match {
     case null => 0
@@ -29,7 +26,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   def isEmpty = elems == null
   def nonEmpty = elems != null
 
-  transparent def foreach(op: => T => Unit): Unit = locally {
+  inline def foreach(op: => T => Unit): Unit = {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
@@ -40,7 +37,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
   }
 
-  transparent def foreachReversed(transparent op: T => Unit): Unit = locally {
+  inline def foreachReversed(inline op: T => Unit): Unit = {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
@@ -54,7 +51,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   /** Like `foreach`, but completely inlines `op`, at the price of generating the code twice.
    *  Should be used only of `op` is small
    */
-  transparent def foreachInlined(op: => T => Unit): Unit = locally {
+  inline def foreachInlined(op: => T => Unit): Unit = {
     elems match {
       case null =>
       case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
@@ -105,7 +102,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   }
 
   /** `f` is pulled out, not duplicated */
-  transparent def map[U](f: => T => U): Lst[U] = locally {
+  inline def map[U](f: => T => U): Lst[U] = {
     def op(x: T) = f(x)
     elems match {
       case null => Empty
@@ -197,7 +194,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     buf.toLst
   }
 
-  transparent def exists(p: => T => Boolean): Boolean = locally {
+  inline def exists(p: => T => Boolean): Boolean = {
     def op(x: T) = p(x)
     elems match {
       case null => false
@@ -210,7 +207,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
   }
 
-  transparent def forall(p: => T => Boolean): Boolean = locally {
+  inline def forall(p: => T => Boolean): Boolean = {
     def op(x: T) = p(x)
     elems match {
       case null => true
@@ -233,7 +230,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
       elem == x
   }
 
-  transparent def foldLeft[U](z: U)(f: => (U, T) => U) = locally {
+  inline def foldLeft[U](z: U)(f: => (U, T) => U) = {
     def op(x: U, y: T) = f(x, y)
     elems match {
       case null => z
@@ -247,7 +244,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
   }
 
-  transparent def /: [U](z: U)(op: => (U, T) => U) = foldLeft(z)(op)
+  inline def /: [U](z: U)(op: => (U, T) => U) = foldLeft(z)(op)
 
   def reduceLeft[U >: T](op: (U, U) => U) = elems match {
     case null =>

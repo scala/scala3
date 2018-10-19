@@ -1,7 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
 package dotty.tools.dotc.util
 
 /** A common class for lightweight sets.
@@ -21,7 +17,7 @@ abstract class Set[T >: Null] {
   def contains(x: T): Boolean =
     findEntry(x) != null
 
-  def toList = iterator.toList
+  def toList: List[T] = iterator.toList
 
   def clear(): Unit
 }

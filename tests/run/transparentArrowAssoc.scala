@@ -10,7 +10,7 @@ object Test {
   )
 
   final implicit class ArrowAssoc[A](private val self: A) extends AnyVal {
-    transparent def -> [B](y: B): Tuple2[A, B] = Tuple2(self, y)
+    inline def -> [B](y: B): Tuple2[A, B] = Tuple2(self, y)
     def →[B](y: B): Tuple2[A, B] = ->(y)
   }
 

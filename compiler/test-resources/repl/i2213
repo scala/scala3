@@ -2,6 +2,8 @@ scala> def x
 1 | def x
   |      ^
   |      missing return type
-1 | def x
+
+scala> def x: Int
+1 | def x: Int
   |     ^
-  |     '=' expected, but eof found
+  |declaration of method x not allowed here: only classes can have declared but undefined members

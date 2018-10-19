@@ -7,7 +7,7 @@ object Test {
 }
 
 object Foo extends Bar {
-  transparent def foo: Int = bar
+  inline def foo: Int = bar
 }
 
 class Bar {

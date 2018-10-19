@@ -28,7 +28,7 @@ Automatic eta expansion does not apply to "nullary" methods that take an empty p
     def next(): T
 
 , a simple reference to `next` does not auto-convert to a
-function. One has to write explicitely `() => next()` to achieve that
+function. One has to write explicitly `() => next()` to achieve that
 (it's better to write it this way rather than `next _` because the latter
 will be deprecated).
 

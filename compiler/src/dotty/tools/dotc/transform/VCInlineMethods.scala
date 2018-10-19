@@ -2,12 +2,11 @@ package dotty.tools.dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
+import core._
 import Contexts._, Trees._, Types._
-import DenotTransformers._, MegaPhase._, Phases.Phase
+import DenotTransformers._, MegaPhase._
 import ExtensionMethods._, ValueClasses._
 
-import collection.mutable.ListBuffer
 
 /** This phase inlines calls to methods of value classes.
  *
@@ -44,7 +43,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "vcInlineMethods"
 
-  override def runsAfter =
+  override def runsAfter: Set[String] =
     Set(ExtensionMethods.name, PatternMatcher.name)
 
   /** Replace a value class method call by a call to the corresponding extension method.

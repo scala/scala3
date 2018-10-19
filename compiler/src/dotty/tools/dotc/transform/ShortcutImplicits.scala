@@ -7,15 +7,11 @@ import core.Symbols._
 import core.Contexts._
 import core.Types._
 import core.Flags._
-import core.Decorators._
 import core.StdNames.nme
-import core.Names._
-import core.NameOps._
 import core.NameKinds.DirectMethodName
 import ast.Trees._
 import ast.tpd
 import util.Store
-import collection.mutable
 
 /** This phase optimizes code using implicit function types, by applying two rewrite rules.
  *  Let IF be the implicit function type
@@ -63,7 +59,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
 
   override def phaseName: String = ShortcutImplicits.name
 
-  override def changesMembers = true  // the phase adds "direct" methods
+  override def changesMembers: Boolean = true  // the phase adds "direct" methods
 
   /** A map to cache mapping local methods to their direct counterparts.
    *  A fresh map is created for each unit.
@@ -71,11 +67,11 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   private var DirectMeth: Store.Location[MutableSymbolMap[Symbol]] = _
   private def directMeth(implicit ctx: Context) = ctx.store(DirectMeth)
 
-  override def initContext(ctx: FreshContext) =
+  override def initContext(ctx: FreshContext): Unit =
     DirectMeth = ctx.addLocation[MutableSymbolMap[Symbol]]()
 
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) =
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context =
     ctx.fresh.updateStore(DirectMeth, newMutableSymbolMap[Symbol])
 
 
@@ -87,7 +83,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     else directMeth.getOrElseUpdate(sym, newShortcutMethod(sym))
 
   /** Transform `qual.apply` occurrences according to rewrite rule (2) above */
-  override def transformSelect(tree: Select)(implicit ctx: Context) =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     if (tree.name == nme.apply &&
         defn.isImplicitFunctionType(tree.qualifier.tpe.widen) &&
         needsImplicitShortcut(tree.qualifier.symbol)) {
@@ -147,7 +143,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
 }
 
 object ShortcutImplicits {
-  val name = "shortcutImplicits"
+  val name: String = "shortcutImplicits"
 
   /** If this option is true, we don't specialize symbols that are known to be only
    *  targets of monomorphic calls.
@@ -163,7 +159,7 @@ object ShortcutImplicits {
     *  to be only targets of monomorphic calls because they are effectively
     *  final and don't override anything.
     */
-  def needsImplicitShortcut(sym: Symbol)(implicit ctx: Context) =
+  def needsImplicitShortcut(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.is(Method, butNot = Accessor) &&
     defn.isImplicitFunctionType(sym.info.finalResultType) &&
     defn.functionArity(sym.info.finalResultType) > 0 &&
@@ -191,12 +187,12 @@ object ShortcutImplicits {
     direct
   }
 
-  def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: Context) =
+  def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: Context): Symbol =
     sym.owner.info.decl(DirectMethodName(sym.name.asTermName))
       .suchThat(_.info matches directInfo(sym.info)).symbol
       .orElse(newShortcutMethod(sym).enteredAfter(phase))
 
-  def isImplicitShortcut(sym: Symbol)(implicit ctx: Context) = sym.name.is(DirectMethodName)
+  def isImplicitShortcut(sym: Symbol)(implicit ctx: Context): Boolean = sym.name.is(DirectMethodName)
 }
 
 

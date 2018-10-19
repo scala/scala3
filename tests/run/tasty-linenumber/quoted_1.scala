@@ -8,13 +8,12 @@ class LineNumber(val value: Int) {
 
 object LineNumber {
 
-  implicit transparent def line[T >: Unit <: Unit]: LineNumber =
-    ~lineImpl('[T])(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit inline def line[T >: Unit <: Unit]: LineNumber =
+    ~lineImpl('[T])
 
   def lineImpl(x: Type[Unit])(implicit tasty: Tasty): Expr[LineNumber] = {
     import tasty._
-
-    '(new LineNumber(~x.toTasty.pos.startLine.toExpr))
+    '(new LineNumber(~rootPosition.startLine.toExpr))
   }
 
 }

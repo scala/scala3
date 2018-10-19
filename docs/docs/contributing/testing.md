@@ -58,7 +58,7 @@ You can also run all paths of classes of a certain name:
 These tests are Scala source files expected to compile with Dotty (pos tests),
 along with their expected output (run tests) or errors (neg tests).
 
-All of these tests are contained in the `./tests/*` directories and can be run with the `testCompilation` command.
+All of these tests are contained in the `./tests/*` directories and can be run with the `testCompilation` command. Tests in folders named `with-compiler` are an exception, see next section.
 
 Currently to run these tests you need to invoke from sbt:
 
@@ -79,3 +79,10 @@ $ sbt
 This will run both the test `./tests/pos/companions.scala` and
 `./tests/neg/companions.scala` since both of these match the given string.
 This also means that you could run `testCompilation` with no arguments to run all integration tests.
+
+### Bootstrapped-only tests
+
+To run `testCompilation` on a bootstrapped Dotty compiler, use
+`dotty-compiler-bootstrapped/testCompilation` (with the same syntax as above).
+Some tests can only be run in bootstrapped compilers; that includes all tests
+with `with-compiler` in their name.

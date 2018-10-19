@@ -1,7 +1,7 @@
 import scala.quoted.Expr
+import quoted.Liftable.{IntIsLiftable => _}
 object Macro {
-  transparent def foo(transparent n: Int): Int = ~{
-    import quoted.Liftable.{IntIsLiftable => _}
+  inline def foo(inline n: Int): Int = ~{
     '(n)
   }
 }

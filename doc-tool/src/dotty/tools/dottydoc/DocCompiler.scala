@@ -3,8 +3,13 @@ package dottydoc
 
 import core._
 import core.transform._
+import dotc.core.Contexts.Context
 import dotc.core.Phases.Phase
-import dotc.Compiler
+import dotc.core.Mode
+import dotc.{Compiler, Run}
+
+import dotty.tools.dotc.fromtasty.{ReadTastyTreesFromClasses, TASTYRun}
+import dotty.tools.dotc.transform.CookComments
 
 /** Custom Compiler with phases for the documentation tool
  *
@@ -20,13 +25,24 @@ import dotc.Compiler
  */
 class DocCompiler extends Compiler {
 
+  override def newRun(implicit ctx: Context): Run = {
+    if (ctx.settings.fromTasty.value) {
+      reset()
+      new TASTYRun(this, ctx.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))
+    } else {
+      super.newRun
+    }
+  }
+
   override protected def frontendPhases: List[List[Phase]] =
-    List(new DocFrontEnd) :: Nil
+    List(new ReadTastyTreesFromClasses) ::
+    List(new DocFrontEnd) ::  Nil
 
   override protected def picklerPhases: List[List[Phase]] =
     Nil
 
   override protected def transformPhases: List[List[Phase]] =
+    List(new CookComments) ::
     List(new DocImplicitsPhase) ::
     List(new DocASTPhase) ::
     List(DocMiniTransformations(new UsecasePhase,

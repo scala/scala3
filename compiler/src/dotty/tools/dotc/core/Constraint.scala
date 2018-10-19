@@ -2,12 +2,8 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._
-import collection.mutable
-import printing.{Printer, Showable}
-import printing.Texts._
-import config.Config
-import config.Printers.constr
+import Types._, Contexts._
+import printing.Showable
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
@@ -60,7 +56,7 @@ abstract class Constraint extends Showable {
    *  are not contained in the return bounds.
    *  @pre `param` is not part of the constraint domain.
    */
-  def nonParamBounds(param: TypeParamRef): TypeBounds
+  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
 
   /** The lower bound of `param` including all known-to-be-smaller parameters */
   def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type

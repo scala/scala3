@@ -236,7 +236,7 @@ public final class BoxesRunTime
      *  as yet have not.
      *
      *  Note: Among primitives, Float.NaN != Float.NaN, but the boxed
-     *  verisons are equal.  This still needs reconciliation.
+     *  versions are equal. This still needs reconciliation.
      */
     public static int hashFromLong(java.lang.Long n) {
         int iv = n.intValue();

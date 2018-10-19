@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
+import core.Contexts._
 import Scanners._
 import util.SourceFile
 import JavaTokens._
@@ -388,7 +388,7 @@ object JavaScanners {
 
     /** read next character in character or string literal:
       */
-    protected def getlitch() =
+    protected def getlitch(): Unit =
       if (ch == '\\') {
         nextChar()
         if ('0' <= ch && ch <= '7') {
@@ -506,7 +506,7 @@ object JavaScanners {
 
     // Errors -----------------------------------------------------------------
 
-    override def toString() = token match {
+    override def toString(): String = token match {
       case IDENTIFIER =>
         "id(" + name + ")"
       case CHARLIT =>
@@ -534,5 +534,5 @@ object JavaScanners {
     nextToken()
   }
 
-  val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
+  private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
 }

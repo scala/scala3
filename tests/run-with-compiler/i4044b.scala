@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import dotty.tools.dotc.quoted.Toolbox._
+import scala.quoted.Toolbox.Default._
 
 sealed abstract class VarRef[T] {
   def update(expr: Expr[T]): Expr[Unit]

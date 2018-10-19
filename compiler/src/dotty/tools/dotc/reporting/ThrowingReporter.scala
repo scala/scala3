@@ -3,10 +3,8 @@ package dotc
 package reporting
 
 import core.Contexts.Context
-import collection.mutable
 import diagnostic.MessageContainer
 import diagnostic.messages.Error
-import Reporter._
 
 /**
  * This class implements a Reporter that throws all errors and sends warnings and other

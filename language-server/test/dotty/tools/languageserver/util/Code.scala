@@ -20,6 +20,16 @@ object Code {
   val m6 = new CodeMarker("m6")
   val m7 = new CodeMarker("m7")
   val m8 = new CodeMarker("m8")
+  val m9 = new CodeMarker("m9")
+  val m10 = new CodeMarker("m10")
+  val m11 = new CodeMarker("m11")
+  val m12 = new CodeMarker("m12")
+  val m13 = new CodeMarker("m13")
+  val m14 = new CodeMarker("m14")
+  val m15 = new CodeMarker("m15")
+  val m16 = new CodeMarker("m16")
+  val m17 = new CodeMarker("m17")
+  val m18 = new CodeMarker("m18")
 
   implicit class CodeHelper(val sc: StringContext) extends AnyVal {
 
@@ -35,7 +45,33 @@ object Code {
      * and `m3` and `m4` enclose the identifier `Hello`. These positions can then be used to ask to
      * perform actions such as finding all references, etc.
      */
-    def code(args: Embedded*): SourceWithPositions = {
+    def code(args: Embedded*): ScalaSourceWithPositions = {
+      val (text, positions) = textAndPositions(args: _*)
+      ScalaSourceWithPositions(text, positions)
+    }
+
+    /**
+     * An interpolator similar to `code`, but used for defining a worksheet.
+     *
+     * @see code
+     */
+    def ws(args: Embedded*): WorksheetWithPositions = {
+      val (text, positions) = textAndPositions(args: _*)
+      WorksheetWithPositions(text, positions)
+    }
+
+    /**
+     * An interpolator similar to `code`, but used for defining a source that will
+     * be unpickled from TASTY.
+     *
+     * @see code
+     */
+    def tasty(args: Embedded*): TastyWithPositions = {
+      val (text, positions) = textAndPositions(args: _*)
+      TastyWithPositions(text, positions)
+    }
+
+    private def textAndPositions(args: Embedded*): (String, List[(CodeMarker, Int, Int)]) = {
       val pi = sc.parts.iterator
       val ai = args.iterator
 
@@ -70,22 +106,99 @@ object Code {
       if (pi.hasNext)
         stringBuilder.append(pi.next())
 
-      SourceWithPositions(stringBuilder.result(), positions.result())
+      (stringBuilder.result(), positions.result())
     }
   }
 
-  /** A new `CodeTester` working with `sources` in the workspace. */
-  def withSources(sources: SourceWithPositions*): CodeTester = new CodeTester(sources.toList, Nil)
+  /** A new `CodeTester` working with a single project containing `sources`. */
+  def withSources(sources: SourceWithPositions*): CodeTester = withProjects(Project(sources.toList))
+
+  /** A new `CodeTester` working with `projects`. */
+  def withProjects(projects: Project*): CodeTester = new CodeTester(projects.toList)
+
+  sealed trait SourceWithPositions {
+
+    /** A name for this source given its index. */
+    def sourceName(index: Int): String
+
+    /** The code contained within the virtual source file. */
+    def text: String
+
+    /** The positions of the markers that have been set. */
+    def positions: List[(CodeMarker, Int, Int)]
+
+    /** A new `CodeTester` with only this source in the project. */
+    def withSource: CodeTester = withSources(this)
+
+  }
 
   /**
-   * A virtual source file where several markers have been set.
+   * A virtual Scala source file where several markers have been set.
    *
    * @param text      The code contained within the virtual source file.
    * @param positions The positions of the markers that have been set.
    */
-  case class SourceWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) {
-    /** A new `CodeTester` with only this source in the workspace. */
-    def withSource: CodeTester = new CodeTester(this :: Nil, Nil)
+  case class ScalaSourceWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions {
+    def sourceName(index: Int): String = s"Source$index.scala"
+  }
+
+  /**
+   * A virtual worksheet where several markers have been set.
+   *
+   * @param text      The code contained within the virtual source file.
+   * @param positions The positions of the markers that have been set.
+   */
+  case class WorksheetWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions {
+    def sourceName(index: Int): String = s"Worksheet$index.sc"
+  }
+
+  /**
+   * A virtual source file that will not be opened in the IDE, but instead unpickled from TASTY.
+   *
+   * @param text      The code contained within the virtual source file.
+   * @param positions The positions of the markers that have been set.
+   */
+  case class TastyWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions {
+    def sourceName(index: Int): String = s"Source-from-tasty-$index.scala"
+  }
+
+  /**
+   * A group of sources belonging to the same project.
+   *
+   * @param sources   The sources that this project holds.
+   * @param name      The name of this project
+   * @param dependsOn The other projects on which this project depend.
+   */
+  case class Project(sources: List[SourceWithPositions],
+                     name: String = Project.freshName,
+                     dependsOn: List[Project] = Nil) {
+
+    /**
+     * Add `sources` to the sources of this project.
+     */
+    def withSources(sources: SourceWithPositions*): Project = copy(sources = this.sources ::: sources.toList)
+
+  }
+
+  object Project {
+    private[this] val count = new java.util.concurrent.atomic.AtomicInteger()
+    private def freshName: String = s"project${count.incrementAndGet()}"
+
+    /**
+     * Creates a new project that depends on `projects`.
+     *
+     * @param projects The dependencies of the new project.
+     * @return An empty project with a dependency on the specified projects.
+     */
+    def dependingOn(projects: Project*) = new Project(Nil, dependsOn = projects.toList)
+
+    /**
+     * Create a new project with the given sources.
+     *
+     * @param sources The sources to add to this project.
+     * @return a new project containing the specified sources.
+     */
+    def withSources(sources: SourceWithPositions*): Project = new Project(sources.toList)
   }
 
 }

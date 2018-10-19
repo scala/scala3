@@ -6,19 +6,15 @@ import core._
 import Decorators._
 import Contexts.Context
 import Symbols.{Symbol, ClassSymbol}
-import SymDenotations.{SymDenotation, ClassDenotation, LazyType}
+import SymDenotations.ClassDenotation
 import typer.FrontEnd
-import Names.TypeName
 import NameOps._
-import Types.Type
-import ast.tpd
 import ast.Trees.Tree
-import util.SourceFile
 import CompilationUnit.mkCompilationUnit
 
 class ReadTastyTreesFromClasses extends FrontEnd {
 
-  override def isTyper = false
+  override def isTyper: Boolean = false
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
     units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))
@@ -33,17 +29,17 @@ class ReadTastyTreesFromClasses extends FrontEnd {
       }
 
       def alreadyLoaded(): None.type = {
-        ctx.warning(s"sclass $className cannot be unpickled because it is already loaded")
+        ctx.warning(s"class $className cannot be unpickled because it is already loaded")
         None
       }
 
       def compilationUnit(cls: Symbol): Option[CompilationUnit] = cls match {
         case cls: ClassSymbol =>
-          (cls.treeOrProvider: @unchecked) match {
+          (cls.rootTreeOrProvider: @unchecked) match {
             case unpickler: tasty.DottyUnpickler =>
-              if (cls.tree.isEmpty) None
+              if (cls.rootTree.isEmpty) None
               else {
-                val unit = mkCompilationUnit(cls, cls.tree, forceTrees = true)
+                val unit = mkCompilationUnit(cls, cls.rootTree, forceTrees = true)
                 unit.pickled += (cls -> unpickler.unpickler.bytes)
                 Some(unit)
               }
@@ -60,11 +56,11 @@ class ReadTastyTreesFromClasses extends FrontEnd {
       // Note that if both the class and the object are present, then loading the class will also load
       // the object, this is why we use orElse here, otherwise we could load the object twice and
       // create ambiguities!
-      ctx.staticRef(className) match {
+      ctx.base.staticRef(className) match {
         case clsd: ClassDenotation =>
           clsd.infoOrCompleter match {
             case info: ClassfileLoader =>
-              info.load(clsd) // sets cls.treeOrProvider and cls.moduleClass.treeProvider as a side-effect
+              info.load(clsd) // sets cls.rootTreeOrProvider and cls.moduleClass.treeProvider as a side-effect
             case _ =>
           }
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
@@ -72,5 +68,7 @@ class ReadTastyTreesFromClasses extends FrontEnd {
         case _ =>
           cannotUnpickle(s"no class file was found")
       }
+    case unit =>
+     Some(unit)
   }
 }

@@ -10,6 +10,7 @@ import java.nio.channels._
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services._
 import org.eclipse.lsp4j.launch._
+import org.eclipse.lsp4j.jsonrpc.Launcher
 
 /** Run the Dotty Language Server.
  *
@@ -65,9 +66,16 @@ object Main {
     val server = new DottyLanguageServer
 
     println("Starting server")
-    // For debugging JSON messages:
-    // val launcher = LSPLauncher.createServerLauncher(server, in, out, false, new java.io.PrintWriter(System.err, true))
-    val launcher = LSPLauncher.createServerLauncher(server, in, out)
+    val launcher =
+      new Launcher.Builder[worksheet.WorksheetClient]()
+        .setLocalService(server)
+        .setRemoteInterface(classOf[worksheet.WorksheetClient])
+        .setInput(in)
+        .setOutput(out)
+        // For debugging JSON messages:
+        //.traceMessages(new java.io.PrintWriter(System.err, true))
+        .create();
+
     val client = launcher.getRemoteProxy()
     server.connect(client)
     launcher.startListening()

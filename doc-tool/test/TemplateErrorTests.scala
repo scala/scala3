@@ -5,7 +5,7 @@ package staticsite
 import org.junit.Test
 import org.junit.Assert._
 
-class TemplateErrorTests extends DottyDocTest with SourceFileOps {
+class TemplateErrorTests extends DottyDocTest with SourceFileOps with CheckFromSource {
   @Test def unclosedTag: Unit = {
     htmlPage(
       """|Yo dawg:

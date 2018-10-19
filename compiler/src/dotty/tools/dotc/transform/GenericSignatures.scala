@@ -4,6 +4,7 @@ package transform
 
 import core.Annotations.Annotation
 import core.Contexts.Context
+import core.Definitions
 import core.Flags._
 import core.Names.Name
 import core.Symbols._
@@ -191,11 +192,13 @@ object GenericSignatures {
               args.foreach(jsig(_))
             }
           }
+          else if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
+            jsig(defn.TupleXXLType)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
           }
-          else if (sym == defn.AnyClass || sym == defn.AnyValClass || sym == defn.SingletonClass)
+          else if (defn.erasedToObject.contains(sym))
             jsig(defn.ObjectType)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
             jsig(defn.BoxedUnitType)

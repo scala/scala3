@@ -4,9 +4,9 @@ object Test1772B {
     try {
       throw new RuntimeException
     } catch {
-      case _: Throwable => bar
+      case _: Throwable => bar // error: it is not in tail position
     } finally {
-      bar
+      bar // error: it is not in tail position
     }
   }
 
@@ -15,7 +15,7 @@ object Test1772B {
     try {
       throw new RuntimeException
     } catch {
-      case _: Throwable => baz
+      case _: Throwable => baz // error: it is not in tail position
     } finally {
       ???
     }
@@ -26,14 +26,14 @@ object Test1772B {
     try {
       throw new RuntimeException
     } catch {
-      case _: Throwable => boz; ???
+      case _: Throwable => boz; ??? // error: it is not in tail position
     }
   }
 
   @annotation.tailrec
   def bez : Nothing = { // error: TailRec optimisation not applicable
     try {
-      bez
+      bez // error: it is not in tail position
     } finally {
       ???
     }

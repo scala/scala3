@@ -39,11 +39,11 @@ object JSEncoding {
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
   implicit class SymOps(val self: Symbol) extends AnyVal {
-    def unexpandedName(implicit ctx: Context): Names.Name =
+    def unexpandedName(implicit ctx: Context): Name =
       self.name.unexpandedName
   }
 
-  implicit class MyNameOps(val self: Names.Name) extends AnyVal {
+  implicit class MyNameOps(val self: Name) extends AnyVal {
     def decoded: String = self.decode.toString
   }
 

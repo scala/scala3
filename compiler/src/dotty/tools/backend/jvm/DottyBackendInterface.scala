@@ -6,37 +6,29 @@ import dotty.tools.dotc
 import dotty.tools.dotc.core.Flags.FlagSet
 import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
-import java.io.{File => JFile}
+import java.io.{File => _}
 
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.WeakHashSet
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
-import scala.tools.asm.{AnnotationVisitor, ClassVisitor, FieldVisitor, MethodVisitor}
+import dotty.tools.io.AbstractFile
+import scala.tools.asm.AnnotationVisitor
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
 import dotty.tools.dotc.core._
-import Periods._
-import SymDenotations._
 import Contexts._
 import Types._
 import Symbols._
-import Denotations._
 import Phases._
-import java.lang.AssertionError
 
-import dotty.tools.dotc.util.{DotClass, Positions}
+import dotty.tools.dotc.util.Positions
 import Decorators._
 import tpd._
 
 import scala.tools.asm
 import StdNames.{nme, str}
-import NameOps._
 import NameKinds.{DefaultGetterName, ExpandedName}
-import dotty.tools.dotc.core
-import dotty.tools.dotc.core.Names.TypeName
-
-import scala.annotation.tailrec
+import Names.TermName
 
 class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
   import Symbols.{toDenot, toClassDenot}
@@ -61,7 +53,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type If              = tpd.If
   type ValDef          = tpd.ValDef
   type Throw           = tpd.Apply
+  type Labeled         = tpd.Labeled
   type Return          = tpd.Return
+  type WhileDo         = tpd.WhileDo
   type Block           = tpd.Block
   type Typed           = tpd.Typed
   type Match           = tpd.Match
@@ -82,7 +76,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type LabelDef        = tpd.DefDef
   type Closure         = tpd.Closure
 
-  val NoSymbol = Symbols.NoSymbol
+  val NoSymbol: Symbol = Symbols.NoSymbol
   val NoPosition: Position = Positions.NoPosition
   val EmptyTree: Tree = tpd.EmptyTree
 
@@ -110,11 +104,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
 
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
-  override lazy val LambdaMetaFactory = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
-  override lazy val MethodHandle      = ctx.requiredClass("java.lang.invoke.MethodHandle")
+  override lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
+  override lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
 
   val nme_valueOf: Name = StdNames.nme.valueOf
-  val nme_apply = StdNames.nme.apply
+  val nme_apply: TermName = StdNames.nme.apply
   val NothingClass: Symbol = defn.NothingClass
   val NullClass: Symbol = defn.NullClass
   val ObjectClass: Symbol = defn.ObjectClass
@@ -134,7 +128,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val LongClass: Symbol = defn.LongClass
   val FloatClass: Symbol = defn.FloatClass
   val DoubleClass: Symbol = defn.DoubleClass
-  def isArrayClone(tree: Tree) = tree match {
+  def isArrayClone(tree: Tree): Boolean = tree match {
     case Select(qual, StdNames.nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
     case _ => false
   }
@@ -152,11 +146,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val String_valueOf: Symbol = defn.String_valueOf_Object
   lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
-  lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
-  lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  lazy val AnnotationRetentionClassAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-  lazy val JavaAnnotationClass = ctx.requiredClass("java.lang.annotation.Annotation")
+  lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
+  lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
 
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
@@ -164,7 +158,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def unboxMethods: Map[Symbol, Symbol] =
     defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
-  override def isSyntheticArrayConstructor(s: Symbol) = {
+  override def isSyntheticArrayConstructor(s: Symbol): Boolean = {
     s eq defn.newArrayMethod
   }
 
@@ -193,7 +187,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val LabelDefTag: ClassTag[LabelDef] = ClassTag[LabelDef](classOf[LabelDef])
   implicit val ValDefTag: ClassTag[ValDef] = ClassTag[ValDef](classOf[ValDef])
   implicit val ThrowTag: ClassTag[Throw] = ClassTag[Throw](classOf[Throw])
+  implicit val LabeledTag: ClassTag[Labeled] = ClassTag[Labeled](classOf[Labeled])
   implicit val ReturnTag: ClassTag[Return] = ClassTag[Return](classOf[Return])
+  implicit val WhileDoTag: ClassTag[WhileDo] = ClassTag[WhileDo](classOf[WhileDo])
   implicit val LiteralTag: ClassTag[Literal] = ClassTag[Literal](classOf[Literal])
   implicit val BlockTag: ClassTag[Block] = ClassTag[Block](classOf[Block])
   implicit val TypedTag: ClassTag[Typed] = ClassTag[Typed](classOf[Typed])
@@ -265,7 +261,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         } else {
             // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flags}")
             assert(toDenot(t.symbol).name.is(DefaultGetterName),
-              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emmit.
+              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
@@ -313,7 +309,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   override def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
-                              (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                              (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
       val assocs = annot.assocs
@@ -330,7 +326,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   override def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
-                              (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                              (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
       val assocs = annot.assocs
@@ -340,7 +336,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   override def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
-                              (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                              (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
       val assocs = annot.assocs
@@ -365,7 +361,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def getAnnotPickle(jclassName: String, sym: Symbol): Option[Annotation] = None
 
 
-  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname.toTermName)
+  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname)
 
   def getClassIfDefined(fullname: String): Symbol = NoSymbol // used only for android. todo: implement
 
@@ -375,12 +371,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   def requiredClass[T](implicit evidence: ClassTag[T]): Symbol =
-    ctx.requiredClass(erasureString(evidence.runtimeClass).toTermName)
+    ctx.requiredClass(erasureString(evidence.runtimeClass))
 
   def requiredModule[T](implicit evidence: ClassTag[T]): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
-    ctx.requiredModule(className.toTermName)
+    ctx.requiredModule(className)
   }
 
 
@@ -396,7 +392,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def emitAsmp: Option[String] = None
 
-  def shouldEmitJumpAfterLabels = true
+  def shouldEmitJumpAfterLabels: Boolean = true
 
   def dumpClasses: Option[String] =
     if (ctx.settings.Ydumpclasses.isDefault) None
@@ -424,7 +420,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   val MODULE_INSTANCE_FIELD: String = str.MODULE_INSTANCE_FIELD
 
-  def dropModule(str: String) =
+  def dropModule(str: String): String =
     if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
 
   def newTermName(prefix: String): Name = prefix.toTermName
@@ -475,7 +471,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   // todo: remove
-  def isMaybeBoxed(sym: Symbol) = {
+  def isMaybeBoxed(sym: Symbol): Boolean = {
     (sym == ObjectClass) ||
       (sym == JavaSerializableClass) ||
       (sym == defn.ComparableClass) ||
@@ -626,7 +622,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def symbol: Symbol = a.tree.symbol
 
-    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
+    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emitted
   }
 
   def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
@@ -810,7 +806,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
-      // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
+      // not local classes of the companion module (E in the example) that were lifted by lambdalift.
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }
@@ -986,7 +982,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def summaryString: String = tp.showSummary
 
     def params: List[Symbol] =
-      Nil // backend uses this to emmit annotations on parameter lists of forwarders
+      Nil // backend uses this to emit annotations on parameter lists of forwarders
           // to static methods of companion class
           // in Dotty this link does not exists: there is no way to get from method type
           // to inner symbols of DefDef
@@ -1051,13 +1047,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   // todo: this product1s should also eventually become name-based pattn matching
   object Literal extends LiteralDeconstructor {
-    def get = field.const
+    def get: Constant = field.const
   }
 
   object Throw extends ThrowDeconstructor {
-    def get = field.args.head
+    def get: Tree = field.args.head
 
-    override def unapply(s: Throw): DottyBackendInterface.this.Throw.type = {
+    override def unapply(s: Throw): Throw.type = {
       if (s.fun.symbol eq defn.throwMethod) {
         field = s
       } else {
@@ -1068,28 +1064,39 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object New extends NewDeconstructor {
-    def get = field.tpt.tpe
+    def get: Type = field.tpt.tpe
   }
 
   object This extends ThisDeconstructor {
-    def get = field.qual.name
+    def get: Name = field.qual.name
     def apply(s: Symbol): This = tpd.This(s.asClass)
   }
 
+  object Labeled extends LabeledDeconstructor {
+    def _1: Bind = field.bind
+    def _2: Tree = field.expr
+  }
+
   object Return extends ReturnDeconstructor {
-    def get = field.expr
+    def _1: Tree = field.expr
+    def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
+  }
+
+  object WhileDo extends WhileDoDeconstructor {
+    def _1: Tree = field.cond
+    def _2: Tree = field.body
   }
 
   object Ident extends IdentDeconstructor {
-    def get = field.name
+    def get: Name = field.name
   }
 
   object Alternative extends AlternativeDeconstructor {
-    def get = field.trees
+    def get: List[Tree] = field.trees
   }
 
   object Constant extends ConstantDeconstructor {
-    def get = field.value
+    def get: Any = field.value
   }
   object ThrownException extends ThrownException {
     def unapply(a: Annotation): Option[Symbol] = None // todo
@@ -1106,7 +1113,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _2: List[Symbol] = field.vparamss.flatMap(_.map(_.symbol))
     def _3: Tree = field.rhs
 
-    override def unapply(s: LabelDef): DottyBackendInterface.this.LabelDef.type = {
+    override def unapply(s: LabelDef): LabelDef.type = {
       if (s.symbol is Flags.Label) this.field = s
       else this.field = null
       this
@@ -1184,20 +1191,20 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object Closure extends ClosureDeconstructor {
-    def _1 = field.env
-    def _2 = field.meth
-    def _3 = {
+    def _1: List[Tree] = field.env
+    def _2: Tree = field.meth
+    def _3: Symbol = {
       val t = field.tpt.tpe.typeSymbol
       if (t.exists) t
       else {
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
         if (returnsUnit)
-          ctx.requiredClass(("scala.compat.java8.JProcedure" + arity).toTermName)
-        else ctx.requiredClass(("scala.compat.java8.JFunction" + arity).toTermName)
+          ctx.requiredClass(("scala.compat.java8.JProcedure" + arity))
+        else ctx.requiredClass(("scala.compat.java8.JFunction" + arity))
       }
     }
   }
 
-  def currentUnit = ctx.compilationUnit
+  def currentUnit: CompilationUnit = ctx.compilationUnit
 }

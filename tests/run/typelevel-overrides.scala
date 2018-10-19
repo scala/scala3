@@ -8,13 +8,13 @@ class A extends T {
   def f(x: Int) = x
 }
 class B extends A {
-  override transparent def f(x: Int) = x match {
+  override inline def f(x: Int) = x match {
     case 0 => 0
     case x => x
   }
 }
 class C extends A with U {
-  override transparent def f(x: Int) = x match {
+  override inline def f(x: Int) = x match {
     case 0 => 0
     case x => x
   }

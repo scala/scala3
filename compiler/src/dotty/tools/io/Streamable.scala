@@ -34,7 +34,7 @@ object Streamable {
     def inputStream(): InputStream
     def length: Long = -1
 
-    def bufferedInput() = new BufferedInputStream(inputStream())
+    def bufferedInput(): BufferedInputStream = new BufferedInputStream(inputStream())
     def bytes(): Iterator[Byte] = bytesAsInts() map (_.toByte)
     def bytesAsInts(): Iterator[Int] = {
       val in = bufferedInput()
@@ -100,7 +100,7 @@ object Streamable {
     /** Wraps a BufferedReader around the result of reader().
      */
     def bufferedReader(): BufferedReader = bufferedReader(creationCodec)
-    def bufferedReader(codec: Codec) = new BufferedReader(reader(codec))
+    def bufferedReader(codec: Codec): BufferedReader = new BufferedReader(reader(codec))
 
     /** Creates a BufferedReader and applies the closure, automatically closing it on completion.
      */
@@ -113,7 +113,7 @@ object Streamable {
     /** Convenience function to import entire file into a String.
      */
     def slurp(): String = slurp(creationCodec)
-    def slurp(codec: Codec) = {
+    def slurp(codec: Codec): String = {
       val src = chars(codec)
       try src.mkString finally src.close()  // Always Be Closing
     }

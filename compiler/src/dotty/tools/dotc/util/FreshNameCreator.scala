@@ -13,8 +13,8 @@ abstract class FreshNameCreator {
 
 object FreshNameCreator {
   class Default extends FreshNameCreator {
-    protected var counter = 0
-    protected val counters = mutable.AnyRefMap[String, Int]() withDefaultValue 0
+    protected var counter: Int = 0
+    protected val counters: mutable.Map[String, Int] = mutable.AnyRefMap() withDefaultValue 0
 
     /**
      * Create a fresh name with the given prefix. It is guaranteed

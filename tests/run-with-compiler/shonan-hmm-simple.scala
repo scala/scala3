@@ -115,7 +115,7 @@ class Blas1[Idx, T](r: Ring[T], ops: VecOps[Idx, T]) {
 
 object Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
   def main(args: Array[String]): Unit = {
     val arr1 = Array(0, 1, 2, 4, 8)

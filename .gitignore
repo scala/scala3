@@ -19,6 +19,7 @@ project/local-plugins.sbt
 .ensime
 .ensime_cache/
 .sbt-scripted/
+local.sbt
 
 # npm
 node_modules
@@ -71,6 +72,7 @@ compiler/test/debug/Gen.jar
 
 compiler/before-pickling.txt
 compiler/after-pickling.txt
+bench/compile.txt
 *.dotty-ide-version
 
 *.decompiled.out

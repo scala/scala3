@@ -7,7 +7,6 @@ import Contexts.Context
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
 import Types._
 import Decorators._
 import DenotTransformers._
@@ -15,16 +14,15 @@ import Annotations._
 import StdNames._
 import NameOps._
 import NameKinds.{ExpandedName, TraitSetterName}
-import ast.Trees._
 
 object AugmentScala2Traits {
-  val name = "augmentScala2Traits"
+  val name: String = "augmentScala2Traits"
 }
 
 /** This phase augments Scala2 traits with implementation classes and with additional members
  *  needed for mixin composition.
  *  These symbols would have been added between Unpickling and Mixin in the Scala2 pipeline.
- *  Specifcally, it adds
+ *  Specifically, it adds
  *
  *   - an implementation class which defines a trait constructor and trait method implementations
  *   - trait setters for vals defined in traits
@@ -35,13 +33,13 @@ object AugmentScala2Traits {
 class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with FullParameterization { thisPhase =>
   import ast.tpd._
 
-  override def changesMembers = true
+  override def changesMembers: Boolean = true
 
   override def phaseName: String = AugmentScala2Traits.name
 
-  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol
+  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context): Symbol = NoSymbol
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins)
       if (mixin.is(Scala2x))

@@ -3,27 +3,25 @@ package dotty.tools.dotc.transform
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.DenotTransformers.{InfoTransformer, SymTransformer}
+import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.{Flags, Names}
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object MoveStatics {
-  val name = "moveStatic"
+  val name: String = "moveStatic"
 }
 
 /** Move static methods from companion to the class itself */
 class MoveStatics extends MiniPhase with SymTransformer {
 
   import tpd._
-  override def phaseName = MoveStatics.name
+  override def phaseName: String = MoveStatics.name
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists) {

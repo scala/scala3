@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.annotation.internal.sharable
+
 import core.Contexts._
 import util.{SourcePosition, NoSourcePosition}
 import core.Decorators.PhaseListDecorator
@@ -26,12 +28,11 @@ object Reporter {
 
   /** A reporter that ignores reports, and doesn't record errors */
   @sharable object NoReporter extends Reporter {
-    def doReport(m: MessageContainer)(implicit ctx: Context) = ()
+    def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
     override def report(m: MessageContainer)(implicit ctx: Context): Unit = ()
   }
 }
 
-import Reporter._
 
 trait Reporting { this: Context =>
 
@@ -49,7 +50,7 @@ trait Reporting { this: Context =>
     }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new DeprecationWarning(msg, pos))
+    if (this.settings.deprecation.value) reportWarning(new DeprecationWarning(msg, pos))
 
   def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new MigrationWarning(msg, pos))
@@ -120,10 +121,10 @@ trait Reporting { this: Context =>
     informProgress(msg + elapsed)
   }
 
-  def informProgress(msg: => String) =
+  def informProgress(msg: => String): Unit =
     inform("[" + msg + "]")
 
-  def logWith[T](msg: => String)(value: T) = {
+  def logWith[T](msg: => String)(value: T): T = {
     log(msg + " " + value)
     value
   }
@@ -146,7 +147,7 @@ abstract class Reporter extends interfaces.ReporterResult {
    *  invisible due to the max message length.
    */
   private[this] var _truncationOK: Boolean = true
-  def truncationOK = _truncationOK
+  def truncationOK: Boolean = _truncationOK
   def withoutTruncating[T](body: => T): T = {
     val saved = _truncationOK
     _truncationOK = false
@@ -165,17 +166,17 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private[this] var _errorCount = 0
   private[this] var _warningCount = 0
-  def errorCount = _errorCount
-  def warningCount = _warningCount
-  def hasErrors = errorCount > 0
-  def hasWarnings = warningCount > 0
+  def errorCount: Int = _errorCount
+  def warningCount: Int = _warningCount
+  def hasErrors: Boolean = errorCount > 0
+  def hasWarnings: Boolean = warningCount > 0
   private[this] var errors: List[Error] = Nil
-  def allErrors = errors
+  def allErrors: List[Error] = errors
 
   /** Have errors been reported by this reporter, or in the
    *  case where this is a StoreReporter, by an outer reporter?
    */
-  def errorsReported = hasErrors
+  def errorsReported: Boolean = hasErrors
 
   private[this] var reportedFeaturesUseSites = Set[Symbol]()
 
@@ -184,7 +185,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   def reportNewFeatureUseSite(featureTrait: Symbol): Unit = reportedFeaturesUseSites += featureTrait
 
-  val unreportedWarnings = new mutable.HashMap[String, Int] {
+  val unreportedWarnings: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
     override def default(key: String) = 0
   }
 

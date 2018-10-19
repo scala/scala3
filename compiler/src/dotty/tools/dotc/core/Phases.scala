@@ -1,16 +1,15 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Periods._
 import Contexts._
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
-import dotty.tools.dotc.core.Symbols.ClassSymbol
-import util.DotClass
 import DenotTransformers._
 import Denotations._
 import Decorators._
 import config.Printers.config
-import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
@@ -49,31 +48,31 @@ object Phases {
     this: ContextBase =>
 
     // drop NoPhase at beginning
-    def allPhases = (if (squashedPhases.nonEmpty) squashedPhases else phases).tail
+    def allPhases: Array[Phase] = (if (squashedPhases.nonEmpty) squashedPhases else phases).tail
 
     object NoPhase extends Phase {
-      override def exists = false
-      def phaseName = "<no phase>"
+      override def exists: Boolean = false
+      def phaseName: String = "<no phase>"
       def run(implicit ctx: Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = unsupported("transform")
     }
 
     object SomePhase extends Phase {
-      def phaseName = "<some phase>"
+      def phaseName: String = "<some phase>"
       def run(implicit ctx: Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
-      def phaseName = "terminal"
+      def phaseName: String = "terminal"
       def run(implicit ctx: Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(implicit ctx: Context) = id
+      override def lastPhaseId(implicit ctx: Context): Int = id
     }
 
-    final def phasePlan = this.phasesPlan
-    final def setPhasePlan(phasess: List[List[Phase]]) = this.phasesPlan = phasess
+    final def phasePlan: List[List[Phase]] = this.phasesPlan
+    final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
 
     /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
@@ -135,7 +134,7 @@ object Phases {
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
-    final def usePhases(phasess: List[Phase], squash: Boolean = true) = {
+    final def usePhases(phasess: List[Phase], squash: Boolean = true): Unit = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -224,21 +223,21 @@ object Phases {
     private[this] var myFlattenPhase: Phase = _
     private[this] var myGenBCodePhase: Phase = _
 
-    final def typerPhase = myTyperPhase
-    final def sbtExtractDependenciesPhase = mySbtExtractDependenciesPhase
-    final def picklerPhase = myPicklerPhase
-    final def collectNullableFieldsPhase = myCollectNullableFieldsPhase
-    final def refchecksPhase = myRefChecksPhase
-    final def patmatPhase = myPatmatPhase
-    final def elimRepeatedPhase = myElimRepeatedPhase
-    final def extensionMethodsPhase = myExtensionMethodsPhase
-    final def explicitOuterPhase = myExplicitOuterPhase
-    final def gettersPhase = myGettersPhase
-    final def erasurePhase = myErasurePhase
-    final def elimErasedValueTypePhase = myElimErasedValueTypePhase
-    final def lambdaLiftPhase = myLambdaLiftPhase
-    final def flattenPhase = myFlattenPhase
-    final def genBCodePhase = myGenBCodePhase
+    final def typerPhase: Phase = myTyperPhase
+    final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
+    final def picklerPhase: Phase = myPicklerPhase
+    final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
+    final def refchecksPhase: Phase = myRefChecksPhase
+    final def patmatPhase: Phase = myPatmatPhase
+    final def elimRepeatedPhase: Phase = myElimRepeatedPhase
+    final def extensionMethodsPhase: Phase = myExtensionMethodsPhase
+    final def explicitOuterPhase: Phase = myExplicitOuterPhase
+    final def gettersPhase: Phase = myGettersPhase
+    final def erasurePhase: Phase = myErasurePhase
+    final def elimErasedValueTypePhase: Phase = myElimErasedValueTypePhase
+    final def lambdaLiftPhase: Phase = myLambdaLiftPhase
+    final def flattenPhase: Phase = myFlattenPhase
+    final def genBCodePhase: Phase = myGenBCodePhase
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -263,7 +262,7 @@ object Phases {
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
-  trait Phase extends DotClass {
+  trait Phase {
 
     /** A name given to the `Phase` that can be used to debug the compiler. For
      *  instance, it is possible to print trees after a given phase using:
@@ -313,7 +312,7 @@ object Phases {
      *  is tested in some places that perform checks and corrections. It's
      *  different from isAfterTyper (and cheaper to test).
      */
-    def isTyper = false
+    def isTyper: Boolean = false
 
     /** Can this transform create or delete non-private members? */
     def changesMembers: Boolean = false
@@ -339,20 +338,20 @@ object Phases {
      * is reserved for NoPhase and the first real phase is at position 1.
      * -1 if the phase is not installed in the context.
      */
-    def id = myPeriod.firstPhaseId
+    def id: Int = myPeriod.firstPhaseId
 
-    def period = myPeriod
-    def start = myPeriod.firstPhaseId
-    def end = myPeriod.lastPhaseId
+    def period: Period = myPeriod
+    def start: Int = myPeriod.firstPhaseId
+    def end: Periods.PhaseId = myPeriod.lastPhaseId
 
-    final def erasedTypes = myErasedTypes   // Phase is after erasure
-    final def flatClasses = myFlatClasses   // Phase is after flatten
-    final def refChecked = myRefChecked     // Phase is after RefChecks
-    final def labelsReordered = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
+    final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
+    final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
+    final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
+    final def labelsReordered: Boolean = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
 
-    final def sameMembersStartId = mySameMembersStartId
+    final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
-    final def sameParentsStartId = mySameParentsStartId
+    final def sameParentsStartId: Int = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
 
     protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
@@ -371,7 +370,7 @@ object Phases {
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
 
-    final def <=(that: Phase) =
+    final def <=(that: Phase): Boolean =
       exists && id <= that.id
 
     final def prev: Phase =
@@ -380,12 +379,12 @@ object Phases {
     final def next: Phase =
       if (hasNext) myBase.phases(end + 1) else myBase.NoPhase
 
-    final def hasNext = start >= FirstPhaseId && end + 1 < myBase.phases.length
+    final def hasNext: Boolean = start >= FirstPhaseId && end + 1 < myBase.phases.length
 
-    final def iterator =
+    final def iterator: Iterator[Phase] =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
-    override def toString = phaseName
+    override def toString: String = phaseName
   }
 
   /** Replace all instances of `oldPhaseClass` in `current` phases

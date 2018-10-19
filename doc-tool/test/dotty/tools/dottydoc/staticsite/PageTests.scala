@@ -5,7 +5,7 @@ package staticsite
 import org.junit.Test
 import org.junit.Assert._
 
-class PageTests extends DottyDocTest with SourceFileOps {
+class PageTests extends DottyDocTest with SourceFileOps with CheckFromSource {
   import scala.collection.JavaConverters._
 
   @Test def mdHas1Key = {

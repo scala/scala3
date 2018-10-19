@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
-  val name = "intercepted"
+  val name: String = "intercepted"
 }
 
 /** Replace member references as follows:
@@ -41,9 +41,9 @@ class InterceptedMethods extends MiniPhase {
         case id: Ident => tpd.desugarIdentPrefix(id)
         case sel: Select => sel.qualifier
       }
-      val rewrite = poundPoundValue(qual)
-      ctx.log(s"$phaseName rewrote $tree to $rewrite")
-      rewrite
+      val rewritten = poundPoundValue(qual)
+      ctx.log(s"$phaseName rewrote $tree to $rewritten")
+      rewritten
     }
     else tree
   }
@@ -80,7 +80,7 @@ class InterceptedMethods extends MiniPhase {
 
     }
     val Any_!= = defn.Any_!=
-    val rewrite: Tree = tree.fun.symbol match {
+    val rewritten: Tree = tree.fun.symbol match {
       case Any_!= =>
         qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
         /*
@@ -104,7 +104,7 @@ class InterceptedMethods extends MiniPhase {
       case _ =>
         tree
     }
-    ctx.log(s"$phaseName rewrote $tree to $rewrite")
-    rewrite
+    ctx.log(s"$phaseName rewrote $tree to $rewritten")
+    rewritten
   }
 }

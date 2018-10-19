@@ -3,7 +3,6 @@ package transform
 
 import core._
 import Names._
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import ast.untpd
@@ -12,19 +11,15 @@ import Types._
 import Constants.Constant
 import Contexts.Context
 import Symbols._
-import SymDenotations._
 import Decorators._
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
 import DenotTransformers._
-import typer.Checking
 import NameOps._
-import NameKinds.{AvoidClashName, OuterSelectName}
+import NameKinds.OuterSelectName
 import StdNames._
 
 object FirstTransform {
-  val name = "firstTransform"
+  val name: String = "firstTransform"
 }
 
 
@@ -41,7 +36,7 @@ object FirstTransform {
 class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = FirstTransform.name
+  override def phaseName: String = FirstTransform.name
 
   /** eliminate self symbol in ClassInfo */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
@@ -103,12 +98,12 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     reorder(stats, Nil)
   }
 
-  /** elimiate self in Template */
+  /** eliminate self in Template */
   override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
   }
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
@@ -143,31 +138,31 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     (result /: binders)(Annotated(_, _))
   }
 
-  override def transformOther(tree: Tree)(implicit ctx: Context) = tree match {
+  override def transformOther(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) =
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context) =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     constToLiteral(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context) =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     constToLiteral(foldCondition(tree))
 
-  override def transformTyped(tree: Typed)(implicit ctx: Context) =
+  override def transformTyped(tree: Typed)(implicit ctx: Context): Tree =
     constToLiteral(tree)
 
-  override def transformBlock(tree: Block)(implicit ctx: Context) =
+  override def transformBlock(tree: Block)(implicit ctx: Context): Tree =
     constToLiteral(tree)
 
-  override def transformIf(tree: If)(implicit ctx: Context) =
+  override def transformIf(tree: If)(implicit ctx: Context): Tree =
     tree.cond match {
       case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
       case _ => tree

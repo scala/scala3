@@ -18,7 +18,7 @@
 final class A {
   def f1 = true
   def f2 = true
-  transparent def f3 = f1 || f2
+  inline def f3 = f1 || f2
   class B {
     def f() = 1 to 10 foreach (_ => f3)
   }

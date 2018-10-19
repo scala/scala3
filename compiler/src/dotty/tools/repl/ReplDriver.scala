@@ -13,7 +13,6 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
-import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
@@ -44,12 +43,12 @@ import scala.collection.JavaConverters._
  *
  *  @param objectIndex the index of the next wrapper
  *  @param valIndex    the index of next value binding for free expressions
- *  @param imports     the list of user defined imports
+ *  @param imports     a map from object index to the list of user defined imports
  *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
-                 imports: List[untpd.Import],
+                 imports: Map[Int, List[tpd.Import]],
                  context: Context)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
@@ -60,18 +59,19 @@ class ReplDriver(settings: Array[String],
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
    */
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
-    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
+    rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ictx = setup(settings, rootCtx)._2
     ictx.base.initialize()(ictx)
     ictx
   }
 
   /** the initial, empty state of the REPL session */
-  protected[this] def initState = State(0, 0, Nil, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -102,8 +102,8 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  final def runUntilQuit(): State = {
-    val terminal = new JLineTerminal()
+  final def runUntilQuit(needsTerminal: Boolean, initialState: State = initialState): State = {
+    val terminal = new JLineTerminal(needsTerminal)
 
     /** Blockingly read a line, getting back a parse result */
     def readLine(state: State): ParseResult = {
@@ -115,9 +115,9 @@ class ReplDriver(settings: Array[String],
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)
-      }
-      catch {
-        case _: EndOfFileException => // Ctrl+D
+      } catch {
+        case _: EndOfFileException |
+            _: UserInterruptException => // Ctrl+D or Ctrl+C
           Quit
       }
     }
@@ -128,7 +128,7 @@ class ReplDriver(settings: Array[String],
       else loop(interpret(res)(state))
     }
 
-    try withRedirectedOutput { loop(initState) }
+    try withRedirectedOutput { loop(initialState) }
     finally terminal.close()
   }
 
@@ -137,11 +137,14 @@ class ReplDriver(settings: Array[String],
     interpret(parsed)
   }
 
+  // TODO: i5069
+  final def bind(name: String, value: Any)(implicit state: State): State = state
+
   private def withRedirectedOutput(op: => State): State =
     Console.withOut(out) { Console.withErr(out) { op } }
 
   private def newRun(state: State) = {
-    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state.objectIndex)
+    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
     state.copy(context = run.runContext)
   }
 
@@ -174,9 +177,6 @@ class ReplDriver(settings: Array[String],
       .getOrElse(Nil)
   }
 
-  private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
-    trees.collect { case imp: untpd.Import => imp }
-
   private def interpret(res: ParseResult)(implicit state: State): State = {
     val newState = res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
@@ -206,6 +206,9 @@ class ReplDriver(settings: Array[String],
       case _ => nme.NO_NAME
     }
 
+    def extractTopLevelImports(ctx: Context): List[tpd.Import] =
+      ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
+
     implicit val state = newRun(istate)
     compiler
       .compile(parsed)
@@ -214,8 +217,11 @@ class ReplDriver(settings: Array[String],
         {
           case (unit: CompilationUnit, newState: State) =>
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
-            val newImports = newState.imports ++ extractImports(parsed.trees)
-            val newStateWithImports = newState.copy(imports = newImports)
+            val newImports = extractTopLevelImports(newState.context)
+            var allImports = newState.imports
+            if (newImports.nonEmpty)
+              allImports += (newState.objectIndex -> newImports)
+            val newStateWithImports = newState.copy(imports = allImports)
 
             // display warnings
             val warnings = newState.context.reporter.removeBufferedMessages(newState.context)
@@ -259,7 +265,7 @@ class ReplDriver(settings: Array[String],
           .filter(_.symbol.name.is(SimpleNameKind))
 
       val typeAliases =
-        info.bounds.hi.typeMembers.filter(_.symbol.info.isInstanceOf[TypeAlias])
+        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
       val (successes, failures) = vals.map(rendering.renderVal).partition(_.isSuccess)
       if (failures.isEmpty) {
@@ -267,7 +273,7 @@ class ReplDriver(settings: Array[String],
         (typeAliases.map("// defined alias " + _.symbol.showUser) ++
             defs.map(rendering.renderMethod) ++
             valRender
-          ).foreach(str => out.println(SyntaxHighlighting(str)))
+          ).foreach(str => out.println(SyntaxHighlighting.highlight(str)))
         Some(state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length))
       } else {
         displayRenderFailures(failures.map(_.failed.get))
@@ -285,7 +291,14 @@ class ReplDriver(settings: Array[String],
           x.symbol
       }
       .foreach { sym =>
-        out.println(SyntaxHighlighting("// defined " + sym.showUser))
+        // FIXME syntax highlighting on comment is currently not working
+        // out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
+        val message = "// defined " + sym.showUser
+        if (ctx.settings.color.value != "never") {
+          println(SyntaxHighlighting.CommentColor + message + SyntaxHighlighting.NoColor)
+        } else {
+          println(message)
+        }
       }
 
 
@@ -317,10 +330,13 @@ class ReplDriver(settings: Array[String],
 
     case Reset =>
       resetToInitial()
-      initState
+      initialState
 
     case Imports =>
-      state.imports.foreach(i => out.println(SyntaxHighlighting(i.show(state.context))))
+      for {
+        objectIndex <- 1 to state.objectIndex
+        imp <- state.imports.getOrElse(objectIndex, Nil)
+      } out.println(imp.show(state.context))
       state
 
     case Load(path) =>
@@ -337,14 +353,14 @@ class ReplDriver(settings: Array[String],
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting(res))
+        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
       )
       state
 
     case DocOf(expr) =>
       compiler.docOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting(res))
+        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
       )
       state
 
@@ -368,9 +384,9 @@ class ReplDriver(settings: Array[String],
     state
   }
 
-  private def displayRenderFailures(failures: Seq[Throwable]): Unit = {
+  private def displayRenderFailures(failures: Seq[Throwable])(implicit state: State): Unit = {
     failures.foreach(f => f match {
-      case (ite: InvocationTargetException) => out.println(SyntaxHighlighting(rendering.renderError(ite)))
+      case (ite: InvocationTargetException) => out.println(SyntaxHighlighting.highlight(rendering.renderError(ite))(state.context))
       case _ => out.println("<rendering error>")
     })
 

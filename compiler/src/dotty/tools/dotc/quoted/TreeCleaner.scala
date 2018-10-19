@@ -38,8 +38,8 @@ class TreeCleaner extends tpd.TreeMap {
           case stat => stat :: Nil
         }
         expr1 match {
-          case Block(stats3, expr3) => Block(flatStats ::: stats3, expr3)
-          case expr3 => Block(flatStats, expr3)
+          case Block(stats3, expr3) => seq(flatStats ::: stats3, expr3)
+          case expr3 => seq(flatStats, expr3)
         }
       case tree1: TypeTree => TypeTree(tree1.tpe.subst(aliasesSyms, aliasesTypes))
       case tree1: Ident => aliases.get(tree1.symbol).getOrElse(tree1)

@@ -2,19 +2,16 @@ package dotty.tools.dotc
 package core
 
 import java.security.MessageDigest
-import scala.annotation.switch
 import scala.io.Codec
-import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._
-import Decorators.PreNamedString
-import util.{Chars, NameTransformer}
+import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
+import util.Chars
 import Chars.isOperatorPart
 import Definitions._
-import config.Config
 
 object NameOps {
 
   final object compactify {
-    lazy val md5 = MessageDigest.getInstance("MD5")
+    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
 
     /** COMPACTIFY
      *
@@ -61,14 +58,14 @@ object NameOps {
     private def likeSpacedN(n: Name): N =
       name.likeSpaced(n).asInstanceOf[N]
 
-    def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
-    def isStaticConstructorName = name == STATIC_CONSTRUCTOR
-    def isLocalDummyName = name startsWith str.LOCALDUMMY_PREFIX
-    def isReplWrapperName = name.toString contains str.REPL_SESSION_LINE
-    def isReplAssignName = name.toString contains str.REPL_ASSIGN_SUFFIX
-    def isSetterName = name endsWith str.SETTER_SUFFIX
-    def isScala2LocalSuffix = testSimple(_.endsWith(" "))
-    def isSelectorName = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
+    def isConstructorName: Boolean = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
+    def isStaticConstructorName: Boolean = name == STATIC_CONSTRUCTOR
+    def isLocalDummyName: Boolean = name startsWith str.LOCALDUMMY_PREFIX
+    def isReplWrapperName: Boolean = name.toString contains str.REPL_SESSION_LINE
+    def isReplAssignName: Boolean = name.toString contains str.REPL_ASSIGN_SUFFIX
+    def isSetterName: Boolean = name endsWith str.SETTER_SUFFIX
+    def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
+    def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
 
     /** Is name a variable name? */
     def isVariableName: Boolean = testSimple { n =>
@@ -109,7 +106,7 @@ object NameOps {
     }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
-    def adjustIfModuleClass(flags: Flags.FlagSet): N = likeSpacedN {
+    def adjustIfModuleClass(flags: FlagSet): N = likeSpacedN {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName.exclude(AvoidClashName)
     }
@@ -123,12 +120,12 @@ object NameOps {
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpacedN {
-      name.rewrite { case ExpandedName(_, unexp) => unexp }
+      name.replace { case ExpandedName(_, unexp) => unexp }
     }
 
     /** Remove the variance from the name. */
     def invariantName: N = likeSpacedN {
-      name.rewrite { case VariantName(invariant, _) => invariant }
+      name.replace { case VariantName(invariant, _) => invariant }
     }
 
     def implClassName: N = likeSpacedN(name ++ tpnme.IMPL_CLASS_SUFFIX)
@@ -158,7 +155,7 @@ object NameOps {
     /** The variance as implied by the variance prefix, or 0 if there is
      *  no variance prefix.
      */
-    def variance = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
+    def variance: Int = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
     def freshened(implicit ctx: Context): N = likeSpacedN {
       name.toTermName match {
@@ -233,7 +230,7 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
-    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): N = {
+    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(implicit ctx: Context): N = {
 
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
@@ -254,11 +251,11 @@ object NameOps {
     }
 
     def unmangle(kind: NameKind): N = likeSpacedN {
-      name rewrite {
+      name replace {
         case unmangled: SimpleName =>
           kind.unmangle(unmangled)
         case ExpandedName(prefix, last) =>
-          kind.unmangle(last) rewrite {
+          kind.unmangle(last) replace {
             case kernel: SimpleName =>
               ExpandedName(prefix, kernel)
           }

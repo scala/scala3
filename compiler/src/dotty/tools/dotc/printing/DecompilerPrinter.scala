@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames._
 
-import scala.language.implicitConversions
 
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 

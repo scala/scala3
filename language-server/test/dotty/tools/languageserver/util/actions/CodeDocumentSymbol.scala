@@ -17,7 +17,7 @@ import scala.collection.JavaConverters._
 class CodeDocumentSymbol(override val marker: CodeMarker, expected: Seq[SymInfo]) extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
-    val results = server.documentSymbol(marker.toDocumentSymbolParams).get().asScala
+    val results = server.documentSymbol(marker.toDocumentSymbolParams).get().asScala.map(_.getLeft)
     val expectedSymInfos = expected.map(_.toSymInformation)
 
     assertEquals(expectedSymInfos, results)

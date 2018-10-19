@@ -5,15 +5,14 @@ import java.nio.file.{Files, Paths}
 
 import Settings._
 import core.Contexts._
-import util.DotClass
 import Properties._
 
 import scala.collection.JavaConverters._
 
-object CompilerCommand extends DotClass {
+object CompilerCommand {
 
   /** The name of the command */
-  def cmdName = "dotc"
+  def cmdName: String = "dotc"
 
   private def explainAdvanced = """
     |-- Notes on option parsing --
@@ -30,9 +29,9 @@ object CompilerCommand extends DotClass {
     |           already are in phase X + 1.
   """
 
-  def shortUsage = s"Usage: $cmdName <options> <source files>"
+  def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
-  def versionMsg = s"Dotty compiler $versionString -- $copyrightString"
+  def versionMsg: String = s"Dotty compiler $versionString -- $copyrightString"
 
   /** Distill arguments into summary detailing settings, errors and files to compiler */
   def distill(args: Array[String])(implicit ctx: Context): ArgsSummary = {
@@ -136,9 +135,6 @@ object CompilerCommand extends DotClass {
     }
     else if (settings.version.value) {
       ctx.echo(versionMsg)
-      Nil
-    } else if (!Properties.isJavaAtLeast("1.8")) {
-      ctx.error("Dotty requires Java 8 to run")
       Nil
     }
     else if (shouldStopWithInfo) {

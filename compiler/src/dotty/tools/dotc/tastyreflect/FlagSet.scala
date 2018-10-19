@@ -3,7 +3,7 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags._
 
-class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
+class FlagSet(flags: Flags.FlagSet) extends scala.tasty.reflect.FlagSet {
 
   def isProtected: Boolean = flags.is(Protected)
   def isAbstract: Boolean = flags.is(Abstract)
@@ -14,7 +14,7 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
   def isErased: Boolean = flags.is(Erased)
   def isLazy: Boolean = flags.is(Lazy)
   def isOverride: Boolean = flags.is(Override)
-  def isTransparent: Boolean = flags.is(Transparent)
+  def isInline: Boolean = flags.is(Inline)
   def isMacro: Boolean = flags.is(Macro)
   def isStatic: Boolean = flags.is(JavaStatic)
   def isObject: Boolean = flags.is(Module)
@@ -45,7 +45,7 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
     if (isErased) flags += "erased"
     if (isLazy) flags += "lazy"
     if (isOverride) flags += "override"
-    if (isTransparent) flags += "transparent"
+    if (isInline) flags += "inline"
     if (isMacro) flags += "macro"
     if (isStatic) flags += "javaStatic"
     if (isObject) flags += "object"

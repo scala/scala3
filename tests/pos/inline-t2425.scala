@@ -1,5 +1,5 @@
 object Test extends App {
-  transparent def foo[T](bar: T) = {
+  inline def foo[T](bar: T) = {
     bar match {
       case _ => ()
     }

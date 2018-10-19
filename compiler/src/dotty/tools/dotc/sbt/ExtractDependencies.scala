@@ -127,7 +127,14 @@ class ExtractDependencies extends Phase {
           // We can recover the fully qualified name of a classfile from
           // its path
           val classSegments = pf.givenPath.segments.takeRight(packages + 1)
-          binaryDependency(pf.file, binaryClassName(classSegments))
+          // FIXME: pf.file is null for classfiles coming from the modulepath
+          // (handled by JrtClassPath) because they cannot be represented as
+          // java.io.File, since the `binaryDependency` callback must take a
+          // java.io.File, this means that we cannot record dependencies coming
+          // from the modulepath. For now this isn't a big deal since we only
+          // support having the standard Java library on the modulepath.
+          if (pf.file != null)
+            binaryDependency(pf.file, binaryClassName(classSegments))
 
         case _ =>
           ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
@@ -434,14 +441,14 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
   }
 
-  def addTypeDependency(tpe: Type)(implicit ctx: Context) = {
+  def addTypeDependency(tpe: Type)(implicit ctx: Context): Unit = {
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) = addMemberRefDependency(symbol)
     }
     traverser.traverse(tpe)
   }
 
-  def addPatMatDependency(tpe: Type)(implicit ctx: Context) = {
+  def addPatMatDependency(tpe: Type)(implicit ctx: Context): Unit = {
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {

@@ -20,6 +20,12 @@ import util.Store
  *  is lifted to
  *
  *      { def liftedTree$n() = try body catch handler; liftedTree$n() }
+ *
+ *  However, don't lift try's without catch expressions (try-finally).
+ *  Lifting is needed only for try-catch expressions that are evaluated in a context
+ *  where the stack might not be empty. `finally` does not attempt to continue evaluation
+ *  after an exception, so the fact that values on the stack are 'lost' does not matter
+ *  (copied from https://github.com/scala/scala/pull/922).
  */
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
@@ -30,35 +36,35 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
 
-  override def initContext(ctx: FreshContext) =
+  override def initContext(ctx: FreshContext): Unit =
     NeedLift = ctx.addLocation(false)
 
   private def liftingCtx(p: Boolean)(implicit ctx: Context) =
     if (needLift == p) ctx else ctx.fresh.updateStore(NeedLift, p)
 
-  override def prepareForApply(tree: Apply)(implicit ctx: Context) =
+  override def prepareForApply(tree: Apply)(implicit ctx: Context): Context =
     if (tree.fun.symbol.is(Label)) ctx
     else liftingCtx(true)
 
-  override def prepareForValDef(tree: ValDef)(implicit ctx: Context) =
+  override def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context =
     if (!tree.symbol.exists  ||
         tree.symbol.isSelfSym ||
         tree.symbol.owner == ctx.owner.enclosingMethod) ctx
     else liftingCtx(true)
 
-  override def prepareForAssign(tree: Assign)(implicit ctx: Context) =
+  override def prepareForAssign(tree: Assign)(implicit ctx: Context): Context =
     if (tree.lhs.symbol.maybeOwner == ctx.owner.enclosingMethod) ctx
     else liftingCtx(true)
 
-  override def prepareForReturn(tree: Return)(implicit ctx: Context) =
+  override def prepareForReturn(tree: Return)(implicit ctx: Context): Context =
     if (!isNonLocalReturn(tree)) ctx
     else liftingCtx(true)
 
-  override def prepareForTemplate(tree: Template)(implicit ctx: Context) =
+  override def prepareForTemplate(tree: Template)(implicit ctx: Context): Context =
     liftingCtx(false)
 
   override def transformTry(tree: Try)(implicit ctx: Context): Tree =
-    if (needLift) {
+    if (needLift && tree.cases.nonEmpty) {
       ctx.debuglog(i"lifting tree at ${tree.pos}, current owner = ${ctx.owner}")
       val fn = ctx.newSymbol(
         ctx.owner, LiftedTreeName.fresh(), Synthetic | Method,

@@ -9,13 +9,11 @@ case class Positioned[T](value: T, position: Position)
 
 object Positioned {
 
-  implicit transparent def apply[T](x: T): Positioned[T] =
-    ~impl('(x))('[T], TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit inline def apply[T](x: => T): Positioned[T] = ~impl('(x))
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
     import tasty.{Position => _, _}
-
-    val pos = x.toTasty.pos
+    val pos = rootPosition
 
     val path = pos.sourceFile.toString.toExpr
     val start = pos.start.toExpr
@@ -25,6 +23,7 @@ object Positioned {
     val startColumn = pos.startColumn.toExpr
     val endColumn = pos.endColumn.toExpr
 
-    '(Positioned[T](~x, new Position(~path, ~start, ~end, ~startLine, ~startColumn, ~endLine, ~endColumn)))
+    val liftedPosition = '(new Position(~path, ~start, ~end, ~startLine, ~startColumn, ~endLine, ~endColumn))
+    '(Positioned[T](~x, ~liftedPosition))
   }
 }

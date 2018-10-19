@@ -2,7 +2,7 @@ import scala.annotation.tailrec
 import scala.quoted._
 
 object Test {
-  implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
   def main(args: Array[String]): Unit = {
     val code1 = '{ (arr: Array[Int], f: Int => Unit) => ~foreach1('(arr), '(f)) }

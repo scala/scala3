@@ -43,7 +43,7 @@ object FileUtils {
     else throw new FatalError("Unexpected source file ending: " + fileName)
   }
 
-  def dirPath(forPackage: String) = forPackage.replace('.', '/')
+  def dirPath(forPackage: String): String = forPackage.replace('.', '/')
 
   def endsClass(fileName: String): Boolean =
     fileName.length > 6 && fileName.substring(fileName.length - 6) == ".class"
@@ -68,7 +68,7 @@ object FileUtils {
   def mayBeValidPackage(dirName: String): Boolean =
     (dirName != "META-INF") && (dirName != "") && (dirName.charAt(0) != '.')
 
-  def mkFileFilter(f: JFile => Boolean) = new FileFilter {
+  def mkFileFilter(f: JFile => Boolean): FileFilter = new FileFilter {
     def accept(pathname: JFile): Boolean = f(pathname)
   }
 }

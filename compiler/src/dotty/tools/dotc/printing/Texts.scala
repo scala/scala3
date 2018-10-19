@@ -4,9 +4,9 @@ import language.implicitConversions
 
 object Texts {
 
-  abstract class Text {
+  sealed abstract class Text {
 
-    protected def indentMargin = 2
+    protected def indentMargin: Int = 2
 
     def relems: List[Text]
 
@@ -16,12 +16,12 @@ object Texts {
       case Vertical(relems) => relems.isEmpty
     }
 
-    def isVertical = isInstanceOf[Vertical]
-    def isClosed = isVertical || isInstanceOf[Closed]
-    def isFluid = isInstanceOf[Fluid]
-    def isSplittable = isFluid && !isClosed
+    def isVertical: Boolean = isInstanceOf[Vertical]
+    def isClosed: Boolean = isVertical || isInstanceOf[Closed]
+    def isFluid: Boolean = isInstanceOf[Fluid]
+    def isSplittable: Boolean = isFluid && !isClosed
 
-    def close = new Closed(relems)
+    def close: Closed = new Closed(relems)
 
     def remaining(width: Int): Int = this match {
       case Str(s, _) =>
@@ -46,9 +46,11 @@ object Texts {
           case Str(s1, lines2) => Str(s1 + s2, lines1 union lines2)
           case Fluid(Str(s1, lines2) :: prev) => Fluid(Str(s1 + s2, lines1 union lines2) :: prev)
           case Fluid(relems) => Fluid(that :: relems)
+          case Vertical(_) => throw new IllegalArgumentException("Unexpected Vertical.appendToLastLine")
         }
       case Fluid(relems) =>
         (this /: relems.reverse)(_ appendToLastLine _)
+      case Vertical(_) => throw new IllegalArgumentException("Unexpected Text.appendToLastLine(Vertical(...))")
     }
 
     private def appendIndented(that: Text)(width: Int): Text =
@@ -133,17 +135,17 @@ object Texts {
       sb.toString
     }
 
-    def ~ (that: Text) =
+    def ~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
       else Fluid(that :: this :: Nil)
 
-    def ~~ (that: Text) =
+    def ~~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
       else Fluid(that :: Str(" ") :: this :: Nil)
 
-    def over (that: Text) =
+    def over (that: Text): Vertical =
       if (this.isVertical) Vertical(that :: this.relems)
       else Vertical(that :: this :: Nil)
   }
@@ -166,7 +168,7 @@ object Texts {
     }
 
     /** The given texts `xs`, each on a separate line */
-    def lines(xs: Traversable[Text]) = Vertical(xs.toList.reverse)
+    def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)
 
     implicit class textDeco(text: => Text) {
       def provided(cond: Boolean): Text = if (cond) text else Str("")

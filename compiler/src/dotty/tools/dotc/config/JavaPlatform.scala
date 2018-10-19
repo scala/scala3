@@ -5,8 +5,8 @@ package config
 import io._
 import classpath.AggregateClassPath
 import core._
-import Symbols._, Types._, Contexts._, Denotations._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import Symbols._, Types._, Contexts._, SymDenotations._, StdNames._
+import Flags._
 import transform.ExplicitOuter, transform.SymUtils._
 
 class JavaPlatform extends Platform {
@@ -21,7 +21,7 @@ class JavaPlatform extends Platform {
   }
 
   // The given symbol is a method with the right name and signature to be a runnable java program.
-  def isMainMethod(sym: SymDenotation)(implicit ctx: Context) =
+  def isMainMethod(sym: SymDenotation)(implicit ctx: Context): Boolean =
     (sym.name == nme.main) && (sym.info match {
       case MethodTpe(_, defn.ArrayOf(el) :: Nil, restpe) => el =:= defn.StringType && (restpe isRef defn.UnitClass)
       case _ => false
@@ -50,7 +50,7 @@ class JavaPlatform extends Platform {
    *  to anything but other booleans, but it should be present in
    *  case this is put to other uses.
    */
-  def isMaybeBoxed(sym: ClassSymbol)(implicit ctx: Context) = {
+  def isMaybeBoxed(sym: ClassSymbol)(implicit ctx: Context): Boolean = {
     val d = defn
     import d._
     (sym == ObjectClass) ||

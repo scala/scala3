@@ -1,7 +1,3 @@
-import dotty.tools.dotc.ast.Trees.Thicket
-import dotty.tools.dotc.ast.tpd._
-
-
 object Labels {
   def main(args: Array[String]): Unit = {
   var i = 10
@@ -22,17 +18,4 @@ object Labels {
   case t@2 => println("two" + t)
   case _ => println("default")
  }
-
- def flatten(trees: Tree): Int = {
-   trees match {
-     case Thicket(elems) =>
-       while (trees ne trees) {
-       }
-     case tree =>
-       33
-   }
-   55
- }
-
-
 }

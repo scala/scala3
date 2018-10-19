@@ -5,7 +5,6 @@ package internal
 object setters {
   import model._
   import comment.Comment
-  import model.references._
   import internal._
 
   def setComment(ent: Entity, to: Option[Comment]) = ent match {
@@ -21,26 +20,26 @@ object setters {
 
   def setParent(ent: Entity, to: Entity): Unit = ent match {
     case e: PackageImpl =>
-      e.parent = to
+      e.parent = Some(to)
       e.members.foreach(setParent(_, e))
     case e: ClassImpl =>
-      e.parent = to
+      e.parent = Some(to)
       e.members.foreach(setParent(_, e))
     case e: CaseClassImpl =>
-      e.parent = to
+      e.parent = Some(to)
       e.members.foreach(setParent(_, e))
     case e: ObjectImpl =>
-      e.parent = to
+      e.parent = Some(to)
       e.members.foreach(setParent(_, e))
     case e: TraitImpl =>
-      e.parent = to
+      e.parent = Some(to)
       e.members.foreach(setParent(_, e))
     case e: ValImpl =>
-      e.parent = to
+      e.parent = Some(to)
     case e: DefImpl =>
-      e.parent = to
+      e.parent = Some(to)
     case e: TypeAliasImpl =>
-      e.parent = to
+      e.parent = Some(to)
     case _ => ()
   }
 

@@ -11,7 +11,6 @@ import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Positions._
 import Parsers.Parser
-import scala.language.implicitConversions
 
 /** This class builds instance of `Tree` that represent XML.
  *
@@ -109,7 +108,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     atPos(pos) { if (isPattern) pat else nonpat }
   }
 
-  final def entityRef(pos: Position, n: String) =
+  final def entityRef(pos: Position, n: String): Tree =
     atPos(pos)( New(_scala_xml_EntityRef, LL(const(n))) )
 
   // create scala.xml.Text here <: scala.xml.Node
@@ -118,16 +117,16 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     else makeText1(const(txt))
   }
 
-  def makeTextPat(txt: Tree)                = Apply(_scala_xml__Text, List(txt))
-  def makeText1(txt: Tree)                  = New(_scala_xml_Text, LL(txt))
-  def comment(pos: Position, text: String)  = atPos(pos)( Comment(const(text)) )
-  def charData(pos: Position, txt: String)  = atPos(pos)( makeText1(const(txt)) )
+  def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
+  def makeText1(txt: Tree): Tree                  = New(_scala_xml_Text, LL(txt))
+  def comment(pos: Position, text: String): Tree  = atPos(pos)( Comment(const(text)) )
+  def charData(pos: Position, txt: String): Tree  = atPos(pos)( makeText1(const(txt)) )
 
-  def procInstr(pos: Position, target: String, txt: String) =
+  def procInstr(pos: Position, target: String, txt: String): Tree =
     atPos(pos)( ProcInstr(const(target), const(txt)) )
 
-  protected def Comment(txt: Tree)                  = New(_scala_xml_Comment, LL(txt))
-  protected def ProcInstr(target: Tree, txt: Tree)  = New(_scala_xml_ProcInstr, LL(target, txt))
+  protected def Comment(txt: Tree): Tree                  = New(_scala_xml_Comment, LL(txt))
+  protected def ProcInstr(target: Tree, txt: Tree): Tree  = New(_scala_xml_ProcInstr, LL(target, txt))
 
   /** @todo: attributes */
   def makeXMLpat(pos: Position, n: String, args: Seq[Tree]): Tree = {
@@ -154,13 +153,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     }
   }
 
-  def isEmptyText(t: Tree) = t match {
+  def isEmptyText(t: Tree): Boolean = t match {
     case Literal(Constant("")) => true
     case _ => false
   }
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
-  def makeXMLseq(pos: Position, args: Seq[Tree]) = {
+  def makeXMLseq(pos: Position, args: Seq[Tree]): Block = {
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 

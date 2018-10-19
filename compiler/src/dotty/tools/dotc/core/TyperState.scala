@@ -3,16 +3,14 @@ package dotc
 package core
 
 import Types._
-import Flags._
 import Contexts._
-import util.{SimpleIdentityMap, SimpleIdentitySet, DotClass}
+import util.{SimpleIdentityMap, SimpleIdentitySet}
 import reporting._
-import printing.{Showable, Printer}
-import printing.Texts._
 import config.Config
 import collection.mutable
 import java.lang.ref.WeakReference
-import Decorators._
+
+import scala.annotation.internal.sharable
 
 object TyperState {
   @sharable private var nextId: Int = 0
@@ -20,7 +18,7 @@ object TyperState {
 
 class TyperState(previous: TyperState /* | Null */) {
 
-  val id = TyperState.nextId
+  val id: Int = TyperState.nextId
   TyperState.nextId += 1
 
   private[this] var myReporter =
@@ -35,14 +33,14 @@ class TyperState(previous: TyperState /* | Null */) {
     if (previous == null) new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
     else previous.constraint
 
-  def constraint = myConstraint
-  def constraint_=(c: Constraint)(implicit ctx: Context) = {
+  def constraint: Constraint = myConstraint
+  def constraint_=(c: Constraint)(implicit ctx: Context): Unit = {
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
   }
 
   /** Reset constraint to `c` and mark current constraint as retracted if it differs from `c` */
-  def resetConstraintTo(c: Constraint) = {
+  def resetConstraintTo(c: Constraint): Unit = {
     if (c `ne` myConstraint) myConstraint.markRetracted()
     myConstraint = c
   }
@@ -52,7 +50,7 @@ class TyperState(previous: TyperState /* | Null */) {
 
   private[this] var myIsCommittable = true
 
-  def isCommittable = myIsCommittable
+  def isCommittable: Boolean = myIsCommittable
 
   def setCommittable(committable: Boolean): this.type = { this.myIsCommittable = committable; this }
 
@@ -74,11 +72,11 @@ class TyperState(previous: TyperState /* | Null */) {
     new TyperState(this).setReporter(new StoreReporter(reporter)).setCommittable(isCommittable)
 
   /** The uninstantiated variables */
-  def uninstVars = constraint.uninstVars
+  def uninstVars: Seq[TypeVar] = constraint.uninstVars
 
   /** The set of uninstantiated type variables which have this state as their owning state */
   private[this] var myOwnedVars: TypeVars = SimpleIdentitySet.empty
-  def ownedVars = myOwnedVars
+  def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
@@ -152,7 +150,7 @@ class TyperState(previous: TyperState /* | Null */) {
    * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
    * many parts of dotty itself.
    */
-  def commit()(implicit ctx: Context) = {
+  def commit()(implicit ctx: Context): Unit = {
     val targetState = ctx.typerState
     assert(isCommittable)
     targetState.constraint =
@@ -195,9 +193,9 @@ class TyperState(previous: TyperState /* | Null */) {
 /** Temporary, reusable reporter used in TyperState#test */
 private class TestReporter(outer: Reporter) extends StoreReporter(outer) {
   /** Is this reporter currently used in a test? */
-  var inUse = false
+  var inUse: Boolean = false
 
-  def reset() = {
+  def reset(): Unit = {
     assert(!inUse, s"Cannot reset reporter currently in use: $this")
     infos = null
   }

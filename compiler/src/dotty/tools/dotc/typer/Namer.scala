@@ -4,30 +4,26 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._, Denotations._, Comments._
+import Trees._, StdNames._, Scopes._, Denotations._, Comments._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Positions._
-import util.{Property, SourcePosition, DotClass}
+import util.Property
 import collection.mutable
-import annotation.tailrec
-import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Config
-import config.Printers.{typr, noPrinter}
+import config.Printers.typr
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
-import TypeApplications._
-import language.implicitConversions
 import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>
   import NamerContextOps._
 
-  def typer = ctx.typeAssigner match {
+  def typer: Typer = ctx.typeAssigner match {
     case typer: Typer => typer
     case _ => new Typer
   }
@@ -68,7 +64,7 @@ trait NamerContextOps { this: Context =>
     else scope
 
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */
-  def symOfContextTree(tree: untpd.Tree) = {
+  def symOfContextTree(tree: untpd.Tree): Symbol = {
     def go(ctx: Context): Symbol = {
       ctx.typeAssigner match {
         case typer: Typer =>
@@ -86,7 +82,7 @@ trait NamerContextOps { this: Context =>
   }
 
   /** Context where `sym` is defined, assuming we are in a nested context. */
-  def defContext(sym: Symbol) =
+  def defContext(sym: Symbol): Context =
     outersIterator
       .dropWhile(_.owner != sym)
       .dropWhile(_.owner == sym)
@@ -102,7 +98,7 @@ trait NamerContextOps { this: Context =>
   }
 
   /** A new context for the interior of a class */
-  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
+  def inClassContext(selfInfo: AnyRef /* Should be Type | Symbol*/): Context = {
     val localCtx: Context = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
@@ -118,12 +114,12 @@ trait NamerContextOps { this: Context =>
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
-  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) =
+  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type): Type =
     if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
     else given
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
-  def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean) =
+  def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
     if (isConstructor &&
       (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is Implicit)))
       Nil :: termParamss
@@ -141,7 +137,7 @@ trait NamerContextOps { this: Context =>
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-        make.fromSymbols(params.asInstanceOf[List[TermSymbol]], resultType)
+        make.fromSymbols(params, resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
     else if (valueParamss.isEmpty) ExprType(monotpe)
@@ -151,7 +147,7 @@ trait NamerContextOps { this: Context =>
   /** Add moduleClass or sourceModule functionality to completer
    *  for a module or module class
    */
-  def adjustModuleCompleter(completer: LazyType, name: Name) = {
+  def adjustModuleCompleter(completer: LazyType, name: Name): LazyType = {
     val scope = this.effectiveScope
     if (name.isTermName)
       completer withModuleClass (implicit ctx => findModuleBuddy(name.moduleClassName, scope))
@@ -193,9 +189,9 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead = new Property.Key[tpd.Tree]
-  val ExpandedTree = new Property.Key[Tree]
-  val SymOfTree = new Property.Key[Symbol]
+  val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
+  val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
+  val SymOfTree: Property.Key[Symbol] = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -223,14 +219,14 @@ class Namer { typer: Typer =>
    *  one, so that trees that are shared between different DefDefs can be independently
    *  used as indices. It also contains a scope that contains nested parameters.
    */
-  lazy val nestedTyper = new mutable.AnyRefMap[Symbol, Typer]
+  lazy val nestedTyper: mutable.AnyRefMap[Symbol, Typer] = new mutable.AnyRefMap
 
   /** The scope of the typer.
    *  For nested typers this is a place parameters are entered during completion
    *  and where they survive until typechecking. A context with this typer also
    *  has this scope.
    */
-  val scope = newScope
+  val scope: MutableScope = newScope
 
   /** We are entering symbols coming from a SourceLoader */
   private[this] var lateCompile = false
@@ -376,7 +372,7 @@ class Namer { typer: Typer =>
    /** If `sym` exists, enter it in effective scope. Check that
     *  package members are not entered twice in the same run.
     */
-  def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
+  def enterSymbol(sym: Symbol)(implicit ctx: Context): Symbol = {
     if (sym.exists) {
       typr.println(s"entered: $sym in ${ctx.owner}")
       ctx.enter(sym)
@@ -487,7 +483,7 @@ class Namer { typer: Typer =>
     *  - The field is static
     *  - The field is stable
     */
-  def isEnumConstant(vd: ValDef)(implicit ctx: Context) = {
+  def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean = {
     // val ownerHasEnumFlag =
     // Necessary to check because scalac puts Java's static members into the companion object
     // while Scala's enum constants live directly in the class.
@@ -507,7 +503,7 @@ class Namer { typer: Typer =>
   }
 
 
-  def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
+  def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context): Unit = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
       ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
     case _ => ()
@@ -691,13 +687,13 @@ class Namer { typer: Typer =>
    *  This will cause any old top-level symbol with the same fully qualified
    *  name as a newly created symbol to be replaced.
    */
-  def lateEnter(tree: Tree)(implicit ctx: Context) = {
+  def lateEnter(tree: Tree)(implicit ctx: Context): Context = {
     val saved = lateCompile
     lateCompile = true
     try index(tree :: Nil) finally lateCompile = saved
   }
 
-  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {
+  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
     sym.resetFlag(Implicit)
   }
@@ -705,10 +701,10 @@ class Namer { typer: Typer =>
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
 
-    protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
+    protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
     /** The context with which this completer was created */
-    def creationContext = ctx
+    def creationContext: Context = ctx
     ctx.typerState.markShared()
 
     protected def typeSig(sym: Symbol): Type = original match {
@@ -730,7 +726,7 @@ class Namer { typer: Typer =>
         }
     }
 
-    final override def complete(denot: SymDenotation)(implicit ctx: Context) = {
+    final override def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       if (Config.showCompletions && ctx.typerState != this.ctx.typerState) {
         def levels(c: Context): Int =
           if (c.typerState eq this.ctx.typerState) 0
@@ -754,14 +750,14 @@ class Namer { typer: Typer =>
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           sym.addAnnotation(ann)
           if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Transparent)
+            sym.setFlag(Inline)
         }
       case _ =>
     }
 
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isTransparentInlineable =>
-        PrepareTransparent.registerInlineInfo(
+      case original: untpd.DefDef if sym.isInlineMethod =>
+        PrepareInlineable.registerInlineInfo(
             sym,
             original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
@@ -844,13 +840,13 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
 
-    val (params, rest) = impl.body span {
+    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods is Param
       case vd: ValDef => vd.mods is ParamAccessor
       case _ => false
     }
 
-    def init() = index(params)
+    def init(): Context = index(params)
 
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
@@ -888,7 +884,7 @@ class Namer { typer: Typer =>
        * (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(ctx.superCallContext).dealias
+        val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.pos,
@@ -939,7 +935,8 @@ class Namer { typer: Typer =>
       index(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
-      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
+      val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
+        ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
       tempInfo.finalize(denot, parentTypes)
@@ -982,7 +979,7 @@ class Namer { typer: Typer =>
   }
 
   /** Enter and typecheck parameter list */
-  def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
+  def completeParams(params: List[MemberDef])(implicit ctx: Context): Unit = {
     index(params)
     for (param <- params) typedAheadExpr(param)
   }
@@ -1075,13 +1072,13 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrTransparent, butNot = Method | Mutable)
+      def isInlineVal = sym.is(FinalOrInline, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
-        case ctp: ConstantType if isInline => ctp
+        case ctp: ConstantType if isInlineVal => ctp
         case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
         case _ => tp.widen.widenUnion
       }
@@ -1091,10 +1088,7 @@ class Namer { typer: Typer =>
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
       var rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      if (sym.isTransparentMethod) {
-        rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
-        PrepareTransparent.markTopLevelMatches(sym, mdef.rhs)
-      }
+      if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
@@ -1114,7 +1108,7 @@ class Namer { typer: Typer =>
         if (sym.is(Final, butNot = Method)) {
           val tp = lhsType
           if (tp.isInstanceOf[ConstantType])
-            tp // keep constant types that fill in for a non-constant (to be revised when transparent has landed).
+            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
           else inherited
         }
         else inherited
@@ -1153,13 +1147,14 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
+    paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
   }
 
   /** The type signature of a DefDef with given symbol */
-  def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
-    val DefDef(name, tparams, vparamss, _, _) = ddef
-    val isConstructor = name == nme.CONSTRUCTOR
+  def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context): Type = {
+    // Beware: ddef.name need not match sym.name if sym was freshened!
+    val DefDef(_, tparams, vparamss, _, _) = ddef
+    val isConstructor = sym.name == nme.CONSTRUCTOR
 
     // The following 3 lines replace what was previously just completeParams(tparams).
     // But that can cause bad bounds being computed, as witnessed by
@@ -1195,15 +1190,6 @@ class Namer { typer: Typer =>
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
-    if (sym.is(Transparent) &&
-        sym.unforcedAnnotation(defn.ForceInlineAnnot).isEmpty)
-        // Need to keep @forceInline annotated methods around to get to parity with Scala.
-        // This is necessary at least until we have full bootstrap. Right now
-        // dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
-        // a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
-        // methods, this means that the support methods in dotty.runtime.LazyVals vanish.
-        // But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
-      sym.setFlag(Erased)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)

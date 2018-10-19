@@ -4,7 +4,7 @@ object Test {
   type T2[A, B] = CC2[A, B]
 
   class ArrowAssoc[A](val self: A) {
-    transparent def f[B](y: B): CC2[A, B] = new CC2(self, y)
+    inline def f[B](y: B): CC2[A, B] = new CC2(self, y)
   }
 
   def foo = (new ArrowAssoc(1)).f(2)

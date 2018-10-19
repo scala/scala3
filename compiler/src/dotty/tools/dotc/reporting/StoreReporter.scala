@@ -35,5 +35,5 @@ class StoreReporter(outer: Reporter) extends Reporter {
     if (infos != null) try infos.toList finally infos = null
     else Nil
 
-  override def errorsReported = hasErrors || (outer != null && outer.errorsReported)
+  override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
 }

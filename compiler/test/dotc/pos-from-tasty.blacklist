@@ -12,3 +12,9 @@ annot-bootstrap.scala
 
 # ScalaRunTime cannot be unpickled because it is already loaded
 repeatedArgs213.scala
+
+# Error printing parent constructors that are blocks
+default-super.scala
+
+# Need to implement printing of match types
+matchtype.scala

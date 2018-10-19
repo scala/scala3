@@ -1704,7 +1704,7 @@ class JSCodeGen()(implicit ctx: Context) {
       nme.UNARY_! -> js.JSUnaryOp.!
     )
 
-    def unapply(name: Names.TermName): Option[js.JSUnaryOp.Code] =
+    def unapply(name: TermName): Option[js.JSUnaryOp.Code] =
       map.get(name)
   }
 
@@ -1732,7 +1732,7 @@ class JSCodeGen()(implicit ctx: Context) {
       nme.ZOR  -> js.JSBinaryOp.||
     )
 
-    def unapply(name: Names.TermName): Option[js.JSBinaryOp.Code] =
+    def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
       map.get(name)
   }
 

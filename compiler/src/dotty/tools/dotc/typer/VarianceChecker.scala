@@ -3,12 +3,12 @@ package typer
 
 import dotty.tools.dotc.ast.{ Trees, tpd }
 import core._
-import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._, NameOps._
+import Types._, Contexts._, Flags._, Symbols._, Trees._
 import Decorators._
 import Variances._
 import NameKinds._
+import TypeApplications.varianceConforms
 import util.Positions._
-import rewrite.Rewrites.patch
 import config.Printers.variances
 import reporting.trace
 
@@ -18,8 +18,43 @@ import reporting.trace
  */
 object VarianceChecker {
   case class VarianceError(tvar: Symbol, required: Variance)
-  def check(tree: tpd.Tree)(implicit ctx: Context) =
+  def check(tree: tpd.Tree)(implicit ctx: Context): Unit =
     new VarianceChecker()(ctx).Traverser.traverse(tree)
+
+  /** Check that variances of type lambda correspond to their occurrences in its body.
+   *  Note: this is achieved by a mechanism separate from checking class type parameters.
+   *  Question: Can the two mechanisms be combined in one?
+   */
+  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = tree.tpe match {
+    case tl: HKTypeLambda =>
+      val checkOK = new TypeAccumulator[Boolean] {
+        def error(tref: TypeParamRef) = {
+          val VariantName(paramName, v) = tl.paramNames(tref.paramNum).toTermName
+          val paramVarianceStr = if (v == 0) "contra" else "co"
+          val occursStr = variance match {
+            case -1 => "contra"
+            case 0 => "non"
+            case 1 => "co"
+          }
+          val pos = tree.tparams
+            .find(_.name.toTermName == paramName)
+            .map(_.pos)
+            .getOrElse(tree.pos)
+          ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
+        }
+        def apply(x: Boolean, t: Type) = x && {
+          t match {
+            case tref: TypeParamRef if tref.binder `eq` tl =>
+              val v = tl.typeParams(tref.paramNum).paramVariance
+              varianceConforms(variance, v) || { error(tref); false }
+            case _ =>
+              foldOver(x, t)
+          }
+        }
+      }
+      checkOK.apply(true, tl.resType)
+    case _ =>
+  }
 }
 
 class VarianceChecker()(implicit ctx: Context) {
@@ -95,8 +130,10 @@ class VarianceChecker()(implicit ctx: Context) {
             this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
-          //case tp: ClassInfo =>
-          //  ???  not clear what to do here yet. presumably, it's all checked at local typedefs
+          case tp: MatchType =>
+            apply(status, tp.bound)
+          case tp: ClassInfo =>
+            foldOver(status, tp.classParents)
           case _ =>
             foldOver(status, tp)
         }
@@ -142,14 +179,16 @@ class VarianceChecker()(implicit ctx: Context) {
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
           checkVariance(sym, tree.pos)
+          tree.rhs match {
+            case rhs: Template => traverseChildren(rhs)
+            case _ =>
+          }
         case tree: ValDef =>
           checkVariance(sym, tree.pos)
         case DefDef(_, tparams, vparamss, _, _) =>
           checkVariance(sym, tree.pos)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
-        case Template(_, _, _, body) =>
-          traverseChildren(tree)
         case _ =>
       }
     }

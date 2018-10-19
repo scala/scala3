@@ -3,105 +3,321 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import * as cpp from 'child-process-promise';
+import * as pcp from 'promisify-child-process';
+import * as compareVersions from 'compare-versions';
+
+import { ChildProcess } from "child_process";
 
 import { ExtensionContext } from 'vscode';
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient';
+import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
+         ServerOptions } from 'vscode-languageclient';
+import { enableOldServerWorkaround } from './compat'
+import * as features from './features'
+
+export let client: LanguageClient
+
+import * as rpc from 'vscode-jsonrpc'
+import * as sbtserver from './sbt-server'
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 
+/** The sbt process that may have been started by this extension */
+let sbtProcess: ChildProcess | undefined
+
+const sbtVersion = "1.2.3"
+const sbtArtifact = `org.scala-sbt:sbt-launch:${sbtVersion}`
+export const workspaceRoot = `${vscode.workspace.rootPath}`
+const disableDottyIDEFile = path.join(workspaceRoot, ".dotty-ide-disabled")
+const sbtProjectDir = path.join(workspaceRoot, "project")
+const sbtPluginFile = path.join(sbtProjectDir, "dotty-plugin.sbt")
+const sbtBuildPropertiesFile = path.join(sbtProjectDir, "build.properties")
+const sbtBuildSbtFile = path.join(workspaceRoot, "build.sbt")
+const languageServerArtifactFile = path.join(workspaceRoot, ".dotty-ide-artifact")
+
+function isConfiguredProject() {
+  return (   fs.existsSync(sbtPluginFile)
+          || fs.existsSync(sbtBuildPropertiesFile)
+          || fs.existsSync(sbtBuildSbtFile)
+  )
+}
+
 export function activate(context: ExtensionContext) {
   extensionContext = context
-  outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
+  outputChannel = vscode.window.createOutputChannel("Dotty");
 
-  const artifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
-  fs.readFile(artifactFile, (err, data) => {
-    if (err) {
-      outputChannel.append(`Unable to parse ${artifactFile}`)
-      throw err
-    }
-    const artifact = data.toString().trim()
+  const coursierPath = path.join(extensionContext.extensionPath, "out", "coursier");
+  const dottyPluginSbtFileSource = path.join(extensionContext.extensionPath, "out", "dotty-plugin.sbt")
+  const buildSbtFileSource = path.join(extensionContext.extensionPath, "out", "build.sbt")
 
-    if (process.env['DLS_DEV_MODE']) {
-      const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
-      fs.readFile(portFile, (err, port) => {
-        if (err) {
-          outputChannel.append(`Unable to parse ${portFile}`)
-          throw err
-        }
+  if (process.env['DLS_DEV_MODE']) {
+    const portFile = path.join(workspaceRoot, ".dotty-ide-dev-port")
+    fs.readFile(portFile, (err, port) => {
+      if (err) {
+        outputChannel.appendLine(`Unable to parse ${portFile}`)
+        throw err
+      }
 
-        run({
-          module: context.asAbsolutePath('out/src/passthrough-server.js'),
-          args: [ port.toString() ]
-        })
-      })
+      run({
+        module: context.asAbsolutePath(path.join("out", "src", "passthrough-server.js")),
+        args: [ port.toString() ]
+      }, false)
+    })
+
+  } else if (!fs.existsSync(disableDottyIDEFile)) {
+
+    if (!vscode.workspace.workspaceFolders) {
+      if (vscode.window.activeTextEditor) {
+        setWorkspaceAndReload(vscode.window.activeTextEditor.document)
+      }
     } else {
-      fetchAndRun(artifact)
+      let configuredProject: Thenable<void> = Promise.resolve()
+      if (!isConfiguredProject()) {
+        configuredProject = vscode.window.showInformationMessage(
+          "This looks like an unconfigured Scala project. Would you like to start the Dotty IDE?",
+          "Yes", "No"
+        ).then(choice => {
+          if (choice === "Yes") {
+            bootstrapSbtProject(buildSbtFileSource, dottyPluginSbtFileSource)
+            return Promise.resolve()
+          } else if (choice === "No") {
+            fs.appendFile(disableDottyIDEFile, "", _ => {})
+            return Promise.reject()
+          }
+        })
+          .then(_ => connectToSbt(coursierPath))
+          .then(sbt => {
+            return withProgress("Configuring Dotty IDE...", configureIDE(sbt))
+              .then(_ => { sbtserver.tellSbt(outputChannel, sbt, "exit") })
+          })
+      }
+
+      configuredProject
+        .then(_ => runLanguageServer(coursierPath, languageServerArtifactFile))
+    }
+  }
+}
+
+/**
+ * Find and set a workspace root if no folders are open in the workspace. If there are already
+ * folders open in the workspace, do nothing.
+ *
+ * Adding a first folder to the workspace completely reloads the extension.
+ */
+function setWorkspaceAndReload(document: vscode.TextDocument) {
+  const documentPath = path.parse(document.uri.fsPath).dir
+  const workspaceRoot = findWorkspaceRoot(documentPath) || documentPath
+  vscode.workspace.updateWorkspaceFolders(0, null, { uri: vscode.Uri.file(workspaceRoot) })
+}
+
+/**
+ * Find the closest parent of `current` that contains a `build.sbt`.
+ */
+function findWorkspaceRoot(current: string): string | undefined {
+  const build = path.join(current, "build.sbt")
+  if (fs.existsSync(build)) return current
+  else {
+    const parent = path.resolve(current, "..")
+    if (parent != current) {
+      return findWorkspaceRoot(parent)
+    }
+  }
+}
+
+/**
+ * Connect to sbt server (possibly by starting a new instance) and keep verifying that the
+ * connection is still alive. If it dies, restart sbt server.
+ */
+function connectToSbt(coursierPath: string): Thenable<rpc.MessageConnection> {
+
+  return offeringToRetry(() => {
+    return withSbtInstance(coursierPath).then(connection => {
+      return connection
+    })
+  }, "Couldn't connect to sbt server (see log for details)")
+}
+
+export function deactivate() {
+  // If sbt was started by this extension, kill the process.
+  // FIXME: This will be a problem for other clients of this server.
+  if (sbtProcess) {
+    sbtProcess.kill()
+  }
+}
+
+/**
+ * Display a progress bar with title `title` while `op` completes.
+ *
+ * @param title The title of the progress bar
+ * @param op The thenable that is monitored by the progress bar.
+ */
+function withProgress<T>(title: string, op: Thenable<T>): Thenable<T> {
+  return vscode.window.withProgress({
+    location: vscode.ProgressLocation.Window,
+    title: title
+  }, _ => op)
+}
+
+/** Connect to an sbt server and run `configureIDE`. */
+function configureIDE(sbt: rpc.MessageConnection): Thenable<sbtserver.ExecResult> {
+
+  const tellSbt = (command: string) => {
+    return () => sbtserver.tellSbt(outputChannel, sbt, command)
+  }
+
+  const failMessage = "`configureIDE` failed (see log for details)"
+
+  // `configureIDE` is a command, which means that upon failure, sbt won't tell us anything
+  // until sbt/sbt#4370 is fixed.
+  // We run `compile` and `test:compile` first because they're tasks (so we get feedback from sbt
+  // in case of failure), and we're pretty sure configureIDE will pass if they passed.
+  return offeringToRetry(tellSbt("compile"), failMessage).then(_ => {
+    return offeringToRetry(tellSbt("test:compile"), failMessage).then(_ => {
+      return offeringToRetry(tellSbt("configureIDE"), failMessage)
+    })
+  })
+}
+
+/**
+ * Present the user with a dialog to retry `op` after a failure, returns its result in case of
+ * success.
+ *
+ * @param op The operation to perform
+ * @param failMessage The message to display in the dialog offering to retry `op`.
+ * @return A promise that will either resolve to the result of `op`, or a dialog that will let
+ * the user retry the operation.
+ */
+function offeringToRetry<T>(op: () => Thenable<T>, failMessage: string): Thenable<T> {
+  return op()
+    .then(success => Promise.resolve(success),
+      _ => {
+        outputChannel.show()
+        return vscode.window.showErrorMessage(failMessage, "Retry?")
+          .then(retry => {
+            if (retry) return offeringToRetry(op, failMessage)
+            else return Promise.reject()
+          })
+      })
+}
+
+function runLanguageServer(coursierPath: string, languageServerArtifactFile: string) {
+  fs.readFile(languageServerArtifactFile, (err, data) => {
+    if (err) throw err
+    else {
+      const languageServerArtifact = data.toString().trim()
+      const languageServerVersion = languageServerArtifact.split(":")[2]
+      const isOldServer = compareVersions(languageServerVersion, "0.9.x") <= 0
+      fetchWithCoursier(coursierPath, languageServerArtifact).then((languageServerClasspath) => {
+        run({
+          command: "java",
+          args: ["-classpath", languageServerClasspath, "dotty.tools.languageserver.Main", "-stdio"]
+        }, isOldServer)
+      })
     }
   })
 }
 
-function fetchAndRun(artifact: string) {
-  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
+function startNewSbtInstance(coursierPath: string) {
+  fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
+    sbtProcess = pcp.spawn("java", [
+      "-Dsbt.log.noformat=true",
+      "-classpath", sbtClasspath,
+      "xsbt.boot.Boot"
+    ], {
+      cwd: workspaceRoot
+    })
 
-  vscode.window.withProgress({
-    location: vscode.ProgressLocation.Window,
-    title: 'Fetching the Dotty Language Server'
-  }, (progress) => {
+    // Close stdin, otherwise in case of error sbt will block waiting for the
+    // user input to reload or exit the build.
+    sbtProcess.stdin.end()
 
-    const coursierPromise =
-      cpp.spawn("java", [
+    sbtProcess.stdout.on('data', data => {
+      outputChannel.append(data.toString())
+    })
+    sbtProcess.stderr.on('data', data => {
+      outputChannel.append(data.toString())
+    })
+  })
+}
+
+/**
+ * Connects to an existing sbt server, or boots up one instance and connects to it.
+ */
+function withSbtInstance(coursierPath: string): Thenable<rpc.MessageConnection> {
+  const serverSocketInfo = path.join(workspaceRoot, "project", "target", "active.json")
+
+  if (!fs.existsSync(serverSocketInfo)) {
+    startNewSbtInstance(coursierPath)
+  }
+
+  return sbtserver.connectToSbtServer(outputChannel)
+}
+
+function fetchWithCoursier(coursierPath: string, artifact: string, extra: string[] = []) {
+  return vscode.window.withProgress({
+      location: vscode.ProgressLocation.Window,
+      title: `Fetching ${ artifact }`
+    }, _ => {
+      const args = [
         "-jar", coursierPath,
         "fetch",
         "-p",
         artifact
-      ])
-    const coursierProc = coursierPromise.childProcess
+      ].concat(extra)
+      const coursierProc = pcp.spawn("java", args)
 
-    let classPath = ""
+      let classPath = ""
 
-    coursierProc.stdout.on('data', (data: Buffer) => {
-      classPath += data.toString().trim()
-    })
-    coursierProc.stderr.on('data', (data: Buffer) => {
-      let msg = data.toString()
-      outputChannel.append(msg)
-    })
-
-    coursierProc.on('close', (code: number) => {
-      if (code != 0) {
-        let msg = "Fetching the language server failed."
-        outputChannel.append(msg)
-        throw new Error(msg)
-      }
-
-      run({
-        command: "java",
-        args: ["-classpath", classPath, "dotty.tools.languageserver.Main", "-stdio"]
+      coursierProc.stdout.on('data', (data: Buffer) => {
+        classPath += data.toString().trim()
       })
+      coursierProc.stderr.on('data', (data: Buffer) => {
+        let msg = data.toString().trim()
+        outputChannel.appendLine(msg)
+      })
+
+      coursierProc.on('close', (code: number) => {
+        if (code != 0) {
+          let msg = `Couldn't fetch '${ artifact }' (exit code ${ code }).`
+          outputChannel.appendLine(msg)
+          throw new Error(msg)
+        }
+      })
+      return coursierProc.then(() => { return classPath })
     })
-    return coursierPromise
-  })
 }
 
-function run(serverOptions: ServerOptions) {
+function bootstrapSbtProject(buildSbtFileSource: string,
+                             dottyPluginSbtFileSource: string) {
+    fs.mkdirSync(sbtProjectDir)
+    fs.appendFileSync(sbtBuildPropertiesFile, `sbt.version=${sbtVersion}`)
+    fs.copyFileSync(buildSbtFileSource, sbtBuildSbtFile)
+    fs.copyFileSync(dottyPluginSbtFileSource, path.join(sbtProjectDir, "plugins.sbt"))
+}
+
+function run(serverOptions: ServerOptions, isOldServer: boolean) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
-      { language: 'scala', scheme: 'file', pattern: '**/*.scala' },
-      { language: 'scala', scheme: 'untitled', pattern: '**/*.scala' }
+      { scheme: 'file', pattern: '**/*.sc' },
+      { scheme: 'untitled', pattern: '**/*.sc' },
+      { scheme: 'file', pattern: '**/*.scala' },
+      { scheme: 'untitled', pattern: '**/*.scala' }
     ],
     synchronize: {
       configurationSection: 'dotty'
-    }
+    },
+    outputChannel: outputChannel,
+    revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
-  outputChannel.dispose()
+  client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
+  client.registerFeature(new features.WorksheetRunFeature(client))
 
-  const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
+  if (isOldServer)
+    enableOldServerWorkaround(client)
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
-  extensionContext.subscriptions.push(client.start());
+  extensionContext.subscriptions.push(client.start())
 }
