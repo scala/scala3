@@ -343,8 +343,11 @@ object Interactive {
               syms.foreach { case (sym, name, rename) =>
                 val tree = tpd.Select(imp.expr, sym.name).withPos(name.pos)
                 val renameTree = rename.map { r =>
+                  // Get the type of the symbol that is actually selected, and construct a select
+                  // node with the new name and the type of the real symbol.
                   val name = if (sym.name.isTypeName) r.name.toTypeName else r.name
-                  RenameTree(name, tpd.Select(imp.expr, sym.name)).withPos(r.pos)
+                  val actual = tpd.Select(imp.expr, sym.name)
+                  tpd.Select(imp.expr, name).withPos(r.pos).withType(actual.tpe)
                 }
                 renameTree.foreach(traverse)
                 traverse(tree)
@@ -554,16 +557,6 @@ object Interactive {
             lookup(name.toTypeName),
             lookup(name.moduleClassName),
             lookup(name.sourceModuleName))
-   }
-
-  /**
-   * Used to represent a renaming import `{foo => bar}`.
-   * We need this because the name of the tree must be the new name, but the
-   * denotation must be that of the importee.
-   */
-   private case class RenameTree(name: Name, underlying: Tree) extends NameTree {
-     override def denot(implicit ctx: Context) = underlying.denot
-     myTpe = NoType
    }
 
   /**
