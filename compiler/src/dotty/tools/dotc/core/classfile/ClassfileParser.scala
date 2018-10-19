@@ -168,10 +168,8 @@ class ClassfileParser(
       classInfo = parseAttributes(classRoot.symbol, classInfo)
       if (isAnnotation) addAnnotationConstructor(classInfo)
 
-      val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
-      if (companionClassMethod.exists) companionClassMethod.entered
-      val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, moduleRoot, classRoot)
-      if (companionModuleMethod.exists) companionModuleMethod.entered
+      classRoot.registerCompanion(moduleRoot.symbol)
+      moduleRoot.registerCompanion(classRoot.symbol)
 
       setClassInfo(classRoot, classInfo)
       setClassInfo(moduleRoot, staticInfo)

@@ -796,12 +796,9 @@ class TreeUnpickler(reader: TastyReader,
             // The only case to check here is if `sym` is a root. In this case
             // `companion` might have been entered by the environment but it might
             // be missing from the Tasty file. So we check explicitly for that.
-            def isCodefined =
-              roots.contains(companion.denot) == seenRoots.contains(companion)
-            if (companion.exists && isCodefined) {
-              if (sym is Flags.ModuleClass) sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
-              else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
-            }
+            def isCodefined = roots.contains(companion.denot) == seenRoots.contains(companion)
+
+            if (companion.exists && isCodefined) sym.registerCompanion(companion)
             TypeDef(readTemplate(localCtx))
           } else {
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala

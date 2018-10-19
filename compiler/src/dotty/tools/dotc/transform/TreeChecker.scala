@@ -370,7 +370,6 @@ class TreeChecker extends Phase with SymTransformer {
 
       def isNonMagicalMethod(x: Symbol) =
         x.is(Method) &&
-          !x.isCompanionMethod &&
           !x.isValueClassConvertMethod &&
           !(x.is(Macro) && ctx.phase.refChecked) &&
           !x.name.is(DocArtifactName)

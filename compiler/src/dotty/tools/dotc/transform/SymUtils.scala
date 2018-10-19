@@ -121,15 +121,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self
   }
 
-  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: Context): Any = {
-    if (!self.unforcedDecls.lookup(name).exists) {
-      val companionMethod = ctx.synthesizeCompanionMethod(name, target, self)
-      if (companionMethod.exists) {
-        companionMethod.entered
-      }
-    }
-  }
-
   /** If this symbol is an enum value or a named class, register it as a child
    *  in all direct parent classes which are sealed.
    *   @param  @late  If true, register only inaccessible children (all others are already

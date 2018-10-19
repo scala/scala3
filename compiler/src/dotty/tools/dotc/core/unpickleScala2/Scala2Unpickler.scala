@@ -119,18 +119,14 @@ object Scala2Unpickler {
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
     def registerCompanionPair(module: Symbol, claz: Symbol) = {
-      import transform.SymUtils._
-      module.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, claz)
-      if (claz.isClass) {
-        claz.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, module)
-      }
+      module.registerCompanion(claz)
+      claz.registerCompanion(module)
     }
 
-    if (denot.flagsUNSAFE is Module) {
+    if (denot.flagsUNSAFE is Module)
       registerCompanionPair(denot.classSymbol, scalacCompanion)
-    } else {
+    else
       registerCompanionPair(scalacCompanion, denot.classSymbol)
-    }
 
     tempInfo.finalize(denot, normalizedParents) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
