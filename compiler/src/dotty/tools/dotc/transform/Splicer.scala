@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.StdNames.str.MODULE_INSTANCE_FIELD
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.TypeErasure
+import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.tastyreflect.TastyImpl
 
@@ -105,14 +105,18 @@ object Splicer {
     protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
       args.toSeq
 
-    protected def interpretTastyContext()(implicit env: Env): Object =
+    protected def interpretTastyContext()(implicit env: Env): Object = {
       new TastyImpl(ctx) {
         override def rootPosition: SourcePosition = pos
       }
+    }
 
-    protected def interpretStaticMethodCall(fn: Tree, args: => List[Object])(implicit env: Env): Object = {
-      val instance = loadModule(fn.symbol.owner)
-      val method = getMethod(instance.getClass, fn.symbol.name, paramsSig(fn.symbol))
+    protected def interpretStaticMethodCall(fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
+      val instance = loadModule(fn.owner)
+      val name =
+        if (!defn.isImplicitFunctionType(fn.info.finalResultType)) fn.name
+        else NameKinds.DirectMethodName(fn.name.asTermName) // Call implicit function type direct method
+      val method = getMethod(instance.getClass, name, paramsSig(fn))
       stopIfRuntimeException(method.invoke(instance, args: _*))
     }
 
@@ -190,50 +194,57 @@ object Splicer {
 
     /** List of classes of the parameters of the signature of `sym` */
     private def paramsSig(sym: Symbol): List[Class[_]] = {
-      TypeErasure.erasure(sym.info) match {
-        case meth: MethodType =>
-          meth.paramInfos.map { param =>
-            def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
-              case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
-              case _ => (tpe, depth)
-            }
-            def javaArraySig(tpe: Type): String = {
-              val (elemType, depth) = arrayDepth(tpe, 0)
-              val sym = elemType.classSymbol
-              val suffix =
-                if (sym == defn.BooleanClass) "Z"
-                else if (sym == defn.ByteClass) "B"
-                else if (sym == defn.ShortClass) "S"
-                else if (sym == defn.IntClass) "I"
-                else if (sym == defn.LongClass) "J"
-                else if (sym == defn.FloatClass) "F"
-                else if (sym == defn.DoubleClass) "D"
-                else if (sym == defn.CharClass) "C"
-                else "L" + javaSig(elemType) + ";"
-              ("[" * depth) + suffix
-            }
-            def javaSig(tpe: Type): String = tpe match {
-              case tpe: JavaArrayType => javaArraySig(tpe)
-              case _ =>
-                // Take the flatten name of the class and the full package name
-                val pack = tpe.classSymbol.topLevelClass.owner
-                val packageName = if (pack == defn.EmptyPackageClass) "" else pack.fullName + "."
-                packageName + tpe.classSymbol.fullNameSeparated(FlatName).toString
-            }
+      def paramClass(param: Type): Class[_] = {
+        def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
+          case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
+          case _ => (tpe, depth)
+        }
+        def javaArraySig(tpe: Type): String = {
+          val (elemType, depth) = arrayDepth(tpe, 0)
+          val sym = elemType.classSymbol
+          val suffix =
+            if (sym == defn.BooleanClass) "Z"
+            else if (sym == defn.ByteClass) "B"
+            else if (sym == defn.ShortClass) "S"
+            else if (sym == defn.IntClass) "I"
+            else if (sym == defn.LongClass) "J"
+            else if (sym == defn.FloatClass) "F"
+            else if (sym == defn.DoubleClass) "D"
+            else if (sym == defn.CharClass) "C"
+            else "L" + javaSig(elemType) + ";"
+          ("[" * depth) + suffix
+        }
+        def javaSig(tpe: Type): String = tpe match {
+          case tpe: JavaArrayType => javaArraySig(tpe)
+          case _ =>
+            // Take the flatten name of the class and the full package name
+            val pack = tpe.classSymbol.topLevelClass.owner
+            val packageName = if (pack == defn.EmptyPackageClass) "" else pack.fullName + "."
+            packageName + tpe.classSymbol.fullNameSeparated(FlatName).toString
+        }
 
-            val sym = param.classSymbol
-            if (sym == defn.BooleanClass) classOf[Boolean]
-            else if (sym == defn.ByteClass) classOf[Byte]
-            else if (sym == defn.CharClass) classOf[Char]
-            else if (sym == defn.ShortClass) classOf[Short]
-            else if (sym == defn.IntClass) classOf[Int]
-            else if (sym == defn.LongClass) classOf[Long]
-            else if (sym == defn.FloatClass) classOf[Float]
-            else if (sym == defn.DoubleClass) classOf[Double]
-            else java.lang.Class.forName(javaSig(param), false, classLoader)
-          }
+        val sym = param.classSymbol
+        if (sym == defn.BooleanClass) classOf[Boolean]
+        else if (sym == defn.ByteClass) classOf[Byte]
+        else if (sym == defn.CharClass) classOf[Char]
+        else if (sym == defn.ShortClass) classOf[Short]
+        else if (sym == defn.IntClass) classOf[Int]
+        else if (sym == defn.LongClass) classOf[Long]
+        else if (sym == defn.FloatClass) classOf[Float]
+        else if (sym == defn.DoubleClass) classOf[Double]
+        else java.lang.Class.forName(javaSig(param), false, classLoader)
+      }
+      val extraParams = sym.info.finalResultType.widenDealias match {
+        case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
+          // Call implicit function type direct method
+          tp.args.init.map(arg => TypeErasure.erasure(arg))
         case _ => Nil
       }
+      val allParams = TypeErasure.erasure(sym.info) match {
+        case meth: MethodType => (meth.paramInfos ::: extraParams)
+        case _ => extraParams
+      }
+      allParams.map(paramClass)
     }
 
     /** Exception that stops interpretation if some issue is found */
@@ -253,7 +264,8 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
     protected def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     protected def interpretTastyContext()(implicit env: Env): Boolean = true
-    protected def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretQuoteContext()(implicit env: Env): Boolean = true
+    protected def interpretStaticMethodCall(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Boolean = true
     protected def interpretNew(fn: RefTree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
@@ -275,7 +287,7 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
-    protected def interpretStaticMethodCall(fn: Tree, args: => List[Result])(implicit env: Env): Result
+    protected def interpretStaticMethodCall(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Result
     protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
@@ -298,11 +310,16 @@ object Splicer {
           interpretNew(fn, args.map(interpretTree))
         } else if (fn.symbol.isStatic) {
           if (fn.symbol.is(Module)) interpretModuleAccess(fn)
-          else interpretStaticMethodCall(fn, args.map(arg => interpretTree(arg)))
+          else interpretStaticMethodCall(fn.symbol, args.map(arg => interpretTree(arg)))
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else {
-          unexpectedTree(tree)
+          fn match {
+            case fn @ Select(Call(fn0, args0), _) if fn0.symbol.isStatic && fn.symbol.info.isImplicitMethod =>
+              // Call implicit function type direct method
+              interpretStaticMethodCall(fn0.symbol, (args0 ::: args).map(arg => interpretTree(arg)))
+            case _ => unexpectedTree(tree)
+          }
         }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to

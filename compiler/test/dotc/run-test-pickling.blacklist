@@ -71,6 +71,7 @@ tasty-extractors-constants-1
 tasty-extractors-owners
 tasty-extractors-types
 tasty-getfile
+tasty-getfile-implicit-fun-context
 tasty-indexed-map
 tasty-linenumber
 tasty-linenumber-2
