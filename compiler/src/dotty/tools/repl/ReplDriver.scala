@@ -1,6 +1,7 @@
 package dotty.tools.repl
 
 import java.io.PrintStream
+import java.lang.reflect.InvocationTargetException
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -26,6 +27,7 @@ import java.lang.reflect.InvocationTargetException
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success}
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -223,13 +225,11 @@ class ReplDriver(settings: Array[String],
               allImports += (newState.objectIndex -> newImports)
             val newStateWithImports = newState.copy(imports = allImports)
 
-            // display warnings
             val warnings = newState.context.reporter.removeBufferedMessages(newState.context)
-            displayErrors(warnings)(newState)
+            displayErrors(warnings)(newState) // display warnings
 
-            val afterRender = displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
-            afterRender.getOrElse(state)
-          }
+            displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports).getOrElse(state)
+        }
       )
   }
 
@@ -267,17 +267,37 @@ class ReplDriver(settings: Array[String],
       val typeAliases =
         info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
-      val (successes, failures) = vals.map(rendering.renderVal).partition(_.isSuccess)
-      if (failures.isEmpty) {
-        val valRender = successes.flatMap(_.get)
-        (typeAliases.map("// defined alias " + _.symbol.showUser) ++
-            defs.map(rendering.renderMethod) ++
-            valRender
-          ).foreach(str => out.println(SyntaxHighlighting.highlight(str)))
-        Some(state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length))
-      } else {
-        displayRenderFailures(failures.map(_.failed.get))
+      var renderedVals: List[Option[String]] = Nil
+      var error: InvocationTargetException = null
+      import scala.util.control.Breaks.{break, breakable}
+      breakable {
+        for (v <- vals) {
+          val render = rendering.renderVal(v)
+          render match {
+            case Success(rv) =>
+              renderedVals = renderedVals :+ rv
+            case Failure(th) => th match {
+              case ex: InvocationTargetException =>
+                error = ex
+                break()
+              case other =>
+                throw other
+            }
+          }
+        }
+      }
+
+      if (error != null) {
+        out.println(SyntaxHighlighting.highlight(rendering.renderError(error)))
+        rendering = new Rendering(classLoader)
         None
+      } else {
+        (
+          typeAliases.map("// defined alias " + _.symbol.showUser) ++
+            defs.map(rendering.renderMethod) ++
+            renderedVals.flatten
+          ).foreach(str => out.println(SyntaxHighlighting.highlight(str)))
+        Some(state.copy(valIndex = state.valIndex - vals.count(resAndUnit)))
       }
     }
     else Some(state)
@@ -303,17 +323,12 @@ class ReplDriver(settings: Array[String],
 
 
     ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
-
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
-        .map { wrapperModule =>
+        .flatMap { wrapperModule =>
           displayTypeDefs(wrapperModule.symbol)
           displayMembers(wrapperModule.symbol)
-        }
-        .getOrElse {
-          // user defined a trait/class/object, so no module needed
-          Some(state)
         }
     }
   }
@@ -382,13 +397,5 @@ class ReplDriver(settings: Array[String],
   private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {
     errs.map(renderMessage(_)(state.context)).foreach(out.println)
     state
-  }
-
-  private def displayRenderFailures(failures: Seq[Throwable])(implicit state: State): Unit = {
-    failures.foreach(f => f match {
-      case (ite: InvocationTargetException) => out.println(SyntaxHighlighting.highlight(rendering.renderError(ite))(state.context))
-      case _ => out.println("<rendering error>")
-    })
-
   }
 }
