@@ -215,7 +215,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         def processUnit() = {
           unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
           val phase = new transform.SetRootTree()
-          phase.runOn(unit)
+          phase.run
         }
         if (typeCheck)
           if (compiling) finalizeActions += (() => processUnit()) else processUnit()
