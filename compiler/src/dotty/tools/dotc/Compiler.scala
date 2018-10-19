@@ -39,6 +39,7 @@ class Compiler {
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
+    List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
@@ -52,7 +53,6 @@ class Compiler {
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
-         new SetRootTree,            // Set the `rootTreeOrProvider` on class symbols
          new CookComments) ::        // Cook the comments: expand variables, doc, etc.
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
