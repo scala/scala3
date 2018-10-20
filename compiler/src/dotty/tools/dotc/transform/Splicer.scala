@@ -10,7 +10,8 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.FlatName
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names.{Name, TermName}
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.StdNames.str.MODULE_INSTANCE_FIELD
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
@@ -113,19 +114,22 @@ object Splicer {
 
     protected def interpretStaticMethodCall(fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val instance = loadModule(fn.owner)
-      val name =
-        if (!defn.isImplicitFunctionType(fn.info.finalResultType)) fn.name
-        else NameKinds.DirectMethodName(fn.name.asTermName) // Call implicit function type direct method
+      def getDirectName(tp: Type, name: TermName): TermName = tp.widenDealias match {
+        case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
+          getDirectName(tp.args.last, NameKinds.DirectMethodName(name))
+        case _ => name
+      }
+      val name = getDirectName(fn.info.finalResultType, fn.name.asTermName)
       val method = getMethod(instance.getClass, name, paramsSig(fn))
       stopIfRuntimeException(method.invoke(instance, args: _*))
     }
 
-    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Object =
-      loadModule(fn.symbol.moduleClass)
+    protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Object =
+      loadModule(fn.moduleClass)
 
-    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Object = {
-      val clazz = loadClass(fn.symbol.owner.fullName)
-      val constr = clazz.getConstructor(paramsSig(fn.symbol): _*)
+    protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Object = {
+      val clazz = loadClass(fn.owner.fullName)
+      val constr = clazz.getConstructor(paramsSig(fn): _*)
       constr.newInstance(args: _*).asInstanceOf[Object]
     }
 
@@ -234,14 +238,15 @@ object Splicer {
         else if (sym == defn.DoubleClass) classOf[Double]
         else java.lang.Class.forName(javaSig(param), false, classLoader)
       }
-      val extraParams = sym.info.finalResultType.widenDealias match {
+      def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
         case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
           // Call implicit function type direct method
-          tp.args.init.map(arg => TypeErasure.erasure(arg))
+          tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
         case _ => Nil
       }
+      val extraParams = getExtraParams(sym.info.finalResultType)
       val allParams = TypeErasure.erasure(sym.info) match {
-        case meth: MethodType => (meth.paramInfos ::: extraParams)
+        case meth: MethodType => meth.paramInfos ::: extraParams
         case _ => extraParams
       }
       allParams.map(paramClass)
@@ -266,8 +271,8 @@ object Splicer {
     protected def interpretTastyContext()(implicit env: Env): Boolean = true
     protected def interpretQuoteContext()(implicit env: Env): Boolean = true
     protected def interpretStaticMethodCall(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
-    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Boolean = true
-    protected def interpretNew(fn: RefTree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Boolean = true
+    protected def interpretNew(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
       // Assuming that top-level splices can only be in inline methods
@@ -288,8 +293,8 @@ object Splicer {
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(fn: Symbol, args: => List[Result])(implicit env: Env): Result
-    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Result
-    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Result
+    protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Result
+    protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
@@ -307,19 +312,14 @@ object Splicer {
 
       case Call(fn, args) =>
         if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
-          interpretNew(fn, args.map(interpretTree))
+          interpretNew(fn.symbol, args.map(interpretTree))
         } else if (fn.symbol.isStatic) {
-          if (fn.symbol.is(Module)) interpretModuleAccess(fn)
+          if (fn.symbol.is(Module)) interpretModuleAccess(fn.symbol)
           else interpretStaticMethodCall(fn.symbol, args.map(arg => interpretTree(arg)))
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else {
-          fn match {
-            case fn @ Select(Call(fn0, args0), _) if fn0.symbol.isStatic && fn.symbol.info.isImplicitMethod =>
-              // Call implicit function type direct method
-              interpretStaticMethodCall(fn0.symbol, (args0 ::: args).map(arg => interpretTree(arg)))
-            case _ => unexpectedTree(tree)
-          }
+          unexpectedTree(tree)
         }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
@@ -347,6 +347,8 @@ object Splicer {
 
     object Call {
       def unapply(arg: Tree): Option[(RefTree, List[Tree])] = arg match {
+        case Select(Call(fn, args), nme.apply) if defn.isImplicitFunctionType(fn.tpe.widenDealias.finalResultType) =>
+          Some((fn, args))
         case fn: RefTree => Some((fn, Nil))
         case Apply(Call(fn, args1), args2) => Some((fn, args1 ::: args2)) // TODO improve performance
         case TypeApply(Call(fn, args), _) => Some((fn, args))

@@ -73,6 +73,7 @@ tasty-extractors-types
 tasty-getfile
 tasty-getfile-implicit-fun-context
 tasty-indexed-map
+tasty-implicit-fun-context-2
 tasty-linenumber
 tasty-linenumber-2
 tasty-location
