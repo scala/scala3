@@ -26,7 +26,7 @@ object Tuple {
   inline val $MaxSpecialized = 22
   inline private val XXL = $MaxSpecialized + 1
 
-  final val specialize = false
+  final val specialize = true
 
   type Head[+X <: NonEmptyTuple] = X match {
     case x *: _ => x

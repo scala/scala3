@@ -91,6 +91,11 @@ trait TypeOrBoundsTreeOps extends TastyCore {
     abstract class BindExtractor{
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)]
     }
+
+    val Block: BlockExtractor
+    abstract class BlockExtractor{
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)]
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------

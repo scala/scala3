@@ -829,6 +829,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case TypeTree.Bind(name, _) =>
         this += highlightTypeDef(name, color)
 
+      case TypeTree.Block(aliases, tpt) =>
+        inBlock {
+          printTrees(aliases, lineBreak())
+          printTypeTree(tpt)
+        }
+
       case _ =>
         throw new MatchError(tree.show)
 

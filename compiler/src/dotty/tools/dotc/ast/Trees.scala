@@ -484,8 +484,10 @@ object Trees {
 
   /** { stats; expr } */
   case class Block[-T >: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])
-    extends TermTree[T] {
+    extends Tree[T] {
     type ThisTree[-T >: Untyped] = Block[T]
+    override def isTerm: Boolean = expr.isTerm
+    override def isType: Boolean = expr.isType
   }
 
   /** if cond then thenp else elsep */
