@@ -4780,46 +4780,87 @@ object Types {
    */
   def nullifyMember(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
     assert(sym.is(JavaDefined), s"can only nullify java-defined members")
-    // A list of members that aren't nullified.
-    val whitelist: Seq[Symbol => Boolean] = Seq(
-      // The special TYPE field returns the Class object for a given class, so it's always non-null.
-      _.name == nme.TYPE_,
-      // toString has a non-nullable return type that is later dynamically checked
-      _.name == nme.toString_ ,
-      // newInstance() method in class `Class`
-      (s: Symbol) =>
-        s.owner == defn.ClassClass && s.name == nme.newInstance
-    )
-    // Is `sym` whitelisted (so that it's not nullified)
-    val isWhitelisted = whitelist.foldLeft(false) {
-      case (wl, pred) =>
-        if (wl) true
-        else pred(sym)
+
+    /** A policy that special cases the handling of some symbol or class of symbols. */
+    sealed trait NullifyPolicy {
+      /** Whether the policy applies to `sym`. */
+      def isApplicable(sym: Symbol): Boolean
+      /** Nullifies `tp` according to the policy. Should call `isApplicable` first. */
+      def apply(tp: Type): Type
     }
-    if (sym.isConstructor) {
-      // Constructors get special treatment because the return type isn't nullified.
-      val constrMap = new ConstructorNullMap()
-      constrMap(tp)
-    } else if (isWhitelisted) {
-      tp
+
+    /** A policy that avoids modifying a field. */
+    case class FieldP(trigger: Symbol => Boolean) extends NullifyPolicy {
+      override def isApplicable(sym: Symbol): Boolean = trigger(sym)
+      override def apply(tp: Type): Type = {
+        assert(!tp.isJavaMethod, s"FieldPolicy applies to method (non-field) type ${tp.show}")
+        tp
+      }
+    }
+
+    /** A policy for handling a method or poly. Can indicate whether the argument or return types should be nullified. */
+    case class MethodP(trigger: Symbol => Boolean,
+                            nlfyParams: Boolean = false,
+                            nlfyRes: Boolean = false) extends TypeMap with NullifyPolicy {
+      override def isApplicable(sym: Symbol): Boolean = trigger(sym)
+
+      override def apply(tp: Type): Type = {
+        tp match {
+          case ptp: PolyType =>
+            derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
+          case mtp: MethodType =>
+            val nullMap = new JavaNullMap()
+            val paramTpes = if (nlfyParams) mtp.paramInfos.mapConserve(nullMap) else mtp.paramInfos
+            val resTpe = if (nlfyRes) nullMap(mtp.resType) else mtp.resType
+            derivedLambdaType(mtp)(paramTpes, resTpe)
+        }
+      }
+    }
+
+    /** A wrapper policy that works as `inner` but additionally verifies that the symbol is contained in `owner`. */
+    case class WithinSym(inner: NullifyPolicy, owner: Symbol) extends NullifyPolicy {
+      override def isApplicable(sym: Symbol): Boolean = sym.owner == owner && inner.isApplicable(sym)
+
+      override def apply(tp: Type): Type = inner(tp)
+    }
+
+    // A list of members that are special-cased.
+    val whitelist: Seq[NullifyPolicy] = Seq(
+      // The `TYPE` field in every class.
+      FieldP(_.name == nme.TYPE_),
+      // The `toString` method.
+      MethodP(_.name == nme.toString_),
+      // The `newInstance` method in `Class`.
+      WithinSym(MethodP(_.name == nme.newInstance), defn.ClassClass),
+      // Constructors: params are nullified, but the result type isn't.
+      MethodP(_.isConstructor, nlfyParams = true, nlfyRes = false)
+    ) ++ Seq(
+      // Methods in `java.lang.String`.
+      MethodP(_.name == nme.concat, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.replace, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.replaceFirst, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.replaceAll, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.split, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.toLowerCase, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.toUpperCase, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.trim, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.toCharArray, nlfyParams = true, nlfyRes = false),
+      MethodP(_.name == nme.substring, nlfyParams = true, nlfyRes = false)
+    ).map(WithinSym(_, defn.StringClass))
+
+    val (fromWhitelistTp, handled) = whitelist.foldLeft((tp, false)) {
+      case (res@(_, true), _) => res
+      case ((_, false), pol) =>
+        if (pol.isApplicable(sym)) (pol(tp), true)
+        else (tp, false)
+    }
+
+    if (handled) {
+      fromWhitelistTp
     } else {
+      // Default case: nullify everything.
       val nullMap = new JavaNullMap()
       nullMap(tp)
-    }
-  }
-
-  /** Adds nullability annotations to the arguments of a constructor, but not to the return type. */
-  class ConstructorNullMap(implicit ctx: Context) extends TypeMap {
-    override def apply(tp: Type): Type = {
-      tp match {
-        case tp: MethodType =>
-          val nullMap = new JavaNullMap()
-          derivedLambdaType(tp)(tp.paramInfos.mapConserve(nullMap), tp.resType)
-        case tp: PolyType =>
-          mapOver(tp)
-        case _ =>
-          tp
-      }
     }
   }
 
