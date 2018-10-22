@@ -469,6 +469,7 @@ object StdNames {
     val name: N                 = "name"
     val ne: N                   = "ne"
     val newFreeTerm: N          = "newFreeTerm"
+    val newInstance: N          = "newInstance"
     val newFreeType: N          = "newFreeType"
     val newScopeWith: N         = "newScopeWith"
     val next: N                 = "next"
