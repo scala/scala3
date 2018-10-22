@@ -4817,6 +4817,9 @@ object Types {
       }
     }
 
+    /** A policy that nullifies only method parameters (but not result types). */
+    def paramsOnlyP(trigger: Symbol => Boolean): MethodP = MethodP(trigger, nlfyParams = true, nlfyRes = false)
+
     /** A wrapper policy that works as `inner` but additionally verifies that the symbol is contained in `owner`. */
     case class WithinSym(inner: NullifyPolicy, owner: Symbol) extends NullifyPolicy {
       override def isApplicable(sym: Symbol): Boolean = sym.owner == owner && inner.isApplicable(sym)
@@ -4830,23 +4833,27 @@ object Types {
       FieldP(_.name == nme.TYPE_),
       // The `toString` method.
       MethodP(_.name == nme.toString_),
-      // The `newInstance` method in `Class`.
-      WithinSym(MethodP(_.name == nme.newInstance), defn.ClassClass),
       // Constructors: params are nullified, but the result type isn't.
       MethodP(_.isConstructor, nlfyParams = true, nlfyRes = false)
     ) ++ Seq(
       // Methods in `java.lang.String`.
-      MethodP(_.name == nme.concat, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.replace, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.replaceFirst, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.replaceAll, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.split, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.toLowerCase, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.toUpperCase, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.trim, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.toCharArray, nlfyParams = true, nlfyRes = false),
-      MethodP(_.name == nme.substring, nlfyParams = true, nlfyRes = false)
-    ).map(WithinSym(_, defn.StringClass))
+      paramsOnlyP(_.name == nme.concat),
+      paramsOnlyP(_.name == nme.replace),
+      paramsOnlyP(_.name == nme.replaceFirst),
+      paramsOnlyP(_.name == nme.replaceAll),
+      paramsOnlyP(_.name == nme.split),
+      paramsOnlyP(_.name == nme.toLowerCase),
+      paramsOnlyP(_.name == nme.toUpperCase),
+      paramsOnlyP(_.name == nme.trim),
+      paramsOnlyP(_.name == nme.toCharArray),
+      paramsOnlyP(_.name == nme.substring)
+    ).map(WithinSym(_, defn.StringClass)) ++ Seq(
+      // Methods in `java.lang.Class`
+      paramsOnlyP(_.name == nme.newInstance),
+      paramsOnlyP(_.name == nme.asSubclass),
+      paramsOnlyP(_.name == jnme.ForName)
+    ).map(WithinSym(_, defn.ClassClass))
+
 
     val (fromWhitelistTp, handled) = whitelist.foldLeft((tp, false)) {
       case (res@(_, true), _) => res

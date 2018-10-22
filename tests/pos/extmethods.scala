@@ -15,7 +15,7 @@ object CollectionStrawMan {
 
   implicit class ArrayOps[A](val xs: Array[A]) extends AnyVal {
 
-    def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
+    def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType.asInstanceOf[Class[A]])
 
     protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray(elemTag))
   }

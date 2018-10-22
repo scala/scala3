@@ -382,6 +382,7 @@ object StdNames {
     val asClass: N              = "asClass"
     val asInstanceOf_ : N       = "asInstanceOf"
     val assert_ : N             = "assert"
+    val asSubclass: N           = "asSubclass"
     val assume_ : N             = "assume"
     val box: N                  = "box"
     val build : N               = "build"
