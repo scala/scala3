@@ -62,6 +62,7 @@ final class JLineTerminal(needsTerminal: Boolean) extends java.io.Closeable {
       .variable(BLINK_MATCHING_PAREN, 0L)       // Don't blink the opening paren after typing a closing paren.
       .option(INSERT_TAB, true)                 // At the beginning of the line, insert tab instead of completing.
       .option(AUTO_FRESH_LINE, true)            // if not at start of line before prompt, move to new line.
+      .option(DISABLE_EVENT_EXPANSION, true)    // don't process escape sequences in input
       .build()
 
     lineReader.readLine(prompt)
