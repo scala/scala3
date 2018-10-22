@@ -2,34 +2,34 @@ package dotty.tools.dotc.core.tasty
 
 import scala.runtime.quoted.Unpickler.Pickled
 
+import java.io._
+import java.util.Base64
+import java.nio.charset.StandardCharsets.UTF_8
+
 /** Utils for String representation of TASTY */
 object TastyString {
 
-  // Conservative encoding, each byte is encoded in a char
-  // TODO improve encoding compression
-  private final val maxStringSize = 65535 / 2
+  // Max size of a string literal in the bytecode
+  private final val maxStringSize = 65535
 
   /** Encode TASTY bytes into an Seq of String */
-  def pickle(bytes: Array[Byte]): Pickled =
-    bytes.sliding(maxStringSize, maxStringSize).map(bytesToString).toList
+  def pickle(bytes: Array[Byte]): Pickled = {
+    val str = new String(Base64.getEncoder().encode(bytes), UTF_8)
+    def split(sliceEnd: Int, acc: List[String]): List[String] = {
+      if (sliceEnd == 0) acc
+      else {
+        val sliceStart = (sliceEnd - maxStringSize) max 0
+        split(sliceStart, str.substring(sliceStart, sliceEnd) :: acc)
+      }
+    }
+    split(str.length, Nil)
+  }
 
   /** Decode the TASTY String into TASTY bytes */
   def unpickle(strings: Pickled): Array[Byte] = {
-    val bytes = new Array[Byte](strings.map(_.length).sum)
-    var i = 0
-    for (str <- strings; j <- str.indices) {
-      bytes(i) = str.charAt(j).toByte
-      i += 1
-    }
-    bytes
-  }
-
-  /** Encode bytes into a String */
-  private def bytesToString(bytes: Array[Byte]): String = {
-    assert(bytes.length <= maxStringSize)
-    val chars = new Array[Char](bytes.length)
-    for (i <- bytes.indices) chars(i) = (bytes(i) & 0xff).toChar
-    new String(chars)
+    val string = new StringBuilder
+    strings.foreach(string.append)
+    Base64.getDecoder().decode(string.result().getBytes(UTF_8))
   }
 
 }
