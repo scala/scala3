@@ -266,7 +266,7 @@ class ClassfileParser(
 
         def nullifyTpe(): Unit = {
           val old = denot.info
-          denot.info = nullifyMember(denot.symbol, denot.info)
+          denot.info = JavaNull.nullifyMember(denot.symbol, denot.info)
           Printers.nullability.println(s"nullified member type from classfile for ${denot.symbol.name.show} from ${old.show} into ${denot.info.show}")
         }
 
