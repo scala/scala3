@@ -67,7 +67,7 @@ trait HOSeq {
         start = last
       } else {
         val last1 = last
-        last = new HOSeq.this.:: (x, null) // hack: ::'s tail will actually be last
+        last = new HOSeq.this.:: (x, ???) // hack: ::'s tail will actually be last
         //last1.tl = last
       }
     }
