@@ -73,6 +73,12 @@ and where `T` is the expected type. The following two rewritings are tried in or
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
 `circle` has type `Circle` and `CircleOps` is an eligible implicit (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
+**Note**: The translation of extension methods is formulated on method calls. It is thus indepenent from the way infix operations are translated to method calls. For instamce,
+if `+:` was formulated as an extension method, it would still have the `this` parameter come first, even though, seen as an operator, `+:` is right-binding:
+```scala
+def +: [T](this xs: Seq[T))(x: T): Seq[T]
+```
+
 ### Generic Extensions
 
 The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible
