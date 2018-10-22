@@ -251,7 +251,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         if (sym.isCalledAbove(cls)) FullValue
         else sym.value
 
-      val actual = obj.select(sym, heap, sym.pos).value.widen(heap, sym.pos)
+      val actual = obj.select(sym, heap, sym.pos, isStaticDispatch = true).value.widen(heap, sym.pos)
       if (actual < expected) ctx.warning(s"Found = $actual, expected = $expected" , sym.pos)
     }
 

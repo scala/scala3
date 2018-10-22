@@ -87,7 +87,7 @@ trait Indexer { self: Analyzer =>
     case vdef: ValDef if vdef.symbol.is(Lazy)  =>
       slice.add(vdef.symbol, lazyValue(vdef, slice.innerEnv))
     case vdef: ValDef =>
-      val value = if (vdef.symbol.isInit) FullValue else NoValue
+      val value = if (vdef.symbol.isInit || vdef.symbol.is(Deferred)) FullValue else NoValue
       slice.add(vdef.symbol, value)
     case tdef: TypeDef if tdef.isClassDef  =>
       // class has to be handled differently because of inheritance

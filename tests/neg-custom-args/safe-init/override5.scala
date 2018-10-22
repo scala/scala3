@@ -5,7 +5,7 @@ trait Foo {
 }
 
 class Bar extends Foo {
-  val name = "Jack"              // error: partial cannot be implemented by val
+  val name = "Jack"              // error: init too late
 }
 
 
@@ -16,7 +16,7 @@ trait Zen {
 }
 
 class Tao extends Zen {
-  val name = "Jack"              // error: init cannot be implemented by val
+  val name = "Jack"              // error: init too late
 }
 
 
