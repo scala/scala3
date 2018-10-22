@@ -14,14 +14,14 @@ object test {
     }
   }
 
-  trait ApplyDeconstructor extends DeconstructorCommon[Apply] {
+  trait ApplyDeconstructor extends DeconstructorCommon[Apply|Null] {
     def _1: Tree
     def _2: List[Tree]
   }
 
   object Apply extends ApplyDeconstructor {
-    def _1: Tree = field.fun
-    def _2: List[Tree] = field.args
+    def _1: Tree = field.asInstanceOf[Apply].fun
+    def _2: List[Tree] = field.asInstanceOf[Apply].args
   }
 
   def assocsFromApply(tree: Tree) = {
