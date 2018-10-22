@@ -64,45 +64,28 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         ctx.warning(lateInitMsg(decl), decl.pos)
     }
 
-    var membersToCheck: util.SimpleIdentityMap[Name, Type] = util.SimpleIdentityMap.Empty[Name]
-    val seenClasses = new util.HashSet[Symbol](256)
-
-    def parents(cls: Symbol) =
-      cls.info.parents.map(_.classSymbol)
-        .filter(_.is(AbstractOrTrait))
-        .dropWhile(_.is(JavaDefined | Scala2x))
-
-    def addDecls(cls: Symbol): Unit =
-      if (!seenClasses.contains(cls)) {
-        seenClasses.addEntry(cls)
-        for (mbr <- cls.info.decls)
-          if (mbr.isTerm && mbr.is(Deferred | Method) &&
-              (mbr.hasAnnotation(defn.PartialAnnot) || mbr.hasAnnotation(defn.InitAnnot)) &&
-              !membersToCheck.contains(mbr.name))
-            membersToCheck = membersToCheck.updated(mbr.name, mbr.info.asSeenFrom(self, mbr.owner))
-          parents(cls).foreach(addDecls)
-      }
-    parents(cls).foreach(addDecls)  // no need to check methods defined in current class
-
-    def invalidImplementMsg(sym: Symbol) =
-      s"""|@scala.annotation.partial required for ${sym.show} in ${sym.owner.show}
-          |Because the abstract method it implements is marked as `@partial` or `@init`."""
+    def invalidImplementMsg(sym: Symbol) = {
+      val annot = if (sym.owner.is(Trait)) "partial" else "init"
+      s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
+          |Because the method is called during initialization."""
         .stripMargin
-
-    for (name <- membersToCheck.keys) {
-      val tp  = membersToCheck(name)
-      for {
-        mbrd <- self.member(name).alternatives
-        if mbrd.info.overrides(tp, matchLoosely = true)
-      } {
-        val mbr = mbrd.symbol
-        if (mbr.owner.ne(cls) &&
-            !mbr.isCalledAbove(cls) &&
-            !mbr.hasAnnotation(defn.PartialAnnot) &&
-            !mbr.hasAnnotation(defn.InitAnnot) )
-          ctx.warning(invalidImplementMsg(mbr), cls.pos)
-      }
     }
+
+    def parents(cls: ClassSymbol) =
+      cls.baseClasses.tail.filter(_.is(AbstractOrTrait)).dropWhile(_.is(JavaDefined | Scala2x))
+
+    def check(curCls: ClassSymbol): Unit = {
+      for {
+        mbr <- calledSymsIn(curCls)
+        mbrd <- self.member(mbr.name).alternatives
+        tp = mbr.info.asSeenFrom(self, mbr.owner)
+        if mbrd.info.overrides(tp, matchLoosely = true) &&
+           !mbrd.symbol.isInit && !mbrd.symbol.isPartial &
+           !mbrd.symbol.isCalledAbove(cls.asClass) &&
+           !mbrd.symbol.is(Deferred)
+      } ctx.warning(invalidImplementMsg(mbrd.symbol), cls.pos)
+    }
+    parents(cls).foreach(check)  // no need to check methods defined in current class
 
     checkInit(cls, tree)
 
@@ -139,12 +122,11 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val slice = root.heap(sliceValue.id).asSlice
 
     res.effects.foreach(_.report)
-    // slice.notAssigned.foreach { sym =>
-    //   if (!sym.is(Deferred)) ctx.warning(s"field ${sym.name} is not initialized", sym.pos)
-    // }
 
     // init check: try commit early
     if (obj.open) initCheck(cls, obj, tmpl, root.heap)
+
+    if (obj.open) obj.annotate(cls)
   }
 
   def partialCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
@@ -152,32 +134,18 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       // enhancement possible to check if there are actual children
       // and whether children are possible in other modules.
 
-    val root = Heap.createRootEnv
-    val heap = root.heap
-    val slice = root.newSlice(cls)
-    analyzer.indexMembers(tmpl.body, slice)
-    slice.innerEnv.add(cls, obj)
-    indexOuter(cls, root)
+    def checkMethod(ddef: tpd.DefDef): Unit = {
+      val sym = ddef.symbol
+      if (!sym.isPartial && !sym.isCalledAbove(cls)) return
 
-    obj.add(cls, new SliceValue(slice.id))
-    cls.baseClasses.tail.foreach(base => obj.add(base, PartialValue))
+      val root = Heap.createRootEnv
+      val heap = root.heap
+      indexOuter(cls, root)
+      if (sym.isPartial) root.add(cls, BlankValue)
+      else root.add(cls, PartialValue)
 
-    if (!cls.is(Trait))
-      tmpl.constr.vparamss.flatten.zipWithIndex.foreach { case (param: ValDef, index) =>
-        val sym = cls.info.member(param.name).suchThat(x => !x.is(Method)).symbol
-        if (sym.exists) slice.add(sym, sym.info.value)
-      }
-
-    def checkMethod(sym: Symbol): Unit = {
-      if (!sym.isPartial && !sym.isCalledAbove(cls)) {
-        println(s"$sym in ${sym.owner} not partial")
-        return
-      }
-
-      val heap2 = heap.clone
-      var res = obj.select(sym, heap2, sym.pos, isStaticDispatch = true)
-      if (!sym.info.isParameterless)
-        res = res.value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
+      val value = analyzer.methodValue(ddef, root)
+      val res = value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
 
       if (res.hasErrors) {
         ctx.warning("Calling the method during initialization causes errors", sym.pos)
@@ -188,36 +156,40 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
     }
 
-    def checkLazy(sym: Symbol): Unit = {
+    def checkLazy(vdef: tpd.ValDef): Unit = {
+      val sym = vdef.symbol
       if (!sym.isPartial && !sym.isCalledAbove(cls)) return
 
-      val heap2 = heap.clone
-      val res = obj.select(sym, heap2, sym.pos, isStaticDispatch = true)
+      val root = Heap.createRootEnv
+      val heap = root.heap
+      indexOuter(cls, root)
+      if (sym.isPartial) root.add(cls, BlankValue)
+      else root.add(cls, PartialValue)
+
+      val value = analyzer.lazyValue(vdef, root)
+      val res = value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
+
       if (res.hasErrors) {
         ctx.warning("Forcing partial lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen(heap2, sym.pos)
+        val value = res.value.widen(heap, sym.pos)
         if (value != FullValue) ctx.warning("Partial lazy value must return a full value", sym.pos)
       }
     }
 
     tmpl.body.foreach {
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkMethod(ddef.symbol)
+        checkMethod(ddef)
       case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-        checkLazy(vdef.symbol)
+        checkLazy(vdef)
       case _ =>
     }
-
-    if (obj.open) obj.annotate(cls)
   }
 
   def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template, heap: Heap)(implicit ctx: Context) = {
     def checkMethod(sym: Symbol): Unit = {
-      if (!sym.isInit) return
-
       var res = obj.select(sym, heap, sym.pos, isStaticDispatch = true)
       if (!sym.info.isParameterless)
         res = res.value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
@@ -256,7 +228,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
 
     tmpl.body.foreach {
-      case ddef: DefDef if ddef.symbol.isFilled && !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
+      case ddef: DefDef if ddef.symbol.isInit && !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkMethod(ddef.symbol)
       case vdef: ValDef if vdef.symbol.is(Lazy)  =>
         checkLazy(vdef.symbol)
@@ -264,8 +236,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         checkValDef(vdef.symbol)
       case _ =>
     }
-
-    if (obj.open) obj.annotate(cls)
   }
 
 

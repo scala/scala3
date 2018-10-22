@@ -1,11 +1,8 @@
-import scala.annotation.partial
-
 trait Foo {
   println("init x")
   val x = "world"
   val y = foo(5)
 
-  @partial
   def foo(n: Int): String
 }
 

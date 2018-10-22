@@ -30,18 +30,18 @@ class Tao {
 
   def msg = "can be overriden"
 
+  @scala.annotation.init
   def foo(n: Int) =  m + msg
 }
 
-class Zen extends Tao with Foo  // error: Tao.foo needs to be `@init`
+class Zen extends Tao with Foo
 
 class Lux {
   val m = "hello"
 
   def msg = "can be overriden"
 
-  @partial
-  def foo(n: Int) =  m + msg         // error  // error // error
+  def foo(n: Int) =  m + msg
 }
 
-class Logos extends Lux with Foo
+class Logos extends Lux with Foo  // error

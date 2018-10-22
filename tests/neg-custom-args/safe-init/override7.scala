@@ -11,7 +11,7 @@ class Bar(val name: String) extends Foo {
 
   def getName = name                 // ok: name is a Param field
 
-  def getTitle = title               // error: title cannot use title // error
+  def getTitle = title               // error: cannot use title // error
 }
 
 object Test {

@@ -24,6 +24,7 @@ import collection.mutable
 package object init {
   implicit class TypeOps(val tp: Type) extends AnyVal {
     def isPartial(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.PartialAnnot)
+
     def isFilled(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.FilledAnnot)
 
     def value(implicit ctx: Context) =
@@ -32,20 +33,26 @@ package object init {
       else FullValue
   }
 
+  def calledSymsIn(cls: ClassSymbol)(implicit ctx: Context): List[Symbol] =
+    cls.self.annotations.collect {
+      case Annotation.Call(sym) => sym
+    }
+
   implicit class SymOps(val sym: Symbol) extends AnyVal {
     def isPartial(implicit ctx: Context) = sym.hasAnnotation(defn.PartialAnnot)
+
     def isFilled(implicit ctx: Context) = sym.hasAnnotation(defn.FilledAnnot)
+
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
+
+
     def isCalledIn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-      cls.self.annotations.exists({
-        case Annotation.Call(mthSym) => mthSym == sym
-        case _ => false
-      }) || sym.allOverriddenSymbols.exists(_.isCalledIn(cls))
+      calledSymsIn(cls).exists(_ == sym) || sym.allOverriddenSymbols.exists(_.isCalledIn(cls))
 
     def isCalledAbove(from: ClassSymbol)(implicit ctx: Context) =
       from.baseClasses.tail.exists(cls => sym.isCalledIn(cls))
 
-    def isPrimaryConstructorFields(implicit ctx: Context) = sym.is(ParamAccessor)
+    def isClassParam(implicit ctx: Context) = sym.is(ParamAccessor)
 
     def isDefinedOn(tp: Type)(implicit ctx: Context): Boolean =
       tp.classSymbol.isSubClass(sym.owner)

@@ -69,6 +69,8 @@ sealed trait Value {
     case (v, FullValue) => v
     case (NoValue, _) => NoValue
     case (_, NoValue) => NoValue
+    case (BlankValue, _) => BlankValue
+    case (_, BlankValue) => BlankValue
     case (PartialValue, _) => PartialValue
     case (_, PartialValue) => PartialValue
     case (v1: OpaqueValue, v2: OpaqueValue)     => v1.join(v2)
@@ -214,6 +216,74 @@ object FullValue extends OpaqueValue {
   override def toString = "full value"
 }
 
+/** A blank value, where class/trait params are not yet initialized
+ *
+ *  abstract class A {
+ *    def f: Int
+ *    val a = f
+ *  }
+ *
+ *  trait B(x: 20) {
+ *    def f: Int = x       // error: `x` is not initialized yet
+ *  }
+ *
+ *  class C extends A with B(20)
+ */
+object BlankValue extends OpaqueValue {
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
+    // set state to Full, don't report same error message again
+    val res = Res(value = FullValue)
+
+    if (sym.is(Flags.Method)) {
+      if (!sym.isPartial && !sym.name.is(DefaultGetterName))
+        res += Generic(s"The $sym should be marked as `@partial` in order to be called", pos)
+
+      res.value = Value.defaultFunctionValue(sym)
+    }
+    else if (sym.is(Flags.Lazy)) {
+      if (!sym.isPartial)
+        res += Generic(s"The lazy field $sym should be marked as `@partial` in order to be accessed", pos)
+    }
+    else if (sym.isClass) {
+      if (!sym.isPartial)
+        res += Generic(s"The nested $sym should be marked as `@partial` in order to be instantiated", pos)
+    }
+    else {  // field select
+      res += Generic(s"The $sym may not be initialized", pos)
+    }
+
+    res
+  }
+
+  /** assign to partial is always fine? */
+  def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res = Res()
+
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, heap: Heap, indexer: Indexer)(implicit ctx: Context): Res = {
+    val paramInfos = constr.info.paramInfoss.flatten
+    val res = Value.checkParams(constr.owner, paramInfos, values, argPos, pos, heap)
+    if (res.hasErrors) return res
+
+    val cls = constr.owner.asClass
+    if (!cls.isPartial) {
+      res += Generic(s"The nested $cls should be marked as `@partial` in order to be instantiated", pos)
+      res.value = FullValue
+      return res
+    }
+
+    obj.add(cls, FilledValue)
+
+    Res()
+  }
+
+  def show(setting: ShowSetting)(implicit ctx: Context): String = "Partial"
+
+  override def toString = "blank value"
+}
+
+/** A raw value, where class/trait params are initialized, but body fields are not
+ *
+ *  TODO: rename to `raw`
+ */
 object PartialValue extends OpaqueValue {
   def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
     // set state to Full, don't report same error message again
@@ -234,7 +304,7 @@ object PartialValue extends OpaqueValue {
         res += Generic(s"The nested $sym should be marked as `@partial` in order to be instantiated", pos)
     }
     else {  // field select
-      if (!sym.isPrimaryConstructorFields || sym.owner.is(Flags.Trait))
+      if (!sym.isClassParam)
         res += Generic(s"The $sym may not be initialized", pos)
     }
 
