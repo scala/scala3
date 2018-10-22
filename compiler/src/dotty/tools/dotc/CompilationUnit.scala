@@ -3,12 +3,14 @@ package dotc
 
 import util.SourceFile
 import ast.{tpd, untpd}
-import tpd.{ Tree, TreeTraverser }
+import dotty.tools.dotc.ast.Trees
+import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.typer.Inliner
 
 class CompilationUnit(val source: SourceFile) {
 
@@ -22,6 +24,11 @@ class CompilationUnit(val source: SourceFile) {
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
+
+  /** Will be reset to `true` if `tpdTree` contains a call to an inline method. The information
+   *  is used in phase InlineCalls in order to avoid traversing an inline-less tree.
+   */
+  var containsInlineCalls: Boolean = false
 
   /** Will be reset to `true` if `untpdTree` contains `Quote` trees. The information
    *  is used in phase ReifyQuotes in order to avoid traversing a quote-less tree.
@@ -46,6 +53,7 @@ object CompilationUnit {
     if (forceTrees) {
       val force = new Force
       force.traverse(unit1.tpdTree)
+      unit1.containsInlineCalls = force.containsInline
       unit1.containsQuotesOrSplices = force.containsQuotes
     }
     unit1
@@ -53,10 +61,13 @@ object CompilationUnit {
 
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
+    var containsInline = false
     var containsQuotes = false
     def traverse(tree: Tree)(implicit ctx: Context): Unit = {
       if (tree.symbol.isQuote)
         containsQuotes = true
+      if (tpd.isInlineCall(tree))
+        containsInline = true
       traverseChildren(tree)
     }
   }
