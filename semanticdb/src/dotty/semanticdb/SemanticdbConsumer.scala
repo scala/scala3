@@ -41,11 +41,32 @@ class SemanticdbConsumer extends TastyConsumer {
         return stack.head + id + "/"
       }
 
+      def iterateParent(symbol: Symbol): String = {
+        if (symbol.name == "<none>") then {
+          // TODO had a "NoDenotation" test to avoid
+          // relying on the name itself
+          ""
+        } else {
+          val previous_symbol = iterateParent(symbol.owner)
+          val next_atom =
+          symbol match {
+          case IsPackageSymbol(symbol) => symbol.name + "/"
+          case IsClassSymbol(symbol) => symbol.name + "#"
+          case IsDefSymbol(symbol) => symbol.name + "."
+          case IsValSymbol(symbol) => symbol.name + "."
+          case owner => {
+            ""
+          }
+          }
+          previous_symbol + next_atom
+        }
+      }
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
       val previous_path = stack.head
 
         tree match {
-          case IsClassDef(body) =>
+          /*case IsClassDef(body) =>
             val ClassDef(name, _, _, _, _) = body
             //println("[classdef] ", body)
             val path = stack.head + name + "#"
@@ -81,11 +102,12 @@ class SemanticdbConsumer extends TastyConsumer {
             stack = stack.tail
           case IsPackageDef(body) =>
             println("[packagedef] ", body)
-            super.traverseTree(body)
+            super.traverseTree(body)*/
           case IsDefinition(body) =>
-            println("[definition] ", body)
+            //println("[definition] ", body)
+            println(iterateParent(tree.symbol))
             super.traverseTree(body)
-          case IsPackageClause(body) =>
+          /*case IsPackageClause(body) =>
             //println(body.pos.start, body.pos.end)
             val PackageClause(name, list_tree : List[Tree]) = body
             //println(tree)
@@ -100,7 +122,7 @@ class SemanticdbConsumer extends TastyConsumer {
             super.traverseTree(body)*/
             // iterating this way will probably make us see terms we don't want
             super.traverseTree(body)
-            stack = stack.tail
+            stack = stack.tail*/
           case tree =>
             super.traverseTree(tree)
         }
