@@ -8,6 +8,6 @@ object m {
     S.bar.apply(f)
 
   def example(implicit s:Foo) : s.T[Int => Int] = {
-    baz((x : s.T[Int]) => x)
+    baz((x : s.T[Int]) => x) // error
   }
 }
