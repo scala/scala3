@@ -104,29 +104,30 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     // current class env needs special setup
     val root = Heap.createRootEnv
+    val setting = Setting(root, cls.pos, ctx, analyzer)
     val obj = new ObjectValue(tp = cls.typeRef, open = !cls.is(Final) && !cls.isAnonymousClass)
       // enhancement possible to check if there are actual children
       // and whether children are possible in other modules.
 
     // for recursive usage
     root.addClassDef(cls, tmpl)
-    indexOuter(cls, root)
+    indexOuter(cls)(setting)
 
     // init check
     val constr = tmpl.constr
     val values = constr.vparamss.flatten.map { param => param.tpe.widen.value }
     val poss = constr.vparamss.flatten.map(_.pos)
-    val res = root.init(constr.symbol, values, poss, cls.pos, obj, analyzer)
+    val res = root.init(constr.symbol, values, poss, obj)(setting)
 
     val sliceValue = obj.slices(cls).asInstanceOf[SliceValue]
     val slice = root.heap(sliceValue.id).asSlice
 
     res.effects.foreach(_.report)
 
-    // init check: try commit early
-    if (obj.open) initCheck(cls, obj, tmpl, root.heap)
-
     if (obj.open) obj.annotate(cls)
+
+    // init check: try commit early
+    if (obj.open) initCheck(cls, obj, tmpl)(setting)
   }
 
   def partialCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
@@ -136,16 +137,16 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def checkMethod(ddef: tpd.DefDef): Unit = {
       val sym = ddef.symbol
-      if (!sym.isPartial && !sym.isCalledAbove(cls)) return
+      if (!sym.isEffectivePartial) return
 
       val root = Heap.createRootEnv
-      val heap = root.heap
-      indexOuter(cls, root)
+      val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
+      indexOuter(cls)(setting)
       if (sym.isPartial) root.add(cls, BlankValue)
       else root.add(cls, PartialValue)
 
-      val value = analyzer.methodValue(ddef, root)
-      val res = value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
+      val value = analyzer.methodValue(ddef)(setting)
+      val res = value.apply(i => FullValue, i => NoPosition)(setting)
 
       if (res.hasErrors) {
         ctx.warning("Calling the method during initialization causes errors", sym.pos)
@@ -158,23 +159,23 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def checkLazy(vdef: tpd.ValDef): Unit = {
       val sym = vdef.symbol
-      if (!sym.isPartial && !sym.isCalledAbove(cls)) return
+      if (!sym.isEffectivePartial) return
 
       val root = Heap.createRootEnv
-      val heap = root.heap
-      indexOuter(cls, root)
+      val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
+      indexOuter(cls)(setting)
       if (sym.isPartial) root.add(cls, BlankValue)
       else root.add(cls, PartialValue)
 
-      val value = analyzer.lazyValue(vdef, root)
-      val res = value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
+      val value = analyzer.lazyValue(vdef)(setting)
+      val res = value.apply(i => FullValue, i => NoPosition)(setting)
 
       if (res.hasErrors) {
         ctx.warning("Forcing partial lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen(heap, sym.pos)
+        val value = res.value.widen()(setting)
         if (value != FullValue) ctx.warning("Partial lazy value must return a full value", sym.pos)
       }
     }
@@ -188,43 +189,47 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
   }
 
-  def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template, heap: Heap)(implicit ctx: Context) = {
+  def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template)(implicit setting: Setting) = {
     def checkMethod(sym: Symbol): Unit = {
-      var res = obj.select(sym, heap, sym.pos, isStaticDispatch = true)
+      if (!sym.isEffectiveInit) return
+
+      var res = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos))
       if (!sym.info.isParameterless)
-        res = res.value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
+        res = res.value.apply(i => FullValue, i => NoPosition)
       if (res.hasErrors) {
-        ctx.warning("Calling the init method causes errors", sym.pos)
+        setting.ctx.warning("Calling the init method causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else if (res.value != FullValue) {
-        ctx.warning("An init method must return a full value", sym.pos)
+        setting.ctx.warning("An init method must return a full value", sym.pos)
       }
+
+      obj.clearDynamicCalls()
     }
 
     def checkLazy(sym: Symbol): Unit = {
-      if (!sym.isInit) return
+      if (!sym.isEffectiveInit) return
 
-      val res = obj.select(sym, heap, sym.pos, isStaticDispatch = true)
+      val res = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos))
       if (res.hasErrors) {
-        ctx.warning("Forcing init lazy value causes errors", sym.pos)
+        setting.ctx.warning("Forcing init lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen(heap, sym.pos)
-        if (value != FullValue) ctx.warning("Init lazy value must return a full value", sym.pos)
+        val value = res.value.widen()
+        if (value != FullValue) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
       }
+
+      obj.clearDynamicCalls()
     }
 
     def checkValDef(sym: Symbol): Unit = {
       if (sym.is(Flags.PrivateOrLocal)) return
 
-      val expected: OpaqueValue =
-        if (sym.isCalledAbove(cls)) FullValue
-        else sym.value
+      val actual = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos)).value.widen()
+      if (actual < FullValue) sym.addAnnotation(Annotations.ConcreteAnnotation(New(defn.FilledAnnotType, Nil)))
 
-      val actual = obj.select(sym, heap, sym.pos, isStaticDispatch = true).value.widen(heap, sym.pos)
-      if (actual < expected) ctx.warning(s"Found = $actual, expected = $expected" , sym.pos)
+      obj.clearDynamicCalls()
     }
 
     tmpl.body.foreach {
@@ -239,18 +244,18 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   }
 
 
-  def indexOuter(cls: ClassSymbol, env: Env)(implicit ctx: Context) = {
+  def indexOuter(cls: ClassSymbol)(implicit setting: Setting) = {
     def recur(cls: Symbol, maxValue: OpaqueValue): Unit = if (cls.owner.exists) {
       val outerValue = cls.value
       val enclosingCls = cls.owner.enclosingClass
 
       if (!cls.owner.isClass || maxValue == FullValue) {
-        env.add(enclosingCls, FullValue)
+        setting.env.add(enclosingCls, FullValue)
         recur(enclosingCls, FullValue)
       }
       else {
         val meet = outerValue.meet(maxValue)
-        env.add(enclosingCls, meet)
+        setting.env.add(enclosingCls, meet)
         recur(enclosingCls, meet)
       }
     }

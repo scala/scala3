@@ -178,33 +178,33 @@ class Env(outerId: Int) extends HeapEntry {
   }
 
   /** Assign to a local variable, i.e. TermRef with NoPrefix */
-  def assign(sym: Symbol, value: Value, pos: Position)(implicit ctx: Context): Res =
+  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
     if (this.contains(sym)) {
       this(sym) = value
       Res()
     }
-    else if (value.widen(this.heap, pos) != FullValue) // leak assign
-      Res(effects = Vector(Generic("Cannot leak an object under initialization", pos)))
+    else if (value.widen() != FullValue) // leak assign
+      Res(effects = Vector(Generic("Cannot leak an object under initialization", setting.pos)))
     else Res()
 
 
   /** Select a local variable, i.e. TermRef with NoPrefix */
-  def select(sym: Symbol, pos: Position)(implicit ctx: Context): Res =
+  def select(sym: Symbol)(implicit setting: Setting): Res =
     if (this.contains(sym)) {
       val value = this(sym)
       if (sym.is(Flags.Lazy)) {
         if (value.isInstanceOf[LazyValue]) {
-          val res = value(Nil, Nil, pos, this.heap)
+          val res = value(Nil, Nil)
           this(sym) = res.value
 
-          if (res.hasErrors) Res(effects = Vector(Force(sym, res.effects, pos)))
+          if (res.hasErrors) Res(effects = Vector(Force(sym, res.effects, setting.pos)))
           else Res(value = res.value)
         }
         else Res(value = value)
       }
       else if (sym.is(Flags.Method)) {
         if (sym.info.isInstanceOf[ExprType]) {       // parameter-less call
-          value(Nil, Nil, pos, this.heap)
+          value(Nil, Nil)
         }
         else Res(value = value)
       }
@@ -219,19 +219,19 @@ class Env(outerId: Int) extends HeapEntry {
       // How do we know the class/method/field does not capture/use a partial/filled outer?
       // If method/field exist, then the outer class beyond the method/field is full,
       // i.e. external methods/fields/classes are always safe.
-      FullValue.select(sym, this.heap, pos)
+      FullValue.select(sym)
     }
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, indexer: Indexer)(implicit ctx: Context): Res = {
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
     val cls = constr.owner.asClass
     if (this.containsClass(cls)) {
       val tmpl = this.getClassDef(cls)
-      indexer.init(constr, tmpl, values, argPos, pos, obj, this)
+      setting.indexer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(this))
     }
-    else FullValue.init(constr, values, argPos, pos, obj, heap, indexer)
+    else FullValue.init(constr, values, argPos, obj)
   }
 
-  def show(setting: ShowSetting)(implicit ctx: Context): String = {
+  def show(implicit setting: ShowSetting): String = {
     def members = _syms.map { case (k, v) => k.show + " ->" + setting.indent(v.show(setting), tabs = 2) }.mkString("\n")
     (if (outerId > 0) outer.show(setting) + "\n" else "") ++
     s"-------------- $id($outerId) ---------------------\n${members}"
@@ -295,7 +295,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
     case _ => false
   }
 
-  def show(setting: ShowSetting)(implicit ctx: Context): String = {
+  def show(implicit setting: ShowSetting): String = {
     if (setting.printed.contains(id)) return "id: " + id
 
     setting.printed += id
@@ -306,7 +306,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
     s"\n id: $id($innerEnvId)\n${setting.indent(members, tabs = 1)}"
   }
 
-  def widen(implicit ctx: Context): OpaqueValue = {
+  def widen(implicit setting: Setting): OpaqueValue = {
     def isPartialOrFilled(value: Value): Boolean =
       value == PartialValue || value == FilledValue
 
@@ -316,7 +316,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
       // check outer
       val owner = cls.owner
       if (!owner.isClass) FullValue
-      else innerEnv(owner).widen(heap, NoPosition)
+      else innerEnv(owner).widen()
     }
   }
 }

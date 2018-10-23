@@ -27,53 +27,61 @@ import collection.mutable
 trait Indexer { self: Analyzer =>
   import tpd._
 
-  def methodValue(ddef: DefDef, env: Env)(implicit ctx: Context): FunctionValue =
+  def methodValue(ddef: DefDef)(implicit setting: Setting): FunctionValue =
     new FunctionValue {
-      def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res =
+      def apply(values: Int => Value, argPos: Int => Position)(implicit setting2: Setting): Res = {
+        // TODO: why implicit conversion does not work
+        implicit val ctx: Context = setting2.ctx
         if (isChecking(ddef.symbol)) {
           // TODO: check if fixed point has reached. But the domain is infinite, thus non-terminating.
           debug(s"recursive call of ${ddef.symbol} found")
           Res()
         }
         else {
-          val env2 = env.fresh(heap)
+          val env2 = setting.env.fresh(setting2.heap)
+          val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol)).withEnv(env2)
 
           ddef.vparamss.flatten.zipWithIndex.foreach { case (param: ValDef, index) =>
             env2.add(param.symbol, value = values(index))
           }
-          val res = checking(ddef.symbol) { self.apply(ddef.rhs, env2)(ctx.withOwner(ddef.symbol)) }
-          if (res.hasErrors) res.effects = Vector(Call(ddef.symbol, res.effects, pos))
+          val res = checking(ddef.symbol) { self.apply(ddef.rhs)(setting3) }
+          if (res.hasErrors) res.effects = Vector(Call(ddef.symbol, res.effects, setting2.pos))
           res
         }
+      }
     }
 
-  def lazyValue(vdef: ValDef, env: Env)(implicit ctx: Context): LazyValue =
+  def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =
     new LazyValue {
-      def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res =
+      def apply(values: Int => Value, argPos: Int => Position)(implicit setting2: Setting): Res = {
+        // TODO: why implicit conversion does not work
+        implicit val ctx: Context = setting2.ctx
         if (isChecking(vdef.symbol)) {
           // TODO: check if fixed point has reached. But the domain is infinite, thus non-terminating.
           debug(s"recursive call of ${vdef.symbol} found")
           Res()
         }
         else {
-          val env2 = heap(env.id).asEnv
-          val res = checking(vdef.symbol) { self.apply(vdef.rhs, env2)(ctx.withOwner(vdef.symbol)) }
-          if (res.hasErrors) res.effects = Vector(Force(vdef.symbol, res.effects, pos))
+          val env2 = setting2.heap(setting.env.id).asEnv
+          val setting3: Setting = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol)).withEnv(env2)
+          val res = checking(vdef.symbol) { self.apply(vdef.rhs)(setting3) }
+          if (res.hasErrors) res.effects = Vector(Force(vdef.symbol, res.effects, setting2.pos))
           res
         }
+      }
     }
 
   /** Index local definitions */
-  def indexStats(stats: List[Tree], env: Env)(implicit ctx: Context): Unit = stats.foreach {
+  def indexStats(stats: List[Tree])(implicit setting: Setting): Unit = stats.foreach {
     case ddef: DefDef if !ddef.symbol.isConstructor =>  // TODO: handle secondary constructor
-      env.add(ddef.symbol, methodValue(ddef, env))
+      setting.env.add(ddef.symbol, methodValue(ddef))
     case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-      env.add(vdef.symbol, lazyValue(vdef, env))
+      setting.env.add(vdef.symbol, lazyValue(vdef))
     case vdef: ValDef =>
-      env.add(vdef.symbol, NoValue)
+      setting.env.add(vdef.symbol, NoValue)
     case tdef: TypeDef if tdef.isClassDef  =>
       // class has to be handled differently because of inheritance
-      env.addClassDef(tdef.symbol.asClass, tdef.rhs.asInstanceOf[Template])
+      setting.env.addClassDef(tdef.symbol.asClass, tdef.rhs.asInstanceOf[Template])
     case _ =>
   }
 
@@ -81,11 +89,11 @@ trait Indexer { self: Analyzer =>
    *
    *  trick: use `slice` for name resolution, but `env` for method execution
    */
-  def indexMembers(stats: List[Tree], slice: SliceRep)(implicit ctx: Context): Unit = stats.foreach {
+  def indexMembers(stats: List[Tree], slice: SliceRep)(implicit setting: Setting): Unit = stats.foreach {
     case ddef: DefDef =>
-      slice.add(ddef.symbol, methodValue(ddef, slice.innerEnv))
+      slice.add(ddef.symbol, methodValue(ddef)(setting.withEnv(slice.innerEnv)))
     case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-      slice.add(vdef.symbol, lazyValue(vdef, slice.innerEnv))
+      slice.add(vdef.symbol, lazyValue(vdef)(setting.withEnv(slice.innerEnv)))
     case vdef: ValDef =>
       val value = if (vdef.symbol.isInit || vdef.symbol.is(Deferred)) FullValue else NoValue
       slice.add(vdef.symbol, value)
@@ -95,7 +103,7 @@ trait Indexer { self: Analyzer =>
     case _ =>
   }
 
-  def init(constr: Symbol, tmpl: Template, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, env: Env)(implicit ctx: Context): Res = {
+  def init(constr: Symbol, tmpl: Template, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
     val cls = constr.owner.asClass
 
     if (isChecking(cls)) {
@@ -103,7 +111,7 @@ trait Indexer { self: Analyzer =>
       Res()
     }
     else checking(cls) {
-      val slice = env.newSlice(cls)
+      val slice = setting.env.newSlice(cls)
       obj.add(cls, new SliceValue(slice.id))
 
       // The outer of parents are set (but not recursively)
@@ -127,11 +135,12 @@ trait Indexer { self: Analyzer =>
       slice.innerEnv.add(cls, obj)
 
       // call parent constructor
-      val res = checkParents(cls, tmpl.parents, slice.innerEnv, obj)(ctx.withOwner(cls.owner))
+      val setting2 = setting.withCtx(setting.ctx.withOwner(cls.owner)).withEnv(slice.innerEnv)
+      val res = checkParents(cls, tmpl.parents, obj)(setting2)
       if (res.hasErrors) return res
 
       // check current class body
-      res ++= checkStats(tmpl.body, slice.innerEnv)(ctx.withOwner(cls)).effects
+      res ++= checkStats(tmpl.body)(setting2).effects
       res
     }
   }

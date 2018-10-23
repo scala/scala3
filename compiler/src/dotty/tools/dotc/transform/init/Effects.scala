@@ -44,7 +44,7 @@ case class Res(var effects: Effects = Vector.empty, var value: Value = FullValue
       value   = res2.value.join(value)
     )
 
-  def show(setting: ShowSetting)(implicit ctx: Context): String =
+  def show(implicit setting: ShowSetting): String =
     s"""~Res(
         ~| effects = ${if (effects.isEmpty) "()" else effects.mkString("\n|    - ", "\n|    - ", "")}
         ~| value   = ${value.show(setting)}

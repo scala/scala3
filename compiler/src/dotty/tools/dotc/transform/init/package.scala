@@ -45,6 +45,12 @@ package object init {
 
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
 
+    def isEffectivePartial(implicit ctx: Context) =
+      sym.isPartial || sym.isCalledAbove(sym.owner.asClass)
+
+    def isEffectiveInit(implicit ctx: Context) =
+      !sym.isEffectivePartial &&
+      (sym.isInit || sym.isCalledIn(sym.owner.asClass) || sym.allOverriddenSymbols.exists(_.isInit))
 
     def isCalledIn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
       calledSymsIn(cls).exists(_ == sym) || sym.allOverriddenSymbols.exists(_.isCalledIn(cls))
@@ -71,4 +77,7 @@ package object init {
     def isField(implicit ctx: Context) =
       sym.isTerm && sym.is(AnyFlags, butNot = Method | Lazy | Deferred)
   }
+
+  implicit def setting2ctx(implicit s: Setting): Context = s.ctx
+  implicit def showSetting2ctx(implicit s: ShowSetting): Context = s.ctx
 }

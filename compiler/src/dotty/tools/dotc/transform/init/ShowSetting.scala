@@ -2,9 +2,11 @@ package dotty.tools.dotc
 package transform
 package init
 
+import core._
+import Contexts.Context
 import collection.mutable
 
-case class ShowSetting(heap: Heap, printed: mutable.Set[Int] = mutable.Set()) {
+case class ShowSetting(heap: Heap, ctx: Context, printed: mutable.Set[Int] = mutable.Set()) {
   def indent(content: String, tabs: Int = 1): String = ShowSetting.pad(content, tabs, padFirst = true)
 }
 
