@@ -59,6 +59,7 @@ t7374
 t7859
 t8133
 t8133b
+tasty-argument-tree-1
 tasty-custom-show
 tasty-definitions-1
 tasty-definitions-2
@@ -91,4 +92,5 @@ typelevel-patmat.scala
 typelevel.scala
 typelevel1.scala
 typelevel3.scala
-xml-interpolation
+xml-interpolation-1
+xml-interpolation-2

@@ -186,12 +186,11 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   // ----- Terms ----------------------------------------------------
 
   def TermDeco(term: Term): TermAPI = new TermAPI {
+    import tpd._
     def pos(implicit ctx: Context): Position = term.pos
     def tpe(implicit ctx: Context): Type = term.tpe
-    def underlyingArgument(implicit ctx: Context): Term = {
-      import tpd._
-      term.underlyingArgument
-    }
+    def underlyingArgument(implicit ctx: Context): Term = term.underlyingArgument
+    def underlying(implicit ctx: Context): Term = term.underlying
   }
 
   object IsTerm extends IsTermExtractor {
