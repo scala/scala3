@@ -15,14 +15,7 @@ object TastyString {
   /** Encode TASTY bytes into an Seq of String */
   def pickle(bytes: Array[Byte]): Pickled = {
     val str = new String(Base64.getEncoder().encode(bytes), UTF_8)
-    def split(sliceEnd: Int, acc: List[String]): List[String] = {
-      if (sliceEnd == 0) acc
-      else {
-        val sliceStart = (sliceEnd - maxStringSize) max 0
-        split(sliceStart, str.substring(sliceStart, sliceEnd) :: acc)
-      }
-    }
-    split(str.length, Nil)
+    str.sliding(maxStringSize, maxStringSize).toList
   }
 
   /** Decode the TASTY String into TASTY bytes */
