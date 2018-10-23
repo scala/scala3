@@ -34,8 +34,10 @@ class Tests {
       case pat(name) => name
       case _ => ""
       }
-    val _ = ConsumeTasty(classpath, (modulename + "." + sourcename) :: Nil, new SemanticdbConsumer)
-    return s.TextDocument(text = scalac.text)
+    val sdbconsumer = new SemanticdbConsumer
+    val _ = ConsumeTasty(classpath, (modulename + "." + sourcename) :: Nil, sdbconsumer)
+    sdbconsumer.toSemanticdb(scalac.text)
+
   }
 
   /** Fails the test if the s.TextDocument from tasty and semanticdb-scalac are not the same. */

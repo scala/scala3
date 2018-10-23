@@ -6,6 +6,7 @@ import scala.tasty.file.TastyConsumer
 import scala.tasty.util.TreeTraverser
 import dotty.tools.dotc.tastyreflect
 import scala.collection.mutable.HashMap
+import scala.meta.internal.{semanticdb => s}
 
 class SemanticdbConsumer extends TastyConsumer {
   var stack: List[String] = Nil
@@ -32,6 +33,12 @@ class SemanticdbConsumer extends TastyConsumer {
       ""
     }
   }*/
+  val semantic: s.TextDocument = s.TextDocument()
+  var occurrences: Seq[s.SymbolOccurrence] = Seq()
+
+  def toSemanticdb(text: String): s.TextDocument = {
+    s.TextDocument(text = text, occurrences = occurrences)
+  }
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -65,6 +72,10 @@ class SemanticdbConsumer extends TastyConsumer {
               // TODO had a "NoDenotation" test to avoid
               // relying on the name itself
               ""
+            } else if (symbol.name == "<root>") then {
+              // TODO had a "NoDenotation" test to avoid
+              // relying on the name itself
+              ""
             } else {
               val previous_symbol = iterateParent(symbol.owner)
               val next_atom =
@@ -89,63 +100,30 @@ class SemanticdbConsumer extends TastyConsumer {
         val previous_path = stack.head
 
         tree match {
-          /*case IsClassDef(body) =>
-            val ClassDef(name, _, _, _, _) = body
-            //println("[classdef] ", body)
-            val path = stack.head + name + "#"
-            println(path)
-            stack = path :: stack
-            super.traverseTree(body)
-            stack = stack.tail
-          case IsTypeDef(body) =>
-            println("[typedef] ", body)
-            super.traverseTree(body)
-          case IsDefDef(body) =>
-            val DefDef(name, _, _, _, _) = body
-            val def_atom =
-            name match {
-              case "<init>" => "`<init>`"
-              case _ => name
-            }
-            val path_repr = stack.head + def_atom
-            val path = path_repr + "(" + insertPathDefDef(path_repr) + ")."
-            println(path)
-            //println("[defdef] ", body)
-            stack = path :: stack
-            super.traverseTree(body)
-            stack = stack.tail
-          case IsValDef(body) =>
-            val ValDef(name, _, _) = body
-            val path_repr = stack.head + name
-            val path = path_repr + "(" + insertPathValDef(path_repr) + ")"
-            println(path)
-            //println("[defdef] ", body)
-            stack = path :: stack
-            super.traverseTree(body)
-            stack = stack.tail
-          case IsPackageDef(body) =>
-            println("[packagedef] ", body)
-            super.traverseTree(body)*/
           case IsDefinition(body) =>
             //println("[definition] ", body)
-            println(iterateParent(tree.symbol))
+            val symbol_path = iterateParent(tree.symbol)
+
+            val range =
+              if (tree.symbol.name == "<init>") {
+                s.Range(tree.symbol.pos.startLine,
+                        tree.symbol.pos.startColumn,
+                        tree.symbol.pos.startLine,
+                        tree.symbol.pos.endColumn)
+              } else {
+                s.Range(tree.symbol.pos.startLine,
+                        tree.symbol.pos.startColumn,
+                        tree.symbol.pos.startLine,
+                        tree.symbol.pos.startColumn + tree.symbol.name.length)
+              }
+            occurrences =
+              occurrences :+
+                s.SymbolOccurrence(
+                  Some(range),
+                  symbol_path,
+                  s.SymbolOccurrence.Role.DEFINITION
+                )
             super.traverseTree(body)
-          /*case IsPackageClause(body) =>
-            //println(body.pos.start, body.pos.end)
-            val PackageClause(name, list_tree : List[Tree]) = body
-            //println(tree)
-            val path = packageDefToOccurence(name)
-            println(path)
-            stack = path :: stack
-            // call to traverse tree instead of super.traverseTree to avoid
-            // skipping this child entirely (super.xx will traverse subtrees)
-            //list_tree.foreach{traverseTree}
-          /*case IsTerm(body) =>
-            //println("[term] ", body)
-            super.traverseTree(body)*/
-            // iterating this way will probably make us see terms we don't want
-            super.traverseTree(body)
-            stack = stack.tail*/
           case tree =>
             super.traverseTree(tree)
         }

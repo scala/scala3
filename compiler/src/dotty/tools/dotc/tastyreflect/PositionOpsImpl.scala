@@ -14,5 +14,4 @@ trait PositionOpsImpl extends scala.tasty.reflect.PositionOps with CoreImpl {
     def startColumn: Int = pos.startColumn
     def endColumn: Int = pos.endColumn
   }
-
 }
