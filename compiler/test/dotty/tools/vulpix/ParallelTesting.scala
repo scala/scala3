@@ -537,7 +537,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                     val output = Source.fromFile(outDir.getParent + "_decompiled" + JFile.separator + outDir.getName
                       + JFile.separator + "decompiled.scala").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
-                    }
+                    }.toList
 
                     val check: String = Source.fromFile(checkFile).getLines().filter(!_.startsWith(ignoredFilePathLine))
                       .mkString("\n")
