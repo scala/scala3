@@ -8,7 +8,9 @@ import dotty.tools.dotc.tastyreflect
 import scala.collection.mutable.HashMap
 
 class SemanticdbConsumer extends TastyConsumer {
-  var stack : List[String] = Nil
+  var stack: List[String] = Nil
+
+  /*
   val symbolsDefs : HashMap[String, Int] = HashMap()
   val symbolsVals : HashMap[String, Int] = HashMap()
 
@@ -29,11 +31,13 @@ class SemanticdbConsumer extends TastyConsumer {
       symbolsVals += (path -> 1)
       ""
     }
-  }
+  }*/
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
     object Traverser extends TreeTraverser {
+      val symbolsCache: HashMap[tasty.Symbol, String] = HashMap()
+      val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
 
       def packageDefToOccurence(term: Term): String = {
         //println(term, term.pos.start, term.pos.end)
@@ -41,29 +45,48 @@ class SemanticdbConsumer extends TastyConsumer {
         return stack.head + id + "/"
       }
 
-      def iterateParent(symbol: Symbol): String = {
-        if (symbol.name == "<none>") then {
-          // TODO had a "NoDenotation" test to avoid
-          // relying on the name itself
-          ""
+      def disimbiguate(symbol_path: String): String = {
+        if (symbolPathsDisimbiguator.contains(symbol_path)) {
+          symbolPathsDisimbiguator +=
+            (symbol_path -> (symbolPathsDisimbiguator(symbol_path) + 1))
+          "(+" + (symbolPathsDisimbiguator(symbol_path) - 1) + ")"
         } else {
-          val previous_symbol = iterateParent(symbol.owner)
-          val next_atom =
-          symbol match {
-          case IsPackageSymbol(symbol) => symbol.name + "/"
-          case IsClassSymbol(symbol) => symbol.name + "#"
-          case IsDefSymbol(symbol) => symbol.name + "."
-          case IsValSymbol(symbol) => symbol.name + "."
-          case owner => {
-            ""
-          }
-          }
-          previous_symbol + next_atom
+          symbolPathsDisimbiguator += (symbol_path -> 1)
+          "()"
+        }
+      }
+
+      def iterateParent(symbol: Symbol): String = {
+        if (symbolsCache.contains(symbol)) {
+          return symbolsCache(symbol)
+        } else {
+          val out_symbol_path =
+            if (symbol.name == "<none>") then {
+              // TODO had a "NoDenotation" test to avoid
+              // relying on the name itself
+              ""
+            } else {
+              val previous_symbol = iterateParent(symbol.owner)
+              val next_atom =
+                symbol match {
+                  case IsPackageSymbol(symbol) => symbol.name + "/"
+                  case IsClassSymbol(symbol)   => symbol.name + "#"
+                  case IsDefSymbol(symbol) =>
+                    symbol.name + disimbiguate(previous_symbol + symbol.name) + "."
+                  case IsValSymbol(symbol) => symbol.name + "."
+                  case owner => {
+                    ""
+                  }
+                }
+              previous_symbol + next_atom
+            }
+          symbolsCache += (symbol -> out_symbol_path)
+          out_symbol_path
         }
       }
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
-      val previous_path = stack.head
+        val previous_path = stack.head
 
         tree match {
           /*case IsClassDef(body) =>
