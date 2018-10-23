@@ -302,11 +302,13 @@ object ProtoTypes {
       typer.adapt(targ, formal, locked)
     }
 
-    /** The type of the argument `arg`.
-     *  @pre `arg` has been typed before
+    /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before
+     *  or if `arg`'s typing produced a type error.
      */
-    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
-      state.typedArg(arg).tpe
+    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type = {
+      val t = state.typedArg(arg)
+      if (t == null) NoType else t.tpe
+    }
 
     /** The same proto-type but with all arguments combined in a single tuple */
     def tupled: FunProto = state.tupled match {
