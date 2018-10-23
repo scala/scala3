@@ -863,7 +863,7 @@ object SymDenotations {
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
-        def sourceOfSelf(tp: Any): Symbol = tp match {
+        def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
           case tp: TermRef => tp.symbol
           case tp: Symbol => sourceOfSelf(tp.info)
           case tp: RefinedType => sourceOfSelf(tp.parent)

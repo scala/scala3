@@ -525,7 +525,8 @@ trait ImplicitRunInfo { self: Run =>
               for (parent <- cls.classParents; ref <- iscopeRefs(tp.baseType(parent.classSymbol)))
                 addRef(ref)
             }
-            if (tp.widen.typeSymbol.isOpaqueAlias) addCompanionOf(tp.widen.typeSymbol)
+            val underlyingTypeSym = tp.widen.typeSymbol
+            if (underlyingTypeSym.isOpaqueAlias) addCompanionOf(underlyingTypeSym)
             else tp.classSymbols(liftingCtx).foreach(addClassScope)
           case _ =>
             for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
