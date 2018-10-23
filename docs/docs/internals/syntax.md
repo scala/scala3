@@ -298,6 +298,8 @@ DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+WitnessParams     ::=  WitnessParam {‘,’ WitnessParam}
+WitnessParam      ::=  DefParam | ParamType
 ```
 
 ### Bindings and Imports
@@ -366,9 +368,9 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-WitnessDef        ::=  [id] [DefTypeParamClause] DefParamClauses
+WitnessDef        ::=  [id] [DefTypeParamClause] [‘with’ WitnessParams]
                        [‘for’ [ConstrApps]] TemplateBody
-                    |  id [DefTypeParamClause] DefParamClauses
+                    |  id [DefTypeParamClause] [‘with’ WitnessParams]
                        [‘for’ Type] [‘=’ Expr]
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
