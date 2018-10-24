@@ -30,7 +30,7 @@ object StagedTuple {
 
   def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int]): Expr[T] = {
     if (!specialize) '(dynamicFromArray[T](~xs))
-    else {
+    else xs.bind { xs =>
       val tup: Expr[Any] = size match {
         case Some(0)  => '()
         case Some(1)  => '(Tuple1( (~xs)(0)))
