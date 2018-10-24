@@ -131,7 +131,7 @@ object Tuple {
       val t = self.asInstanceOf[Tuple4[Object, Object, Object, Object]]
       Array(t._1, t._2, t._3, t._4)
     case self: TupleXXL =>
-      asInstanceOf[TupleXXL].elems
+      self.elems
     case self: Product =>
       val arr = new Array[Object](self.productArity)
       for (i <- 0 until arr.length) arr(i) = self.productElement(i).asInstanceOf[Object]

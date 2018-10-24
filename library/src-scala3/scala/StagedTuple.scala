@@ -190,7 +190,7 @@ object StagedTuple {
       case Some(4) =>
         self.as[Tuple4[_, _, _, _]].bind(t => '(Tuple5(~x, (~t)._1, (~t)._2, (~t)._3, (~t)._4)))
       case Some(n) =>
-        fromArrayStaged('($consArray(~x, ~toArrayStaged(self, tailSize))), Some(n + 1))
+        fromArrayStaged[H *: T]('($consArray(~x, ~toArrayStaged(self, tailSize))), Some(n + 1))
       case _ =>
         '(dynamic_*:[T, H](~self, ~x))
     }
