@@ -349,10 +349,10 @@ object FilledValue extends OpaqueValue {
       if (!sym.isPartial && !sym.isFilled)
         res += Generic(s"The lazy field $sym should be marked as `@init` in order to be accessed", setting.pos)
 
-      res.value = sym.info.value
+      res.value = sym.info.value.join(sym.value)
     }
     else {
-      res.value = sym.value
+      res.value = sym.info.value.join(sym.value)
     }
 
     res

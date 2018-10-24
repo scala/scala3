@@ -230,7 +230,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.is(Flags.PrivateOrLocal)) return
 
       val actual = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos)).value.widen()(setting.strict)
-      if (actual < FullValue) sym.annotate(defn.FilledAnnotType)
+      if (actual == PartialValue) sym.annotate(defn.PartialAnnotType)
+      else if (actual == FilledValue) sym.annotate(defn.FilledAnnotType)
 
       obj.clearDynamicCalls()
     }
