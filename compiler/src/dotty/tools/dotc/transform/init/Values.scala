@@ -93,30 +93,10 @@ sealed trait Value {
    */
   def widen(implicit setting: Setting): OpaqueValue
 
-    def recur(value: Value)(implicit setting: Setting): OpaqueValue = value match {
-      case ov: OpaqueValue => ov
-      case fv: FunctionValue =>
-        val setting2 = setting.freshHeap
-        val res = fv(i => HotValue, i => NoPosition)(setting2)
-        if (res.hasErrors) WarmValue
-        else recur(res.value)(setting2)
-      case sv: SliceValue =>
-        setting.heap(sv.id).asSlice.widen
-      case ov: ObjectValue =>
-        if (ov.open) ColdValue
-        else ov.slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-          if (acc != HotValue) return WarmValue
-          recur(v).join(acc)
-        }
-      case UnionValue(vs) =>
-        vs.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-          if (v == ColdValue || acc == ColdValue) return ColdValue
-          else acc.join(recur(v))
-        }
-      // case NoValue => NoValue
-      case _ => // impossible
-        ???
-    }
+  def isIcy:  Boolean = this == IcyValue
+  def isCold: Boolean = this == ColdValue
+  def isWarm: Boolean = this.isInstanceOf[WarmValue]
+  def isHot:  Boolean = this == HotValue
 }
 
 /** The value is absent */
@@ -177,19 +157,23 @@ abstract sealed class OpaqueValue extends SingleValue {
   // not supported
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
-  def <(that: OpaqueValue): Boolean = (this, that) match {
-    case (HotValue, _) => false
-    case (WarmValue, ColdValue | WarmValue | IcyValue) => false
-    case (ColdValue, ColdValue | IcyValue) => false
-    case (IcyValue, IcyValue) => false
-    case _ => true
+  def join(that: OpaqueValue): OpaqueValue = (this, that) match {
+    case (_, IcyValue) | (IcyValue, _) => IcyValue
+    case (ColdValue, _) | (_, ColdValue) => ColdValue
+    case (WarmValue(deps1), WarmValue(deps2)) => WarmValue(deps1 ++ deps2)
+    case (w: WarmValue, _) => w
+    case (_, w: WarmValue) => w
+    case _ => HotValue
   }
 
-  def join(that: OpaqueValue): OpaqueValue =
-    if (this < that) this else that
-
-  def meet(that: OpaqueValue): OpaqueValue =
-    if (this < that) that else this
+  def meet(that: OpaqueValue): OpaqueValue = (this, that) match {
+    case (_, HotValue) | (HotValue, _) => HotValue
+    case (WarmValue(deps1), WarmValue(deps2)) => WarmValue(deps1 & deps2)
+    case (w: WarmValue, _) => w
+    case (_, w: WarmValue) => w
+    case (ColdValue, _) | (_, ColdValue) => ColdValue
+    case _ => IcyValue
+  }
 
   def widen(implicit setting: Setting): OpaqueValue = this
 }
@@ -211,7 +195,7 @@ object HotValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
-    if (args.exists(_.widen < HotValue)) obj.add(cls, WarmValue)
+    if (args.exists(_.widen < HotValue)) obj.add(cls, WarmValue())
 
     Res()
   }
@@ -260,27 +244,11 @@ object IcyValue extends OpaqueValue {
     res
   }
 
-  /** assign to cold is always fine? */
-  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = Res()
+  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = ???
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val paramInfos = constr.info.paramInfoss.flatten
-    val res = Value.checkParams(constr.owner, paramInfos, values, argPos)
-    if (res.hasErrors) return res
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
-    val cls = constr.owner.asClass
-    if (!cls.isCold) {
-      res += Generic(s"The nested $cls should be marked as `@cold` in order to be instantiated", setting.pos)
-      res.value = HotValue
-      return res
-    }
-
-    obj.add(cls, WarmValue)
-
-    Res()
-  }
-
-  def show(implicit setting: ShowSetting): String = "Cold"
+  def show(implicit setting: ShowSetting): String = "Icy"
 
   override def toString = "icy value"
 }
@@ -330,7 +298,7 @@ object ColdValue extends OpaqueValue {
       return res
     }
 
-    obj.add(cls, WarmValue)
+    obj.add(cls, WarmValue())
 
     Res()
   }
@@ -340,7 +308,13 @@ object ColdValue extends OpaqueValue {
   override def toString = "cold value"
 }
 
-object WarmValue extends OpaqueValue {
+/** A warm value has all its fields assigned.
+ *
+ *  A warm value is not fully initialized, as it may depend on fields or methods of cold/warm values.
+ *
+ *  If `deps.isEmpty`, then the value has unknown dependencies.
+ */
+case class WarmValue(val deps: Set[Type] = Set.empty) extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
@@ -379,7 +353,7 @@ object WarmValue extends OpaqueValue {
       return res
     }
 
-    obj.add(cls, WarmValue)
+    obj.add(cls, WarmValue())
 
     Res()
   }
@@ -613,10 +587,8 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       if (sym.owner.is(Flags.Trait))
         return ColdValue.select(sym)
       else
-        return WarmValue.select(sym)
+        return WarmValue().select(sym)
     }
-
-    if (this.widen == HotValue) return HotValue.select(sym)
 
     val res = Res()
 
@@ -635,7 +607,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     else {
       // select on unknown super
       assert(target.isDefinedOn(tp))
-      WarmValue.select(target) ++ res.effects
+      WarmValue().select(target) ++ res.effects
     }
   }
 
@@ -652,7 +624,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     else {
       // select on unknown super
       assert(target.isDefinedOn(tp))
-      WarmValue.assign(target, value)
+      WarmValue().assign(target, value)
     }
   }
 
@@ -663,7 +635,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       slices(outerCls).init(constr, values, argPos, obj)
     }
     else {
-      val value = if (cls.isDefinedOn(tp)) WarmValue else ColdValue
+      val value = if (cls.isDefinedOn(tp)) WarmValue() else ColdValue
       value.init(constr, values, argPos, obj)
     }
   }
@@ -671,7 +643,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def widen(implicit setting: Setting): OpaqueValue =
     if (open) ColdValue
     else slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-      if (acc != HotValue) return WarmValue
+      if (acc != HotValue) return WarmValue()
       v.widen.join(acc)
     }
 

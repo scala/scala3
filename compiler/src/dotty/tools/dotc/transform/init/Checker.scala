@@ -175,7 +175,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
       else {
         val value = res.value.widen(setting.strict)
-        if (value != HotValue) ctx.warning("Cold lazy value must return a full value", sym.pos)
+        if (!value.isHot) ctx.warning("Cold lazy value must return a full value", sym.pos)
       }
     }
 
@@ -200,10 +200,10 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (res.value != HotValue && !sym.isCalledIn(cls)) { // effective init
+      else if (!res.value.isHot && !sym.isCalledIn(cls)) { // effective init
         setting.ctx.warning("An init method must return a full value", sym.pos)
       }
-      else if (res.value == HotValue && sym.isCalledIn(cls)) { // de facto @init
+      else if (res.value.isHot && sym.isCalledIn(cls)) { // de facto @init
         sym.annotate(defn.InitAnnotType)
       }
 
@@ -221,7 +221,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
       else {
         val value = res.value.widen(setting.strict)
-        if (value != HotValue) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
+        if (!value.isHot) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
       }
 
       obj.clearDynamicCalls()
@@ -232,8 +232,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.is(Flags.PrivateOrLocal)) return
 
       val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting.strict)
-      if (actual == ColdValue) sym.annotate(defn.ColdAnnotType)
-      else if (actual == WarmValue) sym.annotate(defn.WarmAnnotType)
+      if (actual.isCold) sym.annotate(defn.ColdAnnotType)
+      else if (actual.isWarm) sym.annotate(defn.WarmAnnotType)
 
       obj.clearDynamicCalls()
     }

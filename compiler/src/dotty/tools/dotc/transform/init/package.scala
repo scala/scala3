@@ -29,7 +29,7 @@ package object init {
 
     def value(implicit ctx: Context) =
       if (isCold) ColdValue
-      else if (isWarm) WarmValue
+      else if (isWarm) WarmValue()
       else HotValue
   }
 
@@ -67,7 +67,7 @@ package object init {
 
     def value(implicit ctx: Context) =
       if (isCold) ColdValue
-      else if (isWarm) WarmValue
+      else if (isWarm) WarmValue()
       else HotValue
 
     def isConcreteField(implicit ctx: Context) =
