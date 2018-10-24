@@ -806,8 +806,8 @@ class Definitions {
   def SetterMetaAnnot(implicit ctx: Context): ClassSymbol = SetterMetaAnnotType.symbol.asClass
   lazy val ShowAsInfixAnotType: TypeRef = ctx.requiredClassRef("scala.annotation.showAsInfix")
   def ShowAsInfixAnnot(implicit ctx: Context): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
-  lazy val RawAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.raw")
-  def RawAnnot(implicit ctx: Context): ClassSymbol = RawAnnotType.symbol.asClass
+  lazy val ColdAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.cold")
+  def ColdAnnot(implicit ctx: Context): ClassSymbol = ColdAnnotType.symbol.asClass
   lazy val FilledAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.filled")
   def FilledAnnot(implicit ctx: Context): ClassSymbol = FilledAnnotType.symbol.asClass
   lazy val InitAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.init")

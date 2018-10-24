@@ -5,7 +5,7 @@ class Parent {
   val name = "parent"
 }
 
-class Child(parent: Raw[Parent]) {
+class Child(parent: Cold[Parent]) {
   val name = "child"
   var number = 0
 

@@ -25,7 +25,7 @@ class Foo(x: Int) {
 }
 
 
-class Bar(x: Int, m: Raw[String]) {
+class Bar(x: Int, m: Cold[String]) {
   var from: String = _
   var to: String = _
   val message = "hello, world"

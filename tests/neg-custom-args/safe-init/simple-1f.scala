@@ -1,4 +1,4 @@
-class Foo(x: Raw[String]) {
+class Foo(x: Cold[String]) {
   var name: String = _
   name.size    // error
 
@@ -11,7 +11,7 @@ class Foo(x: Raw[String]) {
   name = x
 }
 
-class Bar(x: Raw[String]) {
+class Bar(x: Cold[String]) {
   var name: String = x
   name.size    // error
 

@@ -9,7 +9,7 @@ class Foo {
   new bar.Inner            // error
 }
 
-class Bar(val foo: Raw[Foo]) {
+class Bar(val foo: Cold[Foo]) {
   val inner = new foo.Inner   // error
 
   class Inner {

@@ -29,13 +29,13 @@ object Checker {
 
 /** This transform checks initialization is safe based on data-flow analysis
  *
- *  - Raw
- *  - Filled
- *  - Full
+ *  - Cold
+ *  - Warm
+ *  - Hot
  *
- *  1. A _full_ object is fully initialized.
- *  2. All fields of a _filled_ object are assigned, but the fields may refer to non-full objects.
- *  3. A _raw_ object may have unassigned fields.
+ *  1. A _hot_ object is fully initialized.
+ *  2. All fields of a _warm_ object are assigned, but the fields may refer to non-full objects.
+ *  3. A _cold_ object may have unassigned fields.
  *
  *  TODO:
  *   - check default arguments of init methods
@@ -79,7 +79,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         mbrd <- self.member(mbr.name).alternatives
         tp = mbr.info.asSeenFrom(self, mbr.owner)
         if mbrd.info.overrides(tp, matchLoosely = true) &&
-           !mbrd.symbol.isInit && !mbrd.symbol.isRaw &
+           !mbrd.symbol.isInit && !mbrd.symbol.isCold &
            !mbrd.symbol.isCalledAbove(cls.asClass) &&
            !mbrd.symbol.is(Deferred)
       } ctx.warning(invalidImplementMsg(mbrd.symbol), cls.pos)
@@ -136,13 +136,13 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def checkMethod(ddef: tpd.DefDef): Unit = {
       val sym = ddef.symbol
-      if (!sym.isEffectiveRaw) return
+      if (!sym.isEffectiveCold) return
 
       val root = Heap.createRootEnv
       val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
       indexOuter(cls)(setting)
-      if (sym.isRaw) root.add(cls, BlankValue)
-      else root.add(cls, RawValue)
+      if (sym.isCold) root.add(cls, BlankValue)
+      else root.add(cls, ColdValue)
 
       val value = analyzer.methodValue(ddef)(setting.strict)
       val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
@@ -158,13 +158,13 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def checkLazy(vdef: tpd.ValDef): Unit = {
       val sym = vdef.symbol
-      if (!sym.isEffectiveRaw) return
+      if (!sym.isEffectiveCold) return
 
       val root = Heap.createRootEnv
       val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
       indexOuter(cls)(setting)
-      if (sym.isRaw) root.add(cls, BlankValue)
-      else root.add(cls, RawValue)
+      if (sym.isCold) root.add(cls, BlankValue)
+      else root.add(cls, ColdValue)
 
       val value = analyzer.lazyValue(vdef)(setting.strict)
       val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
@@ -175,7 +175,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
       else {
         val value = res.value.widen()(setting.strict)
-        if (value != FullValue) ctx.warning("Raw lazy value must return a full value", sym.pos)
+        if (value != FullValue) ctx.warning("Cold lazy value must return a full value", sym.pos)
       }
     }
 
@@ -232,7 +232,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.is(Flags.PrivateOrLocal)) return
 
       val actual = obj.select(sym, isStaticDispatch = true).value.widen()(setting.strict)
-      if (actual == RawValue) sym.annotate(defn.RawAnnotType)
+      if (actual == ColdValue) sym.annotate(defn.ColdAnnotType)
       else if (actual == FilledValue) sym.annotate(defn.FilledAnnotType)
 
       obj.clearDynamicCalls()

@@ -5,9 +5,9 @@ package scala.annotation
  *  be assigned yet.
  *
  *  When used on methods, it means `this` and `super`
- *  are raw.
+ *  are cold.
  *
  *  When used on constructors, it means the immediate
- *  outer is raw.
+ *  outer is cold.
  */
-class raw extends StaticAnnotation
+class cold extends StaticAnnotation

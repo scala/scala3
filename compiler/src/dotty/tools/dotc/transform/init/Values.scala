@@ -62,7 +62,7 @@ sealed trait Value {
 
   /** Join two values
    *
-   *  NoValue < Raw < Filled < Full
+   *  NoValue < Cold < Filled < Full
    */
   def join(other: Value): Value = (this, other) match {
     case (FullValue, v) => v
@@ -71,8 +71,8 @@ sealed trait Value {
     case (_, NoValue) => NoValue
     case (BlankValue, _) => BlankValue
     case (_, BlankValue) => BlankValue
-    case (RawValue, _) => RawValue
-    case (_, RawValue) => RawValue
+    case (ColdValue, _) => ColdValue
+    case (_, ColdValue) => ColdValue
     case (v1: OpaqueValue, v2: OpaqueValue)     => v1.join(v2)
     case (o1: ObjectValue, o2: ObjectValue) if o1 `eq` o2 => o1
     case (f1: FunctionValue, f2: FunctionValue) if f1 `eq` f2 => f1
@@ -105,14 +105,14 @@ sealed trait Value {
       case sv: SliceValue =>
         setting.heap(sv.id).asSlice.widen
       case ov: ObjectValue =>
-        if (ov.open) RawValue
+        if (ov.open) ColdValue
         else ov.slices.values.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
           if (acc != FullValue) return FilledValue
           recur(v).join(acc)
         }
       case UnionValue(vs) =>
         vs.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
-          if (v == RawValue || acc == RawValue) return RawValue
+          if (v == ColdValue || acc == ColdValue) return ColdValue
           else acc.join(recur(v))
         }
       // case NoValue => NoValue
@@ -177,8 +177,8 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def <(that: OpaqueValue): Boolean = (this, that) match {
     case (FullValue, _) => false
-    case (FilledValue, RawValue | FilledValue) => false
-    case (RawValue, RawValue) => false
+    case (FilledValue, ColdValue | FilledValue) => false
+    case (ColdValue, ColdValue) => false
     case _ => true
   }
 
@@ -235,17 +235,17 @@ object BlankValue extends OpaqueValue {
     val res = Res(value = FullValue)
 
     if (sym.is(Flags.Method)) {
-      if (!sym.isRaw && !sym.name.is(DefaultGetterName))
+      if (!sym.isCold && !sym.name.is(DefaultGetterName))
         res += Generic(s"The $sym should be marked as `@raw` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
-      if (!sym.isRaw)
+      if (!sym.isCold)
         res += Generic(s"The lazy field $sym should be marked as `@raw` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
-      if (!sym.isRaw)
+      if (!sym.isCold)
         res += Generic(s"The nested $sym should be marked as `@raw` in order to be instantiated", setting.pos)
     }
     else {  // field select
@@ -264,7 +264,7 @@ object BlankValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isRaw) {
+    if (!cls.isCold) {
       res += Generic(s"The nested $cls should be marked as `@raw` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
@@ -275,32 +275,31 @@ object BlankValue extends OpaqueValue {
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Raw"
+  def show(implicit setting: ShowSetting): String = "Cold"
 
   override def toString = "blank value"
 }
 
 /** A raw value, where class/trait params are initialized, but body fields are not
  *
- *  TODO: rename to `raw`
  */
-object RawValue extends OpaqueValue {
+object ColdValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     // set state to Full, don't report same error message again
     val res = Res(value = FullValue)
 
     if (sym.is(Flags.Method)) {
-      if (!sym.isRaw && !sym.name.is(DefaultGetterName))
+      if (!sym.isCold && !sym.name.is(DefaultGetterName))
         res += Generic(s"The $sym should be marked as `@raw` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
-      if (!sym.isRaw)
+      if (!sym.isCold)
         res += Generic(s"The lazy field $sym should be marked as `@raw` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
-      if (!sym.isRaw)
+      if (!sym.isCold)
         res += Generic(s"The nested $sym should be marked as `@raw` in order to be instantiated", setting.pos)
     }
     else {  // field select
@@ -320,7 +319,7 @@ object RawValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isRaw) {
+    if (!cls.isCold) {
       res += Generic(s"The nested $cls should be marked as `@raw` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
@@ -331,7 +330,7 @@ object RawValue extends OpaqueValue {
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Raw"
+  def show(implicit setting: ShowSetting): String = "Cold"
 
   override def toString = "raw value"
 }
@@ -340,13 +339,13 @@ object FilledValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
-      if (!sym.isRaw && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
+      if (!sym.isCold && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
         res += Generic(s"The $sym should be marked as `@init` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy) && !sym.isEffectiveInit) {
-      if (!sym.isRaw && !sym.isFilled)
+      if (!sym.isCold && !sym.isFilled)
         res += Generic(s"The lazy field $sym should be marked as `@init` in order to be accessed", setting.pos)
 
       res.value = sym.info.value.join(sym.value)
@@ -369,7 +368,7 @@ object FilledValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isRaw && !cls.isFilled) {
+    if (!cls.isCold && !cls.isFilled) {
       res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
@@ -602,7 +601,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     // select on self type
     if (!target.exists) {
       if (sym.owner.is(Flags.Trait))
-        return RawValue.select(sym)
+        return ColdValue.select(sym)
       else
         return FilledValue.select(sym)
     }
@@ -634,7 +633,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val target = resolve(sym)
 
     // select on self type
-    if (!target.exists) return RawValue.assign(sym, value)
+    if (!target.exists) return ColdValue.assign(sym, value)
 
     val cls = target.owner.asClass
     if (slices.contains(cls)) {
@@ -654,7 +653,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       slices(outerCls).init(constr, values, argPos, obj)
     }
     else {
-      val value = if (cls.isDefinedOn(tp)) FilledValue else RawValue
+      val value = if (cls.isDefinedOn(tp)) FilledValue else ColdValue
       value.init(constr, values, argPos, obj)
     }
   }

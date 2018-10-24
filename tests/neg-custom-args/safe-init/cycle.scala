@@ -7,7 +7,7 @@ class Parent {
   def show = child.show
 }
 
-class Child(parent: Raw[Parent]) {
+class Child(parent: Cold[Parent]) {
   val name = "child"
 
   println(parent.name) // error

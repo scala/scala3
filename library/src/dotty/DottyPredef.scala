@@ -41,6 +41,6 @@ object DottyPredef {
 
   @forceInline def locally[T](body: => T): T = body
 
-  type Raw[T] = T @scala.annotation.raw
+  type Cold[T] = T @scala.annotation.cold
   type Filled[T]  = T @scala.annotation.filled
 }

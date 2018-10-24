@@ -1,4 +1,4 @@
-import scala.annotation.raw
+import scala.annotation.cold
 
 trait Foo {
   val x = "world"
@@ -15,12 +15,12 @@ trait Bar {
   def foo(x: String) = "hello, " + x
 }
 
-class Qux extends Foo with Bar  // error: Bar.foo needs to be annotated with `@raw`
+class Qux extends Foo with Bar  // error: Bar.foo needs to be annotated with `@cold`
 
 trait Yun {
   val m = "hello"
 
-  @raw
+  @cold
   def foo(n: Int) =  m    // error // error
 }
 

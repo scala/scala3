@@ -1,4 +1,4 @@
-class Foo(n: Raw[String]) {
+class Foo(n: Cold[String]) {
   foo(new Foo("Jack"))         // recursive creation
 
   val name: String = n

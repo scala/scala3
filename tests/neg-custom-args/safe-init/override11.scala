@@ -1,4 +1,4 @@
-class B(a: Raw[A]) {
+class B(a: Cold[A]) {
   val m: A = a
 }
 

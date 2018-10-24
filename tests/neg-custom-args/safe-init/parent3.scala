@@ -1,11 +1,11 @@
-abstract class Parent(p: Raw[String]) {
+abstract class Parent(p: Cold[String]) {
   val x = "name"
   lazy val z = bar
   def foo = bar
   def bar: Int
 }
 
-class Child(o: Raw[String]) extends Parent(o) {
+class Child(o: Cold[String]) extends Parent(o) {
   val y = "hello"
 
   val m = this.x

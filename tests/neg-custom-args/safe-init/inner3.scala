@@ -1,6 +1,6 @@
 class Foo {
   val bar = new Bar(this)
-  var x: bar.Inner = _   // ok, raw value as type prefix
+  var x: bar.Inner = _   // ok, cold value as type prefix
 
   class Inner {
     val len = list.size
@@ -11,7 +11,7 @@ class Foo {
   x = null
 }
 
-class Bar(val foo: Raw[Foo]) {
+class Bar(val foo: Cold[Foo]) {
   val inner = new foo.Inner   // error
 
   class Inner {
