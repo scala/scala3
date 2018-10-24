@@ -183,7 +183,7 @@ class Env(outerId: Int) extends HeapEntry {
       this(sym) = value
       Res()
     }
-    else if (value.widen() != HotValue) // leak assign
+    else if (value.widen != HotValue) // leak assign
       Res(effects = Vector(Generic("Cannot leak an object under initialization", setting.pos)))
     else Res()
 
@@ -316,7 +316,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
       // check outer
       val owner = cls.owner
       if (!owner.isClass) HotValue
-      else innerEnv(owner).widen()
+      else innerEnv(owner).widen
     }
   }
 }

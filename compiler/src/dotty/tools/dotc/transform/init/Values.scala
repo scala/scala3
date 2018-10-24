@@ -26,7 +26,7 @@ object Value {
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
-      if (value.widen() < tp.value)
+      if (value.widen < tp.value)
         return Res(effects = Vector(Generic("Leak of object under initialization to " + sym.show, pos)))
     }
     Res()
@@ -91,16 +91,13 @@ sealed trait Value {
    *
    *  Widening is needed at analysis boundary.
    */
-  def widen(handler: Vector[Effect] => Unit = effs => ())(implicit setting: Setting): OpaqueValue = {
+  def widen(implicit setting: Setting): OpaqueValue = {
     def recur(value: Value)(implicit setting: Setting): OpaqueValue = value match {
       case ov: OpaqueValue => ov
       case fv: FunctionValue =>
         val setting2 = setting.freshHeap
         val res = fv(i => HotValue, i => NoPosition)(setting2)
-        if (res.hasErrors) {
-          handler(res.effects)
-          WarmValue
-        }
+        if (res.hasErrors) WarmValue
         else recur(res.value)(setting2)
       case sv: SliceValue =>
         setting.heap(sv.id).asSlice.widen
@@ -195,7 +192,7 @@ object HotValue extends OpaqueValue {
     else Res()
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (value.widen() != HotValue)
+    if (value.widen != HotValue)
       Res(effects = Vector(Generic("Cannot assign an object under initialization to a full object", setting.pos)))
     else Res()
 
@@ -206,7 +203,7 @@ object HotValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
-    if (args.exists(_.widen() < HotValue)) obj.add(cls, WarmValue)
+    if (args.exists(_.widen < HotValue)) obj.add(cls, WarmValue)
 
     Res()
   }
@@ -358,7 +355,7 @@ object WarmValue extends OpaqueValue {
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (value.widen() < sym.info.value)
+    if (value.widen < sym.info.value)
       Res(effects = Vector(Generic("Cannot assign an object of a lower state to a field of higher state", setting.pos)))
     else Res()
 
@@ -606,7 +603,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         return WarmValue.select(sym)
     }
 
-    if (this.widen() == HotValue) return HotValue.select(sym)
+    if (this.widen == HotValue) return HotValue.select(sym)
 
     val res = Res()
 
