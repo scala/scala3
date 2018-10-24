@@ -91,7 +91,8 @@ sealed trait Value {
    *
    *  Widening is needed at analysis boundary.
    */
-  def widen(implicit setting: Setting): OpaqueValue = {
+  def widen(implicit setting: Setting): OpaqueValue
+
     def recur(value: Value)(implicit setting: Setting): OpaqueValue = value match {
       case ov: OpaqueValue => ov
       case fv: FunctionValue =>
@@ -116,9 +117,6 @@ sealed trait Value {
       case _ => // impossible
         ???
     }
-
-    recur(this)
-  }
 }
 
 /** The value is absent */
@@ -127,6 +125,7 @@ object NoValue extends Value {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = ???
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = ???
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
+  def widen(implicit setting: Setting): OpaqueValue = ???
 
   def show(implicit setting: ShowSetting): String = "NoValue"
 }
@@ -160,6 +159,12 @@ case class UnionValue(val values: Set[SingleValue]) extends Value {
     }
   }
 
+  def widen(implicit setting: Setting): OpaqueValue =
+    values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
+      if (v == ColdValue || acc == ColdValue) return ColdValue
+      else acc.join(recur(v))
+    }
+
   def +(value: SingleValue): UnionValue = UnionValue(values + value)
   def ++(uv: UnionValue): UnionValue = UnionValue(values ++ uv.values)
 
@@ -174,8 +179,9 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def <(that: OpaqueValue): Boolean = (this, that) match {
     case (HotValue, _) => false
-    case (WarmValue, ColdValue | WarmValue) => false
-    case (ColdValue, ColdValue) => false
+    case (WarmValue, ColdValue | WarmValue | IcyValue) => false
+    case (ColdValue, ColdValue | IcyValue) => false
+    case (IcyValue, IcyValue) => false
     case _ => true
   }
 
@@ -184,6 +190,8 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def meet(that: OpaqueValue): OpaqueValue =
     if (this < that) that else this
+
+  def widen(implicit setting: Setting): OpaqueValue = this
 }
 
 object HotValue extends OpaqueValue {
@@ -503,6 +511,9 @@ abstract class LazyValue extends SingleValue {
   def show(implicit setting: ShowSetting): String = toString
 
   override def toString: String = "LazyValue@" + hashCode
+
+  // impossible
+  def widen(implicit setting: Setting): OpaqueValue = ???
 }
 
 /** A slice of an object */
@@ -551,6 +562,8 @@ class SliceValue(val id: Int) extends SingleValue {
     val tmpl = slice.classInfos(cls)
     setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(slice.innerEnv))
   }
+
+  def widen(implicit setting: Setting): OpaqueValue = setting.heap(id).asSlice.widen
 
   override def hashCode = id
 
@@ -654,6 +667,13 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       value.init(constr, values, argPos, obj)
     }
   }
+
+  def widen(implicit setting: Setting): OpaqueValue =
+    if (open) ColdValue
+    else slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
+      if (acc != HotValue) return WarmValue
+      v.widen.join(acc)
+    }
 
   def show(implicit setting: ShowSetting): String = {
     val body = slices.map { case (k, v) => "[" +k.show + "]" + setting.indent(v.show(setting)) }.mkString("\n")
