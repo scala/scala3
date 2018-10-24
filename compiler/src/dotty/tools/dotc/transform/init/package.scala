@@ -76,6 +76,9 @@ package object init {
 
     def isField(implicit ctx: Context) =
       sym.isTerm && sym.is(AnyFlags, butNot = Method | Lazy | Deferred)
+
+    def annotate(tp: Type)(implicit ctx: Context) =
+      sym.addAnnotation(Annotations.ConcreteAnnotation(tpd.New(tp, Nil)))
   }
 
   implicit def setting2ctx(implicit s: Setting): Context = s.ctx

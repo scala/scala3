@@ -191,7 +191,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template)(implicit setting: Setting) = {
     def checkMethod(sym: Symbol): Unit = {
-      if (!sym.isEffectiveInit) return
+      if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
 
       var res = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos))
       if (!sym.info.isParameterless)
@@ -200,8 +200,11 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         setting.ctx.warning("Calling the init method causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (res.value != FullValue) {
+      else if (res.value != FullValue && !sym.isCalledIn(cls)) { // effective init
         setting.ctx.warning("An init method must return a full value", sym.pos)
+      }
+      else if (res.value == FullValue && sym.isCalledIn(cls)) { // add @init
+        sym.annotate(defn.InitAnnotType)
       }
 
       obj.clearDynamicCalls()
@@ -227,13 +230,13 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.is(Flags.PrivateOrLocal)) return
 
       val actual = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos)).value.widen()(setting.strict)
-      if (actual < FullValue) sym.addAnnotation(Annotations.ConcreteAnnotation(New(defn.FilledAnnotType, Nil)))
+      if (actual < FullValue) sym.annotate(defn.FilledAnnotType)
 
       obj.clearDynamicCalls()
     }
 
     tmpl.body.foreach {
-      case ddef: DefDef if ddef.symbol.isInit && !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
+      case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkMethod(ddef.symbol)
       case vdef: ValDef if vdef.symbol.is(Lazy)  =>
         checkLazy(vdef.symbol)
