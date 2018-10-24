@@ -69,8 +69,8 @@ sealed trait Value {
     case (v, HotValue) => v
     case (NoValue, _) => NoValue
     case (_, NoValue) => NoValue
-    case (BlankValue, _) => BlankValue
-    case (_, BlankValue) => BlankValue
+    case (IcyValue, _) => IcyValue
+    case (_, IcyValue) => IcyValue
     case (ColdValue, _) => ColdValue
     case (_, ColdValue) => ColdValue
     case (v1: OpaqueValue, v2: OpaqueValue)     => v1.join(v2)
@@ -213,7 +213,7 @@ object HotValue extends OpaqueValue {
   override def toString = "hot value"
 }
 
-/** A blank value, where class/trait params are not yet initialized
+/** An icy value, where class/trait params are not yet initialized
  *
  *  abstract class A {
  *    def f: Int
@@ -226,7 +226,7 @@ object HotValue extends OpaqueValue {
  *
  *  class C extends A with B(20)
  */
-object BlankValue extends OpaqueValue {
+object IcyValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     // set state to Hot, don't report same error message again
     val res = Res(value = HotValue)
@@ -274,7 +274,7 @@ object BlankValue extends OpaqueValue {
 
   def show(implicit setting: ShowSetting): String = "Cold"
 
-  override def toString = "blank value"
+  override def toString = "icy value"
 }
 
 /** A cold value, where class/trait params are initialized, but body fields are not

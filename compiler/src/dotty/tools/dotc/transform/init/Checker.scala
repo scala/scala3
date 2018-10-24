@@ -141,7 +141,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       val root = Heap.createRootEnv
       val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
       indexOuter(cls)(setting)
-      if (sym.isCold) root.add(cls, BlankValue)
+      if (sym.isCold) root.add(cls, IcyValue)
       else root.add(cls, ColdValue)
 
       val value = analyzer.methodValue(ddef)(setting.strict)
@@ -163,7 +163,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       val root = Heap.createRootEnv
       val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
       indexOuter(cls)(setting)
-      if (sym.isCold) root.add(cls, BlankValue)
+      if (sym.isCold) root.add(cls, IcyValue)
       else root.add(cls, ColdValue)
 
       val value = analyzer.lazyValue(vdef)(setting.strict)
