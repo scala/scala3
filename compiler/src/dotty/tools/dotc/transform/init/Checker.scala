@@ -190,30 +190,32 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   }
 
   def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template)(implicit setting: Setting) = {
-    def checkMethod(sym: Symbol): Unit = {
+    def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
+      val sym = ddef.symbol
       if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
 
-      var res = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos))
+      var res = obj.select(sym, isStaticDispatch = true)
       if (!sym.info.isParameterless)
         res = res.value.apply(i => FullValue, i => NoPosition)
       if (res.hasErrors) {
-        setting.ctx.warning("Calling the init method causes errors", sym.pos)
+        setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else if (res.value != FullValue && !sym.isCalledIn(cls)) { // effective init
         setting.ctx.warning("An init method must return a full value", sym.pos)
       }
-      else if (res.value == FullValue && sym.isCalledIn(cls)) { // add @init
+      else if (res.value == FullValue && sym.isCalledIn(cls)) { // de facto @init
         sym.annotate(defn.InitAnnotType)
       }
 
       obj.clearDynamicCalls()
     }
 
-    def checkLazy(sym: Symbol): Unit = {
+    def checkLazy(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
+      val sym = vdef.symbol
       if (!sym.isEffectiveInit) return
 
-      val res = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos))
+      val res = obj.select(sym, isStaticDispatch = true)
       if (res.hasErrors) {
         setting.ctx.warning("Forcing init lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
@@ -226,10 +228,11 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       obj.clearDynamicCalls()
     }
 
-    def checkValDef(sym: Symbol): Unit = {
+    def checkValDef(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
+      val sym = vdef.symbol
       if (sym.is(Flags.PrivateOrLocal)) return
 
-      val actual = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos)).value.widen()(setting.strict)
+      val actual = obj.select(sym, isStaticDispatch = true).value.widen()(setting.strict)
       if (actual == PartialValue) sym.annotate(defn.PartialAnnotType)
       else if (actual == FilledValue) sym.annotate(defn.FilledAnnotType)
 
@@ -238,11 +241,11 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     tmpl.body.foreach {
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkMethod(ddef.symbol)
+        checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
       case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-        checkLazy(vdef.symbol)
+        checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
       case vdef: ValDef =>
-        checkValDef(vdef.symbol)
+        checkValDef(vdef)(setting.withPos(vdef.symbol.pos))
       case _ =>
     }
   }

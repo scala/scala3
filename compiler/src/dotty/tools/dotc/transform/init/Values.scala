@@ -553,7 +553,7 @@ class SliceValue(val id: Int) extends SingleValue {
     val cls = constr.owner.asClass
     val slice = setting.heap(id).asSlice
     val tmpl = slice.classInfos(cls)
-    setting.indexer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(slice.innerEnv))
+    setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(slice.innerEnv))
   }
 
   override def hashCode = id

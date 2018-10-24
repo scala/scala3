@@ -226,7 +226,7 @@ class Env(outerId: Int) extends HeapEntry {
     val cls = constr.owner.asClass
     if (this.containsClass(cls)) {
       val tmpl = this.getClassDef(cls)
-      setting.indexer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(this))
+      setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(this))
     }
     else FullValue.init(constr, values, argPos, obj)
   }

@@ -12,7 +12,7 @@ case class Setting(
   env: Env,
   pos: Position,
   ctx: Context,
-  indexer: Indexer,
+  analyzer: Analyzer,
   allowDynamic: Boolean = true) {
     def strict: Setting = copy(allowDynamic = false)
     def heap: Heap = env.heap

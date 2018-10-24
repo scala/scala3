@@ -1,5 +1,5 @@
 class Foo(x: Partial[String]) {
-  var name: String = _     // error
+  var name: String = _
   name.size    // error
 
   name = "hello, world"
@@ -12,7 +12,7 @@ class Foo(x: Partial[String]) {
 }
 
 class Bar(x: Partial[String]) {
-  var name: String = x              // error
+  var name: String = x
   name.size    // error
 
   name = "hello, world"

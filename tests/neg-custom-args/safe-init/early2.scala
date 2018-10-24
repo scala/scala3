@@ -5,7 +5,7 @@ class Parent {
 class Child extends Parent {
   val a = 4
 
-  def g() = foo()  // error
+  def g() = foo()  // error // error
   g()  // error
 
   val b = 10
