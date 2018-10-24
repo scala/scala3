@@ -26,8 +26,9 @@ object Value {
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
-      if (!value.widen.isHot && !tp.value.isCold)  // warm objects only leak as cold, for safety and simplicity
-        return Res(effects = Vector(Generic("Leak of object under initialization to " + sym.show, pos)))
+      val wValue = value.widen
+      if (!wValue.isHot && !tp.value.isCold || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
+        return Res(effects = Vector(Generic("Unsafe leak of object under initialization to " + sym.show, pos)))
     }
     Res()
   }
@@ -105,7 +106,7 @@ object NoValue extends Value {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = ???
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = ???
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
-  def widen(implicit setting: Setting): OpaqueValue = ???
+  def widen(implicit setting: Setting): OpaqueValue = ColdValue
 
   def show(implicit setting: ShowSetting): String = "NoValue"
 }
@@ -141,8 +142,7 @@ case class UnionValue(val values: Set[SingleValue]) extends Value {
 
   def widen(implicit setting: Setting): OpaqueValue =
     values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-      if (v == ColdValue || acc == ColdValue) return ColdValue
-      else acc.join(v.widen)
+      acc.join(v.widen)
     }
 
   def +(value: SingleValue): UnionValue = UnionValue(values + value)
@@ -336,10 +336,12 @@ case class WarmValue(val deps: Set[Type] = Set.empty) extends OpaqueValue {
     res
   }
 
-  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (!value.widen.isHot && !sym.isCold)
+  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {
+    val wValue = value.widen
+    if (!wValue.isHot && !sym.isCold || wValue.isIcy)
       Res(effects = Vector(Generic("Cannot assign an object of a lower state to a field of higher state", setting.pos)))
     else Res()
+  }
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
     val paramInfos = constr.info.paramInfoss.flatten
@@ -485,9 +487,6 @@ abstract class LazyValue extends SingleValue {
   def show(implicit setting: ShowSetting): String = toString
 
   override def toString: String = "LazyValue@" + hashCode
-
-  // impossible
-  def widen(implicit setting: Setting): OpaqueValue = ???
 }
 
 /** A slice of an object */
@@ -537,7 +536,8 @@ class SliceValue(val id: Int) extends SingleValue {
     setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(slice.innerEnv))
   }
 
-  def widen(implicit setting: Setting): OpaqueValue = setting.heap(id).asSlice.widen
+  def widen(implicit setting: Setting): OpaqueValue =
+    setting.heap(id).asSlice.widen
 
   override def hashCode = id
 
@@ -643,7 +643,6 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def widen(implicit setting: Setting): OpaqueValue =
     if (open) ColdValue
     else slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-      if (acc != HotValue) return WarmValue()
       v.widen.join(acc)
     }
 
