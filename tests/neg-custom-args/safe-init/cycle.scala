@@ -7,7 +7,7 @@ class Parent {
   def show = child.show
 }
 
-class Child(parent: Partial[Parent]) {
+class Child(parent: Raw[Parent]) {
   val name = "child"
 
   println(parent.name) // error

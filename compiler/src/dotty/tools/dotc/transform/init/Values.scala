@@ -62,7 +62,7 @@ sealed trait Value {
 
   /** Join two values
    *
-   *  NoValue < Partial < Filled < Full
+   *  NoValue < Raw < Filled < Full
    */
   def join(other: Value): Value = (this, other) match {
     case (FullValue, v) => v
@@ -71,8 +71,8 @@ sealed trait Value {
     case (_, NoValue) => NoValue
     case (BlankValue, _) => BlankValue
     case (_, BlankValue) => BlankValue
-    case (PartialValue, _) => PartialValue
-    case (_, PartialValue) => PartialValue
+    case (RawValue, _) => RawValue
+    case (_, RawValue) => RawValue
     case (v1: OpaqueValue, v2: OpaqueValue)     => v1.join(v2)
     case (o1: ObjectValue, o2: ObjectValue) if o1 `eq` o2 => o1
     case (f1: FunctionValue, f2: FunctionValue) if f1 `eq` f2 => f1
@@ -105,14 +105,14 @@ sealed trait Value {
       case sv: SliceValue =>
         setting.heap(sv.id).asSlice.widen
       case ov: ObjectValue =>
-        if (ov.open) PartialValue
+        if (ov.open) RawValue
         else ov.slices.values.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
           if (acc != FullValue) return FilledValue
           recur(v).join(acc)
         }
       case UnionValue(vs) =>
         vs.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
-          if (v == PartialValue || acc == PartialValue) return PartialValue
+          if (v == RawValue || acc == RawValue) return RawValue
           else acc.join(recur(v))
         }
       // case NoValue => NoValue
@@ -177,8 +177,8 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def <(that: OpaqueValue): Boolean = (this, that) match {
     case (FullValue, _) => false
-    case (FilledValue, PartialValue | FilledValue) => false
-    case (PartialValue, PartialValue) => false
+    case (FilledValue, RawValue | FilledValue) => false
+    case (RawValue, RawValue) => false
     case _ => true
   }
 
@@ -235,18 +235,18 @@ object BlankValue extends OpaqueValue {
     val res = Res(value = FullValue)
 
     if (sym.is(Flags.Method)) {
-      if (!sym.isPartial && !sym.name.is(DefaultGetterName))
-        res += Generic(s"The $sym should be marked as `@partial` in order to be called", setting.pos)
+      if (!sym.isRaw && !sym.name.is(DefaultGetterName))
+        res += Generic(s"The $sym should be marked as `@raw` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
-      if (!sym.isPartial)
-        res += Generic(s"The lazy field $sym should be marked as `@partial` in order to be accessed", setting.pos)
+      if (!sym.isRaw)
+        res += Generic(s"The lazy field $sym should be marked as `@raw` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
-      if (!sym.isPartial)
-        res += Generic(s"The nested $sym should be marked as `@partial` in order to be instantiated", setting.pos)
+      if (!sym.isRaw)
+        res += Generic(s"The nested $sym should be marked as `@raw` in order to be instantiated", setting.pos)
     }
     else {  // field select
       res += Generic(s"The $sym may not be initialized", setting.pos)
@@ -255,7 +255,7 @@ object BlankValue extends OpaqueValue {
     res
   }
 
-  /** assign to partial is always fine? */
+  /** assign to raw is always fine? */
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = Res()
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
@@ -264,8 +264,8 @@ object BlankValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isPartial) {
-      res += Generic(s"The nested $cls should be marked as `@partial` in order to be instantiated", setting.pos)
+    if (!cls.isRaw) {
+      res += Generic(s"The nested $cls should be marked as `@raw` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
     }
@@ -275,7 +275,7 @@ object BlankValue extends OpaqueValue {
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Partial"
+  def show(implicit setting: ShowSetting): String = "Raw"
 
   override def toString = "blank value"
 }
@@ -284,24 +284,24 @@ object BlankValue extends OpaqueValue {
  *
  *  TODO: rename to `raw`
  */
-object PartialValue extends OpaqueValue {
+object RawValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     // set state to Full, don't report same error message again
     val res = Res(value = FullValue)
 
     if (sym.is(Flags.Method)) {
-      if (!sym.isPartial && !sym.name.is(DefaultGetterName))
-        res += Generic(s"The $sym should be marked as `@partial` in order to be called", setting.pos)
+      if (!sym.isRaw && !sym.name.is(DefaultGetterName))
+        res += Generic(s"The $sym should be marked as `@raw` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
-      if (!sym.isPartial)
-        res += Generic(s"The lazy field $sym should be marked as `@partial` in order to be accessed", setting.pos)
+      if (!sym.isRaw)
+        res += Generic(s"The lazy field $sym should be marked as `@raw` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
-      if (!sym.isPartial)
-        res += Generic(s"The nested $sym should be marked as `@partial` in order to be instantiated", setting.pos)
+      if (!sym.isRaw)
+        res += Generic(s"The nested $sym should be marked as `@raw` in order to be instantiated", setting.pos)
     }
     else {  // field select
       if (!sym.isClassParam)
@@ -311,7 +311,7 @@ object PartialValue extends OpaqueValue {
     res
   }
 
-  /** assign to partial is always fine? */
+  /** assign to raw is always fine? */
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = Res()
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
@@ -320,8 +320,8 @@ object PartialValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isPartial) {
-      res += Generic(s"The nested $cls should be marked as `@partial` in order to be instantiated", setting.pos)
+    if (!cls.isRaw) {
+      res += Generic(s"The nested $cls should be marked as `@raw` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
     }
@@ -331,22 +331,22 @@ object PartialValue extends OpaqueValue {
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Partial"
+  def show(implicit setting: ShowSetting): String = "Raw"
 
-  override def toString = "partial value"
+  override def toString = "raw value"
 }
 
 object FilledValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
-      if (!sym.isPartial && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
+      if (!sym.isRaw && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
         res += Generic(s"The $sym should be marked as `@init` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy) && !sym.isEffectiveInit) {
-      if (!sym.isPartial && !sym.isFilled)
+      if (!sym.isRaw && !sym.isFilled)
         res += Generic(s"The lazy field $sym should be marked as `@init` in order to be accessed", setting.pos)
 
       res.value = sym.info.value.join(sym.value)
@@ -369,7 +369,7 @@ object FilledValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isPartial && !cls.isFilled) {
+    if (!cls.isRaw && !cls.isFilled) {
       res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
@@ -602,7 +602,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     // select on self type
     if (!target.exists) {
       if (sym.owner.is(Flags.Trait))
-        return PartialValue.select(sym)
+        return RawValue.select(sym)
       else
         return FilledValue.select(sym)
     }
@@ -634,7 +634,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val target = resolve(sym)
 
     // select on self type
-    if (!target.exists) return PartialValue.assign(sym, value)
+    if (!target.exists) return RawValue.assign(sym, value)
 
     val cls = target.owner.asClass
     if (slices.contains(cls)) {
@@ -654,7 +654,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       slices(outerCls).init(constr, values, argPos, obj)
     }
     else {
-      val value = if (cls.isDefinedOn(tp)) FilledValue else PartialValue
+      val value = if (cls.isDefinedOn(tp)) FilledValue else RawValue
       value.init(constr, values, argPos, obj)
     }
   }

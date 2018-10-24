@@ -1,4 +1,4 @@
-class Foo(val foo1: Partial[Foo], val foo2: Foo) {
+class Foo(val foo1: Raw[Foo], val foo2: Foo) {
   class Inner {
     val len = name.size    // error
   }

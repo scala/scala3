@@ -5,9 +5,9 @@ package scala.annotation
  *  be assigned yet.
  *
  *  When used on methods, it means `this` and `super`
- *  are partial.
+ *  are raw.
  *
  *  When used on constructors, it means the immediate
- *  outer is partial.
+ *  outer is raw.
  */
-class partial extends StaticAnnotation
+class raw extends StaticAnnotation

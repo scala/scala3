@@ -216,7 +216,7 @@ class Env(outerId: Int) extends HeapEntry {
     }
     else if (sym.isClass && this.containsClass(sym.asClass)) Res()
     else {
-      // How do we know the class/method/field does not capture/use a partial/filled outer?
+      // How do we know the class/method/field does not capture/use a raw/filled outer?
       // If method/field exist, then the outer class beyond the method/field is full,
       // i.e. external methods/fields/classes are always safe.
       FullValue.select(sym)
@@ -307,11 +307,11 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
   }
 
   def widen(implicit setting: Setting): OpaqueValue = {
-    def isPartialOrFilled(value: Value): Boolean =
-      value == PartialValue || value == FilledValue
+    def isRawOrFilled(value: Value): Boolean =
+      value == RawValue || value == FilledValue
 
-    if (symbols.exists { case (sym, value) => sym.isField && value == NoValue }) PartialValue
-    else if (symbols.exists { case (sym, value) => sym.isField && (sym.info.isPartial || sym.info.isFilled) }) FilledValue
+    if (symbols.exists { case (sym, value) => sym.isField && value == NoValue }) RawValue
+    else if (symbols.exists { case (sym, value) => sym.isField && (sym.info.isRaw || sym.info.isFilled) }) FilledValue
     else {
       // check outer
       val owner = cls.owner

@@ -1,4 +1,4 @@
-import scala.annotation.partial
+import scala.annotation.raw
 import scala.annotation.init
 import scala.collection.mutable
 
@@ -25,7 +25,7 @@ class Bar2 extends Bar {
 class Foo1 {
   val map: mutable.Map[Int, String] = mutable.Map.empty
 
-  @partial
+  @raw
   def enter(k: Int, v: String) = map(k) = v // error // error
 }
 
@@ -33,7 +33,7 @@ class Foo1 {
 abstract class Foo2 {
   def map: mutable.Map[Int, String]
 
-  @partial
+  @raw
   def enter(k: Int, v: String) = map(k) = v  // error // error
 }
 

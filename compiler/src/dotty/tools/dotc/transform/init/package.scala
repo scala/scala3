@@ -23,12 +23,12 @@ import collection.mutable
 
 package object init {
   implicit class TypeOps(val tp: Type) extends AnyVal {
-    def isPartial(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.PartialAnnot)
+    def isRaw(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.RawAnnot)
 
     def isFilled(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.FilledAnnot)
 
     def value(implicit ctx: Context) =
-      if (isPartial) PartialValue
+      if (isRaw) RawValue
       else if (isFilled) FilledValue
       else FullValue
   }
@@ -39,17 +39,17 @@ package object init {
     }
 
   implicit class SymOps(val sym: Symbol) extends AnyVal {
-    def isPartial(implicit ctx: Context) = sym.hasAnnotation(defn.PartialAnnot)
+    def isRaw(implicit ctx: Context) = sym.hasAnnotation(defn.RawAnnot)
 
     def isFilled(implicit ctx: Context) = sym.hasAnnotation(defn.FilledAnnot)
 
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
 
-    def isEffectivePartial(implicit ctx: Context) =
-      sym.isPartial || sym.isCalledAbove(sym.owner.asClass)
+    def isEffectiveRaw(implicit ctx: Context) =
+      sym.isRaw || sym.isCalledAbove(sym.owner.asClass)
 
     def isEffectiveInit(implicit ctx: Context) =
-      !sym.isEffectivePartial &&
+      !sym.isEffectiveRaw &&
       (sym.isInit || sym.allOverriddenSymbols.exists(_.isInit))
 
     def isCalledIn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
@@ -64,7 +64,7 @@ package object init {
       tp.classSymbol.isSubClass(sym.owner)
 
     def value(implicit ctx: Context) =
-      if (isPartial) PartialValue
+      if (isRaw) RawValue
       else if (isFilled) FilledValue
       else FullValue
 

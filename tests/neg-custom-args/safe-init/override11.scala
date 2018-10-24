@@ -1,4 +1,4 @@
-class B(a: Partial[A]) {
+class B(a: Raw[A]) {
   val m: A = a
 }
 

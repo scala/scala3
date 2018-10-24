@@ -5,7 +5,7 @@ class Parent {
   val name = "parent"
 }
 
-class Child(parent: Partial[Parent]) {
+class Child(parent: Raw[Parent]) {
   val name = "child"
   var number = 0
 

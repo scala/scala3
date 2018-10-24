@@ -1,4 +1,4 @@
-class Foo(x: Partial[String]) {
+class Foo(x: Raw[String]) {
   var name: String = _
   name.size    // error
 
@@ -11,7 +11,7 @@ class Foo(x: Partial[String]) {
   name = x
 }
 
-class Bar(x: Partial[String]) {
+class Bar(x: Raw[String]) {
   var name: String = x
   name.size    // error
 

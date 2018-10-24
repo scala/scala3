@@ -6,12 +6,12 @@ class Parent(x: Int) {
   lazy val l1 = name.size                    // ok: l1 is lazy
   lazy val l2 = addr.size                    // error: l2 is forced at L32 before `addr` is initialized
 
-  val fun: Int => Int = n => n + list.size   // ok, fun is a partial value
-  val bar: Bar = new Bar("bar", fun)         // ok, Bar accepts partial value
+  val fun: Int => Int = n => n + list.size   // ok, fun is a raw value
+  val bar: Bar = new Bar("bar", fun)         // ok, Bar accepts raw value
   bar.result                                 // error: bar depends on list
 
-  val child = new Child(this)                // error: `this` is partial, while full value expected
-  List(5, 9).map(n => n + list.size)         // error: partial value used as full value
+  val child = new Child(this)                // error: `this` is raw, while full value expected
+  List(5, 9).map(n => n + list.size)         // error: raw value used as full value
 
   f(20)                                      // error: list not initialized
 
@@ -35,7 +35,7 @@ class Parent(x: Int) {
 }
 
 
-class Bar(val name: String, fun: Partial[Int => Int]) {
+class Bar(val name: String, fun: Raw[Int => Int]) {
   def result = fun(20)
 }
 

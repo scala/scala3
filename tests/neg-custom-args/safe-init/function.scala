@@ -4,7 +4,7 @@ class Foo {
   val fun2: Int => Int = n => 1 + n + list.size    // error: fun is called in the next line
   fun2(5)                                          // error: latent effects
 
-  List(5, 9).map(n => 2 + n + list.size)         // error: closure is partial, but a full value expected
+  List(5, 9).map(n => 2 + n + list.size)         // error: closure is raw, but a full value expected
 
   val list = List(1, 2, 3)
 

@@ -1,4 +1,4 @@
-import scala.annotation.partial
+import scala.annotation.raw
 
 trait Foo {
   val x = "world"
@@ -15,12 +15,12 @@ trait Bar {
   def foo(x: String) = "hello, " + x
 }
 
-class Qux extends Foo with Bar  // error: Bar.foo needs to be annotated with `@partial`
+class Qux extends Foo with Bar  // error: Bar.foo needs to be annotated with `@raw`
 
 trait Yun {
   val m = "hello"
 
-  @partial
+  @raw
   def foo(n: Int) =  m    // error // error
 }
 

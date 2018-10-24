@@ -29,17 +29,16 @@ object Checker {
 
 /** This transform checks initialization is safe based on data-flow analysis
  *
- *  - Partial
+ *  - Raw
  *  - Filled
  *  - Full
  *
  *  1. A _full_ object is fully initialized.
  *  2. All fields of a _filled_ object are assigned, but the fields may refer to non-full objects.
- *  3. A _partial_ object may have unassigned fields.
+ *  3. A _raw_ object may have unassigned fields.
  *
  *  TODO:
  *   - check default arguments of init methods
- *   - selection on ParamAccessors of partial value is fine if the param is not partial
  *   - handle tailrec calls during initialization (which captures `this`)
  */
 class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
@@ -65,7 +64,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
 
     def invalidImplementMsg(sym: Symbol) = {
-      val annot = if (sym.owner.is(Trait)) "partial" else "init"
+      val annot = if (sym.owner.is(Trait)) "raw" else "init"
       s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
           |Because the method is called during initialization."""
         .stripMargin
@@ -80,7 +79,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         mbrd <- self.member(mbr.name).alternatives
         tp = mbr.info.asSeenFrom(self, mbr.owner)
         if mbrd.info.overrides(tp, matchLoosely = true) &&
-           !mbrd.symbol.isInit && !mbrd.symbol.isPartial &
+           !mbrd.symbol.isInit && !mbrd.symbol.isRaw &
            !mbrd.symbol.isCalledAbove(cls.asClass) &&
            !mbrd.symbol.is(Deferred)
       } ctx.warning(invalidImplementMsg(mbrd.symbol), cls.pos)
@@ -99,8 +98,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     val analyzer = new Analyzer
 
-    // partial check
-    partialCheck(cls, tmpl, analyzer)
+    // raw check
+    rawCheck(cls, tmpl, analyzer)
 
     // current class env needs special setup
     val root = Heap.createRootEnv
@@ -130,20 +129,20 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if (obj.open) initCheck(cls, obj, tmpl)(setting)
   }
 
-  def partialCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
+  def rawCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
     val obj = new ObjectValue(tp = cls.typeRef, open = !cls.is(Final) && !cls.isAnonymousClass)
       // enhancement possible to check if there are actual children
       // and whether children are possible in other modules.
 
     def checkMethod(ddef: tpd.DefDef): Unit = {
       val sym = ddef.symbol
-      if (!sym.isEffectivePartial) return
+      if (!sym.isEffectiveRaw) return
 
       val root = Heap.createRootEnv
       val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
       indexOuter(cls)(setting)
-      if (sym.isPartial) root.add(cls, BlankValue)
-      else root.add(cls, PartialValue)
+      if (sym.isRaw) root.add(cls, BlankValue)
+      else root.add(cls, RawValue)
 
       val value = analyzer.methodValue(ddef)(setting.strict)
       val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
@@ -159,24 +158,24 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def checkLazy(vdef: tpd.ValDef): Unit = {
       val sym = vdef.symbol
-      if (!sym.isEffectivePartial) return
+      if (!sym.isEffectiveRaw) return
 
       val root = Heap.createRootEnv
       val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
       indexOuter(cls)(setting)
-      if (sym.isPartial) root.add(cls, BlankValue)
-      else root.add(cls, PartialValue)
+      if (sym.isRaw) root.add(cls, BlankValue)
+      else root.add(cls, RawValue)
 
       val value = analyzer.lazyValue(vdef)(setting.strict)
       val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
 
       if (res.hasErrors) {
-        ctx.warning("Forcing partial lazy value causes errors", sym.pos)
+        ctx.warning("Forcing raw lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
         val value = res.value.widen()(setting.strict)
-        if (value != FullValue) ctx.warning("Partial lazy value must return a full value", sym.pos)
+        if (value != FullValue) ctx.warning("Raw lazy value must return a full value", sym.pos)
       }
     }
 
@@ -233,7 +232,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.is(Flags.PrivateOrLocal)) return
 
       val actual = obj.select(sym, isStaticDispatch = true).value.widen()(setting.strict)
-      if (actual == PartialValue) sym.annotate(defn.PartialAnnotType)
+      if (actual == RawValue) sym.annotate(defn.RawAnnotType)
       else if (actual == FilledValue) sym.annotate(defn.FilledAnnotType)
 
       obj.clearDynamicCalls()

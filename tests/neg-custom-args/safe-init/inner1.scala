@@ -20,7 +20,7 @@ object lib {
   def escape(x: Foo#Inner): Unit = ???
 }
 
-class Bar(val foo: Partial[Foo]) {
+class Bar(val foo: Raw[Foo]) {
   val inner = new foo.Inner   // error
 
   class Inner {

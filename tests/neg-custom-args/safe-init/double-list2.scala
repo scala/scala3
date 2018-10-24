@@ -4,7 +4,7 @@ class List {
   def insert(data: AnyRef) = sentinel.insertAfter(data)
 }
 
-class Node(var prev: Node, var next: Node, parent: Partial[List], data: AnyRef) {
+class Node(var prev: Node, var next: Node, parent: Raw[List], data: AnyRef) {
   parent.insert("hello")  // error
 
   def insertAfter(data: AnyRef) = {

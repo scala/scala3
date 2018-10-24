@@ -1,4 +1,4 @@
-class Foo(n: Partial[String]) {
+class Foo(n: Raw[String]) {
   foo(new Foo("Jack"))        // recursive creation
 
   val name: String = n
