@@ -26,7 +26,7 @@ object Value {
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
-      if (value.widen < tp.value)
+      if (!value.widen.isHot && !tp.value.isCold)  // warm objects only leak as cold, for safety and simplicity
         return Res(effects = Vector(Generic("Leak of object under initialization to " + sym.show, pos)))
     }
     Res()
@@ -142,7 +142,7 @@ case class UnionValue(val values: Set[SingleValue]) extends Value {
   def widen(implicit setting: Setting): OpaqueValue =
     values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
       if (v == ColdValue || acc == ColdValue) return ColdValue
-      else acc.join(recur(v))
+      else acc.join(v.widen)
     }
 
   def +(value: SingleValue): UnionValue = UnionValue(values + value)
@@ -195,7 +195,7 @@ object HotValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
-    if (args.exists(_.widen < HotValue)) obj.add(cls, WarmValue())
+    if (args.exists(!_.widen.isHot)) obj.add(cls, WarmValue())
 
     Res()
   }
@@ -337,7 +337,7 @@ case class WarmValue(val deps: Set[Type] = Set.empty) extends OpaqueValue {
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (value.widen < sym.value)
+    if (!value.widen.isHot && !sym.isCold)
       Res(effects = Vector(Generic("Cannot assign an object of a lower state to a field of higher state", setting.pos)))
     else Res()
 
