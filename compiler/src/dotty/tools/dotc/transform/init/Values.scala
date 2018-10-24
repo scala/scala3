@@ -62,7 +62,7 @@ sealed trait Value {
 
   /** Join two values
    *
-   *  NoValue < Cold < Filled < Full
+   *  NoValue < Cold < Warm < Full
    */
   def join(other: Value): Value = (this, other) match {
     case (FullValue, v) => v
@@ -99,7 +99,7 @@ sealed trait Value {
         val res = fv(i => FullValue, i => NoPosition)(setting2)
         if (res.hasErrors) {
           handler(res.effects)
-          FilledValue
+          WarmValue
         }
         else recur(res.value)(setting2)
       case sv: SliceValue =>
@@ -107,7 +107,7 @@ sealed trait Value {
       case ov: ObjectValue =>
         if (ov.open) ColdValue
         else ov.slices.values.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
-          if (acc != FullValue) return FilledValue
+          if (acc != FullValue) return WarmValue
           recur(v).join(acc)
         }
       case UnionValue(vs) =>
@@ -177,7 +177,7 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def <(that: OpaqueValue): Boolean = (this, that) match {
     case (FullValue, _) => false
-    case (FilledValue, ColdValue | FilledValue) => false
+    case (WarmValue, ColdValue | WarmValue) => false
     case (ColdValue, ColdValue) => false
     case _ => true
   }
@@ -206,7 +206,7 @@ object FullValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(FullValue))
-    if (args.exists(_.widen() < FullValue)) obj.add(cls, FilledValue)
+    if (args.exists(_.widen() < FullValue)) obj.add(cls, WarmValue)
 
     Res()
   }
@@ -236,17 +236,17 @@ object BlankValue extends OpaqueValue {
 
     if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.name.is(DefaultGetterName))
-        res += Generic(s"The $sym should be marked as `@raw` in order to be called", setting.pos)
+        res += Generic(s"The $sym should be marked as `@cold` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
       if (!sym.isCold)
-        res += Generic(s"The lazy field $sym should be marked as `@raw` in order to be accessed", setting.pos)
+        res += Generic(s"The lazy field $sym should be marked as `@cold` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
       if (!sym.isCold)
-        res += Generic(s"The nested $sym should be marked as `@raw` in order to be instantiated", setting.pos)
+        res += Generic(s"The nested $sym should be marked as `@cold` in order to be instantiated", setting.pos)
     }
     else {  // field select
       res += Generic(s"The $sym may not be initialized", setting.pos)
@@ -255,7 +255,7 @@ object BlankValue extends OpaqueValue {
     res
   }
 
-  /** assign to raw is always fine? */
+  /** assign to cold is always fine? */
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = Res()
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
@@ -265,12 +265,12 @@ object BlankValue extends OpaqueValue {
 
     val cls = constr.owner.asClass
     if (!cls.isCold) {
-      res += Generic(s"The nested $cls should be marked as `@raw` in order to be instantiated", setting.pos)
+      res += Generic(s"The nested $cls should be marked as `@cold` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
     }
 
-    obj.add(cls, FilledValue)
+    obj.add(cls, WarmValue)
 
     Res()
   }
@@ -280,7 +280,7 @@ object BlankValue extends OpaqueValue {
   override def toString = "blank value"
 }
 
-/** A raw value, where class/trait params are initialized, but body fields are not
+/** A cold value, where class/trait params are initialized, but body fields are not
  *
  */
 object ColdValue extends OpaqueValue {
@@ -290,17 +290,17 @@ object ColdValue extends OpaqueValue {
 
     if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.name.is(DefaultGetterName))
-        res += Generic(s"The $sym should be marked as `@raw` in order to be called", setting.pos)
+        res += Generic(s"The $sym should be marked as `@cold` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
       if (!sym.isCold)
-        res += Generic(s"The lazy field $sym should be marked as `@raw` in order to be accessed", setting.pos)
+        res += Generic(s"The lazy field $sym should be marked as `@cold` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
       if (!sym.isCold)
-        res += Generic(s"The nested $sym should be marked as `@raw` in order to be instantiated", setting.pos)
+        res += Generic(s"The nested $sym should be marked as `@cold` in order to be instantiated", setting.pos)
     }
     else {  // field select
       if (!sym.isClassParam)
@@ -310,7 +310,7 @@ object ColdValue extends OpaqueValue {
     res
   }
 
-  /** assign to raw is always fine? */
+  /** assign to cold is always fine? */
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = Res()
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
@@ -320,22 +320,22 @@ object ColdValue extends OpaqueValue {
 
     val cls = constr.owner.asClass
     if (!cls.isCold) {
-      res += Generic(s"The nested $cls should be marked as `@raw` in order to be instantiated", setting.pos)
+      res += Generic(s"The nested $cls should be marked as `@cold` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
     }
 
-    obj.add(cls, FilledValue)
+    obj.add(cls, WarmValue)
 
     Res()
   }
 
   def show(implicit setting: ShowSetting): String = "Cold"
 
-  override def toString = "raw value"
+  override def toString = "cold value"
 }
 
-object FilledValue extends OpaqueValue {
+object WarmValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
@@ -345,7 +345,7 @@ object FilledValue extends OpaqueValue {
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy) && !sym.isEffectiveInit) {
-      if (!sym.isCold && !sym.isFilled)
+      if (!sym.isCold && !sym.isWarm)
         res += Generic(s"The lazy field $sym should be marked as `@init` in order to be accessed", setting.pos)
 
       res.value = sym.info.value.join(sym.value)
@@ -368,20 +368,20 @@ object FilledValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isCold && !cls.isFilled) {
+    if (!cls.isCold && !cls.isWarm) {
       res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
       res.value = FullValue
       return res
     }
 
-    obj.add(cls, FilledValue)
+    obj.add(cls, WarmValue)
 
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Filled"
+  def show(implicit setting: ShowSetting): String = "Warm"
 
-  override def toString = "filled value"
+  override def toString = "warm value"
 }
 
 /** A function value or value of method select */
@@ -603,7 +603,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       if (sym.owner.is(Flags.Trait))
         return ColdValue.select(sym)
       else
-        return FilledValue.select(sym)
+        return WarmValue.select(sym)
     }
 
     if (this.widen() == FullValue) return FullValue.select(sym)
@@ -625,7 +625,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     else {
       // select on unknown super
       assert(target.isDefinedOn(tp))
-      FilledValue.select(target) ++ res.effects
+      WarmValue.select(target) ++ res.effects
     }
   }
 
@@ -642,7 +642,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     else {
       // select on unknown super
       assert(target.isDefinedOn(tp))
-      FilledValue.assign(target, value)
+      WarmValue.assign(target, value)
     }
   }
 
@@ -653,7 +653,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       slices(outerCls).init(constr, values, argPos, obj)
     }
     else {
-      val value = if (cls.isDefinedOn(tp)) FilledValue else ColdValue
+      val value = if (cls.isDefinedOn(tp)) WarmValue else ColdValue
       value.init(constr, values, argPos, obj)
     }
   }

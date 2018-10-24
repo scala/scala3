@@ -64,7 +64,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
 
     def invalidImplementMsg(sym: Symbol) = {
-      val annot = if (sym.owner.is(Trait)) "raw" else "init"
+      val annot = if (sym.owner.is(Trait)) "cold" else "init"
       s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
           |Because the method is called during initialization."""
         .stripMargin
@@ -98,8 +98,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     val analyzer = new Analyzer
 
-    // raw check
-    rawCheck(cls, tmpl, analyzer)
+    // cold check
+    coldCheck(cls, tmpl, analyzer)
 
     // current class env needs special setup
     val root = Heap.createRootEnv
@@ -129,7 +129,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if (obj.open) initCheck(cls, obj, tmpl)(setting)
   }
 
-  def rawCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
+  def coldCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
     val obj = new ObjectValue(tp = cls.typeRef, open = !cls.is(Final) && !cls.isAnonymousClass)
       // enhancement possible to check if there are actual children
       // and whether children are possible in other modules.
@@ -170,7 +170,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
 
       if (res.hasErrors) {
-        ctx.warning("Forcing raw lazy value causes errors", sym.pos)
+        ctx.warning("Forcing cold lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
@@ -233,7 +233,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
       val actual = obj.select(sym, isStaticDispatch = true).value.widen()(setting.strict)
       if (actual == ColdValue) sym.annotate(defn.ColdAnnotType)
-      else if (actual == FilledValue) sym.annotate(defn.FilledAnnotType)
+      else if (actual == WarmValue) sym.annotate(defn.WarmAnnotType)
 
       obj.clearDynamicCalls()
     }

@@ -25,11 +25,11 @@ package object init {
   implicit class TypeOps(val tp: Type) extends AnyVal {
     def isCold(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.ColdAnnot)
 
-    def isFilled(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.FilledAnnot)
+    def isWarm(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.WarmAnnot)
 
     def value(implicit ctx: Context) =
       if (isCold) ColdValue
-      else if (isFilled) FilledValue
+      else if (isWarm) WarmValue
       else FullValue
   }
 
@@ -41,7 +41,7 @@ package object init {
   implicit class SymOps(val sym: Symbol) extends AnyVal {
     def isCold(implicit ctx: Context) = sym.hasAnnotation(defn.ColdAnnot)
 
-    def isFilled(implicit ctx: Context) = sym.hasAnnotation(defn.FilledAnnot)
+    def isWarm(implicit ctx: Context) = sym.hasAnnotation(defn.WarmAnnot)
 
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
 
@@ -65,7 +65,7 @@ package object init {
 
     def value(implicit ctx: Context) =
       if (isCold) ColdValue
-      else if (isFilled) FilledValue
+      else if (isWarm) WarmValue
       else FullValue
 
     def isConcreteField(implicit ctx: Context) =
