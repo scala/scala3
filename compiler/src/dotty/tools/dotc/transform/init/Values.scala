@@ -612,9 +612,11 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val res = Res()
 
     // remember dynamic calls
-    if (!isStaticDispatch && !target.isEffectivelyFinal && !target.isEffectiveInit) {
-      if (setting.allowDynamic) _dynamicCalls = _dynamicCalls + target
-      else res += Generic(s"Dynamic call to $target found", setting.pos)
+    if (!isStaticDispatch && !target.isEffectivelyFinal) {
+      if (setting.allowDynamic || target.isEffectiveInit)
+        _dynamicCalls = _dynamicCalls + target
+      else
+        res += Generic(s"Dynamic call to $target found", setting.pos)
     }
 
     val cls = target.owner.asClass
