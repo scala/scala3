@@ -39,9 +39,11 @@ package object init {
     }
 
   implicit class SymOps(val sym: Symbol) extends AnyVal {
-    def isCold(implicit ctx: Context) = sym.hasAnnotation(defn.ColdAnnot)
+    def isCold(implicit ctx: Context) =
+      sym.hasAnnotation(defn.ColdAnnot) || sym.info.isCold
 
-    def isWarm(implicit ctx: Context) = sym.hasAnnotation(defn.WarmAnnot)
+    def isWarm(implicit ctx: Context) =
+      sym.hasAnnotation(defn.WarmAnnot) || sym.info.isWarm
 
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
 

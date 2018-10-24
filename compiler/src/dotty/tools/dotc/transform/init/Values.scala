@@ -353,17 +353,17 @@ object WarmValue extends OpaqueValue {
       if (!sym.isCold && !sym.isWarm)
         res += Generic(s"The lazy field $sym should be marked as `@init` in order to be accessed", setting.pos)
 
-      res.value = sym.info.value.join(sym.value)
+      res.value = sym.value
     }
     else {
-      res.value = sym.info.value.join(sym.value)
+      res.value = sym.value
     }
 
     res
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (value.widen < sym.info.value)
+    if (value.widen < sym.value)
       Res(effects = Vector(Generic("Cannot assign an object of a lower state to a field of higher state", setting.pos)))
     else Res()
 

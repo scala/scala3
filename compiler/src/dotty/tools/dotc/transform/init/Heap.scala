@@ -307,11 +307,8 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
   }
 
   def widen(implicit setting: Setting): OpaqueValue = {
-    def isColdOrWarm(value: Value): Boolean =
-      value == ColdValue || value == WarmValue
-
     if (symbols.exists { case (sym, value) => sym.isField && value == NoValue }) ColdValue
-    else if (symbols.exists { case (sym, value) => sym.isField && (sym.info.isCold || sym.info.isWarm) }) WarmValue
+    else if (symbols.exists { case (sym, value) => sym.isField && (sym.isCold || sym.isWarm) }) WarmValue
     else {
       // check outer
       val owner = cls.owner
