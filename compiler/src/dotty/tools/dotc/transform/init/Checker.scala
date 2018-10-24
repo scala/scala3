@@ -145,8 +145,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.isPartial) root.add(cls, BlankValue)
       else root.add(cls, PartialValue)
 
-      val value = analyzer.methodValue(ddef)(setting)
-      val res = value.apply(i => FullValue, i => NoPosition)(setting)
+      val value = analyzer.methodValue(ddef)(setting.strict)
+      val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
 
       if (res.hasErrors) {
         ctx.warning("Calling the method during initialization causes errors", sym.pos)
@@ -167,15 +167,15 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym.isPartial) root.add(cls, BlankValue)
       else root.add(cls, PartialValue)
 
-      val value = analyzer.lazyValue(vdef)(setting)
-      val res = value.apply(i => FullValue, i => NoPosition)(setting)
+      val value = analyzer.lazyValue(vdef)(setting.strict)
+      val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
 
       if (res.hasErrors) {
         ctx.warning("Forcing partial lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen()(setting)
+        val value = res.value.widen()(setting.strict)
         if (value != FullValue) ctx.warning("Partial lazy value must return a full value", sym.pos)
       }
     }
@@ -216,7 +216,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen()
+        val value = res.value.widen()(setting.strict)
         if (value != FullValue) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
       }
 
@@ -226,7 +226,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     def checkValDef(sym: Symbol): Unit = {
       if (sym.is(Flags.PrivateOrLocal)) return
 
-      val actual = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos)).value.widen()
+      val actual = obj.select(sym, isStaticDispatch = true)(setting.withPos(sym.pos)).value.widen()(setting.strict)
       if (actual < FullValue) sym.addAnnotation(Annotations.ConcreteAnnotation(New(defn.FilledAnnotType, Nil)))
 
       obj.clearDynamicCalls()

@@ -50,7 +50,7 @@ package object init {
 
     def isEffectiveInit(implicit ctx: Context) =
       !sym.isEffectivePartial &&
-      (sym.isInit || sym.isCalledIn(sym.owner.asClass) || sym.allOverriddenSymbols.exists(_.isInit))
+      (sym.isInit || sym.allOverriddenSymbols.exists(_.isInit))
 
     def isCalledIn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
       calledSymsIn(cls).exists(_ == sym) || sym.allOverriddenSymbols.exists(_.isCalledIn(cls))

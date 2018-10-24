@@ -241,10 +241,10 @@ class Analyzer extends Indexer { analyzer =>
       val parentOpt = parents.find(_.tpe.classSymbol `eq` traitCls)
       parentOpt match {
         case Some(parent @ NewEx(tref, init, argss)) =>
-          checkInit(parent.tpe, init, argss, obj)(setting.withPos(cls.pos)).join(acc)
+          checkInit(parent.tpe, init, argss, obj).join(acc)
         case _ =>
           val tp = obj.tp.baseType(traitCls)
-          checkInit(tp, traitCls.primaryConstructor, Nil, obj)(setting.withPos(cls.pos)).join(acc)
+          checkInit(tp, traitCls.primaryConstructor, Nil, obj).join(acc)
       }
     }
   }

@@ -609,19 +609,22 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
     if (this.widen() == FullValue) return FullValue.select(sym)
 
+    val res = Res()
+
     // remember dynamic calls
     if (!isStaticDispatch && !target.isEffectivelyFinal && !target.isEffectiveInit) {
-      _dynamicCalls = _dynamicCalls + target
+      if (setting.allowDynamic) _dynamicCalls = _dynamicCalls + target
+      else res += Generic(s"Dynamic call to $target found", setting.pos)
     }
 
     val cls = target.owner.asClass
     if (slices.contains(cls)) {
-      slices(cls).select(target)
+      slices(cls).select(target) ++ res.effects
     }
     else {
       // select on unknown super
       assert(target.isDefinedOn(tp))
-      FilledValue.select(target)
+      FilledValue.select(target) ++ res.effects
     }
   }
 

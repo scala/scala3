@@ -135,7 +135,7 @@ trait Indexer { self: Analyzer =>
       slice.innerEnv.add(cls, obj)
 
       // call parent constructor
-      val setting2 = setting.withCtx(setting.ctx.withOwner(cls.owner)).withEnv(slice.innerEnv)
+      val setting2 = setting.withCtx(setting.ctx.withOwner(cls.owner)).withEnv(slice.innerEnv).withPos(cls.pos)
       val res = checkParents(cls, tmpl.parents, obj)(setting2)
       if (res.hasErrors) return res
 
