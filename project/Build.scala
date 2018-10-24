@@ -43,7 +43,7 @@ object Build {
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
-  val publishedDottyVersion = "0.11.0-bin-20181017-3253921-NIGHTLY" // Using a nightly for now to get worksheet support
+  val publishedDottyVersion = "0.11.0-bin-20181031-5a465af-NIGHTLY" // Using a nightly for now to get worksheet support
   val publishedSbtDottyVersion = "0.2.5"
 
 
