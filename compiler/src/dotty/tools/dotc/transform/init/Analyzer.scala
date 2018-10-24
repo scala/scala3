@@ -103,6 +103,12 @@ class Analyzer extends Indexer { analyzer =>
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
         analyzer.apply(body)
       }
+
+      def widen(implicit setting: Setting) = {
+        val res = analyzer.apply(body)
+        if (res.hasErrors) ColdValue
+        else res.value.widen
+      }
     }
 
     val thenFun = makeFun(thenp)

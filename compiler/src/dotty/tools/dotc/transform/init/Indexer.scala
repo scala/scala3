@@ -49,6 +49,11 @@ trait Indexer { self: Analyzer =>
           res
         }
       }
+
+      def widen(implicit setting2: Setting) = {
+        // capture analysis
+        WarmValue()
+      }
     }
 
   def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =
@@ -68,6 +73,11 @@ trait Indexer { self: Analyzer =>
           if (res.hasErrors) res.effects = Vector(Force(vdef.symbol, res.effects, setting2.pos))
           res
         }
+      }
+
+      def widen(implicit setting2: Setting) = {
+        // capture analysis
+        WarmValue()
       }
     }
 

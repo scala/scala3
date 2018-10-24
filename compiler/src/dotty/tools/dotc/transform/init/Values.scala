@@ -41,6 +41,8 @@ object Value {
         val paramInfos = methSym.info.paramInfoss.flatten
         checkParams(methSym, paramInfos, values, argPos)
       }
+
+      def widen(implicit setting: Setting) = HotValue
     }
   }
 }
@@ -383,9 +385,11 @@ abstract class FunctionValue extends SingleValue { self =>
               val res3 = self.apply(res2.value :: Nil, argPos)
               Res(value = res3.value, effects = res1.effects ++ res2.effects ++ res3.effects)
             }
+            def widen(implicit setting: Setting) = fun(0).widen.join(self.widen)
           }
           Res(value = composedFun)
         }
+        def widen(implicit setting: Setting) = ???
       }
       Res(value = selectedFun)
     case nme.andThen =>
@@ -400,9 +404,11 @@ abstract class FunctionValue extends SingleValue { self =>
               val res3 = res2.value.apply(res2.value :: Nil, argPos)
               Res(value = res3.value, effects = res1.effects ++ res2.effects ++ res3.effects)
             }
+            def widen(implicit setting: Setting) = fun(0).widen.join(self.widen)
           }
           Res(value = composedFun)
         }
+        def widen(implicit setting: Setting) = ???
       }
       Res(value = selectedFun)
     case nme.applyOrElse =>
@@ -416,6 +422,7 @@ abstract class FunctionValue extends SingleValue { self =>
           val res3 = res2.value.apply(arg :: Nil, argPos)
           Res(value = res1.value.join(res3.value), effects = res1.effects ++ res2.effects ++ res3.effects)
         }
+        def widen(implicit setting: Setting) = ???
       }
       Res(value = selectedFun)
     case nme.runWith =>
@@ -430,9 +437,11 @@ abstract class FunctionValue extends SingleValue { self =>
               val res3 = res2.value.apply(res2.value :: Nil, argPos)
               Res(value = HotValue, effects = res1.effects ++ res2.effects ++ res3.effects)
             }
+            def widen(implicit setting: Setting) = fun(0).widen.join(self.widen)
           }
           Res(value = composedFun)
         }
+        def widen(implicit setting: Setting) = ???
       }
       Res(value = selectedFun)
     case nme.orElse =>
@@ -447,9 +456,11 @@ abstract class FunctionValue extends SingleValue { self =>
               val res3 = res2.value.apply(arg :: Nil, argPos)
               Res(value = res1.value.join(res3.value), effects = res1.effects ++ res2.effects ++ res3.effects)
             }
+            def widen(implicit setting: Setting) = fun(0).widen.join(self.widen)
           }
           Res(value = composedFun)
         }
+        def widen(implicit setting: Setting) = ???
       }
       Res(value = selectedFun)
     case _ =>
@@ -473,6 +484,8 @@ abstract class FunctionValue extends SingleValue { self =>
         setting.heap.join(setting2.heap)
         res1.join(res2)
       }
+
+      def widen(implicit setting: Setting) = that.widen.join(self.widen)
     }
 
 }
