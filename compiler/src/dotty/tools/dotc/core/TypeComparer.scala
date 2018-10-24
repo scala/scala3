@@ -106,8 +106,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     true
   }
 
-  protected def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = ctx.gadt.bounds(sym)
-  protected def gadtSetBounds(sym: Symbol, b: TypeBounds): Unit = ctx.gadt.setBounds(sym, b)
+  protected def gadtBounds(sym: Symbol)(implicit ctx: Context) = ctx.gadt.bounds(sym)
+  protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
+  protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
 
   protected def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = tvar.underlying
 
@@ -1217,8 +1218,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         val newBounds =
           if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
           else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
+        // gadtMap can check its own satisfiability, but the subtype check is still necessary
+        // see tests/patmat/gadt-nontrivial2.scala
         isSubType(newBounds.lo, newBounds.hi) &&
-          { gadtSetBounds(tparam, newBounds); true }
+          (if (isUpper) gadtAddUpperBound(tparam, bound) else gadtAddLowerBound(tparam, bound))
       }
     }
   }
@@ -1826,9 +1829,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtBounds(sym)
   }
 
-  override def gadtSetBounds(sym: Symbol, b: TypeBounds): Unit = {
+  override def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = {
     footprint += sym.typeRef
-    super.gadtSetBounds(sym, b)
+    super.gadtAddLowerBound(sym, b)
+  }
+
+  override def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = {
+    footprint += sym.typeRef
+    super.gadtAddUpperBound(sym, b)
   }
 
   override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = {

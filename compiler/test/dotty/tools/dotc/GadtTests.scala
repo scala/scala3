@@ -20,33 +20,9 @@ class GadtTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
 
-
-  // @Test def posTestFromTasty: Unit = {
-  //   // Can be reproduced with
-  //   // > sbt
-  //   // > dotc -Ythrough-tasty -Ycheck:all <source>
-
-  //   implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-  //   compileTastyInDir("tests/pos", defaultOptions,
-  //     fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted),
-  //     decompilationFilter = FileFilter.exclude(TestSources.posDecompilationBlacklisted),
-  //     recompilationFilter = FileFilter.include(TestSources.posRecompilationWhitelist)
-  //   ).checkCompile()
-  // }
-
   @Test def compileGadtTests: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileGadtTests")
-    compileFilesInDir("tests/gadt+noCheckOptions", TestFlags(basicClasspath, noCheckOptions)).checkCompile()
-  }
-
-  @Test def compileGadtCheckOptionsTests: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileGadtCheckOptionsTests")
-    compileFilesInDir("tests/gadt+checkOptions", TestFlags(basicClasspath, noCheckOptions ++ checkOptions)).checkCompile()
-  }
-
-  @Test def compileGadtDefaultOptionsTests: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileGadtDefaultOptionsTests")
-    compileFilesInDir("tests/gadt+defaultOptions", defaultOptions).checkCompile()
+    compileFilesInDir("tests/gadt", defaultOptions).checkCompile()
   }
 }
 
