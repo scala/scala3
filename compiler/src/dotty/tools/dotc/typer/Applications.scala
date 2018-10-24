@@ -465,7 +465,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
            */
           def addTyped(arg: Arg, formal: Type): Type => Type = {
             addArg(typedArg(arg, formal), formal)
-            if (methodType.isParamDependent)
+            if (methodType.isParamDependent && typeOfArg(arg).exists)
+              // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
               safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg))
             else identity
           }
