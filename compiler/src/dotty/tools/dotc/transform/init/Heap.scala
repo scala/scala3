@@ -183,7 +183,7 @@ class Env(outerId: Int) extends HeapEntry {
       this(sym) = value
       Res()
     }
-    else if (value.widen() != FullValue) // leak assign
+    else if (value.widen() != HotValue) // leak assign
       Res(effects = Vector(Generic("Cannot leak an object under initialization", setting.pos)))
     else Res()
 
@@ -217,9 +217,9 @@ class Env(outerId: Int) extends HeapEntry {
     else if (sym.isClass && this.containsClass(sym.asClass)) Res()
     else {
       // How do we know the class/method/field does not capture/use a cold/warm outer?
-      // If method/field exist, then the outer class beyond the method/field is full,
+      // If method/field exist, then the outer class beyond the method/field is hot,
       // i.e. external methods/fields/classes are always safe.
-      FullValue.select(sym)
+      HotValue.select(sym)
     }
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
@@ -228,7 +228,7 @@ class Env(outerId: Int) extends HeapEntry {
       val tmpl = this.getClassDef(cls)
       setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(this))
     }
-    else FullValue.init(constr, values, argPos, obj)
+    else HotValue.init(constr, values, argPos, obj)
   }
 
   def show(implicit setting: ShowSetting): String = {
@@ -315,7 +315,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
     else {
       // check outer
       val owner = cls.owner
-      if (!owner.isClass) FullValue
+      if (!owner.isClass) HotValue
       else innerEnv(owner).widen()
     }
   }

@@ -24,7 +24,7 @@ import collection.mutable
 object Value {
   def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
-      val value = scala.util.Try(values(index)).getOrElse(FullValue)
+      val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
       if (value.widen() < tp.value)
         return Res(effects = Vector(Generic("Leak of object under initialization to " + sym.show, pos)))
@@ -34,7 +34,7 @@ object Value {
 
   def defaultFunctionValue(methSym: Symbol)(implicit setting: Setting): Value = {
     assert(methSym.is(Flags.Method))
-    if (methSym.info.paramNamess.isEmpty) FullValue
+    if (methSym.info.paramNamess.isEmpty) HotValue
     else new FunctionValue() {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
         val paramInfos = methSym.info.paramInfoss.flatten
@@ -62,11 +62,11 @@ sealed trait Value {
 
   /** Join two values
    *
-   *  NoValue < Cold < Warm < Full
+   *  NoValue < Cold < Warm < Hot
    */
   def join(other: Value): Value = (this, other) match {
-    case (FullValue, v) => v
-    case (v, FullValue) => v
+    case (HotValue, v) => v
+    case (v, HotValue) => v
     case (NoValue, _) => NoValue
     case (_, NoValue) => NoValue
     case (BlankValue, _) => BlankValue
@@ -96,7 +96,7 @@ sealed trait Value {
       case ov: OpaqueValue => ov
       case fv: FunctionValue =>
         val setting2 = setting.freshHeap
-        val res = fv(i => FullValue, i => NoPosition)(setting2)
+        val res = fv(i => HotValue, i => NoPosition)(setting2)
         if (res.hasErrors) {
           handler(res.effects)
           WarmValue
@@ -106,12 +106,12 @@ sealed trait Value {
         setting.heap(sv.id).asSlice.widen
       case ov: ObjectValue =>
         if (ov.open) ColdValue
-        else ov.slices.values.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
-          if (acc != FullValue) return WarmValue
+        else ov.slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
+          if (acc != HotValue) return WarmValue
           recur(v).join(acc)
         }
       case UnionValue(vs) =>
-        vs.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
+        vs.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
           if (v == ColdValue || acc == ColdValue) return ColdValue
           else acc.join(recur(v))
         }
@@ -176,7 +176,7 @@ abstract sealed class OpaqueValue extends SingleValue {
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
   def <(that: OpaqueValue): Boolean = (this, that) match {
-    case (FullValue, _) => false
+    case (HotValue, _) => false
     case (WarmValue, ColdValue | WarmValue) => false
     case (ColdValue, ColdValue) => false
     case _ => true
@@ -189,13 +189,13 @@ abstract sealed class OpaqueValue extends SingleValue {
     if (this < that) that else this
 }
 
-object FullValue extends OpaqueValue {
+object HotValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res =
     if (sym.is(Flags.Method)) Res(value = Value.defaultFunctionValue(sym))
     else Res()
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (value.widen() != FullValue)
+    if (value.widen() != HotValue)
       Res(effects = Vector(Generic("Cannot assign an object under initialization to a full object", setting.pos)))
     else Res()
 
@@ -205,15 +205,15 @@ object FullValue extends OpaqueValue {
     val res = Value.checkParams(cls, paramInfos, values, argPos)
     if (res.hasErrors) return res
 
-    val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(FullValue))
-    if (args.exists(_.widen() < FullValue)) obj.add(cls, WarmValue)
+    val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
+    if (args.exists(_.widen() < HotValue)) obj.add(cls, WarmValue)
 
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Full"
+  def show(implicit setting: ShowSetting): String = "Hot"
 
-  override def toString = "full value"
+  override def toString = "hot value"
 }
 
 /** A blank value, where class/trait params are not yet initialized
@@ -231,8 +231,8 @@ object FullValue extends OpaqueValue {
  */
 object BlankValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
-    // set state to Full, don't report same error message again
-    val res = Res(value = FullValue)
+    // set state to Hot, don't report same error message again
+    val res = Res(value = HotValue)
 
     if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.name.is(DefaultGetterName))
@@ -266,7 +266,7 @@ object BlankValue extends OpaqueValue {
     val cls = constr.owner.asClass
     if (!cls.isCold) {
       res += Generic(s"The nested $cls should be marked as `@cold` in order to be instantiated", setting.pos)
-      res.value = FullValue
+      res.value = HotValue
       return res
     }
 
@@ -285,8 +285,8 @@ object BlankValue extends OpaqueValue {
  */
 object ColdValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
-    // set state to Full, don't report same error message again
-    val res = Res(value = FullValue)
+    // set state to Hot, don't report same error message again
+    val res = Res(value = HotValue)
 
     if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.name.is(DefaultGetterName))
@@ -321,7 +321,7 @@ object ColdValue extends OpaqueValue {
     val cls = constr.owner.asClass
     if (!cls.isCold) {
       res += Generic(s"The nested $cls should be marked as `@cold` in order to be instantiated", setting.pos)
-      res.value = FullValue
+      res.value = HotValue
       return res
     }
 
@@ -370,7 +370,7 @@ object WarmValue extends OpaqueValue {
     val cls = constr.owner.asClass
     if (!cls.isCold && !cls.isWarm) {
       res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
-      res.value = FullValue
+      res.value = HotValue
       return res
     }
 
@@ -447,7 +447,7 @@ abstract class FunctionValue extends SingleValue { self =>
               val applySym = defn.FunctionClass(1).typeRef.member(nme.apply).symbol
               val res2 = fun(0).select(applySym)
               val res3 = res2.value.apply(res2.value :: Nil, argPos)
-              Res(value = FullValue, effects = res1.effects ++ res2.effects ++ res3.effects)
+              Res(value = HotValue, effects = res1.effects ++ res2.effects ++ res3.effects)
             }
           }
           Res(value = composedFun)
@@ -472,7 +472,7 @@ abstract class FunctionValue extends SingleValue { self =>
       }
       Res(value = selectedFun)
     case _ =>
-      FullValue.select(sym)
+      HotValue.select(sym)
   }
 
   /** not supported */
@@ -606,7 +606,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         return WarmValue.select(sym)
     }
 
-    if (this.widen() == FullValue) return FullValue.select(sym)
+    if (this.widen() == HotValue) return HotValue.select(sym)
 
     val res = Res()
 

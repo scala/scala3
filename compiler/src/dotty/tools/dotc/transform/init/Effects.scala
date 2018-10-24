@@ -20,7 +20,7 @@ import collection.mutable
 //=======================================
 import Effect._
 
-case class Res(var effects: Effects = Vector.empty, var value: Value = FullValue) {
+case class Res(var effects: Effects = Vector.empty, var value: Value = HotValue) {
   def +=(eff: Effect): Unit = effects = effects :+ eff
 
   def ++=(effs: Effects): Unit =

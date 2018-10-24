@@ -30,7 +30,7 @@ package object init {
     def value(implicit ctx: Context) =
       if (isCold) ColdValue
       else if (isWarm) WarmValue
-      else FullValue
+      else HotValue
   }
 
   def calledSymsIn(cls: ClassSymbol)(implicit ctx: Context): List[Symbol] =
@@ -66,7 +66,7 @@ package object init {
     def value(implicit ctx: Context) =
       if (isCold) ColdValue
       else if (isWarm) WarmValue
-      else FullValue
+      else HotValue
 
     def isConcreteField(implicit ctx: Context) =
       sym.isTerm && sym.is(AnyFlags, butNot = Deferred | Method | Local | Private)

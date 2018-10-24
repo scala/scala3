@@ -145,13 +145,13 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       else root.add(cls, ColdValue)
 
       val value = analyzer.methodValue(ddef)(setting.strict)
-      val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
+      val res = value.apply(i => HotValue, i => NoPosition)(setting.strict)
 
       if (res.hasErrors) {
         ctx.warning("Calling the method during initialization causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (res.value != FullValue) {
+      else if (res.value != HotValue) {
         ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
       }
     }
@@ -167,7 +167,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       else root.add(cls, ColdValue)
 
       val value = analyzer.lazyValue(vdef)(setting.strict)
-      val res = value.apply(i => FullValue, i => NoPosition)(setting.strict)
+      val res = value.apply(i => HotValue, i => NoPosition)(setting.strict)
 
       if (res.hasErrors) {
         ctx.warning("Forcing cold lazy value causes errors", sym.pos)
@@ -175,7 +175,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
       else {
         val value = res.value.widen()(setting.strict)
-        if (value != FullValue) ctx.warning("Cold lazy value must return a full value", sym.pos)
+        if (value != HotValue) ctx.warning("Cold lazy value must return a full value", sym.pos)
       }
     }
 
@@ -195,15 +195,15 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
       var res = obj.select(sym, isStaticDispatch = true)
       if (!sym.info.isParameterless)
-        res = res.value.apply(i => FullValue, i => NoPosition)
+        res = res.value.apply(i => HotValue, i => NoPosition)
       if (res.hasErrors) {
         setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (res.value != FullValue && !sym.isCalledIn(cls)) { // effective init
+      else if (res.value != HotValue && !sym.isCalledIn(cls)) { // effective init
         setting.ctx.warning("An init method must return a full value", sym.pos)
       }
-      else if (res.value == FullValue && sym.isCalledIn(cls)) { // de facto @init
+      else if (res.value == HotValue && sym.isCalledIn(cls)) { // de facto @init
         sym.annotate(defn.InitAnnotType)
       }
 
@@ -221,7 +221,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
       else {
         val value = res.value.widen()(setting.strict)
-        if (value != FullValue) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
+        if (value != HotValue) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
       }
 
       obj.clearDynamicCalls()
@@ -255,9 +255,9 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       val outerValue = cls.value
       val enclosingCls = cls.owner.enclosingClass
 
-      if (!cls.owner.isClass || maxValue == FullValue) {
-        setting.env.add(enclosingCls, FullValue)
-        recur(enclosingCls, FullValue)
+      if (!cls.owner.isClass || maxValue == HotValue) {
+        setting.env.add(enclosingCls, HotValue)
+        recur(enclosingCls, HotValue)
       }
       else {
         val meet = outerValue.meet(maxValue)
