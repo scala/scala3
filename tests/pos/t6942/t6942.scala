@@ -2,7 +2,7 @@
 // its budget should suffice for these simple matches (they do have a large search space)
 class Test {
   import foo.Bar // a large enum
-  def exhaustUnreachabilitysStack_ENUM_STYLE = (???: Bar) match {
+  def exhaustUnreachabilitysStack_ENUM_STYLE = (??? : Bar) match {
     case Bar.BULGARIA =>
     case _            =>
   }

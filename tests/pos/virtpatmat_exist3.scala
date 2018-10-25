@@ -1,5 +1,5 @@
 class ReferenceQueue[T] {
-  def wrapper(jref: ReferenceQueue[_]): ReferenceQueue[T] =
+  def wrapper(jref: ReferenceQueue[_]|Null): ReferenceQueue[T]|Null =
     jref match {
       case null => null
     }
