@@ -1,9 +1,11 @@
 // was t1001.scala
 class Foo;
 
+import java.lang.reflect.Constructor
+
 object Overload{
-  val foo = classOf[Foo].getConstructors()(0)
-  foo.getDeclaringClass
+  val foo: Constructor[_]|Null = classOf[Foo].getConstructors()(0)
+  foo.asInstanceOf[Constructor[_]].getDeclaringClass
 }
 
 // was t1001.scala

@@ -39,7 +39,7 @@ object JavaNull {
       // Methods in `java.lang.Class`
       paramsOnlyP(_.name == nme.newInstance),
       paramsOnlyP(_.name == nme.asSubclass),
-      paramsOnlyP(_.name == jnme.ForName)
+      paramsOnlyP(_.name == jnme.ForName),
     ).map(WithinSym(_, defn.ClassClass))
 
 
