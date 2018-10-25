@@ -1,6 +1,6 @@
 import scala.collection.mutable._
 object Test {
-  def genericArrayOps[T](xs: Array[T]): ArrayOps[T] = xs match {
+  def genericArrayOps[T](xs: Array[T]|Null): ArrayOps[T]|Null = xs match {
     case x: Array[AnyRef]  => refArrayOps[AnyRef](x).asInstanceOf[ArrayOps[T]]
     case null              => null
   }
