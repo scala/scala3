@@ -24,40 +24,43 @@ import Constants.Constant
 import collection.mutable
 
 object Capture {
-  private class CaptureTraverser(inner: Symbol, outer: Symbol)(implicit ctx: Context) extends TreeTraverser {
+  private class CaptureTraverser(setting: Setting) extends TreeTraverser {
     val captured: mutable.Set[Type] = mutable.Set.empty
 
-    /** outer is inclusive, inner is exclusive */
-    def within(sym: Symbol)(implicit ctx: Context): Boolean =
-      sym.exists && sym != inner && (sym.owner == outer || within(sym.owner))
-
-    def within(tp: Type)(implicit ctx: Context): Boolean = tp match {
-      case tp : TermRef if tp.symbol.is(Module) && ctx.owner.enclosedIn(tp.symbol.moduleClass) =>
-        // self reference by name: object O { ... O.xxx }
-        within(ThisType.raw(tp.symbol.moduleClass.typeRef))
-      case tp @ TermRef(NoPrefix, _) =>
-        within(tp.symbol)
-      case tp @ TermRef(prefix, _) =>
-        within(prefix)
-      case tp @ ThisType(tref) =>
-        within(tref.symbol)
-      case _ => false
+    def trace[T](msg: => String)(body: => T) = {
+      println(msg)
+      val res = body
+      println(msg + s" = $res" )
+      res
     }
 
-    def check(tp: Type) = if (within(tp)) captured += tp
+    def free(tp: Type)(implicit ctx: Context): Boolean = (tp match {
+      case tp : TermRef if tp.symbol.is(Module) && ctx.owner.enclosedIn(tp.symbol.moduleClass) =>
+        // self reference by name: object O { ... O.xxx }
+        free(ThisType.raw(tp.symbol.moduleClass.typeRef))
+      case tp @ TermRef(NoPrefix, _) =>
+        setting.env.contains(tp.symbol)
+      case tp @ TermRef(prefix, _) =>
+        free(prefix)
+      case tp @ ThisType(tref) =>
+        val cls = tref.symbol
+        !cls.is(Package) && setting.env.contains(cls)
+      case _ => false
+    })
+
+    def check(tp: Type)(implicit ctx: Context) = if (free(tp)) captured += tp
 
     def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
-      def enclosure = ctx.owner.enclosingMethod
-
       tree match {
         case tree: Ident =>
           check(tree.tpe)
         case Trees.Select(ths: This, _) =>
           check(tree.tpe)
         case tree: Select =>
-          traverseChildren(tree.qualifier)
+          traverse(tree.qualifier)
         case tree: This =>
-          captured += tree.tpe
+          check(tree.tpe)
+        case tree if tree.isType =>// ignore all type trees
         case _ =>
           traverseChildren(tree)
       }
@@ -68,6 +71,9 @@ object Capture {
     }
   }
 
-  def analyze(inner: Symbol, outer: Symbol)(implicit setting: Setting): Set[Type] =
-    new CaptureTraverser(inner, outer).captured.toSet
+  def analyze(tree: Tree)(implicit setting: Setting): Set[Type] = {
+    val cap = new CaptureTraverser(setting)
+    cap.traverse(tree)
+    cap.captured.toSet
+  }
 }

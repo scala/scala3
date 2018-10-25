@@ -362,9 +362,10 @@ case class WarmValue(val deps: Set[Type] = Set.empty) extends OpaqueValue {
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String = "Warm"
+  def show(implicit setting: ShowSetting): String =
+    deps.map(_.show).mkString("Warm(", ", ", ")")
 
-  override def toString = "warm value"
+  override def toString = "warm value (" + deps.size + ")"
 }
 
 /** A function value or value of method select */
@@ -653,11 +654,14 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     }
   }
 
-  def widen(implicit setting: Setting): OpaqueValue =
-    if (open) ColdValue
+  def widen(implicit setting: Setting): OpaqueValue = {
+    val o = if (open) ColdValue
     else slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
       v.widen.join(acc)
     }
+    println(o.show(setting.showSetting))
+    o
+  }
 
   def show(implicit setting: ShowSetting): String = {
     val body = slices.map { case (k, v) => "[" +k.show + "]" + setting.indent(v.show(setting)) }.mkString("\n")

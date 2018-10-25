@@ -30,7 +30,7 @@ trait Indexer { self: Analyzer =>
   def methodValue(ddef: DefDef)(implicit setting: Setting): FunctionValue =
     new FunctionValue {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting2: Setting): Res = {
-        // TODO: why implicit conversion does not work
+        // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
         if (isChecking(ddef.symbol)) {
           // TODO: check if fixed point has reached. But the domain is infinite, thus non-terminating.
@@ -51,15 +51,21 @@ trait Indexer { self: Analyzer =>
       }
 
       def widen(implicit setting2: Setting) = {
+        // TODO: implicit ambiguities
+        implicit val ctx: Context = setting2.ctx
+        val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol))
+        // println(setting2.env.show(setting2.showSetting))
         // capture analysis
-        WarmValue()
+        val captured = Capture.analyze(ddef.rhs)(setting3)
+        indentedDebug(s"captured in ${ddef.symbol}: " + captured.map(_.show).mkString(", "))
+        WarmValue(captured)
       }
     }
 
   def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =
     new LazyValue {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting2: Setting): Res = {
-        // TODO: why implicit conversion does not work
+        // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
         if (isChecking(vdef.symbol)) {
           // TODO: check if fixed point has reached. But the domain is infinite, thus non-terminating.
@@ -76,8 +82,13 @@ trait Indexer { self: Analyzer =>
       }
 
       def widen(implicit setting2: Setting) = {
+        // TODO: implicit ambiguities
+        implicit val ctx: Context = setting2.ctx
+        val setting3 = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol))
         // capture analysis
-        WarmValue()
+        val captured = Capture.analyze(vdef.rhs)(setting3)
+        indentedDebug(s"captured in ${vdef.symbol}: " + captured.map(_.show).mkString(", "))
+        WarmValue(captured)
       }
     }
 

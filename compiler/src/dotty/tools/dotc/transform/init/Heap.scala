@@ -307,8 +307,9 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
   }
 
   def widen(implicit setting: Setting): OpaqueValue = {
+    val setting2 = setting.withEnv(innerEnv.outer)
     _syms.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-      acc.join(v.widen)
+      acc.join(v.widen(setting2))
     }
     // TODO: check inner classes
   }
