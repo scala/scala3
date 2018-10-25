@@ -16,9 +16,9 @@ object Test {
    * @param m The ConcurrentMap to be converted.
    * @return A Scala mutable ConcurrentMap view of the argument.
    */
-  implicit def mapAsScalaConcurrentMap[A, B](m: juc.ConcurrentMap[A, B]): concurrent.Map[A, B] = m match {
+  implicit def mapAsScalaConcurrentMap[A, B](m: juc.ConcurrentMap[A, B]|Null): concurrent.Map[A, B]|Null = m match {
     case null                             => null
     case cmw: ConcurrentMapWrapper[_, _]  => cmw.underlying
-    case _                                => new JConcurrentMapWrapper(m)
+    case cm: juc.ConcurrentMap[A, B]      => new JConcurrentMapWrapper(cm)
   }
 }
