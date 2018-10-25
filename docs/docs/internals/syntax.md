@@ -136,7 +136,7 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
+Type              ::=  [FunArgMods | ‘.’] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
@@ -175,7 +175,7 @@ TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                
 
 ### Expressions
 ```ebnf
-Expr              ::=  [FunArgMods] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  [FunArgMods | ‘.’] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
 BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
                     |  Expr1
@@ -218,6 +218,7 @@ SimpleExpr1       ::=  Literal
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr (TypeArgs | NamedTypeArgs)                    TypeApply(expr, args)
                     |  SimpleExpr1 ArgumentExprs                                Apply(expr, args)
+                    |  SimpleExpr1 ‘.’ ParArgumentExprs
                     |  XmlExpr
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
@@ -288,6 +289,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
+                    |  ‘.’ ‘(’ ClsParams ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param

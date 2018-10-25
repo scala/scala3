@@ -41,6 +41,13 @@ sidebar:
               url: docs/reference/enums/adts.html
             - title: Translation
               url: docs/reference/enums/desugarEnums.html
+        - title: Witnesses
+            - title: Motivation
+              url: docs/reference/witnesses/motivation.html
+            - title: Witness Definitions
+              url: docs/reference/witnesses/witnesses.html
+            - title: Witness Parameters
+              url: docs/reference/witnesses/witness-params.html
         - title: Other New Features
           subsection:
             - title: Typeclass Derivation
