@@ -263,8 +263,9 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       }
 
     case tp @ TypeOf.Match(selector, cases) =>
+      val tp1 = TypeOf.Match.derived(tp)(apply(selector), cases).asInstanceOf[TypeOf]
       new PatternMatcher.Translator(NoType, null)(ctx.enterTypeOf())
-        .evaluateMatch(tp.tree.asInstanceOf[Match], normalizeBoolType).getOrElse(Stuck(tp))
+        .evaluateMatch(tp1.tree.asInstanceOf[Match], normalizeBoolType).getOrElse(Stuck(tp1))
 
     case tp =>
       mapOver(tp) match {
