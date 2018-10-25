@@ -13,8 +13,10 @@ case class Setting(
   pos: Position,
   ctx: Context,
   analyzer: Analyzer,
-  allowDynamic: Boolean = true) {
-    def strict: Setting = copy(allowDynamic = false)
+  allowDynamic: Boolean = true,
+  forceLazy: Boolean = true,
+  callParameterless: Boolean = true) {
+    def strict: Setting = copy(allowDynamic = false, forceLazy = false, callParameterless = false)
     def heap: Heap = env.heap
     def withPos(position: Position) = copy(pos = position)
     def withEnv(ienv: Env) = copy(env = ienv)

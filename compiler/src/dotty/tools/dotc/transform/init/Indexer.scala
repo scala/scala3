@@ -54,13 +54,22 @@ trait Indexer { self: Analyzer =>
         // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
         val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol))
-        // println(setting2.env.show(setting2.showSetting))
-        // capture analysis
-        val captured = Capture.analyze(ddef.rhs)(setting3)
-        indentedDebug(s"captured in ${ddef.symbol}: " + captured.map(_.show).mkString(", "))
-        WarmValue(captured)
+        widenTree(ddef)(setting3)
       }
     }
+
+  def widenTree(tree: Tree)(implicit setting: Setting): OpaqueValue = {
+    val captured = Capture.analyze(tree)
+    indentedDebug(s"captured in ${tree.symbol}: " + captured.map(_.show).mkString(", "))
+
+    val setting2 = setting.strict
+    val notHot = captured.filter { tp =>
+      val res = setting.analyzer.checkRef(tp)(setting2)
+      res.hasErrors || !res.value.widen.isHot
+    }
+    if (notHot.isEmpty) HotValue
+    else WarmValue(captured, unknownDeps = false)
+  }
 
   def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =
     new LazyValue {
@@ -85,10 +94,7 @@ trait Indexer { self: Analyzer =>
         // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
         val setting3 = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol))
-        // capture analysis
-        val captured = Capture.analyze(vdef.rhs)(setting3)
-        indentedDebug(s"captured in ${vdef.symbol}: " + captured.map(_.show).mkString(", "))
-        WarmValue(captured)
+        widenTree(vdef)(setting3)
       }
     }
 

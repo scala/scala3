@@ -22,13 +22,22 @@ import collection.mutable
 //=======================================
 
 object Value {
+
   def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
+    def message(v: OpaqueValue) = {
+      s"Unsafe leak of object ${v.show(setting.showSetting)} under initialization to ${sym.show}" ++
+      (v match {
+        case WarmValue(deps, _) =>
+          "\nThe object captures " + deps.map(_.show).mkString("", ",", ".")
+        case _ => ""
+      })
+    }
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
       val wValue = value.widen
       if (!wValue.isHot && !tp.value.isCold || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
-        return Res(effects = Vector(Generic("Unsafe leak of object under initialization to " + sym.show, pos)))
+        return Res(effects = Vector(Generic(message(wValue), pos)))
     }
     Res()
   }
@@ -162,7 +171,9 @@ abstract sealed class OpaqueValue extends SingleValue {
   def join(that: OpaqueValue): OpaqueValue = (this, that) match {
     case (_, IcyValue) | (IcyValue, _) => IcyValue
     case (ColdValue, _) | (_, ColdValue) => ColdValue
-    case (WarmValue(deps1), WarmValue(deps2)) => WarmValue(deps1 ++ deps2)
+    case (WarmValue(deps1, unknown1), WarmValue(deps2, unknown2)) =>
+      if (unknown1 || unknown2) WarmValue(Set.empty, unknownDeps = true)
+      else WarmValue(deps1 ++ deps2, unknownDeps = false)
     case (w: WarmValue, _) => w
     case (_, w: WarmValue) => w
     case _ => HotValue
@@ -170,7 +181,11 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def meet(that: OpaqueValue): OpaqueValue = (this, that) match {
     case (_, HotValue) | (HotValue, _) => HotValue
-    case (WarmValue(deps1), WarmValue(deps2)) => WarmValue(deps1 & deps2)
+    case (WarmValue(deps1, unknown1), WarmValue(deps2, unknown2)) =>
+      if (!unknown1 && !unknown2) WarmValue(deps1 & deps2, unknownDeps = false)
+      else if (!unknown1) this
+      else if (!unknown2) that
+      else WarmValue(Set.empty, unknownDeps = true)
     case (w: WarmValue, _) => w
     case (_, w: WarmValue) => w
     case (ColdValue, _) | (_, ColdValue) => ColdValue
@@ -316,7 +331,7 @@ object ColdValue extends OpaqueValue {
  *
  *  If `deps.isEmpty`, then the value has unknown dependencies.
  */
-case class WarmValue(val deps: Set[Type] = Set.empty) extends OpaqueValue {
+case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = true) extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
@@ -362,10 +377,16 @@ case class WarmValue(val deps: Set[Type] = Set.empty) extends OpaqueValue {
     Res()
   }
 
-  def show(implicit setting: ShowSetting): String =
-    deps.map(_.show).mkString("Warm(", ", ", ")")
+  override def widen(implicit setting: Setting) =
+    if (unknownDeps || deps.nonEmpty) this else HotValue
 
-  override def toString = "warm value (" + deps.size + ")"
+  def show(implicit setting: ShowSetting): String =
+    if (unknownDeps) "Warm(unkown)"
+    else deps.map(_.show).mkString("Warm(", ", ", ")")
+
+  override def toString =
+    if (unknownDeps) "Warm(unkown)"
+    else s"Warm(${deps.size}, $unknownDeps)"
 }
 
 /** A function value or value of method select */
@@ -513,14 +534,14 @@ class SliceValue(val id: Int) extends SingleValue {
     val value = slice(sym)
 
     if (sym.is(Flags.Lazy)) {
-      if (value.isInstanceOf[LazyValue]) {
+      if (value.isInstanceOf[LazyValue] && setting.forceLazy) {
         val res = value(Nil, Nil)
         slice(sym) = res.value
         res
       }
       else Res(value = value)
     }
-    else if (sym.is(Flags.Method)) {
+    else if (sym.is(Flags.Method) && setting.callParameterless) {
       if (sym.info.isParameterless) {       // parameter-less call
         value(Nil, Nil)
       }
@@ -655,12 +676,10 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   }
 
   def widen(implicit setting: Setting): OpaqueValue = {
-    val o = if (open) ColdValue
+    if (open) ColdValue
     else slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
       v.widen.join(acc)
     }
-    println(o.show(setting.showSetting))
-    o
   }
 
   def show(implicit setting: ShowSetting): String = {
