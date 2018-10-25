@@ -851,8 +851,11 @@ trait Implicits { self: Typer =>
         if (ltp.isRef(defn.NullClass)) rtp
         else if (rtp.isRef(defn.NullClass)) ltp
         else NoType
-
-      (other ne NoType) && other.classSymbol.isNullableClass
+      // Even though classes deriving from `AnyRef` are non-nullable, we still
+      // allow testing them for equality against null.
+      // This is because nulls can still sneak in without detection by the type
+      // system (e.g. via Java), so checking for null is a useful escape hatch.
+      (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
     }
 
     // Map all non-opaque abstract types to their upper bound.

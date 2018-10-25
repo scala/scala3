@@ -6,12 +6,8 @@ class Foo {
 
   val y = foo(null) // error: String argument is non-nullable
 
-  val z = foo("hello")
-
-  if (z == null) { // error: z is non-nullable
-  }
+  val z: String = foo("hello")
 
   class Bar
-
   val b: Bar = null // error: user-created classes are also non-nullable
 }
