@@ -23,9 +23,9 @@ import collection.mutable
 
 object Value {
 
-  def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
+  def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position, onlyHot: Boolean = false)(implicit setting: Setting): Res = {
     def message(v: OpaqueValue) = {
-      s"Unsafe leak of object ${v.show(setting.showSetting)} under initialization to ${sym.show}" ++
+      s"Unsafe leak of object under initialization to ${sym.show}" ++
       (v match {
         case WarmValue(deps, _) =>
           "\nThe object captures " + deps.map(_.show).mkString("", ",", ".")
@@ -36,22 +36,36 @@ object Value {
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
       val wValue = value.widen
-      if (!wValue.isHot && !tp.value.isCold || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
+      if (!wValue.isHot && !onlyHot && !tp.value.isCold || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
         return Res(effects = Vector(Generic(message(wValue), pos)))
     }
     Res()
   }
 
-  def defaultFunctionValue(methSym: Symbol)(implicit setting: Setting): Value = {
+  def defaultFunctionValue(methSym: Symbol, onlyHot: Boolean = false)(implicit setting: Setting): Value = {
     assert(methSym.is(Flags.Method))
     if (methSym.info.paramNamess.isEmpty) HotValue
     else new FunctionValue() {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
         val paramInfos = methSym.info.paramInfoss.flatten
-        checkParams(methSym, paramInfos, values, argPos)
+        checkParams(methSym, paramInfos, values, argPos, onlyHot)
       }
 
-      def widen(implicit setting: Setting) = HotValue
+      def widen(implicit setting: Setting) = ???
+    }
+  }
+
+  def dynamicMethodValue(methSym: Symbol, value: Value)(implicit setting: Setting): Value ={
+    assert(methSym.is(Flags.Method))
+    if (methSym.info.paramNamess.isEmpty) value
+    else new FunctionValue() {
+      def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
+        val paramInfos = methSym.info.paramInfoss.flatten
+        val effs = checkParams(methSym, paramInfos, values, argPos, onlyHot = true).effects
+        value.apply(values, argPos) ++ effs
+      }
+
+      def widen(implicit setting: Setting) = ???
     }
   }
 }
@@ -626,18 +640,23 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     }
 
     val res = Res()
-
-    // remember dynamic calls
+    var checkParam = false
+    // dynamic calls are analysis boundary, only allow hot values
     if (!isStaticDispatch && !target.isEffectivelyFinal) {
       if (setting.allowDynamic || target.isEffectiveInit)
         _dynamicCalls = _dynamicCalls + target
       else
         res += Generic(s"Dynamic call to $target found", setting.pos)
+
+      // res.value = Value.defaultFunctionValue(target, onlyHot = true)
+      checkParam = target.is(Flags.Method) && target.info.paramNamess.flatten.nonEmpty
     }
 
     val cls = target.owner.asClass
     if (slices.contains(cls)) {
-      slices(cls).select(target) ++ res.effects
+      val res2 = slices(cls).select(target)
+      if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
+      res2 ++ res.effects
     }
     else {
       // select on unknown super
