@@ -66,11 +66,8 @@ class Analyzer extends Indexer { analyzer =>
     res
   }
 
-  private def enclosedIn(curSym: Symbol, inSym: Symbol)(implicit setting: Setting): Boolean =
-    curSym.exists && ((curSym `eq` inSym) || (enclosedIn(curSym.owner, inSym)))
-
   def checkRef(tp: Type)(implicit setting: Setting): Res = trace("checking " + tp.show)(tp match {
-    case tp : TermRef if tp.symbol.is(Module) && enclosedIn(setting.ctx.owner, tp.symbol.moduleClass) =>
+    case tp : TermRef if tp.symbol.is(Module) && setting.ctx.owner.enclosedIn(tp.symbol.moduleClass) =>
       // self reference by name: object O { ... O.xxx }
       checkRef(ThisType.raw(tp.symbol.moduleClass.typeRef))
     case tp @ TermRef(NoPrefix, _) =>
@@ -85,7 +82,7 @@ class Analyzer extends Indexer { analyzer =>
       else {
         // ThisType used outside of class scope, can happen for objects
         // see tests/pos/t2712-7.scala
-        assert(cls.is(Flags.Module) && !enclosedIn(setting.ctx.owner, cls))
+        assert(cls.is(Flags.Module) && !setting.ctx.owner.enclosedIn(cls))
         Res()
       }
   })

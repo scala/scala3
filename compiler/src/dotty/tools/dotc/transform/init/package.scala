@@ -81,6 +81,9 @@ package object init {
 
     def annotate(tp: Type)(implicit ctx: Context) =
       sym.addAnnotation(Annotations.ConcreteAnnotation(tpd.New(tp, Nil)))
+
+    def enclosedIn(inSym: Symbol)(implicit ctx: Context): Boolean =
+      sym.exists && ((sym `eq` inSym) || sym.owner.enclosedIn(inSym))
   }
 
   implicit def setting2ctx(implicit s: Setting): Context = s.ctx
