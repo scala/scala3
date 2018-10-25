@@ -36,7 +36,7 @@ object Value {
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
       val wValue = value.widen
-      if (!wValue.isHot && !onlyHot && !tp.value.isCold || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
+      if (!wValue.isHot && (onlyHot || !tp.value.isCold) || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
         return Res(effects = Vector(Generic(message(wValue), pos)))
     }
     Res()
@@ -55,7 +55,7 @@ object Value {
     }
   }
 
-  def dynamicMethodValue(methSym: Symbol, value: Value)(implicit setting: Setting): Value ={
+  def dynamicMethodValue(methSym: Symbol, value: Value)(implicit setting: Setting): Value = {
     assert(methSym.is(Flags.Method))
     if (methSym.info.paramNamess.isEmpty) value
     else new FunctionValue() {
@@ -118,6 +118,9 @@ sealed trait Value {
    *  Widening is needed at analysis boundary.
    */
   def widen(implicit setting: Setting): OpaqueValue
+
+  def asSlice(implicit setting: Setting): SliceRep =
+    setting.heap(this.asInstanceOf[SliceValue].id).asSlice
 
   def isIcy:  Boolean = this == IcyValue
   def isCold: Boolean = this == ColdValue
@@ -544,7 +547,7 @@ class SliceValue(val id: Int) extends SingleValue {
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
-    val slice = setting.heap(id).asSlice
+    val slice = this.asSlice
     val value = slice(sym)
 
     if (sym.is(Flags.Lazy)) {
@@ -573,20 +576,20 @@ class SliceValue(val id: Int) extends SingleValue {
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {
-    val slice = setting.heap(id).asSlice
+    val slice = this.asSlice
     slice(sym) = value
     Res()
   }
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
     val cls = constr.owner.asClass
-    val slice = setting.heap(id).asSlice
+    val slice = this.asSlice
     val tmpl = slice.classInfos(cls)
     setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(slice.innerEnv))
   }
 
   def widen(implicit setting: Setting): OpaqueValue =
-    setting.heap(id).asSlice.widen
+    this.asSlice.widen
 
   override def hashCode = id
 

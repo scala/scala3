@@ -1,5 +1,5 @@
 abstract class A {
-  val x = f(this)
+  val x = f(this)     // error
   val y = 10
 
   def f(a: A): Int

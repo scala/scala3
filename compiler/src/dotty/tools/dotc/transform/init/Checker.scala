@@ -117,16 +117,17 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val values = constr.vparamss.flatten.map { param => param.tpe.widen.value }
     val poss = constr.vparamss.flatten.map(_.pos)
     val res = root.init(constr.symbol, values, poss, obj)(setting)
-
-    val sliceValue = obj.slices(cls).asInstanceOf[SliceValue]
-    val slice = root.heap(sliceValue.id).asSlice
+    val slice = obj.slices(cls).asSlice(setting)
 
     res.effects.foreach(_.report)
 
     if (obj.open) obj.annotate(cls)
 
     // init check: try commit early
-    if (obj.open) initCheck(cls, obj, tmpl)(setting)
+    if (obj.open) {
+      val innerEnv = obj.slices(cls).asSlice(setting).innerEnv
+      initCheck(cls, obj, tmpl)(setting.withEnv(innerEnv))
+    }
   }
 
   def coldCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
