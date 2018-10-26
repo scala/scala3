@@ -76,7 +76,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 **Note**: The translation of extension methods is formulated on method calls. It is thus indepenent from the way infix operations are translated to method calls. For instamce,
 if `+:` was formulated as an extension method, it would still have the `this` parameter come first, even though, seen as an operator, `+:` is right-binding:
 ```scala
-def +: [T](this xs: Seq[T))(x: T): Seq[T]
+def +: [T](this xs: Seq[T])(x: T): Seq[T]
 ```
 
 ### Generic Extensions
