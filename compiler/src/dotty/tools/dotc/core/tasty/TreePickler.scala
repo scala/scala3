@@ -17,6 +17,8 @@ import printing.Texts._
 
 object TreePickler {
 
+  val sectionName = "ASTs"
+
   case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
@@ -25,7 +27,7 @@ object TreePickler {
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
-  pickler.newSection("ASTs", buf)
+  pickler.newSection(TreePickler.sectionName, buf)
   import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex

@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Names.SimpleName
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.tasty.TastyUnpickler
+import dotty.tools.dotc.core.tasty.{TastyUnpickler, TreePickler}
 
 object TastyFileUtil {
 
@@ -25,14 +25,16 @@ object TastyFileUtil {
     val bytes = Files.readAllBytes(path)
     val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
     val className =
-      unpickler.nameAtRef.contents.iterator.takeWhile {
+      unpickler.nameAtRef.contents.iterator.dropWhile {
+        name => name.toString == TreePickler.sectionName || name == nme.EMPTY_PACKAGE
+      }.takeWhile {
         case name: SimpleName => name != nme.CONSTRUCTOR
         case name => !name.is(NameKinds.ModuleClassName)
       }.collect {
         case name: SimpleName => name.toString
-      }.drop(1).toList
-
-    val classpath = path.toString.replace(className.mkString("", "/", ".tasty"), "")
+      }.toList
+    val classInPath = className.mkString("", "/", ".tasty")
+    val classpath = path.toString.replace(classInPath, "")
     (classpath, className.mkString("."))
   }
 
