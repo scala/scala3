@@ -661,10 +661,6 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
       checkParam = sym.is(Flags.Method) && sym.info.paramNamess.flatten.nonEmpty
     }
-    else {
-      // try commit early
-      // if (widen.isHot) return HotValue.select(sym, isStaticDispatch)
-    }
 
     val target = if (isStaticDispatch) sym else resolve(sym)
 
