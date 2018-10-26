@@ -114,7 +114,3 @@ pipeline:
     when:
       status: [ failure ]
       event: [ push, tag, deployment ]
-
-branches:
-  # The gh-pages branch holds the documentation and don't need to be built
-  exclude: gh-pages
