@@ -63,6 +63,9 @@ package object init {
     def isCalledAbove(from: ClassSymbol)(implicit ctx: Context) =
       from.baseClasses.tail.exists(cls => sym.isCalledIn(cls))
 
+    def isCalledOrAbove(from: ClassSymbol)(implicit ctx: Context) =
+      from.baseClasses.exists(cls => sym.isCalledIn(cls))
+
     def isClassParam(implicit ctx: Context) = sym.is(ParamAccessor)
 
     def isOverrideClassParam(implicit ctx: Context) =

@@ -606,12 +606,6 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   private var _slices: Map[ClassSymbol, Value] = Map()
   def slices: Map[ClassSymbol, Value] = _slices
 
-  private var _dynamicCalls: Set[Symbol] = Set.empty
-  def dynamicCalls: Set[Symbol] = _dynamicCalls
-  def clearDynamicCalls(): Unit = {
-    _dynamicCalls = Set.empty
-  }
-
   def add(cls: ClassSymbol, value: Value) = {
     if (slices.contains(cls)) {
       _slices = _slices.updated(cls, _slices(cls).join(value))
@@ -645,11 +639,13 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val res = Res()
     var checkParam = false
     // dynamic calls are analysis boundary, only allow hot values
-    if (!isStaticDispatch && !target.isEffectivelyFinal) {
-      if (setting.allowDynamic || target.isEffectiveInit)
-        _dynamicCalls = _dynamicCalls + target
-      else if (!target.isCalledIn(target.owner.asClass) && !dynamicCalls.contains(target))
-        res += Generic(s"Dynamic call to $target found", setting.pos)
+    if (open && !isStaticDispatch && !target.isEffectivelyFinal) {
+      if (!target.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even it's called above
+        if (setting.allowDynamic || target.isEffectiveInit)
+          tp.classSymbol.addAnnotation(Annotation.Call(sym))
+        else
+          res += Generic(s"Dynamic call to $target found", setting.pos)
+      }
 
       checkParam = target.is(Flags.Method) && target.info.paramNamess.flatten.nonEmpty
     }
@@ -706,13 +702,5 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def show(implicit setting: ShowSetting): String = {
     val body = slices.map { case (k, v) => "[" +k.show + "]" + setting.indent(v.show(setting)) }.mkString("\n")
     "Object {\n" + setting.indent(body) + "\n}"
-  }
-
-  def annotate(cls: ClassSymbol)(implicit ctx: Context) = {
-    dynamicCalls.foreach { sym =>
-      debug(s"$sym used during initialization of $cls")
-      cls.addAnnotation(Annotation.Call(sym))
-    }
-    _dynamicCalls = Set.empty
   }
 }

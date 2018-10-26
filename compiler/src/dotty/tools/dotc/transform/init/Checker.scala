@@ -121,8 +121,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     res.effects.foreach(_.report)
 
-    if (obj.open) obj.annotate(cls)
-
     // init check: try commit early
     if (obj.open) {
       val innerEnv = obj.slices(cls).asSlice(setting).innerEnv
@@ -207,8 +205,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       else if (res.value.isHot && sym.isCalledIn(cls)) { // de facto @init
         sym.annotate(defn.InitAnnotType)
       }
-
-      obj.clearDynamicCalls()
     }
 
     def checkLazy(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
@@ -224,8 +220,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         val value = res.value.widen(setting.strict)
         if (!value.isHot) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
       }
-
-      obj.clearDynamicCalls()
     }
 
     def checkValDef(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
