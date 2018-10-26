@@ -3,7 +3,7 @@ layout: doc-page
 title: "Witness Parameters and Arguments"
 ---
 
-Witness parameters is a new syntax to define implicit parameters. Unlike traditional implicit parameters, witness parameters come with specific syntax for applications, which mirrors the parameter syntax.
+Witness parameters represent a new syntax for defining implicit parameters. Unlike traditional implicit parameters, witness parameters come with a matching syntax for applications that mirrors the parameter syntax.
 
 A witness parameter list starts with a dot ‘.’ and is followed by a normal parameter list. Analogously, a witness argument list also starts with a ‘.’ and is followed by a normal argument list. Example:
 ```scala
@@ -27,7 +27,7 @@ maximum(xs)
 maximum(xs).(descending)
 maximum(xs).(descending.(IntOrd))
 ```
-Unlike for implicit parameters, witness arguments must be passed using the `.(...)` syntax. So the expression `maximum(xs)(descending)` would give a type error.
+Unlike for implicit parameters, witness arguments must be passed using the `.( <args> )` syntax. So the expression `maximum(xs)(descending)` would give a type error.
 
 Witness parameters translate straightforwardly to implicit parameters. Here are the previous three method definitions again, this time formulated using implicit parameters.
 ```scala
@@ -43,20 +43,9 @@ def minimum[T](xs: List[T])(implicit cmp: Ord[T]) =
   maximum(xs)(descending)
 ```
 
-## Anonymous Witness Parameters
-
-The `<name> :` part of a witness parameter can be left out. For instance, the `minimum` and `maximum` method definitions could be abbreviated to
-```scala
-def maximum[T](xs: List[T]).(_: Ord[T]): T =
-  xs.reduceLeft((x, y) => if (x < y) y else x)
-
-def minimum[T](xs: List[T]).(_: Ord[T]) =
-  maximum(xs).(descending)
-```
-
 ## Summoning a Witness
 
-The `implicitly` method, defined in `Predef` computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to inroduce the name `summon` for this operation. So `summon[T]` summons a witness for `T`, in the same way as `implicitly[T]`.
+The `implicitly` method defined in `Predef` computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to inroduce the name `summon` for this operation. So `summon[T]` summons a witness for `T`, in the same way as `implicitly[T]` does.
 The definition of `summon` is straightforward:
 ```scala
 def summon[T].(x: T) = x
@@ -173,3 +162,28 @@ object Test {
   val s = List(1, 2, 3).sum.ensuring(result == 6)
 }
 ```
+
+## Migration
+
+New and old syntax would co-exist initially. Rewrite rules could rewrite old synrax to new automatically. This is trivial in the case of implicit parameters and implicit function types. It is a bit more involved in the case of implicit definitions, since more extensive pattern matching is required to recognize a definition that can be rewritten to a witness.
+
+## Discussion
+
+Several alternatives to the proposed syntax for witness parameters were considered:
+
+ - Leave `implicit` parameters as they are. This suffers from the problems stated
+   in the [motivation section](./motivation.md).
+ - Leave the syntax of `implicit` parameters but institute two changes: First, applications
+   of implicit patameters must be via the pseudo method `.explicitly(...)`. Second, there can be more than one implicit parameter list and implicit parameters may precede explicit ones. This fixes most of the discussed problems, but at the expense of a bulky explicit application syntax. Bulk can be a problem, for instance when the programmer tries to
+   construct an extensive explicit argument tree to figure out what went wrong with a missing
+   implicit. Another issue is that migration from old to new scheme would be tricky and
+   would likely take multiple language versions.
+ - Use a different syntactic marker than ‘.’ for designating implicit parameters. The ‘.’ is   ideal for the application syntax, but might be a bit too inconspicuous for the parameter
+   syntax. Other ideas I played with were `?` and infix `with`. A problem with these
+   is that they have visually the precedence of an infix operator, but we really want something tighter than that. ‘.’ has the same precedence as normal application, so is ideal on the application side. Note also that the ‘.’ can be made to stand out more
+   through choice of formatting, e.g. like in the definition of `maximum` at the beginning of
+   this section.
+
+
+
+

@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Witnesses"
+title: "Witness Definitions"
 ---
 
 Witnesses provide a concise and uniform syntax for defining implicit values. Example:
