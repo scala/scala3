@@ -25,6 +25,5 @@ object Test {
       implicitly[C1[T]]    // OK: no shadowing for evidence parameters
       implicitly[C2[U]]
     }
-    ()
   }
 }
