@@ -1,4 +1,4 @@
-class Foo {
+final class Foo {
   def getName1(foo: Foo): String = foo.name                        // error
   getName1(this)                                                   // error
 

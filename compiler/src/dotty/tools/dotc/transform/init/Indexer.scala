@@ -65,8 +65,12 @@ trait Indexer { self: Analyzer =>
     val setting2 = setting.strict
     val notHot = captured.filter { tp =>
       val res = setting.analyzer.checkRef(tp)(setting2)
+      println(res.effects)
       res.hasErrors || !res.value.widen.isHot
     }
+
+    indentedDebug(s"not hot in ${tree.symbol}: " + notHot.map(_.show).mkString(", "))
+
     if (notHot.isEmpty) HotValue
     else WarmValue(captured, unknownDeps = false)
   }

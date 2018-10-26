@@ -1,4 +1,4 @@
-class Foo {
+final class Foo {
   def getName1(f: () => String)(g: () => String): () => String = () => f() + g()    // error
 
   val a1: () => String = () => this.name    // error

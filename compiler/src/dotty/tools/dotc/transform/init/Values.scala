@@ -648,7 +648,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     if (!isStaticDispatch && !target.isEffectivelyFinal) {
       if (setting.allowDynamic || target.isEffectiveInit)
         _dynamicCalls = _dynamicCalls + target
-      else
+      else if (!target.isCalledIn(target.owner.asClass) && !dynamicCalls.contains(target))
         res += Generic(s"Dynamic call to $target found", setting.pos)
 
       checkParam = target.is(Flags.Method) && target.info.paramNamess.flatten.nonEmpty

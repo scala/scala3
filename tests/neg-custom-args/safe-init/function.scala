@@ -6,7 +6,7 @@ class Foo {
 
   List(5, 9).map(n => 2 + n + list.size)         // error: closure is cold, but a full value expected
 
-  val list = List(1, 2, 3)
+  final val list = List(1, 2, 3)
 
   List(5, 9).map(n => 3 + n + list.size)         // ok, `this.list` already initialized
 }
