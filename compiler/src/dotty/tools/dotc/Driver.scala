@@ -34,6 +34,9 @@ class Driver {
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
           ctx.reporter
+        case ex: Throwable =>
+          println(s"$ex while compiling ${fileNames.mkString(", ")}")
+          throw ex
       }
     else ctx.reporter
 

@@ -16,6 +16,7 @@ import Mode.ImplicitsEnabled
 import NameOps._
 import NameKinds.LazyImplicitName
 import Symbols._
+import Denotations._
 import Types._
 import Decorators._
 import Names._
@@ -907,12 +908,6 @@ trait Implicits { self: Typer =>
     /** The expected type for the searched implicit */
     lazy val fullProto: Type = implicitProto(pt, identity)
 
-    lazy val funProto: Type = fullProto match {
-      case proto: ViewProto =>
-        FunProto(untpd.TypedSplice(dummyTreeOfType(proto.argType)) :: Nil, proto.resultType)(self)
-      case proto => proto
-    }
-
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     val wildProto: Type = implicitProto(pt, wildApprox(_))
 
@@ -930,18 +925,31 @@ trait Implicits { self: Typer =>
           untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
           pt, locked)
       val generated1 = adapt(generated, pt, locked)
+
       lazy val shadowing =
-        typed(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic, funProto)(
+        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
-      def refSameAs(shadowing: Tree): Boolean =
-        ref.symbol == closureBody(shadowing).symbol || {
-          shadowing match {
-            case Trees.Select(qual, nme.apply) => refSameAs(qual)
-            case Trees.Apply(fn, _) => refSameAs(fn)
-            case Trees.TypeApply(fn, _) => refSameAs(fn)
-            case _ => false
-          }
+
+      /** Is candidate reference the same as the `shadowing` reference? (i.e.
+       *  no actual shadowing occured). This is the case if the
+       *  underlying symbol of the shadowing reference is the same as the
+       *  symbol of the candidate reference, or if they have a common type owner.
+       *
+       *  The second condition (same owner) is needed because the candidate reference
+       *  and the potential shadowing reference are typechecked with different prototypes.
+       *  so might yield different overloaded symbols. E.g. if the candidate reference
+       *  is to an implicit conversion generated from an implicit class, the shadowing
+       *  reference could go to the companion object of that class instead.
+       */
+      def refSameAs(shadowing: Tree): Boolean = {
+        def symMatches(sym: Symbol): Boolean =
+          sym == ref.symbol || sym.owner.isType && sym.owner == ref.symbol.owner
+        def denotMatches(d: Denotation): Boolean = d match {
+          case d: SingleDenotation => symMatches(d.symbol)
+          case d => d.hasAltWith(denotMatches(_))
         }
+        denotMatches(closureBody(shadowing).denot)
+      }
 
       if (ctx.reporter.hasErrors) {
         ctx.reporter.removeBufferedMessages
