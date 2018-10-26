@@ -1988,7 +1988,8 @@ object Types {
     }
 
     /** The argument corresponding to class type parameter `tparam` as seen from
-     *  prefix `pre`.
+     *  prefix `pre`. Can produce a TypeBounds type in case prefix is an & or | type
+     *  and parameter is non-variant.
      */
     def argForParam(pre: Type)(implicit ctx: Context): Type = {
       val tparam = symbol
@@ -2010,8 +2011,16 @@ object Types {
             idx += 1
           }
           NoType
-        case OrType(base1, base2) => argForParam(base1) | argForParam(base2)
-        case AndType(base1, base2) => argForParam(base1) & argForParam(base2)
+        case base: AndOrType =>
+          var tp1 = argForParam(base.tp1)
+          var tp2 = argForParam(base.tp2)
+          val variance = tparam.paramVariance
+          if (tp1.isInstanceOf[TypeBounds] || tp2.isInstanceOf[TypeBounds] || variance == 0) {
+            // compute argument as a type bounds instead of a point type
+            tp1 = tp1.bounds
+            tp2 = tp2.bounds
+          }
+          if (base.isAnd == variance >= 0) tp1 & tp2 else tp1 | tp2
         case _ =>
           if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE))
           else if (pre.isBottomType) pre
@@ -4414,6 +4423,7 @@ object Types {
     protected def range(lo: Type, hi: Type): Type =
       if (variance > 0) hi
       else if (variance < 0) lo
+      else if (lo `eq` hi) lo
       else Range(lower(lo), upper(hi))
 
     protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
@@ -4462,13 +4472,18 @@ object Types {
      *  If the expansion is a wildcard parameter reference, convert its
      *  underlying bounds to a range, otherwise return the expansion.
      */
-    def expandParam(tp: NamedType, pre: Type): Type = tp.argForParam(pre) match {
-      case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
-        arg.info match {
-          case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
-          case arg => reapply(arg)
-        }
-      case arg => reapply(arg)
+    def expandParam(tp: NamedType, pre: Type): Type = {
+      def expandBounds(tp: TypeBounds) =
+        range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+      tp.argForParam(pre) match {
+        case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
+          arg.info match {
+            case argInfo: TypeBounds => expandBounds(argInfo)
+            case argInfo => reapply(arg)
+          }
+        case arg: TypeBounds => expandBounds(arg)
+        case arg => reapply(arg)
+      }
     }
 
     /** Derived selection.
@@ -4482,9 +4497,12 @@ object Types {
             if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
-            range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
+            range(super.derivedSelect(tp, preLo).loBound, super.derivedSelect(tp, preHi).hiBound))
         case _ =>
-          super.derivedSelect(tp, pre)
+          super.derivedSelect(tp, pre) match {
+            case TypeBounds(lo, hi) => range(lo, hi)
+            case tp => tp
+          }
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type): Type =
