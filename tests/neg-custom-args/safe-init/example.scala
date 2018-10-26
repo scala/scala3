@@ -15,7 +15,9 @@ class Parent(x: Int) {
 
   f(20)                                      // error: list not initialized
 
-  val list = List(1, 2, 3)
+  final val list = List(1, 2, 3)
+
+  bar.result                                 // ok: list initialized
 
   if (x > 5) {
     name = "big"

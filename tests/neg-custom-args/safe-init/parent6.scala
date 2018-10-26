@@ -1,4 +1,5 @@
 trait Foo {
+  @scala.annotation.init
   class A
 
   class B {

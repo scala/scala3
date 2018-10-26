@@ -629,41 +629,49 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
+    val res = Res()
+    var checkParam = false
+    var addAnnotation = false
+    // dynamic calls are analysis boundary, only allow hot values
+    if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
+      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even it's called above
+        if (setting.allowDynamic || sym.isEffectiveInit)
+          addAnnotation = true
+        else
+          res += Generic(s"Dynamic call to $sym found", setting.pos)
+      }
+
+      checkParam = sym.is(Flags.Method) && sym.info.paramNamess.flatten.nonEmpty
+    }
+
     val target = if (isStaticDispatch) sym else resolve(sym)
 
     // select on self type
-    if (!target.exists) {
-      if (sym.owner.is(Flags.Trait))
-        return ColdValue.select(sym)
-      else
-        return WarmValue().select(sym)
-    }
-
-    val res = Res()
-    var checkParam = false
-    // dynamic calls are analysis boundary, only allow hot values
-    if (open && !isStaticDispatch && !target.isEffectivelyFinal) {
-      if (!target.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even it's called above
-        if (setting.allowDynamic || target.isEffectiveInit)
-          tp.classSymbol.addAnnotation(Annotation.Call(sym))
+    val ret =
+      if (!target.exists) {
+        if (sym.owner.is(Flags.Trait))
+          ColdValue.select(sym)
         else
-          res += Generic(s"Dynamic call to $target found", setting.pos)
+          WarmValue().select(sym)
+      }
+      else {
+        val cls = target.owner.asClass
+        if (slices.contains(cls)) {
+          val res2 = slices(cls).select(target)
+          if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
+          res2 ++ res.effects
+        }
+        else {
+          // select on unknown super
+          assert(target.isDefinedOn(tp))
+          WarmValue().select(target) ++ res.effects
+        }
       }
 
-      checkParam = target.is(Flags.Method) && target.info.paramNamess.flatten.nonEmpty
-    }
+    if (!ret.hasErrors && addAnnotation)
+      tp.classSymbol.addAnnotation(Annotation.Call(sym))
 
-    val cls = target.owner.asClass
-    if (slices.contains(cls)) {
-      val res2 = slices(cls).select(target)
-      if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
-      res2 ++ res.effects
-    }
-    else {
-      // select on unknown super
-      assert(target.isDefinedOn(tp))
-      WarmValue().select(target) ++ res.effects
-    }
+    ret
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {
