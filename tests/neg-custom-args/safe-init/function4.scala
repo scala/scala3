@@ -1,5 +1,5 @@
-class Foo {
-  def getSize(f: () => String): () => Int = () => f().size    // error
+final class Foo {
+  private def getSize(f: () => String): () => Int = () => f().size    // error
 
   val f1 = getSize(() => this.name)          // error
   val f2 = getSize(() => "Jack")

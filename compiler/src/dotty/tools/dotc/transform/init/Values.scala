@@ -119,6 +119,9 @@ sealed trait Value {
    */
   def widen(implicit setting: Setting): OpaqueValue
 
+  def tryWiden(implicit setting: Setting): Value =
+    if (this.widen.isHot) HotValue else this
+
   def asSlice(implicit setting: Setting): SliceRep =
     setting.heap(this.asInstanceOf[SliceValue].id).asSlice
 
@@ -218,8 +221,8 @@ object HotValue extends OpaqueValue {
     else Res()
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
-    if (value.widen != HotValue)
-      Res(effects = Vector(Generic("Cannot assign an object under initialization to a full object", setting.pos)))
+    if (!value.widen.isHot)
+      Res(effects = Vector(Generic("Cannot assign an object under initialization to a fully initialized object", setting.pos)))
     else Res()
 
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
@@ -229,7 +232,12 @@ object HotValue extends OpaqueValue {
     if (res.hasErrors) return res
 
     val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
-    if (args.exists(!_.widen.isHot)) obj.add(cls, WarmValue())
+    val argsV = args.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
+      acc.join(v.widen)
+    }
+
+    if (cls == obj.tp.classSymbol && !obj.open) obj.add(cls, argsV.meet(WarmValue()))
+    else if (!argsV.isHot) obj.add(cls, WarmValue())
 
     Res()
   }
@@ -350,6 +358,8 @@ object ColdValue extends OpaqueValue {
  */
 case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = true) extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
+    if (widen.isHot) return HotValue.select(sym, isStaticDispatch)
+
     val res = Res()
     if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
@@ -398,7 +408,15 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
   }
 
   override def widen(implicit setting: Setting) =
-    if (unknownDeps || deps.nonEmpty) this else HotValue
+    if (unknownDeps) this else {
+      val setting2 = setting.strict
+      val notHot = deps.filter { tp =>
+        val res = setting.analyzer.checkRef(tp)(setting2)
+        res.hasErrors || !res.value.widen.isHot
+      }
+      if (notHot.isEmpty) HotValue
+      else WarmValue(notHot.toSet, unknownDeps = false)
+    }
 
   def show(implicit setting: ShowSetting): String =
     if (unknownDeps) "Warm(unkown)"
@@ -642,6 +660,10 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       }
 
       checkParam = sym.is(Flags.Method) && sym.info.paramNamess.flatten.nonEmpty
+    }
+    else {
+      // try commit early
+      // if (widen.isHot) return HotValue.select(sym, isStaticDispatch)
     }
 
     val target = if (isStaticDispatch) sym else resolve(sym)
