@@ -4497,7 +4497,7 @@ object Types {
             if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
-            range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
+            range(super.derivedSelect(tp, preLo).loBound, super.derivedSelect(tp, preHi).hiBound))
         case _ =>
           super.derivedSelect(tp, pre) match {
             case TypeBounds(lo, hi) => range(lo, hi)
