@@ -1991,7 +1991,7 @@ object Types {
      *  prefix `pre`. Can produce a TypeBounds type in case prefix is an & or | type
      *  and parameter is non-variant.
      */
-    def argForParam(pre: Type, variance: Int)(implicit ctx: Context): Type = {
+    def argForParam(pre: Type)(implicit ctx: Context): Type = {
       val tparam = symbol
       val cls = tparam.owner
       val base = pre.baseType(cls)
@@ -2012,8 +2012,9 @@ object Types {
           }
           NoType
         case base: AndOrType =>
-          var tp1 = argForParam(base.tp1, variance)
-          var tp2 = argForParam(base.tp2, variance)
+          var tp1 = argForParam(base.tp1)
+          var tp2 = argForParam(base.tp2)
+          val variance = tparam.paramVariance
           if (tp1.isInstanceOf[TypeBounds] || tp2.isInstanceOf[TypeBounds] || variance == 0) {
             // compute argument as a type bounds instead of a point type
             tp1 = tp1.bounds
@@ -2021,7 +2022,7 @@ object Types {
           }
           if (base.isAnd == variance >= 0) tp1 & tp2 else tp1 | tp2
         case _ =>
-          if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE), variance)
+          if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE))
           else if (pre.isBottomType) pre
           else NoType
       }
@@ -2045,7 +2046,7 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix, symbol.paramVariance)
+            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -4474,7 +4475,7 @@ object Types {
     def expandParam(tp: NamedType, pre: Type): Type = {
       def expandBounds(tp: TypeBounds) =
         range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
-      tp.argForParam(pre, tp.symbol.paramVariance) match {
+      tp.argForParam(pre) match {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
             case argInfo: TypeBounds => expandBounds(argInfo)
