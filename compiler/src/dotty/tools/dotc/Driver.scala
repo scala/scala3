@@ -150,7 +150,8 @@ class Driver {
         }.unzip
         val ctx1 = ctx0.fresh
         val classPaths1 = classPaths.distinct.filter(_ != "")
-        ctx1.setSetting(ctx1.settings.classpath, (ctx1.settings.classpath.value(ctx1) :: classPaths1).mkString(":"))
+        val fullClassPath = (ctx1.settings.classpath.value(ctx1) :: classPaths1).mkString(java.io.File.pathSeparator)
+        ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
         (classNames, ctx1)
       } else (fileNames0, ctx0)
     doCompile(newCompiler(ctx), fileNames)(ctx)
