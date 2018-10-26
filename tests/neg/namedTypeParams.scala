@@ -9,4 +9,8 @@ object Test {
   class E extends C[T = Int] // error: ']' expected, but `=` found // error
   class F extends C[T = Int]() // error: ']' expected, but `=` found // error
 
+  def f[X, Y](x: X, y: Y): Int = ???
+
+  f[X = Int, String](1, "") // error
+  f[X = Int][X = Int][Y = String](1, "") // error
 }
