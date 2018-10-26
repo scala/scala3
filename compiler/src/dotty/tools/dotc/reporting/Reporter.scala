@@ -36,30 +36,59 @@ object Reporter {
 
 trait Reporting { this: Context =>
 
+import dotty.tools.dotc.reporting.diagnostic.MessageContainer
+
+  type Escalation = MessageContainer => Option[MessageContainer]
+  val suppression: Escalation = (mc: MessageContainer) => for {
+    nonSilent <- silentWarnings(mc)
+    allowedId <- suppressIds(nonSilent)
+    allowedKind <- suppressKinds(allowedId)
+    escalated <- fatalWarnings(allowedKind)
+  } yield escalated
+
+  def suppressedIds: List[Int] = this.settings.XsuppressMessageIds.value.flatMap(id => scala.util.Try(id.toInt).toOption)
+  def suppressIds(mc: MessageContainer) = mc match {
+    case w: Warning if suppressedIds.contains(w.contained().errorId) => None
+    case _ => Some(mc)
+  }
+
+  def supressedWarningKinds: List[String] = this.settings.XsuppressWarningKinds.value
+  def suppressKinds(mc: MessageContainer) = mc match {
+    case w: Warning if supressedWarningKinds.contains(w.contained().kind) => None
+    case _ => Some(mc)
+  }
+
+  val silentWarnings: Escalation = (mc: MessageContainer) => mc match {
+    case _: Warning if this.settings.silentWarnings.value(this) => None
+    case _ => Some(mc)
+  }
+
+  val fatalWarnings: Escalation = (mc: MessageContainer) => mc match {
+    case w: Warning if this.settings.XfatalWarnings.value(this) => Some(w.toError)
+    case _ => Some(mc)
+  }
+
+
+  def report(cont: MessageContainer) = suppression(cont) foreach reporter.report _
+
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.verbose.value) this.echo(msg, pos)
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Info(msg, pos))
-
-  def reportWarning(warning: Warning): Unit =
-    if (!this.settings.silentWarnings.value) {
-      if (this.settings.XfatalWarnings.value) reporter.report(warning.toError)
-      else reporter.report(warning)
-    }
+    report(new Info(msg, pos))
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.deprecation.value) reportWarning(new DeprecationWarning(msg, pos))
+    report(new DeprecationWarning(msg, pos))
 
   def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new MigrationWarning(msg, pos))
+    report(new MigrationWarning(msg, pos))
 
   def uncheckedWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new UncheckedWarning(msg, pos))
+    report(new UncheckedWarning(msg, pos))
 
   def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new FeatureWarning(msg, pos))
+    report(new FeatureWarning(msg, pos))
 
   def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
       featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
@@ -81,24 +110,25 @@ trait Reporting { this: Context =>
 
     val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
     if (required) error(msg, pos)
-    else reportWarning(new FeatureWarning(msg, pos))
+    else report(new FeatureWarning(msg, pos))
   }
 
   def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new Warning(msg, pos))
+    report(new Warning(msg, pos))
+
 
   def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.strict.value) error(msg, pos)
-    else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos))
+    else report(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos))
 
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Error(msg, pos))
+    report(new Error(msg, pos))
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
 
   def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report {
+    report {
       new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(pos)
     }
 
