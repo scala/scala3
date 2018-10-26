@@ -140,19 +140,19 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (!sym.isEffectiveCold) return
 
       val root = Heap.createRootEnv
-      val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
+      val setting: Setting = Setting(root, sym.pos, ctx, analyzer).strict
       indexOuter(cls)(setting)
       if (sym.isCold) root.add(cls, IcyValue)
       else root.add(cls, ColdValue)
 
-      val value = analyzer.methodValue(ddef)(setting.strict)
-      val res = value.apply(i => HotValue, i => NoPosition)(setting.strict)
+      val value = analyzer.methodValue(ddef)(setting)
+      val res = value.apply(i => HotValue, i => NoPosition)(setting)
 
       if (res.hasErrors) {
         ctx.warning("Calling the method during initialization causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (res.value != HotValue) {
+      else if (!res.value.widen(setting).isHot) {
         ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
       }
     }
@@ -236,7 +236,12 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (actual.isCold) sym.annotate(defn.ColdAnnotType)
       else if (actual.isWarm) sym.annotate(defn.WarmAnnotType)
 
-      obj.clearDynamicCalls()
+      if (sym.isOverrideClassParam && !sym.isClassParam) {
+        setting.ctx.warning("Overriding a class parameter in class body may cause initialization problems", sym.pos)
+      }
+      else if (!sym.isHot && sym.allOverriddenSymbols.exists(_.isHot)) {
+        setting.ctx.warning("Overriding a fully initialized class parameter with a cold parameter may cause initialization problems", sym.pos)
+      }
     }
 
     tmpl.body.foreach {

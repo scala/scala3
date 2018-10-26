@@ -1,4 +1,4 @@
-class A {
+abstract class A {
   val x = f
 
   def f: Int

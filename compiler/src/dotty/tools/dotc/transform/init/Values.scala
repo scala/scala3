@@ -651,7 +651,6 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       else
         res += Generic(s"Dynamic call to $target found", setting.pos)
 
-      // res.value = Value.defaultFunctionValue(target, onlyHot = true)
       checkParam = target.is(Flags.Method) && target.info.paramNamess.flatten.nonEmpty
     }
 

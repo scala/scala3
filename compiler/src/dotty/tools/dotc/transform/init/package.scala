@@ -45,6 +45,9 @@ package object init {
     def isWarm(implicit ctx: Context) =
       sym.hasAnnotation(defn.WarmAnnot) || sym.info.isWarm
 
+    def isHot(implicit ctx: Context) =
+      value.isHot
+
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
 
     def isEffectiveCold(implicit ctx: Context) =
@@ -61,6 +64,9 @@ package object init {
       from.baseClasses.tail.exists(cls => sym.isCalledIn(cls))
 
     def isClassParam(implicit ctx: Context) = sym.is(ParamAccessor)
+
+    def isOverrideClassParam(implicit ctx: Context) =
+      sym.allOverriddenSymbols.exists(_.isClassParam)
 
     def isDefinedOn(tp: Type)(implicit ctx: Context): Boolean =
       tp.classSymbol.isSubClass(sym.owner)
