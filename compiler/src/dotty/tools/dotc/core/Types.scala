@@ -2045,7 +2045,7 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix, currentSymbol.paramVariance)
+            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix, symbol.paramVariance)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -4471,17 +4471,19 @@ object Types {
      *  If the expansion is a wildcard parameter reference, convert its
      *  underlying bounds to a range, otherwise return the expansion.
      */
-    def expandParam(tp: NamedType, pre: Type, variance: Int): Type =
-      tp.argForParam(pre, variance) match {
+    def expandParam(tp: NamedType, pre: Type): Type = {
+      def expandBounds(tp: TypeBounds) =
+        range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+      tp.argForParam(pre, tp.symbol.paramVariance) match {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
-            case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
-            case arg => reapply(arg)
+            case argInfo: TypeBounds => expandBounds(argInfo)
+            case argInfo => reapply(arg)
           }
-        case TypeBounds(lo, hi) =>
-          range(lo, hi)
+        case arg: TypeBounds => expandBounds(arg)
         case arg => reapply(arg)
       }
+    }
 
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
@@ -4491,7 +4493,7 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi, tp.symbol.paramVariance)
+            if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
