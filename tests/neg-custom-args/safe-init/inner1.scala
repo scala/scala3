@@ -1,5 +1,5 @@
 class Foo {
-  val bar = new Bar(this)  // error
+  val bar = new Bar(this)
   new bar.Inner            // error
 
   new this.Inner           // error, as Inner access `this.list`

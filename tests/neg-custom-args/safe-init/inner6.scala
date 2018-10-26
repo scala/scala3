@@ -8,7 +8,7 @@ class Parent {
     val len = foo
   }
 
-  val list = List(3, 5, 6)
+  private val list = List(3, 5, 6)
   def foo: Int = 5
 }
 

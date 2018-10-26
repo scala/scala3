@@ -238,6 +238,23 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
     }
 
+    def checkClassDef(cdef: tpd.TypeDef)(implicit setting: Setting): Unit = {
+      val sym = cdef.symbol
+      if (sym.isInit) {
+        val value = setting.analyzer.widenTree(cdef)
+
+        val captured = Capture.analyze(cdef)
+        val setting2 = setting.strict
+        val notHot = captured.keys.filter { tp =>
+          val res = setting.analyzer.checkRef(tp)(setting2)
+          res.hasErrors || !res.value.widen.isHot
+        }
+
+        for(key <- notHot; tree <- captured(key))
+          setting.ctx.warning(s"The init $sym captures " + tree.show + ".\nTry to make captured fields or methods private or final.", tree.pos)
+      }
+    }
+
     tmpl.body.foreach {
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
@@ -245,6 +262,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
       case vdef: ValDef =>
         checkValDef(vdef)(setting.withPos(vdef.symbol.pos))
+      case cdef: TypeDef if cdef.isClassDef =>
+        checkClassDef(cdef)(setting.withPos(cdef.symbol.pos))
       case _ =>
     }
   }

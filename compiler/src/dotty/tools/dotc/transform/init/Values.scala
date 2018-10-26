@@ -42,13 +42,13 @@ object Value {
     Res()
   }
 
-  def defaultFunctionValue(methSym: Symbol, onlyHot: Boolean = false)(implicit setting: Setting): Value = {
+  def defaultFunctionValue(methSym: Symbol)(implicit setting: Setting): Value = {
     assert(methSym.is(Flags.Method))
     if (methSym.info.paramNamess.isEmpty) HotValue
     else new FunctionValue() {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
         val paramInfos = methSym.info.paramInfoss.flatten
-        checkParams(methSym, paramInfos, values, argPos, onlyHot)
+        checkParams(methSym, paramInfos, values, argPos, onlyHot = true)
       }
 
       def widen(implicit setting: Setting) = ???
@@ -383,15 +383,18 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
     if (res.hasErrors) return res
 
     val cls = constr.owner.asClass
-    if (!cls.isCold && !cls.isWarm) {
-      res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
-      res.value = HotValue
-      return res
+    if (cls.isInit) {
+      if (values.exists(!_.widen.isHot)) obj.add(cls, WarmValue())
+      Res()
     }
-
-    obj.add(cls, WarmValue())
-
-    Res()
+    else if (cls.isCold || cls.isWarm) {
+      obj.add(cls, WarmValue())
+      Res()
+    }
+    else {
+      res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
+      res
+    }
   }
 
   override def widen(implicit setting: Setting) =

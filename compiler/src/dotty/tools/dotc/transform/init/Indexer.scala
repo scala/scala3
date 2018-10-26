@@ -60,10 +60,10 @@ trait Indexer { self: Analyzer =>
 
   def widenTree(tree: Tree)(implicit setting: Setting): OpaqueValue = {
     val captured = Capture.analyze(tree)
-    indentedDebug(s"captured in ${tree.symbol}: " + captured.map(_.show).mkString(", "))
+    indentedDebug(s"captured in ${tree.symbol}: " + captured.keys.map(_.show).mkString(", "))
 
     val setting2 = setting.strict
-    val notHot = captured.filter { tp =>
+    val notHot = captured.keys.filter { tp =>
       val res = setting.analyzer.checkRef(tp)(setting2)
       indentedDebug(res.effects.mkString)
       res.hasErrors || !res.value.widen.isHot
@@ -72,7 +72,7 @@ trait Indexer { self: Analyzer =>
     indentedDebug(s"not hot in ${tree.symbol}: " + notHot.map(_.show).mkString(", "))
 
     if (notHot.isEmpty) HotValue
-    else WarmValue(captured, unknownDeps = false)
+    else WarmValue(notHot.toSet, unknownDeps = false)
   }
 
   def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =

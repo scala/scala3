@@ -4,7 +4,7 @@ object NameKinds {
   abstract class NameKind(val tag: Int) { self =>
     type ThisInfo <: Info
 
-    @scala.annotation.init
+    @scala.annotation.cold
     class Info extends NameInfo { this: ThisInfo =>
       def kind = self
     }
@@ -17,7 +17,7 @@ object NameKinds {
   }
 }
 
-object NameKinds {
+object NameKinds2 {
   abstract class NameInfo
 
   abstract class NameKind(val tag: Int) { self =>

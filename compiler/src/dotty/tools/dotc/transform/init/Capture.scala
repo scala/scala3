@@ -25,7 +25,7 @@ import collection.mutable
 
 object Capture {
   private class CaptureTraverser(setting: Setting) extends TreeTraverser {
-    val captured: mutable.Set[Type] = mutable.Set.empty
+    val captured: mutable.Map[Type, List[Tree]] = mutable.Map.empty
 
     def trace[T](msg: => String)(body: => T) = {
       println(msg)
@@ -48,18 +48,19 @@ object Capture {
       case _ => false
     })
 
-    def check(tp: Type)(implicit ctx: Context) = if (free(tp)) captured += tp
+    def check(tree: Tree)(implicit ctx: Context) =
+      if (free(tree.tpe)) captured(tree.tpe) = tree :: captured.getOrElseUpdate(tree.tpe, Nil)
 
     def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
       tree match {
         case tree: Ident =>
-          check(tree.tpe)
+          check(tree)
         case Trees.Select(ths: This, _) =>
-          check(tree.tpe)
+          check(tree)
         case tree: Select =>
           traverse(tree.qualifier)
         case tree: This =>
-          check(tree.tpe)
+          check(tree)
         case tree if tree.isType =>// ignore all type trees
         case _ =>
           traverseChildren(tree)
@@ -71,9 +72,9 @@ object Capture {
     }
   }
 
-  def analyze(tree: Tree)(implicit setting: Setting): Set[Type] = {
+  def analyze(tree: Tree)(implicit setting: Setting): Map[Type, List[Tree]] = {
     val cap = new CaptureTraverser(setting)
     cap.traverse(tree)
-    cap.captured.toSet
+    cap.captured.toMap
   }
 }
