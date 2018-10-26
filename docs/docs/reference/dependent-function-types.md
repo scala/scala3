@@ -10,9 +10,9 @@ on the function's parameter values. Example:
 
     def extractKey(e: Entry): e.Key = e.key          // a dependent method
     val extractor: (e: Entry) => e.Key = extractKey  // a dependent function value
-    //            ║   ⇓ ⇓ ⇓ ⇓ ⇓ ⇓ ⇓   ║ 
-    //            ║     Dependent     ║  
-    //            ║   Function Type   ║  
+    //            ║   ⇓ ⇓ ⇓ ⇓ ⇓ ⇓ ⇓   ║
+    //            ║     Dependent     ║
+    //            ║   Function Type   ║
     //            ╚═══════════════════╝
 Scala already has _dependent methods_, i.e. methods where the result
 type refers to some of the parameters of the method. Method
@@ -40,14 +40,4 @@ refinement. In fact, the dependent function type above is just syntactic sugar f
       def apply(e: Entry): e.Key
     }
 
-In general, a dependent functon type `(x1: K1, ..., xN: KN) => R` of arity `N`
-translates to
-
-    FunctionN[K1, ..., Kn, R'] {
-      def apply(x1: K1, ..., xN: KN): R
-    }
-
-where the result type parameter `R'` is an upper approximation of the
-true result type `R` that does not mention any of the parameters `x1, ..., xN`.
-
-
+[More details](./dependent-function-types-spec.html)
