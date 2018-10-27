@@ -1770,6 +1770,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       totalCount = 0
     }
   }
+
+  /** Returns last check's debug mode, if explicitly enabled. */
+  def lastTrace(): String = ""
 }
 
 object TypeComparer {
@@ -1801,11 +1804,21 @@ object TypeComparer {
 
   val NoApprox: ApproxState = new ApproxState(0)
 
+  def explain[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
+    val (res, explanation) = underlyingExplained(op)
+    say(explanation)
+    res
+  }
+
   /** Show trace of comparison operations when performing `op` as result string */
   def explained[T](op: Context => T)(implicit ctx: Context): String = {
+    underlyingExplained(op)._2
+  }
+
+  private def underlyingExplained[T](op: Context => T)(implicit ctx: Context): (T, String) = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
-    op(nestedCtx)
-    nestedCtx.typeComparer.toString
+    val res = op(nestedCtx)
+    (res, nestedCtx.typeComparer.lastTrace())
   }
 }
 
@@ -1937,5 +1950,5 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def copyIn(ctx: Context): ExplainingTypeComparer = new ExplainingTypeComparer(ctx)
 
-  override def toString: String = "Subtype trace:" + { try b.toString finally b.clear() }
+  override def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
 }
