@@ -65,9 +65,9 @@ import dotty.tools.dotc.util.SourcePosition
  *  For macro definitions we assume that we have a single ~ directly as the RHS.
  *  The Splicer is used to check that the RHS will be interpretable (with the `Splicer`) once inlined.
  */
-class ReifyQuotes extends MacroTransformWithImplicits {
+class Staging extends MacroTransformWithImplicits {
   import tpd._
-  import ReifyQuotes._
+  import Staging._
 
   /** Classloader used for loading macros */
   private[this] var myMacroClassLoader: java.lang.ClassLoader = _
@@ -79,7 +79,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     myMacroClassLoader
   }
 
-  override def phaseName: String = ReifyQuotes.name
+  override def phaseName: String = Staging.name
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
@@ -420,7 +420,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         else if (body.symbol == defn.DoubleClass) tag("DoubleTag")
         else pickleAsTasty()
       }
-      else ReifyQuotes.toValue(body) match {
+      else Staging.toValue(body) match {
         case Some(value) => pickleAsValue(value)
         case _ => pickleAsTasty()
       }
@@ -644,10 +644,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
   }
 }
 
-object ReifyQuotes {
+object Staging {
   import tpd._
 
-  val name: String = "reifyQuotes"
+  val name: String = "staging"
 
   def toValue(tree: tpd.Tree): Option[Any] = tree match {
     case Literal(Constant(c)) => Some(c)

@@ -627,7 +627,7 @@ literals. So it could be done only if symbol literals were abolished.
 
 Quotes and splices are primitive forms in the generated abstract
 syntax trees. They are eliminated in an expansion phase
-`ReifyQuotes`. This phase runs after typing and pickling.
+`Staging`. This phase runs after typing and pickling.
 
 Macro-expansion works outside-in. If the outermost scope is a splice,
 the spliced AST will be evaluated in an interpreter. A call to a

@@ -2,7 +2,6 @@ package dotty.tools.dotc.decompiler
 
 import dotty.tools.dotc.fromtasty._
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.transform.ReifyQuotes
 
 /** Compiler from tasty to user readable high text representation
  *  of the compiled scala code.

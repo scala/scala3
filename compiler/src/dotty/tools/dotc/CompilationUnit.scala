@@ -26,7 +26,7 @@ class CompilationUnit(val source: SourceFile) {
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
 
   /** Will be reset to `true` if contains `Quote`, `Splice` or calls to inline methods.
-   * The information is used in phase ReifyQuotes in order to avoid traversing a quote-less tree.
+   * The information is used in phase `Staging` in order to avoid traversing a quote-less tree.
    */
   var containsQuotesSplicesOrInline: Boolean = false
 
