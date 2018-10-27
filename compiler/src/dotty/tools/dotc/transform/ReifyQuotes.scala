@@ -443,7 +443,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
         val pos: SourcePosition = Decorators.sourcePos(enclosingInlineds.head.pos)(spliceCtx)
-        val splicedTree = new InlineCalls().transform(splice.qualifier) // inline calls that where inlined at level -1
+        val splicedTree = InlineCalls.transform(splice.qualifier) // inline calls that where inlined at level -1
         val evaluatedSplice = Splicer.splice(splicedTree, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
@@ -678,7 +678,7 @@ object ReifyQuotes {
   }
 
   /** β-reduce all calls to inline methods and preform constant folding */
-  class InlineCalls extends TreeMap {
+  object InlineCalls extends TreeMap {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree if isInlineCall(tree) && !ctx.reporter.hasErrors && !ctx.settings.YnoInline.value =>
         val tree2 = super.transform(tree) // transform arguments before inlining (inline arguments and constant fold arguments)
