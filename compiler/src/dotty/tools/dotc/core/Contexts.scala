@@ -713,15 +713,26 @@ object Contexts {
     def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean
     def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds
     def contains(sym: Symbol)(implicit ctx: Context): Boolean
+    def debugBoundsDescription(implicit ctx: Context): String
     def derived: GADTMap
   }
 
   final class SmartGADTMap(
     private[this] var myConstraint: Constraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
     private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar] = SimpleIdentityMap.Empty,
-    private[this] var reverseMapping: SimpleIdentityMap[TypeVar, Symbol] = SimpleIdentityMap.Empty
+    private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol] = SimpleIdentityMap.Empty
   ) extends GADTMap with ConstraintHandling {
     import dotty.tools.dotc.config.Printers.gadts
+
+    override def debugBoundsDescription(implicit ctx: Context): String = {
+      val sb = new mutable.StringBuilder
+      sb ++= constraint.show
+      sb += '\n'
+      mapping.foreachBinding { case (sym, _) =>
+        sb ++= i"$sym: ${bounds(sym)}\n"
+      }
+      sb.result
+    }
 
     // TODO: dirty kludge - should this class be an inner class of TyperState instead?
     private[this] var myCtx: Context = null
@@ -750,13 +761,12 @@ object Contexts {
             val poly = PolyType(DepParamName.fresh(sym.name.toTypeName) :: Nil)(
               pt => TypeBounds.empty :: Nil,
               pt => defn.AnyType)
-            // null out creatorState as a precaution
             new TypeVar(poly.paramRefs.head, creatorState = null)
           }
           gadts.println(i"GADTMap: created tvar $sym -> $res")
           constraint = constraint.add(res.origin.binder, res :: Nil)
           mapping = mapping.updated(sym, res)
-          reverseMapping = reverseMapping.updated(res, sym)
+          reverseMapping = reverseMapping.updated(res.origin, sym)
           res
       }
       res
@@ -765,26 +775,93 @@ object Contexts {
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = inCtx(ctx) {
+      @annotation.tailrec def stripInst(tp: Type): Type = tp match {
+        case tv: TypeVar =>
+          val inst = tv.inst orElse instType(tv)
+          if (inst.exists) stripInst(inst) else tv
+        case _ => tp
+      }
+
+      def cautiousSubtype(tp1: Type, tp2: Type, isSubtype: Boolean, allowNarrowing: Boolean = false): Boolean = {
+        val externalizedTp1 = (new TypeVarRemovingMap)(tp1)
+        val externalizedTp2 = (new TypeVarRemovingMap)(tp2)
+
+        def descr = {
+          def op = s"frozen_${if (isSubtype) "<:<" else ">:>"}"
+          def flex = s"GADTFlexible=$allowNarrowing"
+          i"$tp1 $op $tp2\n\t$externalizedTp1 $op $externalizedTp2 ($flex)"
+        }
+        // gadts.println(descr)
+
+        val outerCtx = ctx
+        val res =  {
+          implicit val ctx : Context =
+            if (allowNarrowing) outerCtx else outerCtx.fresh.retractMode(Mode.GADTflexible)
+
+          // TypeComparer.explain[Boolean](gadts.println) { implicit ctx =>
+          if (isSubtype) externalizedTp1 frozen_<:< externalizedTp2
+          else externalizedTp2 frozen_<:< externalizedTp1
+          // }
+        }
+        gadts.println(i"$descr = $res")
+        res
+      }
+
+      val symTvar: TypeVar = stripInst(tvar(sym)) match {
+        case tv: TypeVar => tv
+        case inst =>
+          gadts.println(i"instantiated: $sym -> $inst")
+          return cautiousSubtype(inst, bound, isSubtype = isUpper, allowNarrowing = true)
+      }
+
+      def doAddBound(bound: Type): Boolean = {
+        val res = stripInst(bound) match {
+          case boundTvar: TypeVar =>
+            if (boundTvar eq symTvar) true
+            else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
+            else addLess(boundTvar.origin, symTvar.origin)
+          case bound =>
+            if (cautiousSubtype(symTvar, bound, isSubtype = !isUpper)) { instantiate(symTvar, bound); true }
+            else if (isUpper) addUpperBound(symTvar.origin, bound)
+            else addLowerBound(symTvar.origin, bound)
+        }
+
+        vacuum()
+        res
+      }
+
       def isEmptyBounds(tp: Type) = tp match {
         case TypeBounds(lo, hi) => (lo eq defn.NothingType) && (hi eq defn.AnyType)
         case _ => false
       }
 
-      val symTvar = tvar(sym)
+      def instantiate(tv: TypeVar, tp: Type): Unit = {
+        // instantiating one TypeVar to another makes us actually lose information
+        // that is, we need to know that both TypeVars are equal to another
+        //   *and* be able to record further bounds on either one
+        if (tp.isInstanceOf[TypeVar]) return
+        val externalizedTp = (new TypeVarRemovingMap)(tp)
+        gadts.println(i"instantiating $tv to $externalizedTp    ( $tp )")
+        tv.inst = externalizedTp
+        constraint = constraint.replace(tv.origin, externalizedTp)
+      }
 
-      def doAddOrdering(bound: TypeParamRef) =
-        if (isUpper) addLess(symTvar.origin, bound) else addLess(bound, symTvar.origin)
-
-      def doAddBound(bound: Type) =
-        if (isUpper) addUpperBound(symTvar.origin, bound) else addLowerBound(symTvar.origin, bound)
+      def vacuum(): Unit = {
+        constraint.foreachTypeVar { tv =>
+          if (!tv.inst.exists) {
+            val inst = instType(tv)
+            if (inst.exists) instantiate(tv, inst)
+          }
+        }
+      }
 
       val tvarBound = (new TypeVarInsertingMap)(bound)
       val res = tvarBound match {
         case boundTvar: TypeVar =>
-          if (boundTvar eq symTvar) true else doAddOrdering(boundTvar.origin)
+          doAddBound(boundTvar)
         // hack to normalize T and T[_]
         case AppliedType(boundTvar: TypeVar, args) if args forall isEmptyBounds =>
-          doAddOrdering(boundTvar.origin)
+          doAddBound(boundTvar)
         case tp => doAddBound(tp)
       }
 
@@ -800,12 +877,10 @@ object Contexts {
       mapping(sym) match {
         case null => null
         case tv =>
-          val tb = constraint.fullBounds(tv.origin)
-          val res = {
-            val tm = new TypeVarRemovingMap
-            tb.derivedTypeBounds(tm(tb.lo), tm(tb.hi))
-          }
-          gadts.println(i"gadt bounds $sym: $res\t( $tv: $tb )")
+          val tb =
+            if (tv.inst.exists) TypeAlias(tv.inst) else constraint.fullBounds(tv.origin)
+          val res = (new TypeVarRemovingMap)(tb).asInstanceOf[TypeBounds]
+          // gadts.println(i"gadt bounds $sym: $res\t( $tv: $tb )")
           res
       }
     }
@@ -831,17 +906,15 @@ object Contexts {
     private final class TypeVarRemovingMap extends TypeMap {
       override def apply(tp: Type): Type = tp match {
         case tpr: TypeParamRef =>
-          constraint.typeVarOfParam(tpr) match {
-            case tv: TypeVar =>
-              reverseMapping(tv).typeRef
-            case unexpected =>
-              // if we didn't get a TypeVar, it's likely to cause problems
-              gadts.println(i"GADTMap: unexpected typeVarOfParam($tpr) = `$unexpected` ${unexpected.getClass}")
-              tpr
+          reverseMapping(tpr) match {
+            case null => tpr
+            case sym => sym.typeRef
           }
         case tv: TypeVar =>
-          if (reverseMapping.contains(tv)) reverseMapping(tv).typeRef
-          else tv
+          reverseMapping(tv.origin) match {
+            case null => tv
+            case sym => sym.typeRef
+          }
         case _ =>
           mapOver(tp)
       }
@@ -853,6 +926,7 @@ object Contexts {
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = unsupported("EmptyGADTMap.addBound")
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
     override def contains(sym: Symbol)(implicit ctx: Context) = false
+    override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGADTMap"
     override def derived = new SmartGADTMap
   }
 }

@@ -206,7 +206,11 @@ object Inferencing {
     }
 
     val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    tp <:< widePt
+    import dotty.tools.dotc.config.Printers.gadts
+    gadts.println(i"constraining pattern type $tp <:< $widePt")
+    val res = tp <:< widePt
+    gadts.println(i"constrained pattern type $tp <:< $widePt = $res\n${ctx.gadt.debugBoundsDescription}")
+    res
   }
 
   /** The list of uninstantiated type variables bound by some prefix of type `T` which
