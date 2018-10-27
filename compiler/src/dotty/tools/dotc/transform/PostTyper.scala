@@ -173,13 +173,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       if (sym.isSplice || sym.isQuote) {
         markAsMacro(ctx)
-        ctx.compilationUnit.containsQuotesSplicesOrInline = true
+        ctx.compilationUnit.needsStaging = true
       }
     }
 
     private def handleInlineCall(sym: Symbol)(implicit ctx: Context): Unit = {
       if (sym.is(Inline))
-        ctx.compilationUnit.containsQuotesSplicesOrInline = true
+        ctx.compilationUnit.needsStaging = true
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =

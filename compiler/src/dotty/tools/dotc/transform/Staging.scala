@@ -94,7 +94,7 @@ class Staging extends MacroTransformWithImplicits {
   }
 
   override def run(implicit ctx: Context): Unit =
-    if (ctx.compilationUnit.containsQuotesSplicesOrInline) super.run
+    if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new Reifier(inQuote = false, null, 0, new LevelInfo, new Embedded, ctx)
