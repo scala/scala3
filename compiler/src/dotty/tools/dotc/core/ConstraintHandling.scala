@@ -20,6 +20,9 @@ import config.Printers.{constr, typr}
  */
 trait ConstraintHandling {
 
+  def constr_println(msg: => String): Unit = constr.println(msg)
+  def typr_println(msg: => String): Unit = typr.println(msg)
+
   implicit def ctx: Context
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean
@@ -107,23 +110,23 @@ trait ConstraintHandling {
       if (Config.failOnInstantiationToNothing) assert(false, msg)
       else ctx.log(msg)
     }
-    constr.println(i"adding $description$location")
+    constr_println(i"adding $description$location")
     val lower = constraint.lower(param)
     val res =
       addOneBound(param, bound, isUpper = true) &&
       lower.forall(addOneBound(_, bound, isUpper = true))
-    constr.println(i"added $description = $res$location")
+    constr_println(i"added $description = $res$location")
     res
   }
 
   protected def addLowerBound(param: TypeParamRef, bound: Type): Boolean = {
     def description = i"constraint $param >: $bound to\n$constraint"
-    constr.println(i"adding $description")
+    constr_println(i"adding $description")
     val upper = constraint.upper(param)
     val res =
       addOneBound(param, bound, isUpper = false) &&
       upper.forall(addOneBound(_, bound, isUpper = false))
-    constr.println(i"added $description = $res$location")
+    constr_println(i"added $description = $res$location")
     res
   }
 
@@ -136,12 +139,12 @@ trait ConstraintHandling {
         val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
         val lo1 = constraint.nonParamBounds(p1).lo
         val hi2 = constraint.nonParamBounds(p2).hi
-        constr.println(i"adding $description down1 = $down1, up2 = $up2$location")
+        constr_println(i"adding $description down1 = $down1, up2 = $up2$location")
         constraint = constraint.addLess(p1, p2)
         down1.forall(addOneBound(_, hi2, isUpper = true)) &&
         up2.forall(addOneBound(_, lo1, isUpper = false))
       }
-    constr.println(i"added $description = $res$location")
+    constr_println(i"added $description = $res$location")
     res
   }
 
@@ -149,7 +152,7 @@ trait ConstraintHandling {
    *  @pre  less(p1)(p2)
    */
   private def unify(p1: TypeParamRef, p2: TypeParamRef): Boolean = {
-    constr.println(s"unifying $p1 $p2")
+    constr_println(s"unifying $p1 $p2")
     assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
@@ -247,7 +250,7 @@ trait ConstraintHandling {
       case _: TypeBounds =>
         val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
         val inst = avoidParam(bound)
-        typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+        typr_println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
       case inst =>
         assert(inst.exists, i"param = $param\nconstraint = $constraint")
@@ -346,7 +349,7 @@ trait ConstraintHandling {
             val lower = constraint.lower(param)
             val upper = constraint.upper(param)
             if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-              upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $tl")
+              upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr_println(i"INIT*** $tl")
             lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
               upper.forall(addOneBound(_, bounds.lo, isUpper = false))
           case _ =>
