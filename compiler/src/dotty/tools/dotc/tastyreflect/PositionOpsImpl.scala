@@ -6,6 +6,8 @@ trait PositionOpsImpl extends scala.tasty.reflect.PositionOps with CoreImpl {
     def start: Int = pos.start
     def end: Int = pos.end
 
+    def exists: Boolean = pos.exists
+
     def sourceFile: java.nio.file.Path = pos.source.file.jpath
 
     def startLine: Int = pos.startLine

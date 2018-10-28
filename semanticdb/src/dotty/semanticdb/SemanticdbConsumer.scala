@@ -79,14 +79,17 @@ class SemanticdbConsumer extends TastyConsumer {
             } else {
               val previous_symbol = iterateParent(symbol.owner)
               val next_atom =
-                symbol match {
-                  case IsPackageSymbol(symbol) => symbol.name + "/"
-                  case IsClassSymbol(symbol)   => symbol.name + "#"
-                  case IsDefSymbol(symbol) =>
-                    symbol.name + disimbiguate(previous_symbol + symbol.name) + "."
-                  case IsValSymbol(symbol) => symbol.name + "."
-                  case owner => {
-                    ""
+                if (symbol.flags.isParam) "(" + symbol.name + ")"
+                else {
+                  symbol match {
+                    case IsPackageSymbol(symbol) => symbol.name + "/"
+                    case IsClassSymbol(symbol)   => symbol.name + "#"
+                    case IsDefSymbol(symbol) =>
+                      symbol.name + disimbiguate(previous_symbol + symbol.name) + "."
+                    case IsValSymbol(symbol) => symbol.name + "."
+                    case owner => {
+                      ""
+                    }
                   }
                 }
               previous_symbol + next_atom
@@ -96,40 +99,95 @@ class SemanticdbConsumer extends TastyConsumer {
         }
       }
 
+      def addOccurence(symbol: Symbol,
+                       type_symbol: s.SymbolOccurrence.Role,
+                       range: s.Range): Unit = {
+        //if (symbolsCache.contains(symbol)) return
+
+        val symbol_path = iterateParent(symbol)
+        if (symbol_path == "" || symbol.name == "<init>") return
+
+        //println(symbol_path, symbol, range)
+        occurrences =
+          occurrences :+
+            s.SymbolOccurrence(
+              Some(range),
+              symbol_path,
+              type_symbol
+            )
+      }
+
+      def range(pos: Position, name: String): s.Range = {
+        val range_end_column =
+          if (name == "<init>") {
+            pos.endColumn
+          } else {
+            pos.startColumn + name.length
+          }
+
+        s.Range(pos.startLine, pos.startColumn, pos.startLine, range_end_column)
+      }
+
+      def rangeExclude(range: Position, exclude: Position): s.Range = {
+        def max(a: Int, b: Int): Int = { if (a > b) a else b }
+        return s.Range(max(range.startLine, exclude.startLine),
+                       max(range.startColumn, exclude.startColumn) + 1,
+                       range.endLine,
+                       range.endColumn)
+      }
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
-        val previous_path = stack.head
-
+        //println(tree.pos.startColumn, tree.symbol.name, tree.pos.endColumn)
         tree match {
-          case IsDefinition(body) =>
-            //println("[definition] ", body)
-            val symbol_path = iterateParent(tree.symbol)
+          case IsDefinition(body) => {
 
-            val range =
-              if (tree.symbol.name == "<init>") {
-                s.Range(tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn,
-                        tree.symbol.pos.startLine,
-                        tree.symbol.pos.endColumn)
-              } else {
-                s.Range(tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn,
-                        tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn + tree.symbol.name.length)
+            def typetreeSymbol(typetree: TypeTree): Unit =
+              typetree match {
+                case TypeTree.Synthetic => ()
+                case _ =>
+                  println(tree.symbol,
+                          typetree,
+                          iterateParent(TypeTree.symbol(typetree)))
+                  addOccurence(
+                    TypeTree.symbol(typetree),
+                    s.SymbolOccurrence.Role.REFERENCE,
+                    range(typetree.pos, TypeTree.symbol(typetree).name))
               }
-            occurrences =
-              occurrences :+
-                s.SymbolOccurrence(
-                  Some(range),
-                  symbol_path,
-                  s.SymbolOccurrence.Role.DEFINITION
-                )
+
+            val _ = tree match {
+              case DefDef(_, _, _, typetree, _) => typetreeSymbol(typetree)
+              case ValDef(_, typetree, _)       => typetreeSymbol(typetree)
+              case _                            => ()
+            }
+
+            addOccurence(tree.symbol,
+                         s.SymbolOccurrence.Role.DEFINITION,
+                         range(tree.symbol.pos, tree.symbol.name))
+
             super.traverseTree(body)
+          }
+
+          case Term.Select(qualifier, _, _) => {
+            val range = rangeExclude(tree.pos, qualifier.pos)
+            addOccurence(tree.symbol, s.SymbolOccurrence.Role.REFERENCE, range)
+            super.traverseTree(tree)
+          }
+
+          case Term.Ident(body) => {
+            //println(tree.pos.startColumn, tree.pos.endColumn)
+            //println(tree.namePos.startColumn, tree.namePos.endColumn)
+            addOccurence(tree.symbol,
+                         s.SymbolOccurrence.Role.REFERENCE,
+                         range(tree.pos, tree.symbol.name))
+            super.traverseTree(tree)
+          }
           case tree =>
             super.traverseTree(tree)
         }
       }
 
     }
+
     Traverser.traverseTree(root)(reflect.rootContext)
   }
 

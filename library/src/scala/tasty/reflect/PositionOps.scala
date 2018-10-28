@@ -4,7 +4,8 @@ trait PositionOps extends Core {
 
   trait PositionAPI {
 
-    /** The path of source file */
+    def exists: Boolean
+
     def sourceFile: java.nio.file.Path
 
     /** The start index in the source file */
