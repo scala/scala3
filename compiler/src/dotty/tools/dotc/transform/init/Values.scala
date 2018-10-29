@@ -647,9 +647,15 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
+    val target = if (isStaticDispatch) sym else resolve(sym)
+
+    // select on self type
+    if (!target.exists) return ColdValue.select(sym)
+
     val res = Res()
     var checkParam = false
     var addAnnotation = false
+
     // dynamic calls are analysis boundary, only allow hot values
     if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
       if (!sym.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even it's called above
@@ -662,28 +668,18 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       checkParam = sym.is(Flags.Method) && sym.info.paramNamess.flatten.nonEmpty
     }
 
-    val target = if (isStaticDispatch) sym else resolve(sym)
+    val cls = target.owner.asClass
 
-    // select on self type
     val ret =
-      if (!target.exists) {
-        if (sym.owner.is(Flags.Trait))
-          ColdValue.select(sym)
-        else
-          WarmValue().select(sym)
+      if (slices.contains(cls)) {
+        val res2 = slices(cls).select(target)
+        if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
+        res2 ++ res.effects
       }
       else {
-        val cls = target.owner.asClass
-        if (slices.contains(cls)) {
-          val res2 = slices(cls).select(target)
-          if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
-          res2 ++ res.effects
-        }
-        else {
-          // select on unknown super
-          assert(target.isDefinedOn(tp))
-          WarmValue().select(target) ++ res.effects
-        }
+        // select on unknown super
+        assert(target.isDefinedOn(tp))
+        WarmValue().select(target) ++ res.effects
       }
 
     if (!ret.hasErrors && addAnnotation)
