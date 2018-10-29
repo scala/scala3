@@ -2,7 +2,10 @@ package dotty.tools.languageserver.worksheet
 
 import dotty.tools.dotc.core.Contexts.Context
 
-import java.io.{File, PrintStream}
+import java.io.{File, PrintStream, IOException}
+import java.lang.ProcessBuilder.Redirect
+import java.util.concurrent.CancellationException
+import java.util.{Timer, TimerTask}
 
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
 
@@ -31,7 +34,7 @@ private object Evaluator {
   def get(cancelChecker: CancelChecker)(implicit ctx: Context): Option[Evaluator] = synchronized {
     val classpath = ctx.settings.classpath.value
     previousEvaluator match {
-      case Some(cp, evaluator) if evaluator.isAlive() && cp == classpath =>
+      case Some(cp, evaluator) if evaluator.isAlive && cp == classpath =>
         evaluator.reset(cancelChecker)
         Some(evaluator)
       case _ =>
@@ -52,12 +55,12 @@ private object Evaluator {
  */
 private class Evaluator private (javaExec: String,
                                  userClasspath: String,
-                                 cancelChecker: CancelChecker) {
+                                 private var cancelChecker: CancelChecker) {
   private val process =
     new ProcessBuilder(
       javaExec,
       "-classpath", scala.util.Properties.javaClassPath,
-      dotty.tools.repl.WorksheetMain.getClass.getName.stripSuffix("$"),
+      ReplProcess.getClass.getName.stripSuffix("$"),
       "-classpath", userClasspath,
       "-color:never")
        .redirectErrorStream(true)
@@ -67,18 +70,26 @@ private class Evaluator private (javaExec: String,
   private val processInput = new PrintStream(process.getOutputStream())
 
   // Messages coming out of the REPL
-  private val processOutput = new ReplReader(process.getInputStream())
-  processOutput.start()
+  private val processOutput = new InputStreamConsumer(process.getInputStream())
 
-  // The thread that monitors cancellation
-  private val cancellationThread = new CancellationThread(cancelChecker, this)
-  cancellationThread.start()
+  // A timer that monitors cancellation
+  private val cancellationTimer = new Timer()
+  locally {
+    val task = new TimerTask {
+      def run(): Unit =
+        if (!isAlive)
+          cancellationTimer.cancel()
+        else
+          try cancelChecker.checkCanceled()
+          catch { case _: CancellationException => exit() }
+    }
+    val checkCancelledDelayMs = 50L
+    cancellationTimer.schedule(task, checkCancelledDelayMs, checkCancelledDelayMs)
+  }
 
-  // Wait for the REPL to be ready
-  processOutput.next()
 
   /** Is the process that runs the REPL still alive? */
-  def isAlive(): Boolean = process.isAlive()
+  def isAlive: Boolean = process.isAlive
 
   /**
    * Submit `command` to the REPL, wait for the result.
@@ -86,27 +97,27 @@ private class Evaluator private (javaExec: String,
    * @param command The command to evaluate.
    * @return The result from the REPL.
    */
-  def eval(command: String): Option[String] = {
-    processInput.println(command)
+  def eval(command: String): String = {
+    processInput.print(command)
+    processInput.print(InputStreamConsumer.delimiter)
     processInput.flush()
-    processOutput.next().map(_.trim)
+
+    try processOutput.next().trim
+    catch { case _: IOException => "" }
   }
 
   /**
    * Reset the REPL to its initial state, update the cancel checker.
    */
   def reset(cancelChecker: CancelChecker): Unit = {
-    cancellationThread.setCancelChecker(cancelChecker)
+    this.cancelChecker = cancelChecker
     eval(":reset")
   }
 
   /** Terminate this JVM. */
   def exit(): Unit = {
-    processOutput.interrupt()
     process.destroyForcibly()
     Evaluator.previousEvaluator = None
-    cancellationThread.interrupt()
+    cancellationTimer.cancel()
   }
-
 }
-

@@ -13,13 +13,13 @@ import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.AttributedString
 
-final class JLineTerminal(needsTerminal: Boolean) extends java.io.Closeable {
+final class JLineTerminal extends java.io.Closeable {
   // import java.util.logging.{Logger, Level}
   // Logger.getLogger("org.jline").setLevel(Level.FINEST)
 
   private val terminal =
     TerminalBuilder.builder()
-    .dumb(!needsTerminal) // fail early if we need a terminal and can't create one
+    .dumb(false) // fail early if not able to create a terminal
     .build()
   private val history = new DefaultHistory
 

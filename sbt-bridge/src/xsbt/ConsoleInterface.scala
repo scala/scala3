@@ -41,7 +41,7 @@ class ConsoleInterface {
 
     val s1 = driver.run(initialCommands)(s0)
     // TODO handle failure during initialisation
-    val s2 = driver.runUntilQuit(needsTerminal = true, s1)
+    val s2 = driver.runUntilQuit(s1)
     driver.run(cleanupCommands)(s2)
   }
 }
