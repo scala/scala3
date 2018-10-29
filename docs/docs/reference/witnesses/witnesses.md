@@ -29,7 +29,7 @@ witness ListOrd[T: Ord] for Ord[List[T]] {
 }
 ```
 
-Witness can be seen as shorthands for implicit definitions. The winesses above could also have been formulated as implicits as follows:
+Witness can be seen as shorthands for what is currently expressed as implicit definitions. The witnesses above could also have been formulated as implicits as follows:
 ```scala
 implicit object IntOrd extends Ord[Int] {
   def compareTo(this x: Int)(y: Int) =
@@ -50,9 +50,9 @@ implicit def ListOrd[T: Ord]: Ord[List[T]] = new ListOrd[T]
 ```
 In fact, a plausible compilation strategy would map the witnesses given above to exactly these implicit definitions.
 
-Implicit definitions are kept for the moment but should be be deprecated eventually. As we will see, the only kind of implicit definitions that canot be emulated by witnesses are implicit conversions. It's interesting that the `implicit` modifier would be relegated at some point to its original meaning of defining an implicit conversion (implicit parameters and definitions came later in Scala's evolution).
+Implicit definitions are kept for the moment but should be be deprecated eventually. As we will see, the only kind of implicit definitions that cannot be directly emulated by witnesses are implicit conversions.
 
-Why prefer witnesses over implicit definitions? Their definitions are shorter, more uniform, and they focus on intent rather than mechanism: I.e. we define a _witness for_ a type, instead of an _implicit object_ that happens to _extend_ a type. Likewise, the `ListOrd` witness is shorter and clearer than the class/implicit def combo that emulates it.
+Why prefer witnesses over implicit definitions? Their definitions are shorter, more uniform, and they focus on intent rather than mechanism: I.e. we define a _witness for_ a type, instead of an _implicit object_ that happens to _extend_ a type. Likewise, the `ListOrd` witness is shorter and clearer than the class/implicit def combo that emulates it. Arguably, `implicit` was always a misnomer. An `implicit object` is every inch as explicit as a plain object, it's just that the former is eligible as a synthesized argument to an implicit _parameter_. So, "implicit" makes sense as an adjective for parameters, but not so much for the other kinds of definitions.
 
 ## Witnesses for Extension Methods
 
@@ -70,7 +70,7 @@ witness ListOps {
   def second[T](this xs: List[T]) = xs.tail.head
 }
 ```
-Witnesses like these translate directly to `implicit` objects.
+Witnesses like these translate to `implicit` objects without an extends clause.
 
 ## Anonymous Witnesses
 
@@ -101,8 +101,7 @@ witness [From, To] with c: Convertible[From, To] for Convertible[List[From], Lis
 ```
 
 The `with` clause in a witness defines required witnesses. The witness for `Convertible[List[From], List[To]]` above is defined only if a witness for `Convertible[From, To]` exists.
-`with` clauses translate to implicit parameters if implicit defs. Here is the expansion of the anonmous witness above as an implicit def (the example demonstrates well the reduction
-in boilerplate that witness syntax can achieve):
+`with` clauses translate to implicit parameters of implicit methods. Here is the expansion of the anonymous witness above in terms of a class and an implicit method (the example demonstrates well the reduction in boilerplate that witness syntax can achieve):
 ```scala
 class Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
 extends Convertible[List[From], List[To]] {
@@ -122,49 +121,63 @@ need to be referred to directly. For instance, the last `ListOrd` witness could 
 witness ListOrd[T] with _: Ord[T] for List[Ord[T]] { ... }
 ```
 
-## Abstract and Alias Witnesses
+## Witnesses as Typeclass Instances
 
-Like implicit definitions, witnesses can be abstract. An abstract witness is characterized by not having a body after the `for` clause. Example:
+Here are some examples of witnesses for standard typeclasses:
+
+Semigroups and monoids:
+
 ```scala
-trait TastyAPI {
-  type Symbol
-  trait SymDeco {
-    def name(this sym: Symbol): Name
-    def tpe(this sym: Symbol): Type
-  }
-  witness symDeco for SymDeco
+trait SemiGroup[T] {
+  def combine(this x: T)(y: T): T
+}
+trait Monoid[T] extends SemiGroup[T] {
+  def unit: T
+}
+
+witness for Monoid[String] {
+  def combine(this x: String)(y: String): String = x.concat(y)
+  def unit: String = ""
+}
+
+def sum[T: Monoid](xs: List[T]): T =
+    xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
+```
+Functors and monads:
+```scala
+trait Functor[F[_]] {
+  def map[A, B](this x: F[A])(f: A => B): F[B]
+}
+
+trait Monad[F[_]] extends Functor[F] {
+  def flatMap[A, B](this x: F[A])(f: A => F[B]): F[B]
+  def map[A, B](this x: F[A])(f: A => B) = x.flatMap(f `andThen` pure)
+
+  def pure[A](x: A): F[A]
+}
+
+witness ListMonad for Monad[List] {
+  def flatMap[A, B](this xs: List[A])(f: A => List[B]): List[B] =
+    xs.flatMap(f)
+  def pure[A](x: A): List[A] =
+    List(x)
+}
+
+witness ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+  def flatMap[A, B](this r: Ctx => A)(f: A => Ctx => B): Ctx => B =
+    ctx => f(r(ctx))(ctx)
+  def pure[A](x: A): Ctx => A =
+    ctx => x
 }
 ```
-Abstract witnesses always have a `for` clause. They cannot be anonymous.
 
-Witnesses can also be defined as aliases of other values. Example:
-```scala
-witness symDeco for SymDeco = compilerSymOps
-```
-As another example, if one had already defined classes `IntOrd` and `ListOrd`, witnesses for them could be defined as follows:
-```scala
-class IntOrd extends Ord[Int] { ... }
-class ListOrd[T: Ord] extends Ord[List[T]] { ... }
+## Syntax
 
-witness for Ord[Int] = new IntOrd
-witness [T: Ord] for Ord[List[T]] = new ListOrd[T]
+Here is the new syntax for witness definitions, seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
-The `for` clause in an alias witness is mandatory unless the witness definition is unconditional and occurs as a statement in a block. This corresponds to the same restriction for implicit vals in Scala 3.
-
-Abstract witnesses translate to abstract implicit methods. Alias witnesses translate to implicit defs if they are conditional or to implicit vals otherwise. For instance, the witnesses defined so far in this section translate to:
-```scala
-implicit def symDeco: SymDeco
-
-implicit val symDeco: SymDeco = compilerSymOps
-
-implicit val Ord_Int_witness: Ord[Int] = new IntOrd
-implicit def Ord_List_witness(implicit ev: Ord[T]): Ord[List[T]] = new ListOrd[T]
+TmplDef     ::=  ...
+              |  ‘witness’ WitnessDef
+WitnessDef  ::=  [id] [DefTypeParamClause] [‘with’ DefParams] [‘for’ [ConstrApps] [TemplateBody]
 ```
-The `lazy` modifier is applicable to unconditional alias witnesses. If present, the translated implicit val is lazy. For instance,
-```scala
-lazy witness for Ord[Int] = new IntOrd
-```
-would translate to
-```scala
-lazy implicit val Ord_Int_witness: Ord[Int] = new IntOrd
-```
+The identifier `id` can be omitted only if either the `for` part or the template body is present. If
+the `for` part is missing, the template body must define at least one extension method.

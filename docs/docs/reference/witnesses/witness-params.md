@@ -3,140 +3,105 @@ layout: doc-page
 title: "Witness Parameters and Arguments"
 ---
 
-Witness parameters represent a new syntax for defining implicit parameters. Unlike traditional implicit parameters, witness parameters come with a matching syntax for applications that mirrors the parameter syntax.
+This page presents new syntax for defining implicit parameters. Previously, implicit parameters, marked with `implicit`, were decoupled from implicit applications which looked like regular applications. On the other hand, external API and internal use were coupled - the `implicit` modifier specified both that missing arguments would be synthesized and that the parameter was in turn available as a candidate for implicit search. The new syntax reverts both of these decisions. Two different mechanisms control whether an argument to a parameter is synthesized and whether the parameter is available as a witness. Furthermore, explicit applications of methods with implicit parameters have a different syntax which matches the parameter definition syntax.
 
-A witness parameter list starts with a dot ‘.’ and is followed by a normal parameter list. Analogously, a witness argument list also starts with a ‘.’ and is followed by a normal argument list. Example:
+The principal idea is to mark an implicit parameter or argument list with a preceding ‘.’.
+If a parameter can itself be used as a witness in the body of a method or class, it is marked with `witness`. So the old syntax
 ```scala
-def maximum[T](xs: List[T])
-             .(cmp: Ord[T]): T =
+def f(a: A)(implicit b: B, c: C)
+```
+would now be expressed as
+```scala
+def f(a: A).(witness b: B, witness c: C)
+```
+But the new syntax also allows for other possibilities:
+```scala
+def f1(a: A).(b: B, c: C)          // b, c passed implicitly, but neither is available as a witness
+def f2(a: A).(witness b: B, c: C)  // b, c passed implicitly, only b available as a witness
+def f3(a: A).(b: B, witness c: C)  // b, c passed implicitly, only c available as a witness
+def f4(witness a: A)               // a passed explicitly, available as a witness
+```
+To disambiguate between old and new syntax, we call implicit parameters under the new syntax "implicitly passed parameters", or, if they are marked with `witness`, "witness parameters" (in the rare case where a witness parameter is not implicitly passed, we will state that fact explicitly). The new implicit parameter syntax comes with a matching syntax for applications. If an argument list to a implicitly passed parameter is given, it also starts with a ‘.’.
+
+The following example shows shows three methods that each have a witness parameter list for `Ord[T]`.
+```scala
+def maximum[T](xs: List[T]).(witness cmp: Ord[T]): T =
   xs.reduceLeft((x, y) => if (x < y) y else x)
 
-def decending[T].(asc: Ord[T]): Ord[T] = new Ord[T] {
+def descending[T].(witness asc: Ord[T]): Ord[T] = new Ord[T] {
   def compareTo(this x: Int)(y: Int) = asc.compareTo(y)(x)
 }
 
-def minimum[T](xs: List[T]).(cmp: Ord[T]) =
+def minimum[T](xs: List[T]).(witness cmp: Ord[T]) =
   maximum(xs).(descending)
 ```
-The example shows three methods that each have a witness parameter list for `Ord[T]`.
-The `minimum` method's right hand side contains witness arguments `.(descending)`.
-As is the case for implicit arguments, witness arguments can be left out. For instance,
+The `minimum` method's right hand side contains the explicit argument list `.(descending)`.
+Explicit argument lists for implicitly passed parameters can be left out. For instance,
 given `xs: List[Int]`, the following calls are all possible (and they all normalize to the last one:)
 ```scala
 maximum(xs)
 maximum(xs).(descending)
 maximum(xs).(descending.(IntOrd))
 ```
-Unlike for implicit parameters, witness arguments must be passed using the `.( <args> )` syntax. So the expression `maximum(xs)(descending)` would give a type error.
+Unlike for traditional implicit parameters, arguments for implicitly passed parameters must be given using the `.( <args> )` syntax. So the expression `maximum(xs)(descending)` would give a type error.
 
-Witness parameters translate straightforwardly to implicit parameters. Here are the previous three method definitions again, this time formulated using implicit parameters.
+## Application: Dependency Injection
+
+Witnesses and implicitly passed parameters lend themselves well to dependency injection with constructor parameters. As an example, say we have four components `C1,...,C4` each of which depend on some subset of the other components. We can define these components as classes with implicitly passed parameters. E.g.,
 ```scala
-def maximum[T](xs: List[T])
-              (implicit cmp: Ord[T]): T =
-  xs.reduceLeft((x, y) => if (x < y) y else x)
-
-def descending[T](implicit asc: Ord[T]): Ord[T] = new Ord[T] {
-  def compareTo(this x: T)(y: T) = asc.compareTo(y)(x)
-}
-
-def minimum[T](xs: List[T])(implicit cmp: Ord[T]) =
-  maximum(xs)(descending)
+class C1.(c2: C2, c3: C3) { ... }
+class C2.(c1: C1, c4: C4) { ... }
+class C3.(c2: C3, c4: C4) { ... }
+class C4.(c1: C1, c3: C3, c3: C3) { ... }
 ```
+The components can then be "wired together" by defining a set of local witnesses:
+```scala
+{ witness c1 for C1
+  witness c2 for C2
+  witness c3 for C3
+  witness c4 for C4
+  (c1, c2, c3, c4)
+}
+```
+Note that component dependencies are _not_ defined themselves as witness parameters. This prevents components from spreading into the implicit namespace of other components and keeps the wiring strictly to the interface of these modules.
+
+This scheme is essentially what MacWire does. MacWire was implemented as a macro library. It requires whitebox macros which will no longer be supported in Scala 3.
 
 ## Summoning a Witness
 
-The `implicitly` method defined in `Predef` computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to inroduce the name `summon` for this operation. So `summon[T]` summons a witness for `T`, in the same way as `implicitly[T]` does.
-The definition of `summon` is straightforward:
+The `implicitly` method defined in `Predef` computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to introduce the name `summon` for this operation. So `summon[T]` summons a witness for `T`, in the same way as `implicitly[T]` does. The definition of `summon` is straightforward:
 ```scala
 def summon[T].(x: T) = x
 ```
 
-## Implicit Closures and Function Types
+## Implicit Function Types and Closures
 
-A period ‘.’ in front of a parameter list also marks implicit closures and implicit function types. Examples for types:
+Implicit function types are marked with period ‘.’ in front of a parameter list. Examples:
 ```scala
 .Context => T
 .A => .B => T
 .(A, B) => T
 .(x: A, y: B) => T
 ```
-Examples for closures:
+Like methods, closures can also have parameters marked as `witness`. Examples:
 ```scala
-.ctx => ctx.value
-.(ctx: Context) => ctx.value
-.(a: A, b: B) => t
+case class Context(value: String)
+witness ctx => ctx.value
+(witness ctx: Context) => ctx.value
+(a: A, witness b: B) => t
 ```
-
-## Syntax
-
-Here is the new syntax for witness definitions, parameters and arguments, seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
-```
-TmplDef         ::=  ...
-                  |  ‘witness’ WitnessDef
-WitnessDef      ::=  [id] WitnessClauses [‘for’ [ConstrApps]] TemplateBody
-                  |  [id] WitnessClauses [‘for’ Type] ‘=’ Expr
-                  |  id WitnessClauses ‘for’ Type
-WitnessClauses  ::=  [DefTypeParamClause] [‘with’ DefParams]
-
-ClsParamClause    ::=  ...
-                    |  ‘.’ ‘(’ ClsParams ‘)’
-DefParamClause    ::=  ...
-                    |  ‘.’ ‘(’ DefParams ‘)’
-Type              ::=  ...
-                    |  ‘.’ FunArgTypes ‘=>’ Type
-Expr              ::=  ...
-                    |  ‘.’ FunParams ‘=>’ Expr
-
-SimpleExpr1       ::=  ...
-                    |  SimpleExpr1 ‘.’ ParArgumentExprs
-```
-
-## More Examples
-
-Semigroups and monoids:
+Closures can also be marked with a prefix ‘.’. This makes the type of the closure
+an implicit function type instead of a regular function type. As is the case for methods, a `witness` modifier for a closure parameter affects its internal use (by making the parameter available as a witness in the body) whereas ‘.’ affects the closure's external API and its type. To summarize:
 ```scala
-trait SemiGroup[T] {
-  def combine(this x: T)(y: T): T
-}
-trait Monoid[T] extends SemiGroup[T] {
-  def unit: T
-}
-
-witness for Monoid[String] {
-  def combine(this x: String)(y: String): String = x.concat(y)
-  def unit: String = ""
-}
-
-def sum[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
+         (ctx: Context) => ctx.value  :   Context => String
+ (witness ctx: Context) => ctx.value  :   Context => String
+        .(ctx: Context) => ctx.value  :  .Context => String
+.(witness ctx: Context) => ctx.value  :  .Context => String
 ```
-Functors and monads:
-```scala
-trait Functor[F[_]] {
-  def map[A, B](this x: F[A])(f: A => B): F[B]
-}
+Implicitly applied closures with prefix ‘.’ will probably be written only rarely. But the concept is needed as a way to explain the translation of implicit function types: If the expected type of a term _t_ is an implicit function type, _t_ will be turned into an implicitly applied closure of the form _.x => t_ unless _t_ is already such a closure.
 
-trait Monad[F[_]] extends Functor[F] {
-  def flatMap[A, B](this x: F[A])(f: A => F[B]): F[B]
-  def map[A, B](this x: F[A])(f: A => B) = x.flatMap(f `andThen` pure)
+## Example
 
-  def pure[A](x: A): F[A]
-}
-
-witness ListMonad for Monad[List] {
-  def flatMap[A, B](this xs: List[A])(f: A => List[B]): List[B] =
-    xs.flatMap(f)
-  def pure[A](x: A): List[A] =
-    List(x)
-}
-
-witness ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
-  def flatMap[A, B](this r: Ctx => A)(f: A => Ctx => B): Ctx => B =
-    ctx => f(r(ctx))(ctx)
-  def pure[A](x: A): Ctx => A =
-    ctx => x
-}
-```
 Implementing postconditions via `ensuring`:
 ```scala
 object PostConditions {
@@ -162,28 +127,21 @@ object Test {
   val s = List(1, 2, 3).sum.ensuring(result == 6)
 }
 ```
+## Syntax
 
-## Migration
-
-New and old syntax would co-exist initially. Rewrite rules could rewrite old synrax to new automatically. This is trivial in the case of implicit parameters and implicit function types. It is a bit more involved in the case of implicit definitions, since more extensive pattern matching is required to recognize a definition that can be rewritten to a witness.
-
-## Discussion
-
-Several alternatives to the proposed syntax for witness parameters were considered:
-
- - Leave `implicit` parameters as they are. This suffers from the problems stated
-   in the [motivation section](./motivation.md).
- - Leave the syntax of `implicit` parameters but institute two changes: First, applications
-   of implicit patameters must be via the pseudo method `.explicitly(...)`. Second, there can be more than one implicit parameter list and implicit parameters may precede explicit ones. This fixes most of the discussed problems, but at the expense of a bulky explicit application syntax. Bulk can be a problem, for instance when the programmer tries to
-   construct an extensive explicit argument tree to figure out what went wrong with a missing
-   implicit. Another issue is that migration from old to new scheme would be tricky and
-   would likely take multiple language versions.
- - Use a different syntactic marker than ‘.’ for designating implicit parameters. The ‘.’ is   ideal for the application syntax, but might be a bit too inconspicuous for the parameter
-   syntax. Other ideas I played with were `?` and infix `with`. A problem with these
-   is that they have visually the precedence of an infix operator, but we really want something tighter than that. ‘.’ has the same precedence as normal application, so is ideal on the application side. Note also that the ‘.’ can be made to stand out more
-   through choice of formatting, e.g. like in the definition of `maximum` at the beginning of
-   this section.
-
-
-
-
+Here is the new syntax for parameters, arguments, and implicit function types seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
+```
+ClsParamClause    ::=  ...
+                    |  ‘.’ ‘(’ ClsParams ‘)’
+ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ParamModifier] Param
+DefParamClause    ::=  ...
+                    |  ‘.’ ‘(’ DefParams ‘)’
+DefParam          ::=  {Annotation} [ParamModifier] Param
+ParamModifier     ::=  ‘inline’ | ‘witness’
+Type              ::=  ...
+                    |  ‘.’ FunArgTypes ‘=>’ Type
+Expr              ::=  ...
+                    |  ‘.’ FunParams ‘=>’ Expr
+SimpleExpr1       ::=  ...
+                    |  SimpleExpr1 ‘.’ ParArgumentExprs
+```
