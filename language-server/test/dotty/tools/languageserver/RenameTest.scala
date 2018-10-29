@@ -158,7 +158,7 @@ class RenameTest {
         code"""import A.{C => ${m1}Renamed${m2}}
                object O {
                  import A.{C => ${m3}Renamed${m4}}
-                 class C2 extends ${m5}Renamed${m6} {
+                 class C2 extends ${m5}Renamed${m6} { self: ${m15}Renamed${m16} =>
                    import A.{C => ${m7}Renamed${m8}}
                  }
                  123 match {
@@ -176,18 +176,20 @@ class RenameTest {
 
     testRename(m1, Set(m1 to m2))
     testRename(m2, Set(m1 to m2))
-    testRename(m3, Set(m3 to m4, m5 to m6, m9 to m10))
-    testRename(m4, Set(m3 to m4, m5 to m6, m9 to m10))
-    testRename(m5, Set(m3 to m4, m5 to m6, m9 to m10))
-    testRename(m6, Set(m3 to m4, m5 to m6, m9 to m10))
+    testRename(m3, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m4, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m5, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m6, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
     testRename(m7, Set(m7 to m8))
     testRename(m8, Set(m7 to m8))
-    testRename(m9, Set(m3 to m4, m5 to m6, m9 to m10))
-    testRename(m10, Set(m3 to m4, m5 to m6, m9 to m10))
+    testRename(m9, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m10, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
     testRename(m11, Set(m11 to m12, m13 to m14))
     testRename(m12, Set(m11 to m12, m13 to m14))
     testRename(m13, Set(m11 to m12, m13 to m14))
     testRename(m14, Set(m11 to m12, m13 to m14))
+    testRename(m15, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m16, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
   }
 
 }

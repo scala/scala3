@@ -323,10 +323,10 @@ class DottyLanguageServer extends LanguageServer
         // Selected a reference that has been renamed
         case (nameTree: NameTree) :: rest if Interactive.isRenamed(nameTree) =>
           val enclosing = rest.find {
-            // If we selected one of the parents of this Template for doing the renaming, then this
-            // Template cannot immediately enclose the rename we're interesting in (the renaming
-            // happening inside its body cannot be used on the parents).
-            case template: Template if template.parents.exists(_.pos.contains(pos.pos)) =>
+            // If we selected one of the parents or the selftype of this Template for doing the
+            // renaming, then this Template cannot immediately enclose the rename we're interesting
+            // in (the renaming happening inside its body cannot be used on the parents or selftype).
+            case template: Template if template.parents.exists(_.pos.contains(pos.pos)) || template.self.pos.contains(pos.pos) =>
               false
             case tree =>
               Interactive.immediatelyEnclosesRenaming(nameTree.name, tree)
