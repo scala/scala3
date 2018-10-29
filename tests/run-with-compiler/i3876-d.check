@@ -1,5 +1,5 @@
 6
 {
   val x$1: scala.Int = 3
-  x$1.+(x$1)
+  Test.inlineLambda.apply(x$1)
 }

@@ -10,7 +10,7 @@ import transform.MegaPhase.MiniPhase
 import Decorators._
 import Symbols.Symbol
 import Constants.Constant
-import transform.{Pickler, ReifyQuotes}
+import transform.{Pickler, Staging}
 
 /** Compiler plugin that emits an error when compiling a division by zero */
 class DivideZero extends PluginPhase with StandardPlugin {
@@ -20,7 +20,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
   val phaseName = name
 
   override val runsAfter = Set(Pickler.name)
-  override val runsBefore = Set(ReifyQuotes.name)
+  override val runsBefore = Set(Staging.name)
 
   def init(options: List[String]): List[PluginPhase] = this :: Nil
 

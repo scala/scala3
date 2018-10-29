@@ -25,15 +25,10 @@ class CompilationUnit(val source: SourceFile) {
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
 
-  /** Will be reset to `true` if `tpdTree` contains a call to an inline method. The information
-   *  is used in phase InlineCalls in order to avoid traversing an inline-less tree.
+  /** Will be set to `true` if contains `Quote`, `Splice` or calls to inline methods.
+   * The information is used in phase `Staging` in order to avoid traversing a quote-less tree.
    */
-  var containsInlineCalls: Boolean = false
-
-  /** Will be reset to `true` if `untpdTree` contains `Quote` trees. The information
-   *  is used in phase ReifyQuotes in order to avoid traversing a quote-less tree.
-   */
-  var containsQuotesOrSplices: Boolean = false
+  var needsStaging: Boolean = false
 
   /** A structure containing a temporary map for generating inline accessors */
   val inlineAccessors: InlineAccessors = new InlineAccessors
@@ -53,21 +48,18 @@ object CompilationUnit {
     if (forceTrees) {
       val force = new Force
       force.traverse(unit1.tpdTree)
-      unit1.containsInlineCalls = force.containsInline
-      unit1.containsQuotesOrSplices = force.containsQuotes
+      unit1.needsStaging = force.needsStaging
     }
     unit1
   }
 
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
-    var containsInline = false
-    var containsQuotes = false
+    var needsStaging = false
     def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-      if (tree.symbol.isQuote)
-        containsQuotes = true
-      if (tpd.isInlineCall(tree))
-        containsInline = true
+      // Note that top-level splices are still inside the inline methods
+      if (tree.symbol.isQuote || tpd.isInlineCall(tree))
+        needsStaging = true
       traverseChildren(tree)
     }
   }

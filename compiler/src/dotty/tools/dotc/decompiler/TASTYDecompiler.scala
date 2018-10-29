@@ -2,7 +2,6 @@ package dotty.tools.dotc.decompiler
 
 import dotty.tools.dotc.fromtasty._
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.transform.InlineCalls
 
 /** Compiler from tasty to user readable high text representation
  *  of the compiled scala code.
@@ -15,9 +14,7 @@ class TASTYDecompiler extends TASTYCompiler {
     List(new ReadTastyTreesFromClasses) :: // Load classes from tasty
     Nil
 
-  override protected def picklerPhases: List[List[Phase]] =
-    List(new InlineCalls) :: // TODO should we really inline for the decompiler?
-    Nil
+  override protected def picklerPhases: List[List[Phase]] = Nil
 
   override protected def transformPhases: List[List[Phase]] = Nil
 

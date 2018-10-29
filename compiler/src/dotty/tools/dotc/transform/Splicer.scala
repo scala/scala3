@@ -33,7 +33,7 @@ object Splicer {
    *  and for `~xyz` the tree of `xyz` is interpreted for which the
    *  resulting expression is returned as a `Tree`
    *
-   *  See: `ReifyQuotes`
+   *  See: `Staging`
    */
   def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
@@ -63,7 +63,7 @@ object Splicer {
     *  and for `~xyz` the tree of `xyz` is interpreted for which the
     *  resulting expression is returned as a `Tree`
     *
-    *  See: `ReifyQuotes`
+    *  See: `Staging`
     */
   def canBeSpliced(tree: Tree)(implicit ctx: Context): Boolean = tree match {
     case Quoted(_) => true

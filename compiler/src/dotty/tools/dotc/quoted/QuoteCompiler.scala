@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.transform.ReifyQuotes
+import dotty.tools.dotc.transform.Staging
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
@@ -30,7 +30,7 @@ class QuoteCompiler extends Compiler {
     List(List(new QuotedFrontend(putInClass = true)))
 
   override protected def picklerPhases: List[List[Phase]] =
-    List(List(new ReifyQuotes))
+    List(List(new Staging))
 
   override def newRun(implicit ctx: Context): ExprRun = {
     reset()
