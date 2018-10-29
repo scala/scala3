@@ -29,6 +29,7 @@ export class Tracer {
 
     private readonly remoteTracingUrl: string | undefined
     private readonly remoteWorkspaceDumpUrl: string | undefined
+    private readonly maximumMessageSize: number
     private get isTracingEnabled(): boolean {
         return Boolean(this.remoteWorkspaceDumpUrl || this.remoteTracingUrl);
     }
@@ -40,6 +41,8 @@ export class Tracer {
 
         this.remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('remoteWorkspaceDumpUrl');
         this.remoteTracingUrl = this.ctx.extensionConfig.get<string>('remoteTracingUrl');
+        const maximumMessageSize = this.ctx.extensionConfig.get<number>('tracing.maximumMessageSize');
+        this.maximumMessageSize = maximumMessageSize === undefined || maximumMessageSize < 0 ? 0 : maximumMessageSize | 0;
 
         this.machineId = (() => {
             const machineIdKey = 'tracing.machineId';
@@ -290,11 +293,17 @@ export class Tracer {
                 log += '\n';
                 if (this.tracingConsent.get() === 'yes') withSocket((socket) => {
                     if (socket.readyState === WebSocket.OPEN) {
-                        socket.send(log, (err) => {
+                        const send = (msg: string) => socket.send(msg, (err) => {
                             if (err) {
                                 this.logError('socket send error', err)
                             }
                         });
+
+                        let start = 0;
+                        while (start < log.length) {
+                            send(log.substring(start, start + this.maximumMessageSize));
+                            start += this.maximumMessageSize;
+                        }
                         log = '';
                     }
                 });

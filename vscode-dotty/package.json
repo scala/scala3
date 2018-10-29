@@ -56,6 +56,11 @@
           ],
           "default": null,
           "description": "ID of your machine used when Dotty Language Server tracing is turned on."
+        },
+        "dotty.tracing.maximumMessageSize": {
+          "type": "number",
+          "default": 512,
+          "description": "Maximum size for the messages sent to remote server. Larger ones will be split."
         }
       }
     },
