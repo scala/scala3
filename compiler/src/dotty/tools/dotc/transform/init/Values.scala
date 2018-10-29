@@ -247,7 +247,7 @@ object HotValue extends OpaqueValue {
   override def toString = "hot value"
 }
 
-/** An icy value, where class/trait params are not yet initialized
+/** An icy value, where trait params are not yet initialized
  *
  *  abstract class A {
  *    def f: Int
@@ -266,21 +266,21 @@ object IcyValue extends OpaqueValue {
     val res = Res(value = HotValue)
 
     if (sym.is(Flags.Method)) {
-      if (!sym.isCold && !sym.name.is(DefaultGetterName))
-        res += Generic(s"The $sym should be marked as `@cold` in order to be called", setting.pos)
+      if (!sym.isIcy && !sym.name.is(DefaultGetterName))
+        res += Generic(s"The $sym should be marked as `@icy` in order to be called", setting.pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
     else if (sym.is(Flags.Lazy)) {
-      if (!sym.isCold)
-        res += Generic(s"The lazy field $sym should be marked as `@cold` in order to be accessed", setting.pos)
+      if (!sym.isIcy)
+        res += Generic(s"The lazy field $sym should be marked as `@icy` in order to be accessed", setting.pos)
     }
     else if (sym.isClass) {
-      if (!sym.isCold)
-        res += Generic(s"The nested $sym should be marked as `@cold` in order to be instantiated", setting.pos)
+      if (!sym.isIcy)
+        res += Generic(s"The nested $sym should be marked as `@icy` in order to be instantiated", setting.pos)
     }
     else {  // field select
-      res += Generic(s"The $sym may not be initialized", setting.pos)
+      res += Generic(s"$sym may not be initialized", setting.pos)
     }
 
     res
@@ -650,17 +650,21 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val target = if (isStaticDispatch) sym else resolve(sym)
 
     // select on self type
-    if (!target.exists) return ColdValue.select(sym)
+    if (!target.exists) {
+      if (sym.owner.is(Flags.Trait)) return IcyValue.select(sym)
+      else return ColdValue.select(sym)
+    }
 
     val res = Res()
 
     var checkParam = false
-
+    var addAnnotation = false
     // dynamic calls are analysis boundary, only allow hot values
     if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
-      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even though it's called above
+      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // avoid duplicate annotatino
+        // annotation on current class even though it's called above
         if (setting.allowDynamic || sym.isEffectiveInit || target.is(Flags.Deferred))
-          tp.classSymbol.addAnnotation(Annotation.Call(sym))
+          addAnnotation = true
         else
           res += Generic(s"Dynamic call to $sym found", setting.pos)
       }
@@ -670,17 +674,23 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
     val cls = target.owner.asClass
 
-    if (slices.contains(cls)) {
-      val res2 = slices(cls).select(target)
-      if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
-      res2 ++ res.effects
-    }
-    else if(!target.isCalledOrAbove(tp.classSymbol.asClass)) {
-      // select on super, which is external
-      assert(target.isDefinedOn(tp))
-      WarmValue().select(target) ++ res.effects
-    }
-    else res
+    val res =
+      if (slices.contains(cls)) {
+        val res2 = slices(cls).select(target)
+        if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
+        res2 ++ res.effects
+      }
+      else if(!target.isCalledOrAbove(tp.classSymbol.asClass)) {
+        // select on super, which is external
+        assert(target.isDefinedOn(tp))
+        WarmValue().select(target) ++ res.effects
+      }
+      else res
+
+    if (!res.hasErrors && addAnnotation)
+      tp.classSymbol.addAnnotation(Annotation.Call(sym))
+
+    res
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {

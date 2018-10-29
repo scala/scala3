@@ -23,6 +23,8 @@ import collection.mutable
 
 package object init {
   implicit class TypeOps(val tp: Type) extends AnyVal {
+    def isIcy(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.IcyAnnot)
+
     def isCold(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.ColdAnnot)
 
     def isWarm(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.WarmAnnot)
@@ -39,6 +41,9 @@ package object init {
     }
 
   implicit class SymOps(val sym: Symbol) extends AnyVal {
+    def isIcy(implicit ctx: Context) =
+      sym.hasAnnotation(defn.IcyAnnot) || sym.info.isIcy
+
     def isCold(implicit ctx: Context) =
       sym.hasAnnotation(defn.ColdAnnot) || sym.info.isCold
 
@@ -51,7 +56,7 @@ package object init {
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
 
     def isEffectiveCold(implicit ctx: Context) =
-      sym.isCold || sym.isCalledAbove(sym.owner.asClass)
+      sym.isIcy || sym.isCold || sym.isCalledAbove(sym.owner.asClass)
 
     def isEffectiveInit(implicit ctx: Context) =
       !sym.isEffectiveCold &&
