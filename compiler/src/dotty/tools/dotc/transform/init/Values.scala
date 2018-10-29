@@ -120,7 +120,7 @@ sealed trait Value {
   def widen(implicit setting: Setting): OpaqueValue
 
   def tryWiden(implicit setting: Setting): Value =
-    if (this.widen.isHot) HotValue else this
+    if (!setting.isWidening && this.widen.isHot) HotValue else this
 
   def asSlice(implicit setting: Setting): SliceRep =
     setting.heap(this.asInstanceOf[SliceValue].id).asSlice
@@ -358,8 +358,6 @@ object ColdValue extends OpaqueValue {
  */
 case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = true) extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
-    if (widen.isHot) return HotValue.select(sym, isStaticDispatch)
-
     val res = Res()
     if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
@@ -650,9 +648,10 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val target = if (isStaticDispatch) sym else resolve(sym)
 
     // select on self type
-    if (!target.exists) {
-      if (sym.owner.is(Flags.Trait)) return IcyValue.select(sym)
-      else return ColdValue.select(sym)
+    if (!target.exists) return {
+      if (sym.owner.is(Flags.Trait)) IcyValue.select(sym)
+      else if (tp.classSymbol.is(Flags.Trait)) WarmValue().select(sym) // classes are always init before traits
+      else ColdValue.select(sym)
     }
 
     val res = Res()
@@ -674,7 +673,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
     val cls = target.owner.asClass
 
-    val res =
+    val ret =
       if (slices.contains(cls)) {
         val res2 = slices(cls).select(target)
         if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
@@ -687,10 +686,10 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       }
       else res
 
-    if (!res.hasErrors && addAnnotation)
+    if (!ret.hasErrors && addAnnotation)
       tp.classSymbol.addAnnotation(Annotation.Call(sym))
 
-    res
+    ret
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {

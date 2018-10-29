@@ -17,7 +17,7 @@ class X { self : Y =>
 
 trait Y(x: Int) {
    @scala.annotation.icy
-   def f: Int = x            // error
+   def f: Int = x            // error // error
 }
 
 class Z extends A with B(20)

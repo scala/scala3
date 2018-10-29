@@ -238,7 +238,7 @@ class Env(outerId: Int) extends HeapEntry {
   }
 }
 
-/** A container holds all information about fields of an class slice of an object
+/** A container holds all information about fields of a class slice of an object
  */
 class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Cloneable {
   override def clone: SliceRep = super.clone.asInstanceOf[SliceRep]

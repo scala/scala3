@@ -1,5 +1,5 @@
 class A { self : B =>
-  val y = x
+  val y = x  // error
 }
 
 class B {

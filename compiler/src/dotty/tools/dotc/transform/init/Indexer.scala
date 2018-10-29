@@ -53,8 +53,9 @@ trait Indexer { self: Analyzer =>
       def widen(implicit setting2: Setting) = {
         // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
-        val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol))
-        widenTree(ddef)(setting3)
+        val env = setting2.heap(setting.env.id).asEnv
+        val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol)).withEnv(env)
+        setting3.widen(ddef.symbol.typeRef) { widenTree(ddef)(setting3) }
       }
     }
 
@@ -64,9 +65,14 @@ trait Indexer { self: Analyzer =>
 
     val setting2 = setting.strict
     val notHot = captured.keys.filter { tp =>
-      val res = setting.analyzer.checkRef(tp)(setting2)
+      val res = tp match {
+        case tp: TypeRef => // TODO: check class body
+          checkRef(tp.prefix)(setting2)
+        case _ =>
+          checkRef(tp)(setting2)
+      }
       indentedDebug(res.effects.mkString)
-      res.hasErrors || !res.value.widen.isHot
+      res.hasErrors || !(setting2.widen(tp) { res.value.widen }).isHot
     }
 
     indentedDebug(s"not hot in ${tree.symbol}: " + notHot.map(_.show).mkString(", "))
@@ -97,8 +103,9 @@ trait Indexer { self: Analyzer =>
       def widen(implicit setting2: Setting) = {
         // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
-        val setting3 = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol))
-        widenTree(vdef)(setting3)
+        val env = setting2.heap(setting.env.id).asEnv
+        val setting3 = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol)).withEnv(env)
+        setting3.widen(vdef.symbol.typeRef) { widenTree(vdef)(setting3) }
       }
     }
 

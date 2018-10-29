@@ -40,8 +40,8 @@ object Capture {
         free(ThisType.raw(tp.symbol.moduleClass.typeRef))
       case tp @ TermRef(NoPrefix, _) =>
         setting.env.contains(tp.symbol)
-      case tp @ TermRef(prefix, _) =>
-        free(prefix)
+      case tp: NamedType =>
+        free(tp.prefix)
       case tp @ ThisType(tref) =>
         val cls = tref.symbol
         !cls.is(Package) && setting.env.contains(cls)
@@ -60,6 +60,8 @@ object Capture {
         case tree: Select =>
           traverse(tree.qualifier)
         case tree: This =>
+          check(tree)
+        case tree: New =>
           check(tree)
         case tree if tree.isType =>// ignore all type trees
         case _ =>

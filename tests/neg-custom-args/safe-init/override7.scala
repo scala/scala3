@@ -29,6 +29,6 @@ trait Dao(val name: String) extends Foo {
 trait Zen(val name: String) {
   val title = "Mr."
 
-  @scala.annotation.cold
+  @scala.annotation.icy
   def getName = name          // error: cannot access `name`  // error
 }

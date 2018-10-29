@@ -3,10 +3,13 @@ package transform
 package init
 
 import core._
+import Symbols._
+import Types._
 import Contexts.Context
 import util.Positions._
 import config.Printers.init.{ println => debug }
 
+import collection.mutable
 
 case class Setting(
   env: Env,
@@ -15,7 +18,8 @@ case class Setting(
   analyzer: Analyzer,
   allowDynamic: Boolean = true,
   forceLazy: Boolean = true,
-  callParameterless: Boolean = true) {
+  callParameterless: Boolean = true,
+  wideningValues: mutable.Set[Type] = mutable.Set.empty) {
     def strict: Setting = copy(allowDynamic = false, forceLazy = false, callParameterless = false)
     def heap: Heap = env.heap
     def withPos(position: Position) = copy(pos = position)
@@ -27,6 +31,17 @@ case class Setting(
       val env2 = heap2(id)
       copy(env = env2.asEnv)
     }
+
+    def isWidening: Boolean = wideningValues.nonEmpty
+
+    def widen(tp: Type)(value: => OpaqueValue) =
+      if (wideningValues.contains(tp)) HotValue
+      else {
+        wideningValues += tp
+        val res = value
+        wideningValues -= tp
+        res
+      }
 
     def showSetting = ShowSetting(heap, ctx)
   }

@@ -61,7 +61,7 @@ class Analyzer extends Indexer { analyzer =>
 
   def checkSelect(tree: Select)(implicit setting: Setting): Res = {
     val prefixRes = apply(tree.qualifier)
-    val res = prefixRes.value.select(tree.symbol)
+    val res = prefixRes.value.tryWiden.select(tree.symbol)
     res.effects = prefixRes.effects ++ res.effects
     res
   }
@@ -74,7 +74,7 @@ class Analyzer extends Indexer { analyzer =>
       setting.env.select(tp.symbol)
     case tp @ TermRef(prefix, _) =>
       val res = checkRef(prefix)
-      res.value.select(tp.symbol)
+      res.value.tryWiden.select(tp.symbol)
     case tp @ ThisType(tref) =>
       val cls = tref.symbol
       if (cls.is(Package)) Res() // Dotty represents package path by ThisType
