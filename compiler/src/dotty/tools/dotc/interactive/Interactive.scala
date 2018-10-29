@@ -696,7 +696,7 @@ object Interactive {
           case pkg: PackageDef if immediatelyEnclosesRenaming(toName, pkg) =>
             EmptyTree
           case template: Template if immediatelyEnclosesRenaming(toName, template) =>
-            cpy.Template(template)(constr = DefDef(template.constr.symbol.asTerm), self = EmptyValDef, body = Nil)
+            cpy.Template(template)(constr = DefDef(template.constr.symbol.asTerm), self = template.self, body = Nil)
           case block @ Block(stats, expr) if immediatelyEnclosesRenaming(toName, block) =>
             EmptyTree
           case other =>
