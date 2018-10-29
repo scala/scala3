@@ -53,7 +53,7 @@ Several alternatives to the proposed syntax changes for implicit parameters were
  3. The design presented here, but with `implicit` instead of `witness` as the modifier for
    parameters. This is closer to the status quo, but migration presents problems: At what point will an `implicit` modifier stop having the old meaning and acquire the new one? Using `witness` instead of `implicit` solves that problem because old and new styles can coexist and it is always clear which is which.
  4. Don't split the meanings of implicitly passed parameters and witness parameters. Use prefix ‘.’ as a syntax
-   for both meanings together. This is more concise and relieves the programmer from needing to choose
+   for both meanings together. This is more concise and relieves the programmer from having to choose
    which combination of functionality is desired. On the other hand, this does not support some
    use patterns such as MacWire style dependency injection. Also, the prefix ‘.’ syntax is maybe
    a bit too inconspicuous at the parameter definition site, even though it works very well at the
@@ -61,4 +61,4 @@ Several alternatives to the proposed syntax changes for implicit parameters were
  5. As in 4., but using `witness` or `implicit` as the syntax that marks an implicitly passed witness parameter.
    This breaks the correspondence between function abstraction and application syntax.
 
-Once we have high-level witness definitions and witness parameters it's a small step to convert most the remaining uses of `implicit` to `witness` as a modifier. There are no hard technical reasons for doing so, but it looks more consistent with the other changes.
+Once we have high-level witness definitions and witness parameters it's a small step to convert most the remaining uses of `implicit` to `witness` as a modifier. There are no stringent technical reasons for doing so, but it looks more consistent with the other changes.
