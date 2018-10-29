@@ -653,14 +653,14 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     if (!target.exists) return ColdValue.select(sym)
 
     val res = Res()
+
     var checkParam = false
-    var addAnnotation = false
 
     // dynamic calls are analysis boundary, only allow hot values
     if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
-      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even it's called above
-        if (setting.allowDynamic || sym.isEffectiveInit)
-          addAnnotation = true
+      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // annotation on current class even though it's called above
+        if (setting.allowDynamic || sym.isEffectiveInit || target.is(Flags.Deferred))
+          tp.classSymbol.addAnnotation(Annotation.Call(sym))
         else
           res += Generic(s"Dynamic call to $sym found", setting.pos)
       }
@@ -670,22 +670,17 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
     val cls = target.owner.asClass
 
-    val ret =
-      if (slices.contains(cls)) {
-        val res2 = slices(cls).select(target)
-        if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
-        res2 ++ res.effects
-      }
-      else {
-        // select on unknown super
-        assert(target.isDefinedOn(tp))
-        WarmValue().select(target) ++ res.effects
-      }
-
-    if (!ret.hasErrors && addAnnotation)
-      tp.classSymbol.addAnnotation(Annotation.Call(sym))
-
-    ret
+    if (slices.contains(cls)) {
+      val res2 = slices(cls).select(target)
+      if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
+      res2 ++ res.effects
+    }
+    else if(!target.isCalledOrAbove(tp.classSymbol.asClass)) {
+      // select on super, which is external
+      assert(target.isDefinedOn(tp))
+      WarmValue().select(target) ++ res.effects
+    }
+    else res
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {
