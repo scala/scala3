@@ -30,7 +30,7 @@ object StagedTuple {
 
   def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int]): Expr[T] = {
     if (!specialize) '(dynamicFromArray[T](~xs))
-    else {
+    else xs.bind { xs =>
       val tup: Expr[Any] = size match {
         case Some(0)  => '()
         case Some(1)  => '(Tuple1( (~xs)(0)))
@@ -190,7 +190,7 @@ object StagedTuple {
       case Some(4) =>
         self.as[Tuple4[_, _, _, _]].bind(t => '(Tuple5(~x, (~t)._1, (~t)._2, (~t)._3, (~t)._4)))
       case Some(n) =>
-        fromArrayStaged('($consArray(~x, ~toArrayStaged(self, tailSize))), Some(n + 1))
+        fromArrayStaged[H *: T]('($consArray(~x, ~toArrayStaged(self, tailSize))), Some(n + 1))
       case _ =>
         '(dynamic_*:[T, H](~self, ~x))
     }
