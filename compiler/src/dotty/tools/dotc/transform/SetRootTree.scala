@@ -19,16 +19,25 @@ class SetRootTree extends Phase {
 
   private def traverser = new tpd.TreeTraverser {
     override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-      if (tree.isInstanceOf[tpd.TypeDef] && tree.symbol.isClass) {
-        val sym = tree.symbol.asClass
-        tpd.sliceTopLevel(ctx.compilationUnit.tpdTree, sym) match {
-          case (pkg: tpd.PackageDef) :: Nil =>
-            sym.rootTreeOrProvider = pkg
-          case _ =>
-            sym.rootTreeOrProvider = tree
-        }
+      tree match {
+        case pkg: tpd.PackageDef =>
+          traverseChildren(pkg)
+        case td: tpd.TypeDef =>
+          if (td.symbol.isClass) {
+            val sym = td.symbol.asClass
+            tpd.sliceTopLevel(ctx.compilationUnit.tpdTree, sym) match {
+              case (pkg: tpd.PackageDef) :: Nil =>
+                sym.rootTreeOrProvider = pkg
+              case _ =>
+                sym.rootTreeOrProvider = td
+            }
+          }
+          traverseChildren(td)
+        case tpl: tpd.Template =>
+          traverseChildren(tpl)
+        case _ =>
+          ()
       }
-      traverseChildren(tree)
     }
   }
 }
