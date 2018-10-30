@@ -10,4 +10,10 @@ object Test3 {
 
   type A = { def foo(x: Int): Unit; def foo(x: String): Unit } // error: overloaded definition // error: overloaded definition
   type B = { val foo: Int; def foo: Int } // error: duplicate foo
+
+  type C = { var foo: Int } // error: refinements cannot have vars
+
+  trait Entry { type Key; val key: Key }
+  type D = { def foo(e: Entry, k: e.Key): Unit }
+  def i(x: D) = x.foo(???) // error: foo has dependent params
 }
