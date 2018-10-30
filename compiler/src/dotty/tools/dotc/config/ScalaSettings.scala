@@ -66,7 +66,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val XmaxInlines: Setting[Int] = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 32)
   val XmaxClassfileName: Setting[Int] = IntSetting("-Xmax-classfile-name", "Maximum filename length for generated classes", 255, 72 to 255)
   val Xmigration: Setting[ScalaVersion] = VersionSetting("-Xmigration", "Warn about constructs whose behavior may have changed since version.")
-  val Xprint:Setting[List[String]] = PhasesSetting("-Xprint", "Print out program after")
+  val Xprint: Setting[List[String]] = PhasesSetting("-Xprint", "Print out program after")
   val XprintTypes: Setting[Boolean] = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
   val XprintDiff: Setting[Boolean] = BooleanSetting("-Xprint-diff", "Print changed parts of the tree since last print.")
   val XprintDiffDel: Setting[Boolean] = BooleanSetting("-Xprint-diff-del", "Print changed parts of the tree since last print including deleted parts.")

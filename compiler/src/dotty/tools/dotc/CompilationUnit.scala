@@ -12,15 +12,6 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Inliner
 
-
-import dotty.tools.dotc.reporting.diagnostic.MessageContainer
-/*
-trait WarningTransformer {
-  val transformer: MessageContainer => Option[MessageContainer]
-  position: Position
-}
-*/
-
 class CompilationUnit(val source: SourceFile) {
 
   override def toString: String = source.toString
@@ -29,9 +20,7 @@ class CompilationUnit(val source: SourceFile) {
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
-  //var warningTransformers: List[WarningTransformer] = Nil
-
-  def isJava = source.file.name.endsWith(".java")
+  def isJava: Boolean = source.file.name.endsWith(".java")
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
