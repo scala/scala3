@@ -1,4 +1,4 @@
 
 object Test {
-  val (x,y): (String, Int) = null
+  val (x,y): (String, Int) = ???
 }
