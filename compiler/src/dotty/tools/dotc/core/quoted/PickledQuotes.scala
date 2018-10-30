@@ -46,7 +46,7 @@ object PickledQuotes {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
         case value => Literal(Constant(value))
       }
-    case expr: TastyTreeExpr[Tree] @unchecked => expr.tree
+    case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
   }
@@ -55,7 +55,7 @@ object PickledQuotes {
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
     case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
-    case expr: TreeType[Tree] @unchecked => expr.typeTree
+    case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
@@ -169,5 +169,22 @@ object PickledQuotes {
         enclosing.classSymbol.companionModule.termRef.select(name)
       }
     } else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
+  }
+
+  /** Make sure that the owner of this tree is `ctx.owner` */
+  private def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
+    val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
+      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] = {
+        if (x.isDefined) x
+        else tree match {
+          case tree: DefTree => Some(tree.symbol.owner)
+          case _ => foldOver(x, tree)
+        }
+      }
+    }
+    getCurrentOwner(None, tree) match {
+      case Some(owner) if owner != ctx.owner => tree.changeOwner(owner, ctx.owner)
+      case _ => tree
+    }
   }
 }
