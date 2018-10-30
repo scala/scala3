@@ -117,7 +117,7 @@ trait Dynamic { self: Typer with Applications =>
    *
    *  If `U` is a value type, map `x.a` to the equivalent of:
    *
-   *     (x: Selectable).selectDynamic(x, "a").asInstanceOf[U]
+   *     (x: Selectable).selectDynamic("a").asInstanceOf[U]
    *
    *  If `U` is a method type (T1,...,Tn)R, map `x.a` to the equivalent of:
    *

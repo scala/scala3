@@ -3,131 +3,154 @@ layout: doc-page
 title: "Programmatic Structural Types"
 ---
 
-Previously, Scala supported structural types by means of
-reflection. This is problematic on other platforms, because Scala's
-reflection is JVM-based. Consequently, Scala.js and Scala.native don't
-support structural types fully. The reflection based implementation is
-also needlessly restrictive, since it rules out other implementation
-schemes. This makes structural types unsuitable for e.g. modelling
-rows in a database, for which they would otherwise seem to be an ideal
-match.
+## Syntax
 
-Dotty allows to implement structural types programmatically, using
-"Selectables". `Selectable` is a trait defined as follows:
+```
+SimpleType    ::= ... | Refinement
+Refinement    ::= ‘{’ RefineStatSeq ‘}’
+RefineStatSeq ::=  RefineStat {semi RefineStat}
+RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
+```
 
-    trait Selectable extends Any {
-      def selectDynamic(name: String): Any
-      def selectDynamicMethod(name: String, paramClasses: ClassTag[_]*): Any =
-        new UnsupportedOperationException("selectDynamicMethod")
-    }
+## Motivation
 
-The most important method of a `Selectable` is `selectDynamic`: It
-takes a field name and returns the value associated with that name in
-the selectable.
+Some usecases, such as modelling database access, are more awkward in
+statically typed languages than in dynamically typed languages: With
+dynamically typed languages, it's quite natural to model a row as a
+record or object, and to select entries with simple dot notation (e.g.
+`row.columnName`).
 
-Assume now `r` is a value with structural type `S`. In general `S` is
-of the form `C { Rs }`, i.e. it consists of a class reference `C` and
-refinement declarations `Rs`. We call a field selection `r.f`
-_structural_ if `f` is a name defined by a declaration in `Rs` whereas
-`C` defines no member of name `f`. Assuming the selection has type
-`T`, it is mapped to something equivalent to the following code:
+Achieving the same experience in statically typed
+language requires defining a class for every possible row arising from
+database manipulation (including rows arising from joins and
+projections) and setting up a scheme to map between a row and the
+class representing it.
 
-    (r: Selectable).selectDynamic("f").asInstanceOf[T]
+This requires a large amount of boilerplate, which leads developers to
+trade the advantages of static typing for simpler schemes where colum
+names are represented as strings and passed to other operators (e.g.
+`row.select("columnName")`). This approach forgoes the advantages of
+static typing, and is still not as natural as the dynamically typed
+version.
 
-That is, we make sure `r` conforms to type `Selectable`, potentially
-by adding an implicit conversion. We then invoke the `get` operation
-of that instance, passing the the name `"f"` as a parameter. We
-finally cast the resulting value back to the statically known type
-`T`.
+Structural types help in situations where we would like to support
+simple dot notation in dynamic contexts without losing the advantages
+of static typing. They allow developers to use dot notation and
+configure how fields and methods should be resolved.
 
-`Selectable` also defines another access method called
-`selectDynamicMethod`. This operation is used to select methods
-instead of fields. It gets passed the class tags of the selected
-method's formal parameter types as additional arguments. These can
-then be used to disambiguate one of several overloaded variants.
+An [example](#example) is available at the end of this document.
 
-Package `scala.reflect` contains an implicit conversion which can map
-any value to a selectable that emulates reflection-based selection, in
-a way similar to what was done until now:
+## Implementation of structural types
 
-    package scala.reflect
+The standard library defines a trait `Selectable` in the package
+`scala`, defined as follows:
 
-    object Selectable {
-      implicit def reflectiveSelectable(receiver: Any): scala.Selectable =
-        receiver match {
-          case receiver: scala.Selectable => receiver
-          case _ => new scala.reflect.Selectable(receiver)
-        }
-    }
+```scala
+trait Selectable extends Any {
+  def selectDynamic(name: String): Any
+  def selectDynamicMethod(name: String, paramClasses: ClassTag[_]*): Any =
+    new UnsupportedOperationException("selectDynamicMethod")
+}
+```
 
-When imported, `reflectiveSelectable` provides a way to access fields
-of any structural type using Java reflection. This is similar to the
-current implementation of structural types. The main difference is
-that to get reflection-based structural access one now has to add an
-import:
+An implementation of `Selectable` that relies on Java reflection is
+available in the standard library: `scala.reflect.Selectable`. Other
+implementations can be envisioned for platforms where Java reflection
+is not available.
 
-    import scala.reflect.Selectable.reflectiveSelectable
+`selectDynamic` takes a field name and returns the value associated
+with that name in the `Selectable`. Similarly, `selectDynamicMethod`
+takes a method name, `ClassTag`s representing its parameters types and
+will return the function that matches this
+name and parameter types.
 
-On the other hand, the previously required language feature import of
-`reflectiveCalls` is now redundant and is therefore dropped.
+Given a value `v` of type `C { Rs }`, where `C` is a class reference
+and `Rs` are refinement declarations, and given `v.a` of type `U`, we
+consider three distinct cases:
 
-As you can see from its implementation above, `reflectSelectable`
-checks first whether its argument is already a run-time instance of
-`Selectable`, in which case it is returned directly. This means that
-reflection-based accesses only take place as a last resort, if no
-other `Selectable` is defined.
+- If `U` is a value type, we map `v.a` to the equivalent of:
+  ```scala
+  v.a
+     --->
+  (v: Selectable).selectDynamic("a").asInstanceOf[U]
+  ```
 
-Other selectable instances can be defined in libraries. For instance,
-here is a simple class of records that support dynamic selection:
+- If `U` is a method type `(T1, ..., Tn) => R` with at most 7
+  parameters and it is not a dependent method type, we map `v.a` to
+  the  equivalent of:
+  ```scala
+  v.a
+     --->
+  (v: Selectable).selectDynamic("a", CT1, ..., CTn).asInstanceOf[(T1, ..., Tn) => R]
+  ```
 
-    case class Record(elems: (String, Any)*) extends Selectable {
-      def selectDynamic(name: String): Any = elems.find(_._1 == name).get._2
-    }
+- If `U` is neither a value nor a method type, or a dependent method
+  type, or has more than 7 parameters, an error is emitted.
 
-`Record` consists of a list of pairs of element names and values. Its
-`selectDynamic` operation finds the pair with given name and returns
-its value.
+We make sure that `r` conforms to type `Selectable`, potentially by
+introducing an implicit conversion, and then call either
+`selectDynamic` or `selectMethodDynamic`, passing the name of the
+member to access and the class tags of the formal parameters, in the
+case of a method call. These parameters could be used to disambiguate
+one of several overload variants in the future, but overloads are not
+supported in structural types at the moment.
 
-For illustration, let's define a record value and cast it to a
-structural type `Person`:
+## Extensibility
 
-    type Person = Record { val name: String; val age: Int }
-    val person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
+New instances of `Selectable` can be defined to support means of
+access other than Java reflection, which would enable usages such as
+the database access example given in the "Motivation" section.
 
-Then `person.name` will have static type `String`, and will produce `"Emma"` as result.
+## Limitations of structural types
 
-The safety of this scheme relies on the correctness of the cast. If
-the cast lies about the structure of the record, the corresponding
-`selectDynamic` operation would fail.  In practice, the cast would
-likely be part if a database access layer which would ensure its
-correctness.
+- Methods with more than 7 formal parameters cannot be called via
+  structural call.
+- Dependent methods cannot be called via structural call.
+- Overloaded methods cannot be called via structural call.
+- Refinement do not handle polymorphic methods.
 
-### Notes:
+## Differences with Scala 2 structural types
 
-1. The scheme does not handle polymorphic methods in structural
-refinements. Such polymorphic methods are currently flagged as
-errors. It's not clear whether the use case is common enough to
-warrant the additional complexity of supporting it.
+- Scala 2 supports structural types by means of Java reflection. Unlike
+Scala 3, structural calls do not rely on a mechanism such as
+`Selectable`, and reflection cannot be avoided.
+- In Scala 2, structural calls to overloaded methods are possible.
+- In Scala 2, mutable `var`s are allowed in refinements. In Scala 3,
+  they are no longer allowed.
 
-2. There are clearly some connections with `scala.Dynamic` here, since
+## Migration
+
+Receivers of structural calls need to be instances of `Selectable`. A
+conversion from `Any` to `Selectable` is available in the standard
+library, in `scala.reflect.Selectable.reflectiveSelectable`. This is
+similar to the implementation of structural types in Scala 2.
+
+## Relation with `scala.Dynamic`
+
+There are clearly some connections with `scala.Dynamic` here, since
 both select members programmatically. But there are also some
 differences.
 
-   - Fully dynamic selection is not typesafe, but structural selection
-     is, as long as the correspondence of the structural type with the
-     underlying value is as stated.
+- Fully dynamic selection is not typesafe, but structural selection
+  is, as long as the correspondence of the structural type with the
+  underlying value is as stated.
 
-   - `Dynamic` is just a marker trait, which gives more leeway where and
-     how to define reflective access operations. By contrast
-     `Selectable` is a trait which declares the access operations.
+- `Dynamic` is just a marker trait, which gives more leeway where and
+  how to define reflective access operations. By contrast
+  `Selectable` is a trait which declares the access operations.
 
-   - One access operation, `selectDynamic` is shared between both
-     approaches, but the other access operations are
-     different. `Selectable` defines a `selectDynamicMethod`, which
-     takes class tags indicating the method's formal parameter types as
-     additional argument. `Dynamic` comes with `applyDynamic` and
-     `updateDynamic` methods, which take actual argument values.
+- One access operation, `selectDynamic` is shared between both
+  approaches, but the other access operations are
+  different. `Selectable` defines a `selectDynamicMethod`, which
+  takes class tags indicating the method's formal parameter types as
+  additional argument. `Dynamic` comes with `applyDynamic` and
+  `updateDynamic` methods, which take actual argument values.
 
-### Reference
+## Example
 
-For more info, see [Issue #1886](https://github.com/lampepfl/dotty/issues/1886).
+<script src="https://scastie.scala-lang.org/Duhemm/HOZFKyKLTs294XOSYPU5Fw.js"></script>
+
+## Reference
+
+For more info, see [Rethink Structural
+Types](https://github.com/lampepfl/dotty/issues/1886).
