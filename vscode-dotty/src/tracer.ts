@@ -1,16 +1,16 @@
-import * as vscode from 'vscode';
+import * as vscode from 'vscode'
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'fs'
+import * as path from 'path'
 
-import * as archiver from 'archiver';
-import * as WebSocket from 'ws';
-import * as request from 'request';
+import * as archiver from 'archiver'
+import * as WebSocket from 'ws'
+import * as request from 'request'
 
-import { extensionName } from './extension';
-import { TracingConsentCache } from './tracing-consent';
+import { extensionName } from './extension'
+import { TracingConsentCache } from './tracing-consent'
 
-const consentCommandName = `${extensionName}.adjust-consent`;
+const consentCommandName = `${extensionName}.adjust-consent`
 
 export interface Ctx {
   readonly extensionContext: vscode.ExtensionContext,
@@ -31,28 +31,28 @@ export class Tracer {
     private readonly remoteWorkspaceDumpUrl: string | undefined
     private readonly maximumMessageSize: number
     private get isTracingEnabled(): boolean {
-        return Boolean(this.remoteWorkspaceDumpUrl || this.remoteTracingUrl);
+        return Boolean(this.remoteWorkspaceDumpUrl || this.remoteTracingUrl)
     }
 
     constructor(ctx: Ctx) {
-        this.ctx = ctx;
+        this.ctx = ctx
 
-        this.tracingConsent = new TracingConsentCache(ctx.extensionContext.workspaceState);
+        this.tracingConsent = new TracingConsentCache(ctx.extensionContext.workspaceState)
 
-        this.remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('remoteWorkspaceDumpUrl');
-        this.remoteTracingUrl = this.ctx.extensionConfig.get<string>('remoteTracingUrl');
-        const maximumMessageSize = this.ctx.extensionConfig.get<number>('tracing.maximumMessageSize');
-        this.maximumMessageSize = maximumMessageSize === undefined || maximumMessageSize < 0 ? 0 : maximumMessageSize | 0;
+        this.remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('remoteWorkspaceDumpUrl')
+        this.remoteTracingUrl = this.ctx.extensionConfig.get<string>('remoteTracingUrl')
+        const maximumMessageSize = this.ctx.extensionConfig.get<number>('tracing.maximumMessageSize')
+        this.maximumMessageSize = maximumMessageSize === undefined || maximumMessageSize < 0 ? 0 : maximumMessageSize | 0
 
         this.machineId = (() => {
-            const machineIdKey = 'tracing.machineId';
+            const machineIdKey = 'tracing.machineId'
             function persisted(value: string): string {
                 ctx.extensionConfig.update(machineIdKey, value, vscode.ConfigurationTarget.Global)
                 return value
             }
 
             const machineId = ctx.extensionConfig.get<string | null>(machineIdKey)
-            if (machineId != null) return machineId;
+            if (machineId != null) return machineId
 
             // vscode.env.machineId is a dummy value if telemetry is off - cannot be used
             const vscodeMachineId = vscode.workspace.getConfiguration().get<string>('telemetry.machineId')
@@ -61,28 +61,28 @@ export class Tracer {
             function uuidv4() {
                 // https://stackoverflow.com/a/2117523
                 return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
-                });
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8)
+                    return v.toString(16)
+                })
             }
 
             return persisted(uuidv4())
-        })();
+        })()
 
-        this.projectId = vscode.workspace.name !== undefined ? vscode.workspace.name : 'no-project';
-        this.sessionId = new Date().toISOString();
+        this.projectId = vscode.workspace.name !== undefined ? vscode.workspace.name : 'no-project'
+        this.sessionId = new Date().toISOString()
     }
 
     run(): { lspOutputChannel?: vscode.OutputChannel } {
-        const consentCommandDisposable = vscode.commands.registerCommand(consentCommandName, () => this.askForTracingConsent());
-        if (this.isTracingEnabled && this.tracingConsent.get() === 'no-answer') this.askForTracingConsent();
-        this.initializeAsyncWorkspaceDump();
-        const lspOutputChannel = this.createLspOutputChannel();
-        const statusBarItem = this.createStatusBarItem();
+        const consentCommandDisposable = vscode.commands.registerCommand(consentCommandName, () => this.askForTracingConsent())
+        if (this.isTracingEnabled && this.tracingConsent.get() === 'no-answer') this.askForTracingConsent()
+        this.initializeAsyncWorkspaceDump()
+        const lspOutputChannel = this.createLspOutputChannel()
+        const statusBarItem = this.createStatusBarItem()
         for (const disposable of [consentCommandDisposable, lspOutputChannel, statusBarItem]) {
-            if (disposable) this.ctx.extensionContext.subscriptions.push(disposable);
+            if (disposable) this.ctx.extensionContext.subscriptions.push(disposable)
         }
-        return { lspOutputChannel };
+        return { lspOutputChannel }
     }
 
     private askForTracingConsent(): void {
@@ -92,88 +92,88 @@ export class Tracer {
             'including every single keystroke.',
             'yes', 'no'
         ).then((value: string | undefined) => {
-            if (value === 'yes' || value === 'no') this.tracingConsent.set(value);
-        });
+            if (value === 'yes' || value === 'no') this.tracingConsent.set(value)
+        })
     }
 
     private initializeAsyncWorkspaceDump() {
-        if (this.remoteWorkspaceDumpUrl === undefined) return;
+        if (this.remoteWorkspaceDumpUrl === undefined) return
         // convince TS that this is a string
-        const definedUrl: string = this.remoteWorkspaceDumpUrl;
+        const definedUrl: string = this.remoteWorkspaceDumpUrl
 
         const doInitialize = () => {
             try {
-                this.asyncUploadWorkspaceDump(definedUrl);
+                this.asyncUploadWorkspaceDump(definedUrl)
             } catch (err) {
-                this.logError('error during workspace dump', safeError(err));
+                this.logError('error during workspace dump', safeError(err))
             }
-        };
+        }
 
         if (this.tracingConsent.get() === 'yes') {
             doInitialize()
         } else {
-            let didInitialize = false;
+            let didInitialize = false
             this.tracingConsent.subscribe(() => {
-                if (didInitialize) return;
-                didInitialize = true;
-                doInitialize();
+                if (didInitialize) return
+                didInitialize = true
+                doInitialize()
             })
         }
     }
 
     private createStatusBarItem(): vscode.StatusBarItem | undefined {
-        if (!this.isTracingEnabled) return undefined;
+        if (!this.isTracingEnabled) return undefined
         const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0)
-        item.command = consentCommandName;
+        item.command = consentCommandName
         const renderStatusBarItem = () => {
             item.text = (() => {
-                const desc = this.tracingConsent.get() === 'yes' ? 'ON' : 'OFF';
-                return `$(radio-tower) Dotty trace: ${desc}`;
-            })();
+                const desc = this.tracingConsent.get() === 'yes' ? 'ON' : 'OFF'
+                return `$(radio-tower) Dotty trace: ${desc}`
+            })()
 
             item.tooltip = (() => {
-                const desc = this.tracingConsent.get() === 'yes' ? 'consented' : 'not consented';
+                const desc = this.tracingConsent.get() === 'yes' ? 'consented' : 'not consented'
                 return `This workspace is configured for remote tracing of Dotty LSP and you have ${desc} to it. ` +
-                    'Click to adjust your consent.';
-            })();
+                    'Click to adjust your consent.'
+            })()
         }
-        renderStatusBarItem();
-        this.tracingConsent.subscribe(renderStatusBarItem);
-        item.show();
-        return item;
+        renderStatusBarItem()
+        this.tracingConsent.subscribe(renderStatusBarItem)
+        item.show()
+        return item
     }
 
     private createLspOutputChannel(): vscode.OutputChannel | undefined {
-        if (!this.remoteTracingUrl) return undefined;
+        if (!this.remoteTracingUrl) return undefined
 
         const localLspOutputChannel = vscode.window.createOutputChannel('Dotty LSP Communication')
         try {
-            return this.createRemoteLspOutputChannel(this.remoteTracingUrl, localLspOutputChannel);
+            return this.createRemoteLspOutputChannel(this.remoteTracingUrl, localLspOutputChannel)
         } catch (err) {
-            this.logError('error during remote output channel creation', safeError(err));
-            return localLspOutputChannel;
+            this.logError('error during remote output channel creation', safeError(err))
+            return localLspOutputChannel
         }
     }
 
     private asyncUploadWorkspaceDump(url: string) {
-        const storagePath = this.ctx.extensionContext.storagePath;
+        const storagePath = this.ctx.extensionContext.storagePath
         // TODO: handle multi-root workspaces
-        const rootPath = vscode.workspace.rootPath;
+        const rootPath = vscode.workspace.rootPath
         if (storagePath === undefined || rootPath === undefined) {
-            this.logError('Cannot start workspace dump b/c of workspace state:', { storagePath, rootPath });
-            return;
+            this.logError('Cannot start workspace dump b/c of workspace state:', { storagePath, rootPath })
+            return
         }
 
-        if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath);
-        const outputPath = path.join(storagePath, 'workspace-dump.zip');
-        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-        const output = fs.createWriteStream(outputPath);
+        if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath)
+        const outputPath = path.join(storagePath, 'workspace-dump.zip')
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+        const output = fs.createWriteStream(outputPath)
 
-        const zip = archiver('zip');
-        zip.on('error', (err) => this.logError('zip error', safeError(err)));
-        zip.on('warning', (err) => this.logError('zip warning', safeError(err)));
+        const zip = archiver('zip')
+        zip.on('error', (err) => this.logError('zip error', safeError(err)))
+        zip.on('warning', (err) => this.logError('zip warning', safeError(err)))
         zip.on('finish', () => {
-            this.ctx.extensionOut.appendLine('zip - finished');
+            this.ctx.extensionOut.appendLine('zip - finished')
             fs.createReadStream(outputPath).pipe(
                 request.put(url, {
                     qs: {
@@ -185,19 +185,19 @@ export class Tracer {
                     .on('error', (err) => this.logError('zip upload connection error', url, safeError(err)))
                     .on('complete', (resp) => {
                         if (!(resp.statusCode >= 200 && resp.statusCode < 300)) {
-                            this.logError('zip upload http error', url, resp.statusCode, resp.body);
+                            this.logError('zip upload http error', url, resp.statusCode, resp.body)
                         } else {
-                            this.ctx.extensionOut.appendLine('zip - http upload finished');
+                            this.ctx.extensionOut.appendLine('zip - http upload finished')
                         }
                     })
-            );
-        });
+            )
+        })
 
-        this.ctx.extensionOut.appendLine('zip - starting');
-        zip.pipe(output);
-        zip.glob('./**/*.{scala,sc,sbt,java}', { cwd: rootPath });
-        zip.glob('./**/.dotty-ide{.json,-artifact}', { cwd: rootPath });
-        zip.finalize();
+        this.ctx.extensionOut.appendLine('zip - starting')
+        zip.pipe(output)
+        zip.glob('./**/*.{scala,sc,sbt,java}', { cwd: rootPath })
+        zip.glob('./**/.dotty-ide{.json,-artifact}', { cwd: rootPath })
+        zip.finalize()
     }
 
     private createRemoteLspOutputChannel(
@@ -211,14 +211,14 @@ export class Tracer {
                     'X-DLS-Client-ID': this.machineId,
                     'X-DLS-Session-ID': this.sessionId,
                 },
-            });
+            })
 
             const timer = setInterval(
                 () => {
                     if (socket.readyState === WebSocket.OPEN) {
-                        socket.send('');
+                        socket.send('')
                     } else if (socket.readyState === WebSocket.CLOSED) {
-                        clearInterval(timer);
+                        clearInterval(timer)
                     }
                 },
                 10 * 1000 /*ms*/,
@@ -233,8 +233,8 @@ export class Tracer {
                         message: event.message,
                         type: event.type
                     }))
-                );
-                vscode.window.showWarningMessage('An error occured in Dotty LSP remote tracing connection.');
+                )
+                vscode.window.showWarningMessage('An error occured in Dotty LSP remote tracing connection.')
             }
 
             socket.onclose = (event) => {
@@ -246,97 +246,97 @@ export class Tracer {
                         code: event.code,
                         reason: event.reason
                     }))
-                );
-                vscode.window.showWarningMessage('Dotty LSP remote tracing connection was dropped.');
+                )
+                vscode.window.showWarningMessage('Dotty LSP remote tracing connection was dropped.')
             }
 
-            return socket;
-        };
+            return socket
+        }
 
-        let alreadyCreated = false;
-        let socket: WebSocket;
+        let alreadyCreated = false
+        let socket: WebSocket
         // note: creating socket lazily is important for correctness
         // if the user did not initially give his consent on IDE start, but gives it afterwards
         // we only want to start a connection and upload data *after* being given consent
         const withSocket: (thunk: (socket: WebSocket) => any) => void = (thunk) => {
             // only try to create the socket _once_ to avoid endlessly looping
             if (!alreadyCreated) {
-                alreadyCreated = true;
+                alreadyCreated = true
                 try {
-                    socket = createSocket();
+                    socket = createSocket()
                 } catch (err) {
-                    this.logError('socket create error', safeError(err));
+                    this.logError('socket create error', safeError(err))
                 }
             }
 
-            if (socket) thunk(socket);
+            if (socket) thunk(socket)
         }
 
-        let log: string = '';
+        let log: string = ''
         return {
             name: 'websocket',
 
             append: (value: string) => {
-                localOutputChannel.append(value);
-                if (this.tracingConsent.get() === 'no') return;
-                log += value;
+                localOutputChannel.append(value)
+                if (this.tracingConsent.get() === 'no') return
+                log += value
             },
 
             appendLine: (value: string) => {
                 localOutputChannel.appendLine(value)
                 if (this.tracingConsent.get() === 'no') {
-                    log = '';
-                    return;
+                    log = ''
+                    return
                 }
 
-                log += value;
-                log += '\n';
+                log += value
+                log += '\n'
                 if (this.tracingConsent.get() === 'yes') withSocket((socket) => {
                     if (socket.readyState === WebSocket.OPEN) {
                         const send = (msg: string) => socket.send(msg, (err) => {
                             if (err) {
                                 this.logError('socket send error', err)
                             }
-                        });
+                        })
 
-                        let start = 0;
+                        let start = 0
                         while (start < log.length) {
-                            send(log.substring(start, start + this.maximumMessageSize));
-                            start += this.maximumMessageSize;
+                            send(log.substring(start, start + this.maximumMessageSize))
+                            start += this.maximumMessageSize
                         }
-                        log = '';
+                        log = ''
                     }
-                });
+                })
             },
 
             clear() { },
             show() { },
             hide() { },
             dispose() {
-                if (socket) socket.close();
-                localOutputChannel.dispose();
-            }
-        };
-    }
-
-    private silenceErrors: boolean = false;
-    private logErrorWithoutNotifying(message: string, ...rest: any[]) {
-        const msg = `[Dotty LSP Tracer] ${message}`;
-        // unwrap SafeJsonifier, for some reason Electron logs the result
-        // of .toJSON, unlike browsers
-        console.error(msg, ...rest.map((a) => a instanceof SafeJsonifier ? a.value : a));
-        function cautiousStringify(a: any): string  {
-            try {
-                return JSON.stringify(a, undefined, 4);
-            } catch (err) {
-                console.error('cannot stringify', err, a);
-                return a.toString();
+                if (socket) socket.close()
+                localOutputChannel.dispose()
             }
         }
-        this.ctx.extensionOut.appendLine([msg].concat(rest.map(cautiousStringify)).join(' '));
+    }
+
+    private silenceErrors: boolean = false
+    private logErrorWithoutNotifying(message: string, ...rest: any[]) {
+        const msg = `[Dotty LSP Tracer] ${message}`
+        // unwrap SafeJsonifier, for some reason Electron logs the result
+        // of .toJSON, unlike browsers
+        console.error(msg, ...rest.map((a) => a instanceof SafeJsonifier ? a.value : a))
+        function cautiousStringify(a: any): string  {
+            try {
+                return JSON.stringify(a, undefined, 4)
+            } catch (err) {
+                console.error('cannot stringify', err, a)
+                return a.toString()
+            }
+        }
+        this.ctx.extensionOut.appendLine([msg].concat(rest.map(cautiousStringify)).join(' '))
     }
     private logError(message: string, ...rest: any[]) {
-        this.logErrorWithoutNotifying(message, ...rest);
+        this.logErrorWithoutNotifying(message, ...rest)
         if (!this.silenceErrors) {
             vscode.window.showErrorMessage(
                 'An error occured which prevents sending usage data to EPFL. ' +
@@ -344,7 +344,7 @@ export class Tracer {
                 'Silence further errors'
             ).then((result) => {
                 if (result !== undefined) {
-                    this.silenceErrors = true;
+                    this.silenceErrors = true
                 }
             })
         }
@@ -352,7 +352,7 @@ export class Tracer {
 }
 
 function safeError(e: Error): SafeJsonifier<Error> {
-    return new SafeJsonifier(e, (e) => e.toString());
+    return new SafeJsonifier(e, (e) => e.toString())
 }
 
 class SafeJsonifier<T> {
@@ -360,11 +360,11 @@ class SafeJsonifier<T> {
     valueToObject: (t: T) => {}
 
     constructor(value: T, valueToObject: (t: T) => {}) {
-        this.value = value;
-        this.valueToObject = valueToObject;
+        this.value = value
+        this.valueToObject = valueToObject
     }
 
     toJSON() {
-        return this.valueToObject(this.value);
+        return this.valueToObject(this.value)
     }
 }
