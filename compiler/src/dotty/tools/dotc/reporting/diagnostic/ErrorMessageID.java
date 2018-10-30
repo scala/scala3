@@ -4,10 +4,9 @@ package dotty.tools.dotc.reporting.diagnostic;
 public enum ErrorMessageID {
 
     // IMPORTANT: Add new IDs only at the end and never remove IDs
-
     LazyErrorId, // // errorNumber: -2
     NoExplanationID, // errorNumber: -1
-
+    // Note: line number n contains error number n - 10
     EmptyCatchOrFinallyBlockID, // errorNumber: 0
     EmptyCatchBlockID, // errorNumber: 1
     EmptyCatchAndFinallyBlockID, // errorNumber: 2

@@ -46,10 +46,17 @@ import dotty.tools.dotc.reporting.diagnostic.MessageContainer
     escalated <- fatalWarnings(allowedKind)
   } yield escalated
 
-  def suppressedIds: List[Int] = this.settings.XsuppressMessageIds.value.flatMap(id => scala.util.Try(id.toInt).toOption)
-  def suppressIds(mc: MessageContainer) = mc match {
-    case w: Warning if suppressedIds.contains(w.contained().errorId) => None
-    case _ => Some(mc)
+  def suppressedIds: List[Int] = this.settings.XsuppressMessageIds.value.flatMap(id => {
+    print(s"parsed $id")
+     scala.util.Try(id.toInt).toOption
+  })
+  def suppressIds(mc: MessageContainer) = {
+    val errornumber = mc.contained().errorId.errorNumber()
+    mc match {
+      case w: Error => Some(mc)
+      case m if suppressedIds.contains(m.contained().errorId.errorNumber()) => None
+      case _ => Some(mc)
+    }
   }
 
   def supressedWarningKinds: List[String] = this.settings.XsuppressWarningKinds.value
