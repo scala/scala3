@@ -1631,7 +1631,10 @@ object SymDenotations {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
-        btrCache.put(tp, baseTp)
+        if (!tp.isProvisional)
+          btrCache.put(tp, baseTp)
+        else
+          btrCache.remove(tp) // Remove any potential sentinel value
       }
 
       def ensureAcyclic(baseTp: Type) = {
@@ -1717,8 +1720,6 @@ object SymDenotations {
               val baseTp = recur(superTp)
               tp match {
                 case tp: CachedType if baseTp.exists && inCache(superTp) =>
-                  // Note: This also works for TypeVars: If they are not instantiated, their supertype
-                  // is a TypeParamRef, which is never cached. So uninstantiated TypeVars are not cached either.
                   record(tp, baseTp)
                 case _ =>
               }
