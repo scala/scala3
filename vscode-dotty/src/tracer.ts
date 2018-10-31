@@ -242,7 +242,6 @@ export class Tracer {
                         type: event.type
                     }))
                 )
-                vscode.window.showWarningMessage('An error occured in Dotty LSP remote tracing connection.')
             }
 
             socket.onclose = (event) => {
@@ -255,7 +254,6 @@ export class Tracer {
                         reason: event.reason
                     }))
                 )
-                vscode.window.showWarningMessage('Dotty LSP remote tracing connection was dropped.')
             }
 
             return socket
