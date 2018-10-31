@@ -174,22 +174,22 @@ class RenameTest {
     def testRename(m: CodeMarker, expectations: Set[CodeRange]) =
       sources.rename(m, "NewName", expectations)
 
-    testRename(m1, Set(m1 to m2))
-    testRename(m2, Set(m1 to m2))
-    testRename(m3, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
-    testRename(m4, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
-    testRename(m5, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
-    testRename(m6, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m1, Set(m1 to m2, m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m2, Set(m1 to m2, m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m3, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m4, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m5, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m6, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
     testRename(m7, Set(m7 to m8))
     testRename(m8, Set(m7 to m8))
-    testRename(m9, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
-    testRename(m10, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m9, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m10, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
     testRename(m11, Set(m11 to m12, m13 to m14))
     testRename(m12, Set(m11 to m12, m13 to m14))
     testRename(m13, Set(m11 to m12, m13 to m14))
     testRename(m14, Set(m11 to m12, m13 to m14))
-    testRename(m15, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
-    testRename(m16, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
+    testRename(m15, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
+    testRename(m16, Set(m3 to m4, m5 to m6, m7 to m8, m9 to m10, m11 to m12, m13 to m14, m15 to m16))
   }
 
   @Test def renameImportWithRenaming: Unit = {

@@ -681,28 +681,6 @@ object Interactive {
                                 source: SourceFile
                                )(implicit ctx: Context): List[SourceNamedTree] = {
 
-    /**
-     * Remove the blocks that immediately enclose a renaming to `toName` in `inTree`.
-     *
-     * @param toName The target name of renamings.
-     * @param inTree The tree in which to remove the blocks that have such a renaming.
-     * @return A tree that has no children containing a renaming to `toName`.
-     */
-    def removeBlockWithRenaming(toName: Name, inTree: Tree): Tree = {
-      new TreeMap {
-        override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-          case pkg: PackageDef if immediatelyEnclosesRenaming(toName, pkg) =>
-            EmptyTree
-          case template: Template if immediatelyEnclosesRenaming(toName, template) =>
-            cpy.Template(template)(constr = DefDef(template.constr.symbol.asTerm), body = Nil)
-          case block @ Block(stats, expr) if immediatelyEnclosesRenaming(toName, block) =>
-            EmptyTree
-          case other =>
-            super.transform(other)
-        }
-      }.transform(inTree)
-    }
-
     val trees = {
       val enclosedTrees = enclosing match {
         case Some(pkg: PackageDef) =>
@@ -716,13 +694,9 @@ object Interactive {
           allTrees
       }
 
-      // These trees may contain a new renaming of the same symbol to the same name, so we may
-      // have to cut some branches
-      val trimmedTrees = enclosedTrees.map(removeBlockWithRenaming(toName, _))
-
       // Some of these trees may not be `NameTrees`. Those that are not are wrapped in a
       // synthetic val def, so that everything can go inside `SourceNamedTree`s.
-      trimmedTrees.map {
+      enclosedTrees.map {
         case tree: NameTree =>
           SourceNamedTree(tree, source)
         case tree =>
