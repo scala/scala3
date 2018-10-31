@@ -624,7 +624,7 @@ object Interactive {
 
   /** Are the two names the same? */
   def sameName(n0: Name, n1: Name): Boolean = {
-    n0.stripModuleClassSuffix.toString == n1.stripModuleClassSuffix.toString
+    n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
   }
 
   /**
@@ -640,13 +640,11 @@ object Interactive {
       tree match {
         case Import(_, selectors) =>
           selectors.exists {
-            case Thicket(_ :: Ident(rename) :: Nil) =>
-              rename.stripModuleClassSuffix.toString == toName.stripModuleClassSuffix.toString
-            case _ =>
-              false
+            case Thicket(_ :: Ident(rename) :: Nil) => sameName(rename, toName)
+            case _ => false
           }
-            case _ =>
-              false
+        case _ =>
+          false
       }
     }
 
@@ -696,7 +694,7 @@ object Interactive {
           case pkg: PackageDef if immediatelyEnclosesRenaming(toName, pkg) =>
             EmptyTree
           case template: Template if immediatelyEnclosesRenaming(toName, template) =>
-            cpy.Template(template)(constr = DefDef(template.constr.symbol.asTerm), self = template.self, body = Nil)
+            cpy.Template(template)(constr = DefDef(template.constr.symbol.asTerm), body = Nil)
           case block @ Block(stats, expr) if immediatelyEnclosesRenaming(toName, block) =>
             EmptyTree
           case other =>
@@ -706,7 +704,7 @@ object Interactive {
     }
 
     val trees = {
-      val trees = enclosing match {
+      val enclosedTrees = enclosing match {
         case Some(pkg: PackageDef) =>
           pkg.stats
         case Some(template: Template) =>
@@ -720,7 +718,7 @@ object Interactive {
 
       // These trees may contain a new renaming of the same symbol to the same name, so we may
       // have to cut some branches
-      val trimmedTrees = trees.map(removeBlockWithRenaming(toName, _))
+      val trimmedTrees = enclosedTrees.map(removeBlockWithRenaming(toName, _))
 
       // Some of these trees may not be `NameTrees`. Those that are not are wrapped in a
       // synthetic val def, so that everything can go inside `SourceNamedTree`s.
