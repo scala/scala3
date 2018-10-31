@@ -136,7 +136,8 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  [FunArgMods | ‘.’] FunArgTypes ‘=>’ Type                       Function(ts, t)
+Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
+                    |  FunArgMods ‘|=>’ Type
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
@@ -175,7 +176,8 @@ TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                
 
 ### Expressions
 ```ebnf
-Expr              ::=  [FunArgMods | ‘.’] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  [FunArgMods] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+                    |  FunParams ‘|=>’ Expr
                     |  Expr1
 BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
                     |  Expr1
@@ -204,6 +206,7 @@ Catches           ::=  ‘catch’ Expr
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
+                    |  InfixExpr ‘with’ (InfixExpr | ParArgumentExprs)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
@@ -218,7 +221,6 @@ SimpleExpr1       ::=  Literal
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr (TypeArgs | NamedTypeArgs)                    TypeApply(expr, args)
                     |  SimpleExpr1 ArgumentExprs                                Apply(expr, args)
-                    |  SimpleExpr1 ‘.’ ParArgumentExprs
                     |  XmlExpr
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
@@ -288,8 +290,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
                        TypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘)’]
-ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
-                    |  ‘.’ ‘(’ ClsParams ‘)’
+ClsParamClause    ::=  [nl | ‘with’] ‘(’ [ClsParams] ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -297,11 +298,9 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
-DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
+DefParamClause    ::=  [nl | ‘with’] ‘(’ [DefParams] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
-WitnessParams     ::=  WitnessParam {‘,’ WitnessParam}
-WitnessParam      ::=  DefParam | ParamType
 ```
 
 ### Bindings and Imports
@@ -370,10 +369,10 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-WitnessDef        ::=  [id] [DefTypeParamClause] [‘with’ WitnessParams]
-                       [‘for’ [ConstrApps]] TemplateBody
-                    |  id [DefTypeParamClause] [‘with’ WitnessParams]
-                       [‘for’ Type] [‘=’ Expr]
+WitnessDef        ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
+                    |  id WitnessParams ‘:’ Type ‘=’ Expr
+                    |  id ‘=’ Expr
+WitnessParams     ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

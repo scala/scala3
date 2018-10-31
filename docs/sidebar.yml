@@ -48,8 +48,6 @@ sidebar:
               url: docs/reference/witnesses/witnesses.html
             - title: Witness Parameters
               url: docs/reference/witnesses/witness-params.html
-            - title: Witness Modifier
-              url: docs/reference/witnesses/witness-modifier.html
             - title: Discussion
               url: docs/reference/witnesses/discussion.html
         - title: Other New Features

@@ -25,9 +25,7 @@ Fourth, the syntax of implicit parameters has also some shortcomings. It starts 
 ```scala
 def currentMap(implicit ctx: Context): Map[String, Int]
 ```
-one cannot write `currentMap("abc")` since the string "abc" is taken as explicit argument to the implicit `ctx` parameter. One has to write `currentMap.apply("abc")` instead, which is awkward and irregular. For the same reason, a method definition can only have one implicit parameter section and it must always come last. This restriction not only reduces orthogonality, but also prevents some useful program constructs, such as a method with a regular parameter whose type depends on an implicit value. Finally, it's also a bit annoying that implicit parameters must have a name, even though in most cases that name is never referenced.
-
-Fifth, there is a lack of mechanism to contain the scope of implicits. Specifically, implicit parameters are always themselves implicit values in the body of the class or method in which they are defined. There are situations where one would like the parameter to a method or a class to be passed implicitly without that parameter becoming a candidate for further implicits in the body. The popular dependency injection framework MacWire exists precisely because such fine grained control of implicit scope is currently not available.
+one cannot write `currentMap("abc")` since the string "abc" is taken as explicit argument to the implicit `ctx` parameter. One has to write `currentMap.apply("abc")` instead, which is awkward and irregular. For the same reason, a method definition can only have one implicit parameter section and it must always come last. This restriction not only reduces orthogonality, but also prevents some useful program constructs, such as a method with a regular parameter whose type depends on an implicit value. Finally, it's also a bit annoying that implicit parameters must have a name, even though in many cases that name is never referenced.
 
 None of the shortcomings is fatal, after all implicits are very widely used, and many libraries and applications rely on them. But together, they make code using implicits more cumbersome and less clear than it could be.
 
@@ -37,12 +35,9 @@ Can implicit function types help? Implicit function types allow to abstract over
 
 `implicit` is a modifier that gets attached to various constructs. I.e. we talk about implicit vals, defs, objects, parameters, or arguments. This conveys mechanism rather than intent. What _is_ the intent that we want to convey? Ultimately it's "trade types for terms". The programmer specifies a type and the compiler fills in the term matching that type automatically. So the concept we are after would serve to express definitions that provide the canonical instances for certain types.
 
-I believe a good name for is concept is _witness_. A term is a witness for a type by defining an implicit instance of this type. It's secondary whether this instance takes the form of a `val` or `object` or whether it is a method. It would be better to have a uniform syntax for all of these kinds of instances.
+I believe a good name for this concept is _witness_. A term is a witness for a type if it is an implicit instance of this type. It is secondary whether this instance takes the form of a `val` or `object` or whether it is a method. It would be better to have a uniform syntax for all of these kinds of instances.
 
-The next sections elaborate such an alternative design. It consists of three proposals which are independent of each other:
+The next sections elaborate such an alternative design. It consists of two proposals which are independent of each other:
 
- - A proposal to replace implicit _definitions_ by [witness definitions](./witnesses.html)
- .
+ - A proposal to replace implicit _definitions_ by [witness definitions](./witnesses.html).
  - A proposal for a [new syntax](./witness-params.html) of implicit _parameters_ and their _arguments_.
-
- - A proposal to replace most or all remaining uses of the `implicit` modifier by a new `witness` [modifier](./witness-modifier.html).
