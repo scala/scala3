@@ -68,8 +68,9 @@ export function activate(context: ExtensionContext) {
   } else if (!fs.existsSync(disableDottyIDEFile)) {
 
     if (!vscode.workspace.workspaceFolders) {
-      if (vscode.window.activeTextEditor) {
-        setWorkspaceAndReload(vscode.window.activeTextEditor.document)
+      const editor = vscode.window.activeTextEditor
+      if (editor && editor.document.uri.fsPath && editor.document.uri.fsPath.length > 0) {
+        setWorkspaceAndReload(editor.document)
       }
     } else {
       let configuredProject: Thenable<void> = Promise.resolve()
@@ -108,7 +109,16 @@ export function activate(context: ExtensionContext) {
 function setWorkspaceAndReload(document: vscode.TextDocument) {
   const documentPath = path.parse(document.uri.fsPath).dir
   const workspaceRoot = findWorkspaceRoot(documentPath) || documentPath
-  vscode.workspace.updateWorkspaceFolders(0, null, { uri: vscode.Uri.file(workspaceRoot) })
+
+  vscode.window.showInformationMessage(
+    `It looks like '${workspaceRoot}' is the root of your workspace. ` +
+    'Would you like to open it?',
+    'Yes', 'No'
+  ).then((value: String | undefined) => {
+    if (value === 'Yes') {
+      vscode.workspace.updateWorkspaceFolders(0, null, { uri: vscode.Uri.file(workspaceRoot) })
+    }
+  })
 }
 
 /**
