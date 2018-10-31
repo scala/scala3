@@ -282,48 +282,48 @@ export class Tracer {
 
         let log: string = ''
         return {
-            name: 'websocket',
+          name: 'websocket',
 
-            append: (value: string) => {
-                localOutputChannel.append(value)
-                if (this.tracingConsent.get() === 'Deny') return
-                log += value
-            },
+          append: (value: string) => {
+            localOutputChannel.append(value)
+            if (this.tracingConsent.get() === 'Deny') return
+            log += value
+          },
 
-            appendLine: (value: string) => {
-                localOutputChannel.appendLine(value)
-                if (this.tracingConsent.get() === 'Deny') {
-                    log = ''
-                    return
-                }
-
-                log += value
-                log += '\n'
-                if (this.tracingConsent.get() === 'Allow') withSocket((socket) => {
-                    if (socket.readyState === WebSocket.OPEN) {
-                        const send = (msg: string) => socket.send(msg, (err) => {
-                            if (err) {
-                                this.logError('socket send error', err)
-                            }
-                        })
-
-                        let start = 0
-                        while (start < log.length) {
-                            send(log.substring(start, start + this.maximumMessageSize))
-                            start += this.maximumMessageSize
-                        }
-                        log = ''
-                    }
-                })
-            },
-
-            clear() { },
-            show() { },
-            hide() { },
-            dispose() {
-                if (socket) socket.close()
-                localOutputChannel.dispose()
+          appendLine: (value: string) => {
+            localOutputChannel.appendLine(value)
+            if (this.tracingConsent.get() === 'Deny') {
+              log = ''
+              return
             }
+
+            log += value
+            log += '\n'
+            if (this.tracingConsent.get() === 'Allow') withSocket((socket) => {
+              if (socket.readyState === WebSocket.OPEN) {
+                const send = (msg: string) => socket.send(msg, (err) => {
+                  if (err) {
+                    this.logError('socket send error', err)
+                  }
+                })
+
+                let start = 0
+                while (start < log.length) {
+                  send(log.substring(start, start + this.maximumMessageSize))
+                  start += this.maximumMessageSize
+                }
+                log = ''
+              }
+            })
+          },
+
+          clear() { },
+          show() { },
+          hide() { },
+          dispose() {
+            if (socket) socket.close()
+            localOutputChannel.dispose()
+          }
         }
     }
 
