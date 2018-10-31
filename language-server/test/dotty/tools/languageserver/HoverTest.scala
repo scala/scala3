@@ -71,7 +71,7 @@ class HoverTest {
     code"""class Foo {
           |  ${m1}x$m2
           |}""".withSource
-      .hover(m1 to m2, hoverContent("<error not found: x>" ))
+      .hover(m1 to m2, None)
   }
 
   @Test def hoverFun0: Unit = {
