@@ -281,16 +281,31 @@ export class Tracer {
         }
 
         let log: string = ''
+        let messageCounter: number = 0
+        // Avoid filling the user memory with log messages
+        let maxLocalMessages: number = 1000
         return {
           name: 'websocket',
 
           append: (value: string) => {
+	    messageCounter++
+	    if (messageCounter > maxLocalMessages) {
+	      messageCounter = 0
+	      localOutputChannel.clear()
+	    }
+
             localOutputChannel.append(value)
             if (this.tracingConsent.get() === 'Deny') return
             log += value
           },
 
           appendLine: (value: string) => {
+	    messageCounter++
+	    if (messageCounter > maxLocalMessages) {
+	      messageCounter = 0
+	      localOutputChannel.clear()
+	    }
+
             localOutputChannel.appendLine(value)
             if (this.tracingConsent.get() === 'Deny') {
               log = ''
