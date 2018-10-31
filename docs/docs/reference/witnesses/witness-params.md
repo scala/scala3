@@ -71,13 +71,6 @@ This scheme is essentially what MacWire does. MacWire was implemented as a macro
 I considered for a while an alternative design where the two notions of an implicit parameter (argument gets synthesized vs. parameter is itself available as an implicit value) are separated. This would allow a nicer expression of component assembly which would not require that dependencies are repeated in the witnesses. The most significant downside of the alternative design is that it's likely to induce choice fatigue. In most cases, implicit parameters should be available itself as a witness, so asking for an opt-in each time a parameter is defined
 became quickly tiresome.
 
-## Summoning a Witness
-
-The `implicitly` method defined in `Predef` computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to introduce the name `summon` for this operation. So `summon[T]` summons a witness for `T`, in the same way as `implicitly[T]` does. The definition of `summon` is straightforward:
-```scala
-def summon[T] with (x: T) = x
-```
-
 ## Implicit Function Types and Closures
 
 Implicit function types are expressed using the new reserved operator `|=>`. Examples:

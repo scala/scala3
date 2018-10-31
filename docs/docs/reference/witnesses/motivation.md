@@ -37,7 +37,10 @@ Can implicit function types help? Implicit function types allow to abstract over
 
 I believe a good name for this concept is _witness_. A term is a witness for a type if it is an implicit instance of this type. It is secondary whether this instance takes the form of a `val` or `object` or whether it is a method. It would be better to have a uniform syntax for all of these kinds of instances.
 
-The next sections elaborate such an alternative design. It consists of two proposals which are independent of each other:
+The next sections elaborate such an alternative design. It consists of three proposals:
 
  - A proposal to replace implicit _definitions_ by [witness definitions](./witnesses.html).
  - A proposal for a [new syntax](./witness-params.html) of implicit _parameters_ and their _arguments_.
+ - A proposal to [replace all remaining usages](./replacing-implicits) of `implicit` in the language.
+
+The first two proposals are independent of each other. The last one would work only if the first two are adopted.
