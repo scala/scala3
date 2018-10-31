@@ -11,7 +11,7 @@
   },
   "icon": "images/dotty-logo.png",
   "engines": {
-    "vscode": "^1.27.0"
+    "vscode": "^1.27.1"
   },
   "categories": [
     "Languages"
@@ -48,6 +48,29 @@
           "type": "boolean",
           "default": true,
           "description": "If true, saving a worksheet will also run it."
+        },
+        "dotty.trace.remoteWorkspaceDumpUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Url to send local workspace dump to."
+        },
+        "dotty.trace.remoteTracingUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Url to send local LSP communication to."
+        },
+        "dotty.trace.machineId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "ID of your machine used when Dotty Language Server tracing is turned on."
+        },
+        "dotty.trace.maximumMessageSize": {
+          "type": "number",
+          "default": 512,
+          "description": "Maximum size for the messages sent to remote server. Larger ones will be split."
         }
       }
     },
@@ -88,12 +111,18 @@
     "compare-versions": "^3.4.0",
     "vscode-languageclient": "^5.1.0",
     "vscode-languageserver": "^5.1.0",
-    "vscode-jsonrpc": "4.0.0"
+    "vscode-jsonrpc": "4.0.0",
+    "ws": "^6.0.0",
+    "archiver": "^3.0.0",
+    "request": "^2.88.0"
   },
   "devDependencies": {
     "@types/compare-versions": "^3.0.0",
     "@types/mocha": "^5.2.5",
     "@types/node": "^8.10.32",
+    "@types/ws": "^6.0.0",
+    "@types/archiver": "^2.1.2",
+    "@types/request": "^2.47.1",
     "typescript": "^2.9.2",
     "vscode": "^1.1.21"
   }

@@ -79,25 +79,25 @@ function connectSocket(socket: net.Socket): net.Socket {
   if (u.protocol == 'tcp:' && u.port) {
     socket.connect(+u.port, '127.0.0.1');
   } else if (u.protocol == 'local:' && u.hostname && os.platform() == 'win32') {
-    let pipePath = '\\\\.\\pipe\\' + u.hostname;
-    socket.connect(pipePath);
+    let pipePath = '\\\\.\\pipe\\' + u.hostname
+    socket.connect(pipePath)
   } else if (u.protocol == 'local:' && u.path) {
-    socket.connect(u.path);
+    socket.connect(u.path)
   } else {
-    throw 'Unknown protocol ' + u.protocol;
+    throw 'Unknown protocol ' + u.protocol
   }
-  return socket;
+  return socket
 }
 
 // the port file is hardcoded to a particular location relative to the build.
 function discoverUrl(): url.Url {
-  let pf = path.join(workspaceRoot, 'project', 'target', 'active.json');
-  let portfile = JSON.parse(fs.readFileSync(pf).toString());
-  return url.parse(portfile.uri);
+  let pf = path.join(workspaceRoot, 'project', 'target', 'active.json')
+  let portfile = JSON.parse(fs.readFileSync(pf).toString())
+  return url.parse(portfile.uri)
 }
 
 function delay(ms: number) {
-	return new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 async function waitForServer(): Promise<net.Socket> {
@@ -106,12 +106,12 @@ async function waitForServer(): Promise<net.Socket> {
     location: vscode.ProgressLocation.Window,
     title: "Connecting to sbt server..."
   }, async _ => {
-    let retries = 60;
+    let retries = 60
     while (!socket && retries > 0) {
       try { socket = connectSocket(new net.Socket()) }
       catch (e) {
-        retries--;
-        await delay(1000);
+        retries--
+        await delay(1000)
       }
     }
     if (socket) return Promise.resolve(socket)

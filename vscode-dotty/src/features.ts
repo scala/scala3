@@ -14,9 +14,9 @@ import { WorksheetProvider } from './worksheet'
 // https://github.com/Microsoft/vscode-languageserver-node/issues/423 is fixed.
 function ensure<T, K extends keyof T>(target: T, key: K): T[K] {
   if (target[key] === void 0) {
-    target[key] = {} as any;
+    target[key] = {} as any
   }
-  return target[key];
+  return target[key]
 }
 
 export interface WorksheetClientCapabilities {
