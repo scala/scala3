@@ -316,24 +316,11 @@ class DottyLanguageServer extends LanguageServer
       path match {
         // Selected a renaming in an import node
         case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.pos.contains(pos.pos) =>
-          val allTrees = uriTrees.map(_.tree)
-          val source = uriTrees.head.source
-          Interactive.findTreesMatchingRenaming(rename.name, rest.headOption, syms, allTrees, source)
+          Interactive.findTreesMatchingRenaming(rename.name, syms, uriTrees)
 
         // Selected a reference that has been renamed
         case (nameTree: NameTree) :: rest if Interactive.isRenamed(nameTree) =>
-          val enclosing = rest.find {
-            // If we selected one of the parents or the selftype of this Template for doing the
-            // renaming, then this Template cannot immediately enclose the rename we're interesting
-            // in (the renaming happening inside its body cannot be used on the parents or selftype).
-            case template: Template if template.parents.exists(_.pos.contains(pos.pos)) || template.self.pos.contains(pos.pos) =>
-              false
-            case tree =>
-              Interactive.immediatelyEnclosesRenaming(nameTree.name, tree)
-          }
-          val allTrees = uriTrees.map(_.tree)
-          val source = uriTrees.head.source
-          Interactive.findTreesMatchingRenaming(nameTree.name, enclosing, syms, allTrees, source)
+          Interactive.findTreesMatchingRenaming(nameTree.name, syms, uriTrees)
 
         case _ =>
           val includes =

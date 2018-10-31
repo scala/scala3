@@ -624,35 +624,9 @@ object Interactive {
    * @return All the references to the symbol under the cursor that are using `toName`.
    */
   def findTreesMatchingRenaming(toName: Name,
-                                enclosing: Option[Tree],
                                 syms: List[Symbol],
-                                allTrees: List[Tree],
-                                source: SourceFile
+                                trees: List[SourceTree]
                                )(implicit ctx: Context): List[SourceNamedTree] = {
-
-    val trees = {
-      val enclosedTrees = enclosing match {
-        case Some(pkg: PackageDef) =>
-          pkg.stats
-        case Some(template: Template) =>
-          template.body
-        case Some(block: Block) =>
-          block.expr :: block.stats
-        case _ =>
-          // No enclosing tree; we'll search in the whole file.
-          allTrees
-      }
-
-      // Some of these trees may not be `NameTrees`. Those that are not are wrapped in a
-      // synthetic val def, so that everything can go inside `SourceNamedTree`s.
-      enclosedTrees.map {
-        case tree: NameTree =>
-          SourceNamedTree(tree, source)
-        case tree =>
-          val valDef = tpd.SyntheticValDef(NameKinds.UniqueName.fresh(), tree)
-          SourceNamedTree(valDef, source)
-      }
-    }
 
     val includes =
       Include.references | Include.imports | Include.renamingImports
