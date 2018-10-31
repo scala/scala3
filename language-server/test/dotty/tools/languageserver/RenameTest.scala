@@ -192,4 +192,27 @@ class RenameTest {
     testRename(m16, Set(m3 to m4, m5 to m6, m9 to m10, m15 to m16))
   }
 
+  @Test def renameImportWithRenaming: Unit = {
+    def testRename(m: CodeMarker) =
+      withSources(
+        code"""object A { class ${m1}C${m2} }""",
+        code"""import A.${m3}C${m4}
+               object O {
+                 class B extends ${m5}C${m6} {
+                   import A.{${m7}C${m8} => Renamed}
+                   def foo = new Renamed
+                 }
+               }"""
+      ).rename(m, "NewName", Set(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+
+    testRename(m1)
+    testRename(m2)
+    testRename(m3)
+    testRename(m4)
+    testRename(m5)
+    testRename(m6)
+    testRename(m7)
+    testRename(m8)
+  }
+
 }
