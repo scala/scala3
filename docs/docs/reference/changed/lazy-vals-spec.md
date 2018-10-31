@@ -69,6 +69,12 @@ initialized by some thread. The state 2 denotes that there are concurrent reader
 The state 3 represents a lazy val that has been initialized. `<field-id>` is the id of the lazy
 val. This id grows with the number of volatile lazy vals defined in the class.
 
+## Note on recursive lazy vals
+
+Ideally recursive lazy vals should be flagged as an error. The current behavior for `@volatile`
+recursive lazy vals is undefined (initialization may result in a deadlock). Non `@volatile` lazy
+vals behave as in Scala 2.
+
 ## Reference
 
 * [SIP-20]
