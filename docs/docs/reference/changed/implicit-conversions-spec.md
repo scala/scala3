@@ -48,7 +48,15 @@ Views are applied in three situations:
 In Scala 2, views whose parameters are passed by-value take precedence
 over views whose parameters are passed by-name. This is no longer the
 case in Scala 3. A type error reporting the ambiguous conversions will
-be emitted in cases where this rule would be applied in Scala 2.
+be emitted in cases where this rule would be applied in Scala 2:
+
+```scala
+implicit def conv1(x: Int): String = x.toString
+implicit def conv2(x: => Int): String = x.toString
+
+val x: String = 0 // Compiles in Scala2 (uses `conv1`),
+                  // type error in Scala 3 because of ambiguity.
+```
 
 In Scala 2, implicit values of a function type would be considered as
 potential views. In Scala 3, these implicit value need to have type
