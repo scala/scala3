@@ -21,6 +21,10 @@ This conversion can be either:
 1. An `implicit def` of type `T => S` or `(=> T) => S`
 1. An implicit value of type `ImplicitConverter[T, S]`
 
+Defining an implicit conversion will emit a warning unless the import
+`scala.language.implicitConversions` is in scope, or the flag
+`-language:implicitConversions` is given to the compiler.
+
 ## Examples
 
 The first example is taken from `scala.Predef`. Thanks to this
@@ -38,6 +42,7 @@ The second example shows how to use `ImplicitConverter` to define an
 types:
 
 ```scala
+import scala.language.implicitConversions
 implicit def ordT[T, S](
   implicit conv: ImplicitConverter[T, S],
            ordS: Ordering[S]
