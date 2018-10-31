@@ -1,7 +1,7 @@
 class Foo(x: Int) {
   var title: String = _
 
-  def get(msg: String): () => String = () => {
+  final def get(msg: String): () => String = () => {
     title = "Mr."
     title + " Jack" + ", " + msg
   }

@@ -34,7 +34,7 @@ case class Setting(
 
     def isWidening: Boolean = wideningValues.nonEmpty
 
-    def widen(tp: Type)(value: => OpaqueValue) =
+    def widenFor(tp: Type)(value: => OpaqueValue): OpaqueValue =
       if (wideningValues.contains(tp)) HotValue
       else {
         wideningValues += tp
@@ -42,6 +42,17 @@ case class Setting(
         wideningValues -= tp
         res
       }
+
+    def widen(tp: Type): OpaqueValue = widenFor(tp) {
+      val res = tp match {
+        case tp: TypeRef => // TODO: check class body
+          analyzer.checkRef(tp.prefix)(this)
+        case _ =>
+          analyzer.checkRef(tp)(this)
+      }
+      analyzer.indentedDebug(res.effects.mkString)
+      if (res.hasErrors) WarmValue() else res.value.widen(this)
+    }
 
     def showSetting = ShowSetting(heap, ctx)
   }

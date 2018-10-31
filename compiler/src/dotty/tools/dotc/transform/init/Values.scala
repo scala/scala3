@@ -408,10 +408,7 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
   override def widen(implicit setting: Setting) =
     if (unknownDeps) this else {
       val setting2 = setting.strict
-      val notHot = deps.filter { tp =>
-        val res = setting.analyzer.checkRef(tp)(setting2)
-        res.hasErrors || !res.value.widen.isHot
-      }
+      val notHot = deps.filterNot(setting2.widen(_).isHot)
       if (notHot.isEmpty) HotValue
       else WarmValue(notHot.toSet, unknownDeps = false)
     }
@@ -660,9 +657,9 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     var addAnnotation = false
     // dynamic calls are analysis boundary, only allow hot values
     if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
-      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // avoid duplicate annotatino
+      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // avoid duplicate annotation
         // annotation on current class even though it's called above
-        if (setting.allowDynamic || sym.isEffectiveInit || target.is(Flags.Deferred))
+        if ((setting.allowDynamic || sym.isEffectiveInit || target.is(Flags.Deferred)) && !setting.isWidening)
           addAnnotation = true
         else
           res += Generic(s"Dynamic call to $sym found", setting.pos)
@@ -679,12 +676,12 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
         res2 ++ res.effects
       }
-      else if(!target.isCalledOrAbove(tp.classSymbol.asClass)) {
+      else if(!target.isCalledAbove(tp.classSymbol.asClass) && !target.is(Flags.Deferred)) {
         // select on super, which is external
         assert(target.isDefinedOn(tp))
         WarmValue().select(target) ++ res.effects
       }
-      else res
+      else HotValue.select(target) ++ res.effects
 
     if (!ret.hasErrors && addAnnotation)
       tp.classSymbol.addAnnotation(Annotation.Call(sym))

@@ -55,7 +55,7 @@ trait Indexer { self: Analyzer =>
         implicit val ctx: Context = setting2.ctx
         val env = setting2.heap(setting.env.id).asEnv
         val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol)).withEnv(env)
-        setting3.widen(ddef.symbol.typeRef) { widenTree(ddef)(setting3) }
+        setting3.widenFor(ddef.symbol.typeRef) { widenTree(ddef)(setting3) }
       }
     }
 
@@ -64,21 +64,10 @@ trait Indexer { self: Analyzer =>
     indentedDebug(s"captured in ${tree.symbol}: " + captured.keys.map(_.show).mkString(", "))
 
     val setting2 = setting.strict
-    val notHot = captured.keys.filter { tp =>
-      val res = tp match {
-        case tp: TypeRef => // TODO: check class body
-          checkRef(tp.prefix)(setting2)
-        case _ =>
-          checkRef(tp)(setting2)
-      }
-      indentedDebug(res.effects.mkString)
-      res.hasErrors || !(setting2.widen(tp) { res.value.widen }).isHot
-    }
 
-    indentedDebug(s"not hot in ${tree.symbol}: " + notHot.map(_.show).mkString(", "))
-
-    if (notHot.isEmpty) HotValue
-    else WarmValue(notHot.toSet, unknownDeps = false)
+    val value = WarmValue(captured.keys.toSet, unknownDeps = false).widen
+    if (!value.isHot) indentedDebug(s"not hot in ${tree.symbol}: " + value.show(setting.showSetting))
+    value
   }
 
   def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =
@@ -105,7 +94,7 @@ trait Indexer { self: Analyzer =>
         implicit val ctx: Context = setting2.ctx
         val env = setting2.heap(setting.env.id).asEnv
         val setting3 = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol)).withEnv(env)
-        setting3.widen(vdef.symbol.typeRef) { widenTree(vdef)(setting3) }
+        setting3.widenFor(vdef.symbol.typeRef) { widenTree(vdef)(setting3) }
       }
     }
 

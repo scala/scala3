@@ -1,4 +1,4 @@
-class Foo {
+final class Foo {
   def fun: Int => Int = n => n + x.size   // error: itself ok, but fun is called below
   fun(5)                                          // error: select on cold value
 

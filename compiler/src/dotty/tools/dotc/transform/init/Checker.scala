@@ -199,11 +199,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (!res.value.isHot && !sym.isCalledIn(cls)) { // effective init
-        setting.ctx.warning("An init method must return a full value", sym.pos)
-      }
-      else if (res.value.isHot && sym.isCalledIn(cls)) { // de facto @init
-        sym.annotate(defn.InitAnnotType)
+      else if (!res.value.widen.isHot) {
+        setting.ctx.warning("A dynamic init method must return a full value", sym.pos)
       }
     }
 
@@ -245,10 +242,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
         val captured = Capture.analyze(cdef)
         val setting2 = setting.strict
-        val notHot = captured.keys.filter { tp =>
-          val res = setting.analyzer.checkRef(tp)(setting2)
-          res.hasErrors || !res.value.widen.isHot
-        }
+        val notHot = captured.keys.filterNot(setting2.widen(_).isHot)
 
         for(key <- notHot; tree <- captured(key))
           setting.ctx.warning(s"The init $sym captures " + tree.show + ".\nTry to make captured fields or methods private or final.", tree.pos)
