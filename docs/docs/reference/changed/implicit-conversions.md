@@ -1,113 +1,59 @@
 ---
 layout: doc-page
-title: "Implicit Conversions - More Details"
+title: "Implicit Conversions"
 ---
 
-## Implementation
+An _implicit conversion_, also called _view_, is a conversion that
+is applied by the compiler in several situations:
 
-An implicit conversion, or _view_, from type `S` to type `T` is
-defined by either:
+1. When an expression `e` of type `T` is encountered, but the compiler
+   needs an expression of type `S`.
+1. When an expression `e.m` where `e` has type `T` but `T` defines no
+   member `m` is encountered.
 
-- An `implicit def` which has type `S => T` or `(=> S) => T`
-- An implicit value which has type `ImplicitConverter[S, T]`
+In those cases, the compiler looks in the implicit scope for a
+conversion that can convert an expression of type `T` to an expression
+of type `S` (or to a type that defines a member `m` in the second
+case).
 
-The standard library defines an abstract class `ImplicitConverter`:
+This conversion can be either:
 
-```scala
-abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
-```
+1. An `implicit def` of type `T => S` or `(=> T) => S`
+1. An implicit value of type `ImplicitConverter[T, S]`
 
-Function literals are automatically converted to `ImplicitConverter`
-values.
+## Examples
 
-Views are applied in three situations:
-
-1. If an expression `e` is of type `T`, and `T` does not conform to
-   the expression's expected type `pt`. In this case, an implicit `v`
-   which is applicable to `e` and whose result type conforms to `pt`
-   is searched. The search proceeds as in the case of implicit
-   parameters, where the implicit scope is the one of `T => pt`. If
-   such a view is found, the expression `e` is converted to `v(e)`.
-1. In a selection `e.m` with `e` of type `T`, if the selector `m` does
-   not denote an accessible member of `T`. In this case, a view `v`
-   which is applicable to `e` and whose result contains an accessible
-   member named `m` is searched. The search proceeds as in the case of
-   implicit parameters, where the implicit scope is the one of `T`. If
-   such a view is found, the selection `e.m` is converted to `v(e).m`.
-1. In an application `e.m(args)` with `e` of type `T`, if the selector
-   `m` denotes some accessible member(s) of `T`, but none of these
-   members is applicable to the arguments `args`. In this case, a view
-   `v` which is applicable to `e` and whose result contains a method
-   `m` which is applicable to `args` is searched. The search proceeds
-   as in the case of implicit parameters, where the implicit scope is
-   the one of `T`. If such a view is found, the application
-   `e.m(args)` is converted to `v(e).m(args)`.
-
-# Differences with Scala 2 implicit conversions
-
-In Scala 2, views whose parameters are passed by-value take precedence
-over views whose parameters are passed by-name. This is no longer the
-case in Scala 3. A type error reporting the ambiguous conversions will
-be emitted in cases where this rule would be applied in Scala 2.
-
-In Scala 2, implicit values of a function type would be considered as
-potential views. In Scala 3, these implicit value need to have type
-`ImplicitConverter`:
+The first example is taken from `scala.Predef`. Thanks to this
+implicit conversion, it is possible to pass a `scala.Int` to a Java
+method that expects a `java.lang.Integer`
 
 ```scala
-// Scala 2:
-def foo(x: Int)(implicit conv: Int => String): String = x
-
-// Becomes with Scala 3:
-def foo(x: Int)(implicit conv: ImplicitConverter[Int, String]): String = x
-
-// Call site is unchanged:
-foo(4)(_.toString)
-
-// Scala 2:
-implicit val myConverter: Int => String = _.toString
-
-// Becomes with Scala 3:
-implicit val myConverter: ImplicitConverter[Int, String] = _.toString
+import scala.language.implicitConversions
+implicit def int2Integer(x: Int): java.lang.Integer =
+  x.asInstanceOf[java.lang.Integer]
 ```
 
-Note that implicit conversions are also  affected by the [changes to
-implicit resolution](implicit-resolution.html) between Scala 2 and
-Scala 3.
-
-## Motivation for the changes
-
-The introduction of `ImplicitConverter` in Scala 3 and the decision to
-restrict implicit values of this type to be considered as potential
-views comes from the desire to remove surprising behavior from the
-language:
+The second example shows how to use `ImplicitConverter` to define an
+`Ordering` for an arbitrary type, given existing `Ordering`s for other
+types:
 
 ```scala
-implicit val m: Map[Int, String] = Map(1 -> "abc")
+implicit def ordT[T, S](
+  implicit conv: ImplicitConverter[T, S],
+           ordS: Ordering[S]
+  ): Ordering[T] = {
+  // `ordS` compares values of type `S`, but we can convert from `T` to `S`
+  (x: T, y: T) => ordS.compare(x, y)
+}
 
-val x: String = 1  // scalac: assigns "abc" to x
-                   // Dotty: type error
+class A(val x: Int) // The type for which we want an `Ordering`
+
+// Convert `A` to a type for which an `Ordering` is available:
+implicit val AToInt: ImplicitConverter[A, Int] = _.x
+
+implicitly[Ordering[Int]] // Ok, exists in the standard library
+implicitly[Ordering[A]] // Ok, will use the implicit conversion from
+                        // `A` to `Int` and the `Ordering` for `Int`.
 ```
 
-This snippet contains a type error. The right hand side of `val x`
-does not conform to type `String`. In Scala 2, the compiler will use
-`m` as an implicit conversion from `Int` to `String`, whereas Scala 3
-will report a type error, because Map isn't an instance of
-`ImplicitConverter`.
-
-## Migration path
-
-Implicit values that are used as views should see their type changed
-to `ImplicitConverter`.
-
-For the migration of implicit conversions that are affected by the
-changes to implicit resolution, refer to the [Changes in Implicit
-Resolution](implicit-resolution.html) for more information.
-
-## Reference
-
-For more information about implicit resolution, see [Changes in
-Implicit Resolution](implicit-resolution.html).
-Other details are available in
-[PR #2065](https://github.com/lampepfl/dotty/pull/2065)
-
+[More details](implicit-conversions-spec.html)
