@@ -897,10 +897,25 @@ class Definitions {
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
-  val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun[Array[Symbol]](implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
+  val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(implicit ctx: Context): Symbol = AbstractFunctionClassPerRun()(ctx)(n)
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
-  def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
+  def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
+
+  val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({ implicit ctx =>
+    def holderImpl(holderType: String) = ctx.requiredClass("scala.runtime." + holderType)
+    Map[Symbol, Symbol](
+      IntClass     -> holderImpl("LazyInt"),
+      LongClass    -> holderImpl("LazyLong"),
+      BooleanClass -> holderImpl("LazyBoolean"),
+      FloatClass   -> holderImpl("LazyFloat"),
+      DoubleClass  -> holderImpl("LazyDouble"),
+      ByteClass    -> holderImpl("LazyByte"),
+      CharClass    -> holderImpl("LazyChar"),
+      ShortClass   -> holderImpl("LazyShort")
+    )
+    .withDefaultValue(holderImpl("LazyRef"))
+  })
 
   lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 

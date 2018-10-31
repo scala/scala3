@@ -500,4 +500,26 @@ class TestBCode extends DottyBytecodeTest {
         liftReceiver)
     }
   }
+
+  /** Test that the size of the lazy val initialiazer is under a certain threshold
+   *
+   *  - Fix to #5340 reduced the size from 39 instructions to 34
+   */
+  @Test def i5340 = {
+    val source =
+      """class Test {
+        |  def test = {
+        |    lazy val x = 1
+        |    x
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method  = getMethod(clsNode, "x$lzyINIT1$1")
+      assertEquals(34, instructionsFromMethod(method).size)
+    }
+  }
 }
