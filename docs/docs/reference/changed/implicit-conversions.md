@@ -1,49 +1,64 @@
 ---
 layout: doc-page
-title: "Restrictions to Implicit Conversions"
+title: "Implicit Conversions"
 ---
 
-Previously, an implicit value of type `Function1`, or any of its subtypes
-could be used as an implicit conversion. That is, the following code would compile
-even though it probably masks a type error:
+An _implicit conversion_, also called _view_, is a conversion that
+is applied by the compiler in several situations:
 
-    implicit val m: Map[Int, String] = Map(1 -> "abc")
+1. When an expression `e` of type `T` is encountered, but the compiler
+   needs an expression of type `S`.
+1. When an expression `e.m` where `e` has type `T` but `T` defines no
+   member `m` is encountered.
 
-    val x: String = 1  // scalac: assigns "abc" to x
-                       // Dotty: type error
+In those cases, the compiler looks in the implicit scope for a
+conversion that can convert an expression of type `T` to an expression
+of type `S` (or to a type that defines a member `m` in the second
+case).
 
-By contrast, Dotty only considers _methods_ as implicit conversions, so the
-`Map` value `m` above would not qualify as a conversion from `String` to `Int`.
+This conversion can be either:
 
-To be able to express implicit conversions passed as parameters, `Dotty`
-introduces a new type
+1. An `implicit def` of type `T => S` or `(=> T) => S`
+1. An implicit value of type `ImplicitConverter[T, S]`
 
-    abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+Defining an implicit conversion will emit a warning unless the import
+`scala.language.implicitConversions` is in scope, or the flag
+`-language:implicitConversions` is given to the compiler.
 
-Implicit values of type `ImplicitConverter[A, B]` do qualify as implicit
-conversions. It is as if there was a global implicit conversion method
+## Examples
 
-    def convert[A, B](x: A)(implicit converter: ImplicitConverter[A, B]): B =
-      converter(x)
+The first example is taken from `scala.Predef`. Thanks to this
+implicit conversion, it is possible to pass a `scala.Int` to a Java
+method that expects a `java.lang.Integer`
 
-(In reality the Dotty compiler simulates the behavior of this method directly in
-its type checking because this turns out to be more efficient).
+```scala
+import scala.language.implicitConversions
+implicit def int2Integer(x: Int): java.lang.Integer =
+  x.asInstanceOf[java.lang.Integer]
+```
 
-In summary, previous code using implicit conversion parameters such as
+The second example shows how to use `ImplicitConverter` to define an
+`Ordering` for an arbitrary type, given existing `Ordering`s for other
+types:
 
-    def useConversion(implicit f: A => B) = {
-      val y: A = ...
-      val x: B = y    // error under Dotty
-    }
+```scala
+import scala.language.implicitConversions
+implicit def ordT[T, S](
+  implicit conv: ImplicitConverter[T, S],
+           ordS: Ordering[S]
+  ): Ordering[T] = {
+  // `ordS` compares values of type `S`, but we can convert from `T` to `S`
+  (x: T, y: T) => ordS.compare(x, y)
+}
 
-is no longer legal and has to be rewritten to
+class A(val x: Int) // The type for which we want an `Ordering`
 
-    def useConversion(implicit f: ImplicitConverter[A, B]) = {
-      val y: A = ...
-      val x: B = y    // OK
-    }
+// Convert `A` to a type for which an `Ordering` is available:
+implicit val AToInt: ImplicitConverter[A, Int] = _.x
 
-### Reference
+implicitly[Ordering[Int]] // Ok, exists in the standard library
+implicitly[Ordering[A]] // Ok, will use the implicit conversion from
+                        // `A` to `Int` and the `Ordering` for `Int`.
+```
 
-For more info, see [PR #2065](https://github.com/lampepfl/dotty/pull/2065).
-
+[More details](implicit-conversions-spec.html)
