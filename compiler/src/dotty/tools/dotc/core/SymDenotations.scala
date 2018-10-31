@@ -1685,8 +1685,8 @@ object SymDenotations {
                 case _ =>
                   val superTp = tp.superType
                   val baseTp = recur(superTp)
-                  if (inCache(superTp) && tp.symbol.maybeOwner.isType)
-                    record(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
+                  if (inCache(superTp))
+                    record(tp, baseTp)
                   else
                     btrCache.remove(tp)
                   baseTp
