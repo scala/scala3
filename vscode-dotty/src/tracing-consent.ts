@@ -1,6 +1,6 @@
 import { Memento } from 'vscode'
 
-export type TracingConsent = 'yes' | 'no' | 'no-answer'
+export type TracingConsent = 'Allow' | 'Deny' | 'no-answer'
 
 export class TracingConsentCache {
     private readonly workspaceState: Memento
@@ -17,13 +17,13 @@ export class TracingConsentCache {
       if (this.cache !== undefined) return this.cache
       const setting = this.workspaceState.get('remote-tracing-consent')
       this.cache = setting === undefined ? 'no-answer'
-        : setting ? 'yes'
-        : 'no'
+        : setting ? 'Allow'
+        : 'Deny'
       return this.cache
     }
 
-    set(value: 'yes' | 'no'): void {
-      this.workspaceState.update('remote-tracing-consent', value === 'yes')
+    set(value: 'Allow' | 'Deny'): void {
+      this.workspaceState.update('remote-tracing-consent', value === 'Allow')
       this.cache = value
       this.subscribers.forEach(f => f())
     }

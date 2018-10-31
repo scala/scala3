@@ -88,12 +88,13 @@ export class Tracer {
 
     private askForTracingConsent(): void {
         vscode.window.showInformationMessage(
-            'Do you want to help EPFL develop Dotty LSP plugin by uploading your LSP communication? ' +
-            'PLEASE BE AWARE that the data sent contains your entire codebase and ALL the IDE actions, ' +
-            'including every single keystroke.',
-            'yes', 'no'
+            'To help us improve the Scala IDE support, we would like to collect ' +
+            'the content of every Scala file in your project and ' +
+            'every interaction with Scala files in the IDE, including keystrokes. ' +
+            'This data will be stored anonymously (we won\'t know your name) on servers at EPFL in Switzerland.',
+            'Allow', 'Deny',
         ).then((value: string | undefined) => {
-            if (value === 'yes' || value === 'no') this.tracingConsent.set(value)
+            if (value === 'Allow' || value === 'Deny') this.tracingConsent.set(value)
         })
     }
 
@@ -109,7 +110,7 @@ export class Tracer {
             }
         }
 
-        if (this.tracingConsent.get() === 'yes') {
+        if (this.tracingConsent.get() === 'Allow') {
             doInitialize()
         } else {
             let didInitialize = false
@@ -127,14 +128,15 @@ export class Tracer {
         item.command = consentCommandName
         const renderStatusBarItem = () => {
             item.text = (() => {
-                const desc = this.tracingConsent.get() === 'yes' ? 'ON' : 'OFF'
-                return `$(radio-tower) Dotty trace: ${desc}`
+                const desc = this.tracingConsent.get() === 'Allow' ? 'On' : 'Off'
+                return `$(radio-tower) Scala telemetry: ${desc}`
             })()
 
             item.tooltip = (() => {
-                const desc = this.tracingConsent.get() === 'yes' ? 'consented' : 'not consented'
-                return `This workspace is configured for remote tracing of Dotty LSP and you have ${desc} to it. ` +
-                    'Click to adjust your consent.'
+                const desc = this.tracingConsent.get() === 'Allow' ? 'enabled' : 'disabled'
+                const toggle = this.tracingConsent.get() === 'Allow' ? 'disable' : 'enable'
+                return `Data collection for Scala is ${desc}. ` +
+                    `Click to ${toggle} it.`
             })()
         }
         renderStatusBarItem()
@@ -284,20 +286,20 @@ export class Tracer {
 
             append: (value: string) => {
                 localOutputChannel.append(value)
-                if (this.tracingConsent.get() === 'no') return
+                if (this.tracingConsent.get() === 'Deny') return
                 log += value
             },
 
             appendLine: (value: string) => {
                 localOutputChannel.appendLine(value)
-                if (this.tracingConsent.get() === 'no') {
+                if (this.tracingConsent.get() === 'Deny') {
                     log = ''
                     return
                 }
 
                 log += value
                 log += '\n'
-                if (this.tracingConsent.get() === 'yes') withSocket((socket) => {
+                if (this.tracingConsent.get() === 'Allow') withSocket((socket) => {
                     if (socket.readyState === WebSocket.OPEN) {
                         const send = (msg: string) => socket.send(msg, (err) => {
                             if (err) {
