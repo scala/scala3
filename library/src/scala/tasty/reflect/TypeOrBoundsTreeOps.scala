@@ -28,7 +28,6 @@ trait TypeOrBoundsTreeOps extends Core {
   val TypeTree: TypeTreeModule
   abstract class TypeTreeModule {
 
-    def symbol(x: TypeTree)(implicit ctx: Context): Symbol
 
     /** TypeTree containing an inferred type */
     val Synthetic: SyntheticExtractor
