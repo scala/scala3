@@ -111,7 +111,7 @@ function setWorkspaceAndReload(document: vscode.TextDocument) {
   const workspaceRoot = findWorkspaceRoot(documentPath) || documentPath
 
   vscode.window.showInformationMessage(
-    `It looks like '${workspaceRoot}' is the root of your workspace. ` +
+    `It looks like '${workspaceRoot}' is the root of your Scala workspace. ` +
     'Would you like to open it?',
     'Yes', 'No'
   ).then((value: String | undefined) => {
