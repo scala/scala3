@@ -7,5 +7,10 @@ abstract class Foo {
 trait Bar { this: Foo =>
   val message = "hello, " + name        // ok: because `Foo` is a class
 
-  println(title)                        // error
+  println(title)                        // ok: title is abstract
+}
+
+class Qux extends Foo with Bar {
+  val x = "hello"
+  def title = x                        // error  // error
 }

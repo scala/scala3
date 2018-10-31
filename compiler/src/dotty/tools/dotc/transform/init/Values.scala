@@ -129,6 +129,7 @@ sealed trait Value {
   def isCold: Boolean = this == ColdValue
   def isWarm: Boolean = this.isInstanceOf[WarmValue]
   def isHot:  Boolean = this == HotValue
+  def isOpaque:  Boolean = this.isInstanceOf[OpaqueValue]
 }
 
 /** The value is absent */
@@ -644,49 +645,54 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val target = if (isStaticDispatch) sym else resolve(sym)
 
-    // select on self type
-    if (!target.exists) return {
-      if (sym.owner.is(Flags.Trait)) IcyValue.select(sym)
-      else if (tp.classSymbol.is(Flags.Trait)) WarmValue().select(sym) // classes are always init before traits
-      else ColdValue.select(sym)
-    }
-
-    val res = Res()
-
-    var checkParam = false
-    var addAnnotation = false
-    // dynamic calls are analysis boundary, only allow hot values
-    if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
-      if (!sym.isCalledIn(tp.classSymbol.asClass)) { // avoid duplicate annotation
-        // annotation on current class even though it's called above
-        if ((setting.allowDynamic || sym.isEffectiveInit || target.is(Flags.Deferred)) && !setting.isWidening)
-          addAnnotation = true
+    val receiver =
+      if (!target.exists) { // select on self type
+        if (sym.owner.is(Flags.Trait)) IcyValue
+        else if (tp.classSymbol.is(Flags.Trait)) WarmValue() // classes are always init before traits
+        else ColdValue
+      }
+      else {
+        val cls = target.owner.asClass
+        if (slices.contains(cls))
+          slices(cls)
+        else if(!target.isCalledAbove(tp.classSymbol.asClass)) {
+          assert(target.isDefinedOn(tp))
+          WarmValue()
+        }
         else
-          res += Generic(s"Dynamic call to $sym found", setting.pos)
+          HotValue
       }
 
-      checkParam = sym.is(Flags.Method) && sym.info.paramNamess.flatten.nonEmpty
+    val target2 = if (target.exists) target else sym
+
+    if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
+      val res =
+        if (target2.is(Flags.Method))
+         // dynamic calls are analysis boundary, only allow hot values
+          Res(value = Value.dynamicMethodValue(target2, Value.defaultFunctionValue(target2)))
+        else Res()
+
+      // annotation on current class even though it's called above
+      if (sym.isEffectiveInit || (!receiver.isOpaque || target2.is(Flags.Deferred)) && !setting.isWidening) {
+        if (!receiver.isOpaque) {
+          val res2 = receiver.select(target2)
+          if (target2.is(Flags.Method)) res.value = Value.dynamicMethodValue(target2, res2.value)
+          else res.value = res2.value
+          res ++= res2.effects
+        }
+
+        if (!res.hasErrors && !sym.isCalledIn(tp.classSymbol.asClass))
+          tp.classSymbol.addAnnotation(Annotation.Call(sym))
+
+        res
+      }
+      else if (!setting.isWidening) receiver.select(target2)
+      else {
+        res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
+        res
+      }
     }
-
-    val cls = target.owner.asClass
-
-    val ret =
-      if (slices.contains(cls)) {
-        val res2 = slices(cls).select(target)
-        if (checkParam) res2.value = Value.dynamicMethodValue(target, res2.value)
-        res2 ++ res.effects
-      }
-      else if(!target.isCalledAbove(tp.classSymbol.asClass) && !target.is(Flags.Deferred)) {
-        // select on super, which is external
-        assert(target.isDefinedOn(tp))
-        WarmValue().select(target) ++ res.effects
-      }
-      else HotValue.select(target) ++ res.effects
-
-    if (!ret.hasErrors && addAnnotation)
-      tp.classSymbol.addAnnotation(Annotation.Call(sym))
-
-    ret
+    else receiver.select(target2)
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {
