@@ -39,9 +39,9 @@ export class Tracer {
 
         this.tracingConsent = new TracingConsentCache(ctx.extensionContext.workspaceState)
 
-        this.remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('remoteWorkspaceDumpUrl')
-        this.remoteTracingUrl = this.ctx.extensionConfig.get<string>('remoteTracingUrl')
-        const maximumMessageSize = this.ctx.extensionConfig.get<number>('tracing.maximumMessageSize')
+        this.remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('trace.remoteWorkspaceDumpUrl')
+        this.remoteTracingUrl = this.ctx.extensionConfig.get<string>('trace.remoteTracingUrl')
+        const maximumMessageSize = this.ctx.extensionConfig.get<number>('trace.maximumMessageSize')
         this.maximumMessageSize = maximumMessageSize === undefined || maximumMessageSize < 0 ? 0 : maximumMessageSize | 0
 
         this.machineId = (() => {
@@ -73,16 +73,17 @@ export class Tracer {
         this.sessionId = new Date().toISOString()
     }
 
-    run(): { lspOutputChannel?: vscode.OutputChannel } {
+    run(): vscode.OutputChannel | undefined {
         const consentCommandDisposable = vscode.commands.registerCommand(consentCommandName, () => this.askForTracingConsent())
         if (this.isTracingEnabled && this.tracingConsent.get() === 'no-answer') this.askForTracingConsent()
         this.initializeAsyncWorkspaceDump()
+
         const lspOutputChannel = this.createLspOutputChannel()
         const statusBarItem = this.createStatusBarItem()
         for (const disposable of [consentCommandDisposable, lspOutputChannel, statusBarItem]) {
             if (disposable) this.ctx.extensionContext.subscriptions.push(disposable)
         }
-        return { lspOutputChannel }
+        return lspOutputChannel
     }
 
     private askForTracingConsent(): void {
@@ -97,13 +98,12 @@ export class Tracer {
     }
 
     private initializeAsyncWorkspaceDump() {
-        if (this.remoteWorkspaceDumpUrl === undefined) return
-        // convince TS that this is a string
-        const definedUrl: string = this.remoteWorkspaceDumpUrl
+        const url = this.remoteWorkspaceDumpUrl
+        if (url === undefined) return
 
         const doInitialize = () => {
             try {
-                this.asyncUploadWorkspaceDump(definedUrl)
+                this.asyncUploadWorkspaceDump(url)
             } catch (err) {
                 this.logError('error during workspace dump', safeError(err))
             }
@@ -144,14 +144,20 @@ export class Tracer {
     }
 
     private createLspOutputChannel(): vscode.OutputChannel | undefined {
-        if (!this.remoteTracingUrl) return undefined
+        if (this.ctx.extensionConfig.get('trace.server') === undefined) {
+            if (this.remoteTracingUrl) this.ctx.extensionOut.appendLine(
+                'error: tracing URL is set, but trace.server not - no remote tracing possible.'
+            )
+            return undefined
+        }
 
-        const localLspOutputChannel = vscode.window.createOutputChannel('Dotty LSP Communication')
+        const lspOutputChannel = vscode.window.createOutputChannel('Dotty LSP Communication')
+        if (!this.remoteTracingUrl) return lspOutputChannel
         try {
-            return this.createRemoteLspOutputChannel(this.remoteTracingUrl, localLspOutputChannel)
+            return this.createRemoteLspOutputChannel(this.remoteTracingUrl, lspOutputChannel)
         } catch (err) {
             this.logError('error during remote output channel creation', safeError(err))
-            return localLspOutputChannel
+            return lspOutputChannel
         }
     }
 
@@ -225,7 +231,7 @@ export class Tracer {
             )
 
             socket.onerror = (event) => {
-                this.logErrorWithoutNotifying(
+                this.logError(
                     'socket error',
                     remoteTracingUrl,
                     new SafeJsonifier(event, (event) => ({
@@ -238,7 +244,7 @@ export class Tracer {
             }
 
             socket.onclose = (event) => {
-                this.logErrorWithoutNotifying(
+                this.logError(
                     'socket closed',
                     remoteTracingUrl,
                     new SafeJsonifier(event, (event) => ({
@@ -319,11 +325,12 @@ export class Tracer {
         }
     }
 
-    private silenceErrors: boolean = false
-    private logErrorWithoutNotifying(message: string, ...rest: any[]) {
+    private logError(message: string, ...rest: any[]) {
         const msg = `[Dotty LSP Tracer] ${message}`
-        // unwrap SafeJsonifier, for some reason Electron logs the result
-        // of .toJSON, unlike browsers
+        // in a browser, we'd be able to log a SafeJsonifier directly
+        // and get an inspectable object in the console
+        // unfortunately, Electron apparently uses .toJson if available,
+        // so we need to manually unwrap SafeJsonifiers
         console.error(msg, ...rest.map((a) => a instanceof SafeJsonifier ? a.value : a))
         function cautiousStringify(a: any): string  {
             try {
@@ -335,34 +342,22 @@ export class Tracer {
         }
         this.ctx.extensionOut.appendLine([msg].concat(rest.map(cautiousStringify)).join(' '))
     }
-    private logError(message: string, ...rest: any[]) {
-        this.logErrorWithoutNotifying(message, ...rest)
-        if (!this.silenceErrors) {
-            vscode.window.showErrorMessage(
-                'An error occured which prevents sending usage data to EPFL. ' +
-                'Please copy the text from "Dotty Language Client" output (View > Output) and send it to your TA.',
-                'Silence further errors'
-            ).then((result) => {
-                if (result !== undefined) {
-                    this.silenceErrors = true
-                }
-            })
-        }
-    }
 }
 
 function safeError(e: Error): SafeJsonifier<Error> {
     return new SafeJsonifier(e, (e) => e.toString())
 }
 
+/**
+ * Wraps a value of type T so it's possible to safely pass it to JSON.stringify.
+ * 
+ * Values with circular references (errors, for example) cause JSON.stringify to throw an exception
+ */
 class SafeJsonifier<T> {
-    value: T
-    valueToObject: (t: T) => {}
-
-    constructor(value: T, valueToObject: (t: T) => {}) {
-        this.value = value
-        this.valueToObject = valueToObject
-    }
+    constructor(
+        readonly value: T,
+        readonly valueToObject: (t: T) => {}
+    ) {}
 
     toJSON() {
         return this.valueToObject(this.value)

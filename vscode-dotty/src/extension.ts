@@ -305,8 +305,7 @@ function bootstrapSbtProject(buildSbtFileSource: string,
 }
 
 function run(serverOptions: ServerOptions, isOldServer: boolean) {
-
-  const { lspOutputChannel } = tracer.run()
+  const lspOutputChannel = tracer.run()
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [

@@ -49,7 +49,17 @@
           "default": true,
           "description": "If true, saving a worksheet will also run it."
         },
-        "dotty.tracing.machineId": {
+        "dotty.trace.remoteWorkspaceDumpUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Url to send local workspace dump to."
+        },
+        "dotty.trace.remoteTracingUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Url to send local LSP communication to."
+        },
+        "dotty.trace.machineId": {
           "type": [
             "string",
             "null"
@@ -57,7 +67,7 @@
           "default": null,
           "description": "ID of your machine used when Dotty Language Server tracing is turned on."
         },
-        "dotty.tracing.maximumMessageSize": {
+        "dotty.trace.maximumMessageSize": {
           "type": "number",
           "default": 512,
           "description": "Maximum size for the messages sent to remote server. Larger ones will be split."
