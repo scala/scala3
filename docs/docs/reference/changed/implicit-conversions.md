@@ -1,49 +1,113 @@
 ---
 layout: doc-page
-title: "Restrictions to Implicit Conversions"
+title: "Implicit Conversions - More Details"
 ---
 
-Previously, an implicit value of type `Function1`, or any of its subtypes
-could be used as an implicit conversion. That is, the following code would compile
-even though it probably masks a type error:
+## Implementation
 
-    implicit val m: Map[Int, String] = Map(1 -> "abc")
+An implicit conversion, or _view_, from type `S` to type `T` is
+defined by either:
 
-    val x: String = 1  // scalac: assigns "abc" to x
-                       // Dotty: type error
+- An `implicit def` which has type `S => T` or `(=> S) => T`
+- An implicit value which has type `ImplicitConverter[S, T]`
 
-By contrast, Dotty only considers _methods_ as implicit conversions, so the
-`Map` value `m` above would not qualify as a conversion from `String` to `Int`.
+The standard library defines an abstract class `ImplicitConverter`:
 
-To be able to express implicit conversions passed as parameters, `Dotty`
-introduces a new type
+```scala
+abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+```
 
-    abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+Function literals are automatically converted to `ImplicitConverter`
+values.
 
-Implicit values of type `ImplicitConverter[A, B]` do qualify as implicit
-conversions. It is as if there was a global implicit conversion method
+Views are applied in three situations:
 
-    def convert[A, B](x: A)(implicit converter: ImplicitConverter[A, B]): B =
-      converter(x)
+1. If an expression `e` is of type `T`, and `T` does not conform to
+   the expression's expected type `pt`. In this case, an implicit `v`
+   which is applicable to `e` and whose result type conforms to `pt`
+   is searched. The search proceeds as in the case of implicit
+   parameters, where the implicit scope is the one of `T => pt`. If
+   such a view is found, the expression `e` is converted to `v(e)`.
+1. In a selection `e.m` with `e` of type `T`, if the selector `m` does
+   not denote an accessible member of `T`. In this case, a view `v`
+   which is applicable to `e` and whose result contains an accessible
+   member named `m` is searched. The search proceeds as in the case of
+   implicit parameters, where the implicit scope is the one of `T`. If
+   such a view is found, the selection `e.m` is converted to `v(e).m`.
+1. In an application `e.m(args)` with `e` of type `T`, if the selector
+   `m` denotes some accessible member(s) of `T`, but none of these
+   members is applicable to the arguments `args`. In this case, a view
+   `v` which is applicable to `e` and whose result contains a method
+   `m` which is applicable to `args` is searched. The search proceeds
+   as in the case of implicit parameters, where the implicit scope is
+   the one of `T`. If such a view is found, the application
+   `e.m(args)` is converted to `v(e).m(args)`.
 
-(In reality the Dotty compiler simulates the behavior of this method directly in
-its type checking because this turns out to be more efficient).
+# Differences with Scala 2 implicit conversions
 
-In summary, previous code using implicit conversion parameters such as
+In Scala 2, views whose parameters are passed by-value take precedence
+over views whose parameters are passed by-name. This is no longer the
+case in Scala 3. A type error reporting the ambiguous conversions will
+be emitted in cases where this rule would be applied in Scala 2.
 
-    def useConversion(implicit f: A => B) = {
-      val y: A = ...
-      val x: B = y    // error under Dotty
-    }
+In Scala 2, implicit values of a function type would be considered as
+potential views. In Scala 3, these implicit value need to have type
+`ImplicitConverter`:
 
-is no longer legal and has to be rewritten to
+```scala
+// Scala 2:
+def foo(x: Int)(implicit conv: Int => String): String = x
 
-    def useConversion(implicit f: ImplicitConverter[A, B]) = {
-      val y: A = ...
-      val x: B = y    // OK
-    }
+// Becomes with Scala 3:
+def foo(x: Int)(implicit conv: ImplicitConverter[Int, String]): String = x
 
-### Reference
+// Call site is unchanged:
+foo(4)(_.toString)
 
-For more info, see [PR #2065](https://github.com/lampepfl/dotty/pull/2065).
+// Scala 2:
+implicit val myConverter: Int => String = _.toString
+
+// Becomes with Scala 3:
+implicit val myConverter: ImplicitConverter[Int, String] = _.toString
+```
+
+Note that implicit conversions are also  affected by the [changes to
+implicit resolution](implicit-resolution.html) between Scala 2 and
+Scala 3.
+
+## Motivation for the changes
+
+The introduction of `ImplicitConverter` in Scala 3 and the decision to
+restrict implicit values of this type to be considered as potential
+views comes from the desire to remove surprising behavior from the
+language:
+
+```scala
+implicit val m: Map[Int, String] = Map(1 -> "abc")
+
+val x: String = 1  // scalac: assigns "abc" to x
+                   // Dotty: type error
+```
+
+This snippet contains a type error. The right hand side of `val x`
+does not conform to type `String`. In Scala 2, the compiler will use
+`m` as an implicit conversion from `Int` to `String`, whereas Scala 3
+will report a type error, because Map isn't an instance of
+`ImplicitConverter`.
+
+## Migration path
+
+Implicit values that are used as views should see their type changed
+to `ImplicitConverter`.
+
+For the migration of implicit conversions that are affected by the
+changes to implicit resolution, refer to the [Changes in Implicit
+Resolution](implicit-resolution.html) for more information.
+
+## Reference
+
+For more information about implicit resolution, see [Changes in
+Implicit Resolution](implicit-resolution.html).
+Other details are available in
+[PR #2065](https://github.com/lampepfl/dotty/pull/2065)
 
