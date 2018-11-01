@@ -167,11 +167,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
     val rhs = x.rhs.changeOwnerAfter(x.symbol, initSymbol, this)
     val initialize = holderRef.select(lazyNme.initialize).appliedTo(rhs)
-    val initBody =
-      adaptToType(
-        holderRef.select(defn.Object_synchronized).appliedTo(
-          adaptToType(If(initialized, getValue, initialize), defn.ObjectType)),
-        tpe)
+    val initBody = holderRef
+      .select(defn.Object_synchronized)
+      .appliedToType(tpe)
+      .appliedTo(If(initialized, getValue, initialize).ensureConforms(tpe))
     val initTree = DefDef(initSymbol, initBody)
 
     // def x(): Int = if (x$lzy.initialized()) x$lzy.value() else x$lzycompute()

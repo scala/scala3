@@ -116,6 +116,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Throwable_Type: Type = defn.ThrowableType
   val Object_isInstanceOf: Symbol = defn.Any_isInstanceOf
   val Object_asInstanceOf: Symbol = defn.Any_asInstanceOf
+  val Object_synchronized: Symbol = defn.Object_synchronized
   val Object_equals: Symbol = defn.Any_equals
   val ArrayClass: Symbol = defn.ArrayClass
   val UnitClass: Symbol = defn.UnitClass

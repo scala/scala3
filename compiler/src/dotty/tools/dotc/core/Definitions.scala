@@ -1074,7 +1074,7 @@ class Definitions {
   lazy val NoInitClasses: Set[Symbol] = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
-     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
+     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq Object_synchronized)
 
   def isTupleType(tp: Type)(implicit ctx: Context): Boolean = {
     val arity = tp.dealias.argInfos.length
