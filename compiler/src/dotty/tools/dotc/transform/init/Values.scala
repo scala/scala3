@@ -555,9 +555,9 @@ class SliceValue(val id: Int) extends SingleValue {
     val value = slice(sym)
 
     if (sym.is(Flags.Lazy)) {
-      if (value.isInstanceOf[LazyValue] && !setting.isWidening) {
+      if (value.isInstanceOf[LazyValue]) {
         val res = value(Nil, Nil)
-        slice(sym) = res.value
+        if (!setting.isWidening) slice(sym) = res.value
         res
       }
       else Res(value = value)
