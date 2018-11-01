@@ -1236,7 +1236,6 @@ class Typer extends Namer
       if (rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
         ctx.error(PolymorphicMethodMissingTypeInParent(rsym, tpt1.symbol), refinement.pos)
 
-      // For some reason, `rsym.isOverloaded` always return false here.
       val member = refineCls.info.member(rsym.name)
       if (member.isOverloaded) {
         ctx.error(OverloadInRefinement(rsym), refinement.pos)
