@@ -138,7 +138,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (!sym.isEffectiveCold) return
 
       val root = Heap.createRootEnv
-      val setting: Setting = Setting(root, sym.pos, ctx, analyzer).strict
+      val setting: Setting = Setting(root, sym.pos, ctx, analyzer, isWidening = true)
       indexOuter(cls)(setting)
       if (sym.isIcy) root.add(cls, IcyValue)
       else root.add(cls, ColdValue)
@@ -160,20 +160,20 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (!sym.isEffectiveCold) return
 
       val root = Heap.createRootEnv
-      val setting: Setting = Setting(root, sym.pos, ctx, analyzer)
+      val setting: Setting = Setting(root, sym.pos, ctx, analyzer, isWidening = true)
       indexOuter(cls)(setting)
       if (sym.isCold) root.add(cls, IcyValue)
       else root.add(cls, ColdValue)
 
-      val value = analyzer.lazyValue(vdef)(setting.strict)
-      val res = value.apply(i => HotValue, i => NoPosition)(setting.strict)
+      val value = analyzer.lazyValue(vdef)(setting)
+      val res = value.apply(i => HotValue, i => NoPosition)(setting)
 
       if (res.hasErrors) {
         ctx.warning("Forcing cold lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen(setting.strict)
+        val value = res.value.widen(setting)
         if (!value.isHot) ctx.warning("Cold lazy value must return a full value", sym.pos)
       }
     }
@@ -199,7 +199,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (!res.value.widen.isHot) {
+      else if (!res.value.widen(setting.widening).isHot) {
         setting.ctx.warning("A dynamic init method must return a full value", sym.pos)
       }
     }
@@ -214,7 +214,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen(setting.strict)
+        val value = res.value.widen(setting.widening)
         if (!value.isHot) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
       }
     }
@@ -223,7 +223,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       val sym = vdef.symbol
       if (sym.is(Flags.PrivateOrLocal)) return
 
-      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting.strict)
+      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting.widening)
       if (actual.isCold) sym.annotate(defn.ColdAnnotType)
       else if (actual.isWarm) sym.annotate(defn.WarmAnnotType)
 
@@ -238,10 +238,10 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     def checkClassDef(cdef: tpd.TypeDef)(implicit setting: Setting): Unit = {
       val sym = cdef.symbol
       if (sym.isInit) {
-        val value = setting.analyzer.widenTree(cdef)
+        val setting2 = setting.widening
+        val value = setting2.analyzer.widenTree(cdef)(setting2)
 
-        val captured = Capture.analyze(cdef)
-        val setting2 = setting.strict
+        val captured = Capture.analyze(cdef)(setting2)
         val notHot = captured.keys.filterNot(setting2.widen(_).isHot)
 
         for(key <- notHot; tree <- captured(key))

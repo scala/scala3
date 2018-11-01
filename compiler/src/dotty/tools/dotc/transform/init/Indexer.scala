@@ -28,7 +28,7 @@ trait Indexer { self: Analyzer =>
   import tpd._
 
   def methodValue(ddef: DefDef)(implicit setting: Setting): FunctionValue =
-    new FunctionValue {
+    new FunctionValue { fv =>
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting2: Setting): Res = {
         // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
@@ -55,15 +55,15 @@ trait Indexer { self: Analyzer =>
         implicit val ctx: Context = setting2.ctx
         val env = setting2.heap(setting.env.id).asEnv
         val setting3 = setting2.withCtx(setting2.ctx.withOwner(ddef.symbol)).withEnv(env)
-        setting3.widenFor(ddef.symbol.typeRef) { widenTree(ddef)(setting3) }
+        setting3.widenFor(fv) { widenTree(ddef)(setting3) }
       }
+
+      override def show(implicit setting: ShowSetting): String = ddef.symbol.show
     }
 
   def widenTree(tree: Tree)(implicit setting: Setting): OpaqueValue = {
     val captured = Capture.analyze(tree)
     indentedDebug(s"captured in ${tree.symbol}: " + captured.keys.map(_.show).mkString(", "))
-
-    val setting2 = setting.strict
 
     val value = WarmValue(captured.keys.toSet, unknownDeps = false).widen
     if (!value.isHot) indentedDebug(s"not hot in ${tree.symbol}: " + value.show(setting.showSetting))
@@ -71,7 +71,7 @@ trait Indexer { self: Analyzer =>
   }
 
   def lazyValue(vdef: ValDef)(implicit setting: Setting): LazyValue =
-    new LazyValue {
+    new LazyValue { lz =>
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting2: Setting): Res = {
         // TODO: implicit ambiguities
         implicit val ctx: Context = setting2.ctx
@@ -94,8 +94,10 @@ trait Indexer { self: Analyzer =>
         implicit val ctx: Context = setting2.ctx
         val env = setting2.heap(setting.env.id).asEnv
         val setting3 = setting2.withCtx(setting2.ctx.withOwner(vdef.symbol)).withEnv(env)
-        setting3.widenFor(vdef.symbol.typeRef) { widenTree(vdef)(setting3) }
+        setting3.widenFor(lz) { widenTree(vdef)(setting3) }
       }
+
+      override def show(implicit setting: ShowSetting): String = vdef.symbol.show
     }
 
   /** Index local definitions */

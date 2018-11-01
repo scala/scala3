@@ -74,11 +74,11 @@ class Analyzer extends Indexer { analyzer =>
       setting.env.select(tp.symbol)
     case tp @ TermRef(prefix, _) =>
       val res = checkRef(prefix)
-      res.value.tryWiden.select(tp.symbol)
+      res.value.select(tp.symbol)
     case tp @ ThisType(tref) =>
       val cls = tref.symbol
       if (cls.is(Package)) Res() // Dotty represents package path by ThisType
-      else if (setting.env.contains(cls)) Res(value = setting.env(cls))
+      else if (setting.env.contains(cls)) Res(value = setting.env(cls).tryWiden)
       else {
         // ThisType used outside of class scope, can happen for objects
         // see tests/pos/t2712-7.scala

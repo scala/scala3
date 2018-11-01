@@ -35,7 +35,7 @@ object Value {
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
-      val wValue = value.widen
+      val wValue = value.widen(setting.widening)
       if (!wValue.isHot && (onlyHot || !tp.value.isCold) || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
         return Res(effects = Vector(Generic(message(wValue), pos)))
     }
@@ -51,7 +51,7 @@ object Value {
         checkParams(methSym, paramInfos, values, argPos, onlyHot = true)
       }
 
-      def widen(implicit setting: Setting) = ???
+      def widen(implicit setting: Setting) = ColdValue  // could be reached by tryWiden on funtions
     }
   }
 
@@ -65,7 +65,7 @@ object Value {
         value.apply(values, argPos) ++ effs
       }
 
-      def widen(implicit setting: Setting) = ???
+      def widen(implicit setting: Setting) = value.widen
     }
   }
 }
@@ -120,7 +120,7 @@ sealed trait Value {
   def widen(implicit setting: Setting): OpaqueValue
 
   def tryWiden(implicit setting: Setting): Value =
-    if (!setting.isWidening && this.widen.isHot) HotValue else this
+    if (this.widen(setting.widening).isHot) HotValue else this
 
   def asSlice(implicit setting: Setting): SliceRep =
     setting.heap(this.asInstanceOf[SliceValue].id).asSlice
@@ -408,8 +408,7 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
 
   override def widen(implicit setting: Setting) =
     if (unknownDeps) this else {
-      val setting2 = setting.strict
-      val notHot = deps.filterNot(setting2.widen(_).isHot)
+      val notHot = deps.filterNot(setting.widen(_).isHot)
       if (notHot.isEmpty) HotValue
       else WarmValue(notHot.toSet, unknownDeps = false)
     }
@@ -568,14 +567,14 @@ class SliceValue(val id: Int) extends SingleValue {
     val value = slice(sym)
 
     if (sym.is(Flags.Lazy)) {
-      if (value.isInstanceOf[LazyValue] && setting.forceLazy) {
+      if (value.isInstanceOf[LazyValue] && !setting.isWidening) {
         val res = value(Nil, Nil)
         slice(sym) = res.value
         res
       }
       else Res(value = value)
     }
-    else if (sym.is(Flags.Method) && setting.callParameterless) {
+    else if (sym.is(Flags.Method) && !setting.isWidening) {
       if (sym.info.isParameterless) {       // parameter-less call
         value(Nil, Nil)
       }
@@ -686,11 +685,11 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
         res
       }
-      else if (!setting.isWidening) receiver.select(target2)
-      else {
+      else if (setting.isWidening && !sym.isCalledIn(tp.classSymbol.asClass)) {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }
+      else receiver.select(target2)
     }
     else receiver.select(target2)
   }
@@ -724,12 +723,13 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     }
   }
 
-  def widen(implicit setting: Setting): OpaqueValue = {
+  def widen(implicit setting: Setting): OpaqueValue =
     if (open) ColdValue
-    else slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-      v.widen.join(acc)
+    else setting.widenFor(this) {
+      slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
+        v.widen.join(acc)
+      }
     }
-  }
 
   def show(implicit setting: ShowSetting): String = {
     val body = slices.map { case (k, v) => "[" +k.show + "]" + setting.indent(v.show(setting)) }.mkString("\n")

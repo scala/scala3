@@ -6,6 +6,7 @@ import core._
 import Symbols._
 import Types._
 import Contexts.Context
+import util.SimpleIdentitySet
 import util.Positions._
 import config.Printers.init.{ println => debug }
 
@@ -16,11 +17,9 @@ case class Setting(
   pos: Position,
   ctx: Context,
   analyzer: Analyzer,
-  allowDynamic: Boolean = true,
-  forceLazy: Boolean = true,
-  callParameterless: Boolean = true,
-  wideningValues: mutable.Set[Type] = mutable.Set.empty) {
-    def strict: Setting = copy(allowDynamic = false, forceLazy = false, callParameterless = false)
+  isWidening: Boolean = false,
+  var wideningValues: SimpleIdentitySet[Value] = SimpleIdentitySet.empty) {
+    def widening: Setting = copy(isWidening = true)
     def heap: Heap = env.heap
     def withPos(position: Position) = copy(pos = position)
     def withEnv(ienv: Env) = copy(env = ienv)
@@ -32,26 +31,35 @@ case class Setting(
       copy(env = env2.asEnv)
     }
 
-    def isWidening: Boolean = wideningValues.nonEmpty
-
-    def widenFor(tp: Type)(value: => OpaqueValue): OpaqueValue =
-      if (wideningValues.contains(tp)) HotValue
+    def widenFor(v: Value)(value: => OpaqueValue): OpaqueValue =
+      if (wideningValues.contains(v)) HotValue
       else {
-        wideningValues += tp
+        analyzer.indentedDebug(s"widening ${v.show(this.showSetting)} = ?")
+        wideningValues = wideningValues + v
         val res = value
-        wideningValues -= tp
+        wideningValues = wideningValues - v
+        analyzer.indentedDebug(s"widening ${v.show(this.showSetting)} = " + res.show(this.showSetting))
         res
       }
 
-    def widen(tp: Type): OpaqueValue = widenFor(tp) {
-      val res = tp match {
-        case tp: TypeRef => // TODO: check class body
-          analyzer.checkRef(tp.prefix)(this)
-        case _ =>
-          analyzer.checkRef(tp)(this)
-      }
-      analyzer.indentedDebug(res.effects.mkString)
-      if (res.hasErrors) WarmValue() else res.value.widen(this)
+    def widen(tp: Type): OpaqueValue = tp match {
+      case tp: TypeRef => // TODO: check class body
+        val prefixRes = analyzer.checkRef(tp.prefix)(this)
+        if (prefixRes.hasErrors) WarmValue()
+        else {
+          implicit val ctx: Context = this.ctx
+          val constr = tp.classSymbol.primaryConstructor
+          val obj = new ObjectValue(tp, open = false)
+          val setting = this.freshHeap
+          val paramCount = constr.info.paramInfoss.flatten.size
+          val args = constr.info.paramInfoss.flatten.map(_.value)
+          val poss = List.fill(paramCount)(NoPosition)
+          val res = prefixRes.value.init(constr, args, poss, obj)(setting)
+          if (res.hasErrors) WarmValue() else obj.widen(setting)
+        }
+      case _ =>
+        val res = analyzer.checkRef(tp)(this)
+        if (res.hasErrors) WarmValue() else res.value.widen(this)
     }
 
     def showSetting = ShowSetting(heap, ctx)
