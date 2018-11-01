@@ -42,24 +42,9 @@ case class Setting(
         res
       }
 
-    def widen(tp: Type): OpaqueValue = tp match {
-      case tp: TypeRef => // TODO: check class body
-        val prefixRes = analyzer.checkRef(tp.prefix)(this)
-        if (prefixRes.hasErrors) WarmValue()
-        else {
-          implicit val ctx: Context = this.ctx
-          val constr = tp.classSymbol.primaryConstructor
-          val obj = new ObjectValue(tp, open = false)
-          val setting = this.freshHeap
-          val paramCount = constr.info.paramInfoss.flatten.size
-          val args = constr.info.paramInfoss.flatten.map(_.value)
-          val poss = List.fill(paramCount)(NoPosition)
-          val res = prefixRes.value.init(constr, args, poss, obj)(setting)
-          if (res.hasErrors) WarmValue() else obj.widen(setting)
-        }
-      case _ =>
-        val res = analyzer.checkRef(tp)(this)
-        if (res.hasErrors) WarmValue() else res.value.widen(this)
+    def widen(tp: Type): OpaqueValue = {
+      val res = analyzer.checkRef(tp)(this)
+      if (res.hasErrors) WarmValue() else res.value.widen(this)
     }
 
     def showSetting = ShowSetting(heap, ctx)

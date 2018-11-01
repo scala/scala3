@@ -53,6 +53,7 @@ object Capture {
 
     def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
       tree match {
+        case tree if tree.isType =>// ignore all type trees
         case tree: Ident =>
           check(tree)
         case Trees.Select(ths: This, _) =>
@@ -63,7 +64,6 @@ object Capture {
           check(tree)
         case tree: New =>
           check(tree)
-        case tree if tree.isType =>// ignore all type trees
         case _ =>
           traverseChildren(tree)
       }

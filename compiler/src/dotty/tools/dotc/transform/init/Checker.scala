@@ -46,8 +46,10 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def phaseName: String = Checker.name
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
-    val cls = ctx.owner.asClass
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree = {
+    if (!tree.isClassDef) return tree
+
+    val cls = tree.symbol.asClass
     val self = cls.thisType
 
     // ignore init checking if `@unchecked`
@@ -91,7 +93,9 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     tree
   }
 
-  def checkInit(cls: ClassSymbol, tmpl: tpd.Template)(implicit ctx: Context) = {
+  def checkInit(cls: ClassSymbol, cdef: tpd.TypeDef)(implicit ctx: Context) = {
+    val tmpl = cdef.rhs.asInstanceOf[tpd.Template]
+
     debug("*************************************")
     debug("checking " + cls.show)
     debug("*************************************")
@@ -109,14 +113,14 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       // and whether children are possible in other modules.
 
     // for recursive usage
-    root.addClassDef(cls, tmpl)
     indexOuter(cls)(setting)
 
+    val classValue = analyzer.classValue(cdef)(setting)
     // init check
     val constr = tmpl.constr
     val values = constr.vparamss.flatten.map { param => param.tpe.widen.value }
     val poss = constr.vparamss.flatten.map(_.pos)
-    val res = root.init(constr.symbol, values, poss, obj)(setting)
+    val res = classValue.init(constr.symbol, values, poss, obj)(setting)
     val slice = obj.slices(cls).asSlice(setting)
 
     res.effects.foreach(_.report)

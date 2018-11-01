@@ -61,6 +61,35 @@ trait Indexer { self: Analyzer =>
       override def show(implicit setting: ShowSetting): String = ddef.symbol.show
     }
 
+  def classValue(cdef: TypeDef)(implicit setting: Setting): ClassValue =
+    new ClassValue { cv =>
+      def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting2: Setting): Res = {
+        // TODO: implicit ambiguities
+        implicit val ctx: Context = setting2.ctx
+        if (isChecking(cdef.symbol)) {
+          // TODO: check if fixed point has reached. But the domain is infinite, thus non-terminating.
+          debug(s"recursive instantiation of ${cdef.symbol} found")
+          Res()
+        }
+        else {
+          val tmpl = cdef.rhs.asInstanceOf[Template]
+          val env2 = setting.env.fresh(setting2.heap)
+          val setting3 = setting2.withCtx(setting2.ctx.withOwner(cdef.symbol)).withEnv(env2)
+          self.init(constr, tmpl, values, argPos, obj)(setting3)
+        }
+      }
+
+      def widen(implicit setting2: Setting) = {
+        // TODO: implicit ambiguities
+        implicit val ctx: Context = setting2.ctx
+        val env = setting2.heap(setting.env.id).asEnv
+        val setting3 = setting2.withCtx(setting2.ctx.withOwner(cdef.symbol)).withEnv(env)
+        setting3.widenFor(cv) { widenTree(cdef)(setting3) }
+      }
+
+      override def show(implicit setting: ShowSetting): String = cdef.symbol.show
+    }
+
   def widenTree(tree: Tree)(implicit setting: Setting): OpaqueValue = {
     val captured = Capture.analyze(tree)
     indentedDebug(s"captured in ${tree.symbol}: " + captured.keys.map(_.show).mkString(", "))
@@ -109,8 +138,7 @@ trait Indexer { self: Analyzer =>
     case vdef: ValDef =>
       setting.env.add(vdef.symbol, NoValue)
     case tdef: TypeDef if tdef.isClassDef  =>
-      // class has to be handled differently because of inheritance
-      setting.env.addClassDef(tdef.symbol.asClass, tdef.rhs.asInstanceOf[Template])
+      setting.env.add(tdef.symbol.asClass, classValue(tdef))
     case _ =>
   }
 
@@ -127,8 +155,7 @@ trait Indexer { self: Analyzer =>
       val value = if (vdef.symbol.isInit || vdef.symbol.is(Deferred)) HotValue else NoValue
       slice.add(vdef.symbol, value)
     case tdef: TypeDef if tdef.isClassDef  =>
-      // class has to be handled differently because of inheritance
-      slice.add(tdef.symbol.asClass, tdef.rhs.asInstanceOf[Template])
+      slice.add(tdef.symbol.asClass, classValue(tdef)(setting.withEnv(slice.innerEnv)))
     case _ =>
   }
 

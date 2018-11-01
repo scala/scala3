@@ -51,7 +51,31 @@ object Value {
         checkParams(methSym, paramInfos, values, argPos, onlyHot = true)
       }
 
-      def widen(implicit setting: Setting) = ColdValue  // could be reached by tryWiden on funtions
+      def widen(implicit setting: Setting) = HotValue  // could be reached by tryWiden on funtions
+    }
+  }
+
+  def defaultClassValue(classSym: Symbol, prefix: OpaqueValue)(implicit setting: Setting): Value = {
+    assert(classSym.isClass)
+    new ClassValue {
+      def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
+        val cls = constr.owner.asClass
+        val paramInfos = constr.info.paramInfoss.flatten
+        val res = Value.checkParams(cls, paramInfos, values, argPos)
+        if (res.hasErrors) return res
+
+        val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
+        val value = args.foldLeft(prefix) { (acc, v) =>
+          acc.join(v.widen)
+        }
+
+        if (cls == obj.tp.classSymbol && !obj.open) obj.add(cls, value.meet(WarmValue()))
+        else if (!value.isHot) obj.add(cls, WarmValue())
+
+        Res()
+      }
+
+      def widen(implicit setting: Setting) = prefix
     }
   }
 
@@ -219,6 +243,7 @@ abstract sealed class OpaqueValue extends SingleValue {
 object HotValue extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res =
     if (sym.is(Flags.Method)) Res(value = Value.defaultFunctionValue(sym))
+    else if (sym.isClass) Res(value = Value.defaultClassValue(sym, HotValue))
     else Res()
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res =
@@ -226,22 +251,7 @@ object HotValue extends OpaqueValue {
       Res(effects = Vector(Generic("Cannot assign an object under initialization to a fully initialized object", setting.pos)))
     else Res()
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val cls = constr.owner.asClass
-    val paramInfos = constr.info.paramInfoss.flatten
-    val res = Value.checkParams(cls, paramInfos, values, argPos)
-    if (res.hasErrors) return res
-
-    val args = (0 until paramInfos.size).map(i => scala.util.Try(values(i)).getOrElse(HotValue))
-    val argsV = args.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-      acc.join(v.widen)
-    }
-
-    if (cls == obj.tp.classSymbol && !obj.open) obj.add(cls, argsV.meet(WarmValue()))
-    else if (!argsV.isHot) obj.add(cls, WarmValue())
-
-    Res()
-  }
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
   def show(implicit setting: ShowSetting): String = "Hot"
 
@@ -279,6 +289,8 @@ object IcyValue extends OpaqueValue {
     else if (sym.isClass) {
       if (!sym.isIcy)
         res += Generic(s"The nested $sym should be marked as `@icy` in order to be instantiated", setting.pos)
+
+      res.value = Value.defaultClassValue(sym, IcyValue)
     }
     else {  // field select
       res += Generic(s"$sym may not be initialized", setting.pos)
@@ -317,6 +329,8 @@ object ColdValue extends OpaqueValue {
     else if (sym.isClass) {
       if (!sym.isCold)
         res += Generic(s"The nested $sym should be marked as `@cold` in order to be instantiated", setting.pos)
+
+      res.value = Value.defaultClassValue(sym, ColdValue)
     }
     else {  // field select
       if (!sym.isClassParam)
@@ -329,22 +343,7 @@ object ColdValue extends OpaqueValue {
   /** assign to cold is always fine? */
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = Res()
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val paramInfos = constr.info.paramInfoss.flatten
-    val res = Value.checkParams(constr.owner, paramInfos, values, argPos)
-    if (res.hasErrors) return res
-
-    val cls = constr.owner.asClass
-    if (!cls.isCold) {
-      res += Generic(s"The nested $cls should be marked as `@cold` in order to be instantiated", setting.pos)
-      res.value = HotValue
-      return res
-    }
-
-    obj.add(cls, WarmValue())
-
-    Res()
-  }
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
   def show(implicit setting: ShowSetting): String = "Cold"
 
@@ -372,6 +371,13 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
 
       res.value = sym.value
     }
+    else if (sym.isClass) {
+      if (!sym.isInit && !sym.isCold && !sym.isWarm)
+        res += Generic(s"The nested $sym should be marked as `@init` in order to be instantiated", setting.pos)
+
+      val prefix = if (sym.isInit) HotValue else WarmValue()
+      res.value = Value.defaultClassValue(sym, prefix)
+    }
     else {
       res.value = sym.value
     }
@@ -386,25 +392,7 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
     else Res()
   }
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val paramInfos = constr.info.paramInfoss.flatten
-    val res = Value.checkParams(constr.owner, paramInfos, values, argPos)
-    if (res.hasErrors) return res
-
-    val cls = constr.owner.asClass
-    if (cls.isInit) {
-      if (values.exists(!_.widen.isHot)) obj.add(cls, WarmValue())
-      Res()
-    }
-    else if (cls.isCold || cls.isWarm) {
-      obj.add(cls, WarmValue())
-      Res()
-    }
-    else {
-      res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", setting.pos)
-      res
-    }
-  }
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
   override def widen(implicit setting: Setting) =
     if (unknownDeps) this else {
@@ -597,12 +585,7 @@ class SliceValue(val id: Int) extends SingleValue {
     Res()
   }
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val cls = constr.owner.asClass
-    val slice = this.asSlice
-    val tmpl = slice.classInfos(cls)
-    setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(slice.innerEnv))
-  }
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
   def widen(implicit setting: Setting): OpaqueValue =
     this.asSlice.widen
@@ -615,6 +598,18 @@ class SliceValue(val id: Int) extends SingleValue {
   }
 
   def show(implicit setting: ShowSetting): String = setting.heap(id).asSlice.show(setting)
+}
+
+/** A class value */
+abstract class ClassValue extends SingleValue {
+  // not supported
+  def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
+  def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = ???
+  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = ???
+
+  def show(implicit setting: ShowSetting): String = toString
+
+  override def toString: String = "ClassValue@" + hashCode
 }
 
 class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
@@ -664,7 +659,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
     val target2 = if (target.exists) target else sym
 
-    if (open && !isStaticDispatch && !sym.isEffectivelyFinal) {
+    if (open && !isStaticDispatch && !sym.isEffectivelyFinal && !sym.isClass) {
       val res =
         if (target2.is(Flags.Method))
          // dynamic calls are analysis boundary, only allow hot values
@@ -711,17 +706,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     }
   }
 
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val cls = constr.owner.asClass
-    val outerCls = cls.owner.asClass
-    if (slices.contains(outerCls)) {
-      slices(outerCls).init(constr, values, argPos, obj)
-    }
-    else {
-      val value = if (cls.isDefinedOn(tp)) WarmValue() else ColdValue
-      value.init(constr, values, argPos, obj)
-    }
-  }
+  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
   def widen(implicit setting: Setting): OpaqueValue =
     if (open) ColdValue

@@ -39,9 +39,6 @@ object Heap {
 
   class RootEnv extends Env(-1) {
     override def contains(sym: Symbol): Boolean = _syms.contains(sym)
-
-    override def containsClass(cls: ClassSymbol): Boolean =
-      _classInfos.contains(cls)
   }
 
   def createRootEnv: Env = {
@@ -124,16 +121,6 @@ class Env(outerId: Int) extends HeapEntry {
   /** local symbols defined in current scope */
   protected var _syms: Map[Symbol, Value] = Map()
 
-  /** local class definitions */
-  protected var _classInfos: Map[ClassSymbol, Template] = Map()
-  def addClassDef(cls: ClassSymbol, tmpl: Template) =
-    _classInfos = _classInfos.updated(cls, tmpl)
-  def containsClass(cls: ClassSymbol): Boolean =
-    _classInfos.contains(cls) || outer.containsClass(cls)
-  def getClassDef(cls: ClassSymbol): Template =
-    if (_classInfos.contains(cls)) _classInfos(cls)
-    else outer.getClassDef(cls)
-
   def outer: Env = heap(outerId).asInstanceOf[Env]
 
   def fresh(heap: Heap = this.heap): Env = {
@@ -214,22 +201,12 @@ class Env(outerId: Int) extends HeapEntry {
         Res(value = value)
       }
     }
-    else if (sym.isClass && this.containsClass(sym.asClass)) Res()
     else {
       // How do we know the class/method/field does not capture/use a cold/warm outer?
       // If method/field exist, then the outer class beyond the method/field is hot,
       // i.e. external methods/fields/classes are always safe.
       HotValue.select(sym)
     }
-
-  def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
-    val cls = constr.owner.asClass
-    if (this.containsClass(cls)) {
-      val tmpl = this.getClassDef(cls)
-      setting.analyzer.init(constr, tmpl, values, argPos, obj)(setting.withEnv(this))
-    }
-    else HotValue.init(constr, values, argPos, obj)
-  }
 
   def show(implicit setting: ShowSetting): String = {
     def members = _syms.map { case (k, v) => k.show + " ->" + setting.indent(v.show(setting), tabs = 2) }.mkString("\n")
@@ -244,12 +221,6 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
   override def clone: SliceRep = super.clone.asInstanceOf[SliceRep]
 
   def innerEnv: Env = heap(innerEnvId).asEnv
-
-  /** inner class definitions */
-  private var _classInfos: Map[ClassSymbol, Template] = Map()
-  def add(cls: ClassSymbol, info: Template) = _classInfos =
-    _classInfos.updated(cls, info)
-  def classInfos: Map[ClassSymbol, Template] = _classInfos
 
   /** methods and fields of the slice */
   private var _syms: Map[Symbol, Value] = Map()

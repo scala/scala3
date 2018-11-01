@@ -66,13 +66,18 @@ class Analyzer extends Indexer { analyzer =>
     res
   }
 
-  def checkRef(tp: Type)(implicit setting: Setting): Res = trace("checking " + tp.show)(tp match {
+  def checkRef(tp: Type)(implicit setting: Setting): Res = trace("checking " + tp.show)(tp.dealias match {
     case tp : TermRef if tp.symbol.is(Module) && setting.ctx.owner.enclosedIn(tp.symbol.moduleClass) =>
       // self reference by name: object O { ... O.xxx }
       checkRef(ThisType.raw(tp.symbol.moduleClass.typeRef))
     case tp @ TermRef(NoPrefix, _) =>
       setting.env.select(tp.symbol)
+    case tp @ TypeRef(NoPrefix, _) =>
+      setting.env.select(tp.symbol)
     case tp @ TermRef(prefix, _) =>
+      val res = checkRef(prefix)
+      res.value.select(tp.symbol)
+    case tp @ TypeRef(prefix, _) =>
       val res = checkRef(prefix)
       res.value.select(tp.symbol)
     case tp @ ThisType(tref) =>
@@ -85,6 +90,8 @@ class Analyzer extends Indexer { analyzer =>
         assert(cls.is(Flags.Module) && !setting.ctx.owner.enclosedIn(cls))
         Res()
       }
+    case tp: AppliedType =>
+      checkRef(tp.tycon)
   })
 
   def checkClosure(sym: Symbol, tree: Tree)(implicit setting: Setting): Res = {
@@ -198,18 +205,9 @@ class Analyzer extends Indexer { analyzer =>
 
     if (effs.nonEmpty) return Res(effs)
 
-    def toPrefix(tp: Type): Type = tp match {
-      case AppliedType(tycon, _) => toPrefix(tycon.dealias)
-      case tp: TypeRef => tp.prefix
-    }
-
-    val prefix = toPrefix(tp)
-    if (prefix == NoPrefix) setting.env.init(init, argValues, args.map(_.pos), obj)
-    else {
-      val prefixRes = checkRef(prefix)
-      if (prefixRes.hasErrors) return prefixRes
-      prefixRes.value.init(init, argValues, args.map(_.pos), obj)
-    }
+    val classRes = checkRef(tp)
+    if (classRes.hasErrors) classRes
+    else classRes.value.init(init, argValues, args.map(_.pos), obj)
   }
 
   def checkParents(cls: ClassSymbol, parents: List[Tree], obj: ObjectValue)(implicit setting: Setting): Res = {
