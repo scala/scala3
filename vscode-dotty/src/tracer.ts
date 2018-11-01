@@ -75,15 +75,17 @@ export class Tracer {
 
     run(): vscode.OutputChannel | undefined {
         const consentCommandDisposable = vscode.commands.registerCommand(consentCommandName, () => this.askForTracingConsent())
-        if (this.isTracingEnabled && this.tracingConsent.get() === 'no-answer') this.askForTracingConsent()
-        this.initializeAsyncWorkspaceDump()
+        if (this.isTracingEnabled) {
+            if (this.tracingConsent.get() === 'no-answer') this.askForTracingConsent()
+            this.initializeAsyncWorkspaceDump()
 
-        const lspOutputChannel = this.createLspOutputChannel()
-        const statusBarItem = this.createStatusBarItem()
-        for (const disposable of [consentCommandDisposable, lspOutputChannel, statusBarItem]) {
-            if (disposable) this.ctx.extensionContext.subscriptions.push(disposable)
+            const lspOutputChannel = this.createLspOutputChannel()
+            const statusBarItem = this.createStatusBarItem()
+            for (const disposable of [consentCommandDisposable, lspOutputChannel, statusBarItem]) {
+                if (disposable) this.ctx.extensionContext.subscriptions.push(disposable)
+            }
+            return lspOutputChannel
         }
-        return lspOutputChannel
     }
 
     private askForTracingConsent(): void {
