@@ -37,14 +37,14 @@ object Build {
   val scalacVersion = "2.12.7"
 
   val baseVersion = "0.11.0"
-  val baseSbtDottyVersion = "0.2.6"
+  val baseSbtDottyVersion = "0.2.7"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = "0.11.0-bin-20181031-5a465af-NIGHTLY" // Using a nightly for now to get worksheet support
-  val publishedSbtDottyVersion = "0.2.5"
+  val publishedSbtDottyVersion = "0.2.6"
 
 
   val dottyOrganization = "ch.epfl.lamp"
