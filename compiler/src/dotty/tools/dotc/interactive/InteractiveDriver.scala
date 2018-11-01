@@ -86,6 +86,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     names
   }
 
+  initialize()
+
   /**
    * The trees for all the source files in this project.
    *
@@ -296,6 +298,18 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     writer.write(sourceCode)
     writer.close()
     new SourceFile(virtualFile, Codec.UTF8)
+  }
+
+  /**
+   * Initialize this driver and compiler by "compiling" a fake, empty source file.
+   *
+   * This is necessary because an `InteractiveDriver` can be put to work without having
+   * compiled anything (for instance, resolving a symbol coming from a different compiler in
+   * this compiler). In those cases, an un-initialized compiler will crash.
+   */
+  private[this] def initialize(): Unit = {
+    val fakeSource = new File("fake.scala")
+    run(fakeSource.toURI, "")
   }
 
 }
