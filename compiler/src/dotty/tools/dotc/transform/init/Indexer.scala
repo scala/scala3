@@ -58,7 +58,7 @@ trait Indexer { self: Analyzer =>
         setting3.widenFor(fv) { widenTree(ddef)(setting3) }
       }
 
-      override def show(implicit setting: ShowSetting): String = ddef.symbol.show
+      override def show(implicit setting: ShowSetting): String = ddef.symbol(setting.ctx).show(setting.ctx)
     }
 
   def classValue(cdef: TypeDef)(implicit setting: Setting): ClassValue =
@@ -87,7 +87,7 @@ trait Indexer { self: Analyzer =>
         setting3.widenFor(cv) { widenTree(cdef)(setting3) }
       }
 
-      override def show(implicit setting: ShowSetting): String = cdef.symbol.show
+      override def show(implicit setting: ShowSetting): String = cdef.symbol(setting.ctx).show(setting.ctx)
     }
 
   def widenTree(tree: Tree)(implicit setting: Setting): OpaqueValue = {
@@ -126,7 +126,7 @@ trait Indexer { self: Analyzer =>
         setting3.widenFor(lz) { widenTree(vdef)(setting3) }
       }
 
-      override def show(implicit setting: ShowSetting): String = vdef.symbol.show
+      override def show(implicit setting: ShowSetting): String = vdef.symbol(setting.ctx).show(setting.ctx)
     }
 
   /** Index local definitions */

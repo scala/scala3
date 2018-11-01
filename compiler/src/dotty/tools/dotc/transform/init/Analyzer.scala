@@ -253,13 +253,9 @@ class Analyzer extends Indexer { analyzer =>
   def checkNew(tree: Tree, tref: TypeRef, init: Symbol, argss: List[List[Tree]])(implicit setting: Setting): Res = {
     val obj = new ObjectValue(tree.tpe, open = false)
     val res = checkInit(obj.tp, init, argss, obj)
-    if (obj.slices.isEmpty) {
-      res.copy(value = HotValue)
-    }
-    else {
-      if (res.hasErrors) res.effects = Vector(Instantiate(tree.tpe.classSymbol, res.effects, tree.pos))
-      res.copy(value = obj)
-    }
+
+    if (res.hasErrors) res.effects = Vector(Instantiate(tree.tpe.classSymbol, res.effects, tree.pos))
+    res.copy(value = obj.tryWiden)
   }
 
   def checkSuper(tree: Tree, supert: Super)(implicit setting: Setting): Res = {
