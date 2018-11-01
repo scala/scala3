@@ -7,10 +7,10 @@ Initial implementation in (#3464)[https://github.com/lampepfl/dotty/pull/3464].
 
 ## Syntax
 
-FunArgTypes       ::=  InfixType
-                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  '(' TypedFunParam {',' TypedFunParam } ')'
-TypedFunParam     ::=  id ':' Type
+    FunArgTypes       ::=  InfixType
+                        |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+                        |  '(' TypedFunParam {',' TypedFunParam } ')'
+    TypedFunParam     ::=  id ':' Type
 
 Dependent function types associate to the right, e.g.
 `(s: S) ⇒ (t: T) ⇒ U` is the same as `(s: S) ⇒ ((t: T) ⇒ U)`.

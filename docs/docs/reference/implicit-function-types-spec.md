@@ -7,12 +7,12 @@ Initial implementation in (#1775)[https://github.com/lampepfl/dotty/pull/1775].
 
 ## Syntax
 
-Type              ::=  [`implicit'] FunArgTypes `=>' Type
-                    |  HkTypeParamClause `=>' Type
-                    |  InfixType
-Expr              ::=  [`implicit'] FunParams `=>' Expr
-BlockResult       ::=  [`implicit'] FunParams `=>' Block
-                    |  Expr1
+    Type              ::=  [`implicit'] FunArgTypes `=>' Type
+                        |  HkTypeParamClause `=>' Type
+                        |  InfixType
+    Expr              ::=  [`implicit'] FunParams `=>' Expr
+    BlockResult       ::=  [`implicit'] FunParams `=>' Block
+                        |  Expr1
 
 Implicit function types associate to the right, e.g.
 `implicit S ⇒ implicit T ⇒ U` is the same as `implicit S ⇒ (implicit T ⇒ U)`.
@@ -41,7 +41,7 @@ the type `Ti` of any of the parameters `xi` can be omitted, in which case `Ti
 = Si` is assumed. If the expected type of the anonymous implicit function is
 some other type, all implicit parameter types must be explicitly given, and
 the expected type of `e` is undefined. The type of the anonymous implicit
-function is `scala.ImplicitFunctionN[S1, ...,Sn, T]`, where `T` is the packed
+function is `scala.ImplicitFunctionN[S1, ...,Sn, T]`, where `T` is the widened
 type of `e`. `T` must be equivalent to a type which does not refer to any of
 the implicit parameters `xi`.
 
@@ -63,7 +63,7 @@ that case, a fresh name for the parameter is chosen arbitrarily.
 Note: The closing paragraph of the [Anonymous Functions section](https://www
 .scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-
 functions) of the Scala 2.12 is subsumed by implicit function types and should
-be remove.
+be removed.
 
 Anonymous implicit functions `implicit (x1: T1, ..., xn: Tn) => e` are
 automatically inserted around any expression `e` whose expected type is
