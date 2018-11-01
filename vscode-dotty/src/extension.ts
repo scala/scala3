@@ -38,11 +38,13 @@ const sbtPluginFile = path.join(sbtProjectDir, "dotty-plugin.sbt")
 const sbtBuildPropertiesFile = path.join(sbtProjectDir, "build.properties")
 const sbtBuildSbtFile = path.join(workspaceRoot, "build.sbt")
 const languageServerArtifactFile = path.join(workspaceRoot, ".dotty-ide-artifact")
+const languageServerConfigFile = path.join(workspaceRoot, ".dotty-ide.json")
 
 function isConfiguredProject() {
   return (   fs.existsSync(sbtPluginFile)
           || fs.existsSync(sbtBuildPropertiesFile)
           || fs.existsSync(sbtBuildSbtFile)
+          || (fs.existsSync(languageServerArtifactFile) && fs.existsSync(languageServerConfigFile))
   )
 }
 

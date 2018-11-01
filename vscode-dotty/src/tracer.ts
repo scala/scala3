@@ -69,7 +69,16 @@ export class Tracer {
             return persisted(uuidv4())
         })()
 
-        this.projectId = vscode.workspace.name !== undefined ? vscode.workspace.name : 'no-project'
+        if (vscode.workspace.name !== undefined) {
+          // HACK: The projects cloned by students use the naming convention
+          // `$id-$name-$githubUsername`, so they leak the student's github
+          // username, to preserve anonymity, we drop the last part of the
+          // name.
+          this.projectId = vscode.workspace.name.replace(/^(\d+-.+)-.+$/, "$1")
+        } else {
+          this.projectId = 'no-project'
+        }
+
         this.sessionId = new Date().toISOString()
     }
 

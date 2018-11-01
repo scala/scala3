@@ -43,7 +43,7 @@ object Build {
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
-  val publishedDottyVersion = "0.11.0-bin-20181031-5a465af-NIGHTLY" // Using a nightly for now to get worksheet support
+  val publishedDottyVersion = "0.11.0-bin-20181101-714ce80-NIGHTLY" // Using a nightly for now to get worksheet support
   val publishedSbtDottyVersion = "0.2.6"
 
 
@@ -987,7 +987,7 @@ object Build {
     settings(commonSettings).
     settings(
       EclipseKeys.skipProject := true,
-      version := "0.1.9-snapshot", // Keep in sync with package.json
+      version := "0.1.10-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
