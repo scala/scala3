@@ -330,18 +330,23 @@ class DottyLanguageServer extends LanguageServer
 
     val originalSymbol = Interactive.enclosingSourceSymbol(path)
     val symbolName = originalSymbol.name.sourceModuleName.toString
-    val references =
-      for { config <- projectsToInspect.toList
-            remoteDriver = drivers(config)
-            ctx = remoteDriver.currentCtx
-            remoteDefinition = Interactive.localize(originalSymbol, driver, remoteDriver)
-            trees = remoteDriver.sourceTreesContaining(symbolName)(ctx)
-            reference <- Interactive.findTreesMatching(trees, includes, remoteDefinition)(ctx)
-          } yield {
-        reference
+    val references = {
+      // Collect the information necessary to look into each project separately: representation of
+      // `originalSymbol` in this project, the context and correct Driver.
+      val perProjectInfo = projectsToInspect.toList.map { config =>
+        val remoteDriver = drivers(config)
+        val ctx = remoteDriver.currentCtx
+        val definition = Interactive.localize(originalSymbol, driver, remoteDriver)
+        (remoteDriver, ctx, definition)
       }
 
-      references.flatMap(ref => location(ref.namePos, positionMapperFor(ref.source))).asJava
+      perProjectInfo.par.flatMap { (remoteDriver, ctx, definition) =>
+        val trees = remoteDriver.sourceTreesContaining(symbolName)(ctx)
+        Interactive.findTreesMatching(trees, includes, definition)(ctx)
+      }
+    }.toList
+
+    references.flatMap(ref => location(ref.namePos, positionMapperFor(ref.source))).asJava
   }
 
   override def rename(params: RenameParams) = computeAsync { cancelToken =>
