@@ -139,7 +139,8 @@ public enum ErrorMessageID {
     PureExpressionInStatementPositionID,
     TraitCompanionWithMutableStaticID,
     LazyStaticFieldID,
-    StaticOverridingNonStaticMembersID
+    StaticOverridingNonStaticMembersID,
+    OverloadInRefinementID
     ;
 
     public int errorNumber() {
