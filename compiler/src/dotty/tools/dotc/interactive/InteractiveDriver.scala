@@ -36,22 +36,55 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   private[this] var myCtx: Context = myInitCtx
-
   def currentCtx: Context = myCtx
+
+  private val compiler: Compiler = new InteractiveCompiler
 
   private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
     override def default(key: URI) = NoSource
   }
+  def openedFiles: Map[URI, SourceFile] = myOpenedFiles
 
   private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
     override def default(key: URI) = Nil
   }
+  def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
 
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
-
-  def openedFiles: Map[URI, SourceFile] = myOpenedFiles
-  def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
   def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
+
+  // Presence of a file with one of these suffixes indicates that the
+  // corresponding class has been pickled with TASTY.
+  private val tastySuffixes = List(".hasTasty", ".tasty")
+
+  // FIXME: All the code doing classpath handling is very fragile and ugly,
+  // improving this requires changing the dotty classpath APIs to handle our usecases.
+  // We also need something like sbt server-mode to be informed of changes on
+  // the classpath.
+
+  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
+    case AggregateClassPath(cps) =>
+      // FIXME: We shouldn't assume that ClassPath doesn't have other
+      // subclasses. For now, the only other subclass is JrtClassPath on Java
+      // 9+, we can safely ignore it for now because it's only used for the
+      // standard Java library, but this will change once we start supporting
+      // adding entries to the modulepath.
+      val zipCps = cps.collect { case cp: ZipArchiveFileLookup[_] => cp }
+      val dirCps = cps.collect { case cp: JFileDirectoryLookup[_] => cp }
+      (zipCps, dirCps)
+    case _ =>
+      (Seq(), Seq())
+  }
+
+  // Like in `ZipArchiveFileLookup` we assume that zips are immutable
+  private val zipClassPathClasses: Seq[String] = {
+    val names = new mutable.ListBuffer[String]
+    zipClassPaths.foreach { zipCp =>
+      val zipFile = new ZipFile(zipCp.zipFile)
+      classesFromZip(zipFile, names)
+    }
+    names
+  }
 
   /**
    * The trees for all the source files in this project.
@@ -109,6 +142,45 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     (fromSource ++ fromClassPath).distinct
   }
 
+  def run(uri: URI, sourceCode: String): List[MessageContainer] = run(uri, toSource(uri, sourceCode))
+
+  def run(uri: URI, source: SourceFile): List[MessageContainer] = {
+    val previousCtx = myCtx
+    try {
+      val reporter =
+        new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
+
+      val run = compiler.newRun(myInitCtx.fresh.setReporter(reporter))
+      myCtx = run.runContext
+
+      implicit val ctx = myCtx
+
+      myOpenedFiles(uri) = source
+
+      run.compileSources(List(source))
+      run.printSummary()
+      val unit = ctx.run.units.head
+      val t = unit.tpdTree
+      cleanup(t)
+      myOpenedTrees(uri) = topLevelClassTrees(t, source)
+      myCompilationUnits(uri) = unit
+
+      reporter.removeBufferedMessages
+    }
+    catch {
+      case ex: FatalError  =>
+        myCtx = previousCtx
+        close(uri)
+        Nil
+    }
+  }
+
+  def close(uri: URI): Unit = {
+    myOpenedFiles.remove(uri)
+    myOpenedTrees.remove(uri)
+    myCompilationUnits.remove(uri)
+  }
+
   /**
    * The `SourceTree`s that define the class `className` and/or module `className`.
    *
@@ -126,39 +198,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       }
     }
     List(tree(className, id), tree(className.moduleClassName, id)).flatten
-  }
-
-  // Presence of a file with one of these suffixes indicates that the
-  // corresponding class has been pickled with TASTY.
-  private val tastySuffixes = List(".hasTasty", ".tasty")
-
-  // FIXME: All the code doing classpath handling is very fragile and ugly,
-  // improving this requires changing the dotty classpath APIs to handle our usecases.
-  // We also need something like sbt server-mode to be informed of changes on
-  // the classpath.
-
-  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
-    case AggregateClassPath(cps) =>
-      // FIXME: We shouldn't assume that ClassPath doesn't have other
-      // subclasses. For now, the only other subclass is JrtClassPath on Java
-      // 9+, we can safely ignore it for now because it's only used for the
-      // standard Java library, but this will change once we start supporting
-      // adding entries to the modulepath.
-      val zipCps = cps.collect { case cp: ZipArchiveFileLookup[_] => cp }
-      val dirCps = cps.collect { case cp: JFileDirectoryLookup[_] => cp }
-      (zipCps, dirCps)
-    case _ =>
-      (Seq(), Seq())
-  }
-
-  // Like in `ZipArchiveFileLookup` we assume that zips are immutable
-  private val zipClassPathClasses: Seq[String] = {
-    val names = new mutable.ListBuffer[String]
-    zipClassPaths.foreach { zipCp =>
-      val zipFile = new ZipFile(zipCp.zipFile)
-      classesFromZip(zipFile, names)
-    }
-    names
   }
 
   // FIXME: classfiles in directories may change at any point, so we retraverse
@@ -222,8 +261,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     trees.toList
   }
 
-  private val compiler: Compiler = new InteractiveCompiler
-
   /** Remove attachments and error out completers. The goal is to avoid
    *  having a completer hanging in a typed tree which can capture the context
    *  of a previous run. Note that typed trees can have untyped or partially
@@ -261,44 +298,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     new SourceFile(virtualFile, Codec.UTF8)
   }
 
-  def run(uri: URI, sourceCode: String): List[MessageContainer] = run(uri, toSource(uri, sourceCode))
-
-  def run(uri: URI, source: SourceFile): List[MessageContainer] = {
-    val previousCtx = myCtx
-    try {
-      val reporter =
-        new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-
-      val run = compiler.newRun(myInitCtx.fresh.setReporter(reporter))
-      myCtx = run.runContext
-
-      implicit val ctx = myCtx
-
-      myOpenedFiles(uri) = source
-
-      run.compileSources(List(source))
-      run.printSummary()
-      val unit = ctx.run.units.head
-      val t = unit.tpdTree
-      cleanup(t)
-      myOpenedTrees(uri) = topLevelClassTrees(t, source)
-      myCompilationUnits(uri) = unit
-
-      reporter.removeBufferedMessages
-    }
-    catch {
-      case ex: FatalError  =>
-        myCtx = previousCtx
-        close(uri)
-        Nil
-    }
-  }
-
-  def close(uri: URI): Unit = {
-    myOpenedFiles.remove(uri)
-    myOpenedTrees.remove(uri)
-    myCompilationUnits.remove(uri)
-  }
 }
 
 object InteractiveDriver {
