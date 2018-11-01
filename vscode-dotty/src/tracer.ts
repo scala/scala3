@@ -45,7 +45,7 @@ export class Tracer {
         this.maximumMessageSize = maximumMessageSize === undefined || maximumMessageSize < 0 ? 0 : maximumMessageSize | 0
 
         this.machineId = (() => {
-            const machineIdKey = 'tracing.machineId'
+            const machineIdKey = 'trace.machineId'
             function persisted(value: string): string {
                 ctx.extensionConfig.update(machineIdKey, value, vscode.ConfigurationTarget.Global)
                 return value
