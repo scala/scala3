@@ -15,5 +15,9 @@ object Test3 {
 
   trait Entry { type Key; val key: Key }
   type D = { def foo(e: Entry, k: e.Key): Unit }
-  def i(x: D) = x.foo(???) // error: foo has dependent params
+  val e = new Entry { type Key = Int; val key = 0 }
+  def i(x: D) = x.foo(e, 1) // error: foo has dependent params
+
+  type G = { def foo(x: Int, y: Int): Unit }
+  def j(x: G) = x.foo(???) // error: missing argument
 }

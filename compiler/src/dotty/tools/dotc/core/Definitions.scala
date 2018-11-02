@@ -24,9 +24,6 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = 22
-
-  /** The maximal arity of a function that can be accessed as member of a structural type */
-  val MaxStructuralMethodArity: Int = 7
 }
 
 /** A class defining symbols and types of standard definitions

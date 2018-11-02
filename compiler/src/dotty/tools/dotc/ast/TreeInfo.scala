@@ -737,6 +737,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => This(ctx.owner.enclosingClass.asClass)
   }
 
+  /** Is this an application on a structural selection?
+   *
+   *  @see isStructuralTermSelect
+   */
+  def isStructuralTermApply(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+    case Apply(fun, _) =>
+      isStructuralTermSelect(fun)
+    case _ =>
+      false
+  }
+
   /** Is this a selection of a member of a structural type that is not a member
    *  of an underlying class or trait?
    */

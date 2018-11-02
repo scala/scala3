@@ -20,8 +20,8 @@ The standard library defines a trait `Selectable` in the package
 ```scala
 trait Selectable extends Any {
   def selectDynamic(name: String): Any
-  def selectDynamicMethod(name: String, paramClasses: ClassTag[_]*): Any =
-    new UnsupportedOperationException("selectDynamicMethod")
+  def applyDynamic(name: String, paramClasses: ClassTag[_]*)(args: Any*): Any =
+    new UnsupportedOperationException("applyDynamic")
 }
 ```
 
@@ -31,10 +31,10 @@ implementations can be envisioned for platforms where Java reflection
 is not available.
 
 `selectDynamic` takes a field name and returns the value associated
-with that name in the `Selectable`. Similarly, `selectDynamicMethod`
+with that name in the `Selectable`. Similarly, `applyDynamic`
 takes a method name, `ClassTag`s representing its parameters types and
-will return the function that matches this
-name and parameter types.
+the arguments to pass to the function. It will return the result of
+calling this function with the given arguments.
 
 Given a value `v` of type `C { Rs }`, where `C` is a class reference
 and `Rs` are refinement declarations, and given `v.a` of type `U`, we
@@ -51,9 +51,9 @@ consider three distinct cases:
   parameters and it is not a dependent method type, we map `v.a` to
   the  equivalent of:
   ```scala
-  v.a
+  v.a(arg1, ..., argn)
      --->
-  (v: Selectable).selectDynamic("a", CT1, ..., CTn).asInstanceOf[(T1, ..., Tn) => R]
+  (v: Selectable).applyDynamic("a", CT1, ..., CTn)(arg1, ..., argn).asInstanceOf[R]
   ```
 
 - If `U` is neither a value nor a method type, or a dependent method
@@ -61,16 +61,15 @@ consider three distinct cases:
 
 We make sure that `r` conforms to type `Selectable`, potentially by
 introducing an implicit conversion, and then call either
-`selectDynamic` or `selectMethodDynamic`, passing the name of the
-member to access and the class tags of the formal parameters, in the
-case of a method call. These parameters could be used to disambiguate
-one of several overload variants in the future, but overloads are not
-supported in structural types at the moment.
+`selectDynamic` or `applyDynamic`, passing the name of the
+member to access, along with the class tags of the formal parameters
+and the arguments in the case of a method call. These parameters
+could be used to disambiguate one of several overload variants in the
+future, but overloads are not supported in structural types at the
+moment.
 
 ## Limitations of structural types
 
-- Methods with more than 7 formal parameters cannot be called via
-  structural call.
 - Dependent methods cannot be called via structural call.
 - Overloaded methods cannot be called via structural call.
 - Refinements do not handle polymorphic methods.
