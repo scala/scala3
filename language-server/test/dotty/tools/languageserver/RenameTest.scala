@@ -226,7 +226,7 @@ class RenameTest {
       )
 
       val p2 = Project.dependingOn(p0, p1).withSources(
-        code"""object D { val x: ${m5}C${m6} = new A.${m7}C${m8} }"""
+        code"""object D { val x: A.${m5}C${m6} = new A.${m7}C${m8} }"""
       )
 
       withProjects(p0, p1, p2).rename(m, "NewName", Set(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
@@ -241,5 +241,27 @@ class RenameTest {
     testRenameFrom(m7)
     testRenameFrom(m8)
   }
+
+  @Test def renameDifferentProjectUntouched: Unit = {
+    def testRenameFrom(m: CodeMarker) = {
+      val p0 = Project.withSources(
+        tasty"""object A { class ${m1}C${m2} }"""
+      )
+
+      val p1 = Project.dependingOn(p0).withSources(
+        code"""class B extends A.${m3}C${m4}"""
+      )
+
+      val p2 = Project.dependingOn(p0, p1).withSources(
+        tasty"""object D { val x: A.${m5}C${m6} = new A.${m7}C${m8} }"""
+      )
+
+      withProjects(p0, p1, p2).rename(m, "NewName", Set(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+    }
+
+    testRenameFrom(m3)
+    testRenameFrom(m4)
+  }
+
 
 }

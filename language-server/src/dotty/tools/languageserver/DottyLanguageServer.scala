@@ -374,12 +374,35 @@ class DottyLanguageServer extends LanguageServer
           Interactive.findTreesMatchingRenaming(nameTree.name, syms, uriTrees)
 
         case _ =>
+
+          val definitions = Interactive.findDefinitions(path, pos, driver)
+          val projectsToInspect =
+            if (definitions.isEmpty) {
+              drivers.keySet
+            } else {
+              definitions.flatMap { definition =>
+                val config = configFor(toUri(definition.pos.source))
+                dependentProjects(config) + config
+              }
+            }
+
+          val originalSymbols = Interactive.enclosingSourceSymbols(path, pos)
+          val perProjectInfo = projectsToInspect.toList.map { config =>
+            val remoteDriver = drivers(config)
+            val ctx = remoteDriver.currentCtx
+            val definitions = originalSymbols.map(Interactive.localize(_, driver, remoteDriver))
+            (remoteDriver, ctx, definitions)
+          }
+
           val includes =
             Include.references | Include.definitions | Include.linkedClass | Include.overriding | Include.imports
 
-          syms.flatMap { sym =>
-            val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-            Interactive.findTreesMatching(trees, includes, sym)
+          perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
+            definitions.flatMap { definition =>
+              val name = definition.name(ctx).sourceModuleName.toString
+              val trees = remoteDriver.sourceTreesContaining(name)(ctx)
+              Interactive.findTreesMatching(trees, includes, definition)(ctx)
+            }
           }
       }
 
