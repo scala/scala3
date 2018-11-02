@@ -38,7 +38,8 @@ object Heap {
   }
 
   class RootEnv extends Env(-1) {
-    override def contains(sym: Symbol): Boolean = _syms.contains(sym)
+    override def contains(sym: Symbol, isType: Boolean): Boolean =
+      (!isType && _syms.contains(sym)) || (isType && _symsType.contains(sym))
   }
 
   def createRootEnv: Env = {
@@ -120,6 +121,7 @@ class Env(outerId: Int) extends HeapEntry {
 
   /** local symbols defined in current scope */
   protected var _syms: Map[Symbol, Value] = Map()
+  protected var _symsType: Map[Symbol, Value] = Map()
 
   def outer: Env = heap(outerId).asInstanceOf[Env]
 
@@ -136,18 +138,25 @@ class Env(outerId: Int) extends HeapEntry {
     slice
   }
 
-  def apply(sym: Symbol): Value =
-    if (_syms.contains(sym)) _syms(sym)
-    else outer(sym)
+  def apply(sym: Symbol, isType: Boolean = false): Value =
+    if (!isType && _syms.contains(sym)) _syms(sym)
+    else if (isType && _symsType.contains(sym)) _symsType(sym)
+    else outer(sym, isType)
 
-  def add(sym: Symbol, value: Value) =
-    _syms = _syms.updated(sym, value)
+  def add(sym: Symbol, value: Value, isType: Boolean = false) =
+    if (!isType)
+      _syms = _syms.updated(sym, value)
+    else
+      _symsType = _symsType.updated(sym, value)
 
   def update(sym: Symbol, value: Value): Unit =
     if (_syms.contains(sym)) _syms = _syms.updated(sym, value)
     else outer.update(sym, value)
 
-  def contains(sym: Symbol): Boolean = _syms.contains(sym) || outer.contains(sym)
+  def contains(sym: Symbol, isType: Boolean = false): Boolean =
+    (!isType && _syms.contains(sym)) ||
+    (isType && _symsType.contains(sym)) ||
+    outer.contains(sym, isType)
 
   def notAssigned = _syms.keys.filter(sym => _syms(sym) == NoValue)
   def notForcedSyms  = _syms.keys.filter(sym => _syms(sym).isInstanceOf[LazyValue])
@@ -160,6 +169,8 @@ class Env(outerId: Int) extends HeapEntry {
       val value2 = env2._syms(sym)
       _syms = _syms.updated(sym, value.join(value2))
     }
+
+    // no need to join class values, as they are immutable
 
     this
   }
@@ -175,10 +186,14 @@ class Env(outerId: Int) extends HeapEntry {
     else Res()
 
 
-  /** Select a local variable, i.e. TermRef with NoPrefix */
-  def select(sym: Symbol)(implicit setting: Setting): Res =
-    if (this.contains(sym)) {
-      val value = this(sym)
+  /** Select a local name, i.e. TermRef or TypeRef with NoPrefix
+   *
+   *  @param isType It is required to differentiate `C.this` from `<empty>.C`, as both have the
+   *                key `C`. However, they are never in the same environment.
+   */
+  def select(sym: Symbol, isType: Boolean = false)(implicit setting: Setting): Res =
+    if (this.contains(sym, isType)) {
+      val value = this(sym, isType)
       if (sym.is(Flags.Lazy)) {
         if (value.isInstanceOf[LazyValue]) {
           val res = value(Nil, Nil)

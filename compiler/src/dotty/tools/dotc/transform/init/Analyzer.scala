@@ -73,7 +73,7 @@ class Analyzer extends Indexer { analyzer =>
     case tp @ TermRef(NoPrefix, _) =>
       setting.env.select(tp.symbol)
     case tp @ TypeRef(NoPrefix, _) =>
-      setting.env.select(tp.symbol)
+      setting.env.select(tp.symbol, isType = true)
     case tp @ TermRef(prefix, _) =>
       val res = checkRef(prefix)
       res.value.select(tp.symbol)

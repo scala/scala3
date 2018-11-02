@@ -96,7 +96,10 @@ object Value {
 
 /** Abstract values in analysis */
 sealed trait Value {
-  /** Select a member on a value */
+  /** Select a member on a value
+   *
+   *  `C.this` is selected from the environment by `C`, never via a value
+   */
   def select(sym: Symbol, isStaticDispatch: Boolean = false)(implicit setting: Setting): Res
 
   /** Assign on a value */

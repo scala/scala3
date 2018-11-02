@@ -1,5 +1,5 @@
 class A {
-  final def foo(g: () => Int) = {
+  def foo(g: () => Int) = {
     class B {
       def m: Int = g()
       lazy val b = new B
