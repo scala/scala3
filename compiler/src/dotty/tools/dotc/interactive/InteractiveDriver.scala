@@ -164,7 +164,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val unit = ctx.run.units.head
       val t = unit.tpdTree
       cleanup(t)
-      myOpenedTrees(uri) = topLevelClassTrees(t, source)
+      myOpenedTrees(uri) = topLevelTrees(t, source)
       myCompilationUnits(uri) = unit
 
       reporter.removeBufferedMessages
@@ -189,17 +189,17 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * @see SourceTree.fromSymbol
    */
   private def treesFromClassName(className: TypeName, id: String)(implicit ctx: Context): List[SourceTree] = {
-    def tree(className: TypeName, id: String): Option[SourceTree] = {
+    def trees(className: TypeName, id: String): List[SourceTree] = {
       val clsd = ctx.base.staticRef(className)
       clsd match {
         case clsd: ClassDenotation =>
           clsd.ensureCompleted()
           SourceTree.fromSymbol(clsd.symbol.asClass, id)
         case _ =>
-          None
+          Nil
       }
     }
-    List(tree(className, id), tree(className.moduleClassName, id)).flatten
+    trees(className, id) ::: trees(className.moduleClassName, id)
   }
 
   // FIXME: classfiles in directories may change at any point, so we retraverse
@@ -248,14 +248,16 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     }
   }
 
-  private def topLevelClassTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
+  private def topLevelTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
     val trees = new mutable.ListBuffer[SourceTree]
 
     def addTrees(tree: Tree): Unit = tree match {
       case PackageDef(_, stats) =>
         stats.foreach(addTrees)
+      case imp: Import =>
+        trees += SourceImportTree(imp, source)
       case tree: TypeDef =>
-        trees += SourceTree(tree, source)
+        trees += SourceNamedTree(tree, source)
       case _ =>
     }
     addTrees(topTree)
