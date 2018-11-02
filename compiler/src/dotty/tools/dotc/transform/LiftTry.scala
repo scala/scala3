@@ -34,36 +34,36 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   val phaseName: String = "liftTry"
 
   private var NeedLift: Store.Location[Boolean] = _
-  private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
+  private def needLift(implicit ctx: ContextRenamed): Boolean = ctx.store(NeedLift)
 
   override def initContext(ctx: FreshContext): Unit =
     NeedLift = ctx.addLocation(false)
 
-  private def liftingCtx(p: Boolean)(implicit ctx: Context) =
+  private def liftingCtx(p: Boolean)(implicit ctx: ContextRenamed) =
     if (needLift == p) ctx else ctx.fresh.updateStore(NeedLift, p)
 
-  override def prepareForApply(tree: Apply)(implicit ctx: Context): Context =
+  override def prepareForApply(tree: Apply)(implicit ctx: ContextRenamed): ContextRenamed =
     if (tree.fun.symbol.is(Label)) ctx
     else liftingCtx(true)
 
-  override def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context =
+  override def prepareForValDef(tree: ValDef)(implicit ctx: ContextRenamed): ContextRenamed =
     if (!tree.symbol.exists  ||
         tree.symbol.isSelfSym ||
         tree.symbol.owner == ctx.owner.enclosingMethod) ctx
     else liftingCtx(true)
 
-  override def prepareForAssign(tree: Assign)(implicit ctx: Context): Context =
+  override def prepareForAssign(tree: Assign)(implicit ctx: ContextRenamed): ContextRenamed =
     if (tree.lhs.symbol.maybeOwner == ctx.owner.enclosingMethod) ctx
     else liftingCtx(true)
 
-  override def prepareForReturn(tree: Return)(implicit ctx: Context): Context =
+  override def prepareForReturn(tree: Return)(implicit ctx: ContextRenamed): ContextRenamed =
     if (!isNonLocalReturn(tree)) ctx
     else liftingCtx(true)
 
-  override def prepareForTemplate(tree: Template)(implicit ctx: Context): Context =
+  override def prepareForTemplate(tree: Template)(implicit ctx: ContextRenamed): ContextRenamed =
     liftingCtx(false)
 
-  override def transformTry(tree: Try)(implicit ctx: Context): Tree =
+  override def transformTry(tree: Try)(implicit ctx: ContextRenamed): Tree =
     if (needLift && tree.cases.nonEmpty) {
       ctx.debuglog(i"lifting tree at ${tree.pos}, current owner = ${ctx.owner}")
       val fn = ctx.newSymbol(

@@ -18,9 +18,9 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   with MessageRendering {
   import MessageContainer._
 
-  override def printSummary(implicit ctx: Context): Unit = delegate.printSummary()
+  override def printSummary(implicit ctx: ContextRenamed): Unit = delegate.printSummary()
 
-  def doReport(cont: MessageContainer)(implicit ctx: Context): Unit = {
+  def doReport(cont: MessageContainer)(implicit ctx: ContextRenamed): Unit = {
     val severity =
       cont match {
         case _: messages.Error   => Severity.Error

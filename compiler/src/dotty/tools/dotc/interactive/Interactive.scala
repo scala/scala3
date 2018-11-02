@@ -37,7 +37,7 @@ object Interactive {
     tree.isInstanceOf[DefTree with NameTree]
 
   /** The type of the closest enclosing tree with a type containing position `pos`. */
-  def enclosingType(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Type = {
+  def enclosingType(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: ContextRenamed): Type = {
     val path = pathTo(trees, pos)
     if (path.isEmpty) NoType
     else path.head.tpe
@@ -45,12 +45,12 @@ object Interactive {
 
   /** The closest enclosing tree with a symbol containing position `pos`, or the `EmptyTree`.
    */
-  def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Tree =
+  def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: ContextRenamed): Tree =
     enclosingTree(pathTo(trees, pos))
 
   /** The closes enclosing tree with a symbol, or the `EmptyTree`.
    */
-  def enclosingTree(path: List[Tree])(implicit ctx: Context): Tree =
+  def enclosingTree(path: List[Tree])(implicit ctx: ContextRenamed): Tree =
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /**
@@ -64,7 +64,7 @@ object Interactive {
    *
    * @see sourceSymbol
    */
-  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
+  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(implicit ctx: ContextRenamed): List[Symbol] = {
     val syms = path match {
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
@@ -104,7 +104,7 @@ object Interactive {
    *
    *  @see enclosingSourceSymbols
    */
-  @tailrec def sourceSymbol(sym: Symbol)(implicit ctx: Context): Symbol =
+  @tailrec def sourceSymbol(sym: Symbol)(implicit ctx: ContextRenamed): Symbol =
     if (!sym.exists)
       sym
     else if (sym.is(ModuleVal))
@@ -126,7 +126,7 @@ object Interactive {
    *  or `include` is `overridden`, and `tree` is overridden by `sym`,
    *  or `include` is `overriding`, and `tree` overrides `sym`.
    */
-  def matchSymbol(tree: Tree, sym: Symbol, include: Include.Set)(implicit ctx: Context): Boolean = {
+  def matchSymbol(tree: Tree, sym: Symbol, include: Include.Set)(implicit ctx: ContextRenamed): Boolean = {
 
     def overrides(sym1: Symbol, sym2: Symbol) =
       sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
@@ -147,12 +147,12 @@ object Interactive {
    *
    *  @return offset and list of symbols for possible completions
    */
-  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
+  def completions(pos: SourcePosition)(implicit ctx: ContextRenamed): (Int, List[Symbol]) = {
     val path = pathTo(ctx.compilationUnit.tpdTree, pos.pos)
     computeCompletions(pos, path)(contextOfPath(path))
   }
 
-  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
+  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: ContextRenamed): (Int, List[Symbol]) = {
     val completions = Scopes.newScope.openForMutations
 
     val (completionPos, prefix, termOnly, typeOnly) = path match {
@@ -209,7 +209,7 @@ object Interactive {
     def addAccessibleMembers(site: Type, superAccess: Boolean = true): Unit =
       for (mbr <- accessibleMembers(site)) addMember(site, mbr.name)
 
-    def getImportCompletions(ictx: Context): Unit = {
+    def getImportCompletions(ictx: ContextRenamed): Unit = {
       implicit val ctx = ictx
       val imp = ctx.importInfo
       if (imp != null) {
@@ -227,7 +227,7 @@ object Interactive {
       }
     }
 
-    def getScopeCompletions(ictx: Context): Unit = {
+    def getScopeCompletions(ictx: ContextRenamed): Unit = {
       implicit val ctx = ictx
 
       if (ctx.owner.isClass) {
@@ -249,7 +249,7 @@ object Interactive {
       if (outer `ne` NoContext) getScopeCompletions(outer)
     }
 
-    def implicitConversionTargets(qual: Tree)(implicit ctx: Context): Set[Type] = {
+    def implicitConversionTargets(qual: Tree)(implicit ctx: ContextRenamed): Set[Type] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.pos).allImplicits
       val targets = conversions.map(_.widen.finalResultType)
@@ -274,7 +274,7 @@ object Interactive {
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
-  def completions(prefix: Type, boundary: Symbol)(implicit ctx: Context): List[Symbol] =
+  def completions(prefix: Type, boundary: Symbol)(implicit ctx: ContextRenamed): List[Symbol] =
     safely {
       if (boundary != NoSymbol) {
         val boundaryCtx = ctx.withOwner(boundary)
@@ -289,7 +289,7 @@ object Interactive {
 
   /** Filter for names that should appear when looking for completions. */
   private[this] object completionsFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+    def apply(pre: Type, name: Name)(implicit ctx: ContextRenamed): Boolean =
       !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
   }
 
@@ -300,7 +300,7 @@ object Interactive {
    *  source code.
    */
   def namedTrees(trees: List[SourceTree], include: Include.Set, sym: Symbol)
-   (implicit ctx: Context): List[SourceNamedTree] =
+   (implicit ctx: ContextRenamed): List[SourceNamedTree] =
     if (!sym.exists)
       Nil
     else
@@ -309,7 +309,7 @@ object Interactive {
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
    */
   def namedTrees(trees: List[SourceTree], nameSubstring: String)
-   (implicit ctx: Context): List[SourceNamedTree] = {
+   (implicit ctx: ContextRenamed): List[SourceNamedTree] = {
     val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
     namedTrees(trees, 0, predicate)
   }
@@ -319,7 +319,7 @@ object Interactive {
    *  @param includeReferences  If true, include references and not just definitions
    */
   def namedTrees(trees: List[SourceTree], include: Include.Set, treePredicate: NameTree => Boolean)
-    (implicit ctx: Context): List[SourceNamedTree] = safely {
+    (implicit ctx: ContextRenamed): List[SourceNamedTree] = safely {
     val includeReferences = (include & Include.references) != 0
     val includeImports = (include & Include.imports) != 0
     val includeRenamingImports = (include & Include.renamingImports) != 0
@@ -354,7 +354,7 @@ object Interactive {
               }
           }
         }
-        override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
+        override def traverse(tree: untpd.Tree)(implicit ctx: ContextRenamed) = {
           tree match {
             case imp: untpd.Import if includeImports =>
               handleImport(imp.asInstanceOf[tpd.Import])
@@ -391,7 +391,7 @@ object Interactive {
    */
   def findTreesMatching(trees: List[SourceTree],
                         includes: Include.Set,
-                        symbol: Symbol)(implicit ctx: Context): List[SourceNamedTree] = {
+                        symbol: Symbol)(implicit ctx: ContextRenamed): List[SourceNamedTree] = {
     val linkedSym = symbol.linkedClass
     val includeDeclaration = (includes & Include.definitions) != 0
     val includeLinkedClass = (includes & Include.linkedClass) != 0
@@ -415,20 +415,20 @@ object Interactive {
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
    *  the tree closest enclosing `pos` and ends with an element of `trees`.
    */
-  def pathTo(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Tree] =
+  def pathTo(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: ContextRenamed): List[Tree] =
     trees.find(_.pos.contains(pos)) match {
       case Some(tree) => pathTo(tree.tree, pos.pos)
       case None => Nil
     }
 
-  def pathTo(tree: Tree, pos: Position)(implicit ctx: Context): List[Tree] =
+  def pathTo(tree: Tree, pos: Position)(implicit ctx: ContextRenamed): List[Tree] =
     if (tree.pos.contains(pos))
       NavigateAST.pathTo(pos, tree, skipZeroExtent = true)
         .collect { case t: untpd.Tree => t }
         .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
     else Nil
 
-  def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = stats match {
+  def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: ContextRenamed): ContextRenamed = stats match {
     case Nil =>
       ctx
     case first :: _ if first eq stat =>
@@ -439,7 +439,7 @@ object Interactive {
       contextOfStat(rest, stat, exprOwner, ctx)
   }
 
-  def contextOfPath(path: List[Tree])(implicit ctx: Context): Context = path match {
+  def contextOfPath(path: List[Tree])(implicit ctx: ContextRenamed): ContextRenamed = path match {
     case Nil | _ :: Nil =>
       ctx.run.runContext.fresh.setCompilationUnit(ctx.compilationUnit)
     case nested :: encl :: rest =>
@@ -486,7 +486,7 @@ object Interactive {
   }
 
   /** The first tree in the path that is a definition. */
-  def enclosingDefinitionInPath(path: List[Tree])(implicit ctx: Context): Tree =
+  def enclosingDefinitionInPath(path: List[Tree])(implicit ctx: ContextRenamed): Tree =
     path.find(_.isInstanceOf[DefTree]).getOrElse(EmptyTree)
 
   /**
@@ -496,7 +496,7 @@ object Interactive {
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceNamedTree] = {
+  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: ContextRenamed): List[SourceNamedTree] = {
     enclosingSourceSymbols(path, pos).flatMap { sym =>
       val enclTree = enclosingTree(path)
 
@@ -532,7 +532,7 @@ object Interactive {
    */
   def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
 
-    def in[T](driver: InteractiveDriver)(fn: Context => T): T =
+    def in[T](driver: InteractiveDriver)(fn: ContextRenamed => T): T =
       fn(driver.currentCtx)
 
     if (sourceDriver == targetDriver) symbol
@@ -559,7 +559,7 @@ object Interactive {
    */
    private def importedSymbols(imp: tpd.Import,
                        selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
-                      (implicit ctx: Context): List[Symbol] = {
+                      (implicit ctx: ContextRenamed): List[Symbol] = {
      val symbols = imp.selectors.find(selectorPredicate) match {
        case Some(id: untpd.Ident) =>
          importedSymbols(imp.expr, id.name)
@@ -579,7 +579,7 @@ object Interactive {
     * @param name The name that is being imported.
     * @return All the symbols that would be imported with `expr.name`.
     */
-   private def importedSymbols(expr: tpd.Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
+   private def importedSymbols(expr: tpd.Tree, name: Name)(implicit ctx: ContextRenamed): List[Symbol] = {
      def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
        List(lookup(name.toTermName),
             lookup(name.toTypeName),
@@ -594,7 +594,7 @@ object Interactive {
    * @return True, if this tree's name is different than its symbol's name, indicating that
    *         it uses a renaming introduced by an import statement.
    */
-  def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
+  def isRenamed(tree: NameTree)(implicit ctx: ContextRenamed): Boolean = {
     val symbol = tree.symbol
     symbol.exists && !sameName(tree.name, symbol.name)
   }
@@ -612,7 +612,7 @@ object Interactive {
    * @return True if this tree immediately encloses an import that renames a symbol to `toName`,
    *         false otherwise.
    */
-  def immediatelyEnclosesRenaming(toName: Name, inTree: Tree)(implicit ctx: Context): Boolean = {
+  def immediatelyEnclosesRenaming(toName: Name, inTree: Tree)(implicit ctx: ContextRenamed): Boolean = {
     def isImportRenaming(tree: Tree): Boolean = {
       tree match {
         case Import(_, selectors) =>
@@ -654,7 +654,7 @@ object Interactive {
   def findTreesMatchingRenaming(toName: Name,
                                 syms: List[Symbol],
                                 trees: List[SourceTree]
-                               )(implicit ctx: Context): List[SourceNamedTree] = {
+                               )(implicit ctx: ContextRenamed): List[SourceNamedTree] = {
 
     val includes =
       Include.references | Include.imports | Include.renamingImports

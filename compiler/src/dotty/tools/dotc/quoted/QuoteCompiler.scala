@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package quoted
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -32,7 +32,7 @@ class QuoteCompiler extends Compiler {
   override protected def picklerPhases: List[List[Phase]] =
     List(List(new Staging))
 
-  override def newRun(implicit ctx: Context): ExprRun = {
+  override def newRun(implicit ctx: ContextRenamed): ExprRun = {
     reset()
     new ExprRun(this, ctx.addMode(Mode.ReadPositions))
   }
@@ -45,7 +45,7 @@ class QuoteCompiler extends Compiler {
 
     override def isTyper: Boolean = false
 
-    override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+    override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] = {
       units.map {
         case exprUnit: ExprCompilationUnit =>
           val tree =
@@ -65,7 +65,7 @@ class QuoteCompiler extends Compiler {
       *  with the following format.
       *  `package __root__ { class ' { def apply: Any = <expr> } }`
       */
-    private def inClass(expr: Expr[_])(implicit ctx: Context): Tree = {
+    private def inClass(expr: Expr[_])(implicit ctx: ContextRenamed): Tree = {
       val pos = Position(0)
       val assocFile = new PlainFile(Path("<quote>"))
 
@@ -82,7 +82,7 @@ class QuoteCompiler extends Compiler {
     }
   }
 
-  class ExprRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
+  class ExprRun(comp: Compiler, ictx: ContextRenamed) extends Run(comp, ictx) {
     def compileExpr(expr: Expr[_]): Unit = {
       val units = new ExprCompilationUnit(expr) :: Nil
       compileUnits(units)

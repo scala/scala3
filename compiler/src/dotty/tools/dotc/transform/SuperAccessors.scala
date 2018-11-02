@@ -48,21 +48,21 @@ class SuperAccessors(thisPhase: DenotTransformer) {
      */
     private[this] var invalidEnclClass: Symbol = NoSymbol
 
-    private def withInvalidCurrentClass[A](trans: => A)(implicit ctx: Context): A = {
+    private def withInvalidCurrentClass[A](trans: => A)(implicit ctx: ContextRenamed): A = {
       val saved = invalidEnclClass
       invalidEnclClass = ctx.owner
       try trans
       finally invalidEnclClass = saved
     }
 
-    private def validCurrentClass(implicit ctx: Context): Boolean =
+    private def validCurrentClass(implicit ctx: ContextRenamed): Boolean =
       ctx.owner.enclosingClass != invalidEnclClass
 
     /** List buffers for new accessor definitions, indexed by class */
     private val accDefs = newMutableSymbolMap[mutable.ListBuffer[Tree]]
 
     /** A super accessor call corresponding to `sel` */
-    private def superAccessorCall(sel: Select)(implicit ctx: Context) = {
+    private def superAccessorCall(sel: Select)(implicit ctx: ContextRenamed) = {
       val Select(qual, name) = sel
       val sym = sel.symbol
       val clazz = qual.symbol.asClass
@@ -92,7 +92,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     /** Check selection `super.f` for conforming to rules. If necessary,
      *  replace by a super accessor call.
      */
-    private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
+    private def transformSuperSelect(sel: Select)(implicit ctx: ContextRenamed): Tree = {
       val Select(sup @ Super(_, mix), name) = sel
       val sym   = sel.symbol
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
@@ -132,14 +132,14 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     /** Disallow some super.XX calls targeting Any methods which would
      *  otherwise lead to either a compiler crash or runtime failure.
      */
-    private def isDisallowed(sym: Symbol)(implicit ctx: Context) =
+    private def isDisallowed(sym: Symbol)(implicit ctx: ContextRenamed) =
       sym.isTypeTestOrCast ||
       (sym eq defn.Any_==) ||
       (sym eq defn.Any_!=) ||
       (sym eq defn.Any_##)
 
     /** Transform select node, adding super and protected accessors as needed */
-    def transformSelect(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
+    def transformSelect(tree: Tree, targs: List[Tree])(implicit ctx: ContextRenamed): Tree = {
       val sel @ Select(qual, name) = tree
       val sym = sel.symbol
 
@@ -172,7 +172,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     }
 
     /** Wrap template to template transform `op` with needed initialization and finalization */
-    def wrapTemplate(tree: Template)(op: Template => Template)(implicit ctx: Context): Template = {
+    def wrapTemplate(tree: Template)(op: Template => Template)(implicit ctx: ContextRenamed): Template = {
       accDefs(currentClass) = new mutable.ListBuffer[Tree]
       val impl = op(tree)
       val accessors = accDefs.remove(currentClass).get
@@ -188,6 +188,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     }
 
     /** Wrap `DefDef` producing operation `op`, potentially setting `invalidClass` info */
-    def wrapDefDef(ddef: DefDef)(op: => DefDef)(implicit ctx: Context): DefDef =
+    def wrapDefDef(ddef: DefDef)(op: => DefDef)(implicit ctx: ContextRenamed): DefDef =
       if (isMethodWithExtension(ddef.symbol)) withInvalidCurrentClass(op) else op
 }

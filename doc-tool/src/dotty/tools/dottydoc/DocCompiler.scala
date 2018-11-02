@@ -3,7 +3,7 @@ package dottydoc
 
 import core._
 import core.transform._
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Phases.Phase
 import dotc.core.Mode
 import dotc.{Compiler, Run}
@@ -25,7 +25,7 @@ import dotty.tools.dotc.transform.CookComments
  */
 class DocCompiler extends Compiler {
 
-  override def newRun(implicit ctx: Context): Run = {
+  override def newRun(implicit ctx: ContextRenamed): Run = {
     if (ctx.settings.fromTasty.value) {
       reset()
       new TASTYRun(this, ctx.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))

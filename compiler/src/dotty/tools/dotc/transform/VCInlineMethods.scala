@@ -54,7 +54,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    *  @return       A tree for the extension method call
    */
   private def rewire(tree: Tree, mtArgs: List[Tree] = Nil, mArgss: List[List[Tree]] = Nil)
-    (implicit ctx: Context): Tree =
+    (implicit ctx: ContextRenamed): Tree =
     tree match {
       case Apply(qual, mArgs) =>
         rewire(qual, mtArgs, mArgs :: mArgss)
@@ -87,7 +87,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
   /** If this tree corresponds to a fully-applied value class method call, replace it
    *  by a call to the corresponding extension method, otherwise return it as is.
    */
-  private def rewireIfNeeded(tree: Tree)(implicit ctx: Context) = tree.tpe.widen match {
+  private def rewireIfNeeded(tree: Tree)(implicit ctx: ContextRenamed) = tree.tpe.widen match {
     case tp: LambdaType =>
       tree // The rewiring will be handled by a fully-applied parent node
     case _ =>
@@ -97,10 +97,10 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
         tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Tree =
     rewireIfNeeded(tree)
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: ContextRenamed): Tree =
     rewireIfNeeded(tree)
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(implicit ctx: ContextRenamed): Tree =
     rewireIfNeeded(tree)
 }

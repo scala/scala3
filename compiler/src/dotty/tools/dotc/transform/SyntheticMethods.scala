@@ -38,7 +38,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
   private[this] var myCaseSymbols: List[Symbol] = Nil
   private[this] var myCaseModuleSymbols: List[Symbol] = Nil
 
-  private def initSymbols(implicit ctx: Context) =
+  private def initSymbols(implicit ctx: ContextRenamed) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
@@ -46,12 +46,12 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
     }
 
-  def valueSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myValueSymbols }
-  def caseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseSymbols }
-  def caseModuleSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
+  def valueSymbols(implicit ctx: ContextRenamed): List[Symbol] = { initSymbols; myValueSymbols }
+  def caseSymbols(implicit ctx: ContextRenamed): List[Symbol] = { initSymbols; myCaseSymbols }
+  def caseModuleSymbols(implicit ctx: ContextRenamed): List[Symbol] = { initSymbols; myCaseModuleSymbols }
 
   /** The synthetic methods of the case or value class `clazz`. */
-  def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
+  def syntheticMethods(clazz: ClassSymbol)(implicit ctx: ContextRenamed): List[Tree] = {
     val clazzType = clazz.appliedRef
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
@@ -83,7 +83,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       def ownName(vrefss: List[List[Tree]]): Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
 
-      def syntheticRHS(implicit ctx: Context): List[List[Tree]] => Tree = synthetic.name match {
+      def syntheticRHS(implicit ctx: ContextRenamed): List[List[Tree]] => Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => vrefss => valueHashCodeBody
         case nme.hashCode_ => vrefss => caseHashCodeBody
         case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime
@@ -113,7 +113,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  }
      *  ```
      */
-    def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+    def productElementBody(arity: Int, index: Tree)(implicit ctx: ContextRenamed): Tree = {
       val ioob = defn.IndexOutOfBoundsException.typeRef
       // Second constructor of ioob that takes a String argument
       def filterStringConstructor(s: Symbol): Boolean = s.info match {
@@ -157,7 +157,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  `@unchecked` is needed for parametric case classes.
      *
      */
-    def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
+    def equalsBody(that: Tree)(implicit ctx: ContextRenamed): Tree = {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
@@ -187,7 +187,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  def hashCode: Int = x.hashCode()
      *  ```
      */
-    def valueHashCodeBody(implicit ctx: Context): Tree = {
+    def valueHashCodeBody(implicit ctx: ContextRenamed): Tree = {
       assert(accessors.nonEmpty)
       ref(accessors.head).select(nme.hashCode_).ensureApplied
     }
@@ -210,7 +210,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  }
      *  ```
      */
-    def caseHashCodeBody(implicit ctx: Context): Tree = {
+    def caseHashCodeBody(implicit ctx: ContextRenamed): Tree = {
       val seed = clazz.fullName.toString.hashCode
       if (accessors.nonEmpty) {
         val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
@@ -227,7 +227,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */
-    def hashImpl(sym: Symbol)(implicit ctx: Context): Tree =
+    def hashImpl(sym: Symbol)(implicit ctx: ContextRenamed): Tree =
       defn.scalaClassName(sym.info.finalResultType) match {
         case tpnme.Unit | tpnme.Null               => Literal(Constant(0))
         case tpnme.Boolean                         => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
@@ -258,7 +258,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
     symbolsToSynthesize flatMap syntheticDefIfMissing
   }
 
-  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template =
+  def addSyntheticMethods(impl: Template)(implicit ctx: ContextRenamed): Template =
     if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner))
       cpy.Template(impl)(body = impl.body ++ syntheticMethods(ctx.owner.asClass))
     else

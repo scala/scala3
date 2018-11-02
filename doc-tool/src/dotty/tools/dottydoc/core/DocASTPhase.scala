@@ -5,7 +5,7 @@ package core
 /** Dotty and Dottydoc imports */
 import dotc.ast.Trees._
 import dotc.CompilationUnit
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Types.PolyType
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
@@ -24,7 +24,7 @@ class DocASTPhase extends Phase {
   def phaseName = "docASTPhase"
 
   /** Build documentation hierarchy from existing tree */
-  def collect(tree: Tree)(implicit ctx: Context): List[Entity] = {
+  def collect(tree: Tree)(implicit ctx: ContextRenamed): List[Entity] = {
     val implicitConversions = ctx.docbase.defs(tree.symbol)
 
     def collectList(xs: List[Tree]): List[Entity] =
@@ -33,7 +33,7 @@ class DocASTPhase extends Phase {
     def collectEntityMembers(xs: List[Tree]) =
       collectList(xs).asInstanceOf[List[Entity with Members]]
 
-    def collectMembers(tree: Tree)(implicit ctx: Context): List[Entity] = {
+    def collectMembers(tree: Tree)(implicit ctx: ContextRenamed): List[Entity] = {
       val defs = tree match {
         case t: Template => collectList(t.body)
         case _ => Nil
@@ -229,13 +229,13 @@ class DocASTPhase extends Phase {
   private[this] var totalRuns  = 0
   private[this] var currentRun = 0
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: ContextRenamed): Unit = {
     currentRun += 1
     ctx.echo(s"Compiling ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
     collect(ctx.compilationUnit.tpdTree) // Will put packages in `packages` var
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] = {
     // (1) Create package structure for all `units`, this will give us a complete structure
     totalRuns = units.length
     val compUnits = super.runOn(units)

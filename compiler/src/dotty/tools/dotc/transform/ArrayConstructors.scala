@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Symbols._
 import Types._
 import StdNames._
@@ -24,7 +24,7 @@ class ArrayConstructors extends MiniPhase {
 
   override def phaseName: String = "arrayConstructors"
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
+  override def transformApply(tree: tpd.Apply)(implicit ctx: ContextRenamed): tpd.Tree = {
     def expand(elemType: Type, dims: List[Tree]) =
       tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 

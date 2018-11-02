@@ -19,7 +19,7 @@ object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
-      override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = m match {
+      override def doReport(m: MessageContainer)(implicit ctx: ContextRenamed): Unit = m match {
         case m: ConditionalWarning if !m.enablingOption.value =>
         case _ =>
           simple.report(m)
@@ -28,13 +28,13 @@ object Reporter {
 
   /** A reporter that ignores reports, and doesn't record errors */
   @sharable object NoReporter extends Reporter {
-    def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
-    override def report(m: MessageContainer)(implicit ctx: Context): Unit = ()
+    def doReport(m: MessageContainer)(implicit ctx: ContextRenamed): Unit = ()
+    override def report(m: MessageContainer)(implicit ctx: ContextRenamed): Unit = ()
   }
 }
 
 
-trait Reporting { this: Context =>
+trait Reporting { this: ContextRenamed =>
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
@@ -102,7 +102,7 @@ trait Reporting { this: Context =>
       new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(pos)
     }
 
-  def incompleteInputError(msg: => Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
+  def incompleteInputError(msg: => Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: ContextRenamed): Unit =
     reporter.incomplete(new Error(msg, pos))(ctx)
 
   /** Log msg if settings.log contains the current phase.
@@ -140,7 +140,7 @@ trait Reporting { this: Context =>
 abstract class Reporter extends interfaces.ReporterResult {
 
   /** Report a diagnostic */
-  def doReport(m: MessageContainer)(implicit ctx: Context): Unit
+  def doReport(m: MessageContainer)(implicit ctx: ContextRenamed): Unit
 
   /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -155,7 +155,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally _truncationOK = saved
   }
 
-  type ErrorHandler = MessageContainer => Context => Unit
+  type ErrorHandler = MessageContainer => ContextRenamed => Unit
   private[this] var incompleteHandler: ErrorHandler = d => c => report(d)(c)
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
@@ -189,7 +189,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     override def default(key: String) = 0
   }
 
-  def report(m: MessageContainer)(implicit ctx: Context): Unit =
+  def report(m: MessageContainer)(implicit ctx: ContextRenamed): Unit =
     if (!isHidden(m)) {
       doReport(m)(ctx.addMode(Mode.Printing))
       m match {
@@ -203,7 +203,7 @@ abstract class Reporter extends interfaces.ReporterResult {
       }
     }
 
-  def incomplete(m: MessageContainer)(implicit ctx: Context): Unit =
+  def incomplete(m: MessageContainer)(implicit ctx: ContextRenamed): Unit =
     incompleteHandler(m)(ctx)
 
   /** Summary of warnings and errors */
@@ -219,7 +219,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Print the summary of warnings and errors */
-  def printSummary(implicit ctx: Context): Unit = {
+  def printSummary(implicit ctx: ContextRenamed): Unit = {
     val s = summary
     if (s != "") ctx.echo(s)
   }
@@ -235,16 +235,16 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Should this diagnostic not be reported at all? */
-  def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
+  def isHidden(m: MessageContainer)(implicit ctx: ContextRenamed): Boolean =
     ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
   def hasPendingErrors: Boolean = false
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
-  def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] = Nil
+  def removeBufferedMessages(implicit ctx: ContextRenamed): List[MessageContainer] = Nil
 
   /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
-  def flush()(implicit ctx: Context): Unit =
+  def flush()(implicit ctx: ContextRenamed): Unit =
     removeBufferedMessages.foreach(ctx.reporter.report)
 }

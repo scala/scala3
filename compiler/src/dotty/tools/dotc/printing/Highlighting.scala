@@ -3,34 +3,34 @@ package dotc
 package printing
 
 import scala.collection.mutable
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 
 object Highlighting {
 
   abstract class Highlight(private val highlight: String) {
     def text: String
 
-    def show(implicit ctx: Context): String =
+    def show(implicit ctx: ContextRenamed): String =
       if (ctx.settings.color.value == "never") text
       else highlight + text + Console.RESET
 
     override def toString: String =
       highlight + text + Console.RESET
 
-    def +(other: Highlight)(implicit ctx: Context): HighlightBuffer =
+    def +(other: Highlight)(implicit ctx: ContextRenamed): HighlightBuffer =
       new HighlightBuffer(this) + other
 
-    def +(other: String)(implicit ctx: Context): HighlightBuffer =
+    def +(other: String)(implicit ctx: ContextRenamed): HighlightBuffer =
       new HighlightBuffer(this) + other
   }
 
   abstract class Modifier(private val mod: String, text: String) extends Highlight(Console.RESET) {
-    override def show(implicit ctx: Context): String =
+    override def show(implicit ctx: ContextRenamed): String =
       if (ctx.settings.color.value == "never") ""
       else mod + super.show
   }
 
-  case class HighlightBuffer(hl: Highlight)(implicit ctx: Context) {
+  case class HighlightBuffer(hl: Highlight)(implicit ctx: ContextRenamed) {
     private[this] val buffer = new mutable.ListBuffer[String]
 
     buffer += hl.show

@@ -35,7 +35,7 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
+  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: ContextRenamed): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val interpreter = new Interpreter(pos, classLoader)
@@ -65,13 +65,13 @@ object Splicer {
     *
     *  See: `Staging`
     */
-  def canBeSpliced(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+  def canBeSpliced(tree: Tree)(implicit ctx: ContextRenamed): Boolean = tree match {
     case Quoted(_) => true
     case _ => (new CanBeInterpreted).apply(tree)
   }
 
   /** Tree interpreter that evaluates the tree */
-  private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context) extends AbstractInterpreter {
+  private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: ContextRenamed) extends AbstractInterpreter {
 
     type Result = Object
 
@@ -258,7 +258,7 @@ object Splicer {
   }
 
   /** Tree interpreter that tests if tree can be interpreted */
-  private class CanBeInterpreted(implicit ctx: Context) extends AbstractInterpreter {
+  private class CanBeInterpreted(implicit ctx: ContextRenamed) extends AbstractInterpreter {
 
     type Result = Boolean
 
@@ -283,7 +283,7 @@ object Splicer {
   }
 
   /** Abstract Tree interpreter that can interpret calls to static methods with quoted or inline arguments */
-  private abstract class AbstractInterpreter(implicit ctx: Context) {
+  private abstract class AbstractInterpreter(implicit ctx: ContextRenamed) {
     type Env = Map[Name, Result]
     type Result
 

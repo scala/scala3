@@ -14,7 +14,7 @@ import core.Contexts._
 import core.Flags
 
 object ModifiersParsingTest {
-  implicit val ctx: Context = (new ContextBase).initialCtx
+  implicit val ctx: ContextRenamed = (new ContextBase).initialCtx
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(new SourceFile("<meta>", code)).templateStatSeq()

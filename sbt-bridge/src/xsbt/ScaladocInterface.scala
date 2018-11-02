@@ -7,7 +7,7 @@ import xsbti.{ Logger, Severity }
 import java.net.URL
 import java.util.Optional
 
-import dotty.tools.dotc.core.Contexts.{ Context, ContextBase }
+import dotty.tools.dotc.core.Contexts.{ ContextRenamed, ContextBase }
 import dotty.tools.dotc.reporting.Reporter
 
 class ScaladocInterface {
@@ -24,7 +24,7 @@ class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter)
       .setReporter(new DelegatingReporter(delegate))
 
     val dottydocMainClass = Class.forName("dotty.tools.dottydoc.Main")
-    val processMethod = dottydocMainClass.getMethod("process", classOf[Array[String]], classOf[Context])
+    val processMethod = dottydocMainClass.getMethod("process", classOf[Array[String]], classOf[ContextRenamed])
     val reporter = processMethod.invoke(null, args, ctx).asInstanceOf[Reporter]
     if (reporter.hasErrors) {
       throw new InterfaceCompileFailed(args, Array())

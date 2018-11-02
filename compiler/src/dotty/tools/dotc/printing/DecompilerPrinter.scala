@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames._
 
 
-class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
+class DecompilerPrinter(_ctx: ContextRenamed) extends RefinedPrinter(_ctx) {
 
   override protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] =
     annots.filter(_.tpe != defn.SourceFileAnnotType)

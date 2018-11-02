@@ -71,7 +71,7 @@ class Staging extends MacroTransformWithImplicits {
 
   /** Classloader used for loading macros */
   private[this] var myMacroClassLoader: java.lang.ClassLoader = _
-  private def macroClassLoader(implicit ctx: Context): ClassLoader = {
+  private def macroClassLoader(implicit ctx: ContextRenamed): ClassLoader = {
     if (myMacroClassLoader == null) {
       val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
       myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
@@ -81,7 +81,7 @@ class Staging extends MacroTransformWithImplicits {
 
   override def phaseName: String = Staging.name
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: ContextRenamed): Unit = {
     tree match {
       case tree: RefTree if !ctx.inInlineMethod =>
         assert(!tree.symbol.isQuote)
@@ -93,10 +93,10 @@ class Staging extends MacroTransformWithImplicits {
     }
   }
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(implicit ctx: ContextRenamed): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
 
-  protected def newTransformer(implicit ctx: Context): Transformer =
+  protected def newTransformer(implicit ctx: ContextRenamed): Transformer =
     new Reifier(inQuote = false, null, 0, new LevelInfo, new Embedded, ctx)
 
   private class LevelInfo {
@@ -130,12 +130,12 @@ class Staging extends MacroTransformWithImplicits {
    *  @param  rctx       the contex in the destination lifted lambda
    */
   private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
-                        val embedded: Embedded, val rctx: Context) extends ImplicitsTransformer {
+                        val embedded: Embedded, val rctx: ContextRenamed) extends ImplicitsTransformer {
     import levels._
     assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
-    def nested(isQuote: Boolean)(implicit ctx: Context): Reifier = {
+    def nested(isQuote: Boolean)(implicit ctx: ContextRenamed): Reifier = {
       val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new Embedded
       new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded, ctx)
     }
@@ -173,7 +173,7 @@ class Staging extends MacroTransformWithImplicits {
      *  defined versions. As a side effect, prepend the expressions `tag1, ..., `tagN`
      *  as splices to `embedded`.
      */
-    private def addTags(expr: Tree)(implicit ctx: Context): Tree = {
+    private def addTags(expr: Tree)(implicit ctx: ContextRenamed): Tree = {
 
       def mkTagSymbolAndAssignType(typeRef: TypeRef, tag: Tree): Tree = {
         val rhs = transform(tag.select(tpnme.UNARY_~))
@@ -227,7 +227,7 @@ class Staging extends MacroTransformWithImplicits {
     }
 
     /** Enter staging level of symbol defined by `tree`, if applicable. */
-    def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
+    def markDef(tree: Tree)(implicit ctx: ContextRenamed): Unit = tree match {
       case tree: DefTree =>
         val sym = tree.symbol
         if ((sym.isClass || !sym.maybeOwner.isType) && !levelOf.contains(sym)) {
@@ -242,7 +242,7 @@ class Staging extends MacroTransformWithImplicits {
      *  is one higher than the current level, because on execution such values
      *  are constant expression trees and we can pull out the constant from the tree.
      */
-    def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf.get(sym) match {
+    def levelOK(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = levelOf.get(sym) match {
       case Some(l) =>
         l == level ||
         level == -1 && (
@@ -262,7 +262,7 @@ class Staging extends MacroTransformWithImplicits {
      *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
      *                    to be added to the "inconsistent phase" message.
      */
-    def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
+    def tryHeal(tp: Type, pos: Position)(implicit ctx: ContextRenamed): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == -1) {
           assert(ctx.inInlineMethod)
@@ -288,7 +288,7 @@ class Staging extends MacroTransformWithImplicits {
     /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
      *  by which we refer to `sym`.
      */
-    def check(sym: Symbol, tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    def check(sym: Symbol, tp: Type, pos: Position)(implicit ctx: ContextRenamed): Unit = {
       val isThis = tp.isInstanceOf[ThisType]
       def symStr =
         if (!isThis) sym.show
@@ -306,7 +306,7 @@ class Staging extends MacroTransformWithImplicits {
     }
 
     /** Check all named types and this-types in a given type for phase consistency. */
-    def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
+    def checkType(pos: Position)(implicit ctx: ContextRenamed): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
       def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
         tp match {
           case tp: TypeRef if tp.symbol.isSplice =>
@@ -344,7 +344,7 @@ class Staging extends MacroTransformWithImplicits {
      *  `addTags`. `checkLevel` itself only records what needs to be done in the
      *  `typeTagOfRef` field of the current `Splice` structure.
      */
-    private def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
+    private def checkLevel(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
       tree match {
         case (_: Ident) | (_: This) =>
           check(tree.symbol, tree.tpe, tree.pos)
@@ -367,7 +367,7 @@ class Staging extends MacroTransformWithImplicits {
      *  `scala.quoted.Unpickler.unpickleExpr` that matches `tpe` with
      *  core and splices as arguments.
      */
-    private def quotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+    private def quotation(body: Tree, quote: Tree)(implicit ctx: ContextRenamed): Tree = {
       val isType = quote.symbol eq defn.QuotedType_apply
       if (body.symbol.isSplice) {
         // simplify `'(~x)` to `x` and then transform it
@@ -395,7 +395,7 @@ class Staging extends MacroTransformWithImplicits {
       }
     }
 
-    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
+    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: ContextRenamed) = {
       def pickleAsValue[T](value: T) =
         ref(defn.Unpickler_liftedExpr).appliedToType(originalTp.widen).appliedTo(Literal(Constant(value)))
       def pickleAsTasty() = {
@@ -430,7 +430,7 @@ class Staging extends MacroTransformWithImplicits {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    private def splice(splice: Select)(implicit ctx: Context): Tree = {
+    private def splice(splice: Select)(implicit ctx: ContextRenamed): Tree = {
       if (level > 1) {
         val body1 = nested(isQuote = false).transform(splice.qualifier)
         body1.select(splice.name)
@@ -487,8 +487,8 @@ class Staging extends MacroTransformWithImplicits {
      *        Hole(0 | x, y)
      *      }
      */
-    private def makeLambda(tree: Tree)(implicit ctx: Context): Tree = {
-      def body(arg: Tree)(implicit ctx: Context): Tree = {
+    private def makeLambda(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
+      def body(arg: Tree)(implicit ctx: ContextRenamed): Tree = {
         var i = 0
         transformWithCapturer(tree)(
           (captured: mutable.Map[Symbol, Tree]) => {
@@ -525,7 +525,7 @@ class Staging extends MacroTransformWithImplicits {
       Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
     }
 
-    private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
+    private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: ContextRenamed): Tree = {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
@@ -538,13 +538,13 @@ class Staging extends MacroTransformWithImplicits {
     }
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
-    private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean =
+    private def isCaptured(sym: Symbol, level: Int)(implicit ctx: ContextRenamed): Boolean =
       level == 1 && levelOf.get(sym).contains(1) && capturers.contains(sym)
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
      *  or splices as a pair, after performing the `addTags` transform.
      */
-    private def split(tree: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
+    private def split(tree: Tree)(implicit ctx: ContextRenamed): (Tree, List[Tree]) = {
       val tree1 = if (inQuote) addTags(transform(tree)) else makeLambda(tree)
       (tree1, embedded.getTrees)
     }
@@ -552,12 +552,12 @@ class Staging extends MacroTransformWithImplicits {
     /** Register `body` as an `embedded` quote or splice
      *  and return a hole with `splices` as arguments and the given type `tpe`.
      */
-    private def makeHole(body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
+    private def makeHole(body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: ContextRenamed): Hole = {
       val idx = embedded.addTree(body, NoSymbol)
       Hole(idx, splices).withType(tpe).asInstanceOf[Hole]
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
+    override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree =
       reporting.trace(i"reify $tree at $level", show = true) {
         def mapOverTree(lastEntered: List[Symbol]) =
           try super.transform(tree)
@@ -590,7 +590,7 @@ class Staging extends MacroTransformWithImplicits {
             val last = enteredSyms
             // mark all bindings
             new TreeTraverser {
-              def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+              def traverse(tree: Tree)(implicit ctx: ContextRenamed): Unit = {
                 markDef(tree)
                 traverseChildren(tree)
               }
@@ -624,7 +624,7 @@ class Staging extends MacroTransformWithImplicits {
         }
       }
 
-    private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
+    private def liftList(list: List[Tree], tpe: Type)(implicit ctx: ContextRenamed): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
         acc.select("::".toTermName).appliedToType(tpe).appliedTo(x)
       }
@@ -634,7 +634,7 @@ class Staging extends MacroTransformWithImplicits {
      *  consists of a (possibly multiple & nested) block or a sole expression.
      */
     object InlineSplice {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
+      def unapply(tree: Tree)(implicit ctx: ContextRenamed): Option[Tree] = tree match {
         case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Some(qual)
         case Block(List(stat), Literal(Constant(()))) => unapply(stat)
         case Block(Nil, expr) => unapply(expr)
@@ -666,7 +666,7 @@ object Staging {
     }
 
     /** Type used for the hole that will replace this splice */
-    def getHoleType(splice: tpd.Select)(implicit ctx: Context): Type = {
+    def getHoleType(splice: tpd.Select)(implicit ctx: ContextRenamed): Type = {
       // For most expressions the splice.tpe but there are some types that are lost by lifting
       // that can be recoverd from the original tree. Currently the cases are:
       //  * Method types: the splice represents a method reference
@@ -679,7 +679,7 @@ object Staging {
 
   /** β-reduce all calls to inline methods and preform constant folding */
   object InlineCalls extends TreeMap {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree = tree match {
       case tree if isInlineCall(tree) && !ctx.reporter.hasErrors && !ctx.settings.YnoInline.value =>
         val tree2 = super.transform(tree) // transform arguments before inlining (inline arguments and constant fold arguments)
         transform(Inliner.inlineCall(tree2, tree.tpe.widen))

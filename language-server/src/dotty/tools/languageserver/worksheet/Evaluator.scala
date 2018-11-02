@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.worksheet
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 
 import java.io.{File, PrintStream, IOException}
 import java.lang.ProcessBuilder.Redirect
@@ -31,7 +31,7 @@ private object Evaluator {
    * @param cancelChecker The token that indicates whether evaluation has been cancelled.
    * @return A JVM running the REPL.
    */
-  def get(cancelChecker: CancelChecker)(implicit ctx: Context): Option[Evaluator] = synchronized {
+  def get(cancelChecker: CancelChecker)(implicit ctx: ContextRenamed): Option[Evaluator] = synchronized {
     val classpath = ctx.settings.classpath.value
     previousEvaluator match {
       case Some(cp, evaluator) if evaluator.isAlive && cp == classpath =>

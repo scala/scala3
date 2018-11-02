@@ -46,7 +46,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   override def changesMembers: Boolean = true // the phase adds outer accessors
 
   /** Add outer accessors if a class always needs an outer pointer */
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: ContextRenamed): Type = tp match {
     case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
@@ -55,7 +55,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass && !sym.is(JavaDefined)
+  override def mayChange(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = sym.isClass && !sym.is(JavaDefined)
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
@@ -68,7 +68,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
    *  a separate phase which needs to run after erasure. However, we make sure here
    *  that the super class constructor is indeed a New, and not just a type.
    */
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(impl: Template)(implicit ctx: ContextRenamed): Tree = {
     val cls = ctx.owner.asClass
     val isTrait = cls.is(Trait)
     if (needsOuterIfReferenced(cls) &&
@@ -114,7 +114,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     else impl
   }
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context): tpd.Tree = {
+  override def transformClosure(tree: Closure)(implicit ctx: ContextRenamed): tpd.Tree = {
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
@@ -130,14 +130,14 @@ object ExplicitOuter {
   val name: String = "explicitOuter"
 
   /** Ensure that class `cls` has outer accessors */
-  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit =
+  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: ContextRenamed): Unit =
     ctx.atPhase(ctx.explicitOuterPhase.next) { implicit ctx =>
       if (!hasOuter(cls))
         newOuterAccessors(cls).foreach(_.enteredAfter(ctx.explicitOuterPhase.asInstanceOf[DenotTransformer]))
     }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
-  private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
+  private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: ContextRenamed) =
     newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
 
   /** A new outer accessor or param accessor.
@@ -153,7 +153,7 @@ object ExplicitOuter {
    *    base type of P.this wrt class O
    *  - otherwise O[_, ..., _]
    */
-  private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
+  private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: ContextRenamed) = {
     val outerThis = owner.owner.enclosingClass.thisType
     val outerCls = cls.owner.enclosingClass
     val target =
@@ -168,22 +168,22 @@ object ExplicitOuter {
   }
 
   /** A new param accessor for the outer field in class `cls` */
-  private def newOuterParamAccessor(cls: ClassSymbol)(implicit ctx: Context) =
+  private def newOuterParamAccessor(cls: ClassSymbol)(implicit ctx: ContextRenamed) =
     newOuterSym(cls, cls, nme.OUTER, Private | ParamAccessor)
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
-  private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {
+  private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: ContextRenamed) = {
     val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
       Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
   }
 
-  private def outerAccName(cls: ClassSymbol)(implicit ctx: Context): TermName =
+  private def outerAccName(cls: ClassSymbol)(implicit ctx: ContextRenamed): TermName =
     nme.OUTER.expandedName(cls)
 
   /** Class needs an outer pointer, provided there is a reference to an outer this in it. */
-  def needsOuterIfReferenced(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  def needsOuterIfReferenced(cls: ClassSymbol)(implicit ctx: ContextRenamed): Boolean =
     !(cls.isStatic ||
       cls.owner.enclosingClass.isStaticOwner ||
       cls.is(PureInterface)
@@ -194,7 +194,7 @@ object ExplicitOuter {
    *  - we might not know at all instantiation sites whether outer is referenced or not
    *  - we need to potentially pass along outer to a parent class or trait
    */
-  private def needsOuterAlways(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  private def needsOuterAlways(cls: ClassSymbol)(implicit ctx: ContextRenamed): Boolean =
     needsOuterIfReferenced(cls) &&
     (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
      cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
@@ -202,13 +202,13 @@ object ExplicitOuter {
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
   /** Class is always instantiated in the compilation unit where it is defined */
-  private def hasLocalInstantiation(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  private def hasLocalInstantiation(cls: ClassSymbol)(implicit ctx: ContextRenamed): Boolean =
     // scala2x modules always take an outer pointer(as of 2.11)
     // dotty modules are always locally instantiated
     cls.owner.isTerm || cls.is(Private) || cls.is(Module, butNot = Scala2x)
 
   /** The outer parameter accessor of cass `cls` */
-  private def outerParamAccessor(cls: ClassSymbol)(implicit ctx: Context): TermSymbol =
+  private def outerParamAccessor(cls: ClassSymbol)(implicit ctx: ContextRenamed): TermSymbol =
     cls.info.decl(nme.OUTER).symbol.asTerm
 
   /** The outer accessor of class `cls`. To find it is a bit tricky. The
@@ -220,22 +220,22 @@ object ExplicitOuter {
    *  result is phase dependent. In that case we use a backup strategy where we search all
    *  definitions in the class to find the one with the OuterAccessor flag.
    */
-  def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
+  def outerAccessor(cls: ClassSymbol)(implicit ctx: ContextRenamed): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
     else cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
       cls.info.decls.find(_ is OuterAccessor)
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
-  private def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  private def hasOuter(cls: ClassSymbol)(implicit ctx: ContextRenamed): Boolean =
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
   /** Class constructor takes an outer argument. Can be called only after phase ExplicitOuter. */
-  private def hasOuterParam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  private def hasOuterParam(cls: ClassSymbol)(implicit ctx: ContextRenamed): Boolean =
     !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
   /** Tree references an outer class of `cls` which is not a static owner.
    */
-  def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
+  def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: ContextRenamed): Boolean = {
     def isOuterSym(sym: Symbol) =
       !sym.isStaticOwner && cls.isProperlyContainedIn(sym)
     def isOuterRef(ref: Type): Boolean = ref match {
@@ -280,7 +280,7 @@ object ExplicitOuter {
   private final val Hoistable = Method | Lazy | Module
 
   /** The outer prefix implied by type `tpe` */
-  private def outerPrefix(tpe: Type)(implicit ctx: Context): Type = tpe match {
+  private def outerPrefix(tpe: Type)(implicit ctx: ContextRenamed): Type = tpe match {
     case tpe: TypeRef =>
       tpe.symbol match {
         case cls: ClassSymbol =>
@@ -304,7 +304,7 @@ object ExplicitOuter {
    *  in the first place. I was not yet able to find out how such references
    *  arise and how to avoid them.
    */
-  private def fixThis(tpe: Type)(implicit ctx: Context): Type = tpe match {
+  private def fixThis(tpe: Type)(implicit ctx: ContextRenamed): Type = tpe match {
     case tpe: ThisType if tpe.cls.is(Module) && !ctx.owner.isContainedIn(tpe.cls) =>
       fixThis(tpe.cls.owner.thisType.select(tpe.cls.sourceModule.asTerm))
     case tpe: TermRef =>
@@ -313,7 +313,7 @@ object ExplicitOuter {
       tpe
   }
 
-  def outer(implicit ctx: Context): OuterOps = new OuterOps(ctx)
+  def outer(implicit ctx: ContextRenamed): OuterOps = new OuterOps(ctx)
 
   /** The operations in this class
    *   - add outer parameters
@@ -332,8 +332,8 @@ object ExplicitOuter {
    *     get erased during erasure. Therefore, outer arguments have to be passed
    *     no later than erasure.
    */
-  class OuterOps(val ictx: Context) extends AnyVal {
-    private implicit def ctx: Context = ictx
+  class OuterOps(val ictx: ContextRenamed) extends AnyVal {
+    private implicit def ctx: ContextRenamed = ictx
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =

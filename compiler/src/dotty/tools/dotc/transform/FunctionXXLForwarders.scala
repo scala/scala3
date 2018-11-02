@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Constants.Constant
-import Contexts.Context
+import Contexts.ContextRenamed
 import Flags._
 import Definitions._
 import DenotTransformers._
@@ -27,7 +27,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "functionXXLForwarders"
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(implicit ctx: ContextRenamed): Template = {
 
     def forwarderRhs(receiver: Tree, xsTree: Tree): Tree =  {
       val argsApply = ref(xsTree.symbol).select(nme.apply)

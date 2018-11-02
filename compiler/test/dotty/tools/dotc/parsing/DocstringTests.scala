@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.ast.Trees._
 
 import org.junit.Assert._

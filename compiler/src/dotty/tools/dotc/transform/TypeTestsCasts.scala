@@ -53,11 +53,11 @@ object TypeTestsCasts {
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type, pos: Position)(implicit ctx: Context): Boolean = {
+  def checkable(X: Type, P: Type, pos: Position)(implicit ctx: ContextRenamed): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
-    def replaceP(tp: Type)(implicit ctx: Context) = new TypeMap {
+    def replaceP(tp: Type)(implicit ctx: ContextRenamed) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef
         if isPatternTypeSymbol(tref.typeSymbol) => WildcardType
@@ -67,7 +67,7 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def replaceX(tp: Type)(implicit ctx: Context) = new TypeMap {
+    def replaceX(tp: Type)(implicit ctx: ContextRenamed) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef
         if isPatternTypeSymbol(tref.typeSymbol) =>
@@ -79,7 +79,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Approximate type parameters depending on variance */
-    def stripTypeParam(tp: Type)(implicit ctx: Context) = new ApproximatingTypeMap {
+    def stripTypeParam(tp: Type)(implicit ctx: ContextRenamed) = new ApproximatingTypeMap {
       def apply(tp: Type): Type = tp match {
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
           val lo = apply(tp.info.loBound)
@@ -90,7 +90,7 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
+    def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: ContextRenamed) = {
       val AppliedType(tycon, _) = P
       val typeLambda = tycon.ensureLambdaSub.asInstanceOf[TypeLambda]
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
@@ -139,7 +139,7 @@ object TypeTestsCasts {
     res
   }
 
-  def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
+  def interceptTypeApply(tree: TypeApply)(implicit ctx: ContextRenamed): Tree = trace(s"transforming ${tree.show}", show = true) {
     tree.fun match {
       case fun @ Select(expr, selector) =>
         val sym = tree.symbol

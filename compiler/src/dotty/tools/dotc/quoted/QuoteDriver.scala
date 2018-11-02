@@ -2,7 +2,7 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
+import dotty.tools.dotc.core.Contexts.{ContextRenamed, ContextBase, FreshContext}
 import dotty.tools.dotc.tastyreflect.TastyImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
@@ -26,7 +26,7 @@ class QuoteDriver extends Driver {
         new VirtualDirectory("<quote compilation output>")
     }
 
-    val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+    val (_, ctx0: ContextRenamed) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
     val ctx = setToolboxSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
     val driver = new QuoteCompiler
@@ -42,8 +42,8 @@ class QuoteDriver extends Driver {
   }
 
   def show(expr: Expr[_], settings: Toolbox.Settings): String = {
-    def show(tree: Tree, ctx: Context): String = {
-      implicit val c: Context = ctx
+    def show(tree: Tree, ctx: ContextRenamed): String = {
+      implicit val c: ContextRenamed = ctx
       val tree1 =
         if (ctx.settings.YshowRawQuoteTrees.value) tree
         else (new TreeCleaner).transform(tree)
@@ -52,11 +52,11 @@ class QuoteDriver extends Driver {
     withTree(expr, show, settings)
   }
 
-  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Toolbox.Settings): T = {
+  def withTree[T](expr: Expr[_], f: (Tree, ContextRenamed) => T, settings: Toolbox.Settings): T = {
     val ctx = setToolboxSettings(setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)._2.fresh, settings)
 
     var output: Option[T] = None
-    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
+    def registerTree(tree: tpd.Tree)(ctx: ContextRenamed): Unit = {
       assert(output.isEmpty)
       output = Some(f(tree, ctx))
     }
@@ -64,11 +64,11 @@ class QuoteDriver extends Driver {
     output.getOrElse(throw new Exception("Could not extract " + expr))
   }
 
-  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Toolbox.Settings): T = {
-    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+  def withTypeTree[T](tpe: Type[_], f: (TypTree, ContextRenamed) => T, settings: Toolbox.Settings): T = {
+    val (_, ctx: ContextRenamed) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
-    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
+    def registerTree(tree: tpd.Tree)(ctx: ContextRenamed): Unit = {
       assert(output.isEmpty)
       output = Some(f(tree.asInstanceOf[TypTree], ctx))
     }
@@ -76,7 +76,7 @@ class QuoteDriver extends Driver {
     output.getOrElse(throw new Exception("Could not extract " + tpe))
   }
 
-  override def initCtx: Context = {
+  override def initCtx: ContextRenamed = {
     val ictx = contextBase.initialCtx
     ictx.settings.classpath.update(QuoteDriver.currentClasspath)(ictx)
     ictx

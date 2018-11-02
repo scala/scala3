@@ -1,7 +1,7 @@
 package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.{NumberedInfo, UniqueName}
@@ -13,19 +13,19 @@ class RefreshNames extends MiniPhase with SymTransformer {
 
   def phaseName: String = "RefreshNames"
 
-  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context): tpd.Tree =
+  override def transformValDef(tree: tpd.ValDef)(implicit ctx: ContextRenamed): tpd.Tree =
     tpd.ValDef(tree.symbol.asTerm, tree.rhs)
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree =
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: ContextRenamed): tpd.Tree =
     tpd.DefDef(tree.symbol.asTerm, tree.rhs)
 
-  override def transformTypeDef(tree: tpd.TypeDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformTypeDef(tree: tpd.TypeDef)(implicit ctx: ContextRenamed): tpd.Tree = {
     val newTypeDef = tpd.TypeDef(tree.symbol.asType)
     // keep rhs to keep `type T = ...` instead of `type T >: ... <: ...`
     cpy.TypeDef(newTypeDef)(rhs = tree.rhs)
   }
 
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
+  def transformSym(ref: SymDenotation)(implicit ctx: ContextRenamed): SymDenotation = {
     if (ref.is(Package) || ref.isClass || ref.owner != ctx.owner || ref.is(Label) || ref.is(Param)) ref
     else {
       val newName = UniqueName.fresh(ref.symbol.name.toTermName)

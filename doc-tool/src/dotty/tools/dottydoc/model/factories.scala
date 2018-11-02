@@ -5,7 +5,7 @@ import references._
 import dotty.tools.dotc
 import dotc.core.Types
 import Types._
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Symbols.{ Symbol, ClassSymbol }
 import dotty.tools.dotc.core.SymDenotations._
 
@@ -19,14 +19,14 @@ object factories {
 
   type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
 
-  def flags(t: Tree)(implicit ctx: Context): List[String] =
+  def flags(t: Tree)(implicit ctx: ContextRenamed): List[String] =
     (t.symbol.flags & SourceModifierFlags)
       .flagStrings.toList
       .filter(_ != "<trait>")
       .filter(_ != "interface")
       .filter(_ != "case")
 
-  def path(sym: Symbol)(implicit ctx: Context): List[String] = {
+  def path(sym: Symbol)(implicit ctx: ContextRenamed): List[String] = {
     @tailrec def go(sym: Symbol, acc: List[String]): List[String] =
       if (sym.isRoot)
         acc
@@ -35,14 +35,14 @@ object factories {
     go(sym, Nil)
   }
 
-  def annotations(sym: Symbol)(implicit ctx: Context): List[String] =
+  def annotations(sym: Symbol)(implicit ctx: ContextRenamed): List[String] =
     sym.annotations.collect {
       case ann if ann.symbol != ctx.definitions.SourceFileAnnot => ann.symbol.showFullName
     }
 
   private val product = """Product[1-9][0-9]*""".r
 
-  def alias(t: Type)(implicit ctx: Context): Option[Reference] = {
+  def alias(t: Type)(implicit ctx: ContextRenamed): Option[Reference] = {
     val defn = ctx.definitions
     t match {
       case TypeBounds(low, high) if (low eq defn.NothingType) && (high eq defn.AnyType) =>
@@ -51,7 +51,7 @@ object factories {
     }
   }
 
-  def returnType(t: Type)(implicit ctx: Context): Reference = {
+  def returnType(t: Type)(implicit ctx: ContextRenamed): Reference = {
     val defn = ctx.definitions
 
     def typeRef(name: String, query: String = "", params: List[Reference] = Nil) = {
@@ -131,7 +131,7 @@ object factories {
     expandTpe(t)
   }
 
-  def typeParams(sym: Symbol)(implicit ctx: Context): List[String] =
+  def typeParams(sym: Symbol)(implicit ctx: ContextRenamed): List[String] =
     sym.info match {
       case pt: TypeLambda => // TODO: not sure if this case is needed anymore
         pt.paramNames.map(_.show.split("\\$").last)
@@ -152,16 +152,16 @@ object factories {
         Nil
     }
 
-  def constructors(sym: Symbol)(implicit ctx: Context): List[List[ParamList]] = sym match {
+  def constructors(sym: Symbol)(implicit ctx: ContextRenamed): List[List[ParamList]] = sym match {
     case sym: ClassSymbol =>
       paramLists(sym.primaryConstructor.info) :: Nil
     case _ => Nil
   }
 
-  def traitParameters(sym: Symbol)(implicit ctx: Context): List[ParamList] =
+  def traitParameters(sym: Symbol)(implicit ctx: ContextRenamed): List[ParamList] =
     constructors(sym).head
 
-  def paramLists(tpe: Type)(implicit ctx: Context): List[ParamList] = tpe match {
+  def paramLists(tpe: Type)(implicit ctx: ContextRenamed): List[ParamList] = tpe match {
     case pt: TypeLambda =>
       paramLists(pt.resultType)
 
@@ -185,7 +185,7 @@ object factories {
       Nil // return types should not be in the paramlist
   }
 
-  def superTypes(t: Tree)(implicit ctx: Context): List[MaterializableLink] = t.symbol.denot match {
+  def superTypes(t: Tree)(implicit ctx: ContextRenamed): List[MaterializableLink] = t.symbol.denot match {
     case cd: ClassDenotation =>
       def isJavaLangObject(prefix: Type): Boolean =
         prefix match {

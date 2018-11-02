@@ -6,7 +6,7 @@ import Names._
 import NameOps._
 import StdNames._
 import NameTags._
-import Contexts.Context
+import Contexts.ContextRenamed
 import collection.mutable
 
 import scala.annotation.internal.sharable
@@ -214,11 +214,11 @@ object NameKinds {
     }
 
     /** Generate fresh unique term name of this kind with given prefix name */
-    def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
+    def fresh(prefix: TermName = EmptyTermName)(implicit ctx: ContextRenamed): TermName =
       ctx.freshNames.newName(prefix, this)
 
     /** Generate fresh unique type name of this kind with given prefix name */
-    def fresh(prefix: TypeName)(implicit ctx: Context): TypeName =
+    def fresh(prefix: TypeName)(implicit ctx: ContextRenamed): TypeName =
       fresh(prefix.toTermName).toTypeName
 
     uniqueNameKinds(separator) = this

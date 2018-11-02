@@ -5,7 +5,7 @@ package staticsite
 import scala.util.control.NonFatal
 
 import dotc.util.SourceFile
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.util.Positions.{ Position, NoPosition }
 import util.syntax._
 
@@ -44,7 +44,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
       map
     }
 
-  private def protectedRender(op: => String)(implicit ctx: Context) = try {
+  private def protectedRender(op: => String)(implicit ctx: ContextRenamed) = try {
     Some(op)
   } catch {
     case NonFatal(ex) => {
@@ -83,7 +83,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
     }
   }
 
-  def render(params: Map[String, AnyRef], includes: Map[String, Include])(implicit ctx: Context): Option[String] =
+  def render(params: Map[String, AnyRef], includes: Map[String, Include])(implicit ctx: ContextRenamed): Option[String] =
     protectedRender {
       Template.parse(show, JEKYLL)
         .`with`(ResourceInclude(params, includes))

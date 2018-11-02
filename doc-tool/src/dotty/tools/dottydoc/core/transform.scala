@@ -3,7 +3,7 @@ package dottydoc
 package core
 
 import dotc.CompilationUnit
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Phases.Phase
 import model._
 import model.internal._
@@ -47,7 +47,7 @@ object transform {
   trait DocMiniTransformations extends Phase {
     def transformations: List[DocMiniPhase]
 
-    override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+    override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] = {
       for {
         pack <- rootPackages(ctx.docbase.packages)
         transformed =  performPackageTransform(pack)
@@ -59,7 +59,7 @@ object transform {
       units
     }
 
-    private def performPackageTransform(pack: Package)(implicit ctx: Context): List[Package] = {
+    private def performPackageTransform(pack: Package)(implicit ctx: ContextRenamed): List[Package] = {
       def transformEntity[E <: Entity](e: E, f: DocMiniPhase => E => List[E])(createNew: E => E): List[Entity] = {
         val transformEntities = transformations.foldLeft(e :: Nil) { case (oldEs, transf) =>
           oldEs.flatMap(f(transf))
@@ -194,7 +194,7 @@ object transform {
       traverse(pack).asInstanceOf[List[Package]]
     }
 
-    override def run(implicit ctx: Context): Unit = ()
+    override def run(implicit ctx: ContextRenamed): Unit = ()
   }
 
   object DocMiniTransformations {
@@ -213,22 +213,22 @@ object transform {
       case id: E @unchecked => id :: Nil
     }
 
-    def transformPackage(implicit ctx: Context): PartialFunction[Package, List[Package]] = identity
-    def transformTypeAlias(implicit ctx: Context): PartialFunction[TypeAlias, List[TypeAlias]] = identity
-    def transformClass(implicit ctx: Context): PartialFunction[Class, List[Class]] = identity
-    def transformCaseClass(implicit ctx: Context): PartialFunction[CaseClass, List[CaseClass]] = identity
-    def transformTrait(implicit ctx: Context): PartialFunction[Trait, List[Trait]] = identity
-    def transformObject(implicit ctx: Context): PartialFunction[Object, List[Object]] = identity
-    def transformDef(implicit ctx: Context): PartialFunction[Def, List[Def]] = identity
-    def transformVal(implicit ctx: Context): PartialFunction[Val, List[Val]] = identity
+    def transformPackage(implicit ctx: ContextRenamed): PartialFunction[Package, List[Package]] = identity
+    def transformTypeAlias(implicit ctx: ContextRenamed): PartialFunction[TypeAlias, List[TypeAlias]] = identity
+    def transformClass(implicit ctx: ContextRenamed): PartialFunction[Class, List[Class]] = identity
+    def transformCaseClass(implicit ctx: ContextRenamed): PartialFunction[CaseClass, List[CaseClass]] = identity
+    def transformTrait(implicit ctx: ContextRenamed): PartialFunction[Trait, List[Trait]] = identity
+    def transformObject(implicit ctx: ContextRenamed): PartialFunction[Object, List[Object]] = identity
+    def transformDef(implicit ctx: ContextRenamed): PartialFunction[Def, List[Def]] = identity
+    def transformVal(implicit ctx: ContextRenamed): PartialFunction[Val, List[Val]] = identity
 
-    private[transform] def packageTransformation(p: Package)(implicit ctx: Context) = (transformPackage orElse identity)(p)
-    private[transform] def typeAliasTransformation(alias: TypeAlias)(implicit ctx: Context) = (transformTypeAlias orElse identity)(alias)
-    private[transform] def classTransformation(cls: Class)(implicit ctx: Context) = (transformClass orElse identity)(cls)
-    private[transform] def caseClassTransformation(cc: CaseClass)(implicit ctx: Context) = (transformCaseClass orElse identity)(cc)
-    private[transform] def traitTransformation(trt: Trait)(implicit ctx: Context) = (transformTrait orElse identity)(trt)
-    private[transform] def objectTransformation(obj: Object)(implicit ctx: Context) = (transformObject orElse identity)(obj)
-    private[transform] def defTransformation(df: Def)(implicit ctx: Context) = (transformDef orElse identity)(df)
-    private[transform] def valTransformation(vl: Val)(implicit ctx: Context) = (transformVal orElse identity)(vl)
+    private[transform] def packageTransformation(p: Package)(implicit ctx: ContextRenamed) = (transformPackage orElse identity)(p)
+    private[transform] def typeAliasTransformation(alias: TypeAlias)(implicit ctx: ContextRenamed) = (transformTypeAlias orElse identity)(alias)
+    private[transform] def classTransformation(cls: Class)(implicit ctx: ContextRenamed) = (transformClass orElse identity)(cls)
+    private[transform] def caseClassTransformation(cc: CaseClass)(implicit ctx: ContextRenamed) = (transformCaseClass orElse identity)(cc)
+    private[transform] def traitTransformation(trt: Trait)(implicit ctx: ContextRenamed) = (transformTrait orElse identity)(trt)
+    private[transform] def objectTransformation(obj: Object)(implicit ctx: ContextRenamed) = (transformObject orElse identity)(obj)
+    private[transform] def defTransformation(df: Def)(implicit ctx: ContextRenamed) = (transformDef orElse identity)(df)
+    private[transform] def valTransformation(vl: Val)(implicit ctx: ContextRenamed) = (transformVal orElse identity)(vl)
   }
 }

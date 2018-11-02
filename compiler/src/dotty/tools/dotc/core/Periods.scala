@@ -7,7 +7,7 @@ import Contexts._
  *  run ids represent compiler runs
  *  phase ids represent compiler phases
  */
-abstract class Periods { self: Context =>
+abstract class Periods { self: ContextRenamed =>
   import Periods._
 
   /** The current phase identifier */
@@ -17,11 +17,11 @@ abstract class Periods { self: Context =>
   def runId: Int = period.runId
 
   /** Execute `op` at given period */
-  def atPeriod[T](pd: Period)(op: Context => T): T =
+  def atPeriod[T](pd: Period)(op: ContextRenamed => T): T =
     op(ctx.fresh.setPeriod(pd))
 
   /** Execute `op` at given phase id */
-  def atPhase[T](pid: PhaseId)(op: Context => T): T =
+  def atPhase[T](pid: PhaseId)(op: ContextRenamed => T): T =
     op(ctx.withPhase(pid))
 
   /** The period containing the current period where denotations do not change.

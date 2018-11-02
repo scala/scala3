@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
@@ -22,7 +22,7 @@ import StdNames.nme
 class CollectEntryPoints extends MiniPhase {
   def phaseName: String = "Collect entry points"
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: ContextRenamed): tpd.Tree = {
     if ((tree.symbol ne NoSymbol) && CollectEntryPoints.isJavaEntryPoint(tree.symbol)) {
       ctx.genBCodePhase.asInstanceOf[GenBCode].registerEntryPoint(tree.symbol)
     }
@@ -31,7 +31,7 @@ class CollectEntryPoints extends MiniPhase {
 }
 
 object CollectEntryPoints{
-  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isJavaMainMethod(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = {
     (sym.name == nme.main) && (sym.info match {
       case r@MethodTpe(_, List(defn.ArrayOf(t)), _) =>
         (t.widenDealias =:= defn.StringType) && (
@@ -40,7 +40,7 @@ object CollectEntryPoints{
     })
   }
 
-  def isJavaEntryPoint(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isJavaEntryPoint(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = {
     val d = ctx.definitions
     val StringType = d.StringType
     // The given class has a main method.

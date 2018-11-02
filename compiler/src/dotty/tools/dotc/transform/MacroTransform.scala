@@ -16,28 +16,28 @@ abstract class MacroTransform extends Phase {
 
   import ast.tpd._
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: ContextRenamed): Unit = {
     val unit = ctx.compilationUnit
     unit.tpdTree = newTransformer.transform(unit.tpdTree)(ctx.withPhase(transformPhase))
   }
 
-  protected def newTransformer(implicit ctx: Context): Transformer
+  protected def newTransformer(implicit ctx: ContextRenamed): Transformer
 
   /** The phase in which the transformation should be run.
    *  By default this is the phase given by the this macro transformer,
    *  but it could be overridden to be the phase following that one.
    */
-  protected def transformPhase(implicit ctx: Context): Phase = this
+  protected def transformPhase(implicit ctx: ContextRenamed): Phase = this
 
   class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
 
-    protected def localCtx(tree: Tree)(implicit ctx: Context): FreshContext = {
+    protected def localCtx(tree: Tree)(implicit ctx: ContextRenamed): FreshContext = {
       val sym = tree.symbol
       val owner = if (sym is PackageVal) sym.moduleClass else sym
       ctx.fresh.setTree(tree).setOwner(owner)
     }
 
-    def transformStats(trees: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+    def transformStats(trees: List[Tree], exprOwner: Symbol)(implicit ctx: ContextRenamed): List[Tree] = {
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
         case _ => transform(stat)(ctx.exprContext(stat, exprOwner))
@@ -45,7 +45,7 @@ abstract class MacroTransform extends Phase {
       flatten(trees.mapconserve(transformStat(_)))
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
+    override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree =
       try
         tree match {
           case EmptyValDef =>
@@ -67,7 +67,7 @@ abstract class MacroTransform extends Phase {
           tree
       }
 
-    def transformSelf(vd: ValDef)(implicit ctx: Context): ValDef =
+    def transformSelf(vd: ValDef)(implicit ctx: ContextRenamed): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))
   }
 }

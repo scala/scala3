@@ -6,7 +6,7 @@ import core.Contexts._
 class TestDriver extends Driver {
   override protected def sourcesRequired = false
 
-  def getCompiler(args: Array[String], rootCtx: Context) = {
+  def getCompiler(args: Array[String], rootCtx: ContextRenamed) = {
     val (fileNames, ctx) = setup(args, rootCtx)
     (newCompiler(ctx), ctx)
   }

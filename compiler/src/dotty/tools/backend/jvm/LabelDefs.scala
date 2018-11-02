@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase._
@@ -59,13 +59,13 @@ class LabelDefs extends MiniPhase {
 
   def phaseName: String = "labelDef"
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: ContextRenamed): Tree = {
     if (tree.symbol is Label) tree
     else {
       val labelDefs = collectLabelDefs(tree.rhs)
 
       def putLabelDefsNearCallees = new TreeMap() {
-        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+        override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
           tree match {
             case t: Apply if labelDefs.contains(t.symbol) =>
               val labelDef = labelDefs(t.symbol)
@@ -103,11 +103,11 @@ class LabelDefs extends MiniPhase {
     }
   }
 
-  private def collectLabelDefs(tree: Tree)(implicit ctx: Context): MutableSymbolMap[DefDef] = {
+  private def collectLabelDefs(tree: Tree)(implicit ctx: ContextRenamed): MutableSymbolMap[DefDef] = {
     // labelSymbol -> Defining tree
     val labelDefs = newMutableSymbolMap[DefDef]
     new TreeTraverser {
-      override def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverse(tree: Tree)(implicit ctx: ContextRenamed): Unit = tree match {
         case t: DefDef =>
           assert(t.symbol is Label)
           labelDefs(t.symbol) = t

@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Flags._
 import SymUtils._
 import Symbols._
@@ -37,9 +37,9 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with F
 
   override def phaseName: String = AugmentScala2Traits.name
 
-  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context): Symbol = NoSymbol
+  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: ContextRenamed): Symbol = NoSymbol
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(implicit ctx: ContextRenamed): Template = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins)
       if (mixin.is(Scala2x))
@@ -47,7 +47,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with F
     impl
   }
 
-  private def augmentScala2Trait(mixin: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context): Unit = {
+  private def augmentScala2Trait(mixin: ClassSymbol, cls: ClassSymbol)(implicit ctx: ContextRenamed): Unit = {
     if (mixin.implClass.is(Scala2x)) () // nothing to do, mixin was already augmented
     else {
       //println(i"creating new implclass for $mixin ${mixin.implClass}")

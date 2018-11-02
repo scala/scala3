@@ -26,7 +26,7 @@ class FunctionalInterfaces extends MiniPhase {
   private[this] val functionName = "JFunction".toTermName
   private[this] val functionPackage = "scala.compat.java8.".toTermName
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context): Tree = {
+  override def transformClosure(tree: Closure)(implicit ctx: ContextRenamed): Tree = {
     val cls = tree.tpe.widen.classSymbol.asClass
 
     val implType = tree.meth.tpe.widen

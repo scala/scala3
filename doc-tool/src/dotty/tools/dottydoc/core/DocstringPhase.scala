@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Symbols.Symbol
 import dotc.core.Comments.{ Comment => CompilerComment }
 import transform.DocMiniPhase
@@ -14,7 +14,7 @@ import util.syntax._
 /** Phase to add docstrings to the Dottydoc AST */
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
 
-  private def getComment(sym: Symbol)(implicit ctx: Context): Option[CompilerComment] = {
+  private def getComment(sym: Symbol)(implicit ctx: ContextRenamed): Option[CompilerComment] = {
     ctx.docbase.docstring(sym)
     .orElse {
       // If the symbol doesn't have a docstring, look for an overridden
@@ -27,7 +27,7 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
     }
   }
 
-  private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] = {
+  private def parsedComment(ent: Entity)(implicit ctx: ContextRenamed): Option[Comment] = {
     for {
       comment <- getComment(ent.symbol)
       text <- comment.expandedBody
@@ -40,35 +40,35 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
     }
   }
 
-  override def transformPackage(implicit ctx: Context) = { case ent: PackageImpl =>
+  override def transformPackage(implicit ctx: ContextRenamed) = { case ent: PackageImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformClass(implicit ctx: Context) = { case ent: ClassImpl =>
+  override def transformClass(implicit ctx: ContextRenamed) = { case ent: ClassImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformCaseClass(implicit ctx: Context) = { case ent: CaseClassImpl =>
+  override def transformCaseClass(implicit ctx: ContextRenamed) = { case ent: CaseClassImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformTrait(implicit ctx: Context) = { case ent: TraitImpl =>
+  override def transformTrait(implicit ctx: ContextRenamed) = { case ent: TraitImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformObject(implicit ctx: Context) = { case ent: ObjectImpl =>
+  override def transformObject(implicit ctx: ContextRenamed) = { case ent: ObjectImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformDef(implicit ctx: Context) = { case ent: DefImpl =>
+  override def transformDef(implicit ctx: ContextRenamed) = { case ent: DefImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformVal(implicit ctx: Context) = { case ent: ValImpl =>
+  override def transformVal(implicit ctx: ContextRenamed) = { case ent: ValImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 
-  override def transformTypeAlias(implicit ctx: Context) = { case ent: TypeAliasImpl =>
+  override def transformTypeAlias(implicit ctx: ContextRenamed) = { case ent: TypeAliasImpl =>
     ent.copy(comment = parsedComment(ent)) :: Nil
   }
 }

@@ -27,7 +27,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
   import SymUtils._
 
   /** All traits implemented by a class or trait except for those inherited through the superclass. */
-  def directlyInheritedTraits(implicit ctx: Context): List[ClassSymbol] = {
+  def directlyInheritedTraits(implicit ctx: ContextRenamed): List[ClassSymbol] = {
     val superCls = self.asClass.superClass
     val baseClasses = self.asClass.baseClasses
     if (baseClasses.isEmpty) Nil
@@ -37,39 +37,39 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** All traits implemented by a class, except for those inherited through the superclass.
    *  The empty list if `self` is a trait.
    */
-  def mixins(implicit ctx: Context): List[ClassSymbol] = {
+  def mixins(implicit ctx: ContextRenamed): List[ClassSymbol] = {
     if (self is Trait) Nil
     else directlyInheritedTraits
   }
 
-  def isTypeTest(implicit ctx: Context): Boolean =
+  def isTypeTest(implicit ctx: ContextRenamed): Boolean =
     self == defn.Any_isInstanceOf || self == defn.Any_typeTest
 
-  def isTypeTestOrCast(implicit ctx: Context): Boolean =
+  def isTypeTestOrCast(implicit ctx: ContextRenamed): Boolean =
     self == defn.Any_asInstanceOf || isTypeTest
 
-  def isVolatile(implicit ctx: Context): Boolean = self.hasAnnotation(defn.VolatileAnnot)
+  def isVolatile(implicit ctx: ContextRenamed): Boolean = self.hasAnnotation(defn.VolatileAnnot)
 
-  def isAnyOverride(implicit ctx: Context): Boolean = self.is(Override) || self.is(AbsOverride)
+  def isAnyOverride(implicit ctx: ContextRenamed): Boolean = self.is(Override) || self.is(AbsOverride)
     // careful: AbsOverride is a term only flag. combining with Override would catch only terms.
 
-  def isSuperAccessor(implicit ctx: Context): Boolean = self.name.is(SuperAccessorName)
+  def isSuperAccessor(implicit ctx: ContextRenamed): Boolean = self.name.is(SuperAccessorName)
 
   /** A type or term parameter or a term parameter accessor */
-  def isParamOrAccessor(implicit ctx: Context): Boolean =
+  def isParamOrAccessor(implicit ctx: ContextRenamed): Boolean =
     self.is(Param) || self.is(ParamAccessor)
 
   /** If this is a constructor, its owner: otherwise this. */
-  final def skipConstructor(implicit ctx: Context): Symbol =
+  final def skipConstructor(implicit ctx: ContextRenamed): Symbol =
     if (self.isConstructor) self.owner else self
 
   /** The closest properly enclosing method or class of this symbol. */
-  final def enclosure(implicit ctx: Context): Symbol = {
+  final def enclosure(implicit ctx: ContextRenamed): Symbol = {
     self.owner.enclosingMethodOrClass
   }
 
   /** The closest enclosing method or class of this symbol */
-  @tailrec final def enclosingMethodOrClass(implicit ctx: Context): Symbol =
+  @tailrec final def enclosingMethodOrClass(implicit ctx: ContextRenamed): Symbol =
     if (self.is(Method, butNot = Label) || self.isClass) self
     else if (self.exists) self.owner.enclosingMethodOrClass
     else NoSymbol
@@ -83,20 +83,20 @@ class SymUtils(val self: Symbol) extends AnyVal {
     loop(from, to)
   }
 
-  def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
+  def accessorNamed(name: TermName)(implicit ctx: ContextRenamed): Symbol =
     self.owner.info.decl(name).suchThat(_ is Accessor).symbol
 
-  def caseAccessors(implicit ctx: Context): List[Symbol] =
+  def caseAccessors(implicit ctx: ContextRenamed): List[Symbol] =
     self.info.decls.filter(_ is CaseAccessor)
 
-  def getter(implicit ctx: Context): Symbol =
+  def getter(implicit ctx: ContextRenamed): Symbol =
     if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
 
-  def setter(implicit ctx: Context): Symbol =
+  def setter(implicit ctx: ContextRenamed): Symbol =
     if (self.isSetter) self
     else accessorNamed(self.asTerm.name.setterName)
 
-  def field(implicit ctx: Context): Symbol = {
+  def field(implicit ctx: ContextRenamed): Symbol = {
     val thisName = self.name.asTermName
     val fieldName =
       if (self.hasAnnotation(defn.ScalaStaticAnnot)) thisName.getterName
@@ -104,24 +104,24 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
   }
 
-  def isField(implicit ctx: Context): Boolean =
+  def isField(implicit ctx: ContextRenamed): Boolean =
     self.isTerm && !self.is(Method)
 
-  def implClass(implicit ctx: Context): Symbol =
+  def implClass(implicit ctx: ContextRenamed): Symbol =
     self.owner.info.decl(self.name.implClassName).symbol
 
-  def traitOfImplClass(implicit ctx: Context): Symbol =
+  def traitOfImplClass(implicit ctx: ContextRenamed): Symbol =
     self.owner.info.decl(self.name.traitOfImplClassName).symbol
 
-  def annotationsCarrying(meta: ClassSymbol)(implicit ctx: Context): List[Annotation] =
+  def annotationsCarrying(meta: ClassSymbol)(implicit ctx: ContextRenamed): List[Annotation] =
     self.annotations.filter(_.symbol.hasAnnotation(meta))
 
-  def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(implicit ctx: Context): self.type = {
+  def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(implicit ctx: ContextRenamed): self.type = {
     self.addAnnotations(from.annotationsCarrying(meta))
     self
   }
 
-  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: Context): Any = {
+  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: ContextRenamed): Any = {
     if (!self.unforcedDecls.lookup(name).exists) {
       val companionMethod = ctx.synthesizeCompanionMethod(name, target, self)
       if (companionMethod.exists) {
@@ -135,7 +135,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *   @param  @late  If true, register only inaccessible children (all others are already
    *                  entered at this point).
    */
-  def registerIfChild(late: Boolean = false)(implicit ctx: Context): Unit = {
+  def registerIfChild(late: Boolean = false)(implicit ctx: ContextRenamed): Unit = {
     def register(child: Symbol, parent: Type) = {
       val cls = parent.classSymbol
       if (cls.is(Sealed) && (!late || child.isInaccessibleChildOf(cls)))
@@ -154,17 +154,17 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *  defined in a different toplevel class than its supposed parent class `cls`?
    *  Such children are not pickled, and have to be reconstituted manually.
    */
-  def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context): Boolean =
+  def isInaccessibleChildOf(cls: Symbol)(implicit ctx: ContextRenamed): Boolean =
     self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
 
   /** If this is a sealed class, its known children */
-  def children(implicit ctx: Context): List[Symbol] =
+  def children(implicit ctx: ContextRenamed): List[Symbol] =
     self.annotations.collect {
       case Annotation.Child(child) => child
     }
 
   /** Is symbol directly or indirectly owned by a term symbol? */
-  @tailrec final def isLocal(implicit ctx: Context): Boolean = {
+  @tailrec final def isLocal(implicit ctx: ContextRenamed): Boolean = {
     val owner = self.owner
     if (owner.isTerm) true
     else if (owner.is(Package)) false
@@ -172,10 +172,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
   }
 
   /** Is symbol a quote operation? */
-  def isQuote(implicit ctx: Context): Boolean =
+  def isQuote(implicit ctx: ContextRenamed): Boolean =
     self == defn.QuotedExpr_apply || self == defn.QuotedType_apply
 
   /** Is symbol a splice operation? */
-  def isSplice(implicit ctx: Context): Boolean =
+  def isSplice(implicit ctx: ContextRenamed): Boolean =
     self == defn.QuotedExpr_~ || self == defn.QuotedType_~
 }

@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Decorators._
 import tasty._
 import config.Printers.{noPrinter, pickling}
@@ -35,13 +35,13 @@ class Pickler extends Phase {
   private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
-  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {
+  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: ContextRenamed): List[ClassSymbol] = {
     val companionModuleClasses =
       clss.filterNot(_ is Module).map(_.linkedClass).filterNot(_.unforcedIsAbsent)
     clss.filterNot(companionModuleClasses.contains)
   }
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: ContextRenamed): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
@@ -79,7 +79,7 @@ class Pickler extends Phase {
     }
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] = {
     val result = super.runOn(units)
     if (ctx.settings.YtestPickler.value)
       testUnpickler(
@@ -92,7 +92,7 @@ class Pickler extends Phase {
     result
   }
 
-  private def testUnpickler(implicit ctx: Context): Unit = {
+  private def testUnpickler(implicit ctx: ContextRenamed): Unit = {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
@@ -108,7 +108,7 @@ class Pickler extends Phase {
     }
   }
 
-  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) =
+  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: ContextRenamed) =
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)

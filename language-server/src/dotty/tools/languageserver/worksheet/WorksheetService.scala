@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.worksheet
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.languageserver.DottyLanguageServer
 
@@ -43,7 +43,7 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
                            uri: URI,
                            sendMessage: (Int, String) => Unit,
                            cancelChecker: CancelChecker)(
-      implicit ctx: Context): Unit = {
+      implicit ctx: ContextRenamed): Unit = {
     val treeOpt = thisServer.synchronized {
       driver.openedTrees(uri).headOption
     }

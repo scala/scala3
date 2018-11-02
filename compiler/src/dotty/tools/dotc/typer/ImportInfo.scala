@@ -13,10 +13,10 @@ import printing.Texts.Text
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef)(implicit ctx: Context): ImportInfo = {
+  def rootImport(refFn: () => TermRef)(implicit ctx: ContextRenamed): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
-    def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(expr, selectors)
+    def expr(implicit ctx: ContextRenamed) = tpd.Ident(refFn())
+    def imp(implicit ctx: ContextRenamed) = tpd.Import(expr, selectors)
     new ImportInfo(implicit ctx => imp.symbol, selectors, None, isRootImport = true)
   }
 }
@@ -29,12 +29,12 @@ object ImportInfo {
  *  @param   isRootImport true if this is one of the implicit imports of scala, java.lang,
  *                        scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
+class ImportInfo(symf: ContextRenamed => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName], val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
-  def sym(implicit ctx: Context): Symbol = {
+  def sym(implicit ctx: ContextRenamed): Symbol = {
     if (mySym == null) {
       mySym = symf(ctx)
       assert(mySym != null)
@@ -44,7 +44,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   private[this] var mySym: Symbol = _
 
   /** The (TermRef) type of the qualifier of the import clause */
-  def site(implicit ctx: Context): Type = {
+  def site(implicit ctx: ContextRenamed): Type = {
     val ImportType(expr) = sym.info
     expr.tpe
   }
@@ -93,7 +93,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   }
 
   /** The implicit references imported by this import clause */
-  def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
+  def importedImplicits(implicit ctx: ContextRenamed): List[ImplicitRef] = {
     val pre = site
     if (isWildcardImport) {
       val refs = pre.implicitMembers
@@ -122,7 +122,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
    *      override import Predef.{any2stringAdd => _, StringAdd => _, _} // disables String +
    *      override import java.lang.{}                                   // disables all imports
    */
-  def unimported(implicit ctx: Context): Symbol = {
+  def unimported(implicit ctx: ContextRenamed): Symbol = {
     if (myUnimported == null) {
       lazy val sym = site.termSymbol
       def maybeShadowsRoot = symNameOpt match {
@@ -139,7 +139,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   private[this] var myUnimported: Symbol = _
 
   /** Does this import clause or a preceding import clause import `owner.feature`? */
-  def featureImported(owner: Symbol, feature: TermName)(implicit ctx: Context): Boolean = {
+  def featureImported(owner: Symbol, feature: TermName)(implicit ctx: ContextRenamed): Boolean = {
     def compute = {
       val isImportOwner = site.widen.typeSymbol `eq` owner
       if (isImportOwner && originals.contains(feature)) true

@@ -143,7 +143,7 @@ object Decorators {
   }
 
   implicit class TextToString(val text: Text) extends AnyVal {
-    def show(implicit ctx: Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+    def show(implicit ctx: ContextRenamed): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
   }
 
   /** Test whether a list of strings representing phases contains
@@ -165,7 +165,7 @@ object Decorators {
     }
   }
 
-  implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
+  implicit def sourcePos(pos: Position)(implicit ctx: ContextRenamed): SourcePosition = {
     def recur(inlinedCalls: List[Tree], pos: Position): SourcePosition = inlinedCalls match {
       case inlinedCall :: rest =>
         sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
@@ -180,11 +180,11 @@ object Decorators {
       printer.println(op(x))
       x
     }
-    def assertingErrorsReported(implicit ctx: Context): T = {
+    def assertingErrorsReported(implicit ctx: ContextRenamed): T = {
       assert(ctx.reporter.errorsReported)
       x
     }
-    def assertingErrorsReported(msg: => String)(implicit ctx: Context): T = {
+    def assertingErrorsReported(msg: => String)(implicit ctx: ContextRenamed): T = {
       assert(ctx.reporter.errorsReported, msg)
       x
     }
@@ -193,23 +193,23 @@ object Decorators {
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
 
     /** General purpose string formatting */
-    def i(args: Any*)(implicit ctx: Context): String =
+    def i(args: Any*)(implicit ctx: ContextRenamed): String =
       new StringFormatter(sc).assemble(args)
 
     /** Formatting for error messages: Like `i` but suppress follow-on
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
-    def em(args: Any*)(implicit ctx: Context): String =
+    def em(args: Any*)(implicit ctx: ContextRenamed): String =
       new ErrorMessageFormatter(sc).assemble(args)
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
-    def ex(args: Any*)(implicit ctx: Context): String =
+    def ex(args: Any*)(implicit ctx: ContextRenamed): String =
       explained(implicit ctx => em(args: _*))
 
     /** Formatter that adds syntax highlighting to all interpolated values */
-    def hl(args: Any*)(implicit ctx: Context): String =
+    def hl(args: Any*)(implicit ctx: ContextRenamed): String =
       new SyntaxFormatter(sc).assemble(args).stripMargin
   }
 

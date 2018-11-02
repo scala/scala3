@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.core.Comments.CommentsContext
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Decorators.PreNamedString
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
@@ -71,14 +71,14 @@ class CommentPicklingTest {
     }
   }
 
-  private def findTreeNamed(name: Name)(trees: List[tpd.Tree], ctx: Context): Option[tpd.MemberDef] = {
-    implicit val _ctx: Context = ctx
+  private def findTreeNamed(name: Name)(trees: List[tpd.Tree], ctx: ContextRenamed): Option[tpd.MemberDef] = {
+    implicit val _ctx: ContextRenamed = ctx
     trees.flatMap { _.find { case md: tpd.MemberDef => md.name == name; case _ => false }
       .map(_.asInstanceOf[tpd.MemberDef]).toList
     }.headOption
   }
 
-  private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
+  private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], ContextRenamed) => T) = {
     Directory.inTempDirectory { tmp =>
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
@@ -106,8 +106,8 @@ class CommentPicklingTest {
 
   private class UnpicklingDriver extends Driver {
     override def initCtx = super.initCtx.addMode(Mode.ReadComments)
-    def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], Context) => T): T = {
-      implicit val (_, ctx: Context) = setup(args, initCtx)
+    def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], ContextRenamed) => T): T = {
+      implicit val (_, ctx: ContextRenamed) = setup(args, initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
         val unpickler = new DottyUnpickler(f.toByteArray())

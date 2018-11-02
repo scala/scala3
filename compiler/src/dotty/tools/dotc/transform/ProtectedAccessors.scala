@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.NameKinds._
 import core.Symbols._
 import core.Flags._
@@ -18,7 +18,7 @@ object ProtectedAccessors {
   val name: String = "protectedAccessors"
 
   /** Is the current context's owner inside the access boundary established by `sym`? */
-  def insideBoundaryOf(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def insideBoundaryOf(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = {
     if (sym.is(JavaDefined)) {
       sym.is(JavaStatic) ||  // Java's static protected definitions are treated as public
       ctx.owner.enclosingPackageClass == sym.enclosingPackageClass
@@ -35,13 +35,13 @@ object ProtectedAccessors {
   /** Do we need a protected accessor if the current context's owner
    *  is not in a subclass or subtrait of `sym`?
    */
-  def needsAccessorIfNotInSubclass(sym: Symbol)(implicit ctx: Context): Boolean =
+  def needsAccessorIfNotInSubclass(sym: Symbol)(implicit ctx: ContextRenamed): Boolean =
     sym.isTerm && sym.is(Protected) &&
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym)
 
    /** Do we need a protected accessor for accessing sym from the current context's owner? */
-   def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
+   def needsAccessor(sym: Symbol)(implicit ctx: ContextRenamed): Boolean =
     needsAccessorIfNotInSubclass(sym) &&
     !ctx.owner.enclosingClass.derivesFrom(sym.owner)
 }
@@ -54,9 +54,9 @@ class ProtectedAccessors extends MiniPhase {
   object Accessors extends AccessProxies {
     val insert: Insert = new Insert {
       def accessorNameKind = ProtectedAccessorName
-      def needsAccessor(sym: Symbol)(implicit ctx: Context) = ProtectedAccessors.needsAccessor(sym)
+      def needsAccessor(sym: Symbol)(implicit ctx: ContextRenamed) = ProtectedAccessors.needsAccessor(sym)
 
-      override def ifNoHost(reference: RefTree)(implicit ctx: Context): Tree = {
+      override def ifNoHost(reference: RefTree)(implicit ctx: ContextRenamed): Tree = {
         val curCls = ctx.owner.enclosingClass
         transforms.println(i"${curCls.ownersIterator.toList}%, %")
         ctx.error(i"illegal access to protected ${reference.symbol.showLocated} from $curCls",
@@ -66,13 +66,13 @@ class ProtectedAccessors extends MiniPhase {
     }
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: ContextRenamed): Tree =
     Accessors.insert.accessorIfNeeded(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Tree =
     Accessors.insert.accessorIfNeeded(tree)
 
-  override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
+  override def transformAssign(tree: Assign)(implicit ctx: ContextRenamed): Tree =
     tree.lhs match {
       case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
         cpy.Apply(tree)(Accessors.insert.useSetter(lhs), tree.rhs :: Nil)
@@ -80,6 +80,6 @@ class ProtectedAccessors extends MiniPhase {
         tree
     }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree =
+  override def transformTemplate(tree: Template)(implicit ctx: ContextRenamed): Tree =
     cpy.Template(tree)(body = Accessors.addAccessorDefs(tree.symbol.owner, tree.body))
 }

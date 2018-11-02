@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers.SymTransformer
-import Contexts.{Context, FreshContext}
+import Contexts.{ContextRenamed, FreshContext}
 import Flags._
 import SymDenotations.SymDenotation
 import collection.mutable
@@ -23,12 +23,12 @@ class Flatten extends MiniPhase with SymTransformer {
   override def changesMembers: Boolean = true // the phase removes inner classes
 
   private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree]] = _
-  private def liftedDefs(implicit ctx: Context) = ctx.store(LiftedDefs)
+  private def liftedDefs(implicit ctx: ContextRenamed) = ctx.store(LiftedDefs)
 
   override def initContext(ctx: FreshContext): Unit =
     LiftedDefs = ctx.addLocation[mutable.ListBuffer[Tree]](null)
 
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
+  def transformSym(ref: SymDenotation)(implicit ctx: ContextRenamed): SymDenotation = {
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
       ref.copySymDenotation(
         name = ref.flatName,
@@ -37,17 +37,17 @@ class Flatten extends MiniPhase with SymTransformer {
     else ref
   }
 
-  override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context): FreshContext =
+  override def prepareForPackageDef(tree: PackageDef)(implicit ctx: ContextRenamed): FreshContext =
     ctx.fresh.updateStore(LiftedDefs, new mutable.ListBuffer[Tree])
 
-  private def liftIfNested(tree: Tree)(implicit ctx: Context) =
+  private def liftIfNested(tree: Tree)(implicit ctx: ContextRenamed) =
     if (ctx.owner is Package) tree
     else {
       transformFollowing(tree).foreachInThicket(liftedDefs += _)
       EmptyTree
     }
 
-  override def transformStats(stats: List[Tree])(implicit ctx: Context): List[Tree] =
+  override def transformStats(stats: List[Tree])(implicit ctx: ContextRenamed): List[Tree] =
     if (ctx.owner is Package) {
       val liftedStats = stats ++ liftedDefs
       liftedDefs.clear()
@@ -55,6 +55,6 @@ class Flatten extends MiniPhase with SymTransformer {
     }
     else stats
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree =
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: ContextRenamed): Tree =
     liftIfNested(tree)
 }

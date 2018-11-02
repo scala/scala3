@@ -34,7 +34,7 @@ class TyperState(previous: TyperState /* | Null */) {
     else previous.constraint
 
   def constraint: Constraint = myConstraint
-  def constraint_=(c: Constraint)(implicit ctx: Context): Unit = {
+  def constraint_=(c: Constraint)(implicit ctx: ContextRenamed): Unit = {
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
   }
@@ -84,7 +84,7 @@ class TyperState(previous: TyperState /* | Null */) {
    *  is done only in a temporary way for contexts that may be retracted
    *  without also retracting the type var as a whole.
    */
-  def instType(tvar: TypeVar)(implicit ctx: Context): Type = constraint.entry(tvar.origin) match {
+  def instType(tvar: TypeVar)(implicit ctx: ContextRenamed): Type = constraint.entry(tvar.origin) match {
     case _: TypeBounds => NoType
     case tp: TypeParamRef =>
       var tvar1 = constraint.typeVarOfParam(tp)
@@ -104,7 +104,7 @@ class TyperState(previous: TyperState /* | Null */) {
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
    *  to previous state afterwards.
    */
-  def test[T](op: Context => T)(implicit ctx: Context): T =
+  def test[T](op: ContextRenamed => T)(implicit ctx: ContextRenamed): T =
     if (isShared)
       op(ctx.fresh.setExploreTyperState())
     else {
@@ -150,7 +150,7 @@ class TyperState(previous: TyperState /* | Null */) {
    * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
    * many parts of dotty itself.
    */
-  def commit()(implicit ctx: Context): Unit = {
+  def commit()(implicit ctx: ContextRenamed): Unit = {
     val targetState = ctx.typerState
     assert(isCommittable)
     targetState.constraint =
@@ -169,7 +169,7 @@ class TyperState(previous: TyperState /* | Null */) {
    *  type variable instantiation cannot be retracted anymore. Then, remove
    *  no-longer needed constraint entries.
    */
-  def gc()(implicit ctx: Context): Unit = {
+  def gc()(implicit ctx: ContextRenamed): Unit = {
     val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {

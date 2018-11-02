@@ -20,14 +20,14 @@ trait Showable extends Any {
   def fallbackToText(printer: Printer): Text = toString
 
   /** The string representation of this showable element. */
-  def show(implicit ctx: Context): String = toText(ctx.printer).show
+  def show(implicit ctx: ContextRenamed): String = toText(ctx.printer).show
 
   /** The summarized string representation of this showable element.
    *  Recursion depth is limited to some smallish value. Default is
    *  Config.summarizeDepth.
    */
-  def showSummary(depth: Int)(implicit ctx: Context): String =
+  def showSummary(depth: Int)(implicit ctx: ContextRenamed): String =
     ctx.printer.summarized(depth)(show)
 
-  def showSummary(implicit ctx: Context): String = showSummary(summarizeDepth)
+  def showSummary(implicit ctx: ContextRenamed): String = showSummary(summarizeDepth)
 }

@@ -4,7 +4,7 @@ package backend.jvm
 
 import vulpix.TestConfiguration
 
-import dotc.core.Contexts.{Context, ContextBase}
+import dotc.core.Contexts.{ContextRenamed, ContextBase}
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Phases.Phase
 import dotc.Compiler
@@ -53,7 +53,7 @@ trait DottyBytecodeTest {
 
   /** Checks source code from raw string */
   def checkBCode(source: String)(checkOutput: AbstractFile => Unit): Unit = {
-    implicit val ctx: Context = initCtx
+    implicit val ctx: ContextRenamed = initCtx
 
     val compiler = new Compiler
     val run = compiler.newRun

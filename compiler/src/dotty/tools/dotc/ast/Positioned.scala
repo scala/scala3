@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package ast
 
 import util.Positions._
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.Decorators._
 import core.Flags.JavaDefined
 import core.StdNames.nme
@@ -160,7 +160,7 @@ abstract class Positioned extends Product {
    *  - Parent positions contain child positions
    *  - If item is a non-empty tree, it has a position
    */
-  def checkPos(nonOverlapping: Boolean)(implicit ctx: Context): Unit = try {
+  def checkPos(nonOverlapping: Boolean)(implicit ctx: ContextRenamed): Unit = try {
     import untpd._
     var lastPositioned: Positioned = null
     var lastPos = NoPosition

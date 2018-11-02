@@ -28,7 +28,7 @@ object Inferencing {
    *  but only if the overall result of `isFullyDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type, force: ForceDegree.Value)(implicit ctx: Context): Boolean = {
+  def isFullyDefined(tp: Type, force: ForceDegree.Value)(implicit ctx: ContextRenamed): Boolean = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = new IsFullyDefinedAccumulator(force)(nestedCtx).process(tp)
     if (result) nestedCtx.typerState.commit()
@@ -38,19 +38,19 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context): Type =
+  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: ContextRenamed): Type =
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
 
   /** Instantiate selected type variables `tvars` in type `tp` */
-  def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
+  def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: ContextRenamed): Unit =
     new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `tparams` or `vparamss`.
    */
-  def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(implicit ctx: Context): Unit = {
+  def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(implicit ctx: ContextRenamed): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
       lazy val params = (tparams :: vparamss).flatten
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
@@ -87,7 +87,7 @@ object Inferencing {
    *  2nd Phase: If first phase was successful, instantiate all remaining type variables
    *  to their upper bound.
    */
-  private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: ContextRenamed) extends TypeAccumulator[Boolean] {
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
       val inst = tvar.instantiate(fromBelow)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
@@ -120,7 +120,7 @@ object Inferencing {
         foldOver(x, tp)
     }
 
-    private class UpperInstantiator(implicit ctx: Context) extends TypeAccumulator[Unit] {
+    private class UpperInstantiator(implicit ctx: ContextRenamed) extends TypeAccumulator[Unit] {
       def apply(x: Unit, tp: Type): Unit = {
         tp match {
           case tvar: TypeVar if !tvar.isInstantiated =>
@@ -139,7 +139,7 @@ object Inferencing {
   }
 
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
-  def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
+  def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: ContextRenamed): Tree = tree.tpe match {
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
       var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
@@ -184,7 +184,7 @@ object Inferencing {
    *
    *  TODO: Update so that GADT symbols can be variant, and we special case final class types in patterns
    */
-  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
+  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
@@ -217,7 +217,7 @@ object Inferencing {
    *    - The prefix `p` of a selection `p.f`.
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
-  def tvarsInParams(tree: Tree, locked: TypeVars)(implicit ctx: Context): List[TypeVar] = {
+  def tvarsInParams(tree: Tree, locked: TypeVars)(implicit ctx: ContextRenamed): List[TypeVar] = {
     @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
       case Apply(fn, _) => boundVars(fn, acc)
       case TypeApply(fn, targs) =>
@@ -257,7 +257,7 @@ object Inferencing {
    *           -1 (minimize) if constraint is uniformly from below,
    *            0 if unconstrained, or constraint is from below and above.
    */
-  private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
+  private def instDirection(param: TypeParamRef)(implicit ctx: ContextRenamed): Int = {
     val constrained = ctx.typerState.constraint.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
@@ -272,7 +272,7 @@ object Inferencing {
    *  class type reference where the class has a companion module, a reference to
    *  that companion module. Otherwise NoType
    */
-  def companionRef(tp: Type)(implicit ctx: Context): Type =
+  def companionRef(tp: Type)(implicit ctx: ContextRenamed): Type =
     tp.underlyingClassRef(refinementOK = true) match {
       case tp: TypeRef =>
         val companion = tp.classSymbol.companionModule
@@ -286,7 +286,7 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, pos: Position, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
+  def maximizeType(tp: Type, pos: Position, fromScala2x: Boolean)(implicit ctx: ContextRenamed): List[Symbol] = Stats.track("maximizeType") {
     val vs = variances(tp)
     val patternBound = new mutable.ListBuffer[Symbol]
     vs foreachBinding { (tvar, v) =>
@@ -324,7 +324,7 @@ object Inferencing {
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
-  private def variances(tp: Type)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
+  private def variances(tp: Type)(implicit ctx: ContextRenamed): VarianceMap = Stats.track("variances") {
     val constraint = ctx.typerState.constraint
 
     object accu extends TypeAccumulator[VarianceMap] {
@@ -398,7 +398,7 @@ trait Inferencing { this: Typer =>
    *  Then `Y` also occurs co-variantly in `T` because it needs to be minimized in order to constrain
    *  `T` the least. See `variances` for more detail.
    */
-  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
+  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: ContextRenamed): tree.type = {
     val state = ctx.typerState
     if (state.ownedVars.size > locked.size) {
       val qualifying = state.ownedVars -- locked

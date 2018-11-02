@@ -1,7 +1,7 @@
 package dotty.tools.benchmarks
 
 import dotty.tools.dotc._
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import dotty.tools.FatalError
 import reporting._
 
@@ -88,7 +88,7 @@ class CompilerOptions {
 
 class Worker extends Driver {
   // override to avoid printing summary information
-  override  def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  override  def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: ContextRenamed): Reporter =
     if (fileNames.nonEmpty)
       try {
         val run = compiler.newRun

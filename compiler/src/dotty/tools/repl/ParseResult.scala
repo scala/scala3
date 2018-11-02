@@ -2,7 +2,7 @@ package dotty.tools
 package repl
 
 import dotc.reporting.diagnostic.MessageContainer
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.util.SourceFile
@@ -108,7 +108,7 @@ object ParseResult {
 
   @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  private def parseStats(sourceCode: String)(implicit ctx: Context): List[untpd.Tree] = {
+  private def parseStats(sourceCode: String)(implicit ctx: ContextRenamed): List[untpd.Tree] = {
     val source = new SourceFile("<console>", sourceCode)
     val parser = new Parser(source)
     val stats = parser.blockStatSeq()
@@ -117,7 +117,7 @@ object ParseResult {
   }
 
   /** Extract a `ParseResult` from the string `sourceCode` */
-  def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
+  def apply(sourceCode: String)(implicit ctx: ContextRenamed): ParseResult =
     sourceCode match {
       case "" => Newline
       case CommandExtract(cmd, arg) => cmd match {
@@ -148,7 +148,7 @@ object ParseResult {
    *  This can be used in order to check if a newline can be inserted without
    *  having to evaluate the expression
    */
-  def isIncomplete(sourceCode: String)(implicit ctx: Context): Boolean =
+  def isIncomplete(sourceCode: String)(implicit ctx: ContextRenamed): Boolean =
     sourceCode match {
       case CommandExtract(_) | "" => false
       case _ => {

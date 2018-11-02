@@ -48,21 +48,21 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
-  def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
+  def enter(roots: Set[SymDenotation])(implicit ctx: ContextRenamed): Unit =
     treeUnpickler.enter(roots)
 
-  def unpickleTypeTree()(implicit ctx: Context): Tree =
+  def unpickleTypeTree()(implicit ctx: ContextRenamed): Tree =
     treeUnpickler.unpickleTypeTree()
 
   protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler = {
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
   }
 
-  protected def computeRootTrees(implicit ctx: Context): List[Tree] = treeUnpickler.unpickle(mode)
+  protected def computeRootTrees(implicit ctx: ContextRenamed): List[Tree] = treeUnpickler.unpickle(mode)
 
   private[this] var ids: Array[String] = null
 
-  override def mightContain(id: String)(implicit ctx: Context): Boolean = {
+  override def mightContain(id: String)(implicit ctx: ContextRenamed): Boolean = {
     if (ids == null)
       ids =
         unpickler.nameAtRef.contents.toArray.collect {

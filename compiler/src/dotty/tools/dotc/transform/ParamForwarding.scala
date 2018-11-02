@@ -24,8 +24,8 @@ import config.Printers.typr
 class ParamForwarding(thisPhase: DenotTransformer) {
   import ast.tpd._
 
-  def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {
-    def fwd(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
+  def forwardParamAccessors(impl: Template)(implicit ctx: ContextRenamed): Template = {
+    def fwd(stats: List[Tree])(implicit ctx: ContextRenamed): List[Tree] = {
       val (superArgs, superParamNames) = impl.parents match {
         case superCall @ Apply(fn, args) :: _ =>
           fn.tpe.widen match {
@@ -64,7 +64,7 @@ class ParamForwarding(thisPhase: DenotTransformer) {
               if (idx >= 0 && superParamNames(idx) == stat.name) { // supercall to like-named parameter
                 val alias = inheritedAccessor(sym)
                 if (alias.exists) {
-                  def forwarder(implicit ctx: Context) = {
+                  def forwarder(implicit ctx: ContextRenamed) = {
                     sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
                       .installAfter(thisPhase)
                     val superAcc =

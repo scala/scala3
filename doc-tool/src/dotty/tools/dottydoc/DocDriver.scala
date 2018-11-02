@@ -17,7 +17,7 @@ class DocDriver extends Driver {
   import java.util.{ Map => JMap }
   import model.JavaConverters._
 
-  override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
+  override def setup(args: Array[String], rootCtx: ContextRenamed): (List[String], ContextRenamed) = {
     val ctx     = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
 
@@ -30,12 +30,12 @@ class DocDriver extends Driver {
     (fileNames, ctx)
   }
 
-  override def newCompiler(implicit ctx: Context): Compiler = new DocCompiler
+  override def newCompiler(implicit ctx: ContextRenamed): Compiler = new DocCompiler
 
-  override def process(args: Array[String], rootCtx: Context): Reporter = {
+  override def process(args: Array[String], rootCtx: ContextRenamed): Reporter = {
     val (filesToDocument, ictx) = setup(args, initCtx.fresh)
 
-    implicit val ctx: Context = ictx
+    implicit val ctx: ContextRenamed = ictx
     val reporter = doCompile(newCompiler, filesToDocument)
 
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)

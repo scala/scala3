@@ -48,7 +48,7 @@ class ExtractAPI extends Phase {
   // definitions, and `PostTyper` does not change definitions).
   override def runsAfter: Set[String] = Set(transform.PostTyper.name)
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: ContextRenamed): Unit = {
     val unit = ctx.compilationUnit
     val dumpInc = ctx.settings.YdumpSbtInc.value
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
@@ -120,7 +120,7 @@ class ExtractAPI extends Phase {
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder {
+private class ExtractAPICollector(implicit val ctx: ContextRenamed) extends ThunkHolder {
   import tpd._
   import xsbti.api
 

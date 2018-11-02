@@ -9,7 +9,7 @@ import TastyBuffer.NameRef
 import util.Positions.offsetToInt
 import printing.Highlighting._
 
-class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
+class TastyPrinter(bytes: Array[Byte])(implicit ctx: ContextRenamed) {
 
   val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}

@@ -24,7 +24,7 @@ object Formatting {
    */
   class StringFormatter(protected val sc: StringContext) {
 
-    protected def showArg(arg: Any)(implicit ctx: Context): String = arg match {
+    protected def showArg(arg: Any)(implicit ctx: ContextRenamed): String = arg match {
       case arg: Showable =>
         try arg.show
         catch {
@@ -36,7 +36,7 @@ object Formatting {
       case _ => arg.toString
     }
 
-    private def treatArg(arg: Any, suffix: String)(implicit ctx: Context): (Any, String) = arg match {
+    private def treatArg(arg: Any, suffix: String)(implicit ctx: ContextRenamed): (Any, String) = arg match {
       case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
         val sep = StringContext.treatEscapes(rawsep)
@@ -46,7 +46,7 @@ object Formatting {
         (showArg(arg), suffix)
     }
 
-    def assemble(args: Seq[Any])(implicit ctx: Context): String = {
+    def assemble(args: Seq[Any])(implicit ctx: ContextRenamed): String = {
       def isLineBreak(c: Char) = c == '\n' || c == '\f' // compatible with StringLike#isLineBreak
       def stripTrailingPart(s: String) = {
         val (pre, post) = s.span(c => !isLineBreak(c))
@@ -69,12 +69,12 @@ object Formatting {
    *  message composition methods, this is crucial.
    */
   class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) {
-    override protected def showArg(arg: Any)(implicit ctx: Context): String =
+    override protected def showArg(arg: Any)(implicit ctx: ContextRenamed): String =
       wrapNonSensical(arg, super.showArg(arg))
   }
 
   class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
-    override protected def showArg(arg: Any)(implicit ctx: Context): String =
+    override protected def showArg(arg: Any)(implicit ctx: ContextRenamed): String =
       arg match {
         case hl: Highlight =>
           hl.show
@@ -86,7 +86,7 @@ object Formatting {
       }
   }
 
-  private def wrapNonSensical(arg: Any /* Type | Symbol */, str: String)(implicit ctx: Context): String = {
+  private def wrapNonSensical(arg: Any /* Type | Symbol */, str: String)(implicit ctx: ContextRenamed): String = {
     import MessageContainer._
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>
@@ -109,7 +109,7 @@ object Formatting {
 
     override def default(key: String) = Nil
 
-    def record(str: String, entry: Recorded)(implicit ctx: Context): String = {
+    def record(str: String, entry: Recorded)(implicit ctx: ContextRenamed): String = {
       def followAlias(e1: Recorded): Recorded = e1 match {
         case e1: Symbol if e1.isAliasType =>
           val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
@@ -126,7 +126,7 @@ object Formatting {
     }
   }
 
-  private class ExplainingPrinter(seen: Seen)(_ctx: Context) extends RefinedPrinter(_ctx) {
+  private class ExplainingPrinter(seen: Seen)(_ctx: ContextRenamed) extends RefinedPrinter(_ctx) {
     override def simpleNameString(sym: Symbol): String =
       if ((sym is ModuleClass) && sym.sourceModule.exists) simpleNameString(sym.sourceModule)
       else seen.record(super.simpleNameString(sym), sym)
@@ -141,7 +141,7 @@ object Formatting {
   }
 
   /** Create explanation for single `Recorded` type or symbol */
-  def explanation(entry: AnyRef)(implicit ctx: Context): String = {
+  def explanation(entry: AnyRef)(implicit ctx: ContextRenamed): String = {
     def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
       if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -183,7 +183,7 @@ object Formatting {
     *
     * @return string disambiguating types
     */
-  private def explanations(seen: Seen)(implicit ctx: Context): String = {
+  private def explanations(seen: Seen)(implicit ctx: ContextRenamed): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
       case param: TermParamRef => false
@@ -217,7 +217,7 @@ object Formatting {
   }
 
   /** Context with correct printer set for explanations */
-  private def explainCtx(seen: Seen)(implicit ctx: Context): Context = ctx.printer match {
+  private def explainCtx(seen: Seen)(implicit ctx: ContextRenamed): ContextRenamed = ctx.printer match {
     case dp: ExplainingPrinter =>
       ctx // re-use outer printer and defer explanation to it
     case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
@@ -229,7 +229,7 @@ object Formatting {
     * ex"disambiguate $tpe1 and $tpe2"
     * ```
     */
-  def explained(op: Context => String)(implicit ctx: Context): String = {
+  def explained(op: ContextRenamed => String)(implicit ctx: ContextRenamed): String = {
     val seen = new Seen
     val msg = op(explainCtx(seen))
     val addendum = explanations(seen)
@@ -248,7 +248,7 @@ object Formatting {
     * @return the `where` section as well as the printing context for the
     *         placeholders - `("T is a...", printCtx)`
     */
-  def disambiguateTypes(args: Type*)(implicit ctx: Context): (String, Context) = {
+  def disambiguateTypes(args: Type*)(implicit ctx: ContextRenamed): (String, ContextRenamed) = {
     val seen = new Seen
     val printCtx = explainCtx(seen)
     args.foreach(_.show(printCtx)) // showing each member will put it into `seen`
@@ -266,7 +266,7 @@ object Formatting {
     * @return the (found, expected, changePercentage) with coloring to
     *         highlight the difference
     */
-  def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
+  def typeDiff(found: Type, expected: Type)(implicit ctx: ContextRenamed): (String, String) = {
     val fnd = wrapNonSensical(found, found.show)
     val exp = wrapNonSensical(expected, expected.show)
 

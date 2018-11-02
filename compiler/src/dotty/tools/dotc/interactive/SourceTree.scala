@@ -19,7 +19,7 @@ sealed trait SourceTree {
   def source: SourceFile
 
   /** The position of `tree` */
-  final def pos(implicit ctx: Context): SourcePosition = source.atPos(tree.pos)
+  final def pos(implicit ctx: ContextRenamed): SourcePosition = source.atPos(tree.pos)
 }
 
 /** An import coming from `source` */
@@ -29,7 +29,7 @@ case class SourceImportTree(tree: tpd.Import, source: SourceFile) extends Source
 case class SourceNamedTree(tree: tpd.NameTree, source: SourceFile) extends SourceTree {
 
   /** The position of the name in `tree` */
-  def namePos(implicit ctx: Context): SourcePosition = {
+  def namePos(implicit ctx: ContextRenamed): SourcePosition = {
     // FIXME: Merge with NameTree#namePos ?
     val treePos = tree.pos
     if (treePos.isZeroExtent || tree.name.toTermName == nme.ERROR)
@@ -57,7 +57,7 @@ case class SourceNamedTree(tree: tpd.NameTree, source: SourceFile) extends Sourc
 }
 
 object SourceTree {
-  def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: Context): List[SourceTree] = {
+  def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: ContextRenamed): List[SourceTree] = {
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
         sym.sourceFile == null) // FIXME: We cannot deal with external projects yet
       Nil

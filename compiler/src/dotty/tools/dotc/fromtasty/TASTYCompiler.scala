@@ -15,7 +15,7 @@ class TASTYCompiler extends Compiler {
   override protected def picklerPhases: List[List[Phase]] =
     super.picklerPhases.map(_.filterNot(_.isInstanceOf[Pickler])) // No need to repickle
 
-  override def newRun(implicit ctx: Context): Run = {
+  override def newRun(implicit ctx: ContextRenamed): Run = {
     reset()
     new TASTYRun(this, ctx.addMode(Mode.ReadPositions))
   }

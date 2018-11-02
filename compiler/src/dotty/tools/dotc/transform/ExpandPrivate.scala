@@ -3,7 +3,7 @@ package transform
 
 import core._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import Contexts.Context
+import Contexts.ContextRenamed
 import Symbols._
 import Flags._
 import SymDenotations._
@@ -39,7 +39,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
 
   override def changesMembers: Boolean = true // the phase introduces new members with mangled names
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: ContextRenamed): Unit = {
     tree match {
       case t: DefDef =>
         val sym = t.symbol
@@ -57,7 +57,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
     }
   }
 
-  private def isVCPrivateParamAccessor(d: SymDenotation)(implicit ctx: Context) =
+  private def isVCPrivateParamAccessor(d: SymDenotation)(implicit ctx: ContextRenamed) =
     d.isTerm && d.is(PrivateParamAccessor) && isDerivedValueClass(d.owner)
 
   /** Make private terms accessed from different classes non-private.
@@ -65,7 +65,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
    *  If we change the scheme at one point to make static module class computations
    *  static members of the companion class, we should tighten the condition below.
    */
-  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
+  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: ContextRenamed) =
     if (isVCPrivateParamAccessor(d))
       d.ensureNotPrivate.installAfter(thisPhase)
     else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.lexicallyEnclosingClass) {
@@ -90,17 +90,17 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
+  override def transformIdent(tree: Ident)(implicit ctx: ContextRenamed): Ident = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Select = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: ContextRenamed): DefDef = {
     val sym = tree.symbol
     tree.rhs match {
       case Apply(sel @ Select(_: Super, _), _)

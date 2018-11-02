@@ -23,7 +23,7 @@ object PickledQuotes {
   import tpd._
 
   /** Pickle the tree of the quote into strings */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
+  def pickleQuote(tree: Tree)(implicit ctx: ContextRenamed): scala.runtime.quoted.Unpickler.Pickled = {
     if (ctx.reporter.hasErrors) Nil
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'(~x)` which should be optimized to `x`
@@ -33,11 +33,11 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
+  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: ContextRenamed): Tree = expr match {
     case expr: TastyExpr[_] =>
       val unpickled = unpickleExpr(expr)
       val force = new TreeTraverser {
-        def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+        def traverse(tree: tpd.Tree)(implicit ctx: ContextRenamed): Unit = traverseChildren(tree)
       }
       force.traverse(unpickled)
       unpickled
@@ -52,20 +52,20 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
+  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: ContextRenamed): Tree = expr match {
     case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
     case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
+  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: ContextRenamed): Tree = {
     val tastyBytes = TastyString.unpickle(expr.tasty)
     unpickle(tastyBytes, expr.args, isType = false)(ctx.addMode(Mode.ReadPositions))
   }
 
   /** Unpickle the tree contained in the TastyType */
-  private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
+  private def unpickleType(ttpe: TastyType[_])(implicit ctx: ContextRenamed): Tree = {
     val tastyBytes = TastyString.unpickle(ttpe.tasty)
     unpickle(tastyBytes, ttpe.args, isType = true)(ctx.addMode(Mode.ReadPositions))
   }
@@ -73,7 +73,7 @@ object PickledQuotes {
   // TASTY picklingtests/pos/quoteTest.scala
 
   /** Pickle tree into it's TASTY bytes s*/
-  private def pickle(tree: Tree)(implicit ctx: Context): Array[Byte] = {
+  private def pickle(tree: Tree)(implicit ctx: ContextRenamed): Array[Byte] = {
     val pickler = new TastyPickler(defn.RootClass)
     val treePkl = pickler.treePkl
     treePkl.pickle(tree :: Nil)
@@ -95,7 +95,7 @@ object PickledQuotes {
   }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
+  private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: ContextRenamed): Tree = {
     if (quotePickling ne noPrinter) {
       println(i"**** unpickling quote from TASTY")
       new TastyPrinter(bytes).printContents()
@@ -112,7 +112,7 @@ object PickledQuotes {
     tree
   }
 
-  private def classTagToTypeTree(ct: ClassTag[_])(implicit ctx: Context): TypeTree = {
+  private def classTagToTypeTree(ct: ClassTag[_])(implicit ctx: ContextRenamed): TypeTree = {
     val tpe = ct match {
       case ClassTag.Unit => defn.UnitType
       case ClassTag.Boolean => defn.BooleanType
@@ -127,7 +127,7 @@ object PickledQuotes {
     TypeTree(tpe)
   }
 
-  private def functionAppliedTo(f: Tree, x: Tree)(implicit ctx: Context): Tree = {
+  private def functionAppliedTo(f: Tree, x: Tree)(implicit ctx: ContextRenamed): Tree = {
     val x1 = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), x)
     def x1Ref() = ref(x1.symbol)
     def rec(f: Tree): Tree = f match {
@@ -148,7 +148,7 @@ object PickledQuotes {
     Block(x1 :: Nil, rec(f))
   }
 
-  private def classToType(clazz: Class[_])(implicit ctx: Context): Type = {
+  private def classToType(clazz: Class[_])(implicit ctx: ContextRenamed): Type = {
     if (clazz.isPrimitive) {
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
@@ -172,9 +172,9 @@ object PickledQuotes {
   }
 
   /** Make sure that the owner of this tree is `ctx.owner` */
-  private def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
+  private def healOwner(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
     val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
-      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] = {
+      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: ContextRenamed): Option[Symbol] = {
         if (x.isDefined) x
         else tree match {
           case tree: DefTree => Some(tree.symbol.owner)

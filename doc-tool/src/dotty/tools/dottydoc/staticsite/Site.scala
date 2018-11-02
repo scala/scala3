@@ -20,7 +20,7 @@ import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.util.SourceFile
 import model.Package
 import scala.io.{ Codec, Source }
@@ -52,7 +52,7 @@ case class Site(
     * @note files that are *not* considered static are files ending in a compilable
     *       extension.
     */
-  def staticAssets(implicit ctx: Context): Array[JFile] = {
+  def staticAssets(implicit ctx: ContextRenamed): Array[JFile] = {
     if (_staticAssets eq null) initFiles
     _staticAssets
   }
@@ -63,7 +63,7 @@ case class Site(
     *
     * @note files that are considered compilable end in `.md` or `.html`
     */
-  def compilableFiles(implicit ctx: Context): Array[JFile] = {
+  def compilableFiles(implicit ctx: ContextRenamed): Array[JFile] = {
     if (_compilableFiles eq null) initFiles
     _compilableFiles
   }
@@ -76,7 +76,7 @@ case class Site(
     *
     * where `ext` is either markdown or html.
     */
-  def blogposts(implicit ctx: Context): Array[JFile] = {
+  def blogposts(implicit ctx: ContextRenamed): Array[JFile] = {
     if (_blogposts eq null) initFiles
     _blogposts
   }
@@ -92,7 +92,7 @@ case class Site(
       .getOrElse(Sidebar.empty)
 
   private[this] var _blogInfo: Array[BlogPost] = _
-  protected def blogInfo(implicit ctx: Context): Array[BlogPost] = {
+  protected def blogInfo(implicit ctx: ContextRenamed): Array[BlogPost] = {
     if (_blogInfo eq null) {
       _blogInfo =
         blogposts
@@ -127,7 +127,7 @@ case class Site(
   }
 
   /** Copy static files to `outDir` */
-  def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: ContextRenamed): this.type =
     createOutput (outDir) {
       // Copy user-defined static assets
       staticAssets.foreach { asset =>
@@ -180,7 +180,7 @@ case class Site(
   }
 
   /* Creates output directories if allowed */
-  private def createOutput(outDir: JFile)(op: => Unit)(implicit ctx: Context): this.type = {
+  private def createOutput(outDir: JFile)(op: => Unit)(implicit ctx: ContextRenamed): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) ctx.docbase.error(s"couldn't create output folder: $outDir")
     else op
@@ -188,7 +188,7 @@ case class Site(
   }
 
   /** Generate HTML for the API documentation */
-  def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: ContextRenamed): this.type =
     createOutput(outDir) {
       def genDoc(e: model.Entity): Unit = {
         ctx.docbase.echo(s"Generating doc page for: ${e.path.mkString(".")}")
@@ -230,7 +230,7 @@ case class Site(
     }
 
   /** Generate HTML files from markdown and .html sources */
-  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: ContextRenamed): this.type =
     createOutput(outDir) {
       compilableFiles.foreach { asset =>
         val pathFromRoot = stripRoot(asset)
@@ -250,7 +250,7 @@ case class Site(
     }
 
   /** Generate blog from files in `blog/_posts` and output in `outDir` */
-  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: ContextRenamed): this.type =
     createOutput(outDir) {
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
@@ -275,7 +275,7 @@ case class Site(
     }
 
   /** Create directories and issue an error if could not */
-  private def mkdirs(path: Path)(implicit ctx: Context): path.type = {
+  private def mkdirs(path: Path)(implicit ctx: ContextRenamed): path.type = {
     val parent = path.getParent.toFile
 
     if (!parent.isDirectory && !parent.mkdirs())
@@ -302,7 +302,7 @@ case class Site(
   private[this] var _compilableFiles: Array[JFile] = _
   private[this] var _blogposts: Array[JFile] = _
 
-  private[this] def initFiles(implicit ctx: Context) = {
+  private[this] def initFiles(implicit ctx: ContextRenamed) = {
     // Split files between compilable and static assets
     def splitFiles(f: JFile, assets: ArrayBuffer[JFile], comp: ArrayBuffer[JFile]): Unit = {
       val name = f.getName
@@ -418,7 +418,7 @@ case class Site(
   /** Render a page to html, the resulting string is the result of the complete
     * expansion of the template with all its layouts and includes.
     */
-  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): Option[String] =
+  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: ContextRenamed): Option[String] =
     page.yaml.get("layout").flatMap(xs => layouts.get(xs.toString)) match {
       case Some(layout) if page.html.isDefined =>
         val newParams = page.params ++ params ++ Map("page" -> page.yaml) ++ Map("content" -> page.html.get)

@@ -37,14 +37,14 @@ class ReplCompiler extends Compiler {
     List(new PostTyper)
   )
 
-  def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
+  def newRun(initCtx: ContextRenamed, state: State): Run = new Run(this, initCtx) {
 
     /** Import previous runs and user defined imports */
-    override protected[this] def rootContext(implicit ctx: Context): Context = {
-      def importContext(imp: tpd.Import)(implicit ctx: Context) =
+    override protected[this] def rootContext(implicit ctx: ContextRenamed): ContextRenamed = {
+      def importContext(imp: tpd.Import)(implicit ctx: ContextRenamed) =
         ctx.importContext(imp, imp.symbol)
 
-      def importPreviousRun(id: Int)(implicit ctx: Context) = {
+      def importPreviousRun(id: Int)(implicit ctx: ContextRenamed) = {
         // we first import the wrapper object id
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
         val importInfo = ImportInfo.rootImport(() =>
@@ -73,7 +73,7 @@ class ReplCompiler extends Compiler {
   private def definitions(trees: List[untpd.Tree], state: State): Definitions = {
     import untpd._
 
-    implicit val ctx: Context = state.context
+    implicit val ctx: ContextRenamed = state.context
 
     var valIdx = state.valIndex
 
@@ -121,7 +121,7 @@ class ReplCompiler extends Compiler {
 
     assert(defs.stats.nonEmpty)
 
-    implicit val ctx: Context = defs.state.context
+    implicit val ctx: ContextRenamed = defs.state.context
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
@@ -164,7 +164,7 @@ class ReplCompiler extends Compiler {
     }
 
   def docOf(expr: String)(implicit state: State): Result[String] = {
-    implicit val ctx: Context = state.context
+    implicit val ctx: ContextRenamed = state.context
 
     /** Extract the "selected" symbol from `tree`.
      *
@@ -215,7 +215,7 @@ class ReplCompiler extends Compiler {
 
   final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
-    def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
+    def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: ContextRenamed): Result[untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
 
@@ -242,7 +242,7 @@ class ReplCompiler extends Compiler {
       }
     }
 
-    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
+    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: ContextRenamed): Result[tpd.ValDef] = {
       def error: Result[tpd.ValDef] =
         List(new messages.Error(s"Invalid scala expression",
           sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
@@ -260,7 +260,7 @@ class ReplCompiler extends Compiler {
 
 
     val src = new SourceFile("<typecheck>", expr)
-    implicit val ctx: Context = state.context.fresh
+    implicit val ctx: ContextRenamed = state.context.fresh
       .setReporter(newStoreReporter)
       .setSetting(state.context.settings.YstopAfter, List("frontend"))
 

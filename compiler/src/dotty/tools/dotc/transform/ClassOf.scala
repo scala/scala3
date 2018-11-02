@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import ast.tpd
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.Symbols.defn
 import MegaPhase._
 
@@ -18,7 +18,7 @@ class ClassOf extends MiniPhase {
 
   override def phaseName: String = "classOf"
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: ContextRenamed): Tree =
     if (tree.symbol eq defn.Predef_classOf) {
       val targ = tree.args.head.tpe
       clsOf(targ).ensureConforms(tree.tpe).withPos(tree.pos)

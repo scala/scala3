@@ -2,7 +2,7 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core._
 
-class TastyImpl(val rootContext: Contexts.Context)
+class TastyImpl(val rootContext: Contexts.ContextRenamed)
     extends scala.tasty.Tasty
     with TastyCoreImpl
     with CaseDefOpsImpl

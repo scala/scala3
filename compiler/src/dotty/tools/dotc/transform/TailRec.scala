@@ -4,7 +4,7 @@ package transform
 import ast.Trees._
 import ast.{TreeTypeMap, tpd}
 import core._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Decorators._
 import Symbols._
 import StdNames.nme
@@ -74,7 +74,7 @@ class TailRec extends MiniPhase {
 
   final val labelFlags: Flags.FlagSet = Flags.Synthetic | Flags.Label | Flags.Method
 
-  private def mkLabel(method: Symbol)(implicit ctx: Context): TermSymbol = {
+  private def mkLabel(method: Symbol)(implicit ctx: ContextRenamed): TermSymbol = {
     val name = TailLabelName.fresh()
 
     if (method.owner.isClass) {
@@ -91,7 +91,7 @@ class TailRec extends MiniPhase {
     else ctx.newSymbol(method, name.toTermName, labelFlags, method.info)
   }
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: ContextRenamed): tpd.Tree = {
     val sym = tree.symbol
     tree match {
       case dd@DefDef(name, Nil, vparams :: Nil, tpt, _)
@@ -186,7 +186,7 @@ class TailRec extends MiniPhase {
     private[this] var ctx: TailContext = yesTailContext
 
     /** Rewrite this tree to contain no tail recursive calls */
-    def transform(tree: Tree, nctx: TailContext)(implicit c: Context): Tree = {
+    def transform(tree: Tree, nctx: TailContext)(implicit c: ContextRenamed): Tree = {
       if (ctx == nctx) transform(tree)
       else {
         val saved = ctx
@@ -196,16 +196,16 @@ class TailRec extends MiniPhase {
       }
     }
 
-    def yesTailTransform(tree: Tree)(implicit c: Context): Tree =
+    def yesTailTransform(tree: Tree)(implicit c: ContextRenamed): Tree =
       transform(tree, yesTailContext)
 
-    def noTailTransform(tree: Tree)(implicit c: Context): Tree =
+    def noTailTransform(tree: Tree)(implicit c: ContextRenamed): Tree =
       transform(tree, noTailContext)
 
-    def noTailTransforms[Tr <: Tree](trees: List[Tr])(implicit c: Context): List[Tr] =
+    def noTailTransforms[Tr <: Tree](trees: List[Tr])(implicit c: ContextRenamed): List[Tr] =
       trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
 
-    override def transform(tree: Tree)(implicit c: Context): Tree = {
+    override def transform(tree: Tree)(implicit c: ContextRenamed): Tree = {
       /* Rewrite an Apply to be considered for tail call transformation. */
       def rewriteApply(tree: Apply): Tree = {
         val call = tree.fun

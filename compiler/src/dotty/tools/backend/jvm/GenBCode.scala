@@ -42,19 +42,19 @@ class GenBCode extends Phase {
 
   private[this] var myOutput: AbstractFile = _
 
-  private def outputDir(implicit ctx: Context): AbstractFile = {
+  private def outputDir(implicit ctx: ContextRenamed): AbstractFile = {
     if (myOutput eq null)
       myOutput = ctx.settings.outputDir.value
     myOutput
   }
 
-  def run(implicit ctx: Context): Unit = {
+  def run(implicit ctx: ContextRenamed): Unit = {
     new GenBCodePipeline(entryPoints.toList,
         new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] = {
     try super.runOn(units)
     finally myOutput match {
       case jar: JarArchive =>
@@ -68,7 +68,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: ContextRenamed) extends BCodeSyncAndTry {
 
   private[this] var tree: Tree = _
 

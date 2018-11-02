@@ -37,7 +37,7 @@ object Contexts {
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
+  private val (printerFnLoc,        store3) = store2.newLocation[ContextRenamed => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
   private val (freshNamesLoc,       store5) = store4.newLocation[FreshNameCreator](new FreshNameCreator.Default)
   private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
@@ -64,7 +64,7 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class Context extends Periods
+  abstract class ContextRenamed extends Periods
                             with Substituters
                             with TypeOps
                             with Phases
@@ -75,22 +75,22 @@ object Contexts {
                             with NamerContextOps
                             with Plugins
                             with Cloneable { thiscontext =>
-    implicit def ctx: Context = this
+    implicit def ctx: ContextRenamed = this
 
     /** The context base at the root */
     val base: ContextBase
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
-    def outersIterator: Iterator[Context] = new Iterator[Context] {
+    def outersIterator: Iterator[ContextRenamed] = new Iterator[ContextRenamed] {
       var current = thiscontext
       def hasNext = current != NoContext
       def next = { val c = current; current = current.outer; c }
     }
 
     /** The outer context */
-    private[this] var _outer: Context = _
-    protected def outer_=(outer: Context): Unit = _outer = outer
-    def outer: Context = _outer
+    private[this] var _outer: ContextRenamed = _
+    protected def outer_=(outer: ContextRenamed): Unit = _outer = outer
+    def outer: ContextRenamed = _outer
 
     /** The current context */
     private[this] var _period: Period = _
@@ -182,7 +182,7 @@ object Contexts {
     def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
 
     /** The current plain printer */
-    def printerFn: Context => Printer = store(printerFnLoc)
+    def printerFn: ContextRenamed => Printer = store(printerFnLoc)
 
     /** The current settings values */
     def settingsState: SettingsState = store(settingsStateLoc)
@@ -229,13 +229,13 @@ object Contexts {
       * phasedCtxs is array that uses phaseId's as indexes,
       * contexts are created only on request and cached in this array
       */
-    private[this] var phasedCtx: Context = _
-    private[this] var phasedCtxs: Array[Context] = _
+    private[this] var phasedCtx: ContextRenamed = _
+    private[this] var phasedCtxs: Array[ContextRenamed] = _
 
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
      */
-    final def withPhase(phaseId: PhaseId): Context =
+    final def withPhase(phaseId: PhaseId): ContextRenamed =
       if (this.phaseId == phaseId) this
       else if (phasedCtx.phaseId == phaseId) phasedCtx
       else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
@@ -243,19 +243,19 @@ object Contexts {
         val ctx1 = fresh.setPhase(phaseId)
         if (phasedCtx eq this) phasedCtx = ctx1
         else {
-          if (phasedCtxs == null) phasedCtxs = new Array[Context](base.phases.length)
+          if (phasedCtxs == null) phasedCtxs = new Array[ContextRenamed](base.phases.length)
           phasedCtxs(phaseId) = ctx1
         }
         ctx1
       }
 
-    final def withPhase(phase: Phase): Context =
+    final def withPhase(phase: Phase): ContextRenamed =
       withPhase(phase.id)
 
-    final def withPhaseNoLater(phase: Phase): Context =
+    final def withPhaseNoLater(phase: Phase): ContextRenamed =
       if (phase.exists && ctx.phase.id > phase.id) withPhase(phase) else ctx
 
-    final def withPhaseNoEarlier(phase: Phase): Context =
+    final def withPhaseNoEarlier(phase: Phase): ContextRenamed =
       if (phase.exists && ctx.phase.id < phase.id) withPhase(phase) else ctx
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
@@ -287,7 +287,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: Context => T): T = typerState.test(op)(this)
+    final def test[T](op: ContextRenamed => T): T = typerState.test(op)(this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -335,7 +335,7 @@ object Contexts {
      *    context see the constructor parameters instead, but then we'd need a final substitution step
      *    from constructor parameters to class parameter accessors.
      */
-    def superCallContext: Context = {
+    def superCallContext: ContextRenamed = {
       val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
@@ -348,7 +348,7 @@ object Contexts {
      *   - as outer context: The context enclosing the enclosing class context
      *   - as scope: The parameters of the auxiliary constructor.
      */
-    def thisCallArgContext: Context = {
+    def thisCallArgContext: ContextRenamed = {
       assert(owner.isClassConstructor)
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
@@ -365,7 +365,7 @@ object Contexts {
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
-    def exprContext(stat: Tree[_ >: Untyped], exprOwner: Symbol): Context =
+    def exprContext(stat: Tree[_ >: Untyped], exprOwner: Symbol): ContextRenamed =
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else ctx.fresh.setOwner(exprOwner)
@@ -398,7 +398,7 @@ object Contexts {
     def useColors: Boolean =
       base.settings.color.value == "always"
 
-    protected def init(outer: Context): this.type = {
+    protected def init(outer: ContextRenamed): this.type = {
       this.outer = outer
       this.implicitsCache = null
       this.phasedCtx = this
@@ -411,10 +411,10 @@ object Contexts {
     /** A fresh clone of this context. */
     def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
 
-    final def withOwner(owner: Symbol): Context =
+    final def withOwner(owner: Symbol): ContextRenamed =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
-    final def withProperty[T](key: Key[T], value: Option[T]): Context =
+    final def withProperty[T](key: Key[T], value: Option[T]): ContextRenamed =
       if (property(key) == value) this
       else value match {
         case Some(v) => fresh.setProperty(key, v)
@@ -422,7 +422,7 @@ object Contexts {
       }
 
     override def toString: String = {
-      def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
+      def iinfo(implicit ctx: ContextRenamed) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
       (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
     }
@@ -451,7 +451,7 @@ object Contexts {
     def uniques: util.HashSet[Type]                = base.uniques
     def nextId: Int                        = base.nextId
 
-    def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
+    def initialize()(implicit ctx: ContextRenamed): Unit = base.initialize()(ctx)
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -465,7 +465,7 @@ object Contexts {
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  abstract class FreshContext extends Context {
+  abstract class FreshContext extends ContextRenamed {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
@@ -482,14 +482,14 @@ object Contexts {
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
-    def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
+    def setTypeComparerFn(tcfn: ContextRenamed => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
     private def setStore(store: Store): this.type = { this.store = store; this }
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
-    def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
+    def setPrinterFn(printer: ContextRenamed => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = updateStore(compilationUnitLoc, compilationUnit)
     def setRun(run: Run): this.type = updateStore(runLoc, run)
@@ -526,13 +526,13 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
-  implicit class ModeChanges(val c: Context) extends AnyVal {
-    final def withModeBits(mode: Mode): Context =
+  implicit class ModeChanges(val c: ContextRenamed) extends AnyVal {
+    final def withModeBits(mode: Mode): ContextRenamed =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
-    final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
-    final def maskMode(mode: Mode): Context = withModeBits(c.mode & mode)
-    final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
+    final def addMode(mode: Mode): ContextRenamed = withModeBits(c.mode | mode)
+    final def maskMode(mode: Mode): ContextRenamed = withModeBits(c.mode & mode)
+    final def retractMode(mode: Mode): ContextRenamed = withModeBits(c.mode &~ mode)
   }
 
   implicit class FreshModeChanges(val c: FreshContext) extends AnyVal {
@@ -559,7 +559,7 @@ object Contexts {
     gadt = EmptyGADTMap
   }
 
-  @sharable object NoContext extends Context {
+  @sharable object NoContext extends ContextRenamed {
     val base: ContextBase = null
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
@@ -575,7 +575,7 @@ object Contexts {
     val settings: ScalaSettings = new ScalaSettings
 
     /** The initial context */
-    val initialCtx: Context = new InitialContext(this, settings)
+    val initialCtx: ContextRenamed = new InitialContext(this, settings)
 
     /** The platform, initialized by `initPlatform()`. */
     private[this] var _platform: Platform = _
@@ -589,11 +589,11 @@ object Contexts {
       _platform
     }
 
-    protected def newPlatform(implicit ctx: Context): Platform =
+    protected def newPlatform(implicit ctx: ContextRenamed): Platform =
       new JavaPlatform
 
     /** The loader that loads the members of _root_ */
-    def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
+    def rootLoader(root: TermSymbol)(implicit ctx: ContextRenamed): SymbolLoader = platform.rootLoader(root)
 
     // Set up some phases to get started */
     usePhases(List(SomePhase))
@@ -604,7 +604,7 @@ object Contexts {
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */
-    def initialize()(implicit ctx: Context): Unit = {
+    def initialize()(implicit ctx: ContextRenamed): Unit = {
       _platform = newPlatform
       definitions.init()
     }

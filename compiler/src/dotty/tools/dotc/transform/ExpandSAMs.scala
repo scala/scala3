@@ -28,10 +28,10 @@ class ExpandSAMs extends MiniPhase {
   import ast.tpd._
 
   /** Is the SAMType `cls` also a SAM under the rules of the platform? */
-  def isPlatformSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  def isPlatformSam(cls: ClassSymbol)(implicit ctx: ContextRenamed): Boolean =
     ctx.platform.isSam(cls)
 
-  override def transformBlock(tree: Block)(implicit ctx: Context): Tree = tree match {
+  override def transformBlock(tree: Block)(implicit ctx: ContextRenamed): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType =>
@@ -93,7 +93,7 @@ class ExpandSAMs extends MiniPhase {
    *  }
    *  ```
    */
-  private def toPartialFunction(tree: Block, tpe: Type)(implicit ctx: Context): Tree = {
+  private def toPartialFunction(tree: Block, tpe: Type)(implicit ctx: ContextRenamed): Tree = {
     /** An extractor for match, either contained in a block or standalone. */
     object PartialFunctionRHS {
       def unapply(tree: Tree): Option[Match] = tree match {
@@ -119,7 +119,7 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
         val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
 
-        def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(implicit ctx: Context) = {
+        def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(implicit ctx: ContextRenamed) = {
           val selector = tree.selector
           val selectorTpe = selector.tpe.widen
           val defaultSym = ctx.newSymbol(pfParam.owner, nme.WILDCARD, Synthetic, selectorTpe)
@@ -136,7 +136,7 @@ class ExpandSAMs extends MiniPhase {
               // And we need to update all references to 'param'
         }
 
-        def isDefinedAtRhs(paramRefss: List[List[Tree]])(implicit ctx: Context) = {
+        def isDefinedAtRhs(paramRefss: List[List[Tree]])(implicit ctx: ContextRenamed) = {
           val tru = Literal(Constant(true))
           def translateCase(cdef: CaseDef) =
             cpy.CaseDef(cdef)(body = tru).changeOwner(anonSym, isDefinedAtFn)
@@ -145,7 +145,7 @@ class ExpandSAMs extends MiniPhase {
           translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
         }
 
-        def applyOrElseRhs(paramRefss: List[List[Tree]])(implicit ctx: Context) = {
+        def applyOrElseRhs(paramRefss: List[List[Tree]])(implicit ctx: ContextRenamed) = {
           val List(paramRef, defaultRef) = paramRefss.head
           def translateCase(cdef: CaseDef) =
             cdef.changeOwner(anonSym, applyOrElseFn)
@@ -166,7 +166,7 @@ class ExpandSAMs extends MiniPhase {
     }
   }
 
-  private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Type = tpe.dealias match {
+  private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: ContextRenamed): Type = tpe.dealias match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
         ctx.error("Lambda does not define " + name, pos)

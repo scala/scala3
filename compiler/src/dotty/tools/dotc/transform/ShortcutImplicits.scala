@@ -65,25 +65,25 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
    *  A fresh map is created for each unit.
    */
   private var DirectMeth: Store.Location[MutableSymbolMap[Symbol]] = _
-  private def directMeth(implicit ctx: Context) = ctx.store(DirectMeth)
+  private def directMeth(implicit ctx: ContextRenamed) = ctx.store(DirectMeth)
 
   override def initContext(ctx: FreshContext): Unit =
     DirectMeth = ctx.addLocation[MutableSymbolMap[Symbol]]()
 
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context =
+  override def prepareForUnit(tree: Tree)(implicit ctx: ContextRenamed): ContextRenamed =
     ctx.fresh.updateStore(DirectMeth, newMutableSymbolMap[Symbol])
 
 
   /** The direct method `m$direct` that accompanies the given method `m`.
     *  Create one if it does not exist already.
     */
-  private def directMethod(sym: Symbol)(implicit ctx: Context): Symbol =
+  private def directMethod(sym: Symbol)(implicit ctx: ContextRenamed): Symbol =
     if (sym.owner.isClass) shortcutMethod(sym, thisPhase)
     else directMeth.getOrElseUpdate(sym, newShortcutMethod(sym))
 
   /** Transform `qual.apply` occurrences according to rewrite rule (2) above */
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Tree =
     if (tree.name == nme.apply &&
         defn.isImplicitFunctionType(tree.qualifier.tpe.widen) &&
         needsImplicitShortcut(tree.qualifier.symbol)) {
@@ -99,7 +99,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     } else tree
 
   /** Transform methods with implicit function type result according to rewrite rule (1) above */
-  override def transformDefDef(mdef: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(mdef: DefDef)(implicit ctx: ContextRenamed): Tree = {
     val original = mdef.symbol
     if (needsImplicitShortcut(original)) {
       val direct = directMethod(original)
@@ -159,7 +159,7 @@ object ShortcutImplicits {
     *  to be only targets of monomorphic calls because they are effectively
     *  final and don't override anything.
     */
-  def needsImplicitShortcut(sym: Symbol)(implicit ctx: Context): Boolean =
+  def needsImplicitShortcut(sym: Symbol)(implicit ctx: ContextRenamed): Boolean =
     sym.is(Method, butNot = Accessor) &&
     defn.isImplicitFunctionType(sym.info.finalResultType) &&
     defn.functionArity(sym.info.finalResultType) > 0 &&
@@ -169,7 +169,7 @@ object ShortcutImplicits {
   /** @pre    The type's final result type is an implicit function type `implicit Ts => R`.
     * @return The type of the `apply` member of `implicit Ts => R`.
     */
-  private def directInfo(info: Type)(implicit ctx: Context): Type = info match {
+  private def directInfo(info: Type)(implicit ctx: ContextRenamed): Type = info match {
     case info: PolyType   => info.derivedLambdaType(resType = directInfo(info.resultType))
     case info: MethodType => info.derivedLambdaType(resType = directInfo(info.resultType))
     case info: ExprType   => directInfo(info.resultType)
@@ -177,7 +177,7 @@ object ShortcutImplicits {
   }
 
   /** A new `m$direct` method to accompany the given method `m` */
-  private def newShortcutMethod(sym: Symbol)(implicit ctx: Context): Symbol = {
+  private def newShortcutMethod(sym: Symbol)(implicit ctx: ContextRenamed): Symbol = {
     val direct = sym.copy(
       name = DirectMethodName(sym.name.asTermName).asInstanceOf[sym.ThisName],
       flags = sym.flags | Synthetic,
@@ -187,12 +187,12 @@ object ShortcutImplicits {
     direct
   }
 
-  def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: Context): Symbol =
+  def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: ContextRenamed): Symbol =
     sym.owner.info.decl(DirectMethodName(sym.name.asTermName))
       .suchThat(_.info matches directInfo(sym.info)).symbol
       .orElse(newShortcutMethod(sym).enteredAfter(phase))
 
-  def isImplicitShortcut(sym: Symbol)(implicit ctx: Context): Boolean = sym.name.is(DirectMethodName)
+  def isImplicitShortcut(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = sym.name.is(DirectMethodName)
 }
 
 

@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package ast
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.Decorators._
 import util.Positions._
 import Trees.{MemberDef, DefTree, WithLazyField}
@@ -12,7 +12,7 @@ object NavigateAST {
   /** The untyped tree corresponding to typed tree `tree` in the compilation
    *  unit specified by `ctx`
    */
-  def toUntyped(tree: tpd.Tree)(implicit ctx: Context): untpd.Tree =
+  def toUntyped(tree: tpd.Tree)(implicit ctx: ContextRenamed): untpd.Tree =
     untypedPath(tree, exactMatch = true) match {
       case (utree: untpd.Tree) :: _ =>
         utree
@@ -36,7 +36,7 @@ object NavigateAST {
    *  defined and nothing else. So we look instead for an untyped tree approximating the
    *  envelope of the definition, and declare success if we find another DefTree.
    */
-  def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(implicit ctx: Context): List[Positioned] =
+  def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(implicit ctx: ContextRenamed): List[Positioned] =
     tree match {
       case tree: MemberDef[_] =>
         untypedPath(tree.pos) match {
@@ -54,7 +54,7 @@ object NavigateAST {
   /** The reverse part of the untyped root of the compilation unit of `ctx` to
    *  position `pos`.
    */
-  def untypedPath(pos: Position)(implicit ctx: Context): List[Positioned] =
+  def untypedPath(pos: Position)(implicit ctx: ContextRenamed): List[Positioned] =
     pathTo(pos, ctx.compilationUnit.untpdTree)
 
 
@@ -67,7 +67,7 @@ object NavigateAST {
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(pos: Position, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
+  def pathTo(pos: Position, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: ContextRenamed): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       while (it.hasNext) {
         val path1 = it.next() match {

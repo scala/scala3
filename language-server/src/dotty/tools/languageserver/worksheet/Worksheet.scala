@@ -1,7 +1,7 @@
 package dotty.tools.languageserver.worksheet
 
 import dotty.tools.dotc.ast.tpd.{DefTree, Template, Tree, TypeDef}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.interactive.SourceTree
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
@@ -24,7 +24,7 @@ object Worksheet {
           treeLock: Object,
           sendMessage: (Int, String) => Unit,
           cancelChecker: CancelChecker)(
-    implicit ctx: Context): Unit = {
+    implicit ctx: ContextRenamed): Unit = {
     // For now, don't try to run multiple evaluators in parallel, this would require
     // changes to the logic of Evaluator.get among other things.
     Evaluator.synchronized {

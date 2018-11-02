@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -23,11 +23,11 @@ final class JLineTerminal extends java.io.Closeable {
     .build()
   private val history = new DefaultHistory
 
-  private def blue(str: String)(implicit ctx: Context) =
+  private def blue(str: String)(implicit ctx: ContextRenamed) =
     if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
     else str
-  private def prompt(implicit ctx: Context)        = blue("scala> ")
-  private def newLinePrompt(implicit ctx: Context) = blue("     | ")
+  private def prompt(implicit ctx: ContextRenamed)        = blue("scala> ")
+  private def newLinePrompt(implicit ctx: ContextRenamed) = blue("     | ")
 
   /** Blockingly read line from `System.in`
    *
@@ -44,7 +44,7 @@ final class JLineTerminal extends java.io.Closeable {
    */
   def readLine(
     completer: Completer // provide auto-completions
-  )(implicit ctx: Context): String = {
+  )(implicit ctx: ContextRenamed): String = {
     import LineReader.Option._
     import LineReader._
     val userHome = System.getProperty("user.home")
@@ -71,7 +71,7 @@ final class JLineTerminal extends java.io.Closeable {
   def close(): Unit = terminal.close()
 
   /** Provide syntax highlighting */
-  private class Highlighter(implicit ctx: Context) extends reader.Highlighter {
+  private class Highlighter(implicit ctx: ContextRenamed) extends reader.Highlighter {
     def highlight(reader: LineReader, buffer: String): AttributedString = {
       val highlighted = SyntaxHighlighting.highlight(buffer)
       AttributedString.fromAnsi(highlighted)
@@ -79,7 +79,7 @@ final class JLineTerminal extends java.io.Closeable {
   }
 
   /** Provide multi-line editing support */
-  private class Parser(implicit ctx: Context) extends reader.Parser {
+  private class Parser(implicit ctx: ContextRenamed) extends reader.Parser {
 
     /**
      * @param cursor     The cursor position within the line

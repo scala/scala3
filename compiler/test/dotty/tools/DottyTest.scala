@@ -21,7 +21,7 @@ trait DottyTest extends ContextEscapeDetection {
 
   dotc.parsing.Scanners // initialize keywords
 
-  implicit var ctx: Context = initialCtx
+  implicit var ctx: ContextRenamed = initialCtx
 
   protected def initialCtx: FreshContext = {
     val base = new ContextBase {}
@@ -34,7 +34,7 @@ trait DottyTest extends ContextEscapeDetection {
     ctx
   }
 
-  override def getCtx: Context = ctx
+  override def getCtx: ContextRenamed = ctx
   override def clearCtx() = {
     ctx = null
   }
@@ -45,7 +45,7 @@ trait DottyTest extends ContextEscapeDetection {
     fc.setProperty(ContextDoc, new ContextDocstrings)
   }
 
-  private def compilerWithChecker(phase: String)(assertion: (tpd.Tree, Context) => Unit) = new Compiler {
+  private def compilerWithChecker(phase: String)(assertion: (tpd.Tree, ContextRenamed) => Unit) = new Compiler {
     override def phases = {
       val allPhases = super.phases
       val targetPhase = allPhases.flatten.find(p => p.phaseName == phase).get
@@ -53,7 +53,7 @@ trait DottyTest extends ContextEscapeDetection {
       val lastGroup = allPhases.find(x => x.contains(targetPhase)).get.takeWhile(x => !(x eq targetPhase))
       val checker = new Phase {
         def phaseName = "assertionChecker"
-        override def run(implicit ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)
+        override def run(implicit ctx: ContextRenamed): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)
       }
       val lastGroupAppended = List(lastGroup ::: targetPhase :: Nil)
 
@@ -61,26 +61,26 @@ trait DottyTest extends ContextEscapeDetection {
     }
   }
 
-  def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, Context) => Unit): Context = {
+  def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, ContextRenamed) => Unit): ContextRenamed = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     val run = c.newRun
     run.compile(source)
     run.runContext
   }
 
-  def checkCompile(checkAfterPhase: String, sources: List[String])(assertion: (tpd.Tree, Context) => Unit): Context = {
+  def checkCompile(checkAfterPhase: String, sources: List[String])(assertion: (tpd.Tree, ContextRenamed) => Unit): ContextRenamed = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     val run = c.newRun
     run.compile(sources)
     run.runContext
   }
 
-  def checkTypes(source: String, typeStrings: String*)(assertion: (List[Type], Context) => Unit): Unit =
+  def checkTypes(source: String, typeStrings: String*)(assertion: (List[Type], ContextRenamed) => Unit): Unit =
     checkTypes(source, List(typeStrings.toList)) { (tpess, ctx) => (tpess: @unchecked) match {
       case List(tpes) => assertion(tpes, ctx)
     }}
 
-  def checkTypes(source: String, typeStringss: List[List[String]])(assertion: (List[List[Type]], Context) => Unit): Unit = {
+  def checkTypes(source: String, typeStringss: List[List[String]])(assertion: (List[List[Type]], ContextRenamed) => Unit): Unit = {
     val dummyName = "x_x_x"
     val vals = typeStringss.flatten.zipWithIndex.map{case (s, x)=> s"val ${dummyName}$x: $s = ???"}.mkString("\n")
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"

@@ -30,14 +30,14 @@ object TypeApplications {
 
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
-  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
+  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: ContextRenamed): Boolean =
     varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
 
   /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
    *  This is only the case of `tparams1` and `tparams2` have the same length.
    */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
+  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: ContextRenamed): Boolean =
     tparams1.corresponds(tparams2)(varianceConforms)
 
   /** Extractor for
@@ -50,12 +50,12 @@ object TypeApplications {
    *  @param tycon     C
    */
   object EtaExpansion {
-    def apply(tycon: Type)(implicit ctx: Context): Type = {
+    def apply(tycon: Type)(implicit ctx: ContextRenamed): Type = {
       assert(tycon.typeParams.nonEmpty, tycon)
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
-    def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
+    def unapply(tp: Type)(implicit ctx: ContextRenamed): Option[TypeRef] = tp match {
       case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
       case _ => None
     }
@@ -63,7 +63,7 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
+  def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: ContextRenamed): List[Type] =
     if (tparams.isEmpty) args
     else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramInfoOrCompleter))
 
@@ -102,7 +102,7 @@ object TypeApplications {
    *  result type. Using this mode, we can guarantee that `appliedTo` will never
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
+  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: ContextRenamed) extends TypeMap {
     private[this] var available = (0 until args.length).toSet
     var allReplaced: Boolean = true
     def hasWildcardArg(p: TypeParamRef): Boolean =
@@ -159,7 +159,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a refinement type, the type parameters of its parent, dropping
    *  any type parameter that is-rebound by the refinement.
    */
-  final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
+  final def typeParams(implicit ctx: ContextRenamed): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
     def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
       case prefix: ThisType => prefix.cls `eq` tycon.owner
       case NoPrefix => true
@@ -195,11 +195,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
-  final def hkTypeParams(implicit ctx: Context): List[TypeParamInfo] =
+  final def hkTypeParams(implicit ctx: ContextRenamed): List[TypeParamInfo] =
     if (isLambdaSub) typeParams else Nil
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
-  final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = typeParams match {
+  final def typeParamSymbols(implicit ctx: ContextRenamed): List[TypeSymbol] = typeParams match {
     case (_: Symbol) :: _ =>
       assert(typeParams.forall(_.isInstanceOf[Symbol]))
       typeParams.asInstanceOf[List[TypeSymbol]]
@@ -207,16 +207,16 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Is self type bounded by a type lambda or AnyKind? */
-  def isLambdaSub(implicit ctx: Context): Boolean = hkResult.exists
+  def isLambdaSub(implicit ctx: ContextRenamed): Boolean = hkResult.exists
 
   /** Is self type of kind "*"? */
-  def hasSimpleKind(implicit ctx: Context): Boolean =
+  def hasSimpleKind(implicit ctx: ContextRenamed): Boolean =
     typeParams.isEmpty && !self.hasAnyKind
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
    */
-  def hkResult(implicit ctx: Context): Type = self.dealias match {
+  def hkResult(implicit ctx: ContextRenamed): Type = self.dealias match {
     case self: TypeRef =>
       if (self.symbol == defn.AnyKindClass) self else self.info.hkResult
     case self: AppliedType =>
@@ -235,7 +235,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Do self and other have the same kinds (not counting bounds and variances)?
    *  Note: An any-kinded type "has the same kind" as any other type.
    */
-  def hasSameKindAs(other: Type)(implicit ctx: Context): Boolean = {
+  def hasSameKindAs(other: Type)(implicit ctx: ContextRenamed): Boolean = {
     def isAnyKind(tp: Type) = tp match {
       case tp: TypeRef => tp.symbol == defn.AnyKindClass
       case _ => false
@@ -253,7 +253,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Dealias type if it can be done without forcing the TypeRef's info */
-  def safeDealias(implicit ctx: Context): Type = self match {
+  def safeDealias(implicit ctx: ContextRenamed): Type = self match {
     case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>
       self.superType.stripTypeVar.safeDealias
     case _ =>
@@ -263,18 +263,18 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
+  def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: ContextRenamed): Type = {
     val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
     HKTypeLambda.fromParams(tparamsToUse, self.appliedTo(tparams.map(_.typeRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
   /** If self is not lambda-bound, eta expand it. */
-  def ensureLambdaSub(implicit ctx: Context): Type =
+  def ensureLambdaSub(implicit ctx: ContextRenamed): Type =
     if (isLambdaSub) self else EtaExpansion(self)
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
-  def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type = {
+  def EtaExpandIfHK(bound: Type)(implicit ctx: ContextRenamed): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
@@ -315,7 +315,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   GenericCompanion only expects a non-variant CC, the fact that GenTraversable
    *   is covariant is irrelevant, so can be ignored.
    */
-  def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = {
+  def adaptHkVariances(bound: Type)(implicit ctx: ContextRenamed): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else {
@@ -348,7 +348,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param  self   = `T`
    *  @param  args   = `U1,...,Un`
    */
-  final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
+  final def appliedTo(args: List[Type])(implicit ctx: ContextRenamed): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
@@ -408,10 +408,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
-  final def appliedTo(arg1: Type, arg2: Type)(implicit ctx: Context): Type = appliedTo(arg1 :: arg2 :: Nil)
+  final def appliedTo(arg: Type)(implicit ctx: ContextRenamed): Type = appliedTo(arg :: Nil)
+  final def appliedTo(arg1: Type, arg2: Type)(implicit ctx: ContextRenamed): Type = appliedTo(arg1 :: arg2 :: Nil)
 
-  final def applyIfParameterized(args: List[Type])(implicit ctx: Context): Type =
+  final def applyIfParameterized(args: List[Type])(implicit ctx: ContextRenamed): Type =
     if (typeParams.nonEmpty) appliedTo(args) else self
 
   /** A cycle-safe version of `appliedTo` where computing type parameters do not force
@@ -419,7 +419,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
-  final def safeAppliedTo(args: List[Type])(implicit ctx: Context): Type = self match {
+  final def safeAppliedTo(args: List[Type])(implicit ctx: ContextRenamed): Type = self match {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
       AppliedType(self, args)
     case _ =>
@@ -430,7 +430,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  A (possible lambda abstracted) match type is turned into an abstract type.
    *  Every other type is turned into a type alias
    */
-  final def toBounds(implicit ctx: Context): TypeBounds = self match {
+  final def toBounds(implicit ctx: ContextRenamed): TypeBounds = self match {
     case self: TypeBounds => self // this can happen for wildcard args
     case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
@@ -439,7 +439,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
    */
-  def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type = self match {
+  def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: ContextRenamed): Type = self match {
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
@@ -450,7 +450,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If this is repeated parameter type, its underlying Seq type,
    *  or, if isJava is true, Array type, else the type itself.
    */
-  def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
+  def underlyingIfRepeated(isJava: Boolean)(implicit ctx: ContextRenamed): Type =
     if (self.isRepeatedParam) {
       val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
       translateParameterized(defn.RepeatedParamClass, seqClass)
@@ -461,37 +461,37 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(implicit ctx: Context): List[Type] = self.stripTypeVar.stripAnnots match {
+  final def argInfos(implicit ctx: ContextRenamed): List[Type] = self.stripTypeVar.stripAnnots match {
     case AppliedType(tycon, args) => args
     case _ => Nil
   }
 
   /** Argument types where existential types in arguments are disallowed */
-  def argTypes(implicit ctx: Context): List[Type] = argInfos mapConserve noBounds
+  def argTypes(implicit ctx: ContextRenamed): List[Type] = argInfos mapConserve noBounds
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
-  def argTypesLo(implicit ctx: Context): List[Type] = argInfos.mapConserve(_.loBound)
+  def argTypesLo(implicit ctx: ContextRenamed): List[Type] = argInfos.mapConserve(_.loBound)
 
   /** Argument types where existential types in arguments are approximated by their upper bound  */
-  def argTypesHi(implicit ctx: Context): List[Type] = argInfos.mapConserve(_.hiBound)
+  def argTypesHi(implicit ctx: ContextRenamed): List[Type] = argInfos.mapConserve(_.hiBound)
 
   /** If this is the image of a type argument; recover the type argument,
    *  otherwise NoType.
    */
-  final def argInfo(implicit ctx: Context): Type = self match {
+  final def argInfo(implicit ctx: ContextRenamed): Type = self match {
     case self: TypeAlias => self.alias
     case self: TypeBounds => self
     case _ => NoType
   }
 
   /** If this is a type alias, its underlying type, otherwise the type itself */
-  def dropAlias(implicit ctx: Context): Type = self match {
+  def dropAlias(implicit ctx: ContextRenamed): Type = self match {
     case TypeAlias(alias) => alias
     case _ => self
   }
 
   /** The element type of a sequence or array */
-  def elemType(implicit ctx: Context): Type = self match {
+  def elemType(implicit ctx: ContextRenamed): Type = self match {
     case defn.ArrayOf(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
     case _ => self.baseType(defn.SeqClass).argInfos.headOption.getOrElse(NoType)

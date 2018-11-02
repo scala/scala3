@@ -47,7 +47,7 @@ object Definitions {
 class Definitions {
   import Definitions._
 
-  private implicit var ctx: Context = _
+  private implicit var ctx: ContextRenamed = _
 
   private def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
     ctx.newSymbol(owner, name, flags | Permanent, info)
@@ -72,7 +72,7 @@ class Definitions {
   // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
   private def enterSpecialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
     val completer = new LazyType {
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      def complete(denot: SymDenotation)(implicit ctx: ContextRenamed): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
@@ -121,7 +121,7 @@ class Definitions {
    */
   def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
-      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      def complete(denot: SymDenotation)(implicit ctx: ContextRenamed): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         val arity = name.functionArity
@@ -163,7 +163,7 @@ class Definitions {
     val info =
       if (useCompleter)
         new LazyType {
-          def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+          def complete(denot: SymDenotation)(implicit ctx: ContextRenamed): Unit = {
             denot.info = ptype
           }
         }
@@ -215,16 +215,16 @@ class Definitions {
   // fundamental modules
   lazy val SysPackage: TermSymbol = ctx.requiredModule("scala.sys.package")
     lazy val Sys_errorR: TermRef = SysPackage.moduleClass.requiredMethodRef(nme.error)
-    def Sys_error(implicit ctx: Context): Symbol = Sys_errorR.symbol
+    def Sys_error(implicit ctx: ContextRenamed): Symbol = Sys_errorR.symbol
 
   lazy val TypelevelPackageObjectRef: TermRef = ctx.requiredModuleRef("scala.typelevel.package")
   lazy val TypelevelPackageObject: Symbol = TypelevelPackageObjectRef.symbol.moduleClass
     lazy val Typelevel_errorR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef(nme.error)
-    def Typelevel_error(implicit ctx: Context): Symbol = Typelevel_errorR.symbol
+    def Typelevel_error(implicit ctx: ContextRenamed): Symbol = Typelevel_errorR.symbol
     lazy val Typelevel_constValueR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValue")
-    def Typelevel_constValue(implicit ctx: Context): Symbol = Typelevel_constValueR.symbol
+    def Typelevel_constValue(implicit ctx: ContextRenamed): Symbol = Typelevel_constValueR.symbol
     lazy val Typelevel_constValueOptR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValueOpt")
-    def Typelevel_constValueOpt(implicit ctx: Context): Symbol = Typelevel_constValueOptR.symbol
+    def Typelevel_constValueOpt(implicit ctx: ContextRenamed): Symbol = Typelevel_constValueOptR.symbol
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -234,7 +234,7 @@ class Definitions {
    *  members at runtime.
    */
   lazy val ScalaShadowingPackageVal: TermSymbol = ctx.requiredPackage(nme.scalaShadowing)
-  def ScalaShadowingPackageClass(implicit ctx: Context): ClassSymbol = ScalaShadowingPackageVal.moduleClass.asClass
+  def ScalaShadowingPackageClass(implicit ctx: ContextRenamed): ClassSymbol = ScalaShadowingPackageVal.moduleClass.asClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -342,31 +342,31 @@ class Definitions {
   lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
 
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
-  def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
+  def ScalaPredefModule(implicit ctx: ContextRenamed): Symbol = ScalaPredefModuleRef.symbol
 
     lazy val Predef_ConformsR: TypeRef = ScalaPredefModule.requiredClass("<:<").typeRef
-    def Predef_Conforms(implicit ctx: Context): Symbol = Predef_ConformsR.symbol
+    def Predef_Conforms(implicit ctx: ContextRenamed): Symbol = Predef_ConformsR.symbol
     lazy val Predef_conformsR: TermRef = ScalaPredefModule.requiredMethodRef(nme.conforms_)
-    def Predef_conforms(implicit ctx: Context): Symbol = Predef_conformsR.symbol
+    def Predef_conforms(implicit ctx: ContextRenamed): Symbol = Predef_conformsR.symbol
     lazy val Predef_classOfR: TermRef = ScalaPredefModule.requiredMethodRef(nme.classOf)
-    def Predef_classOf(implicit ctx: Context): Symbol = Predef_classOfR.symbol
+    def Predef_classOf(implicit ctx: ContextRenamed): Symbol = Predef_classOfR.symbol
     lazy val Predef_undefinedR: TermRef = ScalaPredefModule.requiredMethodRef(nme.???)
-    def Predef_undefined(implicit ctx: Context): Symbol = Predef_undefinedR.symbol
+    def Predef_undefined(implicit ctx: ContextRenamed): Symbol = Predef_undefinedR.symbol
 
   lazy val ScalaRuntimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
-  def ScalaRuntimeModule(implicit ctx: Context): Symbol = ScalaRuntimeModuleRef.symbol
-  def ScalaRuntimeClass(implicit ctx: Context): ClassSymbol = ScalaRuntimeModule.moduleClass.asClass
+  def ScalaRuntimeModule(implicit ctx: ContextRenamed): Symbol = ScalaRuntimeModuleRef.symbol
+  def ScalaRuntimeClass(implicit ctx: ContextRenamed): ClassSymbol = ScalaRuntimeModule.moduleClass.asClass
 
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
-    def ScalaRuntime_dropR(implicit ctx: Context): TermRef = runtimeMethodRef(nme.drop)
-    def ScalaRuntime_drop(implicit ctx: Context): Symbol = ScalaRuntime_dropR.symbol
+    def ScalaRuntime_dropR(implicit ctx: ContextRenamed): TermRef = runtimeMethodRef(nme.drop)
+    def ScalaRuntime_drop(implicit ctx: ContextRenamed): Symbol = ScalaRuntime_dropR.symbol
 
   lazy val BoxesRunTimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.BoxesRunTime")
-  def BoxesRunTimeModule(implicit ctx: Context): Symbol = BoxesRunTimeModuleRef.symbol
-  def BoxesRunTimeClass(implicit ctx: Context): ClassSymbol = BoxesRunTimeModule.moduleClass.asClass
+  def BoxesRunTimeModule(implicit ctx: ContextRenamed): Symbol = BoxesRunTimeModuleRef.symbol
+  def BoxesRunTimeClass(implicit ctx: ContextRenamed): ClassSymbol = BoxesRunTimeModule.moduleClass.asClass
   lazy val ScalaStaticsModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Statics")
-  def ScalaStaticsModule(implicit ctx: Context): Symbol = ScalaStaticsModuleRef.symbol
-  def ScalaStaticsClass(implicit ctx: Context): ClassSymbol = ScalaStaticsModule.moduleClass.asClass
+  def ScalaStaticsModule(implicit ctx: ContextRenamed): Symbol = ScalaStaticsModuleRef.symbol
+  def ScalaStaticsClass(implicit ctx: ContextRenamed): ClassSymbol = ScalaStaticsModule.moduleClass.asClass
 
     def staticsMethodRef(name: PreName): TermRef = ScalaStaticsModule.requiredMethodRef(name)
     def staticsMethod(name: PreName): TermSymbol = ScalaStaticsModule.requiredMethod(name)
@@ -382,15 +382,15 @@ class Definitions {
   }
   private[this] var myDottyPredefModuleRef: TermRef = _
 
-  def DottyPredefModule(implicit ctx: Context): Symbol = DottyPredefModuleRef.symbol
+  def DottyPredefModule(implicit ctx: ContextRenamed): Symbol = DottyPredefModuleRef.symbol
 
     lazy val Predef_ImplicitConverterR: TypeRef = DottyPredefModule.requiredClass("ImplicitConverter").typeRef
-    def Predef_ImplicitConverter(implicit ctx: Context): Symbol = Predef_ImplicitConverterR.symbol
+    def Predef_ImplicitConverter(implicit ctx: ContextRenamed): Symbol = Predef_ImplicitConverterR.symbol
 
   lazy val DottyArraysModuleRef: TermRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
-  def DottyArraysModule(implicit ctx: Context): Symbol = DottyArraysModuleRef.symbol
-    def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
-    def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
+  def DottyArraysModule(implicit ctx: ContextRenamed): Symbol = DottyArraysModuleRef.symbol
+    def newGenericArrayMethod(implicit ctx: ContextRenamed): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
+    def newArrayMethod(implicit ctx: ContextRenamed): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   // TODO: Remove once we drop support for 2.12 standard library
   private[this] lazy val isNewCollections = ctx.base.staticRef("scala.collection.IterableOnce".toTypeName).exists
@@ -404,7 +404,7 @@ class Definitions {
   })
 
   lazy val NilModuleRef: TermRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
-  def NilModule(implicit ctx: Context): Symbol = NilModuleRef.symbol
+  def NilModule(implicit ctx: ContextRenamed): Symbol = NilModuleRef.symbol
 
   lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
@@ -417,41 +417,41 @@ class Definitions {
   lazy val SeqType: TypeRef =
     if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
     else ctx.requiredClassRef("scala.collection.Seq")
-  def SeqClass(implicit ctx: Context): ClassSymbol = SeqType.symbol.asClass
+  def SeqClass(implicit ctx: ContextRenamed): ClassSymbol = SeqType.symbol.asClass
     lazy val Seq_applyR: TermRef = SeqClass.requiredMethodRef(nme.apply)
-    def Seq_apply(implicit ctx: Context): Symbol = Seq_applyR.symbol
+    def Seq_apply(implicit ctx: ContextRenamed): Symbol = Seq_applyR.symbol
     lazy val Seq_headR: TermRef = SeqClass.requiredMethodRef(nme.head)
-    def Seq_head(implicit ctx: Context): Symbol = Seq_headR.symbol
+    def Seq_head(implicit ctx: ContextRenamed): Symbol = Seq_headR.symbol
     lazy val Seq_dropR: TermRef = SeqClass.requiredMethodRef(nme.drop)
-    def Seq_drop(implicit ctx: Context): Symbol = Seq_dropR.symbol
+    def Seq_drop(implicit ctx: ContextRenamed): Symbol = Seq_dropR.symbol
     lazy val Seq_lengthCompareR: TermRef = SeqClass.requiredMethodRef(nme.lengthCompare)
-    def Seq_lengthCompare(implicit ctx: Context): Symbol = Seq_lengthCompareR.symbol
+    def Seq_lengthCompare(implicit ctx: ContextRenamed): Symbol = Seq_lengthCompareR.symbol
     lazy val Seq_lengthR: TermRef = SeqClass.requiredMethodRef(nme.length)
-    def Seq_length(implicit ctx: Context): Symbol = Seq_lengthR.symbol
+    def Seq_length(implicit ctx: ContextRenamed): Symbol = Seq_lengthR.symbol
     lazy val Seq_toSeqR: TermRef = SeqClass.requiredMethodRef(nme.toSeq)
-    def Seq_toSeq(implicit ctx: Context): Symbol = Seq_toSeqR.symbol
+    def Seq_toSeq(implicit ctx: ContextRenamed): Symbol = Seq_toSeqR.symbol
 
   lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
-  def ArrayClass(implicit ctx: Context): ClassSymbol = ArrayType.symbol.asClass
+  def ArrayClass(implicit ctx: ContextRenamed): ClassSymbol = ArrayType.symbol.asClass
     lazy val Array_applyR: TermRef                 = ArrayClass.requiredMethodRef(nme.apply)
-    def Array_apply(implicit ctx: Context): Symbol = Array_applyR.symbol
+    def Array_apply(implicit ctx: ContextRenamed): Symbol = Array_applyR.symbol
     lazy val Array_updateR: TermRef                = ArrayClass.requiredMethodRef(nme.update)
-    def Array_update(implicit ctx: Context): Symbol = Array_updateR.symbol
+    def Array_update(implicit ctx: ContextRenamed): Symbol = Array_updateR.symbol
     lazy val Array_lengthR: TermRef                = ArrayClass.requiredMethodRef(nme.length)
-    def Array_length(implicit ctx: Context): Symbol = Array_lengthR.symbol
+    def Array_length(implicit ctx: ContextRenamed): Symbol = Array_lengthR.symbol
     lazy val Array_cloneR: TermRef                 = ArrayClass.requiredMethodRef(nme.clone_)
-    def Array_clone(implicit ctx: Context): Symbol = Array_cloneR.symbol
+    def Array_clone(implicit ctx: ContextRenamed): Symbol = Array_cloneR.symbol
     lazy val ArrayConstructorR: TermRef            = ArrayClass.requiredMethodRef(nme.CONSTRUCTOR)
-    def ArrayConstructor(implicit ctx: Context): Symbol = ArrayConstructorR.symbol
+    def ArrayConstructor(implicit ctx: ContextRenamed): Symbol = ArrayConstructorR.symbol
   lazy val ArrayModuleType: TermRef = ctx.requiredModuleRef("scala.Array")
-  def ArrayModule(implicit ctx: Context): ClassSymbol = ArrayModuleType.symbol.moduleClass.asClass
+  def ArrayModule(implicit ctx: ContextRenamed): ClassSymbol = ArrayModuleType.symbol.moduleClass.asClass
 
 
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
-  def UnitClass(implicit ctx: Context): ClassSymbol = UnitType.symbol.asClass
-  def UnitModuleClass(implicit ctx: Context): Symbol = UnitType.symbol.asClass.linkedClass
+  def UnitClass(implicit ctx: ContextRenamed): ClassSymbol = UnitType.symbol.asClass
+  def UnitModuleClass(implicit ctx: ContextRenamed): Symbol = UnitType.symbol.asClass.linkedClass
   lazy val BooleanType: TypeRef = valueTypeRef("scala.Boolean", BoxedBooleanType, java.lang.Boolean.TYPE, BooleanEnc, nme.specializedTypeNames.Boolean)
-  def BooleanClass(implicit ctx: Context): ClassSymbol = BooleanType.symbol.asClass
+  def BooleanClass(implicit ctx: ContextRenamed): ClassSymbol = BooleanType.symbol.asClass
     lazy val Boolean_notR: TermRef   = BooleanClass.requiredMethodRef(nme.UNARY_!)
     def Boolean_! : Symbol = Boolean_notR.symbol
     lazy val Boolean_andR: TermRef = BooleanClass.requiredMethodRef(nme.ZAND) // ### harmonize required... calls
@@ -470,13 +470,13 @@ class Definitions {
     def Boolean_!= : Symbol = Boolean_neqeqR.symbol
 
   lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", BoxedByteType, java.lang.Byte.TYPE, ByteEnc, nme.specializedTypeNames.Byte)
-  def ByteClass(implicit ctx: Context): ClassSymbol = ByteType.symbol.asClass
+  def ByteClass(implicit ctx: ContextRenamed): ClassSymbol = ByteType.symbol.asClass
   lazy val ShortType: TypeRef = valueTypeRef("scala.Short", BoxedShortType, java.lang.Short.TYPE, ShortEnc, nme.specializedTypeNames.Short)
-  def ShortClass(implicit ctx: Context): ClassSymbol = ShortType.symbol.asClass
+  def ShortClass(implicit ctx: ContextRenamed): ClassSymbol = ShortType.symbol.asClass
   lazy val CharType: TypeRef = valueTypeRef("scala.Char", BoxedCharType, java.lang.Character.TYPE, CharEnc, nme.specializedTypeNames.Char)
-  def CharClass(implicit ctx: Context): ClassSymbol = CharType.symbol.asClass
+  def CharClass(implicit ctx: ContextRenamed): ClassSymbol = CharType.symbol.asClass
   lazy val IntType: TypeRef = valueTypeRef("scala.Int", BoxedIntType, java.lang.Integer.TYPE, IntEnc, nme.specializedTypeNames.Int)
-  def IntClass(implicit ctx: Context): ClassSymbol = IntType.symbol.asClass
+  def IntClass(implicit ctx: ContextRenamed): ClassSymbol = IntType.symbol.asClass
     lazy val Int_minusR: TermRef   = IntClass.requiredMethodRef(nme.MINUS, List(IntType))
     def Int_- : Symbol = Int_minusR.symbol
     lazy val Int_plusR: TermRef   = IntClass.requiredMethodRef(nme.PLUS, List(IntType))
@@ -492,7 +492,7 @@ class Definitions {
     lazy val Int_leR: TermRef   = IntClass.requiredMethodRef(nme.LE, List(IntType))
     def Int_<= : Symbol = Int_leR.symbol
   lazy val LongType: TypeRef = valueTypeRef("scala.Long", BoxedLongType, java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
-  def LongClass(implicit ctx: Context): ClassSymbol = LongType.symbol.asClass
+  def LongClass(implicit ctx: ContextRenamed): ClassSymbol = LongType.symbol.asClass
     lazy val Long_XOR_Long: Symbol = LongType.member(nme.XOR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
     )
@@ -507,31 +507,31 @@ class Definitions {
     def Long_/ : Symbol = Long_divR.symbol
 
   lazy val FloatType: TypeRef = valueTypeRef("scala.Float", BoxedFloatType, java.lang.Float.TYPE, FloatEnc, nme.specializedTypeNames.Float)
-  def FloatClass(implicit ctx: Context): ClassSymbol = FloatType.symbol.asClass
+  def FloatClass(implicit ctx: ContextRenamed): ClassSymbol = FloatType.symbol.asClass
   lazy val DoubleType: TypeRef = valueTypeRef("scala.Double", BoxedDoubleType, java.lang.Double.TYPE, DoubleEnc, nme.specializedTypeNames.Double)
-  def DoubleClass(implicit ctx: Context): ClassSymbol = DoubleType.symbol.asClass
+  def DoubleClass(implicit ctx: ContextRenamed): ClassSymbol = DoubleType.symbol.asClass
 
   lazy val BoxedUnitType: TypeRef = ctx.requiredClassRef("scala.runtime.BoxedUnit")
-  def BoxedUnitClass(implicit ctx: Context): ClassSymbol = BoxedUnitType.symbol.asClass
+  def BoxedUnitClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedUnitType.symbol.asClass
 
-    def BoxedUnit_UNIT(implicit ctx: Context): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+    def BoxedUnit_UNIT(implicit ctx: ContextRenamed): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
   lazy val BoxedBooleanType: TypeRef = ctx.requiredClassRef("java.lang.Boolean")
-  def BoxedBooleanClass(implicit ctx: Context): ClassSymbol = BoxedBooleanType.symbol.asClass
+  def BoxedBooleanClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedBooleanType.symbol.asClass
   lazy val BoxedByteType: TypeRef = ctx.requiredClassRef("java.lang.Byte")
-  def BoxedByteClass(implicit ctx: Context): ClassSymbol = BoxedByteType.symbol.asClass
+  def BoxedByteClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedByteType.symbol.asClass
   lazy val BoxedShortType: TypeRef = ctx.requiredClassRef("java.lang.Short")
-  def BoxedShortClass(implicit ctx: Context): ClassSymbol = BoxedShortType.symbol.asClass
+  def BoxedShortClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedShortType.symbol.asClass
   lazy val BoxedCharType: TypeRef = ctx.requiredClassRef("java.lang.Character")
-  def BoxedCharClass(implicit ctx: Context): ClassSymbol = BoxedCharType.symbol.asClass
+  def BoxedCharClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedCharType.symbol.asClass
   lazy val BoxedIntType: TypeRef = ctx.requiredClassRef("java.lang.Integer")
-  def BoxedIntClass(implicit ctx: Context): ClassSymbol = BoxedIntType.symbol.asClass
+  def BoxedIntClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedIntType.symbol.asClass
   lazy val BoxedLongType: TypeRef = ctx.requiredClassRef("java.lang.Long")
-  def BoxedLongClass(implicit ctx: Context): ClassSymbol = BoxedLongType.symbol.asClass
+  def BoxedLongClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedLongType.symbol.asClass
   lazy val BoxedFloatType: TypeRef = ctx.requiredClassRef("java.lang.Float")
-  def BoxedFloatClass(implicit ctx: Context): ClassSymbol = BoxedFloatType.symbol.asClass
+  def BoxedFloatClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedFloatType.symbol.asClass
   lazy val BoxedDoubleType: TypeRef = ctx.requiredClassRef("java.lang.Double")
-  def BoxedDoubleClass(implicit ctx: Context): ClassSymbol = BoxedDoubleType.symbol.asClass
+  def BoxedDoubleClass(implicit ctx: ContextRenamed): ClassSymbol = BoxedDoubleType.symbol.asClass
 
   lazy val BoxedBooleanModule: TermSymbol = ctx.requiredModule("java.lang.Boolean")
   lazy val BoxedByteModule: TermSymbol    = ctx.requiredModule("java.lang.Byte")
@@ -579,103 +579,103 @@ class Definitions {
   // in scalac modified to have Any as parent
 
   lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
-  def ThrowableClass(implicit ctx: Context): ClassSymbol = ThrowableType.symbol.asClass
+  def ThrowableClass(implicit ctx: ContextRenamed): ClassSymbol = ThrowableType.symbol.asClass
   lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
-  def SerializableClass(implicit ctx: Context): ClassSymbol = SerializableType.symbol.asClass
+  def SerializableClass(implicit ctx: ContextRenamed): ClassSymbol = SerializableType.symbol.asClass
   lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
-  def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
+  def StringBuilderClass(implicit ctx: ContextRenamed): ClassSymbol = StringBuilderType.symbol.asClass
   lazy val MatchErrorType: TypeRef         = ctx.requiredClassRef("scala.MatchError")
-  def MatchErrorClass(implicit ctx: Context): ClassSymbol = MatchErrorType.symbol.asClass
+  def MatchErrorClass(implicit ctx: ContextRenamed): ClassSymbol = MatchErrorType.symbol.asClass
 
   lazy val StringAddType: TypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
-  def StringAddClass(implicit ctx: Context): ClassSymbol = StringAddType.symbol.asClass
+  def StringAddClass(implicit ctx: ContextRenamed): ClassSymbol = StringAddType.symbol.asClass
 
     lazy val StringAdd_plusR: TermRef = StringAddClass.requiredMethodRef(nme.raw.PLUS)
-    def StringAdd_+(implicit ctx: Context): Symbol = StringAdd_plusR.symbol
+    def StringAdd_+(implicit ctx: ContextRenamed): Symbol = StringAdd_plusR.symbol
 
   lazy val StringContextType: TypeRef       = ctx.requiredClassRef("scala.StringContext")
-  def StringContextClass(implicit ctx: Context): ClassSymbol = StringContextType.symbol.asClass
+  def StringContextClass(implicit ctx: ContextRenamed): ClassSymbol = StringContextType.symbol.asClass
     lazy val StringContextSR: TermRef = StringContextClass.requiredMethodRef(nme.s)
-    def StringContextS(implicit ctx: Context): Symbol = StringContextSR.symbol
+    def StringContextS(implicit ctx: ContextRenamed): Symbol = StringContextSR.symbol
     lazy val StringContextRawR: TermRef = StringContextClass.requiredMethodRef(nme.raw_)
-    def StringContextRaw(implicit ctx: Context): Symbol = StringContextRawR.symbol
-  def StringContextModule(implicit ctx: Context): Symbol = StringContextClass.companionModule
+    def StringContextRaw(implicit ctx: ContextRenamed): Symbol = StringContextRawR.symbol
+  def StringContextModule(implicit ctx: ContextRenamed): Symbol = StringContextClass.companionModule
     lazy val StringContextModule_applyR: TermRef = StringContextModule.requiredMethodRef(nme.apply)
-    def StringContextModule_apply(implicit ctx: Context): Symbol = StringContextModule_applyR.symbol
+    def StringContextModule_apply(implicit ctx: ContextRenamed): Symbol = StringContextModule_applyR.symbol
 
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
-  def PartialFunctionClass(implicit ctx: Context): ClassSymbol = PartialFunctionType.symbol.asClass
+  def PartialFunctionClass(implicit ctx: ContextRenamed): ClassSymbol = PartialFunctionType.symbol.asClass
     lazy val PartialFunction_isDefinedAtR: TermRef = PartialFunctionClass.requiredMethodRef(nme.isDefinedAt)
-    def PartialFunction_isDefinedAt(implicit ctx: Context): Symbol = PartialFunction_isDefinedAtR.symbol
+    def PartialFunction_isDefinedAt(implicit ctx: ContextRenamed): Symbol = PartialFunction_isDefinedAtR.symbol
     lazy val PartialFunction_applyOrElseR: TermRef = PartialFunctionClass.requiredMethodRef(nme.applyOrElse)
-    def PartialFunction_applyOrElse(implicit ctx: Context): Symbol = PartialFunction_applyOrElseR.symbol
+    def PartialFunction_applyOrElse(implicit ctx: ContextRenamed): Symbol = PartialFunction_applyOrElseR.symbol
 
   lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
-  def AbstractPartialFunctionClass(implicit ctx: Context): ClassSymbol = AbstractPartialFunctionType.symbol.asClass
+  def AbstractPartialFunctionClass(implicit ctx: ContextRenamed): ClassSymbol = AbstractPartialFunctionType.symbol.asClass
 
   lazy val FunctionXXLType: TypeRef         = ctx.requiredClassRef("scala.FunctionXXL")
-  def FunctionXXLClass(implicit ctx: Context): ClassSymbol = FunctionXXLType.symbol.asClass
+  def FunctionXXLClass(implicit ctx: ContextRenamed): ClassSymbol = FunctionXXLType.symbol.asClass
 
   lazy val ScalaSymbolType: TypeRef                    = ctx.requiredClassRef("scala.Symbol")
-  def ScalaSymbolClass(implicit ctx: Context): ClassSymbol          = ScalaSymbolType.symbol.asClass
-  def ScalaSymbolModule(implicit ctx: Context): Symbol         = ScalaSymbolClass.companionModule
+  def ScalaSymbolClass(implicit ctx: ContextRenamed): ClassSymbol          = ScalaSymbolType.symbol.asClass
+  def ScalaSymbolModule(implicit ctx: ContextRenamed): Symbol         = ScalaSymbolClass.companionModule
     lazy val ScalaSymbolModule_applyR: TermRef                  = ScalaSymbolModule.requiredMethodRef(nme.apply, List(StringType))
-    def ScalaSymbolModule_apply(implicit ctx: Context): Symbol = ScalaSymbolModule_applyR.symbol
+    def ScalaSymbolModule_apply(implicit ctx: ContextRenamed): Symbol = ScalaSymbolModule_applyR.symbol
 
   lazy val DynamicType: TypeRef                 = ctx.requiredClassRef("scala.Dynamic")
-  def DynamicClass(implicit ctx: Context): ClassSymbol = DynamicType.symbol.asClass
+  def DynamicClass(implicit ctx: ContextRenamed): ClassSymbol = DynamicType.symbol.asClass
   lazy val OptionType: TypeRef                  = ctx.requiredClassRef("scala.Option")
-  def OptionClass(implicit ctx: Context): ClassSymbol = OptionType.symbol.asClass
+  def OptionClass(implicit ctx: ContextRenamed): ClassSymbol = OptionType.symbol.asClass
   lazy val SomeType: TypeRef                  = ctx.requiredClassRef("scala.Some")
-  def SomeClass(implicit ctx: Context): ClassSymbol = SomeType.symbol.asClass
+  def SomeClass(implicit ctx: ContextRenamed): ClassSymbol = SomeType.symbol.asClass
   lazy val NoneModuleRef: TermRef                  = ctx.requiredModuleRef("scala.None")
-  def NoneClass(implicit ctx: Context): ClassSymbol = NoneModuleRef.symbol.moduleClass.asClass
+  def NoneClass(implicit ctx: ContextRenamed): ClassSymbol = NoneModuleRef.symbol.moduleClass.asClass
   lazy val EnumType: TypeRef                    = ctx.requiredClassRef("scala.Enum")
-  def EnumClass(implicit ctx: Context): ClassSymbol = EnumType.symbol.asClass
+  def EnumClass(implicit ctx: ContextRenamed): ClassSymbol = EnumType.symbol.asClass
   lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")
-  def EnumValuesClass(implicit ctx: Context): ClassSymbol = EnumValuesType.symbol.asClass
+  def EnumValuesClass(implicit ctx: ContextRenamed): ClassSymbol = EnumValuesType.symbol.asClass
   lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
-  def ProductClass(implicit ctx: Context): ClassSymbol = ProductType.symbol.asClass
+  def ProductClass(implicit ctx: ContextRenamed): ClassSymbol = ProductType.symbol.asClass
     lazy val Product_canEqualR: TermRef = ProductClass.requiredMethodRef(nme.canEqual_)
-    def Product_canEqual(implicit ctx: Context): Symbol = Product_canEqualR.symbol
+    def Product_canEqual(implicit ctx: ContextRenamed): Symbol = Product_canEqualR.symbol
     lazy val Product_productArityR: TermRef = ProductClass.requiredMethodRef(nme.productArity)
-    def Product_productArity(implicit ctx: Context): Symbol = Product_productArityR.symbol
+    def Product_productArity(implicit ctx: ContextRenamed): Symbol = Product_productArityR.symbol
     lazy val Product_productElementR: TermRef = ProductClass.requiredMethodRef(nme.productElement)
-    def Product_productElement(implicit ctx: Context): Symbol = Product_productElementR.symbol
+    def Product_productElement(implicit ctx: ContextRenamed): Symbol = Product_productElementR.symbol
     lazy val Product_productPrefixR: TermRef = ProductClass.requiredMethodRef(nme.productPrefix)
-    def Product_productPrefix(implicit ctx: Context): Symbol = Product_productPrefixR.symbol
+    def Product_productPrefix(implicit ctx: ContextRenamed): Symbol = Product_productPrefixR.symbol
   lazy val LanguageModuleRef: TermSymbol = ctx.requiredModule("scala.language")
-  def LanguageModuleClass(implicit ctx: Context): ClassSymbol = LanguageModuleRef.moduleClass.asClass
+  def LanguageModuleClass(implicit ctx: ContextRenamed): ClassSymbol = LanguageModuleRef.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
   lazy val SelectableType: TypeRef              = ctx.requiredClassRef("scala.Selectable")
 
   lazy val ClassTagType: TypeRef = ctx.requiredClassRef("scala.reflect.ClassTag")
-  def ClassTagClass(implicit ctx: Context): ClassSymbol = ClassTagType.symbol.asClass
-  def ClassTagModule(implicit ctx: Context): Symbol = ClassTagClass.companionModule
+  def ClassTagClass(implicit ctx: ContextRenamed): ClassSymbol = ClassTagType.symbol.asClass
+  def ClassTagModule(implicit ctx: ContextRenamed): Symbol = ClassTagClass.companionModule
 
   lazy val QuotedExprType: TypeRef = ctx.requiredClassRef("scala.quoted.Expr")
-  def QuotedExprClass(implicit ctx: Context): ClassSymbol = QuotedExprType.symbol.asClass
-  def QuotedExprModule(implicit ctx: Context): Symbol = QuotedExprClass.companionModule
+  def QuotedExprClass(implicit ctx: ContextRenamed): ClassSymbol = QuotedExprType.symbol.asClass
+  def QuotedExprModule(implicit ctx: ContextRenamed): Symbol = QuotedExprClass.companionModule
     lazy val QuotedExpr_applyR: TermRef = QuotedExprModule.requiredMethodRef(nme.apply)
-    def QuotedExpr_apply(implicit ctx: Context): Symbol = QuotedExpr_applyR.symbol
+    def QuotedExpr_apply(implicit ctx: ContextRenamed): Symbol = QuotedExpr_applyR.symbol
     lazy val QuotedExpr_~ : TermSymbol = QuotedExprClass.requiredMethod(nme.UNARY_~)
 
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
-  def QuotedExprsClass(implicit ctx: Context): ClassSymbol = QuotedExprsModule.asClass
+  def QuotedExprsClass(implicit ctx: ContextRenamed): ClassSymbol = QuotedExprsModule.asClass
 
   lazy val QuotedTypeType: TypeRef = ctx.requiredClassRef("scala.quoted.Type")
-  def QuotedTypeClass(implicit ctx: Context): ClassSymbol = QuotedTypeType.symbol.asClass
+  def QuotedTypeClass(implicit ctx: ContextRenamed): ClassSymbol = QuotedTypeType.symbol.asClass
 
     lazy val QuotedType_spliceR: TypeRef = QuotedTypeClass.requiredType(tpnme.UNARY_~).typeRef
     def QuotedType_~ : Symbol = QuotedType_spliceR.symbol
 
   lazy val QuotedTypeModuleType: TermRef = ctx.requiredModuleRef("scala.quoted.Type")
-  def QuotedTypeModule(implicit ctx: Context): Symbol = QuotedTypeModuleType.symbol
+  def QuotedTypeModule(implicit ctx: ContextRenamed): Symbol = QuotedTypeModuleType.symbol
     lazy val QuotedType_applyR: TermRef = QuotedTypeModule.requiredMethodRef(nme.apply)
-    def QuotedType_apply(implicit ctx: Context): Symbol = QuotedType_applyR.symbol
+    def QuotedType_apply(implicit ctx: ContextRenamed): Symbol = QuotedType_applyR.symbol
 
   lazy val QuotedLiftableModule: TermSymbol = ctx.requiredModule("scala.quoted.Liftable")
-  def QuotedLiftableModuleClass(implicit ctx: Context): ClassSymbol = QuotedLiftableModule.asClass
+  def QuotedLiftableModuleClass(implicit ctx: ContextRenamed): ClassSymbol = QuotedLiftableModule.asClass
 
     def QuotedLiftable_BooleanIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("BooleanIsLiftable")
     def QuotedLiftable_ByteIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("ByteIsLiftable")
@@ -688,127 +688,127 @@ class Definitions {
     def QuotedLiftable_StringIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("StringIsLiftable")
 
   lazy val QuotedLiftableType: TypeRef = ctx.requiredClassRef("scala.quoted.Liftable")
-  def QuotedLiftableClass(implicit ctx: Context): ClassSymbol = QuotedLiftableType.symbol.asClass
+  def QuotedLiftableClass(implicit ctx: ContextRenamed): ClassSymbol = QuotedLiftableType.symbol.asClass
 
   def Unpickler_unpickleExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
   def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val TastyTastyType: TypeRef = ctx.requiredClassRef("scala.tasty.Tasty")
-  def TastyTastyClass(implicit ctx: Context): ClassSymbol = TastyTastyType.symbol.asClass
+  def TastyTastyClass(implicit ctx: ContextRenamed): ClassSymbol = TastyTastyType.symbol.asClass
 
   lazy val TastyTastyModule: TermSymbol = ctx.requiredModule("scala.tasty.Tasty")
     lazy val TastyTasty_macroContext: TermSymbol = TastyTastyModule.requiredMethod("macroContext")
 
   lazy val EqType: TypeRef = ctx.requiredClassRef("scala.Eq")
-  def EqClass(implicit ctx: Context): ClassSymbol = EqType.symbol.asClass
-  def EqModule(implicit ctx: Context): Symbol = EqClass.companionModule
+  def EqClass(implicit ctx: ContextRenamed): ClassSymbol = EqType.symbol.asClass
+  def EqModule(implicit ctx: ContextRenamed): Symbol = EqClass.companionModule
 
-    def Eq_eqAny(implicit ctx: Context): TermSymbol = EqModule.requiredMethod(nme.eqAny)
+    def Eq_eqAny(implicit ctx: ContextRenamed): TermSymbol = EqModule.requiredMethod(nme.eqAny)
 
   lazy val NotType: TypeRef = ctx.requiredClassRef("scala.implicits.Not")
-  def NotClass(implicit ctx: Context): ClassSymbol = NotType.symbol.asClass
-  def NotModule(implicit ctx: Context): Symbol = NotClass.companionModule
+  def NotClass(implicit ctx: ContextRenamed): ClassSymbol = NotType.symbol.asClass
+  def NotModule(implicit ctx: ContextRenamed): Symbol = NotClass.companionModule
 
-    def Not_value(implicit ctx: Context): TermSymbol = NotModule.requiredMethod(nme.value)
+    def Not_value(implicit ctx: ContextRenamed): TermSymbol = NotModule.requiredMethod(nme.value)
 
   lazy val XMLTopScopeModuleRef: TermRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
   lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
-  def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
+  def TupleClass(implicit ctx: ContextRenamed): ClassSymbol = TupleTypeRef.symbol.asClass
   lazy val NonEmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
-  def NonEmptyTupleClass(implicit ctx: Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
+  def NonEmptyTupleClass(implicit ctx: ContextRenamed): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
 
   lazy val PairType: TypeRef = ctx.requiredClassRef("scala.*:")
-  def PairClass(implicit ctx: Context): ClassSymbol = PairType.symbol.asClass
+  def PairClass(implicit ctx: ContextRenamed): ClassSymbol = PairType.symbol.asClass
   lazy val TupleXXLType: TypeRef = ctx.requiredClassRef("scala.TupleXXL")
-  def TupleXXLClass(implicit ctx: Context): ClassSymbol = TupleXXLType.symbol.asClass
-  def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
+  def TupleXXLClass(implicit ctx: ContextRenamed): ClassSymbol = TupleXXLType.symbol.asClass
+  def TupleXXLModule(implicit ctx: ContextRenamed): Symbol = TupleXXLClass.companionModule
 
-    def TupleXXL_apply(implicit ctx: Context): Symbol =
+    def TupleXXL_apply(implicit ctx: ContextRenamed): Symbol =
       TupleXXLModule.info.member(nme.apply).requiredSymbol(_.info.isVarArgsMethod)
 
   // Annotation base classes
   lazy val AnnotationType: TypeRef              = ctx.requiredClassRef("scala.annotation.Annotation")
-  def AnnotationClass(implicit ctx: Context): ClassSymbol = AnnotationType.symbol.asClass
+  def AnnotationClass(implicit ctx: ContextRenamed): ClassSymbol = AnnotationType.symbol.asClass
   lazy val ClassfileAnnotationType: TypeRef     = ctx.requiredClassRef("scala.annotation.ClassfileAnnotation")
-  def ClassfileAnnotationClass(implicit ctx: Context): ClassSymbol = ClassfileAnnotationType.symbol.asClass
+  def ClassfileAnnotationClass(implicit ctx: ContextRenamed): ClassSymbol = ClassfileAnnotationType.symbol.asClass
   lazy val StaticAnnotationType: TypeRef        = ctx.requiredClassRef("scala.annotation.StaticAnnotation")
-  def StaticAnnotationClass(implicit ctx: Context): ClassSymbol = StaticAnnotationType.symbol.asClass
+  def StaticAnnotationClass(implicit ctx: ContextRenamed): ClassSymbol = StaticAnnotationType.symbol.asClass
   lazy val RefiningAnnotationType: TypeRef      = ctx.requiredClassRef("scala.annotation.RefiningAnnotation")
-  def RefiningAnnotationClass(implicit ctx: Context): ClassSymbol = RefiningAnnotationType.symbol.asClass
+  def RefiningAnnotationClass(implicit ctx: ContextRenamed): ClassSymbol = RefiningAnnotationType.symbol.asClass
 
   // Annotation classes
   lazy val AliasAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.Alias")
-  def AliasAnnot(implicit ctx: Context): ClassSymbol = AliasAnnotType.symbol.asClass
+  def AliasAnnot(implicit ctx: ContextRenamed): ClassSymbol = AliasAnnotType.symbol.asClass
   lazy val AnnotationDefaultAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.AnnotationDefault")
-  def AnnotationDefaultAnnot(implicit ctx: Context): ClassSymbol = AnnotationDefaultAnnotType.symbol.asClass
+  def AnnotationDefaultAnnot(implicit ctx: ContextRenamed): ClassSymbol = AnnotationDefaultAnnotType.symbol.asClass
   lazy val BodyAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.Body")
-  def BodyAnnot(implicit ctx: Context): ClassSymbol = BodyAnnotType.symbol.asClass
+  def BodyAnnot(implicit ctx: ContextRenamed): ClassSymbol = BodyAnnotType.symbol.asClass
   lazy val ChildAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.Child")
-  def ChildAnnot(implicit ctx: Context): ClassSymbol = ChildAnnotType.symbol.asClass
+  def ChildAnnot(implicit ctx: ContextRenamed): ClassSymbol = ChildAnnotType.symbol.asClass
   lazy val CovariantBetweenAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.CovariantBetween")
-  def CovariantBetweenAnnot(implicit ctx: Context): ClassSymbol = CovariantBetweenAnnotType.symbol.asClass
+  def CovariantBetweenAnnot(implicit ctx: ContextRenamed): ClassSymbol = CovariantBetweenAnnotType.symbol.asClass
   lazy val ContravariantBetweenAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.ContravariantBetween")
-  def ContravariantBetweenAnnot(implicit ctx: Context): ClassSymbol = ContravariantBetweenAnnotType.symbol.asClass
+  def ContravariantBetweenAnnot(implicit ctx: ContextRenamed): ClassSymbol = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType: TypeRef = ctx.requiredClassRef("scala.deprecated")
-  def DeprecatedAnnot(implicit ctx: Context): ClassSymbol = DeprecatedAnnotType.symbol.asClass
+  def DeprecatedAnnot(implicit ctx: ContextRenamed): ClassSymbol = DeprecatedAnnotType.symbol.asClass
   lazy val ImplicitAmbiguousAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.implicitAmbiguous")
-  def ImplicitAmbiguousAnnot(implicit ctx: Context): ClassSymbol = ImplicitAmbiguousAnnotType.symbol.asClass
+  def ImplicitAmbiguousAnnot(implicit ctx: ContextRenamed): ClassSymbol = ImplicitAmbiguousAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.implicitNotFound")
-  def ImplicitNotFoundAnnot(implicit ctx: Context): ClassSymbol = ImplicitNotFoundAnnotType.symbol.asClass
+  def ImplicitNotFoundAnnot(implicit ctx: ContextRenamed): ClassSymbol = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val ForceInlineAnnotType: TypeRef = ctx.requiredClassRef("scala.forceInline")
-  def ForceInlineAnnot(implicit ctx: Context): ClassSymbol = ForceInlineAnnotType.symbol.asClass
+  def ForceInlineAnnot(implicit ctx: ContextRenamed): ClassSymbol = ForceInlineAnnotType.symbol.asClass
   lazy val InlineParamAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.InlineParam")
-  def InlineParamAnnot(implicit ctx: Context): ClassSymbol = InlineParamAnnotType.symbol.asClass
+  def InlineParamAnnot(implicit ctx: ContextRenamed): ClassSymbol = InlineParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
-  def InvariantBetweenAnnot(implicit ctx: Context): ClassSymbol = InvariantBetweenAnnotType.symbol.asClass
+  def InvariantBetweenAnnot(implicit ctx: ContextRenamed): ClassSymbol = InvariantBetweenAnnotType.symbol.asClass
   lazy val MigrationAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.migration")
-  def MigrationAnnot(implicit ctx: Context): ClassSymbol = MigrationAnnotType.symbol.asClass
+  def MigrationAnnot(implicit ctx: ContextRenamed): ClassSymbol = MigrationAnnotType.symbol.asClass
   lazy val NativeAnnotType: TypeRef                   = ctx.requiredClassRef("scala.native")
-  def NativeAnnot(implicit ctx: Context): ClassSymbol = NativeAnnotType.symbol.asClass
+  def NativeAnnot(implicit ctx: ContextRenamed): ClassSymbol = NativeAnnotType.symbol.asClass
   lazy val RepeatedAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.Repeated")
-  def RepeatedAnnot(implicit ctx: Context): ClassSymbol = RepeatedAnnotType.symbol.asClass
+  def RepeatedAnnot(implicit ctx: ContextRenamed): ClassSymbol = RepeatedAnnotType.symbol.asClass
   lazy val SourceFileAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.SourceFile")
-  def SourceFileAnnot(implicit ctx: Context): ClassSymbol = SourceFileAnnotType.symbol.asClass
+  def SourceFileAnnot(implicit ctx: ContextRenamed): ClassSymbol = SourceFileAnnotType.symbol.asClass
   lazy val ScalaSignatureAnnotType: TypeRef = ctx.requiredClassRef("scala.reflect.ScalaSignature")
-  def ScalaSignatureAnnot(implicit ctx: Context): ClassSymbol = ScalaSignatureAnnotType.symbol.asClass
+  def ScalaSignatureAnnot(implicit ctx: ContextRenamed): ClassSymbol = ScalaSignatureAnnotType.symbol.asClass
   lazy val ScalaLongSignatureAnnotType: TypeRef = ctx.requiredClassRef("scala.reflect.ScalaLongSignature")
-  def ScalaLongSignatureAnnot(implicit ctx: Context): ClassSymbol = ScalaLongSignatureAnnotType.symbol.asClass
+  def ScalaLongSignatureAnnot(implicit ctx: ContextRenamed): ClassSymbol = ScalaLongSignatureAnnotType.symbol.asClass
   lazy val ScalaStrictFPAnnotType: TypeRef            = ctx.requiredClassRef("scala.annotation.strictfp")
-  def ScalaStrictFPAnnot(implicit ctx: Context): ClassSymbol = ScalaStrictFPAnnotType.symbol.asClass
+  def ScalaStrictFPAnnot(implicit ctx: ContextRenamed): ClassSymbol = ScalaStrictFPAnnotType.symbol.asClass
   lazy val ScalaStaticAnnotType: TypeRef            = ctx.requiredClassRef("scala.annotation.static")
-  def ScalaStaticAnnot(implicit ctx: Context): ClassSymbol = ScalaStaticAnnotType.symbol.asClass
+  def ScalaStaticAnnot(implicit ctx: ContextRenamed): ClassSymbol = ScalaStaticAnnotType.symbol.asClass
   lazy val SerialVersionUIDAnnotType: TypeRef         = ctx.requiredClassRef("scala.SerialVersionUID")
-  def SerialVersionUIDAnnot(implicit ctx: Context): ClassSymbol = SerialVersionUIDAnnotType.symbol.asClass
+  def SerialVersionUIDAnnot(implicit ctx: ContextRenamed): ClassSymbol = SerialVersionUIDAnnotType.symbol.asClass
   lazy val TASTYSignatureAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.TASTYSignature")
-  def TASTYSignatureAnnot(implicit ctx: Context): ClassSymbol = TASTYSignatureAnnotType.symbol.asClass
+  def TASTYSignatureAnnot(implicit ctx: ContextRenamed): ClassSymbol = TASTYSignatureAnnotType.symbol.asClass
   lazy val TASTYLongSignatureAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.TASTYLongSignature")
-  def TASTYLongSignatureAnnot(implicit ctx: Context): ClassSymbol = TASTYLongSignatureAnnotType.symbol.asClass
+  def TASTYLongSignatureAnnot(implicit ctx: ContextRenamed): ClassSymbol = TASTYLongSignatureAnnotType.symbol.asClass
   lazy val TailrecAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.tailrec")
-  def TailrecAnnot(implicit ctx: Context): ClassSymbol = TailrecAnnotType.symbol.asClass
+  def TailrecAnnot(implicit ctx: ContextRenamed): ClassSymbol = TailrecAnnotType.symbol.asClass
   lazy val SwitchAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.switch")
-  def SwitchAnnot(implicit ctx: Context): ClassSymbol = SwitchAnnotType.symbol.asClass
+  def SwitchAnnot(implicit ctx: ContextRenamed): ClassSymbol = SwitchAnnotType.symbol.asClass
   lazy val ThrowsAnnotType: TypeRef = ctx.requiredClassRef("scala.throws")
-  def ThrowsAnnot(implicit ctx: Context): ClassSymbol = ThrowsAnnotType.symbol.asClass
+  def ThrowsAnnot(implicit ctx: ContextRenamed): ClassSymbol = ThrowsAnnotType.symbol.asClass
   lazy val TransientAnnotType: TypeRef                = ctx.requiredClassRef("scala.transient")
-  def TransientAnnot(implicit ctx: Context): ClassSymbol = TransientAnnotType.symbol.asClass
+  def TransientAnnot(implicit ctx: ContextRenamed): ClassSymbol = TransientAnnotType.symbol.asClass
   lazy val UncheckedAnnotType: TypeRef = ctx.requiredClassRef("scala.unchecked")
-  def UncheckedAnnot(implicit ctx: Context): ClassSymbol = UncheckedAnnotType.symbol.asClass
+  def UncheckedAnnot(implicit ctx: ContextRenamed): ClassSymbol = UncheckedAnnotType.symbol.asClass
   lazy val UncheckedStableAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedStable")
-  def UncheckedStableAnnot(implicit ctx: Context): ClassSymbol = UncheckedStableAnnotType.symbol.asClass
+  def UncheckedStableAnnot(implicit ctx: ContextRenamed): ClassSymbol = UncheckedStableAnnotType.symbol.asClass
   lazy val UncheckedVarianceAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedVariance")
-  def UncheckedVarianceAnnot(implicit ctx: Context): ClassSymbol = UncheckedVarianceAnnotType.symbol.asClass
+  def UncheckedVarianceAnnot(implicit ctx: ContextRenamed): ClassSymbol = UncheckedVarianceAnnotType.symbol.asClass
   lazy val VolatileAnnotType: TypeRef = ctx.requiredClassRef("scala.volatile")
-  def VolatileAnnot(implicit ctx: Context): ClassSymbol = VolatileAnnotType.symbol.asClass
+  def VolatileAnnot(implicit ctx: ContextRenamed): ClassSymbol = VolatileAnnotType.symbol.asClass
   lazy val FieldMetaAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.meta.field")
-  def FieldMetaAnnot(implicit ctx: Context): ClassSymbol = FieldMetaAnnotType.symbol.asClass
+  def FieldMetaAnnot(implicit ctx: ContextRenamed): ClassSymbol = FieldMetaAnnotType.symbol.asClass
   lazy val GetterMetaAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.meta.getter")
-  def GetterMetaAnnot(implicit ctx: Context): ClassSymbol = GetterMetaAnnotType.symbol.asClass
+  def GetterMetaAnnot(implicit ctx: ContextRenamed): ClassSymbol = GetterMetaAnnotType.symbol.asClass
   lazy val SetterMetaAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.meta.setter")
-  def SetterMetaAnnot(implicit ctx: Context): ClassSymbol = SetterMetaAnnotType.symbol.asClass
+  def SetterMetaAnnot(implicit ctx: ContextRenamed): ClassSymbol = SetterMetaAnnotType.symbol.asClass
   lazy val ShowAsInfixAnotType: TypeRef = ctx.requiredClassRef("scala.annotation.showAsInfix")
-  def ShowAsInfixAnnot(implicit ctx: Context): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
+  def ShowAsInfixAnnot(implicit ctx: ContextRenamed): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -819,13 +819,13 @@ class Definitions {
 
   def RepeatedParamType: TypeRef = RepeatedParamClass.typeRef
 
-  def ClassType(arg: Type)(implicit ctx: Context): Type = {
+  def ClassType(arg: Type)(implicit ctx: ContextRenamed): Type = {
     val ctype = ClassClass.typeRef
     if (ctx.phase.erasedTypes) ctype else ctype.appliedTo(arg)
   }
 
   /** The enumeration type, goven a value of the enumeration */
-  def EnumType(sym: Symbol)(implicit ctx: Context): TypeRef =
+  def EnumType(sym: Symbol)(implicit ctx: ContextRenamed): TypeRef =
     // given (in java): "class A { enum E { VAL1 } }"
     //  - sym: the symbol of the actual enumeration value (VAL1)
     //  - .owner: the ModuleClassSymbol of the enumeration (object E)
@@ -833,9 +833,9 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Type =
+    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: ContextRenamed): Type =
       FunctionType(args.length, isImplicit, isErased).appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type)(implicit ctx: Context): Option[(List[Type], Type, Boolean, Boolean)] = {
+    def unapply(ft: Type)(implicit ctx: ContextRenamed): Option[(List[Type], Type, Boolean, Boolean)] = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
@@ -847,9 +847,9 @@ class Definitions {
   }
 
   object PartialFunctionOf {
-    def apply(arg: Type, result: Type)(implicit ctx: Context): Type =
+    def apply(arg: Type, result: Type)(implicit ctx: ContextRenamed): Type =
       PartialFunctionType.appliedTo(arg :: result :: Nil)
-    def unapply(pft: Type)(implicit ctx: Context): Option[(Type, List[Type])] = {
+    def unapply(pft: Type)(implicit ctx: ContextRenamed): Option[(Type, List[Type])] = {
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
         if (targs.length == 2) Some((targs.head, targs.tail)) else None
@@ -859,10 +859,10 @@ class Definitions {
   }
 
   object ArrayOf {
-    def apply(elem: Type)(implicit ctx: Context): Type =
+    def apply(elem: Type)(implicit ctx: ContextRenamed): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
+    def unapply(tp: Type)(implicit ctx: ContextRenamed): Option[Type] = tp.dealias match {
       case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
       case _ => None
     }
@@ -879,9 +879,9 @@ class Definitions {
    *     MultiArrayOf(<Number>, 2)
    */
   object MultiArrayOf {
-    def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
+    def apply(elem: Type, ndims: Int)(implicit ctx: ContextRenamed): Type =
       if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
+    def unapply(tp: Type)(implicit ctx: ContextRenamed): Option[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
         def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
           case TypeBounds(lo, hi) => recur(hi)
@@ -894,20 +894,20 @@ class Definitions {
     }
   }
 
-  final def isTypelevel_S(sym: Symbol)(implicit ctx: Context): Boolean =
+  final def isTypelevel_S(sym: Symbol)(implicit ctx: ContextRenamed): Boolean =
     sym.name == tpnme.S && sym.owner == TypelevelPackageObject
 
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun[Array[Symbol]](implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
-  def AbstractFunctionClass(n: Int)(implicit ctx: Context): Symbol = AbstractFunctionClassPerRun()(ctx)(n)
+  def AbstractFunctionClass(n: Int)(implicit ctx: ContextRenamed): Symbol = AbstractFunctionClassPerRun()(ctx)(n)
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
   def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
   lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
-  def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Symbol =
+  def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: ContextRenamed): Symbol =
     if (isImplicit && isErased)
       ctx.requiredClass("scala.ErasedImplicitFunction" + n.toString)
     else if (isImplicit)
@@ -920,18 +920,18 @@ class Definitions {
       ctx.requiredClass("scala.Function" + n.toString)
 
     lazy val Function0_applyR: TermRef = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
-    def Function0_apply(implicit ctx: Context): Symbol = Function0_applyR.symbol
+    def Function0_apply(implicit ctx: ContextRenamed): Symbol = Function0_applyR.symbol
 
-  def FunctionType(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
+  def FunctionType(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: ContextRenamed): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
     else FunctionClass(n, isImplicit, isErased).typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
+  def scalaClassName(cls: Symbol)(implicit ctx: ContextRenamed): TypeName =
     if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName
 
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
+  def scalaClassName(ref: Type)(implicit ctx: ContextRenamed): TypeName = scalaClassName(ref.classSymbol)
 
   private def isVarArityClass(cls: Symbol, prefix: String) =
     cls.isClass && cls.owner.eq(ScalaPackageClass) &&
@@ -1064,7 +1064,7 @@ class Definitions {
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
 
-  def isTupleType(tp: Type)(implicit ctx: Context): Boolean = {
+  def isTupleType(tp: Type)(implicit ctx: ContextRenamed): Boolean = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && TupleType(arity) != null && (tp isRef TupleType(arity).symbol)
   }
@@ -1073,20 +1073,20 @@ class Definitions {
     TupleType(elems.size).appliedTo(elems)
   }
 
-  def isProductSubType(tp: Type)(implicit ctx: Context): Boolean =
+  def isProductSubType(tp: Type)(implicit ctx: ContextRenamed): Boolean =
     tp.derivesFrom(ProductType.symbol)
 
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN
    *  instance?
    */
-  def isNonDepFunctionType(tp: Type)(implicit ctx: Context): Boolean = {
+  def isNonDepFunctionType(tp: Type)(implicit ctx: ContextRenamed): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
     arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol)
   }
 
   /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
-  def isFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+  def isFunctionType(tp: Type)(implicit ctx: ContextRenamed): Boolean =
     isNonDepFunctionType(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
@@ -1112,7 +1112,7 @@ class Definitions {
   lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
     new PerRun(implicit ctx => Function2SpecializedReturnTypes.map(_.symbol))
 
-  def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context): Boolean =
+  def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: ContextRenamed): Boolean =
     paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
       case Nil =>
         Function0SpecializedReturnClasses().contains(retType.typeSymbol)
@@ -1127,7 +1127,7 @@ class Definitions {
         false
     })
 
-  def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dealias.argInfos.length - 1
+  def functionArity(tp: Type)(implicit ctx: ContextRenamed): Int = tp.dealias.argInfos.length - 1
 
   /** Return underlying immplicit function type (i.e. instance of an ImplicitFunctionN class)
    *  or NoType if none exists. The following types are considered as underlying types:
@@ -1135,7 +1135,7 @@ class Definitions {
    *   - the instance or origin of a TypeVar (i.e. the result of a stripTypeVar)
    *   - the upper bound of a TypeParamRef in the current constraint
    */
-  def asImplicitFunctionType(tp: Type)(implicit ctx: Context): Type =
+  def asImplicitFunctionType(tp: Type)(implicit ctx: ContextRenamed): Type =
     tp.stripTypeVar.dealias match {
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asImplicitFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
@@ -1145,10 +1145,10 @@ class Definitions {
     }
 
   /** Is `tp` an implicit function type? */
-  def isImplicitFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+  def isImplicitFunctionType(tp: Type)(implicit ctx: ContextRenamed): Boolean =
     asImplicitFunctionType(tp).exists
 
-  def isErasedFunctionType(tp: Type)(implicit ctx: Context): Boolean =
+  def isErasedFunctionType(tp: Type)(implicit ctx: ContextRenamed): Boolean =
     isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction
 
   /** A whitelist of Scala-2 classes that are known to be pure */
@@ -1166,10 +1166,10 @@ class Definitions {
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */
-  class PerRun[T](generate: Context => T) {
+  class PerRun[T](generate: ContextRenamed => T) {
     private[this] var current: RunId = NoRunId
     private[this] var cached: T = _
-    def apply()(implicit ctx: Context): T = {
+    def apply()(implicit ctx: ContextRenamed): T = {
       if (current != ctx.runId) {
         cached = generate(ctx)
         current = ctx.runId
@@ -1209,10 +1209,10 @@ class Definitions {
   }
 
   /** The type of the boxed class corresponding to primitive value type `tp`. */
-  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypes(scalaClassName(tp))
+  def boxedType(tp: Type)(implicit ctx: ContextRenamed): TypeRef = boxedTypes(scalaClassName(tp))
 
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
-  def typeTag(tp: Type)(implicit ctx: Context): Name = typeTags(scalaClassName(tp))
+  def typeTag(tp: Type)(implicit ctx: ContextRenamed): Name = typeTags(scalaClassName(tp))
 
 //  /** The `Class[_]` of a primitive value type name */
 //  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
@@ -1230,7 +1230,7 @@ class Definitions {
   val BooleanEnc: Int = 17
   val UnitEnc: Int = 19
 
-  def isValueSubType(tref1: TypeRef, tref2: TypeRef)(implicit ctx: Context): Boolean =
+  def isValueSubType(tref1: TypeRef, tref2: TypeRef)(implicit ctx: ContextRenamed): Boolean =
     valueTypeEnc(tref2.name) % valueTypeEnc(tref1.name) == 0
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
@@ -1264,7 +1264,7 @@ class Definitions {
 
   private[this] var isInitialized = false
 
-  def init()(implicit ctx: Context): Unit = {
+  def init()(implicit ctx: ContextRenamed): Unit = {
     this.ctx = ctx
     if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package

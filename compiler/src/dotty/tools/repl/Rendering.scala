@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException
 
 import scala.runtime.ScalaRunTime
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Symbols.Symbol
@@ -26,7 +26,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private[this] var myClassLoader: ClassLoader = _
 
   /** Class loader used to load compiled code */
-  private[this] def classLoader()(implicit ctx: Context) =
+  private[this] def classLoader()(implicit ctx: ContextRenamed) =
     if (myClassLoader != null) myClassLoader
     else {
       val parent = parentClassLoader.getOrElse {
@@ -47,7 +47,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private[this] def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
+  private[this] def valueOf(sym: Symbol)(implicit ctx: ContextRenamed): Option[String] = {
     val defn = ctx.definitions
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[_] = Class.forName(objectName, true, classLoader())
@@ -68,11 +68,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   }
 
   /** Render method definition result */
-  def renderMethod(d: Denotation)(implicit ctx: Context): String =
+  def renderMethod(d: Denotation)(implicit ctx: ContextRenamed): String =
     d.symbol.showUser
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(implicit ctx: Context): Option[String] = {
+  def renderVal(d: Denotation)(implicit ctx: ContextRenamed): Option[String] = {
     val dcl = d.symbol.showUser
 
     try {

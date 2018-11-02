@@ -9,7 +9,7 @@ import Names._
 import Symbols._
 import NameOps._
 import TypeErasure.ErasedValueType
-import Contexts.Context
+import Contexts.ContextRenamed
 import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
@@ -25,15 +25,15 @@ import language.implicitConversions
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 
-class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
+class RefinedPrinter(_ctx: ContextRenamed) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private[this] var myCtx: Context = super.ctx
+  private[this] var myCtx: ContextRenamed = super.ctx
   private[this] var printPos = ctx.settings.YprintPos.value
   private[this] val printLines = ctx.settings.printLines.value
 
-  override protected[this] implicit def ctx: Context = myCtx
+  override protected[this] implicit def ctx: ContextRenamed = myCtx
 
   def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {
     val savedCtx = myCtx
@@ -604,12 +604,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   /** Print modifiers from symbols if tree has type, overriding the untpd behavior. */
-  implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDecorator =
+  implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: ContextRenamed): untpd.ModsDecorator =
     new untpd.ModsDecorator {
       def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
     }
 
-  def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = untpd.Modifiers(
+  def Modifiers(sym: Symbol)(implicit ctx: ContextRenamed): Modifiers = untpd.Modifiers(
     sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
     sym.annotations map (_.tree))

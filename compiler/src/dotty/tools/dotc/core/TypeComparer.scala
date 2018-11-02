@@ -19,9 +19,9 @@ import reporting.trace
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling {
+class TypeComparer(initctx: ContextRenamed) extends ConstraintHandling {
   import TypeComparer._
-  implicit val ctx: Context = initctx
+  implicit val ctx: ContextRenamed = initctx
 
   val state: TyperState = ctx.typerState
   import state.constraint
@@ -105,10 +105,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     true
   }
 
-  protected def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = ctx.gadt.bounds(sym)
+  protected def gadtBounds(sym: Symbol)(implicit ctx: ContextRenamed): TypeBounds = ctx.gadt.bounds(sym)
   protected def gadtSetBounds(sym: Symbol, b: TypeBounds): Unit = ctx.gadt.setBounds(sym, b)
 
-  protected def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = tvar.underlying
+  protected def typeVarInstance(tvar: TypeVar)(implicit ctx: ContextRenamed): Type = tvar.underlying
 
   // Subtype testing `<:<`
 
@@ -1680,7 +1680,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   }
 
   /** Show type, handling type types better than the default */
-  private def showType(tp: Type)(implicit ctx: Context) = tp match {
+  private def showType(tp: Type)(implicit ctx: ContextRenamed) = tp match {
     case ClassInfo(_, cls, _, _, _) => cls.showLocated
     case bounds: TypeBounds => "type bounds" + bounds.show
     case _ => tp.show
@@ -1719,7 +1719,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   }
 
   /** A new type comparer of the same type as this one, using the given context. */
-  def copyIn(ctx: Context): TypeComparer = new TypeComparer(ctx)
+  def copyIn(ctx: ContextRenamed): TypeComparer = new TypeComparer(ctx)
 
   // ----------- Diagnostics --------------------------------------------------
 
@@ -1737,7 +1737,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     }
 
   /** Show subtype goal that led to an assertion failure */
-  def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context): Unit = {
+  def showGoal(tp1: Type, tp2: Type)(implicit ctx: ContextRenamed): Unit = {
     println(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
       case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
@@ -1775,7 +1775,7 @@ object TypeComparer {
     var tpe: Type = NoType
   }
 
-  private[core] def show(res: Any)(implicit ctx: Context): String = res match {
+  private[core] def show(res: Any)(implicit ctx: ContextRenamed): String = res match {
     case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
     case _ => String.valueOf(res)
   }
@@ -1798,14 +1798,14 @@ object TypeComparer {
   val NoApprox: ApproxState = new ApproxState(0)
 
   /** Show trace of comparison operations when performing `op` as result string */
-  def explained[T](op: Context => T)(implicit ctx: Context): String = {
+  def explained[T](op: ContextRenamed => T)(implicit ctx: ContextRenamed): String = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
     op(nestedCtx)
     nestedCtx.typeComparer.toString
   }
 }
 
-class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+class TrackingTypeComparer(initctx: ContextRenamed) extends TypeComparer(initctx) {
   import state.constraint
 
   val footprint: mutable.Set[Type] = mutable.Set[Type]()
@@ -1820,7 +1820,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.addOneBound(param, bound, isUpper)
   }
 
-  override def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
+  override def gadtBounds(sym: Symbol)(implicit ctx: ContextRenamed): TypeBounds = {
     footprint += sym.typeRef
     super.gadtBounds(sym)
   }
@@ -1830,12 +1830,12 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtSetBounds(sym, b)
   }
 
-  override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = {
+  override def typeVarInstance(tvar: TypeVar)(implicit ctx: ContextRenamed): Type = {
     footprint += tvar
     super.typeVarInstance(tvar)
   }
 
-  def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {
+  def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: ContextRenamed): Type = {
 
     def paramInstances = new TypeAccumulator[Array[Type]] {
       def apply(inst: Array[Type], t: Type) = t match {
@@ -1882,7 +1882,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations */
-class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+class ExplainingTypeComparer(initctx: ContextRenamed) extends TypeComparer(initctx) {
   import TypeComparer._
 
   private[this] var indent = 0
@@ -1926,7 +1926,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.addConstraint(param, bound, fromBelow)
     }
 
-  override def copyIn(ctx: Context): ExplainingTypeComparer = new ExplainingTypeComparer(ctx)
+  override def copyIn(ctx: ContextRenamed): ExplainingTypeComparer = new ExplainingTypeComparer(ctx)
 
   override def toString: String = "Subtype trace:" + { try b.toString finally b.clear() }
 }

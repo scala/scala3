@@ -52,7 +52,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
   override def changesMembers: Boolean = true // the phase adds extension methods
 
-  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
+  override def transform(ref: SingleDenotation)(implicit ctx: ContextRenamed): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
       moduleClassSym.linkedClass match {
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
@@ -116,12 +116,12 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       ref
   }
 
-  protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
+  protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: ContextRenamed): Symbol =
     if (isMethodWithExtension(target) &&
         target.owner.linkedClass == derived.owner) extensionMethod(target)
     else NoSymbol
 
-  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
+  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: ContextRenamed): TermSymbol = {
     val extensionName = extensionNames(imeth).head.toTermName
     val extensionMeth = ctx.newSymbol(staticClass, extensionName,
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
@@ -136,7 +136,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   // TODO: this is state and should be per-run
   // todo: check that when transformation finished map is empty
 
-  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
+  override def transformTemplate(tree: tpd.Template)(implicit ctx: ContextRenamed): tpd.Tree = {
     if (isDerivedValueClass(ctx.owner)) {
       /* This is currently redundant since value classes may not
          wrap over other value classes anyway.
@@ -153,7 +153,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     } else tree
   }
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: ContextRenamed): tpd.Tree = {
     if (isMethodWithExtension(tree.symbol)) {
       val origMeth = tree.symbol
       val origClass = ctx.owner.asClass
@@ -181,7 +181,7 @@ object ExtensionMethods {
    *  in `extensionMethod` if the first name has the wrong type. We thereby gain a level of insensitivity
    *  of how overloaded types are ordered between phases and picklings.
    */
-  private def extensionNames(imeth: Symbol)(implicit ctx: Context): Stream[Name] = {
+  private def extensionNames(imeth: Symbol)(implicit ctx: ContextRenamed): Stream[Name] = {
     val decl = imeth.owner.info.decl(imeth.name)
 
     /** No longer needed for Dotty, as we are more disciplined with scopes now.
@@ -207,7 +207,7 @@ object ExtensionMethods {
   }
 
   /** Return the extension method that corresponds to given instance method `meth`. */
-  def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
+  def extensionMethod(imeth: Symbol)(implicit ctx: ContextRenamed): TermSymbol =
     ctx.atPhase(ctx.extensionMethodsPhase.next) { implicit ctx =>
       // FIXME use toStatic instead?
       val companionInfo = imeth.owner.companionModule.info

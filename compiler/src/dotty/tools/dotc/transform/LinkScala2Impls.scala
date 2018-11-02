@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Flags._
 import SymUtils._
 import Symbols._
@@ -40,7 +40,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     // that's why it is runsAfterGroupOf
 
   /** Copy definitions from implementation class to trait itself */
-  private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
+  private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: ContextRenamed): Unit = {
     def info_2_12(sym: Symbol) = sym.info match {
       case mt @ MethodType(paramNames @ nme.SELF :: _) =>
         // 2.12 seems to always assume the enclsing mixin class as self type parameter,
@@ -58,7 +58,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
       newImpl(sym.asTerm).enteredAfter(thisPhase)
   }
 
-  override def prepareForTemplate(impl: Template)(implicit ctx: Context): Context = {
+  override def prepareForTemplate(impl: Template)(implicit ctx: ContextRenamed): ContextRenamed = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins)
       if (mixin.is(Scala_2_12_Trait, butNot = Scala_2_12_Augmented)) {
@@ -68,7 +68,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     ctx
   }
 
-  override def transformApply(app: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(app: Apply)(implicit ctx: ContextRenamed): Tree = {
     def currentClass = ctx.owner.enclosingClass.asClass
     app match {
       case Apply(sel @ Select(Super(_, _), _), args)
@@ -86,7 +86,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   }
 
   /** The 2.12 implementation method of a super call or implementation class target */
-  private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
+  private def implMethod(meth: Symbol)(implicit ctx: ContextRenamed): Symbol = {
     val implName = ImplMethName(meth.name.asTermName)
     val cls = meth.owner
     if (cls.is(ImplClass))

@@ -23,37 +23,37 @@ object CheckRealizable {
 
   object NotStable extends Realizability(" is not a stable reference")
 
-  class NotFinal(sym: Symbol)(implicit ctx: Context)
+  class NotFinal(sym: Symbol)(implicit ctx: ContextRenamed)
   extends Realizability(i" refers to nonfinal $sym")
 
-  class HasProblemBounds(name: Name, info: Type)(implicit ctx: Context)
+  class HasProblemBounds(name: Name, info: Type)(implicit ctx: ContextRenamed)
   extends Realizability(i" has a member $name with possibly conflicting bounds ${info.bounds.lo} <: ... <: ${info.bounds.hi}")
 
-  class HasProblemBaseArg(typ: Type, argBounds: TypeBounds)(implicit ctx: Context)
+  class HasProblemBaseArg(typ: Type, argBounds: TypeBounds)(implicit ctx: ContextRenamed)
   extends Realizability(i" has a base type $typ with possibly conflicting parameter bounds ${argBounds.lo} <: ... <: ${argBounds.hi}")
 
-  class HasProblemBase(base1: Type, base2: Type)(implicit ctx: Context)
+  class HasProblemBase(base1: Type, base2: Type)(implicit ctx: ContextRenamed)
   extends Realizability(i" has conflicting base types $base1 and $base2")
 
-  class HasProblemField(fld: SingleDenotation, problem: Realizability)(implicit ctx: Context)
+  class HasProblemField(fld: SingleDenotation, problem: Realizability)(implicit ctx: ContextRenamed)
   extends Realizability(i" has a member $fld which is not a legal path\nsince ${fld.symbol.name}: ${fld.info}${problem.msg}")
 
-  class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
+  class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: ContextRenamed)
   extends Realizability(i"s underlying type ${tp}${problem.msg}") {
     assert(problem != Realizable)
   }
 
-  def realizability(tp: Type)(implicit ctx: Context): Realizability =
+  def realizability(tp: Type)(implicit ctx: ContextRenamed): Realizability =
     new CheckRealizable().realizability(tp)
 
-  def boundsRealizability(tp: Type)(implicit ctx: Context): Realizability =
+  def boundsRealizability(tp: Type)(implicit ctx: ContextRenamed): Realizability =
     new CheckRealizable().boundsRealizability(tp)
 
   private val LateInitialized = Lazy | Erased,
 }
 
 /** Compute realizability status */
-class CheckRealizable(implicit ctx: Context) {
+class CheckRealizable(implicit ctx: ContextRenamed) {
   import CheckRealizable._
 
   /** A set of all fields that have already been checked. Used

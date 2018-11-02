@@ -30,7 +30,7 @@ import StdNames.{nme, str}
 import NameKinds.{DefaultGetterName, ExpandedName}
 import Names.TermName
 
-class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
+class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: ContextRenamed) extends BackendInterface{
   import Symbols.{toDenot, toClassDenot}
     // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
     // they would be shadowed by the more deeply nested `symHelper` decorator.
@@ -456,7 +456,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     val t = new TreeTraverser {
       var outerRhs: Tree = tree
 
-      def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+      def traverse(tree: tpd.Tree)(implicit ctx: ContextRenamed): Unit = tree match {
         case t: DefDef =>
           if (t.symbol is Flags.Label)
             res.put(outerRhs, t :: res.getOrElse(outerRhs, Nil))
@@ -497,7 +497,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     || sym.is(Flags.Bridge)
   )
 
-  private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
+  private def verifySignature(sym: Symbol, sig: String)(implicit ctx: ContextRenamed): Unit = {
     import scala.tools.asm.util.CheckClassAdapter
     def wrap(body: => Unit): Boolean =
       try { body; true }
@@ -556,7 +556,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     else null
   }
 
-  private def getGenericSignature(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] =
+  private def getGenericSignature(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: ContextRenamed): Option[String] =
     if (needsGenericSignature(sym)) {
       val erasedTypeSym = sym.denot.info.typeSymbol
       if (erasedTypeSym.isPrimitiveValueClass) {

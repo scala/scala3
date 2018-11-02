@@ -9,7 +9,7 @@ package backend.jvm
 import dotc.ast.Trees.Select
 import dotc.ast.tpd._
 import dotc.core._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
@@ -34,7 +34,7 @@ import scala.collection.immutable
  *
  * Inspired from the `scalac` compiler.
  */
-class DottyPrimitives(ctx: Context) {
+class DottyPrimitives(ctx: ContextRenamed) {
   import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
   private lazy val primitives: immutable.Map[Symbol, Int] = init
@@ -53,7 +53,7 @@ class DottyPrimitives(ctx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: Apply, tpe: Type)(implicit ctx: Context): Int = {
+  def getPrimitive(app: Apply, tpe: Type)(implicit ctx: ContextRenamed): Int = {
     val fun = app.fun.symbol
     val defn = ctx.definitions
     val code = app.fun match {
@@ -134,7 +134,7 @@ class DottyPrimitives(ctx: Context) {
       primitives(s) = code
     }
 
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(implicit ctx: Context): Unit = {
+    def addPrimitives(cls: Symbol, method: TermName, code: Int)(implicit ctx: ContextRenamed): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty)
         ctx.error(s"Unknown primitive method $cls.$method")

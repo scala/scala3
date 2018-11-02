@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package printing
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 
-trait Printers { this: Context =>
+trait Printers { this: ContextRenamed =>
 
   /** A function creating a printer */
   def printer: Printer = {

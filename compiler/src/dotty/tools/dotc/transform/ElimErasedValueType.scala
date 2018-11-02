@@ -27,7 +27,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
 
   override def runsAfter: Set[String] = Set(Erasure.name)
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = sym match {
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: ContextRenamed): Type = sym match {
     case sym: ClassSymbol if sym is ModuleClass =>
       sym.companionClass match {
         case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
@@ -45,7 +45,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
       elimEVT(tp)
   }
 
-  def elimEVT(tp: Type)(implicit ctx: Context): Type = tp match {
+  def elimEVT(tp: Type)(implicit ctx: ContextRenamed): Type = tp match {
     case ErasedValueType(_, underlying) =>
       elimEVT(underlying)
     case tp: MethodType =>
@@ -56,10 +56,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
       tp
   }
 
-  def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
+  def transformTypeOfTree(tree: Tree)(implicit ctx: ContextRenamed): Tree =
     tree.withType(elimEVT(tree.tpe))
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: ContextRenamed): Tree = {
     val Apply(fun, args) = tree
 
     // The casts to and from ErasedValueType are no longer needed once ErasedValueType
@@ -77,14 +77,14 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
    *  The before erasure test is performed after phase elimRepeated, so we
    *  do not need to special case pairs of `T* / Seq[T]` parameters.
    */
-  private def checkNoClashes(root: Symbol)(implicit ctx: Context) = {
+  private def checkNoClashes(root: Symbol)(implicit ctx: ContextRenamed) = {
     val opc = new OverridingPairs.Cursor(root) {
       override def exclude(sym: Symbol) =
         !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
       override def matches(sym1: Symbol, sym2: Symbol) =
         sym1.signature == sym2.signature
     }
-    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(implicit ctx: Context): Unit = {
+    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(implicit ctx: ContextRenamed): Unit = {
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
@@ -119,23 +119,23 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
     }
   }
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree = {
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: ContextRenamed): Tree = {
     checkNoClashes(tree.symbol)
     tree
   }
 
-  override def transformInlined(tree: Inlined)(implicit ctx: Context): Tree =
+  override def transformInlined(tree: Inlined)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
 
   // FIXME: transformIf and transformBlock won't be required anymore once #444 is fixed.
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
-  override def transformBlock(tree: Block)(implicit ctx: Context): Tree =
+  override def transformBlock(tree: Block)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
-  override def transformIf(tree: If)(implicit ctx: Context): Tree =
+  override def transformIf(tree: If)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
-  override def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree =
+  override def transformTypeTree(tree: TypeTree)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
 }

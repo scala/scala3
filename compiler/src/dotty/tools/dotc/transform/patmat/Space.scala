@@ -280,7 +280,7 @@ trait SpaceLogic {
 }
 
 /** Scala implementation of space logic */
-class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
+class SpaceEngine(implicit ctx: ContextRenamed) extends SpaceLogic {
   import tpd._
 
   private val scalaSomeClass       = ctx.requiredClass("scala.Some")
@@ -537,7 +537,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *  - intersection of a singleton type with another irrelevant type  (patmat/i3574.scala)
    *
    */
-  def inhabited(tp: Type)(implicit ctx: Context): Boolean = {
+  def inhabited(tp: Type)(implicit ctx: ContextRenamed): Boolean = {
     // convert top-level type shape into "conjunctive normal form"
     def cnf(tp: Type): Type = tp match {
       case AndType(OrType(l, r), tp)      =>
@@ -614,7 +614,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /** expose abstract type references to their bounds or tvars according to variance */
-  private class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
+  private class AbstractTypeMap(maximize: Boolean)(implicit ctx: ContextRenamed) extends TypeMap {
     def expose(lo: Type, hi: Type): Type =
       if (variance == 0)
         newTypeVar(TypeBounds(lo, hi))
@@ -645,8 +645,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
   }
 
-  private def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
-  private def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
+  private def minTypeMap(implicit ctx: ContextRenamed) = new AbstractTypeMap(maximize = false)
+  private def maxTypeMap(implicit ctx: ContextRenamed) = new AbstractTypeMap(maximize = true)
 
   /** Instantiate type `tp1` to be a subtype of `tp2`
    *
@@ -656,7 +656,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *  Otherwise, return NoType.
    *
    */
-  def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
+  def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: ContextRenamed): Type = {
     // Fix subtype checking for child instantiation,
     // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
     // See tests/patmat/i3938.scala
@@ -678,7 +678,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
-    def instUndetMap(implicit ctx: Context) = new TypeMap {
+    def instUndetMap(implicit ctx: ContextRenamed) = new TypeMap {
       def apply(t: Type): Type = t match {
         case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
         case _ => mapOver(t)
@@ -809,7 +809,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case _ => impossible
     }
 
-    def checkConstraint(constrs: List[(Type, Type)])(implicit ctx: Context): Boolean = {
+    def checkConstraint(constrs: List[(Type, Type)])(implicit ctx: ContextRenamed): Boolean = {
       val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
       val typeParamMap = new TypeMap() {
         override def apply(tp: Type): Type = tp match {

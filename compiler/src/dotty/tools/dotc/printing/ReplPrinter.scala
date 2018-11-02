@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.printing.Texts._
 
 
-class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
+class ReplPrinter(_ctx: ContextRenamed) extends DecompilerPrinter(_ctx) {
 
   override def nameString(name: Name): String =
     if (name.isReplAssignName) name.decode.toString.takeWhile(_ != '$')

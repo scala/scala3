@@ -22,11 +22,11 @@ abstract class MacroTransformWithImplicits extends MacroTransform {
      *   - be tail-recursive where possible
      *   - don't re-allocate trees where nothing has changed
      */
-    override def transformStats(stats: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+    override def transformStats(stats: List[Tree], exprOwner: Symbol)(implicit ctx: ContextRenamed): List[Tree] = {
 
-      @tailrec def traverse(curStats: List[Tree])(implicit ctx: Context): List[Tree] = {
+      @tailrec def traverse(curStats: List[Tree])(implicit ctx: ContextRenamed): List[Tree] = {
 
-        def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(implicit ctx: Context): List[Tree] = {
+        def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(implicit ctx: ContextRenamed): List[Tree] = {
           if (stats eq curStats) {
             val rest1 = transformStats(rest, exprOwner)
             changed match {
@@ -57,7 +57,7 @@ abstract class MacroTransformWithImplicits extends MacroTransform {
       traverse(stats)
     }
 
-    private def nestedScopeCtx(defs: List[Tree])(implicit ctx: Context): Context = {
+    private def nestedScopeCtx(defs: List[Tree])(implicit ctx: ContextRenamed): ContextRenamed = {
       val nestedCtx = ctx.fresh.setNewScope
       defs foreach {
         case d: DefTree => nestedCtx.enter(d.symbol)
@@ -66,7 +66,7 @@ abstract class MacroTransformWithImplicits extends MacroTransform {
       nestedCtx
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
       def localCtx = ctx.withOwner(tree.symbol)
       tree match {
         case tree: Block =>

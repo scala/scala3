@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
 import printing.SyntaxHighlighting
@@ -28,7 +28,7 @@ trait MessageRendering {
     *
     * @return a list of strings with inline locations
     */
-  def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
+  def outer(pos: SourcePosition, prefix: String)(implicit ctx: ContextRenamed): List[String] =
     if (pos.outer.exists) {
        s"$prefix| This location is in code that was inlined at ${pos.outer}" ::
        outer(pos.outer, prefix)
@@ -39,7 +39,7 @@ trait MessageRendering {
     *
     * @return (lines before error, lines after error, line numbers offset)
     */
-  def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], List[String], Int) = {
+  def sourceLines(pos: SourcePosition)(implicit ctx: ContextRenamed): (List[String], List[String], Int) = {
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
       val (offset, line) = offsetAndLine
@@ -75,7 +75,7 @@ trait MessageRendering {
   }
 
   /** The column markers aligned under the error */
-  def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context): String = {
+  def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: ContextRenamed): String = {
     val prefix = " " * (offset - 1)
     val padding = pos.startColumnPadding
     val carets = Red {
@@ -90,7 +90,7 @@ trait MessageRendering {
     *
     * @return aligned error message
     */
-  def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: Context): String = {
+  def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: ContextRenamed): String = {
     val padding = msg.linesIterator.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
       val maxPad = math.max(0, ctx.settings.pageWidth.value - offset - lineLength) - offset
@@ -108,7 +108,7 @@ trait MessageRendering {
     *
     * @return separator containing error location and kind
     */
-  def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
+  def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: ContextRenamed): String =
     if (pos.exists) Blue({
       val file = s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
       val errId =
@@ -126,7 +126,7 @@ trait MessageRendering {
     }).show else ""
 
   /** Explanation rendered under "Explanation" header */
-  def explanation(m: Message)(implicit ctx: Context): String = {
+  def explanation(m: Message)(implicit ctx: ContextRenamed): String = {
     val sb = new StringBuilder(
       hl"""|
            |${Blue("Explanation")}
@@ -138,7 +138,7 @@ trait MessageRendering {
   }
 
   /** The whole message rendered from `msg` */
-  def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
+  def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: ContextRenamed): String = {
     val sb = mutable.StringBuilder.newBuilder
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append('\n')

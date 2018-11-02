@@ -6,7 +6,7 @@ import ast.{tpd, untpd}
 import dotty.tools.dotc.ast.Trees
 import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
@@ -37,11 +37,11 @@ class CompilationUnit(val source: SourceFile) {
 object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contends of the `unpickled` */
-  def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
+  def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: ContextRenamed): CompilationUnit =
     mkCompilationUnit(SourceFile(clsd.symbol.associatedFile, Array.empty), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
-  def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
+  def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: ContextRenamed): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
@@ -56,7 +56,7 @@ object CompilationUnit {
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
     var needsStaging = false
-    def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+    def traverse(tree: Tree)(implicit ctx: ContextRenamed): Unit = {
       // Note that top-level splices are still inside the inline methods
       if (tree.symbol.isQuote || tpd.isInlineCall(tree))
         needsStaging = true

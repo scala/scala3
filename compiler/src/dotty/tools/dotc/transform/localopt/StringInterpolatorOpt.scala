@@ -3,7 +3,7 @@ package dotty.tools.dotc.transform.localopt
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -23,7 +23,7 @@ class StringInterpolatorOpt extends MiniPhase {
 
   /** Matches a list of constant literals */
   private object Literals {
-    def unapply(tree: SeqLiteral)(implicit ctx: Context): Option[List[Literal]] = {
+    def unapply(tree: SeqLiteral)(implicit ctx: ContextRenamed): Option[List[Literal]] = {
       tree.elems match {
         case literals if literals.forall(_.isInstanceOf[Literal]) =>
           Some(literals.map(_.asInstanceOf[Literal]))
@@ -33,7 +33,7 @@ class StringInterpolatorOpt extends MiniPhase {
   }
 
   private object StringContextApply {
-    def unapply(tree: Select)(implicit ctx: Context): Boolean = {
+    def unapply(tree: Select)(implicit ctx: ContextRenamed): Boolean = {
       tree.symbol.eq(defn.StringContextModule_apply) &&
       tree.qualifier.symbol.eq(defn.StringContextModule)
     }
@@ -41,7 +41,7 @@ class StringInterpolatorOpt extends MiniPhase {
 
   /** Matches an s or raw string interpolator */
   private object SOrRawInterpolator {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+    def unapply(tree: Tree)(implicit ctx: ContextRenamed): Option[(List[Literal], List[Tree])] = {
       tree match {
         case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
         List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
@@ -57,7 +57,7 @@ class StringInterpolatorOpt extends MiniPhase {
     * the variable references.
     */
   private object StringContextIntrinsic {
-    def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+    def unapply(tree: Apply)(implicit ctx: ContextRenamed): Option[(List[Literal], List[Tree])] = {
       tree match {
         case SOrRawInterpolator(strs, elems) =>
           if (tree.symbol == defn.StringContextRaw) Some(strs, elems)
@@ -77,7 +77,7 @@ class StringInterpolatorOpt extends MiniPhase {
     }
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: ContextRenamed): Tree = {
     val sym = tree.symbol
     val isInterpolatedMethod = // Test names first to avoid loading scala.StringContext if not used
       (sym.name == nme.raw_ && sym.eq(defn.StringContextRaw)) ||
@@ -86,7 +86,7 @@ class StringInterpolatorOpt extends MiniPhase {
     else tree
   }
 
-  private def transformInterpolator(tree: Tree)(implicit ctx: Context): Tree = {
+  private def transformInterpolator(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
     tree match {
       case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
         val stri = strs.iterator

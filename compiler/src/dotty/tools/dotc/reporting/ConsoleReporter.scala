@@ -21,7 +21,7 @@ class ConsoleReporter(
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+  def doReport(m: MessageContainer)(implicit ctx: ContextRenamed): Unit = {
     val didPrint = m match {
       case m: Error =>
         printMessage(messageAndPos(m.contained(), m.pos, diagnosticLevel(m)))
@@ -63,5 +63,5 @@ class ConsoleReporter(
     }
   }
 
-  override def flush()(implicit ctx: Context): Unit = { writer.flush() }
+  override def flush()(implicit ctx: ContextRenamed): Unit = { writer.flush() }
 }

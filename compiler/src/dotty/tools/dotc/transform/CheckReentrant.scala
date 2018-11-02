@@ -4,7 +4,7 @@ package transform
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Symbols._
 import Decorators._
 
@@ -41,18 +41,18 @@ class CheckReentrant extends MiniPhase {
   private val unsharedAnnot = new CtxLazy(implicit ctx =>
     ctx.requiredClass("scala.annotation.internal.unshared"))
 
-  def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isIgnored(sym: Symbol)(implicit ctx: ContextRenamed): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot())
 
-  def scanning(sym: Symbol)(op: => Unit)(implicit ctx: Context): Unit = {
+  def scanning(sym: Symbol)(op: => Unit)(implicit ctx: ContextRenamed): Unit = {
     ctx.log(i"${"  " * indent}scanning $sym")
     indent += 1
     try op
     finally indent -= 1
   }
 
-  def addVars(cls: ClassSymbol)(implicit ctx: Context): Unit = {
+  def addVars(cls: ClassSymbol)(implicit ctx: ContextRenamed): Unit = {
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
@@ -74,7 +74,7 @@ class CheckReentrant extends MiniPhase {
     }
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(tree: Template)(implicit ctx: ContextRenamed): Tree = {
     if (ctx.settings.YcheckReentrant.value && tree.symbol.owner.isStaticOwner)
       addVars(tree.symbol.owner.asClass)
     tree

@@ -5,7 +5,7 @@ package comment
 import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Decorators._
 import scala.collection.mutable
 import dotty.tools.dotc.config.Printers.dottydoc
@@ -30,7 +30,7 @@ trait CommentParser extends util.MemberLookup {
     src: String,
     pos: Position,
     site: Symbol = NoSymbol
-  )(implicit ctx: Context): ParsedComment = {
+  )(implicit ctx: ContextRenamed): ParsedComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
       * instance, recursively on lines. To do so, it splits the whole comment
@@ -238,5 +238,5 @@ trait CommentParser extends util.MemberLookup {
     string: String,
     pos: Position,
     site: Symbol
-  )(implicit ctx: Context): Body = new WikiParser(entity, packages, string, pos, site).document()
+  )(implicit ctx: ContextRenamed): Body = new WikiParser(entity, packages, string, pos, site).document()
 }

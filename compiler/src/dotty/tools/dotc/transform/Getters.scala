@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers.SymTransformer
-import Contexts.Context
+import Contexts.ContextRenamed
 import SymDenotations.SymDenotation
 import Types._
 import Symbols._
@@ -51,7 +51,7 @@ class Getters extends MiniPhase with SymTransformer {
 
   override def phaseName: String = Getters.name
 
-  override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
+  override def transformSym(d: SymDenotation)(implicit ctx: ContextRenamed): SymDenotation = {
     def noGetterNeeded =
       d.is(NoGetterNeeded) ||
       d.is(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
@@ -77,10 +77,10 @@ class Getters extends MiniPhase with SymTransformer {
   }
   private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+  override def transformValDef(tree: ValDef)(implicit ctx: ContextRenamed): Tree =
     if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs).withPos(tree.pos) else tree
 
-  override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
+  override def transformAssign(tree: Assign)(implicit ctx: ContextRenamed): Tree =
     if (tree.lhs.symbol is Method) tree.lhs.becomes(tree.rhs).withPos(tree.pos) else tree
 }
 

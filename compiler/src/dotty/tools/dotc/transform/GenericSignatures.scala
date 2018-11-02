@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.Annotations.Annotation
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.Definitions
 import core.Flags._
 import core.Names.Name
@@ -29,14 +29,14 @@ object GenericSignatures {
    *  @param info The type of the symbol
    *  @return The signature if it could be generated, `None` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
+  def javaSig(sym0: Symbol, info: Type)(implicit ctx: ContextRenamed): Option[String] = {
     // Avoid generating a signature for local symbols.
     if (sym0.isLocal) None
     else javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
   }
 
   @noinline
-  private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
+  private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: ContextRenamed): Option[String] = {
     val builder = new StringBuilder(64)
     val isTraitSignature = sym0.enclosingClass.is(Trait)
 
@@ -247,7 +247,7 @@ object GenericSignatures {
 
         case mtpe: MethodType =>
           // erased method parameters do not make it to the bytecode.
-          def effectiveParamInfoss(t: Type)(implicit ctx: Context): List[List[Type]] = t match {
+          def effectiveParamInfoss(t: Type)(implicit ctx: ContextRenamed): List[List[Type]] = t match {
             case t: MethodType if t.isErasedMethod => effectiveParamInfoss(t.resType)
             case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
             case _ => Nil
@@ -320,7 +320,7 @@ object GenericSignatures {
     *    not Object, the dominator is Tc.                                        <--- @PP: "which is not Object" not in spec.
     *  - Otherwise, the dominator is the first element of the span.
     */
-  private def intersectionDominator(parents: List[Type])(implicit ctx: Context): Type = {
+  private def intersectionDominator(parents: List[Type])(implicit ctx: ContextRenamed): Type = {
     if (parents.isEmpty) defn.ObjectType
     else {
       val psyms = parents map (_.typeSymbol)
@@ -344,7 +344,7 @@ object GenericSignatures {
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.
    * This is important on Android because there is otherwise an interface explosion.
    */
-  private def minimizeParents(cls: Symbol, parents: List[Type])(implicit ctx: Context): List[Type] = if (parents.isEmpty) parents else {
+  private def minimizeParents(cls: Symbol, parents: List[Type])(implicit ctx: ContextRenamed): List[Type] = if (parents.isEmpty) parents else {
     // val requiredDirect: Symbol => Boolean = requiredDirectInterfaces.getOrElse(cls, Set.empty)
     var rest   = parents.tail
     var leaves = collection.mutable.ListBuffer.empty[Type] += parents.head
@@ -366,7 +366,7 @@ object GenericSignatures {
     leaves.toList
   }
 
-  private def hiBounds(bounds: TypeBounds)(implicit ctx: Context): List[Type] = bounds.hi.widenDealias match {
+  private def hiBounds(bounds: TypeBounds)(implicit ctx: ContextRenamed): List[Type] = bounds.hi.widenDealias match {
     case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
     case tp => tp :: Nil
   }
@@ -374,7 +374,7 @@ object GenericSignatures {
   /** Arrays despite their finality may turn up as refined type parents,
     *  e.g. with "tagged types" like Array[Int] with T.
     */
-  private def unboundedGenericArrayLevel(tp: Type)(implicit ctx: Context): Int = tp match {
+  private def unboundedGenericArrayLevel(tp: Type)(implicit ctx: ContextRenamed): Int = tp match {
     case GenericArray(core, level) if !(core <:< defn.AnyRefType) =>
       level
     case AndType(tp1, tp2) =>
@@ -387,7 +387,7 @@ object GenericSignatures {
   // * higher-order type parameters
   // * type parameters appearing in method parameters
   // * type members not visible in an enclosing template
-  private def isTypeParameterInSig(sym: Symbol, initialSymbol: Symbol)(implicit ctx: Context) = {
+  private def isTypeParameterInSig(sym: Symbol, initialSymbol: Symbol)(implicit ctx: ContextRenamed) = {
     !sym.maybeOwner.isTypeParam &&
       sym.isTypeParam && (
       sym.isContainedIn(initialSymbol.topLevelClass) ||
@@ -401,7 +401,7 @@ object GenericSignatures {
     * as well as “new-style” `@throws[Exception]("cause")` annotations.
     */
   private object ThrownException {
-    def unapply(ann: Annotation)(implicit ctx: Context): Option[Type] = {
+    def unapply(ann: Annotation)(implicit ctx: ContextRenamed): Option[Type] = {
       ann.tree match {
         case Apply(TypeApply(fun, List(tpe)), _) if tpe.isType && fun.symbol.owner == defn.ThrowsAnnot && fun.symbol.isConstructor =>
           Some(tpe.typeOpt)
@@ -420,7 +420,7 @@ object GenericSignatures {
   // included (use pre.baseType(cls.owner)).
   //
   // This requires that cls.isClass.
-  private def rebindInnerClass(pre: Type, cls: Symbol)(implicit ctx: Context): Type = {
+  private def rebindInnerClass(pre: Type, cls: Symbol)(implicit ctx: ContextRenamed): Type = {
     val owner = cls.owner
     if (owner.is(PackageClass) || owner.isTerm) pre else cls.owner.info /* .tpe_* */
   }
@@ -430,7 +430,7 @@ object GenericSignatures {
     /** Is `tp` an unbounded generic type (i.e. which could be instantiated
       *  with primitive as well as class types)?.
       */
-    private def genericCore(tp: Type)(implicit ctx: Context): Type = tp.widenDealias match {
+    private def genericCore(tp: Type)(implicit ctx: ContextRenamed): Type = tp.widenDealias match {
       /* A Java Array<T> is erased to Array[Object] (T can only be a reference type), where as a Scala Array[T] is
        * erased to Object. However, there is only symbol for the Array class. So to make the distinction between
        * a Java and a Scala array, we check if the owner of T comes from a Java class.
@@ -455,7 +455,7 @@ object GenericSignatures {
       *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
       *  otherwise None. Existentials on any level are ignored.
       */
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp.widenDealias match {
+    def unapply(tp: Type)(implicit ctx: ContextRenamed): Option[(Type, Int)] = tp.widenDealias match {
       case defn.ArrayOf(arg) =>
         genericCore(arg) match {
           case NoType =>
@@ -473,7 +473,7 @@ object GenericSignatures {
   }
 
   private object RefOrAppliedType {
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Symbol, Type, List[Type])] = tp match {
+    def unapply(tp: Type)(implicit ctx: ContextRenamed): Option[(Symbol, Type, List[Type])] = tp match {
       case TypeParamRef(_, _) =>
         Some((tp.typeSymbol, tp, Nil))
       case TermParamRef(_, _) =>
@@ -488,12 +488,12 @@ object GenericSignatures {
     }
   }
 
-  private def needsJavaSig(tp: Type, throwsArgs: List[Type])(implicit ctx: Context): Boolean = !ctx.settings.YnoGenericSig.value && {
+  private def needsJavaSig(tp: Type, throwsArgs: List[Type])(implicit ctx: ContextRenamed): Boolean = !ctx.settings.YnoGenericSig.value && {
       def needs(tp: Type) = (new NeedsSigCollector).apply(false, tp)
       needs(tp) || throwsArgs.exists(needs)
   }
 
-  private class NeedsSigCollector(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class NeedsSigCollector(implicit ctx: ContextRenamed) extends TypeAccumulator[Boolean] {
     override def apply(x: Boolean, tp: Type): Boolean =
       if (!x) {
         tp match {

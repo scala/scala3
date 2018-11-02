@@ -49,7 +49,7 @@ object Implicits {
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
   class RenamedImplicitRef(val underlyingRef: TermRef, val alias: TermName) extends ImplicitRef {
-    def implicitName(implicit ctx: Context): TermName = alias
+    def implicitName(implicit ctx: ContextRenamed): TermName = alias
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
@@ -60,8 +60,8 @@ object Implicits {
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
-  abstract class ImplicitRefs(initctx: Context) {
-    implicit val ctx: Context =
+  abstract class ImplicitRefs(initctx: ContextRenamed) {
+    implicit val ctx: ContextRenamed =
       if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
 
     /** The nesting level of this context. Non-zero only in ContextialImplicits */
@@ -73,16 +73,16 @@ object Implicits {
     private[this] var SingletonClass: ClassSymbol = null
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
-    private def widenSingleton(tp: Type)(implicit ctx: Context): Type = {
+    private def widenSingleton(tp: Type)(implicit ctx: ContextRenamed): Type = {
       if (SingletonClass == null) SingletonClass = defn.SingletonClass
       val wtp = tp.widenSingleton
       if (wtp.derivesFrom(SingletonClass)) defn.AnyType else wtp
     }
 
     /** Return those references in `refs` that are compatible with type `pt`. */
-    protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
+    protected def filterMatching(pt: Type)(implicit ctx: ContextRenamed): List[Candidate] = track("filterMatching") {
 
-      def refMatches(ref: TermRef)(implicit ctx: Context) = /*trace(i"refMatches $ref $pt")*/ {
+      def refMatches(ref: TermRef)(implicit ctx: ContextRenamed) = /*trace(i"refMatches $ref $pt")*/ {
 
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
@@ -186,7 +186,7 @@ object Implicits {
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
+  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: ContextRenamed) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
     lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
@@ -214,7 +214,7 @@ object Implicits {
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
+  class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: ContextRenamed) extends ImplicitRefs(initctx) {
     private val eligibleCache = new java.util.IdentityHashMap[Type, List[Candidate]]
 
     /** The level increases if current context has a different owner or scope than
@@ -326,7 +326,7 @@ object Implicits {
     def expectedType: Type
     protected def argument: Tree
 
-    final protected def qualify(implicit ctx: Context): String =
+    final protected def qualify(implicit ctx: ContextRenamed): String =
       if (expectedType.exists)
         if (argument.isEmpty) em"match type $expectedType"
         else em"convert from ${argument.tpe} to $expectedType"
@@ -335,18 +335,18 @@ object Implicits {
         else em"convert from ${argument.tpe} to expected type"
 
     /** An explanation of the cause of the failure as a string */
-    def explanation(implicit ctx: Context): String
+    def explanation(implicit ctx: ContextRenamed): String
 
-    def msg(implicit ctx: Context): Message = explanation
+    def msg(implicit ctx: ContextRenamed): Message = explanation
 
     /** If search was for an implicit conversion, a note describing the failure
      *  in more detail - this is either empty or starts with a '\n'
      */
-    def whyNoConversion(implicit ctx: Context): String = ""
+    def whyNoConversion(implicit ctx: ContextRenamed): String = ""
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree) extends SearchFailureType {
-    def explanation(implicit ctx: Context): String =
+    def explanation(implicit ctx: ContextRenamed): String =
       em"no implicit values were found that $qualify"
   }
 
@@ -357,9 +357,9 @@ object Implicits {
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
-    def explanation(implicit ctx: Context): String =
+    def explanation(implicit ctx: ContextRenamed): String =
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
-    override def whyNoConversion(implicit ctx: Context): String =
+    override def whyNoConversion(implicit ctx: ContextRenamed): String =
       "\nNote that implicit conversions cannot be applied because they are ambiguous;" +
       "\n" + explanation
   }
@@ -367,7 +367,7 @@ object Implicits {
   class MismatchedImplicit(ref: TermRef,
                            val expectedType: Type,
                            val argument: Tree) extends SearchFailureType {
-    def explanation(implicit ctx: Context): String =
+    def explanation(implicit ctx: ContextRenamed): String =
       em"${err.refStr(ref)} does not $qualify"
   }
 
@@ -376,19 +376,19 @@ object Implicits {
                          val expectedType: Type,
                          val argument: Tree) extends SearchFailureType {
     /** same as err.refStr but always prints owner even if it is a term */
-    def show(ref: Type)(implicit ctx: Context): String = ref match {
+    def show(ref: Type)(implicit ctx: ContextRenamed): String = ref match {
       case ref: NamedType if ref.symbol.maybeOwner.isTerm =>
         i"${ref.symbol} in ${ref.symbol.owner}"
       case _ => err.refStr(ref)
     }
-    def explanation(implicit ctx: Context): String =
+    def explanation(implicit ctx: ContextRenamed): String =
       em"${show(ref)} does $qualify but it is shadowed by ${show(shadowing)}"
   }
 
   class DivergingImplicit(ref: TermRef,
                           val expectedType: Type,
                           val argument: Tree) extends SearchFailureType {
-    def explanation(implicit ctx: Context): String =
+    def explanation(implicit ctx: ContextRenamed): String =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 }
@@ -407,7 +407,7 @@ trait ImplicitRunInfo { self: Run =>
    *                      a type variable, we need the current context, the current
    *                      runinfo context does not do.
    */
-  def implicitScope(rootTp: Type, liftingCtx: Context): OfTypeImplicits = {
+  def implicitScope(rootTp: Type, liftingCtx: ContextRenamed): OfTypeImplicits = {
 
     val seen: mutable.Set[Type] = mutable.Set()
     val incomplete: mutable.Set[Type] = mutable.Set()
@@ -419,7 +419,7 @@ trait ImplicitRunInfo { self: Run =>
      *  abstract types are eliminated.
      */
     object liftToClasses extends TypeMap {
-      override implicit protected val ctx: Context = liftingCtx
+      override implicit protected val ctx: ContextRenamed = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
@@ -526,7 +526,7 @@ trait Implicits { self: Typer =>
 
   import tpd._
 
-  override def viewExists(from: Type, to: Type)(implicit ctx: Context): Boolean = (
+  override def viewExists(from: Type, to: Type)(implicit ctx: ContextRenamed): Boolean = (
        !from.isError
     && !to.isError
     && !ctx.isAfterTyper
@@ -542,7 +542,7 @@ trait Implicits { self: Typer =>
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
-  def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
+  def inferView(from: Tree, to: Type)(implicit ctx: ContextRenamed): SearchResult = track("inferView") {
     if (   (to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)
@@ -571,7 +571,7 @@ trait Implicits { self: Typer =>
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+  def inferImplicitArg(formal: Type, pos: Position)(implicit ctx: ContextRenamed): Tree = {
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
@@ -631,7 +631,7 @@ trait Implicits { self: Typer =>
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
      */
-    def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
+    def synthesizedEq(formal: Type)(implicit ctx: ContextRenamed): Tree = {
       //println(i"synth eq $formal / ${formal.argTypes}%, %")
       formal.argTypes match {
         case args @ (arg1 :: arg2 :: Nil)
@@ -646,7 +646,7 @@ trait Implicits { self: Typer =>
     def hasEq(tp: Type): Boolean =
       inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).isSuccess
 
-    def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+    def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: ContextRenamed) = {
       List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
       assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
@@ -655,7 +655,7 @@ trait Implicits { self: Typer =>
      *  This makes any implicit stored under `DelayedImplicit` visible and
      *  stores in turn the given `lazyImplicit` as new `DelayedImplicit`.
      */
-    def lazyImplicitCtx(lazyImplicit: Symbol): Context = {
+    def lazyImplicitCtx(lazyImplicit: Symbol): ContextRenamed = {
       val lctx = ctx.fresh
       for (delayedRef <- ctx.property(DelayedImplicit))
         lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits)(ctx))
@@ -704,13 +704,13 @@ trait Implicits { self: Typer =>
   }
 
   /** Search an implicit argument and report error if not found */
-  def implicitArgTree(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+  def implicitArgTree(formal: Type, pos: Position)(implicit ctx: ContextRenamed): Tree = {
     val arg = inferImplicitArg(formal, pos)
     if (arg.tpe.isInstanceOf[SearchFailureType]) ctx.error(missingArgMsg(arg, formal, ""), pos)
     arg
   }
 
-  def missingArgMsg(arg: Tree, pt: Type, where: String)(implicit ctx: Context): String = {
+  def missingArgMsg(arg: Tree, pt: Type, where: String)(implicit ctx: ContextRenamed): String = {
     def msg(shortForm: String)(headline: String = shortForm) = arg match {
       case arg: Trees.SearchFailureIdent[_] =>
         shortForm
@@ -754,7 +754,7 @@ trait Implicits { self: Typer =>
             case p: PolyType => p.paramNames.map(_.toString)
             case _           => Nil
           }
-          def resolveTypes(targs: List[Tree])(implicit ctx: Context) =
+          def resolveTypes(targs: List[Tree])(implicit ctx: ContextRenamed) =
             targs.map(a => fullyDefinedType(a.tpe, "type argument", a.pos))
 
           // We can extract type arguments from:
@@ -795,7 +795,7 @@ trait Implicits { self: Typer =>
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
-  def implicitParamString(paramName: TermName, methodStr: String, tree: Tree)(implicit ctx: Context): String =
+  def implicitParamString(paramName: TermName, methodStr: String, tree: Tree)(implicit ctx: ContextRenamed): String =
     tree match {
       case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
@@ -806,7 +806,7 @@ trait Implicits { self: Typer =>
         em"parameter ${paramName} of $methodStr"
     }
 
-  private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
+  private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: ContextRenamed) = {
     def eqNullable: Boolean = {
       val other =
         if (ltp.isRef(defn.NullClass)) rtp
@@ -833,7 +833,7 @@ trait Implicits { self: Typer =>
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =
+  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: ContextRenamed): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = implicitArgTree(defn.EqType.appliedTo(ltp, rtp), pos)
       implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
@@ -846,7 +846,7 @@ trait Implicits { self: Typer =>
    *  @param pos             The position where errors should be reported.
    *  !!! todo: catch potential cycles
    */
-  def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
+  def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: ContextRenamed): SearchResult = track("inferImplicit") {
     assert(ctx.phase.allowsImplicitSearch,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
@@ -889,7 +889,7 @@ trait Implicits { self: Typer =>
   }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: ContextRenamed) {
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
@@ -916,7 +916,7 @@ trait Implicits { self: Typer =>
       //println(i"search implicits $pt / ${eligible.map(_.ref)}")
 
     /** Try to typecheck an implicit reference */
-    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: ContextRenamed): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
       val ref = cand.ref
       var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
       val locked = ctx.typerState.ownedVars
@@ -1199,7 +1199,7 @@ trait Implicits { self: Typer =>
 class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 
   /** The number of applications and refinements in this type, after all aliases are expanded */
-  private def typeSize(tp: Type)(implicit ctx: Context): Int = {
+  private def typeSize(tp: Type)(implicit ctx: ContextRenamed): Int = {
     val accu = new TypeAccumulator[Int] {
       def apply(n: Int, tp: Type): Int = tp match {
         case tp: AppliedType =>
@@ -1228,7 +1228,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
    *  lower than the complexity of the type that was previously encountered and that had
    *  the same class symbol as `proto`. A possible divergence is detected if that test fails.
    */
-  def nest(proto: Type)(implicit ctx: Context): SearchHistory = {
+  def nest(proto: Type)(implicit ctx: ContextRenamed): SearchHistory = {
     if (searchDepth < ctx.settings.XminImplicitSearchDepth.value)
       new SearchHistory(searchDepth + 1, seen)
     else {
@@ -1252,7 +1252,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 }
 
 /** A set of term references where equality is =:= */
-class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
+class TermRefSet(implicit ctx: ContextRenamed) extends mutable.Traversable[TermRef] {
   import collection.JavaConverters._
   private val elems = (new java.util.LinkedHashMap[TermSymbol, List[Type]]).asScala
 

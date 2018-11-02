@@ -15,7 +15,7 @@ import reporting.diagnostic.Message
 
 import scala.annotation.internal.sharable
 
-trait TypeOps { this: Context => // TODO: Make standalone object.
+trait TypeOps { this: ContextRenamed => // TODO: Make standalone object.
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
@@ -70,7 +70,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tp
   }
 
-  private def isLegalPrefix(pre: Type)(implicit ctx: Context) =
+  private def isLegalPrefix(pre: Type)(implicit ctx: ContextRenamed) =
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
@@ -251,7 +251,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  @param  instantiate   A function that maps a bound type and the list of argument types to a resulting type.
    *                        Needed to handle bounds that refer to other bounds.
    */
-  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): List[BoundsViolation] = {
+  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: ContextRenamed): List[BoundsViolation] = {
     val argTypes = args.tpes
     val violations = new mutable.ListBuffer[BoundsViolation]
     for ((arg, bounds) <- args zip boundss) {

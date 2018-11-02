@@ -28,7 +28,7 @@ object JavaParsers {
 
   import ast.untpd._
 
-  class JavaParser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
+  class JavaParser(source: SourceFile)(implicit ctx: ContextRenamed) extends ParserCommon(source) {
 
     val definitions: Definitions = ctx.definitions
     import definitions._
@@ -104,7 +104,7 @@ object JavaParsers {
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
 
-    def unimplementedExpr(implicit ctx: Context): Select =
+    def unimplementedExpr(implicit ctx: ContextRenamed): Select =
       Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
@@ -911,7 +911,7 @@ object JavaParsers {
    *  This is necessary even for Java, because the filename defining a non-public classes cannot be determined from the
    *  classname alone.
    */
-  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
+  class OutlineJavaParser(source: SourceFile)(implicit ctx: ContextRenamed) extends JavaParser(source) with OutlineParserCommon {
     override def skipBracesHook(): Option[Tree] = None
     override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
       skipBraces()

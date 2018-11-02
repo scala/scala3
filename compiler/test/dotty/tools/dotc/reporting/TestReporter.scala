@@ -48,7 +48,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
+  def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: ContextRenamed): Unit = {
     val msg = messageAndPos(m.contained(), m.pos, diagnosticLevel(m))
     val extraInfo = inlineInfo(m.pos)
 
@@ -61,7 +61,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
     if (extraInfo.nonEmpty) _messageBuf.append(extraInfo)
   }
 
-  override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+  override def doReport(m: MessageContainer)(implicit ctx: ContextRenamed): Unit = {
     // Here we add extra information that we should know about the error message
     val extra = m.contained() match {
       case pm: PatternMatchExhaustivity => s": ${pm.uncovered}"
@@ -118,7 +118,7 @@ object TestReporter {
   def simplifiedReporter(writer: PrintWriter): TestReporter = {
     val rep = new TestReporter(writer, logPrintln, WARNING) {
       /** Prints the message with the given position indication in a simplified manner */
-      override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
+      override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: ContextRenamed): Unit = {
         def report() = {
           val msg = s"${m.pos.line + 1}: " + m.contained().kind + extra
           val extraInfo = inlineInfo(m.pos)

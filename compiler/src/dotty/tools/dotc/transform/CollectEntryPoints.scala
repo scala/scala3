@@ -1,13 +1,13 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core._
 import Symbols._
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import Types._
 import Decorators._
 import StdNames._
@@ -17,7 +17,7 @@ import dotty.tools.dotc.config.JavaPlatform
 class CollectEntryPoints extends MiniPhase {
 
   /** perform context-dependant initialization */
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): Context = {
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: ContextRenamed): ContextRenamed = {
     entryPoints = collection.immutable.TreeSet.empty[Symbol](new SymbolOrdering())
     assert(ctx.platform.isInstanceOf[JavaPlatform], "Java platform specific phase")
     ctx
@@ -28,7 +28,7 @@ class CollectEntryPoints extends MiniPhase {
   def getEntryPoints: List[Symbol] = entryPoints.toList
 
   override def phaseName: String = "collectEntryPoints"
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: ContextRenamed): tpd.Tree = {
     if (tree.symbol.owner.isClass && isJavaEntryPoint(tree.symbol)) {
       // collecting symbols for entry points here (as opposed to GenBCode where they are used)
       // has the advantage of saving an additional pass over all ClassDefs.
@@ -37,7 +37,7 @@ class CollectEntryPoints extends MiniPhase {
     tree
   }
 
-  def isJavaEntryPoint(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isJavaEntryPoint(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = {
     def fail(msg: String, pos: Position = sym.pos) = {
       ctx.warning(sym.name +
         s" has a main method with parameter type Array[String], but ${sym.fullName} will not be a runnable program.\n  Reason: $msg",
@@ -61,7 +61,7 @@ class CollectEntryPoints extends MiniPhase {
           case _ => false
         }
     }
-    def precise(implicit ctx: Context) = {
+    def precise(implicit ctx: ContextRenamed) = {
       val companion = sym.companionClass //sym.asClass.linkedClassOfClass
       if (ctx.platform.hasMainMethod(companion))
         failNoForwarder("companion contains its own main method")
@@ -99,7 +99,7 @@ class CollectEntryPoints extends MiniPhase {
 
 }
 
-class SymbolOrdering(implicit ctx: Context) extends Ordering[Symbol] {
+class SymbolOrdering(implicit ctx: ContextRenamed) extends Ordering[Symbol] {
   override def compare(x: Symbol, y: Symbol): Int = {
     x.fullName.toString.compareTo(y.fullName.toString)
   }

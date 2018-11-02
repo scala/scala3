@@ -25,7 +25,7 @@ object NameOps {
      *
      *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
      */
-    def apply(s: String)(implicit ctx: Context): String = {
+    def apply(s: String)(implicit ctx: ContextRenamed): String = {
       val marker = "$$$$"
       val limit: Int = ctx.settings.XmaxClassfileName.value
       val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
@@ -115,7 +115,7 @@ object NameOps {
      *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,
      *  followed by `kind` and the name.
      */
-    def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N =
+    def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: ContextRenamed): N =
       likeSpacedN { base.fullNameSeparated(ExpandPrefixName, kind, name) }
 
     /** Revert the expanded name. */
@@ -157,7 +157,7 @@ object NameOps {
      */
     def variance: Int = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
-    def freshened(implicit ctx: Context): N = likeSpacedN {
+    def freshened(implicit ctx: ContextRenamed): N = likeSpacedN {
       name.toTermName match {
         case ModuleClassName(original) => ModuleClassName(original.freshened)
         case name => UniqueName.fresh(name)
@@ -230,7 +230,7 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
-    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(implicit ctx: Context): N = {
+    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(implicit ctx: ContextRenamed): N = {
 
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
@@ -241,7 +241,7 @@ object NameOps {
     }
 
     /** If name length exceeds allowable limit, replace part of it by hash */
-    def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
+    def compactified(implicit ctx: ContextRenamed): TermName = termName(compactify(name.toString))
 
     def unmangleClassName: N = name.toTermName match {
       case name: SimpleName

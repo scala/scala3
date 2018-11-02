@@ -23,7 +23,7 @@ object Uniques {
       record(s"cached: $clazz")
     }
 
-  def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
+  def unique[T <: Type](tp: T)(implicit ctx: ContextRenamed): T = {
     if (monitored) recordCaching(tp)
     if (tp.hash == NotCached) tp
     else if (monitored) {
@@ -53,7 +53,7 @@ object Uniques {
       e
     }
 
-    def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
+    def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: ContextRenamed): NamedType = {
       val h = doHash(null, designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType =

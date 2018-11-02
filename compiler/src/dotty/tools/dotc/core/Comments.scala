@@ -15,7 +15,7 @@ object Comments {
   val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
 
   /** Decorator for getting docbase out of context */
-  implicit class CommentsContext(val ctx: Context) extends AnyVal {
+  implicit class CommentsContext(val ctx: ContextRenamed) extends AnyVal {
     def docCtx: Option[ContextDocstrings] = ctx.property(ContextDoc)
   }
 
@@ -63,7 +63,7 @@ object Comments {
      * @param f The expansion function.
      * @return The expanded comment, with the `usecases` populated.
      */
-    def expand(f: String => String)(implicit ctx: Context): Comment = {
+    def expand(f: String => String)(implicit ctx: ContextRenamed): Comment = {
       val expandedComment = f(raw)
       val useCases = Comment.parseUsecases(expandedComment, pos)
       Comment(pos, raw, Some(expandedComment), useCases)
@@ -77,7 +77,7 @@ object Comments {
     def apply(pos: Position, raw: String): Comment =
       Comment(pos, raw, None, Nil)
 
-    private def parseUsecases(expandedComment: String, pos: Position)(implicit ctx: Context): List[UseCase] =
+    private def parseUsecases(expandedComment: String, pos: Position)(implicit ctx: ContextRenamed): List[UseCase] =
       if (!isDocComment(expandedComment)) {
         Nil
       } else {
@@ -94,7 +94,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(body: String, pos: Position, start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private[this] def decomposeUseCase(body: String, pos: Position, start: Int, end: Int)(implicit ctx: ContextRenamed): UseCase = {
       def subPos(start: Int, end: Int) =
         if (pos == NoPosition) NoPosition
         else {
@@ -117,7 +117,7 @@ object Comments {
   }
 
   object UseCase {
-    def apply(code: String, codePos: Position)(implicit ctx: Context): UseCase = {
+    def apply(code: String, codePos: Position)(implicit ctx: ContextRenamed): UseCase = {
       val tree = {
         val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
         tree match {
@@ -142,7 +142,7 @@ object Comments {
     import dotc.config.Printers.dottydoc
     import scala.collection.mutable
 
-    def expand(sym: Symbol, site: Symbol)(implicit ctx: Context): String = {
+    def expand(sym: Symbol, site: Symbol)(implicit ctx: ContextRenamed): String = {
       val parent = if (site != NoSymbol) site else sym
       defineVariables(parent)
       expandedDocComment(sym, parent)
@@ -156,7 +156,7 @@ object Comments {
      *                                  of the same string are done, which is
      *                                  interpreted as a recursive variable definition.
      */
-    def expandedDocComment(sym: Symbol, site: Symbol, docStr: String = "")(implicit ctx: Context): String = {
+    def expandedDocComment(sym: Symbol, site: Symbol, docStr: String = "")(implicit ctx: ContextRenamed): String = {
       // when parsing a top level class or module, use the (module-)class itself to look up variable definitions
       val parent = if ((sym.is(Flags.Module) || sym.isClass) && site.is(Flags.Package)) sym
                    else site
@@ -179,7 +179,7 @@ object Comments {
       docStr.replaceAll("""\{@inheritDoc\p{Zs}*\}""", "@inheritdoc")
 
     /** The cooked doc comment of an overridden symbol */
-    protected def superComment(sym: Symbol)(implicit ctx: Context): Option[String] =
+    protected def superComment(sym: Symbol)(implicit ctx: ContextRenamed): Option[String] =
       allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "")
 
     private val cookedDocComments = newMutableSymbolMap[String]
@@ -189,7 +189,7 @@ object Comments {
      *  If a symbol does not have a doc comment but some overridden version of it does,
      *  the doc comment of the overridden version is copied instead.
      */
-    def cookedDocComment(sym: Symbol, docStr: String = "")(implicit ctx: Context): String = cookedDocComments.getOrElseUpdate(sym, {
+    def cookedDocComment(sym: Symbol, docStr: String = "")(implicit ctx: ContextRenamed): String = cookedDocComments.getOrElseUpdate(sym, {
       var ownComment =
         if (docStr.length == 0) ctx.docCtx.flatMap(_.docstring(sym).map(c => template(c.raw))).getOrElse("")
         else template(docStr)
@@ -345,7 +345,7 @@ object Comments {
         out.toString
       }
 
-    protected def expandVariables(initialStr: String, sym: Symbol, site: Symbol)(implicit ctx: Context): String = {
+    protected def expandVariables(initialStr: String, sym: Symbol, site: Symbol)(implicit ctx: ContextRenamed): String = {
       val expandLimit = 10
 
       def expandInternal(str: String, depth: Int): String = {
@@ -398,7 +398,7 @@ object Comments {
       expandInternal(initialStr, 0).replaceAllLiterally("""\$""", "$")
     }
 
-    def defineVariables(sym: Symbol)(implicit ctx: Context): Unit = {
+    def defineVariables(sym: Symbol)(implicit ctx: ContextRenamed): Unit = {
       val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
       val raw = ctx.docCtx.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
@@ -424,7 +424,7 @@ object Comments {
      *  @param vble  The variable for which a definition is searched
      *  @param site  The class for which doc comments are generated
      */
-    def lookupVariable(vble: String, site: Symbol)(implicit ctx: Context): Option[String] = site match {
+    def lookupVariable(vble: String, site: Symbol)(implicit ctx: ContextRenamed): Option[String] = site match {
       case NoSymbol => None
       case _        =>
         val searchList =
@@ -441,14 +441,14 @@ object Comments {
      *  If a symbol does not have a doc comment but some overridden version of it does,
      *  the position of the doc comment of the overridden version is returned instead.
      */
-    def docCommentPos(sym: Symbol)(implicit ctx: Context): Position =
+    def docCommentPos(sym: Symbol)(implicit ctx: ContextRenamed): Position =
       ctx.docCtx.flatMap(_.docstring(sym).map(_.pos)).getOrElse(NoPosition)
 
     /** A version which doesn't consider self types, as a temporary measure:
      *  an infinite loop has broken out between superComment and cookedDocComment
      *  since r23926.
      */
-    private def allInheritedOverriddenSymbols(sym: Symbol)(implicit ctx: Context): List[Symbol] = {
+    private def allInheritedOverriddenSymbols(sym: Symbol)(implicit ctx: ContextRenamed): List[Symbol] = {
       if (!sym.owner.isClass) Nil
       else sym.allOverriddenSymbols.toList.filter(_ != NoSymbol) //TODO: could also be `sym.owner.allOverrid..`
       //else sym.owner.ancestors map (sym overriddenSymbol _) filter (_ != NoSymbol)

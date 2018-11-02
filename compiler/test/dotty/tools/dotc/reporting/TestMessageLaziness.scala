@@ -10,11 +10,11 @@ import diagnostic.{ErrorMessageID, ExtendMessage, Message, MessageContainer}
 class TestMessageLaziness extends DottyTest {
   ctx = ctx.fresh.setReporter(new NonchalantReporter)
 
-  class NonchalantReporter(implicit ctx: Context) extends Reporter
+  class NonchalantReporter(implicit ctx: ContextRenamed) extends Reporter
   with UniqueMessagePositions with HideNonSensicalMessages {
-    def doReport(m: MessageContainer)(implicit ctx: Context) = ???
+    def doReport(m: MessageContainer)(implicit ctx: ContextRenamed) = ???
 
-    override def report(m: MessageContainer)(implicit ctx: Context) = ()
+    override def report(m: MessageContainer)(implicit ctx: ContextRenamed) = ()
   }
 
   case class LazyError() extends Message(ErrorMessageID.LazyErrorId) {

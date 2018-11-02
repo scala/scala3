@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import ast.tpd
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import core.StdNames.nme
 import TypeUtils._
 import MegaPhase.MiniPhase
@@ -22,7 +22,7 @@ class GetClass extends MiniPhase {
   // getClass transformation should be applied to specialized methods
   override def runsAfter: Set[String] = Set(Erasure.name, FunctionalInterfaces.name)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: ContextRenamed): Tree = {
     import ast.Trees._
     tree match {
       case Apply(Select(qual, nme.getClass_), Nil) if qual.tpe.widen.isPrimitiveValueType =>

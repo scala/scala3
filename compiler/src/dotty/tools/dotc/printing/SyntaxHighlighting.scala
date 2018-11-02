@@ -1,7 +1,7 @@
 package dotty.tools.dotc.printing
 
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.parsing.Scanners.Scanner
@@ -28,7 +28,7 @@ object SyntaxHighlighting {
   val TypeColor: String       = Console.MAGENTA
   val AnnotationColor: String = Console.MAGENTA
 
-  def highlight(in: String)(implicit ctx: Context): String = {
+  def highlight(in: String)(implicit ctx: ContextRenamed): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
@@ -94,10 +94,10 @@ object SyntaxHighlighting {
           for (annotation <- tree.rawMods.annotations)
             highlightPosition(annotation.pos, AnnotationColor)
 
-        def highlight(trees: List[Tree])(implicit ctx: Context): Unit =
+        def highlight(trees: List[Tree])(implicit ctx: ContextRenamed): Unit =
           trees.foreach(traverse)
 
-        def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        def traverse(tree: Tree)(implicit ctx: ContextRenamed): Unit = {
           tree match {
             case tree: NameTree if ignored(tree) =>
               ()

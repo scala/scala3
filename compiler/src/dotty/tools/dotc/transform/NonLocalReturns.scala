@@ -8,7 +8,7 @@ import NameKinds.NonLocalReturnKeyName
 
 object NonLocalReturns {
   import ast.tpd._
-  def isNonLocalReturn(ret: Return)(implicit ctx: Context): Boolean =
+  def isNonLocalReturn(ret: Return)(implicit ctx: ContextRenamed): Boolean =
     !ret.from.symbol.is(Label) && (ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy))
 }
 
@@ -22,19 +22,19 @@ class NonLocalReturns extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimByName.name)
 
-  private def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context) =
+  private def ensureConforms(tree: Tree, pt: Type)(implicit ctx: ContextRenamed) =
     if (tree.tpe <:< pt) tree
     else Erasure.Boxing.adaptToType(tree, pt)
 
   /** The type of a non-local return expression with given argument type */
-  private def nonLocalReturnExceptionType(argtype: Type)(implicit ctx: Context) =
+  private def nonLocalReturnExceptionType(argtype: Type)(implicit ctx: ContextRenamed) =
     defn.NonLocalReturnControlType.appliedTo(argtype)
 
   /** A hashmap from method symbols to non-local return keys */
   private val nonLocalReturnKeys = newMutableSymbolMap[TermSymbol]
 
   /** Return non-local return key for given method */
-  private def nonLocalReturnKey(meth: Symbol)(implicit ctx: Context) =
+  private def nonLocalReturnKey(meth: Symbol)(implicit ctx: ContextRenamed) =
     nonLocalReturnKeys.getOrElseUpdate(meth,
       ctx.newSymbol(
         meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.pos))
@@ -46,7 +46,7 @@ class NonLocalReturns extends MiniPhase {
    *  todo: maybe clone a pre-existing exception instead?
    *  (but what to do about exceptions that miss their targets?)
    */
-  private def nonLocalReturnThrow(expr: Tree, meth: Symbol)(implicit ctx: Context) =
+  private def nonLocalReturnThrow(expr: Tree, meth: Symbol)(implicit ctx: ContextRenamed) =
     Throw(
       New(
         defn.NonLocalReturnControlType,
@@ -65,7 +65,7 @@ class NonLocalReturns extends MiniPhase {
    *    }
    *  }
    */
-  private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(implicit ctx: Context) = {
+  private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(implicit ctx: ContextRenamed) = {
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
     val nonLocalReturnControl = defn.NonLocalReturnControlType
     val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.pos)
@@ -79,13 +79,13 @@ class NonLocalReturns extends MiniPhase {
     Block(keyDef :: Nil, tryCatch)
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
+  override def transformDefDef(tree: DefDef)(implicit ctx: ContextRenamed): Tree =
     nonLocalReturnKeys.remove(tree.symbol) match {
       case Some(key) => cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key, tree.symbol))
       case _ => tree
     }
 
-  override def transformReturn(tree: Return)(implicit ctx: Context): Tree =
+  override def transformReturn(tree: Return)(implicit ctx: ContextRenamed): Tree =
     if (isNonLocalReturn(tree)) nonLocalReturnThrow(tree.expr, tree.from.symbol).withPos(tree.pos)
     else tree
 }

@@ -357,7 +357,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (emptyReporter /: (1 to n)) ((_, i) => op(i))
 
-          override def doCompile(comp: Compiler, files: List[String])(implicit ctx: Context) =
+          override def doCompile(comp: Compiler, files: List[String])(implicit ctx: ContextRenamed) =
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)

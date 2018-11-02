@@ -2,12 +2,12 @@ package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.tasty.TastyBuffer.Addr
 
 import java.nio.charset.Charset
 
-class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr])(implicit ctx: Context) {
+class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr])(implicit ctx: ContextRenamed) {
   private[this] val buf = new TastyBuffer(5000)
   pickler.newSection("Comments", buf)
 
@@ -29,7 +29,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]
   }
 
   private class Traverser(docCtx: ContextDocstrings) extends tpd.TreeTraverser {
-    override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit =
+    override def traverse(tree: tpd.Tree)(implicit ctx: ContextRenamed): Unit =
       tree match {
         case md: tpd.MemberDef =>
           val comment = docCtx.docstring(md.symbol)

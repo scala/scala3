@@ -56,16 +56,16 @@ abstract class Constraint extends Showable {
    *  are not contained in the return bounds.
    *  @pre `param` is not part of the constraint domain.
    */
-  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
+  def nonParamBounds(param: TypeParamRef)(implicit ctx: ContextRenamed): TypeBounds
 
   /** The lower bound of `param` including all known-to-be-smaller parameters */
-  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type
+  def fullLowerBound(param: TypeParamRef)(implicit ctx: ContextRenamed): Type
 
   /** The upper bound of `param` including all known-to-be-greater parameters */
-  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type
+  def fullUpperBound(param: TypeParamRef)(implicit ctx: ContextRenamed): Type
 
   /** The bounds of `param` including all known-to-be-smaller and -greater parameters */
-  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
+  def fullBounds(param: TypeParamRef)(implicit ctx: ContextRenamed): TypeBounds
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
@@ -74,7 +74,7 @@ abstract class Constraint extends Showable {
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): This
+  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: ContextRenamed): This
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -85,18 +85,18 @@ abstract class Constraint extends Showable {
    *
    * @pre  `this contains param`.
    */
-  def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
+  def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: ContextRenamed): This
 
   /** A constraint that includes the relationship `p1 <: p2`.
    *  `<:` relationships between parameters ("edges") are propagated, but
    *  non-parameter bounds are left alone.
    */
-  def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
+  def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: ContextRenamed): This
 
   /** A constraint resulting from adding p2 = p1 to this constraint, and at the same
    *  time transferring all bounds of p2 to p1
    */
-  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
+  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: ContextRenamed): This
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
@@ -104,7 +104,7 @@ abstract class Constraint extends Showable {
    *  approximation of it if that is needed to avoid cycles.
    *  Occurrences nested inside a refinement or prefix are not affected.
    */
-  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
+  def replace(param: TypeParamRef, tp: Type)(implicit ctx: ContextRenamed): This
 
   /** Is entry associated with `pt` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
@@ -113,7 +113,7 @@ abstract class Constraint extends Showable {
   def isRemovable(pt: TypeLambda): Boolean
 
   /** A new constraint with all entries coming from `pt` removed. */
-  def remove(pt: TypeLambda)(implicit ctx: Context): This
+  def remove(pt: TypeLambda)(implicit ctx: ContextRenamed): This
 
   /** The type lambdas constrained by this constraint */
   def domainLambdas: List[TypeLambda]
@@ -137,13 +137,13 @@ abstract class Constraint extends Showable {
    *                           returning an approximate constraint, instead of
    *                           failing with an exception
    */
-  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): Constraint
+  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: ContextRenamed): Constraint
 
   /** Check that no constrained parameter contains itself as a bound */
-  def checkNonCyclic()(implicit ctx: Context): Unit
+  def checkNonCyclic()(implicit ctx: ContextRenamed): Unit
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
-  def checkClosed()(implicit ctx: Context): Unit
+  def checkClosed()(implicit ctx: ContextRenamed): Unit
 
   /** Constraint has not yet been retracted from a typer state */
   def isRetracted: Boolean

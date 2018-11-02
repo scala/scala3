@@ -29,7 +29,7 @@ import dotty.tools.io.VirtualFile
 import scala.util.control.NonFatal
 
 /** A compiler run. Exports various methods to compile source files */
-class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
+class Run(comp: Compiler, ictx: ContextRenamed) extends ImplicitRunInfo with ConstraintRunInfo {
 
   /** Produces the following contexts, from outermost to innermost
    *
@@ -39,7 +39,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *                 for type checking.
    *    imports      For each element of RootImports, an import context
    */
-  protected[this] def rootContext(implicit ctx: Context): Context = {
+  protected[this] def rootContext(implicit ctx: ContextRenamed): ContextRenamed = {
     ctx.initialize()(ctx)
     ctx.base.setPhasePlan(comp.phases)
     val rootScope = new MutableScope
@@ -54,7 +54,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setTyperState(new TyperState(ctx.typerState))
       .setFreshNames(new FreshNameCreator.Default)
     ctx.initialize()(start) // re-initialize the base context with start
-    def addImport(ctx: Context, refFn: () => TermRef) =
+    def addImport(ctx: ContextRenamed, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
     (start.setRun(this) /: defn.RootImportFns)(addImport)
   }
@@ -64,9 +64,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var myCtx = rootContext(ictx)
 
   /** The context created for this run */
-  def runContext: Context = myCtx
+  def runContext: ContextRenamed = myCtx
 
-  protected[this] implicit def ctx: Context = myCtx
+  protected[this] implicit def ctx: ContextRenamed = myCtx
   assert(ctx.runId <= Periods.MaxPossibleRunId)
 
   private[this] var myUnits: List[CompilationUnit] = _
@@ -139,12 +139,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileUnits()
   }
 
-  def compileUnits(us: List[CompilationUnit], ctx: Context): Unit = {
+  def compileUnits(us: List[CompilationUnit], ctx: ContextRenamed): Unit = {
     units = us
     compileUnits()(ctx)
   }
 
-  private def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {
+  private def compileUnits()(implicit ctx: ContextRenamed) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
       ctx.base.checkSingleThreaded()
 
@@ -160,7 +160,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)
 
-    def runPhases(implicit ctx: Context) = {
+    def runPhases(implicit ctx: ContextRenamed) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
 
@@ -203,11 +203,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  If `typeCheck = true`, also run typer on the compilation unit, and set
    *  `rootTreeOrProvider`.
    */
-  def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit =
+  def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: ContextRenamed): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
       val unit = new CompilationUnit(getSource(file.path))
-      def process()(implicit ctx: Context) = {
+      def process()(implicit ctx: ContextRenamed) = {
         unit.untpdTree =
           if (unit.isJava) new JavaParser(unit.source).parse()
           else new Parser(unit.source).parse()
@@ -227,7 +227,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree
   private object NoPrintedTree extends PrintedTree
 
-  private def printTree(last: PrintedTree)(implicit ctx: Context): PrintedTree = {
+  private def printTree(last: PrintedTree)(implicit ctx: ContextRenamed): PrintedTree = {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.base.squashed(prevPhase)

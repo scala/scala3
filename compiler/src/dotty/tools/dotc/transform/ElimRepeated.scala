@@ -7,7 +7,7 @@ import Types._
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import Flags._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Symbols._
 import Constants._
 import Decorators._
@@ -29,10 +29,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def changesMembers: Boolean = true // the phase adds vararg bridges
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: ContextRenamed): Type =
     elimRepeated(tp)
 
-  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+  override def transform(ref: SingleDenotation)(implicit ctx: ContextRenamed): SingleDenotation =
     super.transform(ref) match {
       case ref1: SymDenotation if (ref1 ne ref) && overridesJava(ref1.symbol) =>
         // This method won't override the corresponding Java method at the end of this phase,
@@ -42,11 +42,11 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref1
     }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym is Method
+  override def mayChange(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = sym is Method
 
-  private def overridesJava(sym: Symbol)(implicit ctx: Context) = sym.allOverriddenSymbols.exists(_ is JavaDefined)
+  private def overridesJava(sym: Symbol)(implicit ctx: ContextRenamed) = sym.allOverriddenSymbols.exists(_ is JavaDefined)
 
-  private def elimRepeated(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
+  private def elimRepeated(tp: Type)(implicit ctx: ContextRenamed): Type = tp.stripTypeVar match {
     case tp @ MethodTpe(paramNames, paramTypes, resultType) =>
       val resultType1 = elimRepeated(resultType)
       val paramTypes1 =
@@ -61,16 +61,16 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
+  def transformTypeOfTree(tree: Tree)(implicit ctx: ContextRenamed): Tree =
     tree.withType(elimRepeated(tree.tpe))
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(implicit ctx: ContextRenamed): Tree = {
     val formals =
       ctx.atPhase(thisPhase) { implicit ctx =>
         tree.fun.tpe.widen.asInstanceOf[MethodType].paramInfos
@@ -88,7 +88,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** Convert sequence argument to Java array of type `pt` */
-  private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
+  private def seqToArray(tree: Tree, pt: Type)(implicit ctx: ContextRenamed): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
     case app@Apply(fun, args) if defn.WrapArrayMethods().contains(fun.symbol) => // rewrite a call to `wrapXArray(arr)` to `arr`
@@ -105,13 +105,13 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           // Because of phantomclasses, the Java array's type might not conform to the return type
   }
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: ContextRenamed): Tree =
     transformTypeOfTree(tree)
 
   /** If method overrides a Java varargs method, add a varargs bridge.
    *  Also transform trees inside method annotation
    */
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
+  override def transformDefDef(tree: DefDef)(implicit ctx: ContextRenamed): Tree =
     ctx.atPhase(thisPhase) { implicit ctx =>
       if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
         addVarArgsBridge(tree)
@@ -126,7 +126,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *           which overrides the Java varargs method JM from this phase on
    *           and forwards to `ddef`.
    */
-  private def addVarArgsBridge(ddef: DefDef)(implicit ctx: Context): Tree = {
+  private def addVarArgsBridge(ddef: DefDef)(implicit ctx: ContextRenamed): Tree = {
     val original = ddef.symbol.asTerm
     val bridge = original.copy(
       flags = ddef.symbol.flags &~ Private | Artifact,
@@ -144,7 +144,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** Convert type from Scala to Java varargs method */
-  private def toJavaVarArgs(tp: Type)(implicit ctx: Context): Type = tp match {
+  private def toJavaVarArgs(tp: Type)(implicit ctx: ContextRenamed): Type = tp match {
     case tp: PolyType =>
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
     case tp: MethodType =>

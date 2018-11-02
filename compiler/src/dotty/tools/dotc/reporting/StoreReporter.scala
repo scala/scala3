@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import collection.mutable
 import config.Printers.typr
 import diagnostic.MessageContainer
@@ -22,7 +22,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
 
   protected[this] var infos: mutable.ListBuffer[MessageContainer] = null
 
-  def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+  def doReport(m: MessageContainer)(implicit ctx: ContextRenamed): Unit = {
     typr.println(s">>>> StoredError: ${m.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += m
@@ -31,7 +31,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
   override def hasPendingErrors: Boolean =
     infos != null && infos.exists(_.isInstanceOf[Error])
 
-  override def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] =
+  override def removeBufferedMessages(implicit ctx: ContextRenamed): List[MessageContainer] =
     if (infos != null) try infos.toList finally infos = null
     else Nil
 

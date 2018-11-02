@@ -3,7 +3,7 @@ package dotc
 package parsing
 
 import ast.Trees._
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 
 trait DocstringTest extends DottyTest {
 
@@ -26,7 +26,7 @@ trait DocstringTest extends DottyTest {
 
   def checkFrontend(source: String)(docAssert: PartialFunction[Tree[Untyped], Unit]): Unit = {
     checkCompile("frontend", source) { (_, ctx) =>
-      implicit val c: Context = ctx
+      implicit val c: ContextRenamed = ctx
       (docAssert orElse defaultAssertion)(ctx.compilationUnit.untpdTree)
     }
   }

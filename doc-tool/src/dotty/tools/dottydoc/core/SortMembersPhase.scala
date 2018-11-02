@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 
 import transform.DocMiniPhase
 import model._
@@ -33,23 +33,23 @@ class SortMembers extends DocMiniPhase {
     pkgs ++ nested ++ typs ++ vals ++ defs
   }
 
-  override def transformPackage(implicit ctx: Context) = { case p: PackageImpl =>
+  override def transformPackage(implicit ctx: ContextRenamed) = { case p: PackageImpl =>
     p.copy(members = sort(p.members)) :: Nil
   }
 
-  override def transformClass(implicit ctx: Context) = { case c: ClassImpl =>
+  override def transformClass(implicit ctx: ContextRenamed) = { case c: ClassImpl =>
     c.copy(members = sort(c.members)) :: Nil
   }
 
-  override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
+  override def transformCaseClass(implicit ctx: ContextRenamed) = { case cc: CaseClassImpl =>
     cc.copy(members = sort(cc.members)) :: Nil
   }
 
-  override def transformTrait(implicit ctx: Context) = { case t: TraitImpl =>
+  override def transformTrait(implicit ctx: ContextRenamed) = { case t: TraitImpl =>
     t.copy(members = sort(t.members)) :: Nil
   }
 
-  override def transformObject(implicit ctx: Context) = { case o: ObjectImpl =>
+  override def transformObject(implicit ctx: ContextRenamed) = { case o: ObjectImpl =>
     o.copy(members = sort(o.members)) :: Nil
   }
 }

@@ -11,14 +11,14 @@ import ShortcutImplicits._
 import util.Positions.Position
 
 /** A helper class for generating bridge methods in class `root`. */
-class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
+class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: ContextRenamed) {
   import ast.tpd._
 
   assert(ctx.phase == ctx.erasurePhase.next)
   private val preErasureCtx = ctx.withPhase(ctx.erasurePhase)
   private val elimErasedCtx = ctx.withPhase(ctx.elimErasedValueTypePhase.next)
 
-  private class BridgesCursor(implicit ctx: Context) extends OverridingPairs.Cursor(root) {
+  private class BridgesCursor(implicit ctx: ContextRenamed) extends OverridingPairs.Cursor(root) {
 
     /** Only use the superclass of `root` as a parent class. This means
      *  overriding pairs that have a common implementation in a trait parent
@@ -59,7 +59,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     def bridgeExists =
       bridgesScope.lookupAll(member.name).exists(bridge =>
         bridgeTarget(bridge) == member && bridge.signature == other.signature)
-    def info(sym: Symbol)(implicit ctx: Context) = sym.info
+    def info(sym: Symbol)(implicit ctx: ContextRenamed) = sym.info
     def desc(sym: Symbol)= {
       val infoStr = info(sym)(preErasureCtx) match {
         case ExprType(info) => i": $info"

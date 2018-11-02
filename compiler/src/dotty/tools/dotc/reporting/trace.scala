@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import config.Config
 import config.Printers
 import core.Mode
@@ -10,11 +10,11 @@ import core.Mode
 object trace {
 
   @forceInline
-  def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
+  def onDebug[TD](question: => String)(op: => TD)(implicit ctx: ContextRenamed): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
   @forceInline
-  def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC =
+  def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: ContextRenamed): TC =
     if (Config.tracingEnabled) {
       def op1 = op
       if (cond) apply[TC](question, Printers.default, show)(op1)
@@ -22,7 +22,7 @@ object trace {
     } else op
 
   @forceInline
-  def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T =
+  def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: ContextRenamed): T =
     if (Config.tracingEnabled) {
       def op1 = op
       if (printer.eq(config.Printers.noPrinter)) op1
@@ -31,7 +31,7 @@ object trace {
     else op
 
   @forceInline
-  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
+  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: ContextRenamed): T =
     if (Config.tracingEnabled) {
       def op1 = op
       if (printer.eq(config.Printers.noPrinter)) op1
@@ -40,18 +40,18 @@ object trace {
     else op
 
   @forceInline
-  def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
+  def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: ContextRenamed): T =
     apply[T](question, printer, false)(op)
 
   @forceInline
-  def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: Context): T =
+  def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: ContextRenamed): T =
     apply[T](question, Printers.default, show)(op)
 
   @forceInline
-  def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
+  def apply[T](question: => String)(op: => T)(implicit ctx: ContextRenamed): T =
     apply[T](question, Printers.default, false)(op)
 
-  private def showShowable(x: Any)(implicit ctx: Context) = x match {
+  private def showShowable(x: Any)(implicit ctx: ContextRenamed) = x match {
     case x: printing.Showable => x.show
     case _ => String.valueOf(x)
   }
@@ -61,14 +61,14 @@ object trace {
   private def doTrace[T](question: => String,
                          printer: Printers.Printer = Printers.default,
                          showOp: Any => String = alwaysToString)
-                        (op: => T)(implicit ctx: Context): T = {
+                        (op: => T)(implicit ctx: ContextRenamed): T = {
     // Avoid evaluating question multiple time, since each evaluation
     // may cause some extra logging output.
     lazy val q: String = question
     apply[T](s"==> $q?", (res: Any) => s"<== $q = ${showOp(res)}")(op)
   }
 
-  def apply[T](leading: => String, trailing: Any => String)(op: => T)(implicit ctx: Context): T =
+  def apply[T](leading: => String, trailing: Any => String)(op: => T)(implicit ctx: ContextRenamed): T =
     if (ctx.mode.is(Mode.Printing)) op
     else {
       var finalized = false

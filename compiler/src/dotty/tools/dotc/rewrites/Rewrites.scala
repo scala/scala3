@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Positions}
 import Positions.Position
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import collection.mutable
 import scala.annotation.tailrec
 
@@ -62,19 +62,19 @@ object Rewrites {
   /** If -rewrite is set, record a patch that replaces the range
    *  given by `pos` in `source` by `replacement`
    */
-  def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: Context): Unit =
+  def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: ContextRenamed): Unit =
     for (rewrites <- ctx.settings.rewrite.value)
       rewrites.patched
         .getOrElseUpdate(source, new Patches(source))
         .addPatch(pos, replacement)
 
   /** Patch position in `ctx.compilationUnit.source`. */
-  def patch(pos: Position, replacement: String)(implicit ctx: Context): Unit =
+  def patch(pos: Position, replacement: String)(implicit ctx: ContextRenamed): Unit =
     patch(ctx.compilationUnit.source, pos, replacement)
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
-  def writeBack()(implicit ctx: Context): Unit =
+  def writeBack()(implicit ctx: ContextRenamed): Unit =
     for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
       ctx.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()

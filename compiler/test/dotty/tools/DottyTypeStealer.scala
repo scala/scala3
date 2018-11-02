@@ -3,16 +3,16 @@ package dotty.tools
 import dotc.ast.tpd
 import dotc.core.Names._
 import dotc.ast.tpd._
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.core.Decorators._
 import dotc.core.Types.Type
 
 object DottyTypeStealer extends DottyTest {
-  def stealType(source: String, typeStrings: String*): (Context, List[Type]) = {
+  def stealType(source: String, typeStrings: String*): (ContextRenamed, List[Type]) = {
     val dummyName = "x_x_x"
     val vals = typeStrings.zipWithIndex.map{case (s, x)=> s"val ${dummyName}$x: $s = ???"}.mkString("\n")
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
-    var scontext : Context = null
+    var scontext : ContextRenamed = null
     var tp: List[Type] = null
     checkCompile("frontend", gatheredSource) {
       (tree, context) =>

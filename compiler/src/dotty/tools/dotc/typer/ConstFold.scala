@@ -17,7 +17,7 @@ object ConstFold {
   import tpd._
 
   /** If tree is a constant operation, replace with result. */
-  def apply(tree: Tree)(implicit ctx: Context): Tree = finish(tree) {
+  def apply(tree: Tree)(implicit ctx: ContextRenamed): Tree = finish(tree) {
     tree match {
       case Apply(Select(xt, op), yt :: Nil) =>
         xt.tpe.widenTermRefExpr match {
@@ -40,7 +40,7 @@ object ConstFold {
   /** If tree is a constant value that can be converted to type `pt`, perform
    *  the conversion.
    */
-  def apply(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+  def apply(tree: Tree, pt: Type)(implicit ctx: ContextRenamed): Tree =
     finish(apply(tree)) {
       tree.tpe.widenTermRefExpr match {
         case ConstantType(x) => x convertTo pt
@@ -48,7 +48,7 @@ object ConstFold {
       }
     }
 
-  private def finish(tree: Tree)(compX: => Constant)(implicit ctx: Context): Tree =
+  private def finish(tree: Tree)(compX: => Constant)(implicit ctx: ContextRenamed): Tree =
     try {
       val x = compX
       if (x ne null) tree withType ConstantType(x)

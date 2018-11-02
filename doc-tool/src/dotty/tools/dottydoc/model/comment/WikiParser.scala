@@ -2,7 +2,7 @@ package dotty.tools.dottydoc
 package model
 package comment
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.config.Printers.dottydoc

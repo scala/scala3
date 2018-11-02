@@ -24,7 +24,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
+  def picklePositions(roots: List[Tree])(implicit ctx: ContextRenamed): Unit = {
     var lastIndex = 0
     var lastPos = Position(0, 0)
     def pickleDeltas(index: Int, pos: Position) = {

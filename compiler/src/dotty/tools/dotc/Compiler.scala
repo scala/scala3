@@ -123,12 +123,12 @@ class Compiler {
     runId += 1; runId
   }
 
-  def reset()(implicit ctx: Context): Unit = {
+  def reset()(implicit ctx: ContextRenamed): Unit = {
     ctx.base.reset()
     if (ctx.run != null) ctx.run.reset()
   }
 
-  def newRun(implicit ctx: Context): Run = {
+  def newRun(implicit ctx: ContextRenamed): Run = {
     reset()
     new Run(this, ctx)
   }

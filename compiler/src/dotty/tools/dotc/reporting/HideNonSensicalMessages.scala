@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import diagnostic.MessageContainer
 
 /**
@@ -12,7 +12,7 @@ trait HideNonSensicalMessages extends Reporter {
   /** Hides non-sensical messages, unless we haven't reported any error yet or
    *  `-Yshow-suppressed-errors` is set.
    */
-  override def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
+  override def isHidden(m: MessageContainer)(implicit ctx: ContextRenamed): Boolean =
     super.isHidden(m) || {
         m.isNonSensical &&
         hasErrors && // if there are no errors yet, report even if diagnostic is non-sensical

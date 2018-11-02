@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import reporting.Reporter
 
 import scala.annotation.internal.sharable
@@ -17,7 +17,7 @@ object Bench extends Driver {
   private def ntimes(n: Int)(op: => Reporter): Reporter =
     (emptyReporter /: (0 until n)) ((_, _) => op)
 
-  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: ContextRenamed): Reporter =
     ntimes(numRuns) {
       val start = System.nanoTime()
       val r = super.doCompile(compiler, fileNames)
@@ -36,7 +36,7 @@ object Bench extends Driver {
     else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
   }
 
-  override def process(args: Array[String], rootCtx: Context): Reporter = {
+  override def process(args: Array[String], rootCtx: ContextRenamed): Reporter = {
     val (numCompilers, args1) = extractNumArg(args, "#compilers")
     val (numRuns, args2) = extractNumArg(args1, "#runs")
     this.numRuns = numRuns

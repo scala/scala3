@@ -19,7 +19,7 @@ class TreeCleaner extends tpd.TreeMap {
   private[this] var aliasesTypes: List[Type] = Nil
   private[this] val aliases = newMutableSymbolMap[Tree]
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+  override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
     val tree0 = tree match {
       case TypeDef(_, TypeBoundsTree(lo, hi)) if lo == hi =>
         aliasesSyms = tree.symbol :: aliasesSyms

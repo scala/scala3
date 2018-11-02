@@ -4,7 +4,7 @@ package reporting
 package diagnostic
 
 import util.SourcePosition
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 
 import java.util.Optional
 
@@ -12,7 +12,7 @@ object MessageContainer {
   val nonSensicalStartTag: String = "<nonsensical>"
   val nonSensicalEndTag: String = "</nonsensical>"
 
-  implicit class MessageContext(val c: Context) extends AnyVal {
+  implicit class MessageContext(val c: ContextRenamed) extends AnyVal {
     def shouldExplain(cont: MessageContainer): Boolean = {
       implicit val ctx = c
       cont.contained().explanation match {

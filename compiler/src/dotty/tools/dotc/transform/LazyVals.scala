@@ -48,7 +48,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   /** A map of lazy values to the fields they should null after initialization. */
   private[this] var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
-  private def nullableFor(sym: Symbol)(implicit ctx: Context) = {
+  private def nullableFor(sym: Symbol)(implicit ctx: ContextRenamed) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.remove(sym)
     if (nullables == null) Nil
@@ -56,21 +56,21 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: ContextRenamed): ContextRenamed = {
     if (lazyValNullables == null)
       lazyValNullables = ctx.base.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
     ctx
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
+  override def transformDefDef(tree: DefDef)(implicit ctx: ContextRenamed): Tree =
    transformLazyVal(tree)
 
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = {
+  override def transformValDef(tree: ValDef)(implicit ctx: ContextRenamed): Tree = {
     transformLazyVal(tree)
   }
 
-  def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
+  def transformLazyVal(tree: ValOrDefDef)(implicit ctx: ContextRenamed): Tree = {
     val sym = tree.symbol
     if (!(sym is Flags.Lazy) ||
         sym.owner.is(Flags.Trait) || // val is accessor, lazy field will be implemented in subclass
@@ -99,7 +99,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   /** Append offset fields to companion objects
     */
-  override def transformTemplate(template: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(template: Template)(implicit ctx: ContextRenamed): Tree = {
     val cls = ctx.owner.asClass
 
     appendOffsetDefs.get(cls) match {
@@ -120,7 +120,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * Eager val ensures thread safety and has less code generated.
     *
     */
-  def transformSyntheticModule(tree: ValOrDefDef)(implicit ctx: Context): Thicket = {
+  def transformSyntheticModule(tree: ValOrDefDef)(implicit ctx: ContextRenamed): Thicket = {
     val sym = tree.symbol
     val holderSymbol = ctx.newSymbol(sym.owner, LazyLocalName.fresh(sym.asTerm.name),
       Flags.Synthetic, sym.info.widen.resultType).enteredAfter(this)
@@ -133,7 +133,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * with a LazyHolder from
     * dotty.runtime(eg dotty.runtime.LazyInt)
     */
-  def transformLocalDef(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
+  def transformLocalDef(x: ValOrDefDef)(implicit ctx: ContextRenamed): Thicket = {
       val valueInitter = x.rhs
       val xname = x.name.asTermName
       val holderName = LazyLocalName.fresh(xname)
@@ -176,7 +176,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
 
-  override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context): List[Tree] = {
+  override def transformStats(trees: List[tpd.Tree])(implicit ctx: ContextRenamed): List[Tree] = {
     // backend requires field usage to be after field definition
     // need to bring containers to start of method
     val (holders, stats) =
@@ -188,7 +188,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     holders:::stats
   }
 
-  private def nullOut(nullables: List[Symbol])(implicit ctx: Context): List[Tree] = {
+  private def nullOut(nullables: List[Symbol])(implicit ctx: ContextRenamed): List[Tree] = {
     val nullConst = Literal(Constant(null))
     nullables.map { field =>
       assert(field.isField)
@@ -211,7 +211,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * }
     * ```
     */
-  def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree, nullables: List[Symbol])(implicit ctx: Context): If = {
+  def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree, nullables: List[Symbol])(implicit ctx: ContextRenamed): If = {
     val stats = new mutable.ListBuffer[Tree]
     if (!isWildcardArg(rhs)) stats += target.becomes(rhs)
     stats += flag.becomes(Literal(Constant(true))) ++= nullOut(nullables)
@@ -229,7 +229,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * }
     * ```
     */
-  def mkDefNonThreadSafeNonNullable(target: Symbol, rhs: Tree, nullables: List[Symbol])(implicit ctx: Context): If = {
+  def mkDefNonThreadSafeNonNullable(target: Symbol, rhs: Tree, nullables: List[Symbol])(implicit ctx: ContextRenamed): If = {
     val cond = ref(target).select(nme.eq).appliedTo(Literal(Constant(null)))
     val exp = ref(target)
     val setTarget = exp.becomes(rhs)
@@ -238,7 +238,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     If(cond, init, exp)
   }
 
-  def transformMemberDefNonVolatile(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
+  def transformMemberDefNonVolatile(x: ValOrDefDef)(implicit ctx: ContextRenamed): Thicket = {
     val claz = x.symbol.owner.asClass
     val tpe = x.tpe.widen.resultType.widen
     assert(!(x.symbol is Flags.Mutable))
@@ -308,7 +308,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
                       casFlag: Tree,
                       setFlagState: Tree,
                       waitOnLock: Tree,
-                      nullables: List[Symbol])(implicit ctx: Context): DefDef = {
+                      nullables: List[Symbol])(implicit ctx: ContextRenamed): DefDef = {
     val initState = Literal(Constant(0))
     val computeState = Literal(Constant(1))
     val notifyState = Literal(Constant(2))
@@ -376,7 +376,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: setNullables, ref(resultSymbol)))
   }
 
-  def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
+  def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: ContextRenamed): Thicket = {
     assert(!(x.symbol is Flags.Mutable))
 
     val tpe = x.tpe.widen.resultType.widen

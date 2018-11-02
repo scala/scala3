@@ -13,13 +13,13 @@ object TypeUtils {
    */
   implicit class TypeUtilsOps(val self: Type) extends AnyVal {
 
-    def isErasedValueType(implicit ctx: Context): Boolean =
+    def isErasedValueType(implicit ctx: ContextRenamed): Boolean =
       self.isInstanceOf[ErasedValueType]
 
-    def isPrimitiveValueType(implicit ctx: Context): Boolean =
+    def isPrimitiveValueType(implicit ctx: ContextRenamed): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
-    def ensureMethodic(implicit ctx: Context): Type = self match {
+    def ensureMethodic(implicit ctx: ContextRenamed): Type = self match {
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
     }
@@ -27,7 +27,7 @@ object TypeUtils {
     /** The arity of this tuple type, which can be made up of Unit, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
      */
-    def tupleArity(implicit ctx: Context): Int = self match {
+    def tupleArity(implicit ctx: ContextRenamed): Int = self match {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
@@ -38,7 +38,7 @@ object TypeUtils {
     }
 
     /** The element types of this tuple type, which can be made up of Unit, TupleX and `*:` pairs */
-    def tupleElementTypes(implicit ctx: Context): List[Type] = self match {
+    def tupleElementTypes(implicit ctx: ContextRenamed): List[Type] = self match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         hd :: tl.tupleElementTypes
       case tp1 =>
@@ -48,7 +48,7 @@ object TypeUtils {
     }
 
     /** The `*:` equivalent of an instantce of a Tuple class */
-    def toNestedPairs(implicit ctx: Context): Type =
+    def toNestedPairs(implicit ctx: ContextRenamed): Type =
       (tupleElementTypes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
   }
 }

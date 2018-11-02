@@ -10,7 +10,7 @@ class TastyConsumerPhase(consumer: TastyConsumer) extends Phase {
 
   override def phaseName: String = "tastyConsumer"
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: ContextRenamed): Unit = {
     val tasty = new TastyImpl(ctx)
     consumer(tasty)(ctx.compilationUnit.tpdTree)
   }

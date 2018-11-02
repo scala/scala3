@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Types
 
 trait TastyCoreImpl extends scala.tasty.reflect.TastyCore {
 
-  type Context = core.Contexts.Context
+  type Context = core.Contexts.ContextRenamed
 
   type Settings = config.ScalaSettings
 

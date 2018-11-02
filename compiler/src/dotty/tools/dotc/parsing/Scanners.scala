@@ -54,7 +54,7 @@ object Scanners {
     }
   }
 
-  abstract class ScannerCommon(source: SourceFile)(implicit ctx: Context) extends CharArrayReader with TokenData {
+  abstract class ScannerCommon(source: SourceFile)(implicit ctx: ContextRenamed) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
     def nextToken(): Unit
 
@@ -171,7 +171,7 @@ object Scanners {
 
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: ContextRenamed) extends ScannerCommon(source)(ctx) {
     val keepComments: Boolean = !ctx.settings.YdropComments.value
 
     /** All doc comments kept by their end position in a `Map` */

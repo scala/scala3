@@ -23,7 +23,7 @@ object ProtoTypes {
   trait Compatibility {
 
     /** Is there an implicit conversion from `tp` to `pt`? */
-    def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean
+    def viewExists(tp: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean
 
     /** A type `tp` is compatible with a type `pt` if one of the following holds:
      *    1. `tp` is a subtype of `pt`
@@ -31,17 +31,17 @@ object ProtoTypes {
      *    3. there is an implicit conversion from `tp` to `pt`.
      *    4. `tp` is a numeric subtype of `pt` (this case applies even if implicit conversions are disabled)
      */
-    def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean =
+    def isCompatible(tp: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
     /** Test compatibility after normalization in a fresh typerstate. */
-    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean =
+    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean =
       ctx.test { implicit ctx =>
         val normTp = normalize(tp, pt)
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
       }
 
-    private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
+    private def disregardProto(pt: Type)(implicit ctx: ContextRenamed): Boolean = pt.dealias match {
       case _: OrType => true
       case pt => pt.isRef(defn.UnitClass)
     }
@@ -49,7 +49,7 @@ object ProtoTypes {
     /** Check that the result type of the current method
      *  fits the given expected result type.
      */
-    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = {
+    def constrainResult(mt: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean = {
       val savedConstraint = ctx.typerState.constraint
       val res = pt match {
         case pt: FunProto =>
@@ -74,25 +74,25 @@ object ProtoTypes {
      *  However, we should constrain parameters of the declared return type. This distinction is
      *  achieved by replacing expected type parameters with wildcards.
      */
-    def constrainResult(meth: Symbol, mt: Type, pt: Type)(implicit ctx: Context): Boolean =
+    def constrainResult(meth: Symbol, mt: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean =
       constrainResult(mt, pt)
   }
 
   object NoViewsAllowed extends Compatibility {
-    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
+    override def viewExists(tp: Type, pt: Type)(implicit ctx: ContextRenamed): Boolean = false
   }
 
   /** A trait for prototypes that match all types */
   trait MatchAlways extends ProtoType {
-    def isMatchedBy(tp1: Type)(implicit ctx: Context): Boolean = true
-    def map(tm: TypeMap)(implicit ctx: Context): ProtoType = this
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = x
+    def isMatchedBy(tp1: Type)(implicit ctx: ContextRenamed): Boolean = true
+    def map(tm: TypeMap)(implicit ctx: ContextRenamed): ProtoType = this
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: ContextRenamed): T = x
     override def toString: String = getClass.toString
   }
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   case class IgnoredProto(ignored: Type) extends UncachedGroundType with MatchAlways {
-    override def deepenProto(implicit ctx: Context): Type = ignored
+    override def deepenProto(implicit ctx: ContextRenamed): Type = ignored
   }
 
   /** A prototype for expressions [] that are part of a selection operation:
@@ -107,7 +107,7 @@ object ProtoTypes {
      *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
      *  or as an upper bound of a prefix or underlying type.
      */
-    private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
+    private def hasUnknownMembers(tp: Type)(implicit ctx: ContextRenamed): Boolean = tp match {
       case tp: TypeVar => !tp.isInstantiated
       case tp: WildcardType => true
       case NoType => true
@@ -125,7 +125,7 @@ object ProtoTypes {
       case _ => false
     }
 
-    override def isMatchedBy(tp1: Type)(implicit ctx: Context): Boolean = {
+    override def isMatchedBy(tp1: Type)(implicit ctx: ContextRenamed): Boolean = {
       name == nme.WILDCARD || hasUnknownMembers(tp1) ||
       {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
@@ -141,9 +141,9 @@ object ProtoTypes {
       }
     }
 
-    def underlying(implicit ctx: Context): Type = WildcardType
+    def underlying(implicit ctx: ContextRenamed): Type = WildcardType
 
-    def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto =
+    def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: ContextRenamed): SelectionProto =
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
@@ -154,10 +154,10 @@ object ProtoTypes {
         false
     }
 
-    def map(tm: TypeMap)(implicit ctx: Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta(x, memberProto)
+    def map(tm: TypeMap)(implicit ctx: ContextRenamed): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: ContextRenamed): T = ta(x, memberProto)
 
-    override def deepenProto(implicit ctx: Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
+    override def deepenProto(implicit ctx: ContextRenamed): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
 
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
@@ -169,7 +169,7 @@ object ProtoTypes {
   extends SelectionProto(name, memberProto, compat, privateOK)
 
   object SelectionProto {
-    def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(implicit ctx: Context): SelectionProto = {
+    def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(implicit ctx: ContextRenamed): SelectionProto = {
       val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK)
       if (compat eq NoViewsAllowed) unique(selproto) else selproto
     }
@@ -178,7 +178,7 @@ object ProtoTypes {
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def selectionProto(name: Name, tp: Type, typer: Typer)(implicit ctx: Context): TermType =
+  def selectionProto(name: Name, tp: Type, typer: Typer)(implicit ctx: ContextRenamed): TermType =
     if (name.isConstructorName) WildcardType
     else tp match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
@@ -222,11 +222,11 @@ object ProtoTypes {
    *
    *  [](args): resultType
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer, state: FunProtoState = new FunProtoState)(implicit ctx: Context)
+  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer, state: FunProtoState = new FunProtoState)(implicit ctx: ContextRenamed)
   extends UncachedGroundType with ApplyingProto {
-    override def resultType(implicit ctx: Context): Type = resType
+    override def resultType(implicit ctx: ContextRenamed): Type = resType
 
-    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
+    def isMatchedBy(tp: Type)(implicit ctx: ContextRenamed): Boolean =
       typer.isApplicable(tp, Nil, unforcedTypedArgs, resultType)
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
@@ -243,7 +243,7 @@ object ProtoTypes {
      *  current constraint. Test cases are pos/t1756.scala and pos/i3538.scala.
      *  @return True if all arguments have types (in particular, no types were forgotten).
      */
-    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
+    def allArgTypesAreCurrent()(implicit ctx: ContextRenamed): Boolean = {
       state.evalState foreachBinding { (arg, tstateConstr) =>
         if ((tstateConstr._1.uncommittedAncestor.constraint `ne` ctx.typerState.constraint) ||
             tstateConstr._2.isRetracted) {
@@ -255,7 +255,7 @@ object ProtoTypes {
       state.typedArg.size == args.length
     }
 
-    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: ContextRenamed): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null) {
         if (!force && untpd.functionWithUnknownParamType(arg).isDefined)
@@ -296,7 +296,7 @@ object ProtoTypes {
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.
      */
-    def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
+    def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: ContextRenamed): Tree = {
       val locked = ctx.typerState.ownedVars
       val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked), force = true)
       typer.adapt(targ, formal, locked)
@@ -305,7 +305,7 @@ object ProtoTypes {
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before
      *  or if `arg`'s typing produced a type error.
      */
-    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type = {
+    def typeOfArg(arg: untpd.Tree)(implicit ctx: ContextRenamed): Type = {
       val t = state.typedArg(arg)
       if (t == null) NoType else t.tpe
     }
@@ -337,15 +337,15 @@ object ProtoTypes {
 
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 
-    def map(tm: TypeMap)(implicit ctx: Context): FunProto =
+    def map(tm: TypeMap)(implicit ctx: ContextRenamed): FunProto =
       derivedFunProto(args, tm(resultType), typer)
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: ContextRenamed): T =
       ta(ta.foldOver(x, typedArgs.tpes), resultType)
 
-    override def deepenProto(implicit ctx: Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
+    override def deepenProto(implicit ctx: ContextRenamed): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
 
-    override def withContext(newCtx: Context): ProtoType =
+    override def withContext(newCtx: ContextRenamed): ProtoType =
       if (newCtx `eq` ctx) this
       else new FunProto(args, resType)(typer, state)(newCtx)
   }
@@ -354,9 +354,9 @@ object ProtoTypes {
    *
    *  [](args): resultType, where args are known to be typed
    */
-  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer)(implicit ctx: Context) extends FunProto(args, resultType)(typer)(ctx) {
+  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer)(implicit ctx: ContextRenamed) extends FunProto(args, resultType)(typer)(ctx) {
     override def typedArgs: List[tpd.Tree] = args
-    override def withContext(ctx: Context): FunProtoTyped = this
+    override def withContext(ctx: ContextRenamed): FunProtoTyped = this
   }
 
   /** A prototype for implicitly inferred views:
@@ -366,21 +366,21 @@ object ProtoTypes {
   abstract case class ViewProto(argType: Type, resType: Type)
   extends CachedGroundType with ApplyingProto {
 
-    override def resultType(implicit ctx: Context): Type = resType
+    override def resultType(implicit ctx: ContextRenamed): Type = resType
 
-    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
+    def isMatchedBy(tp: Type)(implicit ctx: ContextRenamed): Boolean =
       ctx.typer.isApplicable(tp, argType :: Nil, resultType)
 
-    def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context): ViewProto =
+    def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: ContextRenamed): ViewProto =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
       else ViewProto(argType, resultType)
 
-    def map(tm: TypeMap)(implicit ctx: Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
+    def map(tm: TypeMap)(implicit ctx: ContextRenamed): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: ContextRenamed): T =
       ta(ta(x, argType), resultType)
 
-    override def deepenProto(implicit ctx: Context): ViewProto = derivedViewProto(argType, resultType.deepenProto)
+    override def deepenProto(implicit ctx: ContextRenamed): ViewProto = derivedViewProto(argType, resultType.deepenProto)
   }
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
@@ -388,11 +388,11 @@ object ProtoTypes {
   }
 
   object ViewProto {
-    def apply(argType: Type, resultType: Type)(implicit ctx: Context): ViewProto =
+    def apply(argType: Type, resultType: Type)(implicit ctx: ContextRenamed): ViewProto =
       unique(new CachedViewProto(argType, resultType))
   }
 
-  class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
+  class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: ContextRenamed) extends FunProto(
     untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType)(typer)
 
   /** A prototype for expressions [] that are type-parameterized:
@@ -401,9 +401,9 @@ object ProtoTypes {
    */
   case class PolyProto(targs: List[Type], resType: Type) extends UncachedGroundType with ProtoType {
 
-    override def resultType(implicit ctx: Context): Type = resType
+    override def resultType(implicit ctx: ContextRenamed): Type = resType
 
-    override def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean = {
+    override def isMatchedBy(tp: Type)(implicit ctx: ContextRenamed): Boolean = {
       def isInstantiatable(tp: Type) = tp.widen match {
         case tp: PolyType => tp.paramNames.length == targs.length
         case _ => false
@@ -417,13 +417,13 @@ object ProtoTypes {
 
     override def notApplied: Type = WildcardType
 
-    def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
+    def map(tm: TypeMap)(implicit ctx: ContextRenamed): PolyProto =
       derivedPolyProto(targs mapConserve tm, tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: ContextRenamed): T =
       ta(ta.foldOver(x, targs), resultType)
 
-    override def deepenProto(implicit ctx: Context): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
+    override def deepenProto(implicit ctx: ContextRenamed): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
   }
 
   /** A prototype for expressions [] that are known to be functions:
@@ -443,7 +443,7 @@ object ProtoTypes {
    *  for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: ContextRenamed): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
@@ -480,9 +480,9 @@ object ProtoTypes {
   }
 
   /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
-  def constrained(tl: TypeLambda)(implicit ctx: Context): TypeLambda = constrained(tl, EmptyTree)._1
+  def constrained(tl: TypeLambda)(implicit ctx: ContextRenamed): TypeLambda = constrained(tl, EmptyTree)._1
 
-  def newTypeVar(bounds: TypeBounds)(implicit ctx: Context): TypeVar = {
+  def newTypeVar(bounds: TypeBounds)(implicit ctx: ContextRenamed): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
         pt => bounds :: Nil,
         pt => defn.AnyType)
@@ -491,13 +491,13 @@ object ProtoTypes {
   }
 
   /** Create a new TypeVar that represents a dependent method parameter singleton */
-  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar = {
+  def newDepTypeVar(tp: Type)(implicit ctx: ContextRenamed): TypeVar = {
     newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
   }
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */
-  def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
+  def resultTypeApprox(mt: MethodType)(implicit ctx: ContextRenamed): Type =
     if (mt.isResultDependent) {
       def replacement(tp: Type) =
         if (ctx.mode.is(Mode.TypevarsMissContext) ||
@@ -523,7 +523,7 @@ object ProtoTypes {
    * of toString method. The problem is solved by dereferencing nullary method types if the corresponding
    * function type is not compatible with the prototype.
    */
-  def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
+  def normalize(tp: Type, pt: Type)(implicit ctx: ContextRenamed): Type = Stats.track("normalize") {
     tp.widenSingleton match {
       case poly: PolyType =>
         normalize(constrained(poly).resultType, pt)
@@ -554,7 +554,7 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  private def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef])(implicit ctx: Context): Type = tp match {
+  private def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef])(implicit ctx: ContextRenamed): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
@@ -623,11 +623,11 @@ object ProtoTypes {
         .mapOver(tp)
   }
 
-  final def wildApprox(tp: Type)(implicit ctx: Context): Type = wildApprox(tp, null, Set.empty)
+  final def wildApprox(tp: Type)(implicit ctx: ContextRenamed): Type = wildApprox(tp, null, Set.empty)
 
   @sharable object AssignProto extends UncachedGroundType with MatchAlways
 
-  private[ProtoTypes] class WildApproxMap(val seen: Set[TypeParamRef])(implicit ctx: Context) extends TypeMap {
+  private[ProtoTypes] class WildApproxMap(val seen: Set[TypeParamRef])(implicit ctx: ContextRenamed) extends TypeMap {
     def apply(tp: Type): Type = wildApprox(tp, this, seen)
   }
 

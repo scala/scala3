@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import diagnostic._
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 
 import scala.collection.mutable
 
@@ -17,8 +17,8 @@ trait ErrorMessagesTest extends DottyTest {
     initialCtx.setReporter(rep).setSetting(ctx.settings.color, "never")
   }
 
-  class Report(messages: List[Message], ictx: Context) {
-    def expect(f: (Context, List[Message]) => Unit): Unit =
+  class Report(messages: List[Message], ictx: ContextRenamed) {
+    def expect(f: (ContextRenamed, List[Message]) => Unit): Unit =
       f(ictx, messages)
 
     def expectNoErrors: Unit =
@@ -26,7 +26,7 @@ trait ErrorMessagesTest extends DottyTest {
   }
 
   class EmptyReport extends Report(Nil, null) {
-    override def expect(f: (Context, List[Message]) => Unit) =
+    override def expect(f: (ContextRenamed, List[Message]) => Unit) =
       fail("""|
               |Couldn't capture errors from compiled sources, this can happen if
               |there are no errors or the compiler crashes.""".stripMargin)

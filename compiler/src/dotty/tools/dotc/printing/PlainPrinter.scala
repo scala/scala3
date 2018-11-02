@@ -3,7 +3,7 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
-import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
+import Contexts.ContextRenamed, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
@@ -13,8 +13,8 @@ import config.Config.summarizeDepth
 import scala.util.control.NonFatal
 import scala.annotation.switch
 
-class PlainPrinter(_ctx: Context) extends Printer {
-  protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+class PlainPrinter(_ctx: ContextRenamed) extends Printer {
+  protected[this] implicit def ctx: ContextRenamed = _ctx.addMode(Mode.Printing)
 
   private[this] var openRecs: List[RecType] = Nil
 

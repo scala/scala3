@@ -75,7 +75,7 @@ import collection.mutable
     }
   }
 
-  def maybeMonitored[T](op: => T)(implicit ctx: Context): T = {
+  def maybeMonitored[T](op: => T)(implicit ctx: ContextRenamed): T = {
     if (ctx.settings.YdetailedStats.value) {
       val hb = new HeartBeat()
       if (ctx.settings.Yheartbeat.value) hb.start()

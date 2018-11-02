@@ -3,7 +3,7 @@ package dotty.tools.dotc
 import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
-import core.Contexts.{Context, ContextBase}
+import core.Contexts.{ContextRenamed, ContextBase}
 import core.Mode
 import reporting._
 import scala.util.control.NonFatal
@@ -17,13 +17,13 @@ import fromtasty.TASTYCompiler
  */
 class Driver {
 
-  protected def newCompiler(implicit ctx: Context): Compiler =
+  protected def newCompiler(implicit ctx: ContextRenamed): Compiler =
     if (ctx.settings.fromTasty.value) new TASTYCompiler
     else new Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: ContextRenamed): Reporter =
     if (fileNames.nonEmpty)
       try {
         val run = compiler.newRun
@@ -40,11 +40,11 @@ class Driver {
       }
     else ctx.reporter
 
-  protected def initCtx: Context = (new ContextBase).initialCtx
+  protected def initCtx: ContextRenamed = (new ContextBase).initialCtx
 
   protected def sourcesRequired: Boolean = true
 
-  def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
+  def setup(args: Array[String], rootCtx: ContextRenamed): (List[String], ContextRenamed) = {
     val ctx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
     ctx.setSettings(summary.sstate)
@@ -131,7 +131,7 @@ class Driver {
    *  @return           The `Reporter` used. Use `Reporter#hasErrors` to check
    *                    if compilation succeeded.
    */
-  def process(args: Array[String], rootCtx: Context): Reporter = {
+  def process(args: Array[String], rootCtx: ContextRenamed): Reporter = {
     val (fileNames, ctx) = setup(args, rootCtx)
     doCompile(newCompiler(ctx), fileNames)(ctx)
   }

@@ -3,7 +3,7 @@ package dottydoc
 
 import dotc.fromtasty.ReadTastyTreesFromClasses
 import dotc.typer.{FrontEnd, Typer}
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.CompilationUnit
 
 import util.syntax.ContextWithContextDottydoc
@@ -19,11 +19,11 @@ import util.syntax.ContextWithContextDottydoc
  */
 class DocFrontEnd extends FrontEnd {
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] = {
     if (ctx.settings.fromTasty.value) units
     else super.runOn(units)
   }
 
-  override protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =
+  override protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: ContextRenamed) =
     unit.isJava
 }

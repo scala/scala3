@@ -28,7 +28,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   object TypedSplice {
-    def apply(tree: tpd.Tree)(implicit ctx: Context): TypedSplice =
+    def apply(tree: tpd.Tree)(implicit ctx: ContextRenamed): TypedSplice =
       new TypedSplice(tree)(ctx.owner) {}
   }
 
@@ -36,7 +36,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ModuleDef(name: TermName, impl: Template)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
-    def withName(name: Name)(implicit ctx: Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
+    def withName(name: Name)(implicit ctx: ContextRenamed): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
@@ -233,10 +233,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     /** A hook to ensure that all necessary symbols are completed so that
      *  OriginalSymbol attachments are propagated to this tree
      */
-    def ensureCompletions(implicit ctx: Context): Unit = ()
+    def ensureCompletions(implicit ctx: ContextRenamed): Unit = ()
 
     /** The method that computes the tree with the derived type */
-    def derivedTree(originalSym: Symbol)(implicit ctx: Context): tpd.Tree
+    def derivedTree(originalSym: Symbol)(implicit ctx: ContextRenamed): tpd.Tree
   }
 
     /** Property key containing TypeTrees whose type is computed
@@ -311,7 +311,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  navigation into these arguments from the IDE, and to do the right thing in
    *  PrepareInlineable.
    */
-  def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
+  def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: ContextRenamed): Tree = {
     val (tycon, targs) = tpt match {
       case AppliedTypeTree(tycon, targs) =>
         (tycon, targs)
@@ -341,11 +341,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
-  def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
+  def TypeTree(tpe: Type)(implicit ctx: ContextRenamed): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
   def unitLiteral: Literal = Literal(Constant(()))
 
-  def ref(tp: NamedType)(implicit ctx: Context): Tree =
+  def ref(tp: NamedType)(implicit ctx: ContextRenamed): Tree =
     TypedSplice(tpd.ref(tp))
 
   def rootDot(name: Name): Select = Select(Ident(nme.ROOTPKG), name)
@@ -353,50 +353,50 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaUnit: Select = scalaDot(tpnme.Unit)
   def scalaAny: Select = scalaDot(tpnme.Any)
 
-  def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
+  def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: ContextRenamed): DefDef =
     DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)
 
-  def emptyConstructor(implicit ctx: Context): DefDef =
+  def emptyConstructor(implicit ctx: ContextRenamed): DefDef =
     makeConstructor(Nil, Nil)
 
-  def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context): ValDef =
+  def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: ContextRenamed): ValDef =
     ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
-  def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context): Tree = ts match {
+  def makeTupleOrParens(ts: List[Tree])(implicit ctx: ContextRenamed): Tree = ts match {
     case t :: Nil => Parens(t)
     case _ => Tuple(ts)
   }
 
-  def makeTuple(ts: List[Tree])(implicit ctx: Context): Tree = ts match {
+  def makeTuple(ts: List[Tree])(implicit ctx: ContextRenamed): Tree = ts match {
     case t :: Nil => t
     case _ => Tuple(ts)
   }
 
-  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = EmptyModifiers)(implicit ctx: Context): ValDef =
+  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = EmptyModifiers)(implicit ctx: ContextRenamed): ValDef =
     ValDef(pname, tpe, EmptyTree).withMods(mods | Param)
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: ContextRenamed): ValDef =
     ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
 
-  def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context): Tree =
+  def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: ContextRenamed): Tree =
     if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
 
   /** A reference to given definition. If definition is a repeated
    *  parameter, the reference will be a repeated argument.
    */
-  def refOfDef(tree: MemberDef)(implicit ctx: Context): Tree = tree match {
+  def refOfDef(tree: MemberDef)(implicit ctx: ContextRenamed): Tree = tree match {
     case ValDef(_, PostfixOp(_, Ident(tpnme.raw.STAR)), _) => repeated(Ident(tree.name))
     case _ => Ident(tree.name)
   }
 
   /** A repeated argument such as `arg: _*` */
-  def repeated(arg: Tree)(implicit ctx: Context): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
+  def repeated(arg: Tree)(implicit ctx: ContextRenamed): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
 // ----- Accessing modifiers ----------------------------------------------------
 
   abstract class ModsDecorator { def mods: Modifiers }
 
-  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
+  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: ContextRenamed) {
     def mods: Modifiers = mdef.rawMods
   }
 
@@ -493,14 +493,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs))
     }
-    def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context): ProxyTree = tree match {
+    def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: ContextRenamed): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice))
     }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
-    override def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    override def transformMoreCases(tree: Tree)(implicit ctx: ContextRenamed): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
       case ParsedTry(expr, handler, finalizer) =>
@@ -547,7 +547,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] { self =>
-    override def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+    override def foldMoreCases(x: X, tree: Tree)(implicit ctx: ContextRenamed): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)
       case ParsedTry(expr, handler, finalizer) =>
@@ -594,13 +594,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   abstract class UntypedTreeTraverser extends UntypedTreeAccumulator[Unit] {
-    def traverse(tree: Tree)(implicit ctx: Context): Unit
-    def apply(x: Unit, tree: Tree)(implicit ctx: Context): Unit = traverse(tree)
-    protected def traverseChildren(tree: Tree)(implicit ctx: Context): Unit = foldOver((), tree)
+    def traverse(tree: Tree)(implicit ctx: ContextRenamed): Unit
+    def apply(x: Unit, tree: Tree)(implicit ctx: ContextRenamed): Unit = traverse(tree)
+    protected def traverseChildren(tree: Tree)(implicit ctx: ContextRenamed): Unit = foldOver((), tree)
   }
 
   /** Fold `f` over all tree nodes, in depth-first, prefix order */
   class UntypedDeepFolder[X](f: (X, Tree) => X) extends UntypedTreeAccumulator[X] {
-    def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
+    def apply(x: X, tree: Tree)(implicit ctx: ContextRenamed): X = foldOver(f(x, tree), tree)
   }
 }

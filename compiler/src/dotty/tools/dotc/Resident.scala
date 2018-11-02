@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 
-import core.Contexts.Context
+import core.Contexts.ContextRenamed
 import reporting.Reporter
 import java.io.EOFException
 import scala.annotation.tailrec
@@ -38,8 +38,8 @@ class Resident extends Driver {
     try scala.io.StdIn.readLine() catch { case _: EOFException => quit }
   }
 
-  final override def process(args: Array[String], rootCtx: Context): Reporter = {
-    @tailrec def loop(args: Array[String], prevCtx: Context): Reporter = {
+  final override def process(args: Array[String], rootCtx: ContextRenamed): Reporter = {
+    @tailrec def loop(args: Array[String], prevCtx: ContextRenamed): Reporter = {
       var (fileNames, ctx) = setup(args, prevCtx)
       doCompile(residentCompiler, fileNames)(ctx)
       var nextCtx = ctx

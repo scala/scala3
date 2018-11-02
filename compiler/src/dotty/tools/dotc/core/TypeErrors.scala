@@ -17,22 +17,22 @@ import config.Printers.cyclicErrors
 
 class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
-  def toMessage(implicit ctx: Context): Message = getMessage
+  def toMessage(implicit ctx: ContextRenamed): Message = getMessage
 }
 
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends TypeError {
-  override def toMessage(implicit ctx: Context): Message =
+  override def toMessage(implicit ctx: ContextRenamed): Message =
     i"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 }
 
 class MissingType(pre: Type, name: Name) extends TypeError {
-  private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
+  private def otherReason(pre: Type)(implicit ctx: ContextRenamed): String = pre match {
     case pre: ThisType if pre.cls.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
     case _ => ""
   }
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def toMessage(implicit ctx: ContextRenamed): Message = {
     if (ctx.debug) printStackTrace()
     i"""cannot resolve reference to type $pre.$name
        |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
@@ -51,7 +51,7 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
     this :: nested
   }
 
-  def opsString(rs: List[RecursionOverflow])(implicit ctx: Context): String = {
+  def opsString(rs: List[RecursionOverflow])(implicit ctx: ContextRenamed): String = {
     val maxShown = 20
     if (rs.lengthCompare(maxShown) > 0)
       i"""${opsString(rs.take(maxShown / 2))}
@@ -61,7 +61,7 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
       (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
   }
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def toMessage(implicit ctx: ContextRenamed): Message = {
     val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
     s"""Recursion limit exceeded.
        |Maybe there is an illegal cyclic reference?
@@ -80,7 +80,7 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive {
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(implicit ctx: Context): Nothing = {
+  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(implicit ctx: ContextRenamed): Nothing = {
     if (ctx.settings.YnoDecodeStacktraces.value) {
       throw exc
     } else {
@@ -105,7 +105,7 @@ object handleRecursive {
 class CyclicReference private (val denot: SymDenotation) extends TypeError {
   var inImplicitSearch: Boolean = false
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def toMessage(implicit ctx: ContextRenamed): Message = {
     val cycleSym = denot.symbol
 
     // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
@@ -119,7 +119,7 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
      * Mode.InferringReturnType for the innermost member without type
      * annotations (!tree.tpt.typeOpt.exists).
      */
-    def errorMsg(cx: Context): Message = {
+    def errorMsg(cx: ContextRenamed): Message = {
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
           case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
@@ -147,7 +147,7 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
 }
 
 object CyclicReference {
-  def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
+  def apply(denot: SymDenotation)(implicit ctx: ContextRenamed): CyclicReference = {
     val ex = new CyclicReference(denot)
     if (!(ctx.mode is Mode.CheckCyclic)) {
       cyclicErrors.println(ex.getMessage)
@@ -160,18 +160,18 @@ object CyclicReference {
 
 class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Type, prefix: Type) extends TypeError {
 
-  private def showSymbol(sym: Symbol)(implicit ctx: Context): String =
+  private def showSymbol(sym: Symbol)(implicit ctx: ContextRenamed): String =
     if (sym.exists) sym.showLocated else "[unknown]"
 
-  private def showType(tp: Type)(implicit ctx: Context) = tp match {
+  private def showType(tp: Type)(implicit ctx: ContextRenamed) = tp match {
     case ClassInfo(_, cls, _, _, _) => cls.showLocated
     case _ => tp.show
   }
 
-  protected def addendum(implicit ctx: Context): String =
+  protected def addendum(implicit ctx: ContextRenamed): String =
     if (prefix `eq` NoPrefix) "" else i"\nas members of type $prefix"
 
-  override def toMessage(implicit ctx: Context): Message = {
+  override def toMessage(implicit ctx: ContextRenamed): Message = {
     if (ctx.debug) printStackTrace()
     i"""cannot merge
        |  ${showSymbol(sym1)} of type ${showType(tp1)}  and

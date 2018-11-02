@@ -39,20 +39,20 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
   override def changesParents: Boolean = true // Only true for by-names
 
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
-  private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
+  private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: ContextRenamed) =
     if (isByNameRef(ftree)) {
       val tree0 = transformFollowing(tree)
       ctx.atPhase(next) { implicit ctx => tree0.select(defn.Function0_apply).appliedToNone }
     }
     else tree
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(implicit ctx: ContextRenamed): Tree =
     applyIfFunction(tree, tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(implicit ctx: ContextRenamed): Tree =
     applyIfFunction(tree, tree)
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = tree match {
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: ContextRenamed): Tree = tree match {
     case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
@@ -60,19 +60,19 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
     case _ => tree
   }
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+  override def transformValDef(tree: ValDef)(implicit ctx: ContextRenamed): Tree =
     ctx.atPhase(next) { implicit ctx =>
       if (exprBecomesFunction(tree.symbol))
         cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
       else tree
     }
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: ContextRenamed): Type = tp match {
     case ExprType(rt) => defn.FunctionOf(Nil, rt)
     case _ => tp
   }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && exprBecomesFunction(sym)
+  override def mayChange(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = sym.isTerm && exprBecomesFunction(sym)
 }
 
 object ElimByName {

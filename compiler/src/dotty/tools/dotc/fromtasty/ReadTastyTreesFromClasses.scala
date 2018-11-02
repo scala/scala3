@@ -4,7 +4,7 @@ package fromtasty
 
 import core._
 import Decorators._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
 import typer.FrontEnd
@@ -16,10 +16,10 @@ class ReadTastyTreesFromClasses extends FrontEnd {
 
   override def isTyper: Boolean = false
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+  override def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] =
     units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))
 
-  def readTASTY(unit: CompilationUnit)(implicit ctx: Context): Option[CompilationUnit] = unit match {
+  def readTASTY(unit: CompilationUnit)(implicit ctx: ContextRenamed): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
       val className = unit.className.toTypeName
 

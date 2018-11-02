@@ -4,7 +4,7 @@ import java.io.PrintStream
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -48,7 +48,7 @@ import scala.collection.JavaConverters._
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
-                 context: Context)
+                 context: ContextRenamed)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -87,7 +87,7 @@ class ReplDriver(settings: Array[String],
     rendering = new Rendering(classLoader)
   }
 
-  private[this] var rootCtx: Context = _
+  private[this] var rootCtx: ContextRenamed = _
   private[this] var compiler: ReplCompiler = _
   private[this] var rendering: Rendering = _
 
@@ -149,7 +149,7 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Symbol)(implicit ctx: Context) = {
+    def makeCandidate(completion: Symbol)(implicit ctx: ContextRenamed) = {
       val displ = completion.name.toString
       new Candidate(
         /* value    = */ displ,
@@ -205,7 +205,7 @@ class ReplDriver(settings: Array[String],
       case _ => nme.NO_NAME
     }
 
-    def extractTopLevelImports(ctx: Context): List[tpd.Import] =
+    def extractTopLevelImports(ctx: ContextRenamed): List[tpd.Import] =
       ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
     implicit val state = newRun(istate)
@@ -362,11 +362,11 @@ class ReplDriver(settings: Array[String],
 
   /** A `MessageRenderer` without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: ContextRenamed): String = ""
   }
 
   /** Render messages using the `MessageRendering` trait */
-  private def renderMessage(cont: MessageContainer): Context => String =
+  private def renderMessage(cont: MessageContainer): ContextRenamed => String =
     messageRenderer.messageAndPos(cont.contained(), cont.pos, messageRenderer.diagnosticLevel(cont))(_)
 
   /** Output errors to `out` */

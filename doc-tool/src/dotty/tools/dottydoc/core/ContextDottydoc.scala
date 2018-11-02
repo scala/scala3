@@ -9,7 +9,7 @@ import dotc.core.Comments.ContextDocstrings
 import model.{ Package, Entity }
 import model.comment.Comment
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.ContextRenamed
 import dotc.printing.Highlighting._
 import dotc.util.{ SourcePosition, NoSourcePosition }
 
@@ -34,32 +34,32 @@ class ContextDottydoc extends ContextDocstrings {
     s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
   })
 
-  def error(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = ctx.error({
+  def error(msg: String, pos: SourcePosition)(implicit ctx: ContextRenamed): Unit = ctx.error({
     NoColor("[") + Red("doc error") + "] " + msg
   }.toString, pos)
 
-  def error(msg: String)(implicit ctx: Context): Unit = error(msg, NoSourcePosition)
+  def error(msg: String)(implicit ctx: ContextRenamed): Unit = error(msg, NoSourcePosition)
 
-  def warn(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = ctx.warning({
+  def warn(msg: String, pos: SourcePosition)(implicit ctx: ContextRenamed): Unit = ctx.warning({
     NoColor("[") + Yellow("doc warn") + "] " + msg
   }.toString, pos)
 
-  def warn(msg: String)(implicit ctx: Context): Unit = warn(msg, NoSourcePosition)
+  def warn(msg: String)(implicit ctx: ContextRenamed): Unit = warn(msg, NoSourcePosition)
 
-  def echo(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = ctx.echo({
+  def echo(msg: String, pos: SourcePosition)(implicit ctx: ContextRenamed): Unit = ctx.echo({
     "[doc info] " + msg
   }.toString, pos)
 
-  def echo(msg: String)(implicit ctx: Context): Unit = echo(msg, NoSourcePosition)
+  def echo(msg: String)(implicit ctx: ContextRenamed): Unit = echo(msg, NoSourcePosition)
 
-  def debug(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit =
+  def debug(msg: String, pos: SourcePosition)(implicit ctx: ContextRenamed): Unit =
     if (ctx.settings.Ydebug.value) ctx.inform({
       "[doc debug] " + msg
     }.toString, pos)
 
-  def debug(msg: String)(implicit ctx: Context): Unit = debug(msg, NoSourcePosition)
+  def debug(msg: String)(implicit ctx: ContextRenamed): Unit = debug(msg, NoSourcePosition)
 
-  def printSummary()(implicit ctx: Context): Unit = {
+  def printSummary()(implicit ctx: ContextRenamed): Unit = {
     def colored(part: Int, total: Int) =
       if (total == 0) "0"
       else {

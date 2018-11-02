@@ -12,7 +12,7 @@ object ConsumeTasty {
       throw new IllegalArgumentException("Parameter classes should no be empty")
 
     class Consume extends dotc.Driver {
-      override protected def newCompiler(implicit ctx: Context): dotc.Compiler =
+      override protected def newCompiler(implicit ctx: ContextRenamed): dotc.Compiler =
         new TastyFromClass(tastyConsumer)
     }
 

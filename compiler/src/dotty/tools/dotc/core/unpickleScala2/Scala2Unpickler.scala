@@ -44,14 +44,14 @@ object Scala2Unpickler {
   case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
 
   /** Convert temp poly type to poly type and leave other types alone. */
-  def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
+  def translateTempPoly(tp: Type)(implicit ctx: ContextRenamed): Type = tp match {
     case TempPolyType(tparams, restpe) =>
       (if (tparams.head.owner.isTerm) PolyType else HKTypeLambda)
         .fromParams(tparams, restpe)
     case tp => tp
   }
 
-  def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context): Unit = {
+  def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: ContextRenamed): Unit = {
     assert(denot.isConstructor)
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
@@ -59,7 +59,7 @@ object Scala2Unpickler {
   /** Convert array parameters denoting a repeated parameter of a Java method
    *  to `RepeatedParamClass` types.
    */
-  def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
+  def arrayToRepeated(tp: Type)(implicit ctx: ContextRenamed): Type = tp match {
     case tp: MethodType =>
       val lastArg = tp.paramInfos.last
       assert(lastArg isRef defn.ArrayClass)
@@ -84,14 +84,14 @@ object Scala2Unpickler {
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, arrayToRepeated(tp.resultType))
   }
 
-  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context): Unit =
+  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: ContextRenamed): Unit =
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
       val constr = ctx.newDefaultConstructor(cls)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
     }
 
-  def setClassInfo(denot: ClassDenotation, info: Type, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
+  def setClassInfo(denot: ClassDenotation, info: Type, selfInfo: Type = NoType)(implicit ctx: ContextRenamed): Unit = {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
@@ -144,7 +144,7 @@ object Scala2Unpickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
+class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: ContextRenamed)
   extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {
 
   def showPickled(): Unit = {
@@ -174,7 +174,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
-  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context): Nothing = {
+  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: ContextRenamed): Nothing = {
     val ex = new BadSignature(
       i"""error reading Scala signature of $classRoot from $source:
          |error occurred at position $readIndex: $msg""")
@@ -182,12 +182,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     throw ex
   }
 
-  protected def handleRuntimeException(ex: RuntimeException)(implicit ctx: Context): Nothing = ex match {
+  protected def handleRuntimeException(ex: RuntimeException)(implicit ctx: ContextRenamed): Nothing = ex match {
     case ex: BadSignature => throw ex
     case _ => errorBadSignature(s"a runtime exception occurred: $ex", Some(ex))
   }
 
-  def run()(implicit ctx: Context): Unit =
+  def run()(implicit ctx: ContextRenamed): Unit =
     try {
       var i = 0
       while (i < index.length) {
@@ -226,12 +226,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case ex: RuntimeException => handleRuntimeException(ex)
     }
 
-  def source(implicit ctx: Context): AbstractFile = {
+  def source(implicit ctx: ContextRenamed): AbstractFile = {
     val f = classRoot.symbol.associatedFile
     if (f != null) f else moduleClassRoot.symbol.associatedFile
   }
 
-  private def checkVersion(implicit ctx: Context): Unit = {
+  private def checkVersion(implicit ctx: ContextRenamed): Unit = {
     val major = readNat()
     val minor = readNat()
     if (major != MajorVersion || minor > MinorVersion)
@@ -246,7 +246,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope)
 
   /** Does entry represent an (internal) symbol */
-  protected def isSymbolEntry(i: Int)(implicit ctx: Context): Boolean = {
+  protected def isSymbolEntry(i: Int)(implicit ctx: ContextRenamed): Boolean = {
     val tag = bytes(index(i)).toInt
     (firstSymTag <= tag && tag <= lastSymTag &&
       (tag != CLASSsym || !isRefinementSymbolEntry(i)))
@@ -279,7 +279,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** Does entry represent a refinement symbol?
    *  pre: Entry is a class symbol
    */
-  protected def isRefinementSymbolEntry(i: Int)(implicit ctx: Context): Boolean = {
+  protected def isRefinementSymbolEntry(i: Int)(implicit ctx: ContextRenamed): Boolean = {
     val savedIndex = readIndex
     readIndex = index(i)
     val tag = readByte().toInt
@@ -291,12 +291,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     result
   }
 
-  protected def isRefinementClass(sym: Symbol)(implicit ctx: Context): Boolean =
+  protected def isRefinementClass(sym: Symbol)(implicit ctx: ContextRenamed): Boolean =
     sym.name == tpnme.REFINE_CLASS
 
-  protected def isLocal(sym: Symbol)(implicit ctx: Context): Boolean = isUnpickleRoot(sym.topLevelClass)
+  protected def isLocal(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = isUnpickleRoot(sym.topLevelClass)
 
-  protected def isUnpickleRoot(sym: Symbol)(implicit ctx: Context): Boolean = {
+  protected def isUnpickleRoot(sym: Symbol)(implicit ctx: ContextRenamed): Boolean = {
     val d = sym.denot
     d == moduleRoot || d == moduleClassRoot || d == classRoot
   }
@@ -323,7 +323,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   /** Read a name */
-  protected def readName()(implicit ctx: Context): Name = {
+  protected def readName()(implicit ctx: ContextRenamed): Name = {
     val tag = readByte()
     val len = readNat()
     tag match {
@@ -332,14 +332,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case _ => errorBadSignature("bad name tag: " + tag)
     }
   }
-  protected def readTermName()(implicit ctx: Context): TermName = readName().toTermName
-  protected def readTypeName()(implicit ctx: Context): TypeName = readName().toTypeName
+  protected def readTermName()(implicit ctx: ContextRenamed): TermName = readName().toTermName
+  protected def readTypeName()(implicit ctx: ContextRenamed): TypeName = readName().toTypeName
 
   /** Read a symbol */
-  protected def readSymbol()(implicit ctx: Context): Symbol = readDisambiguatedSymbol(alwaysTrue)()
+  protected def readSymbol()(implicit ctx: ContextRenamed): Symbol = readDisambiguatedSymbol(alwaysTrue)()
 
   /** Read a symbol, with possible disambiguation */
-  protected def readDisambiguatedSymbol(p: Symbol => Boolean)()(implicit ctx: Context): Symbol = {
+  protected def readDisambiguatedSymbol(p: Symbol => Boolean)()(implicit ctx: ContextRenamed): Symbol = {
     val start = indexCoord(readIndex)
     val tag = readByte()
     val end = readNat() + readIndex
@@ -536,8 +536,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
-    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = try {
-      def parseToCompletion(denot: SymDenotation)(implicit ctx: Context) = {
+    def complete(denot: SymDenotation)(implicit ctx: ContextRenamed): Unit = try {
+      def parseToCompletion(denot: SymDenotation)(implicit ctx: ContextRenamed) = {
         val tag = readByte()
         val end = readNat() + readIndex
         def atEnd = readIndex == end
@@ -593,7 +593,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   object localMemberUnpickler extends LocalUnpickler
 
   class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
-    private def readTypeParams()(implicit ctx: Context): List[TypeSymbol] = {
+    private def readTypeParams()(implicit ctx: ContextRenamed): List[TypeSymbol] = {
       val tag = readByte()
       val end = readNat() + readIndex
       if (tag == POLYtpe) {
@@ -601,13 +601,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         until(end, () => readSymbolRef()(ctx)).asInstanceOf[List[TypeSymbol]]
       } else Nil
     }
-    private def loadTypeParams(implicit ctx: Context) =
+    private def loadTypeParams(implicit ctx: ContextRenamed) =
       atReadPos(index(infoRef), () => readTypeParams()(ctx))
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
-    def init()(implicit ctx: Context): List[TypeSymbol] = loadTypeParams
+    def init()(implicit ctx: ContextRenamed): List[TypeSymbol] = loadTypeParams
 
-    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(implicit ctx: ContextRenamed): List[TypeSymbol] =
       loadTypeParams
   }
 
@@ -625,7 +625,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *  to
    *    tp { name: T }
    */
-  def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: Context): Type = {
+  def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: ContextRenamed): Type = {
     // Need to be careful not to run into cyclic references here (observed when
     // compiling t247.scala). That's why we avoid taking `symbol` of a TypeRef
     // unless names match up.
@@ -688,7 +688,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *        the flag say that a type of kind * is expected, so that PolyType(tps, restpe) can be disambiguated to PolyType(tps, NullaryMethodType(restpe))
    *        (if restpe is not a ClassInfoType, a MethodType or a NullaryMethodType, which leaves TypeRef/SingletonType -- the latter would make the polytype a type constructor)
    */
-  protected def readType()(implicit ctx: Context): Type = {
+  protected def readType()(implicit ctx: ContextRenamed): Type = {
     val tag = readByte()
     val end = readNat() + readIndex
     (tag: @switch) match {
@@ -780,7 +780,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
   }
 
-  def readTypeParams()(implicit ctx: Context): List[Symbol] = {
+  def readTypeParams()(implicit ctx: ContextRenamed): List[Symbol] = {
     val tag = readByte()
     val end = readNat() + readIndex
     if (tag == POLYtpe) {
@@ -789,11 +789,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     } else Nil
   }
 
-  def noSuchTypeTag(tag: Int, end: Int)(implicit ctx: Context): Type =
+  def noSuchTypeTag(tag: Int, end: Int)(implicit ctx: ContextRenamed): Type =
     errorBadSignature("bad type tag: " + tag)
 
   /** Read a constant */
-  protected def readConstant()(implicit ctx: Context): Constant = {
+  protected def readConstant()(implicit ctx: ContextRenamed): Constant = {
     val tag = readByte().toInt
     val len = readNat()
     (tag: @switch) match {
@@ -814,12 +814,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
   }
 
-  def noSuchConstantTag(tag: Int, len: Int)(implicit ctx: Context): Constant =
+  def noSuchConstantTag(tag: Int, len: Int)(implicit ctx: ContextRenamed): Constant =
     errorBadSignature("bad constant tag: " + tag)
 
   /** Read children and store them into the corresponding symbol.
    */
-  protected def readChildren()(implicit ctx: Context): Unit = {
+  protected def readChildren()(implicit ctx: ContextRenamed): Unit = {
     val tag = readByte()
     assert(tag == CHILDREN)
     val end = readNat() + readIndex
@@ -834,7 +834,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   /* Read a reference to a pickled item */
-  protected def readSymbolRef()(implicit ctx: Context): Symbol = { //OPT inlined from: at(readNat(), readSymbol) to save on closure creation
+  protected def readSymbolRef()(implicit ctx: ContextRenamed): Symbol = { //OPT inlined from: at(readNat(), readSymbol) to save on closure creation
     val i = readNat()
     var r = entries(i)
     if (r eq null) {
@@ -848,32 +848,32 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     r.asInstanceOf[Symbol]
   }
 
-  protected def readDisambiguatedSymbolRef(p: Symbol => Boolean)(implicit ctx: Context): Symbol =
+  protected def readDisambiguatedSymbolRef(p: Symbol => Boolean)(implicit ctx: ContextRenamed): Symbol =
     at(readNat(), () => readDisambiguatedSymbol(p)())
 
-  protected def readNameRef()(implicit ctx: Context): Name = at(readNat(), () => readName())
-  protected def readTypeRef()(implicit ctx: Context): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
-  protected def readConstantRef()(implicit ctx: Context): Constant = at(readNat(), () => readConstant())
+  protected def readNameRef()(implicit ctx: ContextRenamed): Name = at(readNat(), () => readName())
+  protected def readTypeRef()(implicit ctx: ContextRenamed): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
+  protected def readConstantRef()(implicit ctx: ContextRenamed): Constant = at(readNat(), () => readConstant())
 
-  protected def readTypeNameRef()(implicit ctx: Context): TypeName = readNameRef().toTypeName
-  protected def readTermNameRef()(implicit ctx: Context): TermName = readNameRef().toTermName
+  protected def readTypeNameRef()(implicit ctx: ContextRenamed): TypeName = readNameRef().toTypeName
+  protected def readTermNameRef()(implicit ctx: ContextRenamed): TermName = readNameRef().toTermName
 
-  protected def readAnnotationRef()(implicit ctx: Context): Annotation = at(readNat(), () => readAnnotation())
+  protected def readAnnotationRef()(implicit ctx: ContextRenamed): Annotation = at(readNat(), () => readAnnotation())
 
-  protected def readModifiersRef(isType: Boolean)(implicit ctx: Context): Modifiers = at(readNat(), () => readModifiers(isType))
-  protected def readTreeRef()(implicit ctx: Context): Tree = at(readNat(), () => readTree())
+  protected def readModifiersRef(isType: Boolean)(implicit ctx: ContextRenamed): Modifiers = at(readNat(), () => readModifiers(isType))
+  protected def readTreeRef()(implicit ctx: ContextRenamed): Tree = at(readNat(), () => readTree())
 
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
    */
-  protected def readAnnotArg(i: Int)(implicit ctx: Context): Tree = bytes(index(i)) match {
+  protected def readAnnotArg(i: Int)(implicit ctx: ContextRenamed): Tree = bytes(index(i)) match {
     case TREE => at(i, () => readTree())
     case _ => Literal(at(i, () => readConstant()))
   }
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
    */
-  private def readArrayAnnotArg()(implicit ctx: Context): Tree = {
+  private def readArrayAnnotArg()(implicit ctx: ContextRenamed): Tree = {
     readByte() // skip the `annotargarray` tag
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
@@ -882,13 +882,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       TypeTree(defn.AnnotationType))
   }
 
-  private def readAnnotInfoArg()(implicit ctx: Context): Tree = {
+  private def readAnnotInfoArg()(implicit ctx: ContextRenamed): Tree = {
     readByte() // skip the `annotinfo` tag
     val end = readNat() + readIndex
     readAnnotationContents(end)
   }
 
-  protected def readClassfileAnnotArg(i: Int)(implicit ctx: Context): Tree = bytes(index(i)) match {
+  protected def readClassfileAnnotArg(i: Int)(implicit ctx: ContextRenamed): Tree = bytes(index(i)) match {
     case ANNOTINFO => at(i, () => readAnnotInfoArg())
     case ANNOTARGARRAY => at(i, () => readArrayAnnotArg())
     case _ => readAnnotArg(i)
@@ -897,7 +897,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** Read an annotation's contents. Not to be called directly, use
    *  readAnnotation, readSymbolAnnotation, or readAnnotInfoArg
    */
-  protected def readAnnotationContents(end: Int)(implicit ctx: Context): Tree = {
+  protected def readAnnotationContents(end: Int)(implicit ctx: ContextRenamed): Tree = {
     val atp = readTypeRef()
     val args = {
       val t = new ListBuffer[Tree]
@@ -924,7 +924,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *  the symbol it requests. Called at top-level, for all
    *  (symbol, annotInfo) entries.
    */
-  protected def readSymbolAnnotation()(implicit ctx: Context): Unit = {
+  protected def readSymbolAnnotation()(implicit ctx: ContextRenamed): Unit = {
     val tag = readByte()
     if (tag != SYMANNOT)
       errorBadSignature("symbol annotation expected (" + tag + ")")
@@ -936,7 +936,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** Read an annotation and return it. Used when unpickling
    *  an ANNOTATED(WSELF)tpe or a NestedAnnotArg
    */
-  protected def readAnnotation()(implicit ctx: Context): Annotation = {
+  protected def readAnnotation()(implicit ctx: ContextRenamed): Annotation = {
     val tag = readByte()
     if (tag != ANNOTINFO)
       errorBadSignature("annotation expected (" + tag + ")")
@@ -947,7 +947,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** A deferred annotation that can be completed by reading
    *  the bytes between `readIndex` and `end`.
    */
-  protected def deferredAnnot(end: Int)(implicit ctx: Context): Annotation = {
+  protected def deferredAnnot(end: Int)(implicit ctx: ContextRenamed): Annotation = {
     val start = readIndex
     val atp = readTypeRef()
     val phase = ctx.phase
@@ -957,7 +957,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   /* Read an abstract syntax tree */
-  protected def readTree()(implicit ctx: Context): Tree = {
+  protected def readTree()(implicit ctx: ContextRenamed): Tree = {
     val outerTag = readByte()
     if (outerTag != TREE)
       errorBadSignature("tree expected (" + outerTag + ")")
@@ -1226,13 +1226,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
   }
 
-  def noSuchTreeTag(tag: Int, end: Int)(implicit ctx: Context): Nothing =
+  def noSuchTreeTag(tag: Int, end: Int)(implicit ctx: ContextRenamed): Nothing =
     errorBadSignature("unknown tree type (" + tag + ")")
 
-  def unimplementedTree(what: String)(implicit ctx: Context): Nothing =
+  def unimplementedTree(what: String)(implicit ctx: ContextRenamed): Nothing =
     errorBadSignature(s"cannot read $what trees from Scala 2.x signatures")
 
-  def readModifiers(isType: Boolean)(implicit ctx: Context): Modifiers = {
+  def readModifiers(isType: Boolean)(implicit ctx: ContextRenamed): Modifiers = {
     val tag = readNat()
     if (tag != MODIFIERS)
       errorBadSignature("expected a modifiers tag (" + tag + ")")
@@ -1245,31 +1245,31 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     Modifiers(flags, privateWithin, Nil)
   }
 
-  protected def readTemplateRef()(implicit ctx: Context): Template =
+  protected def readTemplateRef()(implicit ctx: ContextRenamed): Template =
     readTreeRef() match {
       case templ: Template => templ
       case other =>
         errorBadSignature("expected a template (" + other + ")")
     }
-  protected def readCaseDefRef()(implicit ctx: Context): CaseDef =
+  protected def readCaseDefRef()(implicit ctx: ContextRenamed): CaseDef =
     readTreeRef() match {
       case tree: CaseDef => tree
       case other =>
         errorBadSignature("expected a case def (" + other + ")")
     }
-  protected def readValDefRef()(implicit ctx: Context): ValDef =
+  protected def readValDefRef()(implicit ctx: ContextRenamed): ValDef =
     readTreeRef() match {
       case tree: ValDef => tree
       case other =>
         errorBadSignature("expected a ValDef (" + other + ")")
     }
-  protected def readIdentRef()(implicit ctx: Context): Ident =
+  protected def readIdentRef()(implicit ctx: ContextRenamed): Ident =
     readTreeRef() match {
       case tree: Ident => tree
       case other =>
         errorBadSignature("expected an Ident (" + other + ")")
     }
-  protected def readTypeDefRef()(implicit ctx: Context): TypeDef =
+  protected def readTypeDefRef()(implicit ctx: ContextRenamed): TypeDef =
     readTreeRef() match {
       case tree: TypeDef => tree
       case other =>

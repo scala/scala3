@@ -535,7 +535,7 @@ object DottyLanguageServer {
    */
   def diagnostic(mc: MessageContainer,
                  positionMapper: Option[SourcePosition => SourcePosition] = None
-                )(implicit ctx: Context): Option[lsp4j.Diagnostic] =
+                )(implicit ctx: ContextRenamed): Option[lsp4j.Diagnostic] =
     if (!mc.pos.exists)
       None // diagnostics without positions are not supported: https://github.com/Microsoft/language-server-protocol/issues/249
     else {
@@ -574,7 +574,7 @@ object DottyLanguageServer {
    * @param sourceFile The sourcefile from which `message` originates.
    * @return true if the message should be displayed in the IDE, false otherwise.
    */
-  private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: Context): Boolean = {
+  private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: ContextRenamed): Boolean = {
     if (isWorksheet(sourceFile)) {
       message match {
         case messages.PureExpressionInStatementPosition(_, exprOwner) =>
@@ -647,7 +647,7 @@ object DottyLanguageServer {
    *
    * @see wrapWorksheet
    */
-  def isWorksheetWrapper(sourceTree: SourceTree)(implicit ctx: Context): Boolean = {
+  def isWorksheetWrapper(sourceTree: SourceTree)(implicit ctx: ContextRenamed): Boolean = {
     isWorksheet(sourceTree.source) && isWorksheetWrapper(sourceTree.tree.symbol)
   }
 
@@ -656,14 +656,14 @@ object DottyLanguageServer {
    *
    * @see wrapWorksheet
    */
-  def isWorksheetWrapper(symbol: Symbol)(implicit ctx: Context): Boolean = {
+  def isWorksheetWrapper(symbol: Symbol)(implicit ctx: ContextRenamed): Boolean = {
       symbol.name == StdNames.nme.WorksheetWrapper.moduleClassName &&
       symbol.owner == ctx.definitions.EmptyPackageClass
   }
 
   /** Create an lsp4j.CompletionItem from a Symbol */
-  def completionItem(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItem = {
-    def completionItemKind(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItemKind = {
+  def completionItem(sym: Symbol)(implicit ctx: ContextRenamed): lsp4j.CompletionItem = {
+    def completionItemKind(sym: Symbol)(implicit ctx: ContextRenamed): lsp4j.CompletionItemKind = {
       import lsp4j.{CompletionItemKind => CIK}
 
       if (sym.is(Package))
@@ -706,8 +706,8 @@ object DottyLanguageServer {
   }
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
-  def symbolInfo(sym: Symbol, pos: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition])(implicit ctx: Context): Option[lsp4j.SymbolInformation] = {
-    def symbolKind(sym: Symbol)(implicit ctx: Context): lsp4j.SymbolKind = {
+  def symbolInfo(sym: Symbol, pos: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition])(implicit ctx: ContextRenamed): Option[lsp4j.SymbolInformation] = {
+    def symbolKind(sym: Symbol)(implicit ctx: ContextRenamed): lsp4j.SymbolKind = {
       import lsp4j.{SymbolKind => SK}
 
       if (sym.is(Package))

@@ -57,11 +57,11 @@ object Parsers {
   /** The parse starting point depends on whether the source file is self-contained:
    *  if not, the AST will be supplemented.
    */
-  def parser(source: SourceFile)(implicit ctx: Context): Parser =
+  def parser(source: SourceFile)(implicit ctx: ContextRenamed): Parser =
     if (source.isSelfContained) new ScriptParser(source)
     else new Parser(source)
 
-  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) {
+  abstract class ParserCommon(val source: SourceFile)(implicit ctx: ContextRenamed) {
 
     val in: ScannerCommon
 
@@ -144,7 +144,7 @@ object Parsers {
     }
   }
 
-  class Parser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
+  class Parser(source: SourceFile)(implicit ctx: ContextRenamed) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
 
@@ -2674,7 +2674,7 @@ object Parsers {
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.
    */
-  class OutlineParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) with OutlineParserCommon {
+  class OutlineParser(source: SourceFile)(implicit ctx: ContextRenamed) extends Parser(source) with OutlineParserCommon {
 
     def skipBracesHook(): Option[Tree] =
       if (in.token == XMLSTART) Some(xmlLiteral()) else None

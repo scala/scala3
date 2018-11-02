@@ -5,7 +5,7 @@ package parsing
 import dotty.tools.dotc._
 import core._, ast._
 import Trees._
-import Contexts.Context
+import Contexts.ContextRenamed
 
 object parsePackage extends ParserTest {
 
@@ -14,7 +14,7 @@ object parsePackage extends ParserTest {
   var nodes = 0
 
   val transformer = new UntypedTreeMap {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    override def transform(tree: Tree)(implicit ctx: ContextRenamed): Tree = {
       nodes += 1
       tree match {
         case Ident(name) =>

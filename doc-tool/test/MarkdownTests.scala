@@ -6,7 +6,7 @@ import vulpix.TestConfiguration
 import org.junit.Test
 import org.junit.Assert._
 
-import dotc.core.Contexts.{ Context, ContextBase, FreshContext }
+import dotc.core.Contexts.{ ContextRenamed, ContextBase, FreshContext }
 import dotc.core.Comments.{ ContextDoc, ContextDocstrings }
 import dottydoc.core.ContextDottydoc
 

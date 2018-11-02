@@ -16,14 +16,14 @@ import config.Printers.plugins.{ println => debug }
  *  Updated 2009/1/2 by Anders Bach Nielsen: Added features to implement SIP 00002
  */
 trait Plugins {
-  self: Context =>
+  self: ContextRenamed =>
 
   /** Load a rough list of the plugins.  For speed, it
    *  does not instantiate a compiler run.  Therefore it cannot
    *  test for same-named phases or other problems that are
    *  filtered from the final list of plugins.
    */
-  protected def loadRoughPluginsList(implicit ctx: Context): List[Plugin] = {
+  protected def loadRoughPluginsList(implicit ctx: ContextRenamed): List[Plugin] = {
     def asPath(p: String) = ClassPath split p
     val paths  = ctx.settings.plugin.value filter (_ != "") map (s => asPath(s) map Path.apply)
     val dirs   = {
@@ -43,7 +43,7 @@ trait Plugins {
   }
 
   private var _roughPluginsList: List[Plugin] = _
-  protected def roughPluginsList(implicit ctx: Context): List[Plugin] =
+  protected def roughPluginsList(implicit ctx: ContextRenamed): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
       _roughPluginsList
@@ -54,7 +54,7 @@ trait Plugins {
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
-  protected def loadPlugins(implicit ctx: Context): List[Plugin] = {
+  protected def loadPlugins(implicit ctx: ContextRenamed): List[Plugin] = {
     // remove any with conflicting names or subcomponent names
     def pick(
       plugins: List[Plugin],
@@ -95,7 +95,7 @@ trait Plugins {
   }
 
   private var _plugins: List[Plugin] = _
-  def plugins(implicit ctx: Context): List[Plugin] =
+  def plugins(implicit ctx: ContextRenamed): List[Plugin] =
   if (_plugins == null) {
     _plugins = loadPlugins
     _plugins
@@ -114,7 +114,7 @@ trait Plugins {
     }).mkString
 
   /** Add plugin phases to phase plan */
-  def addPluginPhases(plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+  def addPluginPhases(plan: List[List[Phase]])(implicit ctx: ContextRenamed): List[List[Phase]] = {
     // plugin-specific options.
     // The user writes `-P:plugname:opt1,opt2`, but the plugin sees `List(opt1, opt2)`.
     def options(plugin: Plugin): List[String] = {

@@ -17,7 +17,7 @@ import typer.{FrontEnd, RefChecks}
 import ast.tpd
 
 trait Phases {
-  self: Context =>
+  self: ContextRenamed =>
 
   import Phases._
 
@@ -31,12 +31,12 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  def atPhase[T](phase: Phase)(op: Context => T): T =
+  def atPhase[T](phase: Phase)(op: ContextRenamed => T): T =
     atPhase(phase.id)(op)
 
-  def atNextPhase[T](op: Context => T): T = atPhase(phase.next)(op)
+  def atNextPhase[T](op: ContextRenamed => T): T = atPhase(phase.next)(op)
 
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context => T): T =
+  def atPhaseNotLaterThan[T](limit: Phase)(op: ContextRenamed => T): T =
     if (!limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
@@ -53,22 +53,22 @@ object Phases {
     object NoPhase extends Phase {
       override def exists: Boolean = false
       def phaseName: String = "<no phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = unsupported("transform")
+      def run(implicit ctx: ContextRenamed): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(implicit ctx: ContextRenamed): SingleDenotation = unsupported("transform")
     }
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
+      def run(implicit ctx: ContextRenamed): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
       def phaseName: String = "terminal"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+      def run(implicit ctx: ContextRenamed): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(implicit ctx: ContextRenamed): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(implicit ctx: Context): Int = id
+      override def lastPhaseId(implicit ctx: ContextRenamed): Int = id
     }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
@@ -273,7 +273,7 @@ object Phases {
      */
     def phaseName: String
 
-    def isRunnable(implicit ctx: Context): Boolean =
+    def isRunnable(implicit ctx: ContextRenamed): Boolean =
       !ctx.reporter.hasErrors
 
     /** If set, allow missing or superfluous arguments in applications
@@ -288,10 +288,10 @@ object Phases {
     def runsAfter: Set[String] = Set.empty
 
     /** @pre `isRunnable` returns true */
-    def run(implicit ctx: Context): Unit
+    def run(implicit ctx: ContextRenamed): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+    def runOn(units: List[CompilationUnit])(implicit ctx: ContextRenamed): List[CompilationUnit] =
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         run(unitCtx)
@@ -305,7 +305,7 @@ object Phases {
 
     /** Check what the phase achieves, to be called at any point after it is finished.
      */
-    def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
+    def checkPostCondition(tree: tpd.Tree)(implicit ctx: ContextRenamed): Unit = ()
 
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate

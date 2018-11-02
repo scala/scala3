@@ -5,7 +5,7 @@ package xsbt
 
 import xsbti.Logger
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.ContextRenamed
 import dotty.tools.repl.ReplDriver
 
 class ConsoleInterface {

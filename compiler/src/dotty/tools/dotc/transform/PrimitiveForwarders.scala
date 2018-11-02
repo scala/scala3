@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts.ContextRenamed
 import Symbols._
 import DenotTransformers._
 
@@ -27,7 +27,7 @@ class PrimitiveForwarders extends MiniPhase with IdentityDenotTransformer { this
 
   override def changesMembers: Boolean = true   // the phase adds primitive forwarders
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(implicit ctx: ContextRenamed): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._
