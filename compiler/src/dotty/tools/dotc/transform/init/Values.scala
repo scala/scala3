@@ -647,6 +647,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     val receiver =
       if (sym.isDefinedOn(tp)) {
         target = if (isStaticDispatch) sym else resolve(sym)
+        assert(target.exists, s"${tp.show}.${sym.show} not exist")
         val cls = target.owner.asClass
         if (slices.contains(cls)) slices(cls)
         else if(!target.isCalledAbove(tp.classSymbol.asClass)) WarmValue()
