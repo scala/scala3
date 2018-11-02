@@ -61,7 +61,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         .stripMargin
 
     for (decl <- cls.info.decls.toList if decl.is(AnyFlags, butNot = Method | Deferred)) {
-      if (!decl.is(ParamAccessor | Override) && decl.isCalledAbove(cls))
+      if (!decl.is(ParamAccessor) && decl.isCalledAbove(cls))
         ctx.warning(lateInitMsg(decl), decl.pos)
     }
 
