@@ -559,9 +559,12 @@ class SliceValue(val id: Int) extends SingleValue {
 
     if (sym.is(Flags.Lazy)) {
       if (value.isInstanceOf[LazyValue]) {
-        val res = value(Nil, Nil)
-        if (!setting.isWidening) slice(sym) = res.value
-        res
+        if (setting.isWidening)  Res(value = value.widen(setting.widening))
+        else {
+          val res = value(Nil, Nil)
+          slice(sym) = res.value
+          res
+        }
       }
       else Res(value = value)
     }
@@ -640,40 +643,34 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
-    val target = if (isStaticDispatch) sym else resolve(sym)
-
+    var target: Symbol = null
     val receiver =
-      if (!target.exists) { // select on self type
+      if (sym.isDefinedOn(tp)) {
+        target = if (isStaticDispatch) sym else resolve(sym)
+        val cls = target.owner.asClass
+        if (slices.contains(cls)) slices(cls)
+        else if(!target.isCalledAbove(tp.classSymbol.asClass)) WarmValue()
+        else HotValue
+      }
+      else { // select on self type
+        target = sym
         if (sym.owner.is(Flags.Trait)) IcyValue
         else if (tp.classSymbol.is(Flags.Trait)) WarmValue() // classes are always init before traits
         else ColdValue
       }
-      else {
-        val cls = target.owner.asClass
-        if (slices.contains(cls))
-          slices(cls)
-        else if(!target.isCalledAbove(tp.classSymbol.asClass)) {
-          assert(target.isDefinedOn(tp))
-          WarmValue()
-        }
-        else
-          HotValue
-      }
-
-    val target2 = if (target.exists) target else sym
 
     if (open && !isStaticDispatch && !sym.isEffectivelyFinal && !sym.isClass) {
       val res =
-        if (target2.is(Flags.Method))
+        if (target.is(Flags.Method))
          // dynamic calls are analysis boundary, only allow hot values
-          Res(value = Value.dynamicMethodValue(target2, Value.defaultFunctionValue(target2)))
+          Res(value = Value.dynamicMethodValue(target, Value.defaultFunctionValue(target)))
         else Res()
 
       // annotation on current class even though it's called above
-      if (sym.isEffectiveInit || (!receiver.isOpaque || target2.is(Flags.Deferred)) && !setting.isWidening) {
+      if (sym.isEffectiveInit || (!receiver.isOpaque || target.is(Flags.Deferred)) && !setting.isWidening) {
         if (!receiver.isOpaque) {
-          val res2 = receiver.select(target2)
-          if (target2.is(Flags.Method)) res.value = Value.dynamicMethodValue(target2, res2.value)
+          val res2 = receiver.select(target)
+          if (target.is(Flags.Method)) res.value = Value.dynamicMethodValue(target, res2.value)
           else res.value = res2.value
           res ++= res2.effects
         }
@@ -687,9 +684,9 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }
-      else receiver.select(target2)
+      else receiver.select(target)
     }
-    else receiver.select(target2)
+    else receiver.select(target)
   }
 
   def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = {
