@@ -27,7 +27,7 @@ object Value {
     def message(v: OpaqueValue) = {
       s"Unsafe leak of object under initialization to ${sym.show}" ++
       (v match {
-        case WarmValue(deps, _) =>
+        case WarmValue(deps, _) if deps.nonEmpty =>
           "\nThe object captures " + deps.map(_.show).mkString("", ",", ".")
         case _ => ""
       })

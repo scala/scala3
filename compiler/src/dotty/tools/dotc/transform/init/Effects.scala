@@ -58,6 +58,8 @@ case class Res(var effects: Effects = Vector.empty, var value: Value = HotValue)
 //=======================================
 
 sealed trait Effect {
+  def pos: Position
+
   def report(implicit ctx: Context): Unit = this match {
     case Uninit(sym, pos)         =>
       ctx.warning(s"Reference to uninitialized value `${sym.name}`", pos)

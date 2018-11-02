@@ -254,7 +254,11 @@ class Analyzer extends Indexer { analyzer =>
     val obj = new ObjectValue(tree.tpe, open = false)
     val res = checkInit(obj.tp, init, argss, obj)
 
-    if (res.hasErrors) res.effects = Vector(Instantiate(tree.tpe.classSymbol, res.effects, tree.pos))
+    if (res.hasErrors) {
+      // more friendly message
+      if (res.effects.exists(eff => !tree.pos.contains(eff.pos)))
+        res.effects = Vector(Instantiate(tree.tpe.classSymbol, res.effects, tree.pos))
+    }
     res.copy(value = obj.tryWiden)
   }
 
