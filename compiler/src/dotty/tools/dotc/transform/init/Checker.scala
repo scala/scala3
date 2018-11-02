@@ -235,7 +235,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         setting.ctx.warning("Overriding a class parameter in class body may cause initialization problems", sym.pos)
       }
       else if (!sym.isHot && sym.allOverriddenSymbols.exists(_.isHot)) {
-        setting.ctx.warning("Overriding a fully initialized class parameter with a cold parameter may cause initialization problems", sym.pos)
+        setting.ctx.warning("Overriding a fully initialized field with a cold value may cause initialization problems", sym.pos)
       }
     }
 
