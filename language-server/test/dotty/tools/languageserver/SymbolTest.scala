@@ -27,4 +27,16 @@ class SymbolTest {
     ) .symbol("Foo", Foo.range.symInfo("Foo", SymbolKind.Class), fooFoo.range.symInfo("Foo", SymbolKind.Class, "foo"))
       .symbol("Bar", Bar.range.symInfo("Bar", SymbolKind.Class))
   }
+
+  @Test def symbolShowModule: Unit = {
+    code"""object ${m1}Foo${m2}""".withSource
+      .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Module))
+  }
+
+  @Test def symbolShowClassAndCompanion: Unit = {
+    code"""object ${m1}Foo${m2}
+           class ${m3}Foo${m4}""".withSource
+      .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Module),
+                     (m3 to m4).symInfo("Foo", SymbolKind.Class))
+  }
 }

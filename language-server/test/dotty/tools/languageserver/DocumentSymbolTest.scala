@@ -26,4 +26,16 @@ class DocumentSymbolTest {
     ) .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class))
       .documentSymbol(m3, (m3 to m4).symInfo("Bar", SymbolKind.Class))
   }
+
+  @Test def documentSymbolShowModule: Unit = {
+    code"""object ${m1}Foo${m2}""".withSource
+      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Module))
+  }
+
+  @Test def documentSymbolShowClassAndCompanion: Unit = {
+    code"""object ${m1}Foo${m2}
+           class ${m3}Foo${m4}""".withSource
+      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Module),
+                          (m3 to m4).symInfo("Foo", SymbolKind.Class))
+  }
 }

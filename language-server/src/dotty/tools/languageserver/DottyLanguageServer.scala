@@ -620,6 +620,8 @@ object DottyLanguageServer {
         SK.Package
       else if (sym.isConstructor)
         SK.Constructor
+      else if (sym.is(Module))
+        SK.Module
       else if (sym.isClass)
         SK.Class
       else if (sym.is(Mutable))
@@ -630,7 +632,7 @@ object DottyLanguageServer {
         SK.Field
     }
 
-    val name = sym.name.show
+    val name = sym.name.stripModuleClassSuffix.show
     val containerName =
       if (sym.owner.exists && !sym.owner.isEmptyPackage)
         sym.owner.name.show
