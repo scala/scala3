@@ -509,7 +509,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 addTyped(arg, formal)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedArgs = harmonic(harmonizeArgs)(args.map(typedArg(_, elemFormal)))
+                val typedArgs =
+                  harmonic(harmonizeArgs, elemFormal)(args.map(typedArg(_, elemFormal)))
                 typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -1555,38 +1556,33 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {
-    def numericClasses(ts: List[T], acc: Set[Symbol]): Set[Symbol] = ts match {
+    def targetClass(ts: List[T], cls: Symbol, intLitSeen: Boolean): Symbol = ts match {
       case t :: ts1 =>
-        val sym = tpe(t).widen.classSymbol
-        if (sym.isNumericValueClass) numericClasses(ts1, acc + sym)
-        else Set()
+        tpe(t).widenTermRefExpr match {
+          case ConstantType(c: Constant) if c.tag == IntTag =>
+            targetClass(ts1, cls, true)
+          case t =>
+            val sym = t.widen.classSymbol
+            if (!sym.isNumericValueClass || cls.exists && cls != sym) NoSymbol
+            else targetClass(ts1, sym, intLitSeen)
+        }
       case Nil =>
-        acc
+        if (cls != defn.IntClass && intLitSeen) cls else NoSymbol
     }
-    val clss = numericClasses(ts, Set())
-    if (clss.size > 1) {
-      def isCompatible(cls: Symbol, sup: TypeRef) =
-        defn.isValueSubType(cls.typeRef, sup) &&
-        !(cls == defn.LongClass && sup.isRef(defn.FloatClass))
-          // exclude Long <: Float from list of allowable widenings
-          // TODO: should we do this everywhere we ask for isValueSubType?
-
-      val lub = defn.ScalaNumericValueTypeList.find(lubTpe =>
-        clss.forall(cls => isCompatible(cls, lubTpe))).get
-
-      def lossOfPrecision(ct: Constant): Boolean =
-        ct.tag == IntTag && lub.isRef(defn.FloatClass) &&
-          ct.intValue.toFloat.toInt != ct.intValue ||
-        ct.tag == LongTag && lub.isRef(defn.DoubleClass) &&
-          ct.longValue.toDouble.toLong != ct.longValue
-
+    val cls = targetClass(ts, NoSymbol, false)
+    if (cls.exists) {
+      def lossOfPrecision(n: Int): Boolean =
+        cls == defn.FloatClass && n.toFloat.toInt != n
+      var canAdapt = true
       val ts1 = ts.mapConserve { t =>
         tpe(t).widenTermRefExpr match {
-          case ct: ConstantType if !lossOfPrecision(ct.value) => adapt(t, lub)
+          case ConstantType(c: Constant) if c.tag == IntTag =>
+            canAdapt &= c.convertTo(cls.typeRef) != null && !lossOfPrecision(c.intValue)
+            if (canAdapt) adapt(t, cls.typeRef) else t
           case _ => t
         }
       }
-      if (numericClasses(ts1, Set()).size == 1) ts1 else ts
+      if (canAdapt) ts1 else ts
     }
     else ts
   }
@@ -1603,7 +1599,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adaptDeep)
   }
 
-  /** Apply a transformation `harmonize` on the results of operation `op`.
+  /** Apply a transformation `harmonize` on the results of operation `op`,
+   *  unless the expected type `pt` is fully defined.
    *  If the result is different (wrt eq) from the original results of `op`,
    *  revert back to the constraint in force before computing `op`.
    *  This reset is needed because otherwise the original results might
@@ -1612,13 +1609,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  the result of harmomization will be compared again with the expected type.
    *  Test cases where this matters are in pos/harmomize.scala.
    */
-  def harmonic[T](harmonize: List[T] => List[T])(op: => List[T])(implicit ctx: Context): List[T] = {
-    val origConstraint = ctx.typerState.constraint
-    val origElems = op
-    val harmonizedElems = harmonize(origElems)
-    if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
-    harmonizedElems
-  }
+  def harmonic[T](harmonize: List[T] => List[T], pt: Type)(op: => List[T])(implicit ctx: Context): List[T] =
+    if (!isFullyDefined(pt, ForceDegree.none)) {
+      val origConstraint = ctx.typerState.constraint
+      val origElems = op
+      val harmonizedElems = harmonize(origElems)
+      if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
+      harmonizedElems
+    }
+    else op
 
   /** If all `types` are numeric value types, and they are not all the same type,
    *  pick a common numeric supertype and widen any constant types in `tpes` to it.

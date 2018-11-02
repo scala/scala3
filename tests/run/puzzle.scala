@@ -1,3 +1,4 @@
+// no longer a puzzler, now prints 5, 5
 object Test {
 
   def main(args: Array[String]): Unit = {
