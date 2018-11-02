@@ -1130,7 +1130,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
   /** Make sure that directory string is as expected */
   private def checkRequirements(f: String, sourceDir: JFile, outDir: String): Unit = {
-    require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`")
+    require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`: " + sourceDir)
     require(outDir.last == JFile.separatorChar, "please specify an `outDir` with a trailing file separator")
   }
 
