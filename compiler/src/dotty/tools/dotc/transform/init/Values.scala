@@ -137,6 +137,7 @@ sealed trait Value {
     case (v1: UnionValue, v2: UnionValue) => v1 ++ v2
     case (uv: UnionValue, v: SingleValue) => uv + v
     case (v: SingleValue, uv: UnionValue) => uv + v
+    case (v1: ClassValue, v2: ClassValue) if v1 `eq` v2 => v1
     case (v1: SingleValue, v2: SingleValue) => UnionValue(Set(v1, v2))
   }
 
