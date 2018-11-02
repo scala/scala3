@@ -870,10 +870,21 @@ object desugar {
    *      def pn = x$1._n
    *      body
    *    }
+   *
+   *  or if `isGenericTuple`
+   *
+   *    x$1 => {
+   *      def p1 = x$1.apply(0)
+   *      ...
+   *      def pn = x$1.apply(n-1)
+   *      body
+   *    }
    */
-  def makeTupledFunction(params: List[ValDef], body: Tree)(implicit ctx: Context): Tree = {
+  def makeTupledFunction(params: List[ValDef], body: Tree, isGenericTuple: Boolean)(implicit ctx: Context): Tree = {
     val param = makeSyntheticParameter()
-    def selector(n: Int) = Select(refOfDef(param), nme.selectorName(n))
+    def selector(n: Int) =
+      if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
+      else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
       params.zipWithIndex.map{
         case (param, idx) =>

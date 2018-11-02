@@ -906,7 +906,7 @@ class Typer extends Namer
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) = {
       isFullyDefined(formal, ForceDegree.noBottom) &&
-      defn.isProductSubType(formal) &&
+      (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
       Applications.productSelectorTypes(formal).corresponds(params) {
         (argType, param) =>
           param.tpt.isEmpty || argType <:< typedAheadType(param.tpt).tpe
@@ -915,7 +915,8 @@ class Typer extends Namer
 
     val desugared =
       if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
-        desugar.makeTupledFunction(params, fnBody)
+        val isGenericTuple = !protoFormals.head.derivesFrom(defn.ProductClass)
+        desugar.makeTupledFunction(params, fnBody, isGenericTuple)
       }
       else {
         val inferredParams: List[untpd.ValDef] =
