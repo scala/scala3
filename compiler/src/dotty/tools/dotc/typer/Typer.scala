@@ -906,7 +906,7 @@ class Typer extends Namer
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) = {
       isFullyDefined(formal, ForceDegree.noBottom) &&
-      defn.isProductSubType(formal) &&
+      (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
       Applications.productSelectorTypes(formal).corresponds(params) {
         (argType, param) =>
           param.tpt.isEmpty || argType <:< typedAheadType(param.tpt).tpe
@@ -915,7 +915,8 @@ class Typer extends Namer
 
     val desugared =
       if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
-        desugar.makeTupledFunction(params, fnBody)
+        val isGenericTuple = !protoFormals.head.derivesFrom(defn.ProductClass)
+        desugar.makeTupledFunction(params, fnBody, isGenericTuple)
       }
       else {
         val inferredParams: List[untpd.ValDef] =
@@ -1235,6 +1236,11 @@ class Typer extends Namer
       val rsym = refinement.symbol
       if (rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
         ctx.error(PolymorphicMethodMissingTypeInParent(rsym, tpt1.symbol), refinement.pos)
+
+      val member = refineCls.info.member(rsym.name)
+      if (member.isOverloaded) {
+        ctx.error(OverloadInRefinement(rsym), refinement.pos)
+      }
     }
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
@@ -1414,6 +1420,7 @@ class Typer extends Namer
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
+    if (sym is Implicit) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe

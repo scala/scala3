@@ -2170,4 +2170,13 @@ object messages {
     override def kind: String = "Syntax"
     override def explanation: String = ""
   }
+
+  case class OverloadInRefinement(rsym: Symbol)(implicit val ctx: Context)
+    extends Message(OverloadInRefinementID) {
+      override def msg: String = "Refinements cannot introduce overloaded definitions"
+      override def kind: String = "Overload"
+      override def explanation: String =
+        hl"""The refinement `$rsym` introduces an overloaded definition.
+            |Refinements cannot contain overloaded definitions.""".stripMargin
+    }
 }

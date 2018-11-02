@@ -197,7 +197,7 @@ object DottyIDEPlugin extends AutoPlugin {
    */
   def installCodeExtension(codeCmd: Seq[String], name: String): Unit = {
     try {
-      runProcess(codeCmd ++ Seq("--install-extension", name), wait = true)
+      runProcess(codeCmd ++ Seq("--force", "--install-extension", name), wait = true)
     } catch {
       case e: Exception =>
         var alreadyInstalled: Boolean = false

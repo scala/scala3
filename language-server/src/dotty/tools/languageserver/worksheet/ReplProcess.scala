@@ -11,7 +11,8 @@ object ReplProcess {
     while (true) {
       val code = in.next() // blocking
       state = driver.run(code)(state)
-      print(InputStreamConsumer.delimiter) // needed to mark the end of REPL output
+      Console.print(InputStreamConsumer.delimiter) // needed to mark the end of REPL output
+      Console.flush()
     }
   }
 }

@@ -172,6 +172,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees") +
     compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes) +
+    compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes) +
     compileFilesInDir("tests/run", defaultOptions)
   }.checkRuns()
 

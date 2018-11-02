@@ -6,5 +6,6 @@ object B {
   "".foo
 
   val x: Int = ""  // error: feature
+  val y: String = 1 // error: feature
 
 }

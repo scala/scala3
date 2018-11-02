@@ -21,5 +21,5 @@ class InputStreamConsumer(in: InputStream) {
 }
 
 object InputStreamConsumer {
-  def delimiter = "\uE000" // withing private use area
+  def delimiter = "##!!##"
 }

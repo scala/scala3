@@ -607,15 +607,24 @@ trait Checking {
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(Implicit)
    */
-  def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = sym.info.stripPoly match {
-    case mt @ MethodType(_ :: Nil)
-    if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
+  def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
+    def check(): Unit = {
       checkFeature(
         defn.LanguageModuleClass, nme.implicitConversions,
         i"Definition of implicit conversion $sym",
         ctx.owner.topLevelClass,
         sym.pos)
-    case _ =>
+    }
+
+    sym.info.stripPoly match {
+      case mt @ MethodType(_ :: Nil)
+      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
+        check()
+      case AppliedType(tycon, _)
+      if tycon.derivesFrom(defn.Predef_ImplicitConverter) && !sym.is(Synthetic) =>
+        check()
+      case _ =>
+    }
   }
 
   /** If `sym` is an implicit conversion, check that that implicit conversions are enabled, unless

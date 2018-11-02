@@ -23,6 +23,7 @@ i4947b
 i5119
 i5119b
 i5188a
+i5257.scala
 inline-varargs-1
 implicitShortcut
 inline-case-objects
@@ -38,6 +39,7 @@ mixins1
 outerPatternMatch
 paramForwarding_separate
 quote-and-splice
+quote-change-owner
 quote-force
 quote-indexed-map-by-name
 quote-sep-comp
