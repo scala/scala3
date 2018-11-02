@@ -61,6 +61,8 @@ object Applications {
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     def tupleSelectors(n: Int, tp: Type): List[Type] = {
       val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
+      // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail 
+      // such as `Int *: T` where `T <: Tuple`.
       if (sel.exists) sel :: tupleSelectors(n + 1, tp) else Nil
     }
     def genTupleSelectors(n: Int, tp: Type): List[Type] = tp match {
