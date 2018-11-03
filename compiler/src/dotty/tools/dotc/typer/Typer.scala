@@ -2638,7 +2638,10 @@ class Typer extends Namer
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
           }
         case wtp =>
-          if (isStructuralTermSelect(tree)) readaptSimplified(handleStructural(tree))
+          if (isStructuralTermApply(tree))
+            readaptSimplified(handleStructural(tree))
+          else if (isStructuralTermSelect(tree) && tree.tpe.widen.isValueType)
+            readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>
               adaptToArgs(wtp, pt)

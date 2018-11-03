@@ -10,60 +10,16 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
     }
     catch {
       case ex: NoSuchFieldException =>
-        selectDynamicMethod(name).asInstanceOf[() => Any]()
+        applyDynamic(name)()
     }
   }
 
-  override def selectDynamicMethod(name: String, paramTypes: ClassTag[_]*): Any = {
+  override def applyDynamic(name: String, paramTypes: ClassTag[_]*)(args: Any*): Any = {
     val rcls = receiver.getClass
     val paramClasses = paramTypes.map(_.runtimeClass)
     val mth = rcls.getMethod(name, paramClasses: _*)
     ensureAccessible(mth)
-    paramTypes.length match {
-      case 0 => () =>
-        mth.invoke(receiver)
-      case 1 => (x0: Any) =>
-        mth.invoke(receiver, x0.asInstanceOf[Object])
-      case 2 => (x0: Any, x1: Any) =>
-        mth.invoke(receiver,
-            x0.asInstanceOf[Object],
-            x1.asInstanceOf[Object])
-      case 3 => (x0: Any, x1: Any, x2: Any) =>
-        mth.invoke(receiver,
-            x0.asInstanceOf[Object],
-            x1.asInstanceOf[Object],
-            x2.asInstanceOf[Object])
-      case 4 => (x0: Any, x1: Any, x2: Any, x3: Any) =>
-        mth.invoke(receiver,
-            x0.asInstanceOf[Object],
-            x1.asInstanceOf[Object],
-            x2.asInstanceOf[Object],
-            x3.asInstanceOf[Object])
-      case 5 => (x0: Any, x1: Any, x2: Any, x3: Any, x4: Any) =>
-        mth.invoke(receiver,
-            x0.asInstanceOf[Object],
-            x1.asInstanceOf[Object],
-            x2.asInstanceOf[Object],
-            x3.asInstanceOf[Object],
-            x4.asInstanceOf[Object])
-      case 6 => (x0: Any, x1: Any, x2: Any, x3: Any, x4: Any, x5: Any) =>
-        mth.invoke(receiver,
-            x0.asInstanceOf[Object],
-            x1.asInstanceOf[Object],
-            x2.asInstanceOf[Object],
-            x3.asInstanceOf[Object],
-            x4.asInstanceOf[Object],
-            x5.asInstanceOf[Object])
-      case 7 => (x0: Any, x1: Any, x2: Any, x3: Any, x4: Any, x5: Any, x6: Any) =>
-        mth.invoke(receiver,
-            x0.asInstanceOf[Object],
-            x1.asInstanceOf[Object],
-            x2.asInstanceOf[Object],
-            x3.asInstanceOf[Object],
-            x4.asInstanceOf[Object],
-            x5.asInstanceOf[Object],
-            x6.asInstanceOf[Object])
-      }
+    mth.invoke(receiver, args.map(_.asInstanceOf[AnyRef]): _*)
   }
 }
 

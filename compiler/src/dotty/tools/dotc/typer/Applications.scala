@@ -490,7 +490,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            val getter = findDefaultGetter(n + numArgs(normalizedFun))
+            val getter =
+              // `methRef.symbol` doesn't exist for structural calls
+              if (methRef.symbol.exists) findDefaultGetter(n + numArgs(normalizedFun))
+              else EmptyTree
             if (getter.isEmpty) missingArg(n)
             else {
               val substParam = addTyped(
