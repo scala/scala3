@@ -101,3 +101,5 @@ With that setup, the table construction code above compiles and expands to:
 ### Reference
 
 For more info, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html).
+
+[More details](./implicit-function-types-spec.html)
