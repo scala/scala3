@@ -46,13 +46,16 @@ class InterceptedMethods extends MiniPhase {
       ctx.log(s"$phaseName rewrote $tree to $rewritten")
       rewritten
     }
-    else if (tree.name.startsWith(nme.UNARY_PREFIX.toString)) {
+    else if (tree.name.startsWith(nme.UNARY_PREFIX.toString) && tree.qualifier.symbol.isAbsent) {
       tree.qualifier match {
         case refTree: RefTree => tree
         case _ => {
           val tempDef = SyntheticValDef(UniqueName.fresh().toTermName, tree.qualifier)
           val rewritten = Block(tempDef :: Nil, ref(tempDef.symbol).select(tree.name))
           ctx.log(s"$phaseName rewrote $tree to $rewritten")
+          println("### " + tree.tpe + " " + tree.tpe.show)
+          println("### " + tree.qualifier.symbol)
+
           rewritten
         }
       }
