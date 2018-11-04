@@ -15,7 +15,10 @@ trait SymbolOps extends Core {
     def privateWithin(implicit ctx: Context): Option[Type]
     def protectedWithin(implicit ctx: Context): Option[Type]
 
+    /** Name of the definition */
     def name(implicit ctx: Context): String
+
+    /** Full name of the definition from the _root_ package */
     def fullName(implicit ctx: Context): String
 
     def localContext(implicit ctx: Context): Context
@@ -51,8 +54,38 @@ trait SymbolOps extends Core {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
   }
 
+  val ClassSymbol: ClassSymbolModule
+  abstract class ClassSymbolModule {
+    /** The ClassSymbol of a global class definition */
+    def of(fullName: String)(implicit ctx: Context): ClassSymbol
+  }
+
   trait ClassSymbolAPI {
+    /** Tree of this class definition */
     def tree(implicit ctx: Context): ClassDef
+
+    /** Fields directly declared in the class */
+    def fields(implicit ctx: Context): List[Symbol]
+
+    /** Field with the given name directly declared in the class */
+    def field(name: String)(implicit ctx: Context): Option[Symbol]
+
+    /** Get non-private named methods defined directly inside the class */
+    def classMethod(name: String)(implicit ctx: Context): List[DefSymbol]
+
+    /** Get all non-private methods defined directly inside the class, exluding constructors */
+    def classMethods(implicit ctx: Context): List[DefSymbol]
+
+    /** Get named non-private methods declared or inherited */
+    def method(name: String)(implicit ctx: Context): List[DefSymbol]
+
+    /** Get all non-private methods declared or inherited */
+    def methods(implicit ctx: Context): List[DefSymbol]
+
+    /** Fields of a case class type -- only the ones declared in primary constructor */
+    def caseFields(implicit ctx: Context): List[ValSymbol]
+
+    def companionClass(implicit ctx: Context): Option[ClassSymbol]
   }
   implicit def ClassSymbolDeco(symbol: ClassSymbol): ClassSymbolAPI
 
