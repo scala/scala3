@@ -40,7 +40,8 @@ object PostTyper {
  *
  *  (10) Adds Child annotations to all sealed classes
  *
- *  (11) Replace RHS of `erased` (but not `inline`) members by `(???: rhs.type)`
+ *  (11) Minimizes `call` fields of `Inlined` nodes to just point to the toplevel
+ *       class from which code was inlined.
  *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
@@ -177,22 +178,23 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
-    private def handleInlineCall(sym: Symbol)(implicit ctx: Context): Unit = {
-      if (sym.is(Inline))
-        ctx.compilationUnit.needsStaging = true
+    private object dropInlines extends TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case Inlined(call, _, _) =>
+          cpy.Inlined(tree)(call, Nil, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)))
+        case _ => super.transform(tree)
+      }
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
-          handleInlineCall(tree.symbol)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
-          handleInlineCall(tree.symbol)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
@@ -201,7 +203,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             transformSelect(tree, Nil)
         case tree: Apply =>
-          handleInlineCall(tree.symbol)
           val methType = tree.fun.tpe.widen
           val app =
             if (methType.isErasedMethod)
@@ -209,7 +210,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 tree.fun,
                 tree.args.map(arg =>
                   if (methType.isImplicitMethod && arg.pos.isSynthetic) ref(defn.Predef_undefined)
-                  else arg))
+                  else dropInlines.transform(arg)))
             else
               tree
           methPart(app) match {
@@ -222,7 +223,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(app)
           }
         case tree: TypeApply =>
-          handleInlineCall(tree.symbol)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
@@ -236,6 +236,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               super.transform(tree1)
           }
+        case Inlined(call, bindings, expansion) if !call.isEmpty =>
+          // Leave only a call trace consisting of
+          //  - a reference to the top-level class from which the call was inlined,
+          //  - the call's position
+          // in the call field of an Inlined node.
+          // The trace has enough info to completely reconstruct positions.
+          // The minimization is done for two reasons:
+          //  1. To save space (calls might contain large inline arguments, which would otherwise
+          //     be duplicated
+          //  2. To enable correct pickling (calls can share symbols with the inlined code, which
+          //     would trigger an assertion when pickling).
+          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
@@ -322,10 +335,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-     *  Performed to shrink the tree that is known to be erased later.
-     */
+    *  Performed to shrink the tree that is known to be erased later.
+    */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
-      if (!sym.isEffectivelyErased || sym.isInlineMethod || !rhs.tpe.exists) rhs
-      else Typed(ref(defn.Predef_undefined), TypeTree(rhs.tpe))
+      if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
   }
 }

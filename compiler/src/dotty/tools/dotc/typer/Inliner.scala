@@ -455,18 +455,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       if (inlinedMethod == defn.Typelevel_error) issueError()
 
-      // Leave only a call trace consisting of
-      //  - a reference to the top-level class from which the call was inlined,
-      //  - the call's position
-      // in the call field of an Inlined node.
-      // The trace has enough info to completely reconstruct positions.
-      // The minimization is done for the following reason:
-      //   * To save space (calls might contain large inline arguments, which would otherwise be duplicated
-      val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      tpd.Inlined(callTrace, finalBindings, finalExpansion)
+      tpd.Inlined(call, finalBindings, finalExpansion)
     }
   }
 
