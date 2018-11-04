@@ -19,6 +19,7 @@ import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
 import Decorators._
+import scala.tasty.util.Chars.isOperatorPart
 import transform.TypeUtils._
 
 import language.implicitConversions
@@ -345,7 +346,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         }
       case Typed(expr, tpt) =>
-        changePrec(InfixPrec) { toText(expr) ~ ": " ~ toText(tpt) }
+        changePrec(InfixPrec) {
+          val exprText = toText(expr)
+          val line = exprText.lastLine
+          val colon = if (!line.isEmpty && isOperatorPart(line.last)) " :" else ":"
+          exprText ~ colon ~ toText(tpt) }
       case NamedArg(name, arg) =>
         toText(name) ~ " = " ~ toText(arg)
       case Assign(lhs, rhs) =>

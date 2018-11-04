@@ -6,7 +6,7 @@ import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
 import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
-import util.Chars._
+import scala.tasty.util.Chars._
 import util.NameTransformer.avoidIllegalChars
 import Tokens._
 import scala.annotation.{ switch, tailrec }

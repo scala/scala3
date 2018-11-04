@@ -4,7 +4,7 @@ package util
 
 import core.Names._
 import collection.mutable
-import util.Chars.isValidJVMMethodChar
+import scala.tasty.util.Chars
 
 import scala.annotation.internal.sharable
 
@@ -47,11 +47,11 @@ object NameTransformer {
    */
   def avoidIllegalChars(name: SimpleName): SimpleName = {
     var i = name.length - 1
-    while (i >= 0 && isValidJVMMethodChar(name(i))) i -= 1
+    while (i >= 0 && Chars.isValidJVMMethodChar(name(i))) i -= 1
     if (i >= 0)
       termName(
         name.toString.flatMap(ch =>
-          if (isValidJVMMethodChar(ch)) ch.toString else "$u%04X".format(ch.toInt)))
+          if (Chars.isValidJVMMethodChar(ch)) ch.toString else "$u%04X".format(ch.toInt)))
     else name
   }
 

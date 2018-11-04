@@ -354,7 +354,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ =>
             inParens {
               printTree(term)
-              this += ": "
+              this += (if (Chars.isOperatorPart(sb.last)) " : " else ": ")
               def printTypeOrAnnots(tpe: Type): Unit = tpe match {
                 case Type.AnnotatedType(tp, annot) if tp == term.tpe =>
                   printAnnotation(annot)

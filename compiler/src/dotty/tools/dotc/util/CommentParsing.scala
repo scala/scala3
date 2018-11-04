@@ -13,7 +13,7 @@ package dotty.tools.dotc.util
   * handled by dottydoc.
   */
 object CommentParsing {
-  import Chars._
+  import scala.tasty.util.Chars._
 
   /** Returns index of string `str` following `start` skipping longest
    *  sequence of whitespace characters characters (but no newlines)
