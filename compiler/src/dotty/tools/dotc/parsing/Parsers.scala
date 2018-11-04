@@ -2166,7 +2166,7 @@ object Parsers {
       }
     }
 
-    /** DefDef ::= DefSig (`:' Type [`=' Expr] | "=" Expr)
+    /** DefDef ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
      *           | this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
@@ -2195,7 +2195,13 @@ object Parsers {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
-        var tpt = fromWithinReturnType(typedOpt())
+        var tpt = fromWithinReturnType {
+          if (in.token == SUBTYPE && mods.is(Inline)) {
+            in.nextToken()
+            TypeBoundsTree(EmptyTree, toplevelTyp())
+          }
+          else typedOpt()
+        }
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if (in.token == EQUALS) {

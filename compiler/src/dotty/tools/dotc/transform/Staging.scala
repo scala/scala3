@@ -628,6 +628,7 @@ class Staging extends MacroTransformWithImplicits {
         case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Some(qual)
         case Block(List(stat), Literal(Constant(()))) => unapply(stat)
         case Block(Nil, expr) => unapply(expr)
+        case Typed(expr, _) => unapply(expr)
         case _ => None
       }
     }

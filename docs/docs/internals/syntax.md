@@ -329,7 +329,7 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr              PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
-DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
+DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  DefSig [nl] ‘{’ Block ‘}’                                DefDef(_, name, tparams, vparamss, tpe, Block)
                     |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
