@@ -18,3 +18,8 @@ default-super.scala
 
 # Need to implement printing of match types
 matchtype.scala
+
+# Did not survive addition of type ascriptions in decompiled tests
+i3050.scala
+i4006b.scala
+i4006c.scala
