@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
@@ -44,6 +45,17 @@ class InterceptedMethods extends MiniPhase {
       val rewritten = poundPoundValue(qual)
       ctx.log(s"$phaseName rewrote $tree to $rewritten")
       rewritten
+    }
+    else if (tree.name.startsWith(nme.UNARY_PREFIX.toString)) {
+      tree.qualifier match {
+        case refTree: RefTree => tree
+        case _ => {
+          val tempDef = SyntheticValDef(UniqueName.fresh().toTermName, tree.qualifier)
+          val rewritten = Block(tempDef :: Nil, ref(tempDef.symbol).select(tree.name))
+          ctx.log(s"$phaseName rewrote $tree to $rewritten")
+          rewritten
+        }
+      }
     }
     else tree
   }
