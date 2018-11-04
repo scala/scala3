@@ -5,7 +5,7 @@ package ast
 import core._
 import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Symbols._
-import typer.{ConstFold, Inliner}
+import typer.ConstFold
 import reporting.trace
 
 import scala.annotation.tailrec
@@ -766,14 +766,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           false
       }
       !tree.symbol.exists && tree.isTerm && hasRefinement(tree.qualifier.tpe)
-    case _ =>
-      false
-  }
-
-  /** Is this call a call to a method that is marked as Inline */
-  def isInlineCall(arg: Tree)(implicit ctx: Context): Boolean = arg match {
-    case _: RefTree | _: GenericApply[_] =>
-      !arg.tpe.widenDealias.isInstanceOf[MethodicType] && Inliner.isInlineable(arg)
     case _ =>
       false
   }

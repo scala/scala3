@@ -604,6 +604,7 @@ class TreeUnpickler(reader: TastyReader,
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case INLINE => addFlag(Inline)
+          case INLINEPROXY => addFlag(InlineProxy)
           case MACRO => addFlag(Macro)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
@@ -1073,6 +1074,17 @@ class TreeUnpickler(reader: TastyReader,
               val stats = readStats(ctx.owner, end)
               val expr = exprReader.readTerm()
               Block(stats, expr)
+            case INLINED =>
+              val exprReader = fork
+              skipTree()
+              def maybeCall = nextUnsharedTag match {
+                case VALDEF | DEFDEF => EmptyTree
+                case _ => readTerm()
+              }
+              val call = ifBefore(end)(maybeCall, EmptyTree)
+              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
+              val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
+              Inlined(call, bindings, expansion)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
             case LAMBDA =>

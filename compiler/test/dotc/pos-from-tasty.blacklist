@@ -18,6 +18,3 @@ default-super.scala
 
 # Need to implement printing of match types
 matchtype.scala
-
-# Fails on CI (not locally)
-inline-named-typeargs.scala
