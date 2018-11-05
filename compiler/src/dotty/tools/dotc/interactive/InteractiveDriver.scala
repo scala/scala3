@@ -265,7 +265,24 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 }
 
 object InteractiveDriver {
-  def toUri(file: AbstractFile): URI = Paths.get(file.path).toUri
-  def toUri(source: SourceFile): URI = toUri(source.file)
+  def toUriOption(file: AbstractFile): Option[URI] =
+    if (!file.exists)
+      None
+    else
+      try {
+        // We don't use file.file here since it'll be null
+        // for the VirtualFiles created by InteractiveDriver#toSource
+        // TODO: To avoid these round trip conversions, we could add an
+        // AbstractFile#toUri method and implement it by returning a constant
+        // passed as a parameter to a constructor of VirtualFile
+        Some(Paths.get(file.path).toUri)
+      } catch {
+        case e: InvalidPathException =>
+          None
+      }
+  def toUriOption(source: SourceFile): Option[URI] =
+    if (!source.exists)
+      None
+    else
+      toUriOption(source.file)
 }
-

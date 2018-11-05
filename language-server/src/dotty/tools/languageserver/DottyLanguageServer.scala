@@ -315,7 +315,8 @@ class DottyLanguageServer extends LanguageServer
         Include.references | Include.definitions | Include.linkedClass | Include.overriding
       val refs = Interactive.findTreesMatching(trees, includes, sym)
 
-      val changes = refs.groupBy(ref => toUri(ref.source).toString)
+      val changes = refs.groupBy(ref => toUriOption(ref.source))
+        .flatMap((uriOpt, ref) => uriOpt.map(uri => (uri.toString, ref)))
         .mapValues(refs =>
           refs.flatMap(ref =>
             range(ref.namePos, positionMapperFor(ref.source)).map(nameRange => new TextEdit(nameRange, newName))).asJava)
@@ -433,7 +434,10 @@ object DottyLanguageServer {
 
   /** Convert a SourcePosition to an lsp4.Location */
   def location(p: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Location] =
-    range(p, positionMapper).map(r => new lsp4j.Location(toUri(p.source).toString, r))
+    for {
+      uri <- toUriOption(p.source)
+      r <- range(p, positionMapper)
+    } yield new lsp4j.Location(uri.toString, r)
 
   /**
    * Convert a MessageContainer to an lsp4j.Diagnostic. The positions are transformed vy

@@ -475,7 +475,7 @@ object Interactive {
             Include.definitions | Include.overriding | Include.overridden)
         else sym.topLevelClass match {
           case cls: ClassSymbol =>
-            val trees = Option(cls.sourceFile).map(InteractiveDriver.toUri) match {
+            val trees = Option(cls.sourceFile).flatMap(InteractiveDriver.toUriOption) match {
               case Some(uri) if driver.openedTrees.contains(uri) =>
                 driver.openedTrees(uri)
               case _ => // Symbol comes from the classpath
