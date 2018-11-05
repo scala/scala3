@@ -130,7 +130,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // init check: try commit early
     if (obj.open) {
       val innerEnv = obj.slices(cls).asSlice(setting).innerEnv
-      initCheck(cls, obj, tmpl)(setting.withEnv(innerEnv))
+      initCheck(cls, obj, tmpl)(setting.widening.withEnv(innerEnv))
     }
   }
 
@@ -199,37 +199,39 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
 
       var res = obj.select(sym, isStaticDispatch = true)
-      if (!sym.info.isParameterless)
-        res = res.value.apply(i => HotValue, i => NoPosition)
+      res = res.value.apply(i => HotValue, i => NoPosition)
       if (res.hasErrors) {
         setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (!res.value.widen(setting.widening).isHot) {
+      else if (!res.value.widen(setting).isHot) {
         setting.ctx.warning("A dynamic init method must return a full value", sym.pos)
       }
     }
 
     def checkLazy(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
       val sym = vdef.symbol
-      if (!sym.isEffectiveInit) return
-
       val res = obj.select(sym, isStaticDispatch = true)
-      if (res.hasErrors) {
+
+      if (res.hasErrors && sym.isEffectiveInit) {
         setting.ctx.warning("Forcing init lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else {
-        val value = res.value.widen(setting.widening)
-        if (!value.isHot) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
+      else if (!res.hasErrors) {
+        val value = res.value.widen(setting)
+        if (!value.isHot && sym.isEffectiveInit) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
+        else if (value.isHot && !sym.isEffectiveInit) sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
       }
+
     }
 
     def checkValDef(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
       val sym = vdef.symbol
       if (sym.is(Flags.PrivateOrLocal)) return
 
-      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting.widening)
+      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting)
+      setting.analyzer.indentedDebug(s"${sym.show} widens to ${actual.show(setting.showSetting)}")
+
       if (actual.isCold) sym.annotate(defn.ColdAnnotType)
       else if (actual.isWarm) sym.annotate(defn.WarmAnnotType)
 
