@@ -737,22 +737,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => This(ctx.owner.enclosingClass.asClass)
   }
 
-  /** Is this an application on a structural selection?
-   *
-   *  @see isStructuralTermSelect
+  /** Is this a (potentially applied) selection of a member of a structural type
+   *  that is not a member of an underlying class or trait?
    */
-  def isStructuralTermApply(tree: Tree)(implicit ctx: Context): Boolean = tree match {
-    case Apply(fun, _) =>
-      isStructuralTermSelect(fun)
-    case _ =>
-      false
-  }
-
-  /** Is this a selection of a member of a structural type that is not a member
-   *  of an underlying class or trait?
-   */
-  def isStructuralTermSelect(tree: Tree)(implicit ctx: Context): Boolean = tree match {
-    case tree: Select =>
+  def isStructuralTermSelectOrApply(tree: Tree)(implicit ctx: Context): Boolean = {
+    def isStructuralTermSelect(tree: Select) = {
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
@@ -766,8 +755,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           false
       }
       !tree.symbol.exists && tree.isTerm && hasRefinement(tree.qualifier.tpe)
-    case _ =>
-      false
+    }
+    def loop(tree: Tree): Boolean = tree match {
+      case Apply(fun, _) =>
+        loop(fun)
+      case tree: Select =>
+        isStructuralTermSelect(tree)
+      case _ =>
+        false
+    }
+    loop(tree)
   }
 
   /** Is this call a call to a method that is marked as Inline */

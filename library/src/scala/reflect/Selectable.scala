@@ -19,7 +19,7 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
     val paramClasses = paramTypes.map(_.runtimeClass)
     val mth = rcls.getMethod(name, paramClasses: _*)
     ensureAccessible(mth)
-    mth.invoke(receiver, args.map(_.asInstanceOf[AnyRef]): _*)
+    mth.invoke(receiver, args.asInstanceOf[Seq[AnyRef]]: _*)
   }
 }
 
