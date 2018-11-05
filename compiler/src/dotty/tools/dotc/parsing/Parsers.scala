@@ -2189,7 +2189,7 @@ object Parsers {
           if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
           atPos(in.offset) { constrExpr() }
         }
-        makeConstructor(Nil, vparamss, rhs).withMods(mods)
+        makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       } else {
         val mods1 = addFlag(mods, Method)
         val name = ident()
