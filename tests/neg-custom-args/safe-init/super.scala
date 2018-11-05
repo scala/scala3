@@ -1,5 +1,5 @@
 class Base {
-  val x = 10
+  final val x = 10
   @scala.annotation.init
   def foo: Int = x
 }

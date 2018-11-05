@@ -1,7 +1,7 @@
 import scala.collection.mutable
 
 class Foo {
-  val map: mutable.Map[Int, String] = mutable.Map.empty
+  private val map: mutable.Map[Int, String] = mutable.Map.empty
 
   @scala.annotation.init
   def enter(k: Int, v: String) = map(k) = v

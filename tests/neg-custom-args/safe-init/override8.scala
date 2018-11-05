@@ -26,9 +26,9 @@ trait Yun {
 
 
 class Tao {
-  val m = "hello"
+  private val m = "hello"
 
-  def msg = "can be overriden"
+  private def msg = "can be overriden"
 
   @scala.annotation.init
   def foo(n: Int) =  m + msg
