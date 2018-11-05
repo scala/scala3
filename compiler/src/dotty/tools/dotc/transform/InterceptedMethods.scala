@@ -53,8 +53,6 @@ class InterceptedMethods extends MiniPhase {
           val tempDef = SyntheticValDef(UniqueName.fresh().toTermName, tree.qualifier)
           val rewritten = Block(tempDef :: Nil, ref(tempDef.symbol).select(tree.name))
           ctx.log(s"$phaseName rewrote $tree to $rewritten")
-          println("### " + tree.tpe + " " + tree.tpe.show)
-          println("### " + tree.qualifier.symbol)
 
           rewritten
         }
