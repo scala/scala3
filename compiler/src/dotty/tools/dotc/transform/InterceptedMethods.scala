@@ -23,6 +23,7 @@ object InterceptedMethods {
   * - `x.##` for ## in Any becomes calls to ScalaRunTime.hash,
   *     using the most precise overload available
   * - `x.getClass` for getClass in primitives becomes `x.getClass` with getClass in class Object.
+  * - `!{...;true}` becomes val tmp = {...;true};!tmp (similar to other primitives/unary ops)
   */
 class InterceptedMethods extends MiniPhase {
   import tpd._
@@ -46,6 +47,9 @@ class InterceptedMethods extends MiniPhase {
       ctx.log(s"$phaseName rewrote $tree to $rewritten")
       rewritten
     }
+    // if the qualifier is constant folded then its type doesn't have a symbol
+    // in case a unary operator is applied to a block (potentially containing impure expressions)
+    // we create a synthetic variable and then apply the operator
     else if (!tree.qualifier.symbol.exists && tree.name.startsWith(nme.UNARY_PREFIX.toString)) {
       tree.qualifier match {
         case _ =>
