@@ -19,7 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
 import typer.Typer
@@ -198,6 +198,8 @@ class DottyLanguageServer extends LanguageServer
     c.setCompletionProvider(new CompletionOptions(
       /* resolveProvider = */ false,
       /* triggerCharacters = */ List(".").asJava))
+    c.setSignatureHelpProvider(new SignatureHelpOptions(
+      /* triggerCharacters = */ List("(").asJava))
 
     // Do most of the initialization asynchronously so that we can return early
     // from this method and thus let the client know our capabilities.
@@ -457,6 +459,71 @@ class DottyLanguageServer extends LanguageServer
     implementations.flatten.asJava
   }
 
+  override def signatureHelp(params: TextDocumentPositionParams) = computeAsync { canceltoken =>
+
+    val uri = new URI(params.getTextDocument.getUri)
+    val driver = driverFor(uri)
+    implicit val ctx = driver.currentCtx
+
+    val pos = sourcePosition(driver, uri, params.getPosition)
+    val trees = driver.openedTrees(uri)
+    val path = Interactive.pathTo(trees, pos).dropWhile(!_.isInstanceOf[Apply])
+
+    val (paramN, callableN, alternatives) = Signatures.callInfo(path, pos.pos)
+
+    val signatureInfos = alternatives.flatMap { denot =>
+      val symbol = denot.symbol
+      val docComment = ParsedComment.docOf(symbol)
+      val classTree = symbol.topLevelClass.asClass.rootTree
+      val isImplicit: TermName => Boolean = tpd.defPath(symbol, classTree).lastOption match {
+        case Some(DefDef(_, _, paramss, _, _)) =>
+          val flatParams = paramss.flatten
+          name => flatParams.find(_.name == name).map(_.symbol.is(Implicit)).getOrElse(false)
+        case _ =>
+          _ => false
+      }
+
+      denot.info.stripPoly match {
+        case tpe: MethodType =>
+          val infos = {
+            tpe.paramInfoss.zip(tpe.paramNamess).map { (infos, names) =>
+              infos.zip(names).map { (info, name) =>
+                Signatures.Param(name.show,
+                                 info.widenTermRefExpr.show,
+                                 docComment.flatMap(_.paramDoc(name)),
+                                 isImplicit = isImplicit(name))
+              }
+            }
+          }
+
+          val typeParams = denot.info match {
+            case poly: PolyType =>
+              poly.paramNames.zip(poly.paramInfos).map((x, y) => x.show + y.show)
+            case _ =>
+              Nil
+          }
+
+          val (name, returnType) =
+            if (symbol.isConstructor) (symbol.owner.name.show, None)
+            else (denot.name.show, Some(tpe.finalResultType.widenTermRefExpr.show))
+
+          val signature =
+            Signatures.Signature(name,
+                                 typeParams,
+                                 infos,
+                                 returnType,
+                                 docComment.map(_.mainDoc))
+
+          Some(signature)
+
+        case other =>
+          None
+      }
+    }
+
+    new SignatureHelp(signatureInfos.map(_.toSignatureInformation).asJava, callableN, paramN)
+  }
+
   override def getTextDocumentService: TextDocumentService = this
   override def getWorkspaceService: WorkspaceService = this
 
@@ -469,7 +536,6 @@ class DottyLanguageServer extends LanguageServer
   override def onTypeFormatting(params: DocumentOnTypeFormattingParams) = null
   override def resolveCodeLens(params: CodeLens) = null
   override def resolveCompletionItem(params: CompletionItem) = null
-  override def signatureHelp(params: TextDocumentPositionParams) = null
 
   /**
    * Find the set of projects that have any of `definitions` on their classpath.
@@ -510,7 +576,6 @@ class DottyLanguageServer extends LanguageServer
       (remoteDriver, ctx, definition)
     }
   }
-
 
 }
 
