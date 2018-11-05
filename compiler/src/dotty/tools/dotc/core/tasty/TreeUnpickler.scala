@@ -1088,6 +1088,12 @@ class TreeUnpickler(reader: TastyReader,
               Closure(Nil, meth, tpt)
             case MATCH =>
               Match(readTerm(), readCases(end))
+            case INLINEMATCH =>
+              if (nextByte == IMPLICIT) {
+                readByte()
+                Match(EmptyTree, readCases(end), MatchKind.Implicit)
+              }
+              else Match(readTerm(), readCases(end), MatchKind.Inline)
             case RETURN =>
               val from = readSymRef()
               val expr = ifBefore(end)(readTerm(), EmptyTree)

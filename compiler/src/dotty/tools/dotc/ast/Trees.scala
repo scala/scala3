@@ -512,9 +512,16 @@ object Trees {
   }
 
   /** selector match { cases } */
-  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
+  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(val kind: MatchKind)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Match[T]
+  }
+
+  type MatchKind = Int
+  object MatchKind {
+    val Regular = 0
+    val Inline = 1
+    val Implicit = 2
   }
 
   /** case pat if guard => body; only appears as child of a Match */
@@ -1037,7 +1044,9 @@ object Trees {
         case _ => finalize(tree, untpd.Closure(env, meth, tpt))
       }
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = tree match {
-        case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
+        case tree: Match =>
+          if ((selector eq tree.selector) && (cases eq tree.cases)) tree
+          else finalize(tree, untpd.Match(selector, cases, tree.kind))
         case _ => finalize(tree, untpd.Match(selector, cases))
       }
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = tree match {

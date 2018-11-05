@@ -118,7 +118,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), pat, body)
 
-  def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
+  def Match(selector: Tree, cases: List[CaseDef], kind: MatchKind = MatchKind.Regular)(implicit ctx: Context): Match =
     ta.assignType(untpd.Match(selector, cases), selector, cases)
 
   def Labeled(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =

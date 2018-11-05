@@ -424,9 +424,13 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(meth)
             if (tpt.tpe.exists) pickleTpt(tpt)
           }
-        case Match(selector, cases) =>
-          writeByte(MATCH)
-          withLength { pickleTree(selector); cases.foreach(pickleTree) }
+        case mtch @ Match(selector, cases) =>
+          writeByte(if (mtch.kind == MatchKind.Regular) MATCH else INLINEMATCH)
+          withLength {
+            if (mtch.kind == MatchKind.Implicit) writeByte(IMPLICIT)
+            else pickleTree(selector)
+            cases.foreach(pickleTree)
+          }
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
