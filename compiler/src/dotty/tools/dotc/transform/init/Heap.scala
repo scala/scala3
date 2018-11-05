@@ -300,8 +300,8 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
       (sym.is(Flags.Method) || sym.is(Flags.Lazy)) && !value.widen.isHot
 
     if (symbols.exists { case (sym, v) => unInitField(sym, v) }) ColdValue
-    else if (symbols.exists { case (sym, v) => capturingDef(sym, v) }) ColdValue
-    else if (symbols.exists { case (sym, v) => sym.isClass && !v.widen.isHot }) ColdValue
+    else if (symbols.exists { case (sym, v) => capturingDef(sym, v) }) WarmValue()
+    else if (symbols.exists { case (sym, v) => sym.isClass && !v.widen.isHot }) WarmValue()
     else HotValue
   }
 }

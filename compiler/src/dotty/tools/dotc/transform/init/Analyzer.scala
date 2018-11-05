@@ -76,10 +76,10 @@ class Analyzer extends Indexer { analyzer =>
       setting.env.select(tp.symbol, isType = true)
     case tp @ TermRef(prefix, _) =>
       val res = checkRef(prefix)
-      res.value.select(tp.symbol)
+      res.value.select(tp.symbol) ++ res.effects
     case tp @ TypeRef(prefix, _) =>
       val res = checkRef(prefix)
-      res.value.select(tp.symbol)
+      res.value.select(tp.symbol) ++ res.effects
     case tp @ ThisType(tref) =>
       val cls = tref.symbol
       if (cls.is(Package)) Res() // Dotty represents package path by ThisType

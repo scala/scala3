@@ -537,6 +537,18 @@ abstract class FunctionValue extends SingleValue { self =>
 
 }
 
+/** A class value */
+abstract class ClassValue extends SingleValue {
+  // not supported
+  def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
+  def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = ???
+  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = ???
+
+  def show(implicit setting: ShowSetting): String = toString
+
+  override def toString: String = "ClassValue@" + hashCode
+}
+
 /** A lazy value */
 abstract class LazyValue extends SingleValue {
   // not supported
@@ -605,18 +617,6 @@ class SliceValue(val id: Int) extends SingleValue {
   }
 
   def show(implicit setting: ShowSetting): String = setting.heap(id).asSlice.show(setting)
-}
-
-/** A class value */
-abstract class ClassValue extends SingleValue {
-  // not supported
-  def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
-  def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = ???
-  def assign(sym: Symbol, value: Value)(implicit setting: Setting): Res = ???
-
-  def show(implicit setting: ShowSetting): String = toString
-
-  override def toString: String = "ClassValue@" + hashCode
 }
 
 class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
