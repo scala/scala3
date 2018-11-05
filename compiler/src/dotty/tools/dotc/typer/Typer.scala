@@ -2234,9 +2234,7 @@ class Typer extends Namer
             readaptSimplified(tree.withType(alt))
           case Nil =>
             def noMatches =
-              errorTree(tree,
-                em"""none of the ${err.overloadedAltsStr(altDenots)}
-                    |match ${err.expectedTypeStr(pt)}""")
+              errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
             def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
             pt match {
               case pt: FunProto =>

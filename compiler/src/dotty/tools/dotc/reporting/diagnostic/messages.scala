@@ -23,6 +23,7 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.config.ScalaVersion
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
+import dotty.tools.dotc.typer.ErrorReporting.Errors
 import scala.util.control.NonFatal
 
 object messages {
@@ -1382,7 +1383,7 @@ object messages {
   }
 
   case class AmbiguousOverload(tree: tpd.Tree, alts: List[SingleDenotation], pt: Type)(
-    err: typer.ErrorReporting.Errors)(
+    err: Errors)(
     implicit ctx: Context)
   extends Message(AmbiguousOverloadID) {
 
@@ -1463,7 +1464,7 @@ object messages {
   }
 
   case class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
-    err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+    err: Errors)(implicit ctx: Context)
     extends Message(DoesNotConformToBoundID) {
     val msg: String = hl"Type argument ${tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
     val kind: String = "Type Mismatch"
@@ -2181,4 +2182,14 @@ object messages {
         hl"""The refinement `$rsym` introduces an overloaded definition.
             |Refinements cannot contain overloaded definitions.""".stripMargin
     }
+
+  case class NoMatchingOverload(alternatives: List[SingleDenotation], pt: Type)(
+    err: Errors)(implicit val ctx: Context)
+    extends Message(NoMatchingOverloadID) {
+    val msg: String =
+      hl"""None of the ${err.overloadedAltsStr(alternatives)}
+          |match ${err.expectedTypeStr(pt)}"""
+    val kind: String = "Type Mismatch"
+    val explanation: String = ""
+  }
 }
