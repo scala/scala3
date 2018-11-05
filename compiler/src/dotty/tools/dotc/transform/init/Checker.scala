@@ -102,9 +102,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     val analyzer = new Analyzer
 
-    // cold check
-    coldCheck(cls, tmpl, analyzer)
-
     // current class env needs special setup
     val root = Heap.createRootEnv
     val setting = Setting(root, cls.pos, ctx, analyzer)
@@ -114,8 +111,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       // enhancement possible to check if there are actual children
       // and whether children are possible in other modules.
 
-    // for recursive usage
-    indexOuter(cls)(setting)
+    analyzer.indexOuter(cls)(setting)
 
     val classValue = analyzer.classValue(cdef)(setting)
     // init check
@@ -126,170 +122,5 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val slice = obj.slices(cls).asSlice(setting)
 
     res.effects.foreach(_.report)
-
-    // init check: try commit early
-    if (obj.open) {
-      val innerEnv = obj.slices(cls).asSlice(setting).innerEnv
-      initCheck(cls, obj, tmpl)(setting.widening.withEnv(innerEnv))
-    }
-  }
-
-  def coldCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
-    val obj = new ObjectValue(tp = cls.typeRef, open = !cls.is(Final) && !cls.isAnonymousClass)
-      // enhancement possible to check if there are actual children
-      // and whether children are possible in other modules.
-
-    def checkMethod(ddef: tpd.DefDef): Unit = {
-      val sym = ddef.symbol
-      if (!sym.isEffectiveCold) return
-
-      val root = Heap.createRootEnv
-      val setting: Setting = Setting(root, sym.pos, ctx, analyzer, isWidening = true)
-      indexOuter(cls)(setting)
-      if (sym.isIcy) root.add(cls, IcyValue)
-      else root.add(cls, ColdValue)
-
-      val value = analyzer.methodValue(ddef)(setting)
-      val res = value.apply(i => HotValue, i => NoPosition)(setting)
-
-      if (res.hasErrors) {
-        ctx.warning("Calling the method during initialization causes errors", sym.pos)
-        res.effects.foreach(_.report)
-      }
-      else if (!res.value.widen(setting).isHot) {
-        ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
-      }
-    }
-
-    def checkLazy(vdef: tpd.ValDef): Unit = {
-      val sym = vdef.symbol
-      if (!sym.isEffectiveCold) return
-
-      val root = Heap.createRootEnv
-      val setting: Setting = Setting(root, sym.pos, ctx, analyzer, isWidening = true)
-      indexOuter(cls)(setting)
-      if (sym.isCold) root.add(cls, IcyValue)
-      else root.add(cls, ColdValue)
-
-      val value = analyzer.lazyValue(vdef)(setting)
-      val res = value.apply(i => HotValue, i => NoPosition)(setting)
-
-      if (res.hasErrors) {
-        ctx.warning("Forcing cold lazy value causes errors", sym.pos)
-        res.effects.foreach(_.report)
-      }
-      else {
-        val value = res.value.widen(setting)
-        if (!value.isHot) ctx.warning("Cold lazy value must return a full value", sym.pos)
-      }
-    }
-
-    tmpl.body.foreach {
-      case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkMethod(ddef)
-      case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-        checkLazy(vdef)
-      case _ =>
-    }
-  }
-
-  def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template)(implicit setting: Setting) = {
-    def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
-      val sym = ddef.symbol
-      if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
-
-      var res = obj.select(sym, isStaticDispatch = true)
-      res = res.value.apply(i => HotValue, i => NoPosition)
-      if (res.hasErrors) {
-        setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
-        res.effects.foreach(_.report)
-      }
-      else if (!res.value.widen(setting).isHot) {
-        setting.ctx.warning("A dynamic init method must return a full value", sym.pos)
-      }
-    }
-
-    def checkLazy(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
-      val sym = vdef.symbol
-      val res = obj.select(sym, isStaticDispatch = true)
-
-      if (res.hasErrors && sym.isEffectiveInit) {
-        setting.ctx.warning("Forcing init lazy value causes errors", sym.pos)
-        res.effects.foreach(_.report)
-      }
-      else if (!res.hasErrors) {
-        val value = res.value.widen(setting)
-        if (!value.isHot && sym.isEffectiveInit) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
-        else if (value.isHot && !sym.isEffectiveInit) sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
-      }
-
-    }
-
-    def checkValDef(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
-      val sym = vdef.symbol
-      if (sym.is(Flags.PrivateOrLocal)) return
-
-      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting)
-      setting.analyzer.indentedDebug(s"${sym.show} widens to ${actual.show(setting.showSetting)}")
-
-      if (actual.isCold) sym.annotate(defn.ColdAnnotType)
-      else if (actual.isWarm) sym.annotate(defn.WarmAnnotType)
-
-      if (sym.isOverrideClassParam && !sym.isClassParam) {
-        setting.ctx.warning("Overriding a class parameter in class body may cause initialization problems", sym.pos)
-      }
-      else if (!sym.isHot && sym.allOverriddenSymbols.exists(_.isHot)) {
-        setting.ctx.warning("Overriding a fully initialized field with a cold value may cause initialization problems", sym.pos)
-      }
-    }
-
-    def checkClassDef(cdef: tpd.TypeDef)(implicit setting: Setting): Unit = {
-      val sym = cdef.symbol
-      if (sym.isInit) {
-        val setting2 = setting.widening
-        val value = setting2.analyzer.widenTree(cdef)(setting2)
-
-        val captured = Capture.analyze(cdef)(setting2)
-        val notHot = captured.keys.filterNot(setting2.widen(_).isHot)
-
-        for(key <- notHot; tree <- captured(key))
-          setting.ctx.warning(s"The init $sym captures " + tree.show + ".\nTry to make captured fields or methods private or final.", tree.pos)
-      }
-      else {
-        val classValue = obj.select(sym).value.widen(setting.widening)
-        if (classValue.isHot) sym.annotate(defn.InitAnnotType)
-      }
-    }
-
-    tmpl.body.foreach {
-      case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
-      case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-        checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
-      case vdef: ValDef =>
-        checkValDef(vdef)(setting.withPos(vdef.symbol.pos))
-      case cdef: TypeDef if cdef.isClassDef =>
-        checkClassDef(cdef)(setting.withPos(cdef.symbol.pos))
-      case _ =>
-    }
-  }
-
-
-  def indexOuter(cls: ClassSymbol)(implicit setting: Setting) = {
-    def recur(cls: Symbol, maxValue: OpaqueValue): Unit = if (cls.owner.exists) {
-      val outerValue = cls.value
-      val enclosingCls = cls.owner.enclosingClass
-
-      if (!cls.owner.isClass || maxValue == HotValue) {
-        setting.env.add(enclosingCls, HotValue)
-        recur(enclosingCls, HotValue)
-      }
-      else {
-        val meet = outerValue.meet(maxValue)
-        setting.env.add(enclosingCls, meet)
-        recur(enclosingCls, meet)
-      }
-    }
-    recur(cls, cls.value)
   }
 }

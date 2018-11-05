@@ -15,5 +15,5 @@ class C {
 }
 
 class D(a: Warm[A]) {
-  println(a.bar())                // touches `x`, not init yet
+  println(a.bar())                // error: touches `x`, not init yet
 }

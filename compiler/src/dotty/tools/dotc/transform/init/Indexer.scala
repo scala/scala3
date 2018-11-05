@@ -159,6 +159,23 @@ trait Indexer { self: Analyzer =>
     case _ =>
   }
 
+  def indexOuter(cls: ClassSymbol)(implicit setting: Setting) = {
+    def recur(cls: Symbol, maxValue: OpaqueValue): Unit = if (cls.owner.exists) {
+      val outerValue = cls.value
+      val enclosingCls = cls.owner.enclosingClass
+
+      if (!cls.owner.isClass || maxValue.isHot) {
+        setting.env.add(enclosingCls, HotValue)
+        recur(enclosingCls, HotValue)
+      }
+      else {
+        setting.env.add(enclosingCls, outerValue)
+        recur(enclosingCls, outerValue)
+      }
+    }
+    recur(cls, cls.value)
+  }
+
   def init(constr: Symbol, tmpl: Template, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = {
     val cls = constr.owner.asClass
 
@@ -169,6 +186,9 @@ trait Indexer { self: Analyzer =>
     else checking(cls) {
       val slice = setting.env.newSlice(cls)
       obj.add(cls, new SliceValue(slice.id))
+
+      // cold check
+      coldCheck(cls, tmpl)(setting.widening)
 
       // The outer of parents are set (but not recursively)
       // before any super-calls if they are known.
@@ -197,7 +217,141 @@ trait Indexer { self: Analyzer =>
 
       // check current class body
       res ++= checkStats(tmpl.body)(setting2).effects
+
+      // init check: need to recheck for invariants @init, @cold to avoid verbose annotation
+      initCheck(cls, obj, tmpl)(setting2.widening)
+
       res
+    }
+  }
+
+  def coldCheck(cls: ClassSymbol, tmpl: tpd.Template)(implicit setting: Setting) = {
+    def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
+      val sym = ddef.symbol
+      if (!sym.isEffectiveCold) return
+
+      if (sym.isIcy) setting.env.add(cls, IcyValue)
+      else setting.env.add(cls, ColdValue)
+
+      val value = self.methodValue(ddef)(setting)
+      val res = value.apply(i => HotValue, i => NoPosition)(setting)
+
+      if (res.hasErrors) {
+        setting.ctx.warning("Calling the method during initialization causes errors", sym.pos)
+        res.effects.foreach(_.report)
+      }
+      else if (!res.value.widen(setting).isHot) {
+        setting.ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
+      }
+    }
+
+    def checkLazy(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
+      val sym = vdef.symbol
+      if (!sym.isEffectiveCold || sym.is(Flags.Module)) return
+
+      if (sym.isIcy) setting.env.add(cls, IcyValue)
+      else setting.env.add(cls, ColdValue)
+
+      val value = self.lazyValue(vdef)(setting)
+      val res = value.apply(i => HotValue, i => NoPosition)(setting)
+
+      if (res.hasErrors) {
+        setting.ctx.warning("Forcing cold lazy value causes errors", sym.pos)
+        res.effects.foreach(_.report)
+      }
+      else {
+        val value = res.value.widen(setting)
+        if (!value.isHot) setting.ctx.warning("Cold lazy value must return a full value", sym.pos)
+      }
+    }
+
+    tmpl.body.foreach {
+      case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
+        checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
+      case vdef: ValDef if vdef.symbol.is(Lazy)  =>
+        checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
+      case _ =>
+    }
+  }
+
+  def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template)(implicit setting: Setting) = {
+    def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
+      val sym = ddef.symbol
+      if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
+
+      var res = obj.select(sym, isStaticDispatch = true)
+      res = res.value.apply(i => HotValue, i => NoPosition)
+      if (res.hasErrors) {
+        setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
+        res.effects.foreach(_.report)
+      }
+      else if (!res.value.widen(setting).isHot) {
+        setting.ctx.warning("A dynamic init method must return a full value", sym.pos)
+      }
+    }
+
+    def checkLazy(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
+      val sym = vdef.symbol
+      val res = obj.select(sym, isStaticDispatch = true)
+
+      if (res.hasErrors && sym.isEffectiveInit) {
+        setting.ctx.warning("Forcing init lazy value causes errors", sym.pos)
+        res.effects.foreach(_.report)
+      }
+      else if (!res.hasErrors) {
+        val value = res.value.widen(setting)
+        if (!value.isHot && sym.isEffectiveInit) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
+        else if (value.isHot && !sym.isEffectiveInit) sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
+      }
+
+    }
+
+    def checkValDef(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
+      val sym = vdef.symbol
+      if (sym.is(Flags.PrivateOrLocal)) return
+
+      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting)
+      setting.analyzer.indentedDebug(s"${sym.show} widens to ${actual.show(setting.showSetting)}")
+
+      if (actual.isCold) sym.annotate(defn.ColdAnnotType)
+      else if (actual.isWarm) sym.annotate(defn.WarmAnnotType)
+
+      if (sym.isOverrideClassParam && !sym.isClassParam) {
+        setting.ctx.warning("Overriding a class parameter in class body may cause initialization problems", sym.pos)
+      }
+      else if (!sym.isHot && sym.allOverriddenSymbols.exists(_.isHot)) {
+        setting.ctx.warning("Overriding a fully initialized field with a cold value may cause initialization problems", sym.pos)
+      }
+    }
+
+    def checkClassDef(cdef: tpd.TypeDef)(implicit setting: Setting): Unit = {
+      val sym = cdef.symbol
+      if (sym.isInit) {
+        val setting2 = setting.widening
+        val value = setting2.analyzer.widenTree(cdef)(setting2)
+
+        val captured = Capture.analyze(cdef)(setting2)
+        val notHot = captured.keys.filterNot(setting2.widen(_).isHot)
+
+        for(key <- notHot; tree <- captured(key))
+          setting.ctx.warning(s"The init $sym captures " + tree.show + ".\nTry to make captured fields or methods private or final.", tree.pos)
+      }
+      else {
+        val classValue = obj.select(sym).value.widen(setting.widening)
+        if (classValue.isHot) sym.annotate(defn.InitAnnotType)
+      }
+    }
+
+    tmpl.body.foreach {
+      case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
+        checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
+      case vdef: ValDef if vdef.symbol.is(Lazy)  =>
+        checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
+      case vdef: ValDef =>
+        checkValDef(vdef)(setting.withPos(vdef.symbol.pos))
+      case cdef: TypeDef if cdef.isClassDef =>
+        checkClassDef(cdef)(setting.withPos(cdef.symbol.pos))
+      case _ =>
     }
   }
 }
