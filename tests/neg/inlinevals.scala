@@ -33,3 +33,4 @@ object Test {
   inline def byname(inline f: => String): Int = ??? // ok
 
 }
+// error: `}` expected
