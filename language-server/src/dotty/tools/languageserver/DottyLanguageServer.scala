@@ -415,8 +415,8 @@ class DottyLanguageServer extends LanguageServer
     if (tp.isError || tpw == NoType) null // null here indicates that no response should be sent
     else {
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
-      val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
-      val content = hoverContent(tpw.show, docComment)
+      val docComment = ParsedComment.docOf(symbol)
+      val content = hoverContent(Some(tpw.show), docComment)
       new Hover(content, null)
     }
   }
@@ -655,22 +655,30 @@ object DottyLanguageServer {
     item
   }
 
-  private def hoverContent(typeInfo: String, comment: Option[Comment]): lsp4j.MarkupContent = {
-    val markup = new lsp4j.MarkupContent
-    markup.setKind("markdown")
-    markup.setValue((
-      comment.flatMap(_.expandedBody) match {
-        case Some(comment) =>
-          s"""```scala
-             |$typeInfo
-             |$comment
-             |```"""
-        case None =>
-          s"""```scala
-             |$typeInfo
-             |```"""
-      }).stripMargin)
-    markup
+  def hoverContent(content: String): lsp4j.MarkupContent = {
+    if (content.isEmpty) null
+    else {
+      val markup = new lsp4j.MarkupContent
+      markup.setKind("markdown")
+      markup.setValue(content.trim)
+      markup
+    }
+  }
+
+  private def hoverContent(typeInfo: Option[String], comment: Option[ParsedComment]): lsp4j.MarkupContent = {
+    val buf = new StringBuilder
+    typeInfo.foreach { info =>
+      buf.append(s"""```scala
+                    |$info
+                    |```
+                    |""".stripMargin)
+    }
+
+    comment.foreach { comment =>
+      buf.append(comment.renderAsMarkdown)
+    }
+
+    hoverContent(buf.toString)
   }
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
