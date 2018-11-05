@@ -51,14 +51,11 @@ class InterceptedMethods extends MiniPhase {
     // in case a unary operator is applied to a block (potentially containing impure expressions)
     // we create a synthetic variable and then apply the operator
     else if (!tree.qualifier.symbol.exists && tree.name.startsWith(nme.UNARY_PREFIX.toString)) {
-      tree.qualifier match {
-        case _ =>
-          val tempDef = SyntheticValDef(UniqueName.fresh().toTermName, tree.qualifier)
-          val rewritten = Block(tempDef :: Nil, ref(tempDef.symbol).select(tree.name))
-          ctx.log(s"$phaseName rewrote $tree to $rewritten")
+      val tempDef = SyntheticValDef(UniqueName.fresh().toTermName, tree.qualifier)
+      val rewritten = Block(tempDef :: Nil, ref(tempDef.symbol).select(tree.name))
+      ctx.log(s"$phaseName rewrote $tree to $rewritten")
 
-          rewritten
-      }
+      rewritten
     }
     else tree
   }
