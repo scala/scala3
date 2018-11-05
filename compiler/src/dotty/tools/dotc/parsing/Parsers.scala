@@ -20,6 +20,7 @@ import StdNames._
 import util.Positions._
 import Constants._
 import ScriptParsers._
+import Decorators._
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.patch
 
@@ -1098,8 +1099,8 @@ object Parsers {
      *                      |  Expr
      *  BlockResult       ::=  [FunArgMods] FunParams =>' Block
      *                      |  Expr1
-     *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
+     *  Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *                      |  `if' Expr `then' Expr [[semi] else Expr]
      *                      |  `while' `(' Expr `)' {nl} Expr
      *                      |  `while' Expr `do' Expr
      *                      |  `do' Expr [semi] `while' Expr
@@ -1127,7 +1128,8 @@ object Parsers {
       val start = in.offset
       if (in.token == IMPLICIT || in.token == ERASED) {
         val imods = modifiers(funArgMods)
-        implicitClosure(start, location, imods)
+        if (in.token == MATCH) implicitMatch(start, imods)
+        else implicitClosure(start, location, imods)
       } else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -1207,7 +1209,13 @@ object Parsers {
       case FOR =>
         forExpr()
       case _ =>
-        expr1Rest(postfixExpr(), location)
+        if (isIdent(nme.INLINEkw)) {
+          val start = in.skipToken()
+          val t = postfixExpr()
+          accept(MATCH)
+          matchExpr(t, start, MatchKind.Inline)
+        }
+        else expr1Rest(postfixExpr(), location)
     }
 
     def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match {
@@ -1221,7 +1229,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        matchExpr(t, startOffset(t))
+        matchExpr(t, startOffset(t), MatchKind.Regular)
       case _ =>
         t
     }
@@ -1266,12 +1274,34 @@ object Parsers {
       }
 
     /**    `match' { CaseClauses }
-     *     `match' { ImplicitCaseClauses }
      */
-    def matchExpr(t: Tree, start: Offset): Match =
+    def matchExpr(t: Tree, start: Offset, kind: MatchKind): Match =
       atPos(start, in.skipToken()) {
-        inBraces(Match(t, caseClauses(caseClause)))
+        inBraces(Match(t, caseClauses(caseClause), kind))
       }
+
+    /**    `match' { ImplicitCaseClauses }
+     */
+    def implicitMatch(start: Int, imods: Modifiers) = {
+      def markFirstIllegal(mods: List[Mod]) = mods match {
+        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.pos)
+        case _ =>
+      }
+      imods.mods match {
+        case Mod.Implicit() :: mods => markFirstIllegal(mods)
+        case mods => markFirstIllegal(mods)
+      }
+      val result @ Match(t, cases) = matchExpr(EmptyTree, start, MatchKind.Implicit)
+      for (CaseDef(pat, _, _) <- cases) {
+        def isImplicitPattern(pat: Tree) = pat match {
+          case Typed(pat1, _) => isVarPattern(pat1)
+          case pat => isVarPattern(pat)
+        }
+        if (!isImplicitPattern(pat))
+          syntaxError(em"not a legal pattern for an implicit match", pat.pos)
+      }
+      result
+    }
 
     /**    `match' { TypeCaseClauses }
      */
@@ -2620,6 +2650,8 @@ object Parsers {
             var imods = modifiers(funArgMods)
             if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
+            else if (in.token == MATCH)
+              stats += implicitMatch(start, imods)
             else
               stats +++= localDef(start, imods)
           } else {

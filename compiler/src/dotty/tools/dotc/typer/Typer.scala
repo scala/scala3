@@ -564,7 +564,8 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper) constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+        if (!ctx.isAfterTyper /* && pt != defn.ImplicitScrutineeTypeRef @@@ */)
+          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -970,6 +971,11 @@ class Typer extends Namer
         val (protoFormals, _) = decomposeProtoFunction(pt, 1)
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+      /* @@@ case id @ untpd.ImplicitScrutinee() =>
+        checkInInlineContext("implicit match", tree.pos)
+        val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
+        typedMatchFinish(tree, sel1, sel1.tpe, pt)
+      */
       case _ =>
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
@@ -1378,6 +1384,7 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
+          // @@@ if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
