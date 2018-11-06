@@ -160,17 +160,22 @@ trait Indexer { self: Analyzer =>
   }
 
   def indexOuter(cls: ClassSymbol)(implicit setting: Setting) = {
-    def recur(cls: Symbol, maxValue: OpaqueValue): Unit = if (cls.owner.exists) {
+    def recur(cls: ClassSymbol, maxValue: OpaqueValue): Unit = if (cls.owner.exists) {
       val outerValue = cls.value
       val enclosingCls = cls.owner.enclosingClass
 
-      if (!cls.owner.isClass || maxValue.isHot) {
+      if (!enclosingCls.exists) return
+      else if (maxValue.isHot || outerValue.isHot) {
         setting.env.add(enclosingCls, HotValue)
-        recur(enclosingCls, HotValue)
+        recur(enclosingCls.asClass, HotValue)
       }
       else {
-        setting.env.add(enclosingCls, outerValue)
-        recur(enclosingCls, outerValue)
+        val cls = enclosingCls.asClass
+        val open = !cls.is(Final) && !cls.isAnonymousClass
+        val obj = new ObjectValue(cls.thisType, open = open)
+        obj.add(cls, outerValue)
+        setting.env.add(cls, obj)
+        recur(cls, outerValue)
       }
     }
     recur(cls, cls.value)

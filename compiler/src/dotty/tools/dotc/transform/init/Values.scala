@@ -69,8 +69,8 @@ object Value {
           acc.join(v.widen)
         }
 
-        if (cls == obj.tp.classSymbol && !obj.open) obj.add(cls, value.meet(WarmValue().dynamic))
-        else if (!value.isHot) obj.add(cls, WarmValue().dynamic)
+        if (cls == obj.tp.classSymbol && !obj.open) obj.add(cls, value.meet(WarmValue()))
+        else if (!value.isHot) obj.add(cls, WarmValue())
 
         Res()
       }
@@ -361,13 +361,6 @@ object ColdValue extends OpaqueValue {
  *  If `deps.isEmpty`, then the value has unknown dependencies.
  */
 case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = true) extends OpaqueValue {
-  private var allowDynamic: Boolean = false
-
-  def dynamic: this.type = {
-    allowDynamic = true
-    this
-  }
-
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
     if (sym.is(Flags.Method) && !sym.isEffectiveInit) {
@@ -388,9 +381,6 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
 
       val prefix = if (sym.isInit) HotValue else WarmValue()
       res.value = Value.defaultClassValue(sym, prefix)
-    }
-    else if (!allowDynamic && !sym.isEffectiveInit && !sym.isCalledOrAbove(sym.owner.asClass)) {
-      res += Generic(s"Dynamic call to $sym found", setting.pos)
     }
     else res.value = sym.value
 
@@ -659,13 +649,13 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         assert(target.exists, s"${tp.show}.${sym.show} not exist")
         val cls = target.owner.asClass
         if (slices.contains(cls)) slices(cls)
-        else if(!target.isCalledAbove(tp.classSymbol.asClass)) WarmValue().dynamic
+        else if(!target.isCalledAbove(tp.classSymbol.asClass)) WarmValue()
         else HotValue
       }
       else { // select on self type
         target = sym
         if (sym.owner.is(Flags.Trait)) IcyValue
-        else if (tp.classSymbol.is(Flags.Trait)) WarmValue().dynamic // classes are always init before traits
+        else if (tp.classSymbol.is(Flags.Trait)) WarmValue() // classes are always init before traits
         else ColdValue
       }
 
@@ -690,7 +680,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
         res
       }
-      else if (setting.isWidening && !sym.isCalledIn(tp.classSymbol.asClass)) {
+      else if (setting.isWidening && !sym.isCalledIn(tp.widen.classSymbol.asClass)) {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }
