@@ -622,6 +622,14 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   private var _slices: Map[ClassSymbol, Value] = Map()
   def slices: Map[ClassSymbol, Value] = _slices
 
+  private var _classSymbol: ClassSymbol = null
+  def classSymbol(implicit ctx: Context): ClassSymbol =
+    if (_classSymbol == null) {
+      _classSymbol = tp.widen.classSymbol.asClass
+      _classSymbol
+    }
+    else _classSymbol
+
   def add(cls: ClassSymbol, value: Value) = {
     if (slices.contains(cls)) {
       _slices = _slices.updated(cls, _slices(cls).join(value))
@@ -649,17 +657,17 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         assert(target.exists, s"${tp.show}.${sym.show} not exist")
         val cls = target.owner.asClass
         if (slices.contains(cls)) slices(cls)
-        else if(!target.isCalledAbove(tp.classSymbol.asClass)) WarmValue()
+        else if(!target.isCalledAbove(classSymbol.asClass)) WarmValue()
         else HotValue
       }
       else { // select on self type
         target = sym
         if (sym.owner.is(Flags.Trait)) IcyValue
-        else if (tp.classSymbol.is(Flags.Trait)) WarmValue() // classes are always init before traits
+        else if (classSymbol.is(Flags.Trait)) WarmValue() // classes are always init before traits
         else ColdValue
       }
 
-    if (open && !isStaticDispatch && !sym.isEffectivelyFinal && !sym.isClass) {
+    if (open && !isStaticDispatch && !target.isEffectivelyFinal && !target.isClass) {
       val res =
         if (target.is(Flags.Method))
          // dynamic calls are analysis boundary, only allow hot values
@@ -675,15 +683,16 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
           res ++= res2.effects
         }
 
-        if (!res.hasErrors && !sym.isCalledIn(tp.classSymbol.asClass))
-          tp.classSymbol.addAnnotation(Annotation.Call(sym))
+        if (!res.hasErrors && !sym.isCalledIn(classSymbol))
+          classSymbol.addAnnotation(Annotation.Call(target))
 
         res
       }
-      else if (setting.isWidening && !sym.isCalledIn(tp.widen.classSymbol.asClass)) {
+      else if (setting.isWidening && !sym.isCalledIn(classSymbol)) {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }
+      else if (sym.isCalledIn(classSymbol) && receiver.isOpaque) res
       else receiver.select(target)
     }
     else receiver.select(target)
