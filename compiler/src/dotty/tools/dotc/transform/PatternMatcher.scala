@@ -28,16 +28,18 @@ class PatternMatcher extends MiniPhase {
   override def phaseName: String = PatternMatcher.name
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
-  override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
-    val translated = new Translator(tree.tpe, this).translateMatch(tree)
+  override def transformMatch(tree: Match)(implicit ctx: Context): Tree =
+    if (tree.isInstanceOf[InlineMatch]) tree
+    else {
+      val translated = new Translator(tree.tpe, this).translateMatch(tree)
 
-    // check exhaustivity and unreachability
-    val engine = new patmat.SpaceEngine
-    engine.checkExhaustivity(tree)
-    engine.checkRedundancy(tree)
+      // check exhaustivity and unreachability
+      val engine = new patmat.SpaceEngine
+      engine.checkExhaustivity(tree)
+      engine.checkRedundancy(tree)
 
-    translated.ensureConforms(tree.tpe)
-  }
+      translated.ensureConforms(tree.tpe)
+    }
 }
 
 object PatternMatcher {

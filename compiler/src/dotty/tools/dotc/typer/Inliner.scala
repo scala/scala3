@@ -672,9 +672,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the RHS of the case.
      */
-    def reduceInlineMatch(mtch: untpd.Match, scrutinee: Tree, scrutType: Type, typer: Typer)(implicit ctx: Context): MatchRedux = {
+    def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: List[untpd.CaseDef], typer: Typer)(implicit ctx: Context): MatchRedux = {
 
-      val isImplicit = mtch.selector.isEmpty
+      val isImplicit = scrutType.isRef(defn.ImplicitScrutineeTypeSym)
       val gadtSyms = typer.gadtSyms(scrutType)
 
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
@@ -682,23 +682,20 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
        */
       def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
 
-        def newBinding(name: TermName, flags: FlagSet, rhs: Tree): Symbol = {
-          val info = if (flags `is` Implicit) rhs.tpe.widen else rhs.tpe.widenTermRefExpr
-          val sym = newSym(name, flags, info).asTerm
+        def newBinding(sym: TermSymbol, rhs: Tree): Unit =
           bindingsBuf += ValDef(sym, constToLiteral(rhs))
-          sym
-        }
 
-        def searchImplicit(name: TermName, tpt: Tree) = {
-          val evidence = typer.inferImplicitArg(tpt.tpe, tpt.pos)
+        def searchImplicit(sym: TermSymbol, tpt: Tree) = {
+          val evTyper = new Typer
+          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.pos)(ctx.fresh.setTyper(evTyper))
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
-              ctx.error(typer.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
+              ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
               true // hard error: return true to stop implicit search here
             case fail: Implicits.SearchFailureType =>
               false
             case _ =>
-              if (name != nme.WILDCARD) newBinding(name, Implicit, evidence)
+              newBinding(sym, evidence)
               true
           }
         }
@@ -718,8 +715,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             }
             val boundVars = getBoundVars(Nil, tpt)
             for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
-            if (isImplicit) searchImplicit(nme.WILDCARD, tpt)
-            else scrut <:< tpt.tpe && {
+            scrut <:< tpt.tpe && {
               for (bv <- boundVars) {
                 bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)
                   // FIXME: This is very crude. We should approximate with lower or higher bound depending
@@ -732,10 +728,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               reducePattern(bindingsBuf, scrut, pat1)
             }
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
-            searchImplicit(name, tpt)
+            searchImplicit(pat.symbol.asTerm, tpt)
           case pat @ Bind(name: TermName, body) =>
             reducePattern(bindingsBuf, scrut, body) && {
-              if (name != nme.WILDCARD) newBinding(name, EmptyFlags, ref(scrut))
+              if (name != nme.WILDCARD) newBinding(pat.symbol.asTerm, ref(scrut))
               true
             }
           case Ident(nme.WILDCARD) =>
@@ -757,7 +753,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
                   case (Nil, Nil) => true
                   case (pat :: pats1, selector :: selectors1) =>
-                    val elem = newBinding(InlineBinderName.fresh(), Synthetic, selector)
+                    val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenTermRefExpr).asTerm
+                    newBinding(elem, selector)
                     reducePattern(bindingsBuf, elem.termRef, pat) &&
                     reduceSubPatterns(pats1, selectors1)
                   case _ => false
@@ -816,7 +813,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case cdef :: cases1 => reduceCase(cdef) `orElse` recur(cases1)
       }
 
-      recur(mtch.cases)
+      recur(cases)
     }
   }
 
@@ -868,18 +865,20 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             errorTree(tree, em"""cannot reduce inline if
                                 | its condition   ${tree.cond}
                                 | is not a constant value.""")
-          val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
-          super.typedIf(if1, pt)
+          else {
+            val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
+            super.typedIf(if1, pt)
+          }
       }
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
 
-    override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) =
+    override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
-        super.typedMatchFinish(tree, sel, selType, pt)
+        super.typedMatchFinish(tree, sel, selType, cases, pt)
       else
-        reduceInlineMatch(tree, sel, sel.tpe, this) match {
+        reduceInlineMatch(sel, selType, cases, this) match {
           case Some((caseBindings, rhs)) =>
             var rhsCtx = ctx.fresh.setNewScope
             for (binding <- caseBindings) {
@@ -896,7 +895,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}."""
               else
                 em"""cannot reduce inline match with
-                    | scrutinee:  $sel : ${sel.tpe}
+                    | scrutinee:  $sel : ${selType}
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}."""
             errorTree(tree, msg)
         }

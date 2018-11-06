@@ -971,7 +971,13 @@ class Typer extends Namer
       case EmptyTree =>
         if (tree.isInline) {
           checkInInlineContext("implicit match", tree.pos)
-          typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, pt)
+          val cases1 = tree.cases.mapconserve {
+            case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
+              // case _ : T  -->  case evidence$n : T
+              cpy.CaseDef(cdef)(pat = untpd.Bind(EvidenceParamName.fresh(), pat))
+            case cdef => cdef
+          }
+          typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
         }
         else {
           val (protoFormals, _) = decomposeProtoFunction(pt, 1)
@@ -982,13 +988,13 @@ class Typer extends Namer
         if (tree.isInline) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-        typedMatchFinish(tree, sel1, selType, pt)
+        typedMatchFinish(tree, sel1, selType, tree.cases, pt)
     }
   }
 
   // Overridden in InlineTyper for inline matches
-  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(tree.cases, selType, pt.notApplied))
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, selType, pt.notApplied))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }

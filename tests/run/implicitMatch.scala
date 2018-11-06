@@ -2,8 +2,13 @@ object Test extends App {
   import collection.immutable.TreeSet
   import collection.immutable.HashSet
 
-  inline def f[T]() = implicit match {
+  inline def f1[T]() = implicit match {
     case ord: Ordering[T] => new TreeSet[T]
+    case _ => new HashSet[T]
+  }
+
+  inline def f2[T]() = implicit match {
+    case _: Ordering[T] => new TreeSet[T]
     case _ => new HashSet[T]
   }
 
@@ -18,8 +23,10 @@ object Test extends App {
 
   implicitly[Ordering[String]]
 
-  f[String]()
-  f[AnyRef]()
+  println(f1[String]().getClass)
+  println(f1[AnyRef]().getClass)
+  println(f2[String]().getClass)
+  println(f2[AnyRef]().getClass)
   implicitly[B]
   g
 
