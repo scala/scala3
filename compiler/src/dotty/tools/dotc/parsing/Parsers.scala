@@ -1212,8 +1212,11 @@ object Parsers {
         if (isIdent(nme.INLINEkw)) {
           val start = in.skipToken()
           val t = postfixExpr()
-          accept(MATCH)
-          matchExpr(t, start, MatchKind.Inline)
+          if (in.token == MATCH) matchExpr(t, start, MatchKind.Inline)
+          else {
+            syntaxErrorOrIncomplete(i"`match` expected but ${in.token} found")
+            t
+          }
         }
         else expr1Rest(postfixExpr(), location)
     }

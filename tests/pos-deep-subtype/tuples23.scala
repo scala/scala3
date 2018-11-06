@@ -14,7 +14,8 @@ object Test extends App {
     case (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23) =>
       println(x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11 + x12 + x13 + x14 + x15 + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23)
   }
-  inline def decompose3 = x23 match { case x *: y *: xs => (x, y, xs) }
+  /* TODO: re-enable
+  inline def decompose3 = inline x23 match { case x *: y *: xs => (x, y, xs) }
 
   { val (x, y, xs) = decompose3
     val xc: Int = x
@@ -22,6 +23,7 @@ object Test extends App {
     val xsc: Unit = xs
     println(s"$x23 -> $x, $y, $xs")
   }
+  */
 
   val x23s: 23 = x23.size
 }

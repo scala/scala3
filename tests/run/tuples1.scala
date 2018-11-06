@@ -33,9 +33,9 @@ object Test extends App {
   val c2_2 = x2 ++ x2; val c2_2c: (String, Int, String, Int) = c2_2; println(s"c2_2 = $c2_2")
   val c2_3 = x2 ++ x3; val c2_3c: (String, Int, Int, String, Int) = c2_3; println(s"c2_3 = $c2_3")
   val c3_3 = x3 ++ x3; val c3_3c: (Int, String, Int, Int, String, Int) = c3_3; println(s"c3_3 = $c3_3")
-
-  inline def decompose1 = x2 match { case x *: xs => (x, xs) }
-  inline def decompose2 = x2 match { case x *: y *: xs => (x, y, xs) }
+/*
+  inline def decompose1 = inline x2 match { case x *: xs => (x, xs) }
+  inline def decompose2 = inline x2 match { case x *: y *: xs => (x, y, xs) }
 
   { val (x, xs) = decompose1
     val xc: String = x
@@ -49,7 +49,7 @@ object Test extends App {
     val xsc: Unit = xs
     println(s"$x2 -> $x, $y, $xs")
   }
-
+*/
   val x3s: 3 = x3.size
   val us: 0 = ().size
 
