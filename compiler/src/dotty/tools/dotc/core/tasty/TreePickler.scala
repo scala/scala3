@@ -414,9 +414,14 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(BLOCK)
           stats.foreach(preRegister)
           withLength { pickleTree(expr); stats.foreach(pickleTree) }
-        case If(cond, thenp, elsep) =>
+        case tree @ If(cond, thenp, elsep) =>
           writeByte(IF)
-          withLength { pickleTree(cond); pickleTree(thenp); pickleTree(elsep) }
+          withLength {
+            if (tree.isInline) writeByte(INLINE)
+            pickleTree(cond)
+            pickleTree(thenp)
+            pickleTree(elsep)
+          }
         case Closure(env, meth, tpt) =>
           writeByte(LAMBDA)
           assert(env.isEmpty)
@@ -424,12 +429,15 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(meth)
             if (tpt.tpe.exists) pickleTpt(tpt)
           }
-        case mtch @ Match(selector, cases) =>
-          writeByte(if (mtch.kind == MatchKind.Regular) MATCH else INLINEMATCH)
+        case tree @ Match(selector, cases) =>
+          writeByte(MATCH)
           withLength {
-            if (mtch.kind == MatchKind.Implicit) writeByte(IMPLICIT)
+            if (tree.isInline) {
+              if (selector.isEmpty) writeByte(IMPLICIT)
+              else { writeByte(INLINE); pickleTree(selector) }
+            }
             else pickleTree(selector)
-            cases.foreach(pickleTree)
+            tree.cases.foreach(pickleTree)
           }
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)

@@ -1301,5 +1301,4 @@ class Definitions {
       isInitialized = true
     }
   }
-
 }

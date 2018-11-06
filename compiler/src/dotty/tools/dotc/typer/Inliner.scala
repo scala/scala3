@@ -674,7 +674,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      */
     def reduceInlineMatch(mtch: untpd.Match, scrutinee: Tree, scrutType: Type, typer: Typer)(implicit ctx: Context): MatchRedux = {
 
-      val isImplicit = mtch.kind == MatchKind.Implicit
+      val isImplicit = mtch.selector.isEmpty
       val gadtSyms = typer.gadtSyms(scrutType)
 
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
@@ -845,7 +845,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       super.ensureAccessible(tpe, superAccess, pos)
     }
 
-
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree =
       tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
 
@@ -865,6 +864,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           if (isIdempotentExpr(cond1)) selected
           else Block(cond1 :: Nil, selected)
         case cond1 =>
+          if (tree.isInline)
+            errorTree(tree, em"""cannot reduce inline if
+                                | its condition   ${tree.cond}
+                                | is not a constant value.""")
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
           super.typedIf(if1, pt)
       }
@@ -873,7 +876,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) =
-      if (tree.kind == MatchKind.Regular || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
+      if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
         super.typedMatchFinish(tree, sel, selType, pt)
       else
         reduceInlineMatch(tree, sel, sel.tpe, this) match {
@@ -888,7 +891,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
             val msg =
-              if (tree.kind == MatchKind.Implicit)
+              if (tree.selector.isEmpty)
                 em"""cannot reduce implicit match with
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}."""
               else

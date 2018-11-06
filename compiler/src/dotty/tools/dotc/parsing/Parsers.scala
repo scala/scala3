@@ -1099,8 +1099,8 @@ object Parsers {
      *                      |  Expr
      *  BlockResult       ::=  [FunArgMods] FunParams =>' Block
      *                      |  Expr1
-     *  Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *                      |  `if' Expr `then' Expr [[semi] else Expr]
+     *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
      *                      |  `while' `(' Expr `)' {nl} Expr
      *                      |  `while' Expr `do' Expr
      *                      |  `do' Expr [semi] `while' Expr
@@ -1211,11 +1211,16 @@ object Parsers {
       case _ =>
         if (isIdent(nme.INLINEkw)) {
           val start = in.skipToken()
-          val t = postfixExpr()
-          if (in.token == MATCH) matchExpr(t, start, MatchKind.Inline)
-          else {
-            syntaxErrorOrIncomplete(i"`match` expected but ${in.token} found")
-            t
+          in.token match {
+            case IF =>
+              ifExpr(start, InlineIf)
+            case _ =>
+              val t = postfixExpr()
+              if (in.token == MATCH) matchExpr(t, start, InlineMatch)
+              else {
+                syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in.token} found")
+                t
+              }
           }
         }
         else expr1Rest(postfixExpr(), location)
@@ -1232,7 +1237,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        matchExpr(t, startOffset(t), MatchKind.Regular)
+        matchExpr(t, startOffset(t), Match)
       case _ =>
         t
     }
@@ -1278,9 +1283,9 @@ object Parsers {
 
     /**    `match' { CaseClauses }
      */
-    def matchExpr(t: Tree, start: Offset, kind: MatchKind): Match =
+    def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
       atPos(start, in.skipToken()) {
-        inBraces(Match(t, caseClauses(caseClause), kind))
+        inBraces(mkMatch(t, caseClauses(caseClause)))
       }
 
     /**    `match' { ImplicitCaseClauses }
@@ -1294,7 +1299,8 @@ object Parsers {
         case Mod.Implicit() :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
-      val result @ Match(t, cases) = matchExpr(EmptyTree, start, MatchKind.Implicit)
+      val result @ Match(t, cases) =
+        matchExpr(EmptyTree, start, InlineMatch)
       for (CaseDef(pat, _, _) <- cases) {
         def isImplicitPattern(pat: Tree) = pat match {
           case Typed(pat1, _) => isVarPattern(pat1)

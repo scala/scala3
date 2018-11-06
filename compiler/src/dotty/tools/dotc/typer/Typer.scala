@@ -706,6 +706,7 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
+    if (tree.isInline) checkInInlineContext("inline if", tree.pos)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
@@ -968,7 +969,7 @@ class Typer extends Namer
   def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context): Tree = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
-        if (tree.kind == MatchKind.Implicit) {
+        if (tree.isInline) {
           checkInInlineContext("implicit match", tree.pos)
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, pt)
         }
@@ -978,7 +979,7 @@ class Typer extends Namer
           typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
         }
       case _ =>
-        if (tree.kind == MatchKind.Inline) checkInInlineContext("inline match", tree.pos)
+        if (tree.isInline) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
         typedMatchFinish(tree, sel1, selType, pt)

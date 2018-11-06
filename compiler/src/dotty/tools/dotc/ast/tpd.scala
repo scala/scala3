@@ -85,6 +85,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     ta.assignType(untpd.If(cond, thenp, elsep), thenp, elsep)
 
+  def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
+    ta.assignType(untpd.InlineIf(cond, thenp, elsep), thenp, elsep)
+
   def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
     ta.assignType(untpd.Closure(env, meth, tpt), meth, tpt)
 
@@ -118,8 +121,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), pat, body)
 
-  def Match(selector: Tree, cases: List[CaseDef], kind: MatchKind = MatchKind.Regular)(implicit ctx: Context): Match =
+  def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
     ta.assignType(untpd.Match(selector, cases), selector, cases)
+
+  def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
+    ta.assignType(untpd.InlineMatch(selector, cases), selector, cases)
 
   def Labeled(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
     ta.assignType(untpd.Labeled(bind, expr))
