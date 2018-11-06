@@ -7,6 +7,8 @@ import scala.tasty.util.TreeTraverser
 import dotty.tools.dotc.tastyreflect
 import scala.collection.mutable.HashMap
 import scala.meta.internal.{semanticdb => s}
+import dotty.semanticdb.Scala.{Descriptor => d}
+import dotty.semanticdb.Scala._
 
 class SemanticdbConsumer extends TastyConsumer {
   var stack: List[String] = Nil
@@ -40,17 +42,44 @@ class SemanticdbConsumer extends TastyConsumer {
     s.TextDocument(text = text, occurrences = occurrences)
   }
 
+
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
     object Traverser extends TreeTraverser {
       val symbolsCache: HashMap[tasty.Symbol, String] = HashMap()
       val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
 
-      def packageDefToOccurence(term: Term): String = {
-        //println(term, term.pos.start, term.pos.end)
-        val Term.Ident(id) = term
-        return stack.head + id + "/"
+      implicit class SymbolExtender(symbol: Symbol) {
+        def isTypeParameter: Boolean = symbol match {
+          case IsTypeSymbol(_) => symbol.flags.isParam
+          case _               => false
+        }
+
+        def isType: Boolean = symbol match {
+          case IsTypeSymbol(_) => true
+          case _ => false
+        }
+
+        def isMethod: Boolean = symbol match {
+          case IsDefSymbol(_) => true
+          case _ => false
+        }
+
+        def isPackage: Boolean = symbol match {
+          case IsPackageSymbol(_) => true
+          case _ => false
+        }
+
+        def isTrait: Boolean = symbol.flags.isTrait
+
+        def isValueParameter: Boolean = symbol.flags.isParam
+
+        // TODO : implement it
+        def isJavaClass: Boolean = false
       }
+
+      val symbolsCache: HashMap[tasty.Symbol, String] = HashMap()
+      val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
 
       def disimbiguate(symbol_path: String): String = {
         if (symbolPathsDisimbiguator.contains(symbol_path)) {
@@ -62,40 +91,33 @@ class SemanticdbConsumer extends TastyConsumer {
           "()"
         }
       }
-
       def iterateParent(symbol: Symbol): String = {
         if (symbolsCache.contains(symbol)) {
           return symbolsCache(symbol)
         } else {
           val out_symbol_path =
-            if (symbol.name == "<none>") then {
-              // TODO had a "NoDenotation" test to avoid
-              // relying on the name itself
-              ""
-            } else if (symbol.name == "<root>") then {
+            if (symbol.name == "<none>" || symbol.name == "<root>") then {
               // TODO had a "NoDenotation" test to avoid
               // relying on the name itself
               ""
             } else {
               val previous_symbol = iterateParent(symbol.owner)
               val next_atom =
-                if (symbol.flags.isParam) "(" + symbol.name + ")"
-                else {
-                  symbol match {
-                    case IsPackageSymbol(symbol) => symbol.name + "/"
-                    case IsDefSymbol(symbol) =>
-                      symbol.name + disimbiguate(previous_symbol + symbol.name) + "."
-                    case IsValSymbol(symbol) => symbol.name + "."
-                    case IsTypeSymbol(symbol) =>
-                      symbol.name + "#"
-                    case IsClassSymbol(symbol) =>
-                      symbol.name + (if (symbol.flags.isObject) "." else "#")
-                    case owner => {
-                      ""
-                    }
-                  }
-                }
-              previous_symbol + next_atom
+              if (symbol.isPackage) {
+                d.Package(symbol.name)
+              } else if (symbol.isTypeParameter)  {
+                d.TypeParameter(symbol.name)
+              } else if (symbol.isMethod) {
+                d.Method(symbol.name, disimbiguate(previous_symbol + symbol.name))
+              } else if (symbol.isValueParameter) {
+                d.Parameter(symbol.name)
+              } else if (symbol.isType || symbol.isTrait) {
+                d.Type(symbol.name)
+              } else {
+                d.Term(symbol.name)
+              }
+
+              Symbols.Global(previous_symbol, next_atom)
             }
           symbolsCache += (symbol -> out_symbol_path)
           out_symbol_path
