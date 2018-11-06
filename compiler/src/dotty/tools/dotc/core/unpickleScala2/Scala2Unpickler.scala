@@ -78,7 +78,7 @@ object Scala2Unpickler {
           elemtp0
       }
       val repParamTp = defn.RepeatedParamType.appliedTo(elemtp)
-      val lastParamTp = if (lastArg.isJavaNullable) defn.javaNullable(repParamTp) else repParamTp
+      val lastParamTp = if (lastArg.isJavaNullableUnion) repParamTp.toJavaNullable else repParamTp
       tp.derivedLambdaType(
         tp.paramNames,
         tp.paramInfos.init :+ lastParamTp,

@@ -236,9 +236,38 @@ object Types {
         }
       }
 
-    /** Is this type exactly Null (no vars, aliases, refinements etc allowed)? */
+    /** Is this type exactly `Null` (no vars, aliases, refinements etc allowed)? */
     def isNullType(implicit ctx: Context): Boolean = this match {
       case tp: TypeRef => tp.symbol eq defn.NullClass
+      case _ => false
+    }
+
+    /** Is this type a reference to `Null`, possibly after aliasing? */
+    def isRefToNull(implicit ctx: Context): Boolean = this.isRef(defn.NullClass)
+
+    /** Is this (after widening and dealiasing) a type of the form `T | Null`? */
+    def isNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
+      case OrType(_, right) => right.isRefToNull
+      case _ => false
+    }
+
+    /** Is this type guaranteed not to have `null` as a value? */
+    final def isNotNull(implicit ctx: Context): Boolean = this match {
+      case tp: ConstantType => tp.value.value != null
+      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: TypeBounds => tp.lo.isNotNull
+      case tp: TypeProxy => tp.underlying.isNotNull
+      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
+      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
+      case _ => false
+    }
+
+    /** Is this type exactly `JavaNull` (no vars, aliases, refinements etc allowed)? */
+    def isJavaNullType(implicit ctx: Context): Boolean = this == defn.JavaNullType
+
+    /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
+    def isJavaNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
+      case OrType(_, right) => right.isJavaNullType
       case _ => false
     }
 
@@ -269,35 +298,6 @@ object Types {
           false
       }
       loop(this)
-    }
-
-    /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull(implicit ctx: Context): Boolean = this match {
-      case tp: ConstantType => tp.value.value != null
-      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
-      case tp: TypeBounds => tp.lo.isNotNull
-      case tp: TypeProxy => tp.underlying.isNotNull
-      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
-      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
-      case _ => false
-    }
-
-    /** Is this type `JavaNullType`? */
-    def isJavaNull(implicit ctx: Context): Boolean = this == defn.JavaNullType
-
-    /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
-    def isJavaNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
-      case OrType(_, right) => right.isJavaNull
-      case _ => false
-    }
-
-    /** Is this type `NullType`? */
-    def isNull(implicit ctx: Context): Boolean = this.isRef(defn.NullClass)
-
-    /** Is this (after widening and dealiasing) a type of the form `T | Null`? */
-    def isNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
-      case OrType(_, right) => right.isNull
-      case _ => false
     }
 
     /** Is this type produced as a repair for an error? */
@@ -611,7 +611,7 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          if (tp.isJavaNullable) {
+          if (tp.isJavaNullableUnion) {
             // We need to strip JavaNull from both the type and the prefix so that
             // `pre <: tp` continues to hold.
             tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
@@ -1000,14 +1000,14 @@ object Types {
 
     /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
     def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
-      case OrType(left, right) if right.isJavaNull => left.stripJavaNull
+      case OrType(left, right) if right.isJavaNullType => left.stripJavaNull
       case _ => this
     }
 
     /** Converts types of the form `Null | T` to `T | Null`. Does not do any widening or dealiasing. */
     def normalizeNull(implicit ctx: Context): Type = {
       this match {
-        case OrType(left, right) if left.isNull => OrType(right, left)
+        case OrType(left, right) if left.isRefToNull => OrType(right, left)
         case _ => this
       }
     }
@@ -1487,6 +1487,12 @@ object Types {
       ctx.substSym(this, from, to, null)
 
 // ----- misc -----------------------------------------------------------
+
+    /** Create a `JavaNullable` version of this type. */
+    def toJavaNullable(implicit ctx: Context): Type = {
+      if (this.isJavaNullableUnion) this
+      else OrType(this, defn.JavaNullType)
+    }
 
     /** Turn type into a function type.
      *  @pre this is a method type without parameter dependencies.

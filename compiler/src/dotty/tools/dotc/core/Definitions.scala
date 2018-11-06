@@ -349,8 +349,6 @@ class Definitions {
   lazy val JavaNull = enterAliasType(tpnme.JavaNull, AnnotatedType.make(NullType, List(Annotation(JavaNullAnnot))))
   def JavaNullType = JavaNull.typeRef
 
-  def javaNullable(tp: Type) = OrType(tp, JavaNullType)
-
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
 

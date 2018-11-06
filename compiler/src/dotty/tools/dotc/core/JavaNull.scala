@@ -142,12 +142,12 @@ object JavaNull {
         case tp: TypeAlias =>
           mapOver(tp)
         case tp: TypeRef if shouldNullify(tp) =>
-          defn.javaNullable(tp)
+          tp.toJavaNullable
         case tp: TypeParamRef =>
-          defn.javaNullable(tp)
+          tp.toJavaNullable
         case appTp@AppliedType(tycons, targs) if shouldNullify(tp) =>
           val targs2 = if (shouldDescend(appTp)) targs map this else targs
-          defn.javaNullable(AppliedType(tycons, targs2))
+          AppliedType(tycons, targs2).toJavaNullable
         case _ =>
           tp
       }

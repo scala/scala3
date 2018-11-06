@@ -46,7 +46,7 @@ object ProtoTypes {
         // If either side of the union is the `Null` type, it should be safe to not disregard the prototype.
         // This is because checking for compatibility against e.g. `OrType(T1, Null)` will not generate incompatible
         // constraints (because `Null` is atomic).
-        !orTpe.isNullable
+        !orTpe.isNullableUnion
       case pt => pt.isRef(defn.UnitClass)
     }
 
