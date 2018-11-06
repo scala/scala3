@@ -93,6 +93,7 @@ class SemanticdbConsumer extends TastyConsumer {
           "()"
         }
       }
+
       def iterateParent(symbol: Symbol): String = {
         if (symbolsCache.contains(symbol)) {
           return symbolsCache(symbol)
@@ -147,7 +148,12 @@ class SemanticdbConsumer extends TastyConsumer {
             )
       }
 
-      def range(pos: Position, name: String): s.Range = {
+      def range(tree: Tree, pos: Position, name: String): s.Range = {
+        val offset = tree match {
+            case IsPackageClause(tree) => "package ".length
+            case _ => 0
+        }
+
         val range_end_column =
           if (name == "<init>") {
             pos.endColumn
@@ -155,7 +161,7 @@ class SemanticdbConsumer extends TastyConsumer {
             pos.startColumn + name.length
           }
 
-        s.Range(pos.startLine, pos.startColumn, pos.startLine, range_end_column)
+        s.Range(pos.startLine, pos.startColumn + offset, pos.startLine, range_end_column + offset)
       }
 
       def rangeExclude(range: Position, exclude: Position): s.Range = {
@@ -166,13 +172,13 @@ class SemanticdbConsumer extends TastyConsumer {
                        range.endColumn)
       }
 
-      def typetreeSymbol(typetree: TypeTree): Unit =
+      def typetreeSymbol(tree: Tree, typetree: TypeTree): Unit =
         typetree match {
           case TypeTree.Synthetic => ()
           case _ =>
             addOccurence(typetree.symbol,
                          s.SymbolOccurrence.Role.REFERENCE,
-                         range(typetree.pos, typetree.symbol.name))
+                         range(tree, typetree.pos, typetree.symbol.name))
         }
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
@@ -181,14 +187,14 @@ class SemanticdbConsumer extends TastyConsumer {
           case IsDefinition(body) => {
             if (tree.symbol.name != "<init>") {
               val _ = tree match {
-                case DefDef(_, _, _, typetree, _) => typetreeSymbol(typetree)
-                case ValDef(_, typetree, _)       => typetreeSymbol(typetree)
+                case DefDef(_, _, _, typetree, _) => typetreeSymbol(tree, typetree)
+                case ValDef(_, typetree, _)       => typetreeSymbol(tree, typetree)
                 case _                            => ()
               }
             }
             addOccurence(tree.symbol,
                          s.SymbolOccurrence.Role.DEFINITION,
-                         range(tree.symbol.pos, tree.symbol.name))
+                         range(tree, tree.symbol.pos, tree.symbol.name))
 
             super.traverseTree(body)
           }
@@ -204,13 +210,13 @@ class SemanticdbConsumer extends TastyConsumer {
             //println(tree.namePos.startColumn, tree.namePos.endColumn)
             addOccurence(tree.symbol,
                          s.SymbolOccurrence.Role.REFERENCE,
-                         range(tree.pos, tree.symbol.name))
+                         range(tree, tree.pos, tree.symbol.name))
             super.traverseTree(tree)
           }
           case PackageClause(_) =>
             addOccurence(tree.symbol,
                          s.SymbolOccurrence.Role.REFERENCE,
-                         range(tree.pos, tree.symbol.name))
+                         range(tree, tree.pos, tree.symbol.name))
             super.traverseTree(tree)
 
           case tree =>
