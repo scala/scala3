@@ -3,7 +3,7 @@ trait A {
 }
 
 class B(c: Cold[C]) extends A {
-  override val bar = () => f      // error
+  override val bar = () => f
   def f: Int = c.x
 }
 

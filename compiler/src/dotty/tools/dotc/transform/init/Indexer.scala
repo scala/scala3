@@ -324,8 +324,8 @@ trait Indexer { self: Analyzer =>
       if (sym.isOverrideClassParam && !sym.isClassParam) {
         setting.ctx.warning("Overriding a class parameter in class body may cause initialization problems", sym.pos)
       }
-      else if (!sym.isHot && sym.allOverriddenSymbols.exists(_.isHot)) {
-        setting.ctx.warning("Overriding a fully initialized field with a cold value may cause initialization problems", sym.pos)
+      else if (!sym.isHot && sym.allOverriddenSymbols.exists(sym => sym.isHot && !sym.is(Flags.Deferred))) {
+        setting.ctx.warning("Overriding a fully initialized field with a partially initialized value may cause initialization problems", sym.pos)
       }
     }
 
