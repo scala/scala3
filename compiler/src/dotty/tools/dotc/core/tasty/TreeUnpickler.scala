@@ -842,10 +842,7 @@ class TreeUnpickler(reader: TastyReader,
       if (!sym.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
         sym.info = ta.avoidPrivateLeaks(sym, tree.pos)
       }
-      if ((sym.isClass || sym.is(CaseVal)) && sym.isLocal)
-        // Child annotations for local classes and enum values are not pickled, so
-        // need to be re-established here.
-        sym.registerIfChild(late = true)
+
       sym.defTree = tree
 
       if (ctx.mode.is(Mode.ReadComments)) {
