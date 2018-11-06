@@ -26,6 +26,11 @@ trait SymbolOps extends Core {
     /** The full name of this symbol up to the root package. */
     def fullName(implicit ctx: Context): String
 
+
+    def companionModule(implicit ctx: Context): Symbol
+
+    def companionClass(implicit ctx: Context): Symbol
+
     def pos(implicit ctx: Context): Position
 
     def localContext(implicit ctx: Context): Context

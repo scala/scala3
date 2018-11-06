@@ -70,6 +70,8 @@ class SemanticdbConsumer extends TastyConsumer {
           case _ => false
         }
 
+        def isObject: Boolean = symbol.flags.isObject
+
         def isTrait: Boolean = symbol.flags.isTrait
 
         def isValueParameter: Boolean = symbol.flags.isParam
@@ -105,13 +107,17 @@ class SemanticdbConsumer extends TastyConsumer {
               val next_atom =
               if (symbol.isPackage) {
                 d.Package(symbol.name)
-              } else if (symbol.isTypeParameter)  {
-                d.TypeParameter(symbol.name)
+              } else if (symbol.isObject) {
+                d.Term(symbol.companionModule.name)
               } else if (symbol.isMethod) {
                 d.Method(symbol.name, disimbiguate(previous_symbol + symbol.name))
               } else if (symbol.isValueParameter) {
                 d.Parameter(symbol.name)
+              } else if (symbol.isTypeParameter)  {
+                d.TypeParameter(symbol.name)
               } else if (symbol.isType || symbol.isTrait) {
+                //println(symbol.name, symbol.companionClass.name, symbol.companionModule.name, symbol.flags.toString)
+
                 d.Type(symbol.name)
               } else {
                 d.Term(symbol.name)
