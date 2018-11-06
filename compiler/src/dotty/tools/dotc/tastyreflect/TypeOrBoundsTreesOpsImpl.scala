@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types
 
 
-trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with TastyCoreImpl {
+trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with ReflectionCoreImpl {
 
   // ----- TypeOrBoundsTree ------------------------------------------------
 

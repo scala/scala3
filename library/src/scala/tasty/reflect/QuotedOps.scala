@@ -1,7 +1,7 @@
 package scala.tasty.reflect
 
 /** Extension methods on scala.quoted.{Expr|Type} to convert to scala.tasty.Tasty objects */
-trait QuotedOps extends TastyCore {
+trait QuotedOps extends ReflectionCore {
 
   trait QuotedExprAPI {
     /** View this expression `Expr[T]` as a `Term` */

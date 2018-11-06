@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 
-trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
+trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with ReflectionCoreImpl {
 
   def QuotedExprDeco[T](x: scala.quoted.Expr[T]): QuotedExprAPI = new QuotedExprAPI {
     def reflect(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
@@ -33,7 +33,7 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
       if (ctx0.reporter.hasErrors) {
         val stack = new Exception().getStackTrace
         def filter(elem: StackTraceElement) =
-          elem.getClassName.startsWith("dotty.tools.dotc.tasty.TastyImpl") ||
+          elem.getClassName.startsWith("dotty.tools.dotc.tasty.ReflectionImpl") ||
             !elem.getClassName.startsWith("dotty.tools.dotc")
         throw new scala.tasty.TastyTypecheckError(
           s"""Error during tasty reflection while typing term

@@ -1,16 +1,16 @@
 package scala.tasty.util
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
-class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
-  import tasty.{rootContext => _, _}
+class ShowExtractors[R <: Reflection with Singleton](reclect0: R) extends Show[R](reclect0) {
+  import reflect.{rootContext => _, _}
 
   def showTree(tree: Tree)(implicit ctx: Context): String =
     new Buffer().visitTree(tree).result()
   def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
     new Buffer().visitCaseDef(caseDef).result()
 
-  def showPattern(pattern: tasty.Pattern)(implicit ctx: tasty.Context): String =
+  def showPattern(pattern: Pattern)(implicit ctx: Context): String =
     new Buffer().visitPattern(pattern).result()
 
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String =

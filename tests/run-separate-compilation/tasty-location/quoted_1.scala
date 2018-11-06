@@ -8,8 +8,8 @@ object Location {
 
   implicit inline def location: Location = ~impl
 
-  def impl(implicit tasty: Tasty): Expr[Location] = {
-    import tasty._
+  def impl(implicit reflect: Reflection): Expr[Location] = {
+    import reflect._
 
     def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =
       if (sym == definitions.RootClass || sym == definitions.EmptyPackageClass) acc

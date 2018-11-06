@@ -1,17 +1,17 @@
 import scala.quoted._
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 object SourceFiles {
 
-  type Macro[X] = implicit Tasty => Expr[X]
-  def tastyContext(implicit ctx: Tasty): Tasty = ctx
+  type Macro[X] = implicit Reflection => Expr[X]
+  def tastyContext(implicit ctx: Reflection): Reflection = ctx
 
   implicit inline def getThisFile: String =
     ~getThisFileImpl
 
   def getThisFileImpl: Macro[String] = {
-    val tasty = tastyContext
-    import tasty._
+    val reflect = tastyContext
+    import reflect._
     rootContext.source.getFileName.toString.toExpr
   }
 

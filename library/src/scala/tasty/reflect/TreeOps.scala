@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait TreeOps extends TastyCore {
+trait TreeOps extends ReflectionCore {
 
   trait TreeAPI {
     def pos(implicit ctx: Context): Position

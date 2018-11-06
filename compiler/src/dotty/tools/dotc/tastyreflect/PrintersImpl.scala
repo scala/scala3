@@ -2,7 +2,7 @@ package dotty.tools.dotc.tastyreflect
 
 import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
-trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect.TastyCore { tasty: TastyImpl =>
+trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect.ReflectionCore { tasty: ReflectionImpl =>
 
   def showExtractors: Show[tasty.type] = new ShowExtractors[tasty.type](this)
 

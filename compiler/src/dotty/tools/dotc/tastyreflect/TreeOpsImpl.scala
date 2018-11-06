@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 
-trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with Helpers {
+trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with ReflectionCoreImpl with Helpers {
 
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.pos

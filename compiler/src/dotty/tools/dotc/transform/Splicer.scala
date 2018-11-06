@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.tastyreflect.TastyImpl
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SourcePosition
@@ -107,7 +107,7 @@ object Splicer {
       args.toSeq
 
     protected def interpretTastyContext()(implicit env: Env): Object = {
-      new TastyImpl(ctx) {
+      new ReflectionImpl(ctx) {
         override def rootPosition: SourcePosition = pos
       }
     }
@@ -307,7 +307,7 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.TastyTasty_macroContext =>
+      case _ if tree.symbol == defn.TastyReflection_macroContext =>
         interpretTastyContext()
 
       case Call(fn, args) =>

@@ -1,6 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-trait SignatureOpsImpl extends scala.tasty.reflect.SignatureOps with TastyCoreImpl {
+trait SignatureOpsImpl extends scala.tasty.reflect.SignatureOps with ReflectionCoreImpl {
 
   object Signature extends SignatureExtractor {
     def unapply(x: Signature)(implicit ctx: Context): Option[(List[String], String)] = {

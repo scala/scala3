@@ -2,7 +2,7 @@ package scala.tasty
 package reflect
 
 /** Tasty reflect symbol */
-trait SymbolOps extends TastyCore {
+trait SymbolOps extends ReflectionCore {
 
   // Symbol
 

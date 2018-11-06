@@ -1,9 +1,9 @@
 package scala.tasty.util
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
-abstract class TreeTraverser[T <: Tasty with Singleton](tasty0: T) extends TreeAccumulator[Unit, T](tasty0) {
-  import tasty.{rootContext => _, _}
+abstract class TreeTraverser[R <: Reflection with Singleton](reflect0: R) extends TreeAccumulator[Unit, R](reflect0) {
+  import reflect.{rootContext => _, _}
 
   def traverseTree(tree: Tree)(implicit ctx: Context): Unit = traverseTreeChildren(tree)
   def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = traverseTypeTreeChildren(tree)

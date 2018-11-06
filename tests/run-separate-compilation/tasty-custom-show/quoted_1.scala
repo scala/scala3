@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 import scala.tasty.util.{TreeTraverser, Show}
 
 object Macros {
@@ -8,15 +8,15 @@ object Macros {
   implicit inline def printOwners[T](x: => T): Unit =
     ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val buff = new StringBuilder
 
-    val output = new TreeTraverser(tasty) {
+    val output = new TreeTraverser(reflect) {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
-        implicit val printer = new DummyShow(tasty)
+        implicit val printer = new DummyShow(reflect)
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
@@ -41,8 +41,8 @@ object Macros {
 
 }
 
-class DummyShow[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
-  import tasty._
+class DummyShow[R <: Reflection with Singleton](reflect0: R) extends Show[R](reflect0) {
+  import reflect._
   def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
   def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
   def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"

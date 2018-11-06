@@ -1,14 +1,14 @@
 package dotty.semanticdb
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 import scala.tasty.util.TreeTraverser
 
 class SemanticdbConsumer extends TastyConsumer {
 
-  final def apply(tasty: Tasty)(root: tasty.Tree): Unit = {
-    import tasty._
-    object Traverser extends TreeTraverser[tasty.type](tasty) {
+  final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
+    import reflect._
+    object Traverser extends TreeTraverser[reflect.type](reflect) {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case IsDefinition(tree) =>
@@ -19,7 +19,7 @@ class SemanticdbConsumer extends TastyConsumer {
       }
 
     }
-    Traverser.traverseTree(root)(tasty.rootContext)
+    Traverser.traverseTree(root)(reflect.rootContext)
   }
 
   def println(x: Any): Unit = Predef.println(x)

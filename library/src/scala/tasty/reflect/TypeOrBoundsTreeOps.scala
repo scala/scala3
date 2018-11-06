@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait TypeOrBoundsTreeOps extends TastyCore {
+trait TypeOrBoundsTreeOps extends ReflectionCore {
 
   trait TypeOrBoundsTreeAPI {
     def tpe(implicit ctx: Context): TypeOrBounds

@@ -1,9 +1,9 @@
 package scala.tasty.util
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
-abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
-  import tasty.{rootContext => _, _}
+abstract class TreeAccumulator[X, R <: Reflection with Singleton](val reflect: R) {
+  import reflect.{rootContext => _, _}
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
   def foldTree(x: X, tree: Tree)(implicit ctx: Context): X

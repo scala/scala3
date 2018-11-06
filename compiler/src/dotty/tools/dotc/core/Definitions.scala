@@ -691,11 +691,11 @@ class Definitions {
   def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
-  lazy val TastyTastyType: TypeRef = ctx.requiredClassRef("scala.tasty.Tasty")
-  def TastyTastyClass(implicit ctx: Context): ClassSymbol = TastyTastyType.symbol.asClass
+  lazy val TastyReflectionType: TypeRef = ctx.requiredClassRef("scala.tasty.Reflection")
+  def TastyReflectionClass(implicit ctx: Context): ClassSymbol = TastyReflectionType.symbol.asClass
 
-  lazy val TastyTastyModule: TermSymbol = ctx.requiredModule("scala.tasty.Tasty")
-    lazy val TastyTasty_macroContext: TermSymbol = TastyTastyModule.requiredMethod("macroContext")
+  lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
+    lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
 
   lazy val EqType: TypeRef = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context): ClassSymbol = EqType.symbol.asClass

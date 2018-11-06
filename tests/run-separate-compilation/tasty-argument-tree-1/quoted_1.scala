@@ -5,8 +5,8 @@ object Macros {
 
   inline def inspect[T](x: T): Unit = ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
     val tree = x.reflect
     '{
       println()

@@ -1,4 +1,4 @@
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 import scala.tasty.util.TreeTraverser
 import scala.tasty.file._
 
@@ -10,9 +10,9 @@ object Test {
 
 class DBConsumer extends TastyConsumer {
 
-  final def apply(tasty: Tasty)(root: tasty.Tree): Unit = {
-    import tasty._
-    object Traverser extends TreeTraverser[tasty.type](tasty) {
+  final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
+    import reflect._
+    object Traverser extends TreeTraverser[reflect.type](reflect) {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case IsDefinition(tree) =>
@@ -23,7 +23,7 @@ class DBConsumer extends TastyConsumer {
       }
 
     }
-    Traverser.traverseTree(root)(tasty.rootContext)
+    Traverser.traverseTree(root)(reflect.rootContext)
   }
 
 }

@@ -1,7 +1,7 @@
 
 import scala.quoted._
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 import scala.language.implicitConversions
 
@@ -15,14 +15,14 @@ object XmlQuote {
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit tasty: Tasty): Expr[Xml] = {
-    import tasty._
+          (implicit reflect: Reflection): Expr[Xml] = {
+    import reflect._
     import Term._
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
       println(tree.show)
-      println(tasty.showSourceCode.showTree(tree))
+      println(reflect.showSourceCode.showTree(tree))
     }
 
     def isSCOpsConversion(tree: Term) =

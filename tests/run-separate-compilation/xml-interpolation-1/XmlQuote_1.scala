@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 import scala.language.implicitConversions
 
@@ -12,8 +12,8 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit tasty: Tasty): Expr[Xml] = {
-    import tasty._
+          (implicit reflect: Reflection): Expr[Xml] = {
+    import reflect._
     import Term._
 
     def abort(msg: String): Nothing =
@@ -22,7 +22,7 @@ object XmlQuote {
     // for debugging purpose
     def pp(tree: Tree): Unit = {
       println(tree.show)
-      println(tasty.showSourceCode.showTree(tree))
+      println(reflect.showSourceCode.showTree(tree))
     }
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {

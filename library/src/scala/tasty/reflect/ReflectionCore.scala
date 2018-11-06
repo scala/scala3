@@ -109,7 +109,7 @@ package scala.tasty.reflect
  *
  *  ```
  */
-trait TastyCore {
+trait ReflectionCore {
 
   /** Compilation context */
   type Context

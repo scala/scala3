@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 import scala.tasty.util.TreeTraverser
 
 object Macros {
@@ -8,11 +8,11 @@ object Macros {
   implicit inline def printTypes[T](x: => T): Unit =
     ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val buff = new StringBuilder
-    val traverser = new TreeTraverser(tasty) {
+    val traverser = new TreeTraverser(reflect) {
       override def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = {
         buff.append(tree.tpe.show)
         buff.append("\n\n")

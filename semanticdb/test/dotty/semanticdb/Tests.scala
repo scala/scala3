@@ -1,6 +1,6 @@
 package dotty.semanticdb
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 import scala.tasty.util.TreeTraverser
 import scala.tasty.file._
 

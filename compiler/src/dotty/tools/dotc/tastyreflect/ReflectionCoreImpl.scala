@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.Types
 
-trait TastyCoreImpl extends scala.tasty.reflect.TastyCore {
+trait ReflectionCoreImpl extends scala.tasty.reflect.ReflectionCore {
 
   type Context = core.Contexts.Context
 

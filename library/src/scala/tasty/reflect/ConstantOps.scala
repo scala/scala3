@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait ConstantOps extends TastyCore {
+trait ConstantOps extends ReflectionCore {
 
   trait ConstantAPI {
     def value: Any

@@ -1,13 +1,13 @@
 import scala.quoted._
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 object SourceFiles {
 
   implicit inline def getThisFile: String =
     ~getThisFileImpl
 
-  private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {
-    import tasty._
+  private def getThisFileImpl(implicit reflect: Reflection): Expr[String] = {
+    import reflect._
     rootContext.source.getFileName.toString.toExpr
   }
 

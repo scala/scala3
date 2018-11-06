@@ -1,21 +1,21 @@
 package scala.tasty.util
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
-abstract class Show[T <: Tasty with Singleton](val tasty: T) {
+abstract class Show[R <: Reflection with Singleton](val reflect: R) {
 
-  def showTree(tree: tasty.Tree)(implicit ctx: tasty.Context): String
+  def showTree(tree: reflect.Tree)(implicit ctx: reflect.Context): String
 
-  def showCaseDef(caseDef: tasty.CaseDef)(implicit ctx: tasty.Context): String
+  def showCaseDef(caseDef: reflect.CaseDef)(implicit ctx: reflect.Context): String
 
-  def showPattern(pattern: tasty.Pattern)(implicit ctx: tasty.Context): String
+  def showPattern(pattern: reflect.Pattern)(implicit ctx: reflect.Context): String
 
-  def showTypeOrBoundsTree(tpt: tasty.TypeOrBoundsTree)(implicit ctx: tasty.Context): String
+  def showTypeOrBoundsTree(tpt: reflect.TypeOrBoundsTree)(implicit ctx: reflect.Context): String
 
-  def showTypeOrBounds(tpe: tasty.TypeOrBounds)(implicit ctx: tasty.Context): String
+  def showTypeOrBounds(tpe: reflect.TypeOrBounds)(implicit ctx: reflect.Context): String
 
-  def showConstant(const: tasty.Constant)(implicit ctx: tasty.Context): String
+  def showConstant(const: reflect.Constant)(implicit ctx: reflect.Context): String
 
-  def showSymbol(symbol: tasty.Symbol)(implicit ctx: tasty.Context): String
+  def showSymbol(symbol: reflect.Symbol)(implicit ctx: reflect.Context): String
 
 }

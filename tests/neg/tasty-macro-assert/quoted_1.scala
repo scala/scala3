@@ -14,8 +14,8 @@ object Asserts {
   inline def macroAssert(cond: => Boolean): Unit =
     ~impl('(cond))
 
-  def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val tree = cond.reflect
 

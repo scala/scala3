@@ -10,14 +10,14 @@ object Macros {
   inline def isSubTypeOf[T, U]: Boolean =
     ~isSubTypeOfImpl('[T], '[U])
 
-  def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit tasty: Tasty): Expr[Boolean] = {
-    import tasty._
+  def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit reflect: Reflection): Expr[Boolean] = {
+    import reflect._
     val isTypeEqual = t.reflect.tpe =:= u.reflect.tpe
     isTypeEqual.toExpr
   }
 
-  def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(implicit tasty: Tasty): Expr[Boolean] = {
-    import tasty._
+  def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(implicit reflect: Reflection): Expr[Boolean] = {
+    import reflect._
     val isTypeEqual = t.reflect.tpe <:< u.reflect.tpe
     isTypeEqual.toExpr
   }

@@ -625,7 +625,7 @@ trait Implicits { self: Typer =>
     }
 
     def synthesizedTastyContext(formal: Type): Tree =
-      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyTasty_macroContext)
+      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
@@ -698,7 +698,7 @@ trait Implicits { self: Typer =>
         else
           trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
-              trySpecialCase(defn.TastyTastyClass, synthesizedTastyContext,
+              trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
                 trySpecialCase(defn.EqClass, synthesizedEq, failed))))
     }
   }

@@ -4,12 +4,12 @@ package util
 import scala.annotation.switch
 import scala.tasty.util.SyntaxHighlightUtils._
 
-class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
-  import tasty.{rootContext => _, _}
+class ShowSourceCode[R <: Reflection with Singleton](reflect0: R) extends Show[R](reflect0) {
+  import reflect.{rootContext => _, _}
 
   private[this] val color: Boolean = {
-    import tasty.rootContext
-    tasty.settings.color
+    import reflect.rootContext
+    reflect.settings.color
   }
 
   def showTree(tree: Tree)(implicit ctx: Context): String =
@@ -1169,7 +1169,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  // TODO Provide some of these in scala.tasty.Tasty.scala and implement them using checks on symbols for performance
+  // TODO Provide some of these in scala.tasty.Reflect.scala and implement them using checks on symbols for performance
   private object Types {
 
     object JavaLangObject {

@@ -1,6 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-trait PositionOpsImpl extends scala.tasty.reflect.PositionOps with TastyCoreImpl {
+trait PositionOpsImpl extends scala.tasty.reflect.PositionOps with ReflectionCoreImpl {
 
   def PositionDeco(pos: Position): PositionAPI = new PositionAPI {
     def start: Int = pos.start

@@ -7,8 +7,8 @@ object Foo {
   inline def inspectBody(i: => Int): String =
     ~inspectBodyImpl('(i))
 
-  def inspectBodyImpl(x: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
-    import tasty._
+  def inspectBodyImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
+    import reflect._
 
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {
       case IsClassSymbol(sym) => sym.tree.show.toExpr

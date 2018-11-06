@@ -7,8 +7,8 @@ object Macros {
 
   implicit inline def printType[T]: Unit = ~impl('[T])
 
-  def impl[T](x: Type[T])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl[T](x: Type[T])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val tree = x.reflect
     '{
