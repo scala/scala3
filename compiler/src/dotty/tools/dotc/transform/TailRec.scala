@@ -277,8 +277,8 @@ class TailRec extends MiniPhase {
         }
 
         val isRecursiveCall = calledMethod eq method
-        // FIXME `(method.name eq sym)` is always false (Name vs Symbol). What is this trying to do?
-        def isRecursiveSuperCall = (method.name eq calledMethod) &&
+        def isRecursiveSuperCall = (method.name eq calledMethod.name) &&
+          method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
         if (isRecursiveCall) {

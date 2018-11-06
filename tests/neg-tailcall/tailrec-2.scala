@@ -8,7 +8,7 @@ sealed abstract class Super[+A] {
 class Bop1[+A](val element: A) extends Super[A] {
 
   @tailrec final def f[B >: A](mem: List[B]): List[B] = // error: TailRec optimisation not applicable
-    (null: Super[A]).f(mem)
+    (null: Super[A]).f(mem) // error: recursive call targeting a supertype
 
   @tailrec final def f1[B >: A](mem: List[B]): List[B] = this.g(mem) // error: TailRec optimisation not applicable
 }
