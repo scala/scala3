@@ -982,14 +982,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
 
-    /* Can probably be dropped. The idea is that inline unapply methods are available
-     * for inspection in the Inliner's reduceMatch method, but are never inlined
-     * when called from normal code.
-
-    if (unapplyFn.symbol.isInlineMethod)
-      checkInInlineContext("implementation restriction: call to inline unapply", tree.pos)
-    */
-
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
