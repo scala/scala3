@@ -8,6 +8,6 @@ object Macro {
   implicit inline def XmlQuote(sc: => StringContext): StringContextOps = new StringContextOps(sc)
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(implicit tasty: Tasty): Expr[String] = {
     import tasty._
-    (sc.toTasty.underlyingArgument.show + "\n" + args.toTasty.underlyingArgument.show).toExpr
+    (sc.reflect.underlyingArgument.show + "\n" + args.reflect.underlyingArgument.show).toExpr
   }
 }

@@ -13,7 +13,7 @@ object Foo {
       case IsValSymbol(sym) => sym.tree.show.toExpr
       case IsBindSymbol(sym) => sym.tree.show.toExpr
     }
-    x.toTasty match {
+    x.reflect match {
       case Term.Inlined(None, Nil, arg) => definitionString(arg)
       case arg => definitionString(arg) // TODO should all by name parameters be in an inline node?
     }

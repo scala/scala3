@@ -8,16 +8,16 @@ import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
 
   def QuotedExprDeco[T](x: scala.quoted.Expr[T]): QuotedExprAPI = new QuotedExprAPI {
-    def toTasty(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
+    def reflect(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
   }
 
   def QuotedTypeDeco[T](x: scala.quoted.Type[T]): QuotedTypeAPI = new QuotedTypeAPI {
-    def toTasty(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
+    def reflect(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
   }
 
   def TermToQuoteDeco(term: Term): TermToQuotedAPI = new TermToQuotedAPI {
 
-    def toExpr[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
+    def reify[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
       typecheck(ctx)
       new scala.quoted.Exprs.TastyTreeExpr(term).asInstanceOf[scala.quoted.Expr[T]]
     }
@@ -28,7 +28,7 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
       ctx0.typerState.setReporter(new Reporter {
         def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
       })
-      val tp = QuotedTypeDeco(implicitly[scala.quoted.Type[T]]).toTasty
+      val tp = QuotedTypeDeco(implicitly[scala.quoted.Type[T]]).reflect
       ctx0.typer.typed(term, tp.tpe)
       if (ctx0.reporter.hasErrors) {
         val stack = new Exception().getStackTrace

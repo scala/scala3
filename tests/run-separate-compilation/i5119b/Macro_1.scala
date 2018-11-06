@@ -7,7 +7,7 @@ object Macro {
 
   def impl(arg1: Expr[Any], arg2: Expr[Any])(implicit tasty: Tasty): Expr[String] = {
     import tasty._
-    (arg1.toTasty.underlyingArgument.show + "\n" + arg2.toTasty.underlyingArgument.show).toExpr
+    (arg1.reflect.underlyingArgument.show + "\n" + arg2.reflect.underlyingArgument.show).toExpr
   }
 
 }

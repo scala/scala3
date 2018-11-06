@@ -25,6 +25,6 @@ class ConstantExtractor[T <: Tasty with Singleton](val tasty: T) {
       case Term.Inlined(_, Nil, e) => const(e)
       case _  => None
     }
-    const(expr.toTasty)
+    const(expr.reflect)
   }
 }

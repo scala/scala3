@@ -34,7 +34,7 @@ object Macros {
       }
     }
 
-    val tree = x.toTasty
+    val tree = x.reflect
     output.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }

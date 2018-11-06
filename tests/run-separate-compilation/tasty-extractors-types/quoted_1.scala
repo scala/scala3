@@ -10,7 +10,7 @@ object Macros {
   def impl[T](x: Type[T])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
 
-    val tree = x.toTasty
+    val tree = x.reflect
     '{
       println(~tree.show.toExpr)
       println(~tree.tpe.show.toExpr)

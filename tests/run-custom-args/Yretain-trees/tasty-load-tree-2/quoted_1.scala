@@ -17,7 +17,7 @@ object Foo {
       case _ => '("NO DEFINTION")
     }
 
-    x.toTasty match {
+    x.reflect match {
       case Term.Inlined(None, Nil, arg) => definitionString(arg)
       case arg => definitionString(arg) // TODO should all by name parameters be in an inline node
     }

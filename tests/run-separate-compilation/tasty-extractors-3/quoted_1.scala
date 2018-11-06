@@ -20,7 +20,7 @@ object Macros {
       }
     }
 
-    val tree = x.toTasty
+    val tree = x.reflect
     traverser.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }

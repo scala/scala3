@@ -17,7 +17,7 @@ object Asserts {
   def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
 
-    val tree = cond.toTasty
+    val tree = cond.reflect
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
       case Type.SymRef(IsDefSymbol(sym), _) => sym.name == "Ops"// TODO check that the parent is Asserts
@@ -35,8 +35,8 @@ object Asserts {
     tree match {
       case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
         op match {
-          case "===" => '(assertEquals(~left.toExpr[Any], ~right.toExpr[Any]))
-          case "!==" => '(assertNotEquals(~left.toExpr[Any], ~right.toExpr[Any]))
+          case "===" => '(assertEquals(~left.reify[Any], ~right.reify[Any]))
+          case "!==" => '(assertNotEquals(~left.reify[Any], ~right.reify[Any]))
         }
       case _ =>
         '(assertTrue(~cond))

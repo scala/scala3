@@ -22,7 +22,7 @@ object Macros {
     override def value(e: Expr[Int])(implicit tasty: Tasty): Option[Int] = {
       import tasty._
 
-      e.toTasty.tpe match {
+      e.reflect.tpe match {
         case Type.SymRef(IsValSymbol(sym), pre) =>
           sym.tree.tpt.tpe match {
             case Type.ConstantType(Constant.Int(i)) => Some(i)
