@@ -354,6 +354,8 @@ class Definitions {
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
 
+  def nullable(tp: Type) = OrType(tp, NullType)
+
     lazy val Predef_ConformsR: TypeRef = ScalaPredefModule.requiredClass("<:<").typeRef
     def Predef_Conforms(implicit ctx: Context): Symbol = Predef_ConformsR.symbol
     lazy val Predef_conformsR: TermRef = ScalaPredefModule.requiredMethodRef(nme.conforms_)

@@ -282,12 +282,21 @@ object Types {
       case _ => false
     }
 
-    /** Is this type `JavaNullType` */
+    /** Is this type `JavaNullType`? */
     def isJavaNull(implicit ctx: Context): Boolean = this == defn.JavaNullType
 
     /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
-    def isJavaNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeJavaNull match {
-      case OrType(_, right) if right.isJavaNull => true
+    def isJavaNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
+      case OrType(_, right) => right.isJavaNull
+      case _ => false
+    }
+
+    /** Is this type `NullType`? */
+    def isNull(implicit ctx: Context): Boolean = this.isRef(defn.NullClass)
+
+    /** Is this (after widening and dealiasing) a type of the form `T | Null`? */
+    def isNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
+      case OrType(_, right) => right.isNull
       case _ => false
     }
 
@@ -990,15 +999,15 @@ object Types {
     }
 
     /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
-    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeJavaNull match {
+    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
       case OrType(left, right) if right.isJavaNull => left.stripJavaNull
       case _ => this
     }
 
-    /** Converts types of the form `JavaNull | T` to `T | JavaNull`. Does not do any widening or dealiasing. */
-    def normalizeJavaNull(implicit ctx: Context): Type = {
+    /** Converts types of the form `Null | T` to `T | Null`. Does not do any widening or dealiasing. */
+    def normalizeNull(implicit ctx: Context): Type = {
       this match {
-        case OrType(left, right) if left.isJavaNull => defn.javaNullable(right)
+        case OrType(left, right) if left.isNull => OrType(right, left)
         case _ => this
       }
     }

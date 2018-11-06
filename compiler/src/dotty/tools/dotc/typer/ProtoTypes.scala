@@ -42,7 +42,11 @@ object ProtoTypes {
       }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
-      case _: OrType => true
+      case orTpe: OrType =>
+        // If either side of the union is the `Null` type, it should be safe to not disregard the prototype.
+        // This is because checking for compatibility against e.g. `OrType(T1, Null)` will not generate incompatible
+        // constraints (because `Null` is atomic).
+        !orTpe.isNullable
       case pt => pt.isRef(defn.UnitClass)
     }
 
