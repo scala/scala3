@@ -61,7 +61,7 @@ object Applications {
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     def tupleSelectors(n: Int, tp: Type): List[Type] = {
       val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
-      // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail 
+      // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail
       // such as `Int *: T` where `T <: Tuple`.
       if (sel.exists) sel :: tupleSelectors(n + 1, tp) else Nil
     }
@@ -982,8 +982,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
 
+    /* Can probably be dropped. The idea is that inline unapply methods are available
+     * for inspection in the Inliner's reduceMatch method, but are never inlined
+     * when called from normal code.
+
     if (unapplyFn.symbol.isInlineMethod)
       checkInInlineContext("implementation restriction: call to inline unapply", tree.pos)
+    */
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
