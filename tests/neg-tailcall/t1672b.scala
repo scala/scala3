@@ -1,5 +1,7 @@
+import annotation.tailrec
+
 object Test1772B {
-  @annotation.tailrec
+  @tailrec
   def bar : Nothing = { // error: TailRec optimisation not applicable
     try {
       throw new RuntimeException
@@ -10,7 +12,7 @@ object Test1772B {
     }
   }
 
-  @annotation.tailrec
+  @tailrec
   def baz : Nothing = { // error: TailRec optimisation not applicable
     try {
       throw new RuntimeException
@@ -21,7 +23,7 @@ object Test1772B {
     }
   }
 
-  @annotation.tailrec
+  @tailrec
   def boz : Nothing = { // error: TailRec optimisation not applicable
     try {
       throw new RuntimeException
@@ -30,7 +32,7 @@ object Test1772B {
     }
   }
 
-  @annotation.tailrec
+  @tailrec
   def bez : Nothing = { // error: TailRec optimisation not applicable
     try {
       bez // error: it is not in tail position
@@ -40,7 +42,7 @@ object Test1772B {
   }
 
   // the `liftedTree` local method will prevent a tail call here.
-  @annotation.tailrec
+  @tailrec
   def bar(i : Int) : Int = { // error: TailRec optimisation not applicable
     if (i == 0) 0
     else 1 + (try {

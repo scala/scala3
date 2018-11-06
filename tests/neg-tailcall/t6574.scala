@@ -1,10 +1,12 @@
+import annotation.tailrec
+
 class Bad[X, Y](val v: Int) extends AnyVal {
-  @annotation.tailrec final def notTailPos[Z](a: Int)(b: String): Unit = {   // error
-    this.notTailPos[Z](a)(b)          // error
+  @tailrec final def notTailPos[Z](a: Int)(b: String): Unit = { // error: TailRec optimisation not applicable
+    this.notTailPos[Z](a)(b) // error: it is not in tail position
     println("tail")
   }
 
-  @annotation.tailrec final def differentTypeArgs: Unit = {
+  @tailrec final def differentTypeArgs: Unit = {
     {(); new Bad[String, Unit](0)}.differentTypeArgs
   }
 }

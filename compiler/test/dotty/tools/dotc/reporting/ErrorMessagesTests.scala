@@ -1507,8 +1507,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(4, messages)
 
-      val tailRegMessages = messages.map({ case m: TailrecNotApplicable => m.symbolKind }).toSet
-      assertEquals(tailRegMessages, Set("variable", "value", "object", "class"))
+      val tailRecMessages = messages.map({ case TailrecNotApplicable(sym) => sym.showKind }).toSet
+      assertEquals(tailRecMessages, Set("variable", "value", "object", "class"))
     }
 
   @Test def notAnExtractor() =
