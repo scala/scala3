@@ -206,11 +206,12 @@ class SemanticdbConsumer extends TastyConsumer {
           }
 
           case Term.Ident(_) => {
-            //println(tree.pos.startColumn, tree.pos.endColumn)
-            //println(tree.namePos.startColumn, tree.namePos.endColumn)
-            addOccurence(tree.symbol,
+            // To avoid adding the identifier of the package symbol
+            if (tree.symbol.owner.name != "<root>") {
+              addOccurence(tree.symbol,
                          s.SymbolOccurrence.Role.REFERENCE,
                          range(tree, tree.pos, tree.symbol.name))
+            }
             super.traverseTree(tree)
           }
           case PackageClause(_) =>
