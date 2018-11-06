@@ -1127,7 +1127,9 @@ class Typer extends Namer
   }
 
   def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = track("typedWhileDo") {
-    val cond1 = typed(tree.cond, defn.BooleanType)
+    val cond1 =
+      if (tree.cond eq EmptyTree) EmptyTree
+      else typed(tree.cond, defn.BooleanType)
     val body1 = typed(tree.body, defn.UnitType)
     assignType(cpy.WhileDo(tree)(cond1, body1))
   }

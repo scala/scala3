@@ -130,6 +130,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
     ta.assignType(untpd.Return(expr, from))
 
+  def Return(expr: Tree, from: Symbol)(implicit ctx: Context): Return =
+    Return(expr, Ident(from.termRef))
+
   def WhileDo(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
     ta.assignType(untpd.WhileDo(cond, body))
 

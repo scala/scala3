@@ -486,7 +486,7 @@ trait TypeAssigner {
     tree.withType(defn.NothingType)
 
   def assignType(tree: untpd.WhileDo)(implicit ctx: Context): WhileDo =
-    tree.withType(defn.UnitType)
+    tree.withType(if (tree.cond eq EmptyTree) defn.NothingType else defn.UnitType)
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(implicit ctx: Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)

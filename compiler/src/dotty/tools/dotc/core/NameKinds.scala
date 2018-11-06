@@ -286,6 +286,8 @@ object NameKinds {
   val NonLocalReturnKeyName: UniqueNameKind  = new UniqueNameKind("nonLocalReturnKey")
   val WildcardParamName: UniqueNameKind      = new UniqueNameKind("_$")
   val TailLabelName: UniqueNameKind          = new UniqueNameKind("tailLabel")
+  val TailLocalName: UniqueNameKind          = new UniqueNameKind("$tailLocal")
+  val TailTempName: UniqueNameKind           = new UniqueNameKind("$tmp")
   val ExceptionBinderName: UniqueNameKind    = new UniqueNameKind("ex")
   val SkolemName: UniqueNameKind             = new UniqueNameKind("?")
   val LiftedTreeName: UniqueNameKind         = new UniqueNameKind("liftedTree")
