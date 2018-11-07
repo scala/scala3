@@ -293,15 +293,24 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
   }
 
   def widen(implicit setting: Setting): OpaqueValue = {
-    def unInitField(sym: Symbol, value: Value): Boolean =
-      sym.isField && value == NoValue
+    symbols.foreach { case (sym, value) =>
+      if (sym.isField && value == NoValue) return ColdValue
+    }
 
-    def capturingDef(sym: Symbol, value: Value): Boolean =
-      (sym.is(Flags.Method) || sym.is(Flags.Lazy)) && !value.widen.isHot
+    symbols.foreach { case (sym, value) =>
+      if (sym.is(Flags.Method) || sym.is(Flags.Lazy)) {
+        val w = value.widen
+        if (!w.isHot) return w
+      }
+    }
 
-    if (symbols.exists { case (sym, v) => unInitField(sym, v) }) ColdValue
-    else if (symbols.exists { case (sym, v) => capturingDef(sym, v) }) WarmValue()
-    else if (symbols.exists { case (sym, v) => sym.isClass && !v.widen.isHot }) WarmValue()
-    else HotValue
+    symbols.foreach { case (sym, value) =>
+      if (sym.isClass) {
+        val w = value.widen
+        if (!w.isHot) return w
+      }
+    }
+
+    HotValue
   }
 }

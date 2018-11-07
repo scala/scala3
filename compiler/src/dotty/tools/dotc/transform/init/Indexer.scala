@@ -355,7 +355,7 @@ trait Indexer { self: Analyzer =>
         for(key <- notHot; tree <- captured(key))
           setting.ctx.warning(s"The init $sym captures " + tree.show + ".\nTry to make captured fields or methods private or final.", tree.pos)
       }
-      else {
+      else if (sym.value.isHot) {
         val classValue = obj.select(sym).value.widen(setting.widening)
         if (classValue.isHot) sym.annotate(defn.InitAnnotType)
       }
