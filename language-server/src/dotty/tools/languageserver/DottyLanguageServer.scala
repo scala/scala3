@@ -314,29 +314,20 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
 
-    val (definitions, projectsToInspect, originalSymbol, originalSymbolName) = {
+    val (definitions, originalSymbol, originalSymbolName) = {
       implicit val ctx: Context = driver.currentCtx
       val path = Interactive.pathTo(driver.openedTrees(uri), pos)
       val originalSymbol = Interactive.enclosingSourceSymbol(path)
       val originalSymbolName = originalSymbol.name.sourceModuleName.toString
-
-      // Find definitions of the symbol under the cursor, so that we can determine
-      // what projects are worth exploring
       val definitions = Interactive.findDefinitions(path, driver)
-      val projectsToInspect = projectsSeeing(definitions)
 
-      (definitions, projectsToInspect, originalSymbol, originalSymbolName)
+      (definitions, originalSymbol, originalSymbolName)
     }
 
     val references = {
       // Collect the information necessary to look into each project separately: representation of
       // `originalSymbol` in this project, the context and correct Driver.
-      val perProjectInfo = projectsToInspect.toList.map { config =>
-        val remoteDriver = drivers(config)
-        val ctx = remoteDriver.currentCtx
-        val definition = Interactive.localize(originalSymbol, driver, remoteDriver)
-        (remoteDriver, ctx, definition)
-      }
+      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbol)
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
         val trees = remoteDriver.sourceTreesContaining(originalSymbolName)(ctx)
@@ -444,26 +435,16 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
 
-    val (definitions, projectsToInspect, originalSymbol) = {
+    val (definitions, originalSymbol) = {
       implicit val ctx: Context = driver.currentCtx
       val path = Interactive.pathTo(driver.openedTrees(uri), pos)
       val originalSymbol = Interactive.enclosingSourceSymbol(path)
-
-      // Find definitions of the symbol under the cursor, so that we can determine what projects are
-      // worth exploring
       val definitions = Interactive.findDefinitions(path, driver)
-      val projectsToInspect = projectsSeeing(definitions)
-
-      (definitions, projectsToInspect, originalSymbol)
+      (definitions, originalSymbol)
     }
 
     val implementations = {
-      val perProjectInfo = projectsToInspect.toList.map { config =>
-        val remoteDriver = drivers(config)
-        val ctx = remoteDriver.currentCtx
-        val definition = Interactive.localize(originalSymbol, driver, remoteDriver)
-        (remoteDriver, ctx, definition)
-      }
+      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbol)
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
         val trees = remoteDriver.sourceTrees(ctx)
@@ -490,6 +471,12 @@ class DottyLanguageServer extends LanguageServer
   override def resolveCompletionItem(params: CompletionItem) = null
   override def signatureHelp(params: TextDocumentPositionParams) = null
 
+  /**
+   * Find the set of projects that have any of `definitions` on their classpath.
+   *
+   * @param definitions The definitions to consider when looking for projects.
+   * @return The set of projects that have any of `definitions` on their classpath.
+   */
   private def projectsSeeing(definitions: List[SourceTree])(implicit ctx: Context): Set[ProjectConfig] = {
     if (definitions.isEmpty) {
       drivers.keySet
@@ -502,6 +489,28 @@ class DottyLanguageServer extends LanguageServer
       } yield project
     }
   }
+
+  /**
+   * Finds projects that can see any of `definitions`, translate `symbol` in their universe.
+   *
+   * @param baseDriver  The driver responsible for the trees in `definitions` and `symbol`.
+   * @param definitions The definitions to consider when looking for projects.
+   * @param symbol      A symbol to translate in the universes of the remote projects.
+   * @return A list consisting of the remote drivers, their context, and the translation of `symbol`
+   *         into their universe.
+   */
+  private def inProjectsSeeing(baseDriver: InteractiveDriver,
+                               definitions: List[SourceTree],
+                               symbol: Symbol): List[(InteractiveDriver, Context, Symbol)] = {
+    val projects = projectsSeeing(definitions)(baseDriver.currentCtx)
+    projects.toList.map { config =>
+      val remoteDriver = drivers(config)
+      val ctx = remoteDriver.currentCtx
+      val definition = Interactive.localize(symbol, baseDriver, remoteDriver)
+      (remoteDriver, ctx, definition)
+    }
+  }
+
 
 }
 
