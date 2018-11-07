@@ -1,17 +1,7 @@
 package scala.tasty
 package reflect
 
-import scala.tasty.util.Show
-
-trait Printers { reflect: Reflection =>
-  // TASTy 🎂 needed to for the path dependency `tasty.type` to make sure the
-  // implicit printers of different instances of Tasty are not used.
-
-  /** Printer that prints the tree as extractors (enabled by default) */
-  implicit def showExtractors: Show[reflect.type]
-
-  /** Printer that prints the tree as source code */
-  def showSourceCode: Show[reflect.type]
+trait Printers extends ReflectionCore {
 
   /** Adds `show` as an extension method of a `Tree` */
   implicit def TreeShowDeco(tree: Tree): ShowAPI
@@ -36,10 +26,11 @@ trait Printers { reflect: Reflection =>
 
   /** Define `show` as method */
   trait ShowAPI {
-    /** Shows the string representation based on an implicit instance of `Show[tasty.type]`
-     *  See: `showExtractors` and `showSourceCode`
-     */
-    def show(implicit ctx: Context, s: Show[reflect.type]): String
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String
+
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String
   }
 
 }

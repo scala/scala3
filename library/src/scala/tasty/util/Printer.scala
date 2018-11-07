@@ -2,7 +2,7 @@ package scala.tasty.util
 
 import scala.tasty.Reflection
 
-abstract class Show[R <: Reflection with Singleton](val reflect: R) {
+abstract class Printer[R <: Reflection with Singleton](val reflect: R) {
 
   def showTree(tree: reflect.Tree)(implicit ctx: reflect.Context): String
 

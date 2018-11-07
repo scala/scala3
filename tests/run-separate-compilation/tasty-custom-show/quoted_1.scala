@@ -1,7 +1,7 @@
 import scala.quoted._
 
 import scala.tasty.Reflection
-import scala.tasty.util.{TreeTraverser, Show}
+import scala.tasty.util.{TreeTraverser, Printer}
 
 object Macros {
 
@@ -16,17 +16,17 @@ object Macros {
     val output = new TreeTraverser(reflect) {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
-        implicit val printer = new DummyShow(reflect)
+        val printer = new DummyShow(reflect)
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.show)
+            buff.append(printer.showTree(tree))
             buff.append("\n\n")
           case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.show)
+            buff.append(printer.showTree(tree))
             buff.append("\n\n")
           case _ =>
         }
@@ -41,7 +41,7 @@ object Macros {
 
 }
 
-class DummyShow[R <: Reflection with Singleton](reflect0: R) extends Show[R](reflect0) {
+class DummyShow[R <: Reflection with Singleton](reflect0: R) extends Printer[R](reflect0) {
   import reflect._
   def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
   def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"

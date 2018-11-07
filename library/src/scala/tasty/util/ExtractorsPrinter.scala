@@ -2,7 +2,7 @@ package scala.tasty.util
 
 import scala.tasty.Reflection
 
-class ShowExtractors[R <: Reflection with Singleton](reclect0: R) extends Show[R](reclect0) {
+class ExtractorsPrinter[R <: Reflection with Singleton](reclect0: R) extends Printer[R](reclect0) {
   import reflect.{rootContext => _, _}
 
   def showTree(tree: Tree)(implicit ctx: Context): String =

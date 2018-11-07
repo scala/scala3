@@ -22,7 +22,7 @@ object XmlQuote {
     // for debugging purpose
     def pp(tree: Tree): Unit = {
       println(tree.show)
-      println(reflect.showSourceCode.showTree(tree))
+      println(tree.showCode)
     }
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {

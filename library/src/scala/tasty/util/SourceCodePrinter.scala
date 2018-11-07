@@ -4,7 +4,7 @@ package util
 import scala.annotation.switch
 import scala.tasty.util.SyntaxHighlightUtils._
 
-class ShowSourceCode[R <: Reflection with Singleton](reflect0: R) extends Show[R](reflect0) {
+class SourceCodePrinter[R <: Reflection with Singleton](reflect0: R) extends Printer[R](reflect0) {
   import reflect.{rootContext => _, _}
 
   private[this] val color: Boolean = {
