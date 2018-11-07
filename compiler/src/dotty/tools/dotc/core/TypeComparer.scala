@@ -740,9 +740,28 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2.dealiasKeepRefiningAnnots match {
-                case tycon2: TypeRef if tycon1.symbol == tycon2.symbol =>
+                case tycon2: TypeRef =>
+                  val tycon1sym = tycon1.symbol
+                  val tycon2sym = tycon2.symbol
+
+                  var touchedGADTs = false
+                  def gadtBoundsContain(sym: Symbol, tp: Type): Boolean = {
+                    touchedGADTs = true
+                    val b = gadtBounds(sym)
+                    b != null && inFrozenConstraint {
+                      (b.lo =:= tp) && (b.hi =:= tp)
+                    }
+                  }
+
+                  val res = (
+                    tycon1sym == tycon2sym ||
+                    gadtBoundsContain(tycon1sym, tycon2) ||
+                    gadtBoundsContain(tycon2sym, tycon1)
+                  ) &&
                   isSubType(tycon1.prefix, tycon2.prefix) &&
                   isSubArgs(args1, args2, tp1, tparams)
+                  if (res && touchedGADTs) GADTused = true
+                  res
                 case _ =>
                   false
               }
