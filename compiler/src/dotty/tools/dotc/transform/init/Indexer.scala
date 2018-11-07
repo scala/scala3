@@ -159,6 +159,23 @@ trait Indexer { self: Analyzer =>
     case _ =>
   }
 
+  def indexSlice(cls: ClassSymbol, tmpl: Template, obj: ObjectValue, values: Int => Value)(implicit setting: Setting): SliceRep = {
+    val slice = setting.env.newSlice(cls)
+    obj.add(cls, new SliceValue(slice.id))
+    indexMembers(tmpl.body, slice)
+    // propagate constructor arguments
+    tmpl.constr.vparamss.flatten.zipWithIndex.foreach { case (param: ValDef, index) =>
+      val sym = cls.info.member(param.name).suchThat(x => !x.is(Method)).symbol
+      if (sym.exists) slice.add(sym, values(index))
+      slice.innerEnv.add(param.symbol, values(index))
+    }
+
+    // setup this
+    slice.innerEnv.add(cls, obj)
+
+    slice
+  }
+
   def indexOuter(cls: ClassSymbol)(implicit setting: Setting) = {
     def recur(cls: ClassSymbol, maxValue: OpaqueValue): Unit = if (cls.owner.exists) {
       val outerValue = cls.value
@@ -189,11 +206,10 @@ trait Indexer { self: Analyzer =>
       Res()
     }
     else checking(cls) {
-      val slice = setting.env.newSlice(cls)
-      obj.add(cls, new SliceValue(slice.id))
-
       // cold check
-      coldCheck(cls, tmpl)(setting.widening)
+      coldCheck(cls, tmpl, obj)(setting)
+
+      val slice = indexSlice(cls, tmpl, obj, values)
 
       // The outer of parents are set (but not recursively)
       // before any super-calls if they are known.
@@ -201,19 +217,6 @@ trait Indexer { self: Analyzer =>
       // Calling methods of an unrelated trait during initialization
       // is dangerous, thus should be discouraged. Therefore, the analyzer
       // doesn't follow closely the semantics here.
-
-      // first index current class
-      indexMembers(tmpl.body, slice)
-
-      // propagate constructor arguments
-      tmpl.constr.vparamss.flatten.zipWithIndex.foreach { case (param: ValDef, index) =>
-        val sym = cls.info.member(param.name).suchThat(x => !x.is(Method)).symbol
-        if (sym.exists) slice.add(sym, values(index))
-        slice.innerEnv.add(param.symbol, values(index))
-      }
-
-      // setup this
-      slice.innerEnv.add(cls, obj)
 
       // call parent constructor
       val setting2 = setting.withCtx(setting.ctx.withOwner(cls.owner)).withEnv(slice.innerEnv).withPos(cls.pos)
@@ -230,22 +233,26 @@ trait Indexer { self: Analyzer =>
     }
   }
 
-  def coldCheck(cls: ClassSymbol, tmpl: tpd.Template)(implicit setting: Setting) = {
+  def coldCheck(cls: ClassSymbol, tmpl: tpd.Template, obj: ObjectValue)(implicit setting: Setting) = {
+    def settingFor(sym: Symbol): Setting = {
+      val setting2 = setting.freshHeap
+      val obj2 = obj.clone
+      val slice = indexSlice(cls, tmpl, obj2, i => if (sym.isIcy) NoValue else sym.value)(setting2)
+      setting2.withEnv(slice.innerEnv).withPos(sym.pos).widening
+    }
+
     def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
       val sym = ddef.symbol
       if (!sym.isEffectiveCold) return
 
-      if (sym.isIcy) setting.env.add(cls, IcyValue)
-      else setting.env.add(cls, ColdValue)
-
-      val value = self.methodValue(ddef)(setting)
-      val res = value.apply(i => HotValue, i => NoPosition)(setting)
+      val value = self.methodValue(ddef)
+      val res = value.apply(i => HotValue, i => NoPosition)
 
       if (res.hasErrors) {
         setting.ctx.warning("Calling the method during initialization causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (!res.value.widen(setting).isHot) {
+      else if (!res.value.widen.isHot) {
         setting.ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
       }
     }
@@ -254,27 +261,24 @@ trait Indexer { self: Analyzer =>
       val sym = vdef.symbol
       if (!sym.isEffectiveCold || sym.is(Flags.Module)) return
 
-      if (sym.isIcy) setting.env.add(cls, IcyValue)
-      else setting.env.add(cls, ColdValue)
-
-      val value = self.lazyValue(vdef)(setting)
-      val res = value.apply(i => HotValue, i => NoPosition)(setting)
+      val value = self.lazyValue(vdef)
+      val res = value.apply(i => HotValue, i => NoPosition)
 
       if (res.hasErrors) {
         setting.ctx.warning("Forcing cold lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen(setting)
+        val value = res.value.widen
         if (!value.isHot) setting.ctx.warning("Cold lazy value must return a full value", sym.pos)
       }
     }
 
     tmpl.body.foreach {
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
+        checkMethod(ddef)(settingFor(ddef.symbol))
       case vdef: ValDef if vdef.symbol.is(Lazy)  =>
-        checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
+        checkLazy(vdef)(settingFor(vdef.symbol))
       case _ =>
     }
   }

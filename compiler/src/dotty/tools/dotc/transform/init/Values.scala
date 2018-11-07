@@ -620,7 +620,7 @@ class SliceValue(val id: Int) extends SingleValue {
   def show(implicit setting: ShowSetting): String = setting.heap(id).asSlice.show(setting)
 }
 
-class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolean = true) extends SingleValue {
+class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolean = true) extends SingleValue with Cloneable {
   /** slices of the object */
   private var _slices: Map[ClassSymbol, Value] = Map()
   def slices: Map[ClassSymbol, Value] = _slices
@@ -639,6 +639,8 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
     }
     else _slices = _slices.updated(cls, value)
   }
+
+  override def clone: ObjectValue = super.clone.asInstanceOf[ObjectValue]
 
   // handle dynamic dispatch
   private def resolve(sym: Symbol)(implicit ctx: Context): Symbol = {
@@ -688,7 +690,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
 
         res
       }
-      else if (!target.isCalledIn(classSymbol)) {
+      else if (!target.isCalledIn(classSymbol) && !target.is(Flags.ParamAccessor)) {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }
