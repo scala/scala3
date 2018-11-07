@@ -711,9 +711,8 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
       slices(cls).assign(target, value)
     }
     else {
-      // select on unknown super
-      assert(target.isDefinedOn(classSymbol))
-      WarmValue().assign(target, value)
+      // only allow leak of hot values
+      HotValue.assign(target, value)
     }
   }
 
