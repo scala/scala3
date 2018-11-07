@@ -777,7 +777,7 @@ object Contexts {
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = inCtx(ctx) {
       @annotation.tailrec def stripInst(tp: Type): Type = tp match {
         case tv: TypeVar =>
-          val inst = tv.inst orElse instType(tv)
+          val inst = instType(tv)
           if (inst.exists) stripInst(inst) else tv
         case _ => tp
       }
@@ -821,12 +821,11 @@ object Contexts {
             else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
             else addLess(boundTvar.origin, symTvar.origin)
           case bound =>
-            if (cautiousSubtype(symTvar, bound, isSubtype = !isUpper)) { instantiate(symTvar, bound); true }
+            if (cautiousSubtype(symTvar, bound, isSubtype = !isUpper)) { unify(symTvar, bound); true }
             else if (isUpper) addUpperBound(symTvar.origin, bound)
             else addLowerBound(symTvar.origin, bound)
         }
 
-        vacuum()
         res
       }
 
@@ -835,24 +834,9 @@ object Contexts {
         case _ => false
       }
 
-      def instantiate(tv: TypeVar, tp: Type): Unit = {
-        // instantiating one TypeVar to another makes us actually lose information
-        // that is, we need to know that both TypeVars are equal to another
-        //   *and* be able to record further bounds on either one
-        if (tp.isInstanceOf[TypeVar]) return
-        val externalizedTp = (new TypeVarRemovingMap)(tp)
-        gadts.println(i"instantiating $tv to $externalizedTp    ( $tp )")
-        tv.inst = externalizedTp
-        constraint = constraint.replace(tv.origin, externalizedTp)
-      }
-
-      def vacuum(): Unit = {
-        constraint.foreachTypeVar { tv =>
-          if (!tv.inst.exists) {
-            val inst = instType(tv)
-            if (inst.exists) instantiate(tv, inst)
-          }
-        }
+      def unify(tv: TypeVar, tp: Type): Unit = {
+        gadts.println(i"manually unifying $tv with $tp")
+        constraint = constraint.updateEntry(tv.origin, tp)
       }
 
       val tvarBound = (new TypeVarInsertingMap)(bound)
@@ -877,8 +861,7 @@ object Contexts {
       mapping(sym) match {
         case null => null
         case tv =>
-          val tb =
-            if (tv.inst.exists) TypeAlias(tv.inst) else constraint.fullBounds(tv.origin)
+          val tb = constraint.fullBounds(tv.origin)
           val res = (new TypeVarRemovingMap)(tb).asInstanceOf[TypeBounds]
           // gadts.println(i"gadt bounds $sym: $res\t( $tv: $tb )")
           res
