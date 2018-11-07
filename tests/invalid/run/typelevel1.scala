@@ -4,19 +4,19 @@ trait HList {
   def head: Any
   def tail: HList
 
-  inline def isEmpty: Boolean = length == 0
+  inline def isEmpty <: Boolean = length == 0
 }
 
 case object HNil extends HList {
-  inline override def length = 0
+  inline override def length <: Int = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
 
 case class :: [H, T <: HList] (hd: H, tl: T) extends HList {
-  inline override def length = 1 + tl.length
-  def head: H = this.hd
-  def tail: T = this.tl
+  inline override def length <: Int = 1 + tl.length
+  inline def head: H = this.hd
+  inline def tail: T = this.tl
 }
 
 object Test extends App {
