@@ -142,8 +142,14 @@ class Driver {
         val (classPaths, classNames) = fileNames0.map { name =>
           val path = Paths.get(name)
           if (!name.endsWith(".tasty")) ("", name)
-          else if (Files.exists(path)) TastyFileUtil.getClassName(path)
-          else {
+          else if (Files.exists(path)) {
+            TastyFileUtil.getClassName(path) match {
+              case Some(res) => res
+              case _ =>
+                ctx0.error(s"Could not load classname from $name.")
+                ("", name)
+            }
+          } else {
             ctx0.error(s"File $name does not exist.")
             ("", name)
           }

@@ -1,6 +1,8 @@
-package dotty.tools.dotc.fromtasty
+package dotty.tools.dotc
+package fromtasty
 
 import java.nio.file.{Files, Path, Paths}
+import java.io
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.NameKinds
@@ -17,25 +19,20 @@ object TastyFileUtil {
    *    package foo
    *    class Foo
    *  ```
-   *  then `getClassName("./out/foo/Foo.tasty") returns `("./out", "foo.Foo")`
+   *  then `getClassName("./out/foo/Foo.tasty") returns `Some(("./out", "foo.Foo"))`
    */
-  def getClassName(path: Path): (String, String) = {
+  def getClassName(path: Path): Option[(String, String)] = {
     assert(path.toString.endsWith(".tasty"))
     assert(Files.exists(path))
     val bytes = Files.readAllBytes(path)
-    val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
-    val className =
-      unpickler.nameAtRef.contents.iterator.dropWhile {
-        name => name.toString == TreePickler.sectionName || name == nme.EMPTY_PACKAGE
-      }.takeWhile {
-        case name: SimpleName => name != nme.CONSTRUCTOR
-        case name => !name.is(NameKinds.ModuleClassName)
-      }.collect {
-        case name: SimpleName => name.toString
-      }.toList
-    val classInPath = className.mkString("", "/", ".tasty")
-    val classpath = path.toString.replace(classInPath, "")
-    (classpath, className.mkString("."))
+    val names = new core.tasty.TastyClassName(bytes).readName()
+    names.map { case (packName, className) =>
+      val fullName = s"$packName.${className.lastPart}"
+      val classInPath = fullName.replace(".", io.File.separator) + ".tasty"
+      val classpath = path.toString.replace(classInPath, "")
+      (classpath, fullName)
+    }
+
   }
 
 }
