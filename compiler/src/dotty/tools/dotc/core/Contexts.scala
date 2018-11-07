@@ -829,11 +829,6 @@ object Contexts {
         res
       }
 
-      def isEmptyBounds(tp: Type) = tp match {
-        case TypeBounds(lo, hi) => (lo eq defn.NothingType) && (hi eq defn.AnyType)
-        case _ => false
-      }
-
       def unify(tv: TypeVar, tp: Type): Unit = {
         gadts.println(i"manually unifying $tv with $tp")
         constraint = constraint.updateEntry(tv.origin, tp)
@@ -842,9 +837,6 @@ object Contexts {
       val tvarBound = (new TypeVarInsertingMap)(bound)
       val res = tvarBound match {
         case boundTvar: TypeVar =>
-          doAddBound(boundTvar)
-        // hack to normalize T and T[_]
-        case AppliedType(boundTvar: TypeVar, args) if args forall isEmptyBounds =>
           doAddBound(boundTvar)
         case tp => doAddBound(tp)
       }
