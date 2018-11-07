@@ -284,6 +284,11 @@ trait Indexer { self: Analyzer =>
   }
 
   def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template)(implicit setting: Setting) = {
+    def lateInitMsg(sym: Symbol) =
+      s"""|Initialization too late: $sym is used during parent initialization.
+          |Consider make it a class parameter."""
+        .stripMargin
+
     def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
       val sym = ddef.symbol
       if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
@@ -313,6 +318,8 @@ trait Indexer { self: Analyzer =>
         else if (value.isHot && !sym.isEffectiveInit) sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
       }
 
+      if (!sym.is(ParamAccessor) && sym.isCalledAbove(cls))
+        setting.ctx.warning(lateInitMsg(sym), setting.pos)
     }
 
     def checkValDef(vdef: tpd.ValDef)(implicit setting: Setting): Unit = {
@@ -331,6 +338,9 @@ trait Indexer { self: Analyzer =>
       else if (!sym.isHot && sym.allOverriddenSymbols.exists(sym => sym.isHot && !sym.is(Flags.Deferred))) {
         setting.ctx.warning("Overriding a fully initialized field with a partially initialized value may cause initialization problems", sym.pos)
       }
+
+      if (!sym.is(ParamAccessor) && sym.isCalledAbove(cls))
+        setting.ctx.warning(lateInitMsg(sym), setting.pos)
     }
 
     def checkClassDef(cdef: tpd.TypeDef)(implicit setting: Setting): Unit = {

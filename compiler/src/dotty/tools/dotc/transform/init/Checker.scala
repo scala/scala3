@@ -55,16 +55,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // ignore init checking if `@unchecked`
     if (cls.hasAnnotation(defn.UncheckedAnnot)) return tree
 
-    def lateInitMsg(sym: Symbol) =
-      s"""|Initialization too late: $sym is used during parent initialization.
-          |Consider make it a class parameter."""
-        .stripMargin
-
-    for (decl <- cls.info.decls.toList if decl.is(AnyFlags, butNot = Method | Deferred)) {
-      if (!decl.is(ParamAccessor) && decl.isCalledAbove(cls))
-        ctx.warning(lateInitMsg(decl), decl.pos)
-    }
-
     def invalidImplementMsg(sym: Symbol) = {
       val annot = if (sym.owner.is(Trait)) "cold" else "init"
       s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
