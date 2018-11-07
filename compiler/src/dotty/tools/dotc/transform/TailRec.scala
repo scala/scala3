@@ -377,6 +377,12 @@ class TailRec extends MiniPhase {
             noTailTransform(tree.finalizer)
           )
 
+        case tree @ WhileDo(cond, body) =>
+          cpy.WhileDo(tree)(
+            noTailTransform(cond),
+            noTailTransform(body)
+          )
+
         case _: Alternative | _: Bind =>
           assert(false, "We should never have gotten inside a pattern")
           tree
