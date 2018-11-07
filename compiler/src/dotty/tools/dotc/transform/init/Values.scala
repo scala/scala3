@@ -25,10 +25,13 @@ object Value {
 
   def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position, onlyHot: Boolean = false)(implicit setting: Setting): Res = {
     def message(v: OpaqueValue) = {
-      s"Unsafe leak of object under initialization to ${sym.show}" ++
+      s"Unsafe leak of value under initialization to ${sym.show}" ++
       (v match {
         case WarmValue(deps, _) if deps.nonEmpty =>
-          "\nThe object captures " + deps.map(_.show).mkString("", ",", ".")
+          deps.map {
+            case tp: NamedType => tp.symbol.name.show
+            case tp => tp.show
+          }.mkString("\nThe value captures ", ",", ".")
         case _ => ""
       })
     }
