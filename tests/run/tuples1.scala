@@ -4,6 +4,8 @@ object Test extends App {
   val x2 = ("A", 1); println(x2)
   val x3 = 2 *: x2; println(x3)
   val x4 = "B" *: x3; println(x4)
+  val y0 = x4(0)
+  val y1 = x4(1)
   val x5 = 3 *: x4; println(x5)
   val x6 = "C" *: x5; println(x6)
   val x7 = 4 *: x6; println(x7)

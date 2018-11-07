@@ -30,8 +30,10 @@ object Test extends App {
 
   inline implicit def hlistDeco(xs: HList): HListDeco = new HListDeco(xs)
 
-  inline def concat[T1, T2](xs: HList, ys: HList): HList =
-    if xs.isEmpty then ys
+  // Does not work since it infers `Any` as a type argument for `::`
+  // and we cannot undo that without a typing from untyped.
+  inline def concat[T1, T2](xs: HList, ys: HList) <: HList =
+    inline if xs.isEmpty then ys
     else new ::(xs.head, concat(xs.tail, ys))
 
   val xs = 1 :: "a" :: "b" :: HNil
