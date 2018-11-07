@@ -1,7 +1,6 @@
 package dotty.semanticdb
 
 import scala.tasty.Reflection
-import scala.tasty.util.TreeTraverser
 import scala.tasty.file._
 
 import org.junit.Test

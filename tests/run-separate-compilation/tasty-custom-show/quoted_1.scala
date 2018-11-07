@@ -1,7 +1,7 @@
 import scala.quoted._
 
 import scala.tasty.Reflection
-import scala.tasty.util.{TreeTraverser, Printer}
+import scala.tasty.util.Printer
 
 object Macros {
 
@@ -13,7 +13,7 @@ object Macros {
 
     val buff = new StringBuilder
 
-    val output = new TreeTraverser(reflect) {
+    val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
         val printer = new DummyShow(reflect)

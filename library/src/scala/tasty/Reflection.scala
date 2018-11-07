@@ -18,6 +18,7 @@ abstract class Reflection
     with StandardDefinitions
     with SymbolOps
     with TreeOps
+    with TreeUtils
     with TypeOrBoundsTreeOps
     with TypeOrBoundsOps
 

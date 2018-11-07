@@ -1,7 +1,6 @@
 import scala.quoted._
 
 import scala.tasty._
-import scala.tasty.util.TreeTraverser
 
 object Macros {
 
@@ -22,7 +21,7 @@ object Macros {
       }
     }
 
-    val output = new TreeTraverser(reflect) {
+    val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
