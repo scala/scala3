@@ -107,7 +107,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val setting = Setting(root, cls.pos, ctx, analyzer)
     val tref = cls.typeRef
     val tp = tref.appliedTo(tref.typeParams.map(_.paramInfo))
-    val obj = new ObjectValue(tp = tp, open = !cls.is(Final) && !cls.isAnonymousClass)
+    val obj = new ObjectValue(tp = tp, open = !cls.is(Final) && !cls.isAnonymousClass, inferInit = true)
       // enhancement possible to check if there are actual children
       // and whether children are possible in other modules.
 

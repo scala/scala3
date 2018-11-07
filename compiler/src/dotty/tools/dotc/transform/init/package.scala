@@ -76,8 +76,8 @@ package object init {
     def isOverrideClassParam(implicit ctx: Context) =
       sym.allOverriddenSymbols.exists(_.isClassParam)
 
-    def isDefinedOn(tp: Type)(implicit ctx: Context): Boolean =
-      tp.classSymbol.isSubClass(sym.owner)
+    def isDefinedOn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+      cls.isSubClass(sym.owner)
 
     def value(implicit ctx: Context) =
       if (isCold) ColdValue

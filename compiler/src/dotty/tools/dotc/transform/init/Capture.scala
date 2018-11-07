@@ -53,8 +53,10 @@ object Capture {
 
     def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
       tree match {
-        case tree if tree.isType =>// ignore all type trees
-        case tree: Ident =>
+        case tree if tree.isType =>
+          // ignore all type trees
+        case tree: Ident if tree.tpe.isInstanceOf[TermRef] =>
+          // The condition is required, see capture1.scala
           check(tree)
         case Trees.Select(ths: This, _) =>
           check(tree)

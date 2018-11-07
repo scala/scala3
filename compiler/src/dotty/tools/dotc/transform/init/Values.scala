@@ -215,7 +215,10 @@ case class UnionValue(val values: Set[SingleValue]) extends Value {
 /** Values that are subject to type checking rather than analysis */
 abstract sealed class OpaqueValue extends SingleValue {
   // not supported
-  def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
+  def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
+    println(this)
+    ???
+  }
 
   def join(that: OpaqueValue): OpaqueValue = (this, that) match {
     case (_, IcyValue) | (IcyValue, _) => IcyValue
@@ -363,7 +366,7 @@ object ColdValue extends OpaqueValue {
 case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = true) extends OpaqueValue {
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
     val res = Res()
-    if (sym.is(Flags.Method) && !sym.isEffectiveInit) {
+    if (sym.is(Flags.Method)) {
       if (!sym.isCold && !sym.isEffectiveInit && !sym.name.is(DefaultGetterName))
         res += Generic(s"The $sym should be marked as `@init` in order to be called", setting.pos)
 
@@ -617,7 +620,7 @@ class SliceValue(val id: Int) extends SingleValue {
   def show(implicit setting: ShowSetting): String = setting.heap(id).asSlice.show(setting)
 }
 
-class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
+class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolean = true) extends SingleValue {
   /** slices of the object */
   private var _slices: Map[ClassSymbol, Value] = Map()
   def slices: Map[ClassSymbol, Value] = _slices
@@ -639,10 +642,11 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
   // handle dynamic dispatch
   private def resolve(sym: Symbol)(implicit ctx: Context): Symbol = {
-    if (sym.isClass || sym.isConstructor || sym.isEffectivelyFinal) sym
+    if (sym.isClass || sym.isConstructor || sym.owner == classSymbol || sym.isEffectivelyFinal) sym
     else {
       // the method may crash, see tests/pos/t7517.scala
-      try sym.matchingMember(tp) catch { case _: Throwable => NoSymbol }
+      try sym.matchingMember(tp).orElse(sym) catch { case _: Throwable => sym }
+      // sym.matchingMember(tp).orElse(sym)
     }
   }
 
@@ -650,10 +654,9 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = ???
 
   def select(sym: Symbol, isStaticDispatch: Boolean)(implicit setting: Setting): Res = {
-    var target: Symbol = null
+    val target: Symbol = if (isStaticDispatch) sym else resolve(sym)
     val receiver =
-      if (sym.isDefinedOn(tp)) {
-        target = if (isStaticDispatch) sym else resolve(sym)
+      if (sym.isDefinedOn(classSymbol)) {
         assert(target.exists, s"${tp.show}.${sym.show} not exist")
         val cls = target.owner.asClass
         if (slices.contains(cls)) slices(cls)
@@ -661,39 +664,36 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
         else HotValue
       }
       else { // select on self type
-        target = sym
         if (sym.owner.is(Flags.Trait)) IcyValue
         else if (classSymbol.is(Flags.Trait)) WarmValue() // classes are always init before traits
         else ColdValue
       }
 
-    if (open && !isStaticDispatch && !target.isEffectivelyFinal && !target.isClass) {
+    if (open && !isStaticDispatch && !target.isClass && !target.isEffectivelyFinal) {
       val res =
-        if (target.is(Flags.Method))
-         // dynamic calls are analysis boundary, only allow hot values
-          Res(value = Value.dynamicMethodValue(target, Value.defaultFunctionValue(target)))
+        if (target.is(Flags.Method)) Res(value = Value.defaultFunctionValue(target))
         else Res()
 
       // annotation on current class even though it's called above
-      if (sym.isEffectiveInit || (!receiver.isOpaque || target.is(Flags.Deferred)) && !setting.isWidening) {
-        if (!receiver.isOpaque) {
+      if (target.isEffectiveInit || inferInit && !setting.isWidening) {
+        if (!target.is(Flags.Deferred)) {
           val res2 = receiver.select(target)
           if (target.is(Flags.Method)) res.value = Value.dynamicMethodValue(target, res2.value)
           else res.value = res2.value
           res ++= res2.effects
         }
 
-        if (!res.hasErrors && !sym.isCalledIn(classSymbol))
+        if (!res.hasErrors && !target.isCalledIn(classSymbol))
           classSymbol.addAnnotation(Annotation.Call(target))
 
         res
       }
-      else if (setting.isWidening && !sym.isCalledIn(classSymbol)) {
+      else if (!target.isCalledIn(classSymbol)) {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }
-      else if (sym.isCalledIn(classSymbol) && receiver.isOpaque) res
-      else receiver.select(target)
+      else if (!target.is(Flags.Deferred)) receiver.select(target)
+      else res
     }
     else receiver.select(target)
   }
@@ -710,7 +710,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
     }
     else {
       // select on unknown super
-      assert(target.isDefinedOn(tp))
+      assert(target.isDefinedOn(classSymbol))
       WarmValue().assign(target, value)
     }
   }

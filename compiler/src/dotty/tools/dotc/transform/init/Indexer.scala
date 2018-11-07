@@ -172,7 +172,7 @@ trait Indexer { self: Analyzer =>
       else {
         val cls = enclosingCls.asClass
         val open = !cls.is(Final) && !cls.isAnonymousClass
-        val obj = new ObjectValue(cls.thisType, open = open)
+        val obj = new ObjectValue(cls.thisType, open = open, inferInit = false)
         obj.add(cls, outerValue)
         setting.env.add(cls, obj)
         recur(cls, outerValue)
