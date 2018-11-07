@@ -24,6 +24,11 @@ class GadtTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("compileGadtTests")
     compileFilesInDir("tests/gadt", defaultOptions).checkCompile()
   }
+
+  @Test def compileGadtNeg: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("compileGadtNeg")
+    compileFilesInDir("tests/gadt-neg", defaultOptions).checkExpectedErrors()
+  }
 }
 
 object GadtTests {
