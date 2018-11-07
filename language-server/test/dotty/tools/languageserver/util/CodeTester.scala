@@ -158,6 +158,15 @@ class CodeTester(projects: List[Project]) {
   def cancelRun(marker: CodeMarker, afterMs: Long): this.type =
     doAction(new WorksheetCancel(marker, afterMs))
 
+  /**
+   * Find implementations of the symbol in `range`, compares that the results match `expected.
+   *
+   * @param range    The range of position over which to run `textDocument/implementation`.
+   * @param expected The expected result.
+   */
+  def implementation(range: CodeRange, expected: List[CodeRange]): this.type =
+    doAction(new Implementation(range, expected))
+
   private def doAction(action: Action): this.type = {
     try {
       action.execute()(testServer, testServer.client, positions)

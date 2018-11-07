@@ -194,6 +194,7 @@ class DottyLanguageServer extends LanguageServer
     c.setHoverProvider(true)
     c.setWorkspaceSymbolProvider(true)
     c.setReferencesProvider(true)
+    c.setImplementationProvider(true)
     c.setCompletionProvider(new CompletionOptions(
       /* resolveProvider = */ false,
       /* triggerCharacters = */ List(".").asJava))
@@ -322,17 +323,7 @@ class DottyLanguageServer extends LanguageServer
       // Find definitions of the symbol under the cursor, so that we can determine
       // what projects are worth exploring
       val definitions = Interactive.findDefinitions(path, driver)
-      val projectsToInspect =
-        if (definitions.isEmpty) {
-          drivers.keySet
-        } else {
-          for {
-            definition <- definitions
-            uri <- toUriOption(definition.pos.source).toSet
-            config = configFor(uri)
-            project <- dependentProjects(config) + config
-          } yield project
-        }
+      val projectsToInspect = projectsSeeing(definitions)
 
       (definitions, projectsToInspect, originalSymbol, originalSymbolName)
     }
@@ -447,6 +438,44 @@ class DottyLanguageServer extends LanguageServer
     }.asJava
   }
 
+  override def implementation(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+    val uri = new URI(params.getTextDocument.getUri)
+    val driver = driverFor(uri)
+
+    val pos = sourcePosition(driver, uri, params.getPosition)
+
+    val (definitions, projectsToInspect, originalSymbol) = {
+      implicit val ctx: Context = driver.currentCtx
+      val path = Interactive.pathTo(driver.openedTrees(uri), pos)
+      val originalSymbol = Interactive.enclosingSourceSymbol(path)
+
+      // Find definitions of the symbol under the cursor, so that we can determine what projects are
+      // worth exploring
+      val definitions = Interactive.findDefinitions(path, driver)
+      val projectsToInspect = projectsSeeing(definitions)
+
+      (definitions, projectsToInspect, originalSymbol)
+    }
+
+    val implementations = {
+      val perProjectInfo = projectsToInspect.toList.map { config =>
+        val remoteDriver = drivers(config)
+        val ctx = remoteDriver.currentCtx
+        val definition = Interactive.localize(originalSymbol, driver, remoteDriver)
+        (remoteDriver, ctx, definition)
+      }
+
+      perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
+        val trees = remoteDriver.sourceTrees(ctx)
+        val predicate = Interactive.implementationFilter(definition)(ctx)
+        val matches = Interactive.namedTrees(trees, includeReferences = false, predicate)(ctx)
+        matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
+      }
+    }.toList
+
+    implementations.flatten.asJava
+  }
+
   override def getTextDocumentService: TextDocumentService = this
   override def getWorkspaceService: WorkspaceService = this
 
@@ -460,6 +489,20 @@ class DottyLanguageServer extends LanguageServer
   override def resolveCodeLens(params: CodeLens) = null
   override def resolveCompletionItem(params: CompletionItem) = null
   override def signatureHelp(params: TextDocumentPositionParams) = null
+
+  private def projectsSeeing(definitions: List[SourceTree])(implicit ctx: Context): Set[ProjectConfig] = {
+    if (definitions.isEmpty) {
+      drivers.keySet
+    } else {
+      for {
+        definition <- definitions.toSet
+        uri <- toUriOption(definition.pos.source).toSet
+        config = configFor(uri)
+        project <- dependentProjects(config) + config
+      } yield project
+    }
+  }
+
 }
 
 object DottyLanguageServer {
