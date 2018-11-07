@@ -1,7 +1,6 @@
 import scala.quoted._
 
 import scala.tasty.Reflection
-import scala.tasty.util.Printer
 
 object Macros {
 
@@ -16,7 +15,7 @@ object Macros {
     val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
-        val printer = new DummyShow(reflect)
+        val printer = dummyShow
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
@@ -39,15 +38,17 @@ object Macros {
     '(print(~buff.result().toExpr))
   }
 
-}
+  def dummyShow(implicit reflect: Reflection): reflect.Printer = {
+    import reflect._
+    new Printer {
+      def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
+      def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
+      def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
+      def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = "TypeOrBoundsTree"
+      def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
+      def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
+      def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
+    }
+  }
 
-class DummyShow[R <: Reflection with Singleton](reflect0: R) extends Printer[R](reflect0) {
-  import reflect._
-  def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-  def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
-  def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
-  def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = "TypeOrBoundsTree"
-  def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
-  def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
-  def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
 }

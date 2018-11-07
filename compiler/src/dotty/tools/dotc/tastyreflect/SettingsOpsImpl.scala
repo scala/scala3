@@ -1,11 +1,11 @@
 package dotty.tools.dotc.tastyreflect
 
-trait SettingsOpsImpl extends scala.tasty.reflect.SettingsOps with ReflectionCoreImpl {
+trait SettingsOpsImpl extends scala.tasty.reflect.SettingsOps with scala.tasty.reflect.ContextOps with ReflectionCoreImpl {
 
-  def settings(implicit ctx: Context): Settings = ctx.settings
+  def settings: Settings = rootContext.settings
 
   def SettingsDeco(settings: Settings): SettingsAPI = new SettingsAPI {
-    def color(implicit ctx: Context): Boolean = settings.color.value == "always"
+    def color: Boolean = settings.color.value == "always"
   }
 
 }

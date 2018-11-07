@@ -1,12 +1,10 @@
 package dotty.tools.dotc.tastyreflect
 
-import scala.tasty.util.{Printer, ExtractorsPrinter, SourceCodePrinter}
-
 trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect.ReflectionCore { reflect: ReflectionImpl =>
 
-  def showExtractors: Printer[reflect.type] = new ExtractorsPrinter[reflect.type](this)
+  def showExtractors: reflect.Printer = new reflect.ExtractorsPrinter
 
-  def showSourceCode: Printer[reflect.type] = new SourceCodePrinter[reflect.type](this)
+  def showSourceCode: reflect.Printer = new reflect.SourceCodePrinter
 
   /** Adds `show` as an extension method of a `Tree` */
   def TreeShowDeco(tree: Tree): ShowAPI = new ShowAPI {
