@@ -993,8 +993,8 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper for inline matches
-  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(cases, selType, pt.notApplied))
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, wideSelType, pt.notApplied))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
@@ -2478,8 +2478,8 @@ class Typer extends Namer
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&
                !ctx.isAfterTyper &&
-               !ctx.reporter.hasErrors &&
-               tree.tpe <:< pt) {
+               !ctx.reporter.hasErrors) {
+        tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.tpe <:< pt) {

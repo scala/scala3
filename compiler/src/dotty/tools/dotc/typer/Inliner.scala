@@ -665,16 +665,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     type MatchRedux = Option[(List[MemberDef], untpd.Tree)]
 
     /** Reduce an inline match
-     *   @param     mtch         the match tree
-     *   @param     scrutinee    the scrutinee expression, assumed to be pure
-     *   @param     scrutType    its fully defined type
-     *   @param     typer        The current inline typer
+     *   @param     mtch          the match tree
+     *   @param     scrutinee     the scrutinee expression, assumed to be pure, or
+     *                            EmptyTree for an implicit match
+     *   @param     scrutType     its fully defined type, or
+     *                            ImplicitScrutineeTypeRef for an implicit match
+     *   @param     typer         The current inline typer
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the RHS of the case.
      */
     def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: List[untpd.CaseDef], typer: Typer)(implicit ctx: Context): MatchRedux = {
 
-      val isImplicit = scrutType.isRef(defn.ImplicitScrutineeTypeSym)
+      val isImplicit = scrutinee.isEmpty
       val gadtSyms = typer.gadtSyms(scrutType)
 
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
@@ -682,8 +684,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
        */
       def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
 
-        def newBinding(sym: TermSymbol, rhs: Tree): Unit =
+      	/** Create a binding of a pattern bound variable with matching part of
+      	 *  scrutinee as RHS and type that corresponds to RHS.
+      	 */
+        def newBinding(sym: TermSymbol, rhs: Tree): Unit = {
+          sym.info = rhs.tpe.widenTermRefExpr
           bindingsBuf += ValDef(sym, constToLiteral(rhs))
+        }
 
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
           val evTyper = new Typer
@@ -771,7 +778,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                     yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
                   caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
                 }
-                else if (unapp.symbol.isInlineMethod) { // @@@ not sure that's needed / can be supported
+                else if (unapp.symbol.isInlineMethod) { // TODO: Adapt to typed setting
                   val app = untpd.Apply(untpd.TypedSplice(unapp), untpd.ref(scrut))
                   val app1 = typer.typedExpr(app)
                   val args = tupleArgs(app1)
@@ -864,7 +871,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           if (tree.isInline)
             errorTree(tree, em"""cannot reduce inline if
                                 | its condition   ${tree.cond}
-                                | is not a constant value.""")
+                                | is not a constant value""")
           else {
             val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
             super.typedIf(if1, pt)
@@ -874,10 +881,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
 
-    override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context) =
+    override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
-        super.typedMatchFinish(tree, sel, selType, cases, pt)
-      else
+        super.typedMatchFinish(tree, sel, wideSelType, cases, pt)
+      else {
+        val selType = if (sel.isEmpty) wideSelType else sel.tpe
         reduceInlineMatch(sel, selType, cases, this) match {
           case Some((caseBindings, rhs)) =>
             var rhsCtx = ctx.fresh.setNewScope
@@ -892,13 +900,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val msg =
               if (tree.selector.isEmpty)
                 em"""cannot reduce implicit match with
-                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}."""
+                   | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
                 em"""cannot reduce inline match with
                     | scrutinee:  $sel : ${selType}
-                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}."""
+                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
             errorTree(tree, msg)
         }
+      }
 
     override def newLikeThis: Typer = new InlineTyper
   }
@@ -907,6 +916,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  Inline def bindings that are used only once.
    */
   def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
+    // inlining.println(i"drop unused $bindings%, % in $tree")
     val refCount = newMutableSymbolMap[Int]
     val bindingOfSym = newMutableSymbolMap[MemberDef]
     val dealiased = new java.util.IdentityHashMap[Type, Type]()
