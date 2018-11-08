@@ -104,6 +104,7 @@ object ParsedComment {
     } yield new ParsedComment(comment)
   }
 
+  @scala.annotation.internal.sharable
   private val prefixRegex = """@param\s+\w+\s+""".r
 
   /** A mapping from tag name to `TagFormatter` */
