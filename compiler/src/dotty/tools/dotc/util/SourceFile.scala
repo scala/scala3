@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
 import java.util.regex.Pattern
 import java.io.IOException
-import Chars._
+import scala.tasty.util.Chars._
 import Positions._
 import scala.io.Codec
 import scala.annotation.internal.sharable

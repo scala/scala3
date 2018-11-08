@@ -32,8 +32,13 @@ object XmlQuote {
       tree.symbol.fullName == "scala.StringContext$.apply" ||
       tree.symbol.fullName == "scala.StringContext.<init>"
 
+    def stripTyped(t: Term) = t match {
+      case Typed(expr, _) => expr
+      case _ => t
+    }
+
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts: List[String] = receiver.toTasty.underlying match {
+    val parts: List[String] = stripTyped(receiver.toTasty.underlying) match {
       case Apply(conv, List(ctx1)) if isSCOpsConversion(conv) =>
         ctx1 match {
           case Apply(fun, List(Typed(Repeated(values), _))) if isStringContextApply(fun) =>

@@ -2,12 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Decorators._
-import Flags._
-import Types._
-import Contexts._
-import Symbols._
-import Constants._
+import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Positions._
@@ -20,12 +15,11 @@ import typer.Implicits.SearchFailureType
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
-import dotty.tools.dotc.typer.{ConstFold, Inliner}
 import dotty.tools.dotc.util.SourcePosition
 
 
-/** Inline calls to inline methods, evaluates macros, translates quoted terms (and types)
- *  to `unpickle` method calls and checks that the phase consistency principle (PCP) holds.
+/** Translates quoted terms and types to `unpickle` method calls.
+ *  Checks that the phase consistency principle (PCP) holds.
  *
  *
  *  Transforms top level quote
@@ -443,8 +437,7 @@ class Staging extends MacroTransformWithImplicits {
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
         val pos: SourcePosition = Decorators.sourcePos(enclosingInlineds.head.pos)(spliceCtx)
-        val splicedTree = InlineCalls.transform(splice.qualifier) // inline calls that where inlined at level -1
-        val evaluatedSplice = Splicer.splice(splicedTree, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
+        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
       else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
@@ -567,9 +560,6 @@ class Staging extends MacroTransformWithImplicits {
               enteredSyms = enteredSyms.tail
             }
         tree match {
-          case tree if isInlineCall(tree) && level == 0 && !ctx.reporter.hasErrors && !ctx.settings.YnoInline.value =>
-            val tree2 = super.transform(tree) // transform arguments before inlining (inline arguments and constant fold arguments)
-            transform(Inliner.inlineCall(tree2, tree.tpe.widen))
           case Quoted(quotedTree) =>
             quotation(quotedTree, tree)
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
@@ -620,7 +610,7 @@ class Staging extends MacroTransformWithImplicits {
             }
           case _ =>
             markDef(tree)
-            ConstFold(checkLevel(mapOverTree(enteredSyms)))
+            checkLevel(mapOverTree(enteredSyms))
         }
       }
 
@@ -638,6 +628,7 @@ class Staging extends MacroTransformWithImplicits {
         case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Some(qual)
         case Block(List(stat), Literal(Constant(()))) => unapply(stat)
         case Block(Nil, expr) => unapply(expr)
+        case Typed(expr, _) => unapply(expr)
         case _ => None
       }
     }
@@ -675,21 +666,5 @@ object Staging {
 
     /** Get the list of embedded trees */
     def getTrees: List[tpd.Tree] = trees.toList
-  }
-
-  /** β-reduce all calls to inline methods and preform constant folding */
-  object InlineCalls extends TreeMap {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree if isInlineCall(tree) && !ctx.reporter.hasErrors && !ctx.settings.YnoInline.value =>
-        val tree2 = super.transform(tree) // transform arguments before inlining (inline arguments and constant fold arguments)
-        transform(Inliner.inlineCall(tree2, tree.tpe.widen))
-      case _: MemberDef =>
-        val newTree = super.transform(tree)
-        if (newTree.symbol.exists)
-          newTree.symbol.defTree = newTree // set for inlined members
-        newTree
-      case _ =>
-        ConstFold(super.transform(tree))
-    }
   }
 }

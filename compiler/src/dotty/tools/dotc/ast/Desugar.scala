@@ -157,19 +157,31 @@ object desugar {
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
 
-  /** Expand context bounds to evidence params. E.g.,
+  /** 1. Expand context bounds to evidence params. E.g.,
    *
    *      def f[T >: L <: H : B](params)
    *  ==>
    *      def f[T >: L <: H](params)(implicit evidence$0: B[T])
    *
-   *  Expand default arguments to default getters. E.g,
+   *  2. Expand default arguments to default getters. E.g,
    *
    *      def f[T: B](x: Int = 1)(y: String = x + "m") = ...
    *  ==>
    *      def f[T](x: Int)(y: String)(implicit evidence$0: B[T]) = ...
    *      def f$default$1[T] = 1
    *      def f$default$2[T](x: Int) = x + "m"
+   *
+   *  3. Convert <: T to : T in specializing inline methods. E.g.
+   *
+   *      inline def f(x: Boolean) <: Any = if (x) 1 else ""
+   *  ==>
+   *      inline def f(x: Boolean): Any = if (x) 1 else ""
+   *
+   *  4. Upcast non-specializing inline methods. E.g.
+   *
+   *      inline def f(x: Boolean): Any = if (x) 1 else ""
+   *  ==>
+   *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
    */
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
@@ -188,7 +200,16 @@ object desugar {
       cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
 
-    val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+    var meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+
+    if (meth1.mods.is(Inline))
+      meth1.tpt match {
+        case TypeBoundsTree(_, tpt1) =>
+          meth1 = cpy.DefDef(meth1)(tpt = tpt1)
+        case tpt if !tpt.isEmpty && !meth1.rhs.isEmpty =>
+          meth1 = cpy.DefDef(meth1)(rhs = Typed(meth1.rhs, tpt))
+        case _ =>
+      }
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {

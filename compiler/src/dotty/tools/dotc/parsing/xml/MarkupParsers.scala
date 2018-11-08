@@ -6,7 +6,7 @@ package xml
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
-import util.Chars.SU
+import scala.tasty.util.Chars.SU
 import Parsers._
 import util.Positions._
 import core._

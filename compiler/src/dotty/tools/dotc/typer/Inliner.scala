@@ -301,13 +301,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
+      def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
       val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
         case typeMatchResult if typeMatchResult.exists => typeMatchResult
-        case _ => tpe.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner).widenIfUnstable
+        case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
       if (!tpe.cls.isStaticOwner)
         registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
+      for (param <- tpe.cls.typeParams)
+        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType
     if tpe.symbol.is(Param) && tpe.symbol.owner == inlinedMethod && !paramProxy.contains(tpe) =>
       paramProxy(tpe) = paramBinding(tpe.name)
@@ -455,18 +458,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       if (inlinedMethod == defn.Typelevel_error) issueError()
 
-      // Leave only a call trace consisting of
-      //  - a reference to the top-level class from which the call was inlined,
-      //  - the call's position
-      // in the call field of an Inlined node.
-      // The trace has enough info to completely reconstruct positions.
-      // The minimization is done for the following reason:
-      //   * To save space (calls might contain large inline arguments, which would otherwise be duplicated
-      val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      tpd.Inlined(callTrace, finalBindings, finalExpansion)
+      tpd.Inlined(call, finalBindings, finalExpansion)
     }
   }
 

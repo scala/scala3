@@ -9,7 +9,7 @@ import printing.SyntaxHighlighting
 import diagnostic.{ErrorMessageID, Message, MessageContainer}
 import diagnostic.messages._
 import util.SourcePosition
-import util.Chars.{ LF, CR, FF, SU }
+import scala.tasty.util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
 import scala.collection.mutable
