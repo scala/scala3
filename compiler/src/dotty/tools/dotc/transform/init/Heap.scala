@@ -302,7 +302,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
         val w = value.widen
         if (!w.isHot) return w
         else {
-          val value2 = if (sym.is(Flags.Method)) Value.defaultFunctionValue(sym) else HotValue
+          val value2 = if (sym.is(Flags.Method)) Value.defaultFunctionValue(sym, autoApply = false) else HotValue
           _syms = _syms.updated(sym, value2)
         }
       }
@@ -312,6 +312,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
       if (sym.isClass) {
         val w = value.widen
         if (!w.isHot) return w
+        else _syms = _syms.updated(sym, Value.defaultClassValue(sym, HotValue))
       }
     }
 

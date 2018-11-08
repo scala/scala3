@@ -45,9 +45,9 @@ object Value {
     Res()
   }
 
-  def defaultFunctionValue(methSym: Symbol)(implicit setting: Setting): Value = {
+  def defaultFunctionValue(methSym: Symbol, autoApply: Boolean = false)(implicit setting: Setting): Value = {
     assert(methSym.is(Flags.Method))
-    if (methSym.info.paramNamess.isEmpty) HotValue
+    if (methSym.info.paramNamess.isEmpty && autoApply) HotValue
     else new FunctionValue() {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
         val paramInfos = methSym.info.paramInfoss.flatten
@@ -585,8 +585,8 @@ class SliceValue(val id: Int) extends SingleValue {
       }
       else Res(value = value)
     }
-    else if (sym.is(Flags.Method) && !setting.isWidening) {
-      if (sym.info.isParameterless) {       // parameter-less call
+    else if (sym.is(Flags.Method)) {
+      if (sym.info.isParameterless && !setting.isWidening) {       // parameter-less call
         value(Nil, Nil)
       }
       else Res(value = value)
@@ -727,7 +727,6 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
       var acc: OpaqueValue = HotValue
       slices.foreach { case (k, v) =>
         val v2 = v.widen
-        if (v2.isHot) _slices = _slices.updated(k, v2)
         if (v2.isCold) return v2
         acc = acc.join(v2)
       }
