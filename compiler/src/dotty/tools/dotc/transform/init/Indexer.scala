@@ -364,9 +364,9 @@ trait Indexer { self: Analyzer =>
     tmpl.body.foreach {
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
-      case vdef: ValDef if vdef.symbol.is(Lazy)  =>
+      case vdef: ValDef if vdef.symbol.is(Lazy) && !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
-      case vdef: ValDef =>
+      case vdef: ValDef if !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkValDef(vdef)(setting.withPos(vdef.symbol.pos))
       case cdef: TypeDef if cdef.isClassDef =>
         checkClassDef(cdef)(setting.withPos(cdef.symbol.pos))

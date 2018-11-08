@@ -55,6 +55,8 @@ object Capture {
       tree match {
         case tree if tree.isType =>
           // ignore all type trees
+        case Trees.Typed(expr, tpt) if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) =>
+          // ignore @unchecked
         case tree: Ident if tree.tpe.isInstanceOf[TermRef] =>
           // The condition is required, see capture1.scala
           check(tree)

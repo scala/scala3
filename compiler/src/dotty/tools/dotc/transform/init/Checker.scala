@@ -50,34 +50,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if (!tree.isClassDef) return tree
 
     val cls = tree.symbol.asClass
-    val self = cls.thisType
-
-    // ignore init checking if `@unchecked`
     if (cls.hasAnnotation(defn.UncheckedAnnot)) return tree
-
-    def invalidImplementMsg(sym: Symbol) = {
-      val annot = if (sym.owner.is(Trait)) "cold" else "init"
-      s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
-          |Because the method is called during initialization."""
-        .stripMargin
-    }
-
-    def parents(cls: ClassSymbol) =
-      cls.baseClasses.tail.filter(_.is(AbstractOrTrait)).dropWhile(_.is(JavaDefined | Scala2x))
-
-    def check(curCls: ClassSymbol): Unit = {
-      for {
-        mbr <- calledSymsIn(curCls)
-        mbrd <- self.member(mbr.name).alternatives
-        tp = mbr.info.asSeenFrom(self, mbr.owner)
-        if mbrd.info.overrides(tp, matchLoosely = true) &&
-           !mbrd.symbol.isInit && !mbrd.symbol.isCold &
-           !mbrd.symbol.isCalledAbove(cls.asClass) &&
-           !mbrd.symbol.is(Deferred)
-      } ctx.warning(invalidImplementMsg(mbrd.symbol), cls.pos)
-    }
-    parents(cls).foreach(check)  // no need to check methods defined in current class
-
     checkInit(cls, tree)
 
     tree
@@ -112,5 +85,24 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val slice = obj.slices(cls).asSlice(setting)
 
     res.effects.foreach(_.report)
+
+    // check mixin implememntation of init methods
+    def invalidImplementMsg(sym: Symbol, cls: Symbol) = {
+      val annot = if (sym.owner.is(Trait)) "icy" else "init"
+      s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
+          |Because the method is called in ${cls.show} during initialization."""
+        .stripMargin
+    }
+
+    def check(curCls: ClassSymbol): Unit = {
+      calledSymsIn(curCls).foreach { sym =>
+        val res = obj.select(sym)(setting)
+        if (res.hasErrors) {
+          val target = sym.matchingMember(tp)
+          ctx.warning(invalidImplementMsg(target, sym.owner), cls.pos)
+        }
+      }
+    }
+    cls.baseClasses.tail.foreach(check)  // no need to check methods defined in current class
   }
 }
