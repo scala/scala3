@@ -720,7 +720,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 foldOver(syms1, t)
               }
             }
-            val boundVars = getBoundVars(Nil, tpt)
+            var boundVars = getBoundVars(Nil, tpt)
+            // UnApply nodes with pattern bound variables translate to something like this
+            //   UnApply[t @ t](pats)(implicits): T[t]
+            // Need to traverse any binds in type arguments of the UnAppyl to get the set of
+            // all instantiable type variables. Test case is pos/inline-caseclass.scala.
+            pat1 match {
+              case UnApply(TypeApply(_, tpts), _, _) =>
+                for (tpt <- tpts) boundVars = getBoundVars(boundVars, tpt)
+              case _ =>
+            }
             for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
             scrut <:< tpt.tpe && {
               for (bv <- boundVars) {
