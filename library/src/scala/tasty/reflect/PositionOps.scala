@@ -1,6 +1,6 @@
 package scala.tasty.reflect
 
-trait PositionOps extends ReflectionCore {
+trait PositionOps extends Core {
 
   trait PositionAPI {
     def start: Int

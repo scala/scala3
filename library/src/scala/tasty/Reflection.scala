@@ -3,7 +3,7 @@ package scala.tasty
 import scala.tasty.reflect._
 
 abstract class Reflection
-    extends ReflectionCore
+    extends Core
     with CaseDefOps
     with ConstantOps
     with ContextOps

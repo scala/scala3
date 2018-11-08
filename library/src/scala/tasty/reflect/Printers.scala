@@ -7,7 +7,7 @@ import scala.tasty.util.SyntaxHighlightUtils._
 import scala.tasty.util.Chars
 
 trait Printers
-  extends ReflectionCore
+  extends Core
   with CaseDefOps
   with ConstantOps
   with IdOps

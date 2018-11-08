@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait ImportSelectorOps extends ReflectionCore {
+trait ImportSelectorOps extends Core {
 
   val SimpleSelector: SimpleSelectorExtractor
   abstract class SimpleSelectorExtractor {

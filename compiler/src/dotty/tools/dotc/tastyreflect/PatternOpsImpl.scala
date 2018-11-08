@@ -3,7 +3,7 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Decorators._
 
-trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with ReflectionCoreImpl {
+trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
 
   // ----- Patterns -------------------------------------------------
 

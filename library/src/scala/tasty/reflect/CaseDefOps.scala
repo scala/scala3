@@ -2,7 +2,7 @@ package scala.tasty
 package reflect
 
 /** Tasty reflect case definition */
-trait CaseDefOps extends ReflectionCore {
+trait CaseDefOps extends Core {
 
   trait CaseDefAPI {
     def pattern(implicit ctx: Context): Pattern

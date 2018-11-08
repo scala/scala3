@@ -3,7 +3,7 @@ package reflect
 
 /** Tasty reflect case definition */
 trait TreeUtils
-    extends ReflectionCore
+    extends Core
     with CaseDefOps
     with PatternOps
     with SymbolOps

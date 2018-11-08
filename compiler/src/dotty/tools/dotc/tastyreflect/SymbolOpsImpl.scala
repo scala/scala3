@@ -4,7 +4,7 @@ package tastyreflect
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols._
 
-trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with ReflectionCoreImpl {
+trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def SymbolDeco(symbol: Symbol): SymbolAPI = new SymbolAPI {
 

@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait TypeOrBoundsOps extends ReflectionCore {
+trait TypeOrBoundsOps extends Core {
 
   // ----- Types ----------------------------------------------------
 

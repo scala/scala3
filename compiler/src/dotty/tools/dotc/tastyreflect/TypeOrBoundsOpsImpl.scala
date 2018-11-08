@@ -2,7 +2,7 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core.{Names, Types}
 
-trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with ReflectionCoreImpl {
+trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreImpl {
 
   // ===== Types ====================================================
 

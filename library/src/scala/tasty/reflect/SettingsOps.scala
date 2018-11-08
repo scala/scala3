@@ -1,6 +1,6 @@
 package scala.tasty.reflect
 
-trait SettingsOps extends ReflectionCore {
+trait SettingsOps extends Core {
 
   /** Compiler settings */
   def settings: Settings

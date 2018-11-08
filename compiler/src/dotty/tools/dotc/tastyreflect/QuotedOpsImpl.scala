@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 
-trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with ReflectionCoreImpl {
+trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
 
   def QuotedExprDeco[T](x: scala.quoted.Expr[T]): QuotedExprAPI = new QuotedExprAPI {
     def reflect(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)

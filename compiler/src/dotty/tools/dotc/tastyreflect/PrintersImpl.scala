@@ -1,6 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect.ReflectionCore { reflect: ReflectionImpl =>
+trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect.Core { reflect: ReflectionImpl =>
 
   def showExtractors: reflect.Printer = new reflect.ExtractorsPrinter
 

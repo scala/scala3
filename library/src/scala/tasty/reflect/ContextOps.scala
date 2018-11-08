@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait ContextOps extends ReflectionCore {
+trait ContextOps extends Core {
 
   trait ContextAPI {
     def owner: Symbol

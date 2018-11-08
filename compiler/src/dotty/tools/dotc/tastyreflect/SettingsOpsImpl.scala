@@ -1,6 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-trait SettingsOpsImpl extends scala.tasty.reflect.SettingsOps with scala.tasty.reflect.ContextOps with ReflectionCoreImpl {
+trait SettingsOpsImpl extends scala.tasty.reflect.SettingsOps with scala.tasty.reflect.ContextOps with CoreImpl {
 
   def settings: Settings = rootContext.settings
 

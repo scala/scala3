@@ -4,7 +4,7 @@ import dotty.tools.dotc.core._
 
 class ReflectionImpl(val rootContext: Contexts.Context)
     extends scala.tasty.Reflection
-    with ReflectionCoreImpl
+    with CoreImpl
     with CaseDefOpsImpl
     with ConstantOpsImpl
     with ContextOpsImpl
