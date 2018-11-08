@@ -32,7 +32,7 @@ object Value {
             case tp: NamedType => tp.symbol.name.show
             case tp => tp.show
           }.mkString("\nThe value captures ", ",", ".")
-        case _ => ""
+        case _ => v.show(setting.showSetting)
       })
     }
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
@@ -225,6 +225,8 @@ abstract sealed class OpaqueValue extends SingleValue {
 
   def join(that: OpaqueValue): OpaqueValue = (this, that) match {
     case (_, IcyValue) | (IcyValue, _) => IcyValue
+    case (v, HotValue) => v
+    case (HotValue, v) => v
     case (ColdValue, _) | (_, ColdValue) => ColdValue
     case (WarmValue(deps1, unknown1), WarmValue(deps2, unknown2)) =>
       if (unknown1 || unknown2) WarmValue(Set.empty, unknownDeps = true)
@@ -404,9 +406,16 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
 
   override def widen(implicit setting: Setting) =
     if (unknownDeps) this else {
-      val notHot = deps.filterNot(setting.widen(_).isHot)
-      if (notHot.isEmpty) HotValue
-      else WarmValue(notHot.toSet, unknownDeps = false)
+      val zero: Set[Type] = Set.empty
+      val deps2 = deps.foldLeft(zero) { case (deps, dep) =>
+        setting.widen(dep) match {
+          case HotValue => deps
+          case WarmValue(deps2, false) => deps2 ++ deps
+          case _ => deps + dep
+        }
+      }
+      if (deps2.isEmpty) HotValue
+      else WarmValue(deps2, unknownDeps = false)
     }
 
   def show(implicit setting: ShowSetting): String =
