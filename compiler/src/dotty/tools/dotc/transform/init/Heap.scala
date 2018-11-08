@@ -301,6 +301,10 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
       if (sym.is(Flags.Method) || sym.is(Flags.Lazy)) {
         val w = value.widen
         if (!w.isHot) return w
+        else {
+          val value2 = if (sym.is(Flags.Method)) Value.defaultFunctionValue(sym) else HotValue
+          _syms = _syms.updated(sym, value2)
+        }
       }
     }
 

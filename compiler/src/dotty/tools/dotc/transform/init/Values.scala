@@ -724,9 +724,14 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
   def widen(implicit setting: Setting): OpaqueValue =
     if (open) ColdValue
     else setting.widenFor(this) {
-      slices.values.foldLeft(HotValue: OpaqueValue) { (acc, v) =>
-        v.widen.join(acc)
+      var acc: OpaqueValue = HotValue
+      slices.foreach { case (k, v) =>
+        val v2 = v.widen
+        if (v2.isHot) _slices = _slices.updated(k, v2)
+        if (v2.isCold) return v2
+        acc = acc.join(v2)
       }
+      acc
     }
 
   def show(implicit setting: ShowSetting): String = {

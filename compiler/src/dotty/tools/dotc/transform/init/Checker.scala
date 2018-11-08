@@ -82,7 +82,6 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val values = constr.vparamss.flatten.map { param => param.tpe.widen.value }
     val poss = constr.vparamss.flatten.map(_.pos)
     val res = classValue.init(constr.symbol, values, poss, obj)(setting)
-    val slice = obj.slices(cls).asSlice(setting)
 
     res.effects.foreach(_.report)
 
