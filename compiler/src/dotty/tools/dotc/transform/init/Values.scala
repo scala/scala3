@@ -24,14 +24,22 @@ import collection.mutable
 object Value {
 
   def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position, onlyHot: Boolean = false)(implicit setting: Setting): Res = {
+    def display(tp: Type): String = tp match {
+      case tp: NamedType => tp.symbol.name.show
+      case tp => tp.show
+    }
     def message(v: OpaqueValue) = {
-      s"Unsafe leak of value under initialization to ${sym.show}" ++
+      s"Unsafe leak of value under initialization to ${sym.show}" +
       (v match {
-        case WarmValue(deps, _) if deps.nonEmpty =>
-          deps.map {
-            case tp: NamedType => tp.symbol.name.show
-            case tp => tp.show
-          }.mkString("\nThe value captures ", ",", ".")
+        case w @ WarmValue(deps, _) if deps.nonEmpty =>
+          deps.map(display).mkString("\nThe value captures ", ", ", ".") +
+          {
+            w.widen(setting.copy(propagateDeps = true)) match {
+              case w @ WarmValue(deps2, _) if deps2 != deps =>
+                deps2.map(display).mkString("\nIt transitively captures ", ", ", ".")
+              case _ => ""
+            }
+          }
         case _ => v.show(setting.showSetting)
       })
     }
@@ -405,18 +413,26 @@ case class WarmValue(val deps: Set[Type] = Set.empty, unknownDeps: Boolean = tru
   def init(constr: Symbol, values: List[Value], argPos: List[Position], obj: ObjectValue)(implicit setting: Setting): Res = ???
 
   override def widen(implicit setting: Setting) =
-    if (unknownDeps) this else {
-      val zero: Set[Type] = Set.empty
-      val deps2 = deps.foldLeft(zero) { case (deps, dep) =>
-        setting.widen(dep) match {
-          case HotValue => deps
-          case WarmValue(deps2, false) => deps2 ++ deps
-          case _ => deps + dep
-        }
-      }
-      if (deps2.isEmpty) HotValue
-      else WarmValue(deps2, unknownDeps = false)
+    if (unknownDeps) this
+    else if (setting.propagateDeps) propagate
+    else {
+      val notHot = deps.filterNot(setting.widen(_).isHot)
+      if (notHot.isEmpty) HotValue
+      else WarmValue(notHot.toSet, unknownDeps = false)
     }
+
+  def propagate(implicit setting: Setting): OpaqueValue = {
+    val zero: Set[Type] = Set.empty
+    val deps2 = deps.foldLeft(zero) { case (deps, dep) =>
+      setting.widen(dep) match {
+        case HotValue => deps
+        case WarmValue(deps2, false) => deps2 ++ deps
+        case _ => deps + dep
+      }
+    }
+    if (deps2.isEmpty) HotValue
+    else WarmValue(deps2, unknownDeps = false)
+  }
 
   def show(implicit setting: ShowSetting): String =
     if (unknownDeps) "Warm(unkown)"
@@ -685,7 +701,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
 
     if (open && !isStaticDispatch && !target.isClass && !target.isEffectivelyFinal) {
       val res =
-        if (target.is(Flags.Method)) Res(value = Value.defaultFunctionValue(target))
+        if (target.is(Flags.Method)) Res(value = Value.defaultFunctionValue(target, autoApply = !setting.isWidening))
         else Res()
 
       // annotation on current class even though it's called above

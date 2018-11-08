@@ -18,6 +18,7 @@ case class Setting(
   ctx: Context,
   analyzer: Analyzer,
   isWidening: Boolean = false,
+  propagateDeps: Boolean = false,
   var wideningValues: SimpleIdentitySet[Value] = SimpleIdentitySet.empty) {
     def widening: Setting = copy(isWidening = true)
     def heap: Heap = env.heap
@@ -48,4 +49,6 @@ case class Setting(
     }
 
     def showSetting = ShowSetting(heap, ctx)
+
+    override def toString = s"Setting(isWidening = $isWidening, propagateDeps = $propagateDeps)"
   }

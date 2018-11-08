@@ -32,6 +32,7 @@ class Analyzer extends Indexer { analyzer =>
   def trace(msg: => String)(body: => Res)(implicit setting: Setting) = {
     indentedDebug(s"==> ${pad(msg)}?")
     indentedDebug("heap = " + setting.heap.show)
+    indentedDebug(setting.toString)
     indentedDebug(setting.env.show(setting.showSetting))
     depth += 1
     val res = body
