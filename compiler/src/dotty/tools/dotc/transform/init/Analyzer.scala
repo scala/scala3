@@ -252,8 +252,9 @@ class Analyzer extends Indexer { analyzer =>
   }
 
   def checkNew(tree: Tree, tref: TypeRef, init: Symbol, argss: List[List[Tree]])(implicit setting: Setting): Res = {
-    val obj = new ObjectValue(tree.tpe, open = false, inferInit = false)
-    val res = checkInit(obj.tp, init, argss, obj)
+    val obj = new ObjectValue(tree.tpe, open = false)
+    val res = checkInit(obj.tp, init, argss, obj)(setting.inferring)
+    obj.cooking = false
 
     if (res.hasErrors) {
       // more friendly message

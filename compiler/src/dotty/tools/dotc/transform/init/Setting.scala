@@ -17,10 +17,12 @@ case class Setting(
   pos: Position,
   ctx: Context,
   analyzer: Analyzer,
-  isWidening: Boolean = false,
   propagateDeps: Boolean = false,
+  inferInit: Boolean = false,
+  autoApply: Boolean = true,
   var wideningValues: SimpleIdentitySet[Value] = SimpleIdentitySet.empty) {
-    def widening: Setting = copy(isWidening = true)
+    def widening: Setting = copy(autoApply = false, inferInit = false)
+    def inferring: Setting = copy(inferInit = true)
     def heap: Heap = env.heap
     def withPos(position: Position) = copy(pos = position)
     def withEnv(ienv: Env) = copy(env = ienv)
@@ -50,5 +52,5 @@ case class Setting(
 
     def showSetting = ShowSetting(heap, ctx)
 
-    override def toString = s"Setting(isWidening = $isWidening, propagateDeps = $propagateDeps)"
+    override def toString = s"Setting(autoApply = $autoApply, inferInit = $inferInit, propagateDeps = $propagateDeps)"
   }

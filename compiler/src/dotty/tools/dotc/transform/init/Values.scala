@@ -53,9 +53,9 @@ object Value {
     Res()
   }
 
-  def defaultFunctionValue(methSym: Symbol, autoApply: Boolean = false)(implicit setting: Setting): Value = {
+  def defaultFunctionValue(methSym: Symbol)(implicit setting: Setting): Value = {
     assert(methSym.is(Flags.Method))
-    if (methSym.info.paramNamess.isEmpty && autoApply) HotValue
+    if (methSym.info.paramNamess.isEmpty && setting.autoApply) HotValue
     else new FunctionValue() {
       def apply(values: Int => Value, argPos: Int => Position)(implicit setting: Setting): Res = {
         val paramInfos = methSym.info.paramInfoss.flatten
@@ -601,7 +601,7 @@ class SliceValue(val id: Int) extends SingleValue {
 
     if (sym.is(Flags.Lazy)) {
       if (value.isInstanceOf[LazyValue]) {
-        if (setting.isWidening)  Res(value = value.widen(setting.widening))
+        if (!setting.autoApply)  Res(value = value.widen(setting.widening))
         else {
           val res = value(Nil, Nil)
           slice(sym) = res.value
@@ -611,7 +611,7 @@ class SliceValue(val id: Int) extends SingleValue {
       else Res(value = value)
     }
     else if (sym.is(Flags.Method)) {
-      if (sym.info.isParameterless && !setting.isWidening) {       // parameter-less call
+      if (sym.info.isParameterless && setting.autoApply) {       // parameter-less call
         value(Nil, Nil)
       }
       else Res(value = value)
@@ -648,7 +648,7 @@ class SliceValue(val id: Int) extends SingleValue {
   def show(implicit setting: ShowSetting): String = setting.heap(id).asSlice.show(setting)
 }
 
-class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolean = true) extends SingleValue with Cloneable {
+class ObjectValue(val tp: Type, val open: Boolean = false, var cooking: Boolean = true) extends SingleValue with Cloneable {
   /** slices of the object */
   private var _slices: Map[ClassSymbol, Value] = Map()
   def slices: Map[ClassSymbol, Value] = _slices
@@ -701,11 +701,11 @@ class ObjectValue(val tp: Type, val open: Boolean = false, val inferInit: Boolea
 
     if (open && !isStaticDispatch && !target.isClass && !target.isEffectivelyFinal) {
       val res =
-        if (target.is(Flags.Method)) Res(value = Value.defaultFunctionValue(target, autoApply = !setting.isWidening))
+        if (target.is(Flags.Method)) Res(value = Value.defaultFunctionValue(target))
         else Res()
 
       // annotation on current class even though it's called above
-      if (target.isEffectiveInit || inferInit && !setting.isWidening) {
+      if (target.isEffectiveInit || setting.inferInit && cooking) {
         if (!target.is(Flags.Deferred)) {
           val res2 = receiver.select(target)
           if (target.is(Flags.Method)) res.value = Value.dynamicMethodValue(target, res2.value)

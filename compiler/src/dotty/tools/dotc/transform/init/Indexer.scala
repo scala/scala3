@@ -189,7 +189,7 @@ trait Indexer { self: Analyzer =>
       else {
         val cls = enclosingCls.asClass
         val open = !cls.is(Final) && !cls.isAnonymousClass
-        val obj = new ObjectValue(cls.thisType, open = open, inferInit = false)
+        val obj = new ObjectValue(cls.thisType, open = open, cooking = false)
         obj.add(cls, outerValue)
         setting.env.add(cls, obj)
         recur(cls, outerValue)
@@ -227,7 +227,7 @@ trait Indexer { self: Analyzer =>
       res ++= checkStats(tmpl.body)(setting2).effects
 
       // init check: need to recheck for invariants @init, @cold to avoid verbose annotation
-      initCheck(cls, obj, tmpl)(setting2.widening)
+      initCheck(cls, obj, tmpl)(setting2)
 
       res
     }
@@ -238,7 +238,7 @@ trait Indexer { self: Analyzer =>
       val setting2 = setting.freshHeap
       val obj2 = obj.clone
       val slice = indexSlice(cls, tmpl, obj2, i => if (sym.isIcy) NoValue else sym.value)(setting2)
-      setting2.withEnv(slice.innerEnv).withPos(sym.pos).widening
+      setting2.withEnv(slice.innerEnv).withPos(sym.pos).copy(inferInit = false, autoApply = true)
     }
 
     def checkMethod(ddef: tpd.DefDef)(implicit setting: Setting): Unit = {
@@ -252,7 +252,7 @@ trait Indexer { self: Analyzer =>
         setting.ctx.warning("Calling the method during initialization causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (!res.value.widen.isHot) {
+      else if (!res.value.widen(setting.widening).isHot) {
         setting.ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
       }
     }
@@ -269,7 +269,7 @@ trait Indexer { self: Analyzer =>
         res.effects.foreach(_.report)
       }
       else {
-        val value = res.value.widen
+        val value = res.value.widen(setting.widening)
         if (!value.isHot) setting.ctx.warning("Cold lazy value must return a full value", sym.pos)
       }
     }
@@ -294,12 +294,13 @@ trait Indexer { self: Analyzer =>
       if (!sym.isEffectiveInit && !sym.isCalledIn(cls)) return
 
       var res = obj.select(sym, isStaticDispatch = true)
-      res = res.value.apply(i => HotValue, i => NoPosition)
+      if (!sym.info.isParameterless)
+        res = res.value.apply(i => HotValue, i => NoPosition)
       if (res.hasErrors) {
         setting.ctx.warning(s"Calling the init $sym causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
-      else if (!res.value.widen(setting).isHot) {
+      else if (!res.value.widen(setting.widening).isHot) {
         setting.ctx.warning("A dynamic init method must return a full value", sym.pos)
       }
     }
@@ -313,7 +314,7 @@ trait Indexer { self: Analyzer =>
         res.effects.foreach(_.report)
       }
       else if (!res.hasErrors) {
-        val value = res.value.widen(setting)
+        val value = res.value.widen
         if (!value.isHot && sym.isEffectiveInit) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
         else if (value.isHot && !sym.isEffectiveInit) sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
       }
@@ -326,7 +327,7 @@ trait Indexer { self: Analyzer =>
       val sym = vdef.symbol
       if (sym.is(Flags.PrivateOrLocal)) return
 
-      val actual = obj.select(sym, isStaticDispatch = true).value.widen(setting)
+      val actual = obj.select(sym, isStaticDispatch = true).value.widen
       setting.analyzer.indentedDebug(s"${sym.show} widens to ${actual.show(setting.showSetting)}")
 
       if (actual.isCold) sym.annotate(defn.ColdAnnotType)
@@ -365,11 +366,11 @@ trait Indexer { self: Analyzer =>
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
       case vdef: ValDef if vdef.symbol.is(Lazy) && !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkLazy(vdef)(setting.withPos(vdef.symbol.pos))
+        checkLazy(vdef)(setting.withPos(vdef.symbol.pos).widening)
       case vdef: ValDef if !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkValDef(vdef)(setting.withPos(vdef.symbol.pos))
+        checkValDef(vdef)(setting.withPos(vdef.symbol.pos).widening)
       case cdef: TypeDef if cdef.isClassDef =>
-        checkClassDef(cdef)(setting.withPos(cdef.symbol.pos))
+        checkClassDef(cdef)(setting.withPos(cdef.symbol.pos).widening)
       case _ =>
     }
   }
