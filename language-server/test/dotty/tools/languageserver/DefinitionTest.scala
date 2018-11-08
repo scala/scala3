@@ -219,4 +219,34 @@ class DefinitionTest {
     ).definition(m3 to m4, List(m1 to m2))
   }
 
+  @Test def definitionAnonClassTrait: Unit = {
+    code"""trait ${m1}Foo${m2} { val x = 0 }
+           class C {
+             def foo = new ${m3}Foo${m4} {}
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+  }
+
+  @Test def definitionAnonClassClass: Unit = {
+    code"""abstract class ${m1}Foo${m2} { val x = 0 }
+           class C {
+             def foo = new ${m3}Foo${m4} {}
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+  }
+
+  @Test def definitionAnonClassClassTrait: Unit = {
+    code"""abstract class ${m1}Foo${m2}
+           trait ${m3}Bar${m4}
+           class C {
+             def foo = new ${m5}Foo${m6} with ${m7}Bar${m8} {}
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m3 to m4))
+      .definition(m5 to m6, List(m1 to m2))
+      .definition(m7 to m8, List(m3 to m4))
+  }
+
 }
