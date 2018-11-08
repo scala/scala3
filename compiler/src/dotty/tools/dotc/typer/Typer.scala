@@ -1675,7 +1675,7 @@ class Typer extends Namer
   /** Ensure that first parent tree refers to a real class. */
   def ensureFirstTreeIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos) :: parents
+    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos.focus) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a

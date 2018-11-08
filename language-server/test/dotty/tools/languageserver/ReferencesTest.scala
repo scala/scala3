@@ -48,4 +48,15 @@ class ReferencesTest {
       .references(m7 to m8, List(m7 to m8), withDecl = false)
   }
 
+  @Test def anonClassTrait: Unit = {
+    code"""trait ${m1}Foo${m2}
+           object O {
+             val foo = new ${m3}Foo${m4} {}
+           }""".withSource
+      .references(m1 to m2, List(m1 to m2, m3 to m4), withDecl = true)
+      .references(m1 to m2, List(m3 to m4), withDecl = false)
+      .references(m3 to m4, List(m1 to m2, m3 to m4), withDecl = true)
+      .references(m3 to m4, List(m3 to m4), withDecl = false)
+  }
+
 }
