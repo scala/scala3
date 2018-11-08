@@ -47,17 +47,19 @@ consider three distinct cases:
   (v: Selectable).selectDynamic("a").asInstanceOf[U]
   ```
 
-- If `U` is a method type `(T1, ..., Tn) => R` with at most 7
-  parameters and it is not a dependent method type, we map `v.a` to
+- If `U` is a method type `(T11, ..., T1n)...(TN1, ..., TNn) => R` and it is not
+a dependent method type, we map `v.a(a11, ..., a1n)...(aN1, aNn)` to
   the  equivalent of:
   ```scala
   v.a(arg1, ..., argn)
      --->
-  (v: Selectable).applyDynamic("a", CT1, ..., CTn)(arg1, ..., argn).asInstanceOf[R]
+  (v: Selectable).applyDynamic("a", CT11, ..., CTn, ..., CTN1, ... CTNn)
+                              (a11, ..., a1n, ..., aN1, ..., aNn)
+                 .asInstanceOf[R]
   ```
 
 - If `U` is neither a value nor a method type, or a dependent method
-  type, or has more than 7 parameters, an error is emitted.
+  type, an error is emitted.
 
 We make sure that `r` conforms to type `Selectable`, potentially by
 introducing an implicit conversion, and then call either

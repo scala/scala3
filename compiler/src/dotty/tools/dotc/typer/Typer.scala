@@ -2647,9 +2647,8 @@ class Typer extends Namer
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
           }
         case wtp =>
-          if (isStructuralTermApply(tree))
-            readaptSimplified(handleStructural(tree))
-          else if (isStructuralTermSelect(tree) && tree.tpe.widen.isValueType)
+          val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
+          if (isStructuralCall)
             readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>

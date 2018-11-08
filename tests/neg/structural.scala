@@ -20,4 +20,20 @@ object Test3 {
 
   type G = { def foo(x: Int, y: Int): Unit }
   def j(x: G) = x.foo(???) // error: missing argument
+
+  class H { type S = String; type I }
+  class I extends H { type I = Int }
+  type Dep = {
+    def fun1(x: H, y: x.S): Int
+    def fun2(x: H, y: x.I): Int
+    def fun3(y: H): y.S
+    def fun4(y: H): y.I
+  }
+  def k(x: Dep) = {
+    val y = new I
+    x.fun1(y, "Hello")
+    x.fun2(y, 1) // error
+    x.fun3(y)
+    x.fun4(y) // error
+  }
 }
