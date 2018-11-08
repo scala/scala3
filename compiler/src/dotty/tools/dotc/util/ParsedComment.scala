@@ -1,10 +1,9 @@
-package dotty.tools.languageserver
+package dotty.tools.dotc.util
 
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.util.CommentParsing
 
 import scala.collection.immutable.ListMap
 import scala.util.matching.Regex
@@ -59,7 +58,7 @@ class ParsedComment(val comment: Comment) {
     for {
       (tag, formatter) <- ParsedComment.knownTags
       boundss <- groupedSections.get(tag)
-      texts = boundss.map { (start, end) => clean(content.slice(start, end)) }
+      texts = boundss.map { case (start, end) => clean(content.slice(start, end)) }
       formatted <- formatter(texts)
     } {
       buf.append(formatted)
@@ -75,7 +74,7 @@ class ParsedComment(val comment: Comment) {
    * @param name The parameter name whose documentation to extract.
    * @return The formatted documentation corresponding to `name`.
    */
-  def paramDoc(name: TermName): Option[String] = paramDocs.get(name.toString).map { (start, end) =>
+  def paramDoc(name: TermName): Option[String] = paramDocs.get(name.toString).map { case (start, end) =>
     val rawContent = content.slice(start, end)
     val docContent = ParsedComment.prefixRegex.replaceFirstIn(rawContent, "")
     clean(docContent)
