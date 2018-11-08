@@ -179,10 +179,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context): Unit =
-      if (
-        tree.symbol.maybeOwner.isTerm &&
-        !(tree.symbol.is(Label | Method) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
-      )
+      if (tree.symbol.maybeOwner.isTerm)
         assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.pos.line)
 
     /** assert Java classes are not used as objects */
@@ -356,8 +353,7 @@ class TreeChecker extends Phase with SymTransformer {
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
-        ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner) ||
-        ctx.phase.labelsReordered && symOwner.isWeakOwner && ownerMatches(symOwner.owner, ctxOwner)
+        ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
@@ -445,10 +441,8 @@ class TreeChecker extends Phase with SymTransformer {
       val tree1 = super.typedReturn(tree)
       val from = tree1.from
       val fromSym = from.symbol
-      if (fromSym.is(Label)) {
-        assert(!fromSym.is(Method), i"return from a label-def $fromSym at $tree")
+      if (fromSym.is(Label))
         assertDefined(from)
-      }
       tree1
     }
 

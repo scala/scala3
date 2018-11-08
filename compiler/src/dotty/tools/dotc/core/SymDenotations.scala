@@ -596,12 +596,11 @@ object SymDenotations {
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
-     *  - not a label
      *  - not an anonymous function
      *  - not a companion method
      */
     final def isRealMethod(implicit ctx: Context): Boolean =
-      this.is(Method, butNot = AccessorOrLabel) &&
+      this.is(Method, butNot = Accessor) &&
         !isAnonymousFunction &&
         !isCompanionMethod
 
@@ -765,12 +764,11 @@ object SymDenotations {
 
     /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
      *   - package objects
-     *   - labels
      *   - non-lazy valdefs
      */
     def isWeakOwner(implicit ctx: Context): Boolean =
       isPackageObject ||
-      isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
+      isTerm && !is(MethodOrLazy) && !isLocalDummy
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
@@ -880,7 +878,7 @@ object SymDenotations {
     final def skipWeakOwner(implicit ctx: Context): Symbol =
       if (isWeakOwner) owner.skipWeakOwner else symbol
 
-    /** The owner, skipping package objects, labels and non-lazy valdefs. */
+    /** The owner, skipping package objects and non-lazy valdefs. */
     final def effectiveOwner(implicit ctx: Context): Symbol = owner.skipWeakOwner
 
     /** The class containing this denotation.
@@ -925,7 +923,7 @@ object SymDenotations {
      *  A local dummy owner is mapped to the primary constructor of the class.
      */
     final def enclosingMethod(implicit ctx: Context): Symbol =
-      if (this is (Method, butNot = Label)) symbol
+      if (this.is(Method)) symbol
       else if (this.isClass) primaryConstructor
       else if (this.exists) owner.enclosingMethod
       else NoSymbol

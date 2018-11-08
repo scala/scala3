@@ -319,16 +319,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Block(cdef :: Nil, New(cls.typeRef, Nil))
   }
 
-  // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
-  def WhileDo(owner: Symbol, cond: Tree, body: List[Tree])(implicit ctx: Context): Tree = {
-    val sym = ctx.newSymbol(owner, nme.WHILE_PREFIX, Flags.Label | Flags.Synthetic,
-      MethodType(Nil, defn.UnitType), coord = cond.pos)
-
-    val call = Apply(ref(sym), Nil)
-    val rhs = If(cond, Block(body, call), unitLiteral)
-    Block(List(DefDef(sym, rhs)), call)
-  }
-
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
     ta.assignType(untpd.Import(expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
 

@@ -23,7 +23,6 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.reflect.FlagSet {
   def isSynthetic: Boolean = flags.is(Synthetic)
   def isArtifact: Boolean = flags.is(Artifact)
   def isMutable: Boolean = flags.is(Mutable)
-  def isLabel: Boolean = flags.is(Label)
   def isFieldAccessor: Boolean = flags.is(Accessor)
   def isCaseAcessor: Boolean = flags.is(CaseAccessor)
   def isCovariant: Boolean = flags.is(Covariant)
@@ -54,7 +53,6 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.reflect.FlagSet {
     if (isSynthetic) flags += "synthetic"
     if (isArtifact) flags += "artifact"
     if (isMutable) flags += "mutable"
-    if (isLabel) flags += "label"
     if (isFieldAccessor) flags += "accessor"
     if (isCaseAcessor) flags += "caseAccessor"
     if (isCovariant) flags += "covariant"

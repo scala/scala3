@@ -613,7 +613,6 @@ class TreeUnpickler(reader: TastyReader,
           case SYNTHETIC => addFlag(Synthetic)
           case ARTIFACT => addFlag(Artifact)
           case MUTABLE => addFlag(Mutable)
-          case LABEL => addFlag(Label)
           case FIELDaccessor => addFlag(Accessor)
           case CASEaccessor => addFlag(CaseAccessor)
           case COVARIANT => addFlag(Covariant)

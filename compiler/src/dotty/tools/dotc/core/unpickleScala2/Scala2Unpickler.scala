@@ -1034,6 +1034,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TypeDef(symbol.asType)
 
       case LABELtree =>
+        ???
         setSymName()
         val rhs = readTreeRef()
         val params = until(end, () => readIdentRef())

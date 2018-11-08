@@ -370,8 +370,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val cases = Match(stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))),
       List(compute, waitFirst, waitSecond, computed, default)) //todo: annotate with @switch
 
-    val whileBody = List(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset)), cases)
-    val cycle = WhileDo(methodSymbol, whileCond, whileBody)
+    val whileBody = Block(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset)) :: Nil, cases)
+    val cycle = WhileDo(whileCond, whileBody)
     val setNullables = nullOut(nullables)
     DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: setNullables, ref(resultSymbol)))
   }

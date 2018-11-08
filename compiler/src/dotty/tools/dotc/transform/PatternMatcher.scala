@@ -227,8 +227,8 @@ object PatternMatcher {
          * val x3: Int = x1._2
          * if (x2 == 1) {
          *   if (x3 == 2) someCode
-         *   else label$1()
-         * } else label$1()
+         *   else ()
+         * } else ()
          * ```
          */
         def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
@@ -799,15 +799,15 @@ object PatternMatcher {
            *  val x2: Int = ...
            *  if (x1 == y1) {
            *    if (x2 == y2) someCode
-           *    else label$1()
-           *  } else label$1()
+           *    else ()
+           *  } else ()
            *  ```
            *  is emitted as
            *  ```
            *  val x1: Int = ...
            *  val x2: Int = ...
            *  if (x1 == y1 && x2 == y2) someCode
-           *  else label$1()
+           *  else ()
            *  ```
            */
           def emitWithMashedConditions(plans: List[TestPlan]): Tree = {
