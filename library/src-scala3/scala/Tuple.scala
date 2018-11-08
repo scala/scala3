@@ -1,13 +1,14 @@
 package scala
 import annotation.showAsInfix
 import typelevel._
+import scala.StagedTuple
 
 sealed trait Tuple extends Any {
   import Tuple._
 
   inline def toArray: Array[Object] =
-    if (specialize)
-      inline constValueOpt[BoundedSize[this.type]] match {
+    if (stageIt) stagedToArray
+    else inline constValueOpt[BoundedSize[this.type]] match {
       case Some(0) =>
         $emptyArray
       case Some(1) =>
@@ -29,10 +30,13 @@ sealed trait Tuple extends Any {
       case None =>
         dynamicToArray(this)
     }
-    else dynamicToArray(this)
+
+  inline def stagedToArray: Array[Object] =
+    ~StagedTuple.toArrayStaged('(this), constValueOpt[BoundedSize[this.type]])
 
   inline def *: [H] (x: H): H *: this.type =
-    if (specialize) {
+    if (stageIt) stagedCons[H](x)
+    else {
       type Result = H *: this.type
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(0) =>
@@ -54,10 +58,13 @@ sealed trait Tuple extends Any {
           dynamic_*:[this.type, H](this, x)
       }
     }
-    else dynamic_*:[this.type, H](this, x)
+
+  inline def stagedCons[H] (x: H): H *: this.type =
+    ~StagedTuple.stagedCons('(this), '(x), constValueOpt[BoundedSize[this.type]])
 
   inline def ++(that: Tuple): Concat[this.type, that.type] =
-    if (specialize) {
+    if (stageIt) stagedConcat(that)
+    else {
       type Result = Concat[this.type, that.type]
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(0) =>
@@ -95,27 +102,33 @@ sealed trait Tuple extends Any {
           dynamic_++[this.type, that.type](this, that)
       }
     }
-  else dynamic_++[this.type, that.type](this, that)
+
+  inline def stagedConcat(that: Tuple): Concat[this.type, that.type] =
+    ~StagedTuple.stagedConcat('(this), constValueOpt[BoundedSize[this.type]],
+                              '(that), constValueOpt[BoundedSize[that.type]])
 
   inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
     fromArray[T](xs.toArray ++ ys.toArray)
 
   inline def size: Size[this.type] =
-    if (specialize) {
+    if (stageIt) stagedSize
+    else {
       type Result = Size[this.type]
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(n) => n.asInstanceOf[Result]
         case _ => dynamicSize(this)
       }
     }
-    else dynamicSize(this)
+
+  inline def stagedSize: Size[this.type] =
+    ~StagedTuple.sizeStaged[Size[this.type]]('(this), constValueOpt[BoundedSize[this.type]])
 }
 
 object Tuple {
   inline val $MaxSpecialized = 22
   inline private val XXL = $MaxSpecialized + 1
 
-  final val specialize = true
+  final val stageIt = false
 
   type Head[+X <: NonEmptyTuple] = X match {
     case x *: _ => x
@@ -175,34 +188,36 @@ object Tuple {
   }
 
   inline def fromArray[T <: Tuple](xs: Array[Object]): T =
-    if (specialize)
-      inline constValue[BoundedSize[T]] match {
-        case 0  => ().asInstanceOf[T]
-        case 1  => Tuple1(xs(0)).asInstanceOf[T]
-        case 2  => Tuple2(xs(0), xs(1)).asInstanceOf[T]
-        case 3  => Tuple3(xs(0), xs(1), xs(2)).asInstanceOf[T]
-        case 4  => Tuple4(xs(0), xs(1), xs(2), xs(3)).asInstanceOf[T]
-        case 5  => Tuple5(xs(0), xs(1), xs(2), xs(3), xs(4)).asInstanceOf[T]
-        case 6  => Tuple6(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5)).asInstanceOf[T]
-        case 7  => Tuple7(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6)).asInstanceOf[T]
-        case 8  => Tuple8(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7)).asInstanceOf[T]
-        case 9  => Tuple9(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8)).asInstanceOf[T]
-        case 10 => Tuple10(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9)).asInstanceOf[T]
-        case 11 => Tuple11(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10)).asInstanceOf[T]
-        case 12 => Tuple12(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11)).asInstanceOf[T]
-        case 13 => Tuple13(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12)).asInstanceOf[T]
-        case 14 => Tuple14(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13)).asInstanceOf[T]
-        case 15 => Tuple15(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14)).asInstanceOf[T]
-        case 16 => Tuple16(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15)).asInstanceOf[T]
-        case 17 => Tuple17(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16)).asInstanceOf[T]
-        case 18 => Tuple18(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17)).asInstanceOf[T]
-        case 19 => Tuple19(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18)).asInstanceOf[T]
-        case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19)).asInstanceOf[T]
-        case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20)).asInstanceOf[T]
-        case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
-        case _ => TupleXXL(xs).asInstanceOf[T]
-      }
-    else dynamicFromArray[T](xs)
+    if (stageIt) stagedFromArray[T](xs)
+    else inline constValue[BoundedSize[T]] match {
+      case 0  => ().asInstanceOf[T]
+      case 1  => Tuple1(xs(0)).asInstanceOf[T]
+      case 2  => Tuple2(xs(0), xs(1)).asInstanceOf[T]
+      case 3  => Tuple3(xs(0), xs(1), xs(2)).asInstanceOf[T]
+      case 4  => Tuple4(xs(0), xs(1), xs(2), xs(3)).asInstanceOf[T]
+      case 5  => Tuple5(xs(0), xs(1), xs(2), xs(3), xs(4)).asInstanceOf[T]
+      case 6  => Tuple6(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5)).asInstanceOf[T]
+      case 7  => Tuple7(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6)).asInstanceOf[T]
+      case 8  => Tuple8(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7)).asInstanceOf[T]
+      case 9  => Tuple9(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8)).asInstanceOf[T]
+      case 10 => Tuple10(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9)).asInstanceOf[T]
+      case 11 => Tuple11(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10)).asInstanceOf[T]
+      case 12 => Tuple12(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11)).asInstanceOf[T]
+      case 13 => Tuple13(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12)).asInstanceOf[T]
+      case 14 => Tuple14(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13)).asInstanceOf[T]
+      case 15 => Tuple15(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14)).asInstanceOf[T]
+      case 16 => Tuple16(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15)).asInstanceOf[T]
+      case 17 => Tuple17(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16)).asInstanceOf[T]
+      case 18 => Tuple18(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17)).asInstanceOf[T]
+      case 19 => Tuple19(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18)).asInstanceOf[T]
+      case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19)).asInstanceOf[T]
+      case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20)).asInstanceOf[T]
+      case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
+      case _ => TupleXXL(xs).asInstanceOf[T]
+    }
+
+  inline def stagedFromArray[T <: Tuple](xs: Array[Object]): T =
+    ~StagedTuple.fromArrayStaged[T]('(xs), constValueOpt[BoundedSize[this.type]])
 
   def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = xs.length match {
     case 0  => ().asInstanceOf[T]
@@ -297,7 +312,8 @@ abstract sealed class NonEmptyTuple extends Tuple {
   import NonEmptyTuple._
 
   inline def head: Head[this.type] =
-    if (specialize) {
+    if (stageIt) stagedHead
+    else {
       type Result = Head[this.type]
       val resVal = inline constValueOpt[BoundedSize[this.type]] match {
         case Some(1) =>
@@ -322,10 +338,13 @@ abstract sealed class NonEmptyTuple extends Tuple {
       }
       resVal.asInstanceOf[Result]
     }
-    else dynamicHead[this.type](this)
+
+  inline def stagedHead: Head[this.type] =
+    ~StagedTuple.headStaged[this.type]('(this), constValueOpt[BoundedSize[this.type]])
 
   inline def tail: Tail[this.type] =
-    if (specialize) {
+    if (stageIt) stagedTail
+    else {
       type Result = Tail[this.type]
       inline constValueOpt[BoundedSize[this.type]]  match {
         case Some(1) =>
@@ -348,7 +367,9 @@ abstract sealed class NonEmptyTuple extends Tuple {
           dynamicTail[this.type](this)
       }
     }
-    else dynamicTail[this.type](this)
+
+  inline def stagedTail: Tail[this.type] =
+    ~StagedTuple.tailStaged[this.type]('(this), constValueOpt[BoundedSize[this.type]])
 
   inline def fallbackApply(n: Int) =
     inline constValueOpt[n.type] match {
@@ -357,7 +378,8 @@ abstract sealed class NonEmptyTuple extends Tuple {
     }
 
   inline def apply(n: Int): Elem[this.type, n.type] =
-    if (specialize) {
+    if (stageIt) stagedApply(n)
+    else {
       type Result = Elem[this.type, n.type]
       inline constValueOpt[Size[this.type]] match {
         case Some(1) =>
@@ -405,7 +427,11 @@ abstract sealed class NonEmptyTuple extends Tuple {
         case _ => fallbackApply(n).asInstanceOf[Result]
       }
     }
-    else dynamicApply[this.type](this, n)
+
+  inline def stagedApply(n: Int): Elem[this.type, n.type] =
+    ~StagedTuple.applyStaged[this.type, n.type](
+      '(this), constValueOpt[Size[this.type]],
+      '(n), constValueOpt[n.type])
 }
 
 object NonEmptyTuple {

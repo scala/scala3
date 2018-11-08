@@ -6,6 +6,8 @@ object StagedTuple {
   import Tuple._
   import NonEmptyTuple._
 
+  private final val specialize = true
+
   def toArrayStaged(tup: Expr[Tuple], size: Option[Int]): Expr[Array[Object]] = {
     if (!specialize) '(dynamicToArray(~tup))
     else size match {
