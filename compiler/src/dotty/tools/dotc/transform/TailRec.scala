@@ -116,12 +116,15 @@ class TailRec extends MiniPhase {
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TailrecAnnot)
-    def noTailTransform = {
+    def noTailTransform(failureReported: Boolean) = {
       // FIXME: want to report this error on `tree.namePos`, but
       // because of extension method getting a weird pos, it is
-      // better to report on method symbol so there's no overlap
-      if (mandatory)
+      // better to report on method symbol so there's no overlap.
+      // We don't report a new error if failures were reported
+      // during the transformation.
+      if (mandatory && !failureReported)
         ctx.error(TailrecNotApplicable(method), method.pos)
+
       tree
     }
 
@@ -182,14 +185,15 @@ class TailRec extends MiniPhase {
           )
         )
       }
-      else noTailTransform
+      else noTailTransform(failureReported = transformer.failureReported)
     }
-    else noTailTransform
+    else noTailTransform(failureReported = false)
   }
 
   class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: List[Symbol], isMandatory: Boolean) extends TreeMap {
 
     var rewrote: Boolean = false
+    var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
     private[this] var myContinueLabel: Symbol = _
@@ -276,8 +280,12 @@ class TailRec extends MiniPhase {
           cpy.Apply(tree)(noTailTransform(tree.fun), arguments)
 
         def fail(reason: String) = {
-          if (isMandatory) ctx.error(s"Cannot rewrite recursive call: $reason", tree.pos)
-          else tailrec.println("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)
+          if (isMandatory) {
+            failureReported = true
+            ctx.error(s"Cannot rewrite recursive call: $reason", tree.pos)
+          }
+          else
+            tailrec.println("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)
           continue
         }
 
@@ -339,7 +347,7 @@ class TailRec extends MiniPhase {
           else fail("it is not in tail position")
         }
         else if (isRecursiveSuperCall)
-          fail("it contains a recursive call targeting a supertype")
+          fail("it targets a supertype")
         else
           continue
       }

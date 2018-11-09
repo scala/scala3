@@ -2,7 +2,7 @@ import annotation.tailrec
 
 object Test1772B {
   @tailrec
-  def bar : Nothing = { // error: TailRec optimisation not applicable
+  def bar : Nothing = {
     try {
       throw new RuntimeException
     } catch {
@@ -13,7 +13,7 @@ object Test1772B {
   }
 
   @tailrec
-  def baz : Nothing = { // error: TailRec optimisation not applicable
+  def baz : Nothing = {
     try {
       throw new RuntimeException
     } catch {
@@ -24,7 +24,7 @@ object Test1772B {
   }
 
   @tailrec
-  def boz : Nothing = { // error: TailRec optimisation not applicable
+  def boz : Nothing = {
     try {
       throw new RuntimeException
     } catch {
@@ -33,7 +33,7 @@ object Test1772B {
   }
 
   @tailrec
-  def bez : Nothing = { // error: TailRec optimisation not applicable
+  def bez : Nothing = {
     try {
       bez // error: it is not in tail position
     } finally {

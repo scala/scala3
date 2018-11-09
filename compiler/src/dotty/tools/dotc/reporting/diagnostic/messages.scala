@@ -1801,13 +1801,16 @@ object messages {
   case class TailrecNotApplicable(symbol: Symbol)(implicit ctx: Context)
     extends Message(TailrecNotApplicableID) {
     val kind: String = "Syntax"
-    val msg: String =
-      if (symbol.is(Method))
-        "TailRec optimisation not applicable, method not tail recursive"
-      else
-        hl"TailRec optimisation not applicable, ${symbol.showKind} isn't a method."
-    val explanation: String =
-      hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
+    val msg: String = {
+      val reason =
+        if (!symbol.is(Method)) hl"$symbol isn't a method"
+        else if (symbol.is(Deferred)) hl"$symbol is abstract"
+        else if (!symbol.isEffectivelyFinal) hl"$symbol is neither ${"private"} nor ${"final"} so can be overridden"
+        else hl"$symbol contains no recursive calls"
+
+      s"TailRec optimisation not applicable, $reason"
+    }
+    val explanation: String = ""
   }
 
   case class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(implicit ctx: Context)
