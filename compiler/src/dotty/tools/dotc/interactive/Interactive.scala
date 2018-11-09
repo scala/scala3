@@ -21,14 +21,42 @@ import StdNames.nme
 object Interactive {
   import ast.tpd._
 
-  object Include { // should be an enum, really.
-    type Set = Int
-    val overridden: Int = 1 // include trees whose symbol is overridden by `sym`
-    val overriding: Int = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
-    val references: Int = 4 // include references
-    val definitions: Int = 8 // include definitions
-    val linkedClass: Int = 16 // include `symbol.linkedClass`
-    val imports: Int = 32 // include imports in the results
+  object Include {
+    case class Set private (val bits: Int) extends AnyVal {
+      def | (that: Set): Set = Set(bits | that.bits)
+
+      def isEmpty: Boolean = bits == 0
+      def isOverridden: Boolean = (bits & overridden.bits) != 0
+      def isOverriding: Boolean = (bits & overriding.bits) != 0
+      def isReferences: Boolean = (bits & references.bits) != 0
+      def isDefinitions: Boolean = (bits & definitions.bits) != 0
+      def isLinkedClass: Boolean = (bits & linkedClass.bits) != 0
+      def isImports: Boolean = (bits & imports.bits) != 0
+    }
+
+    /** The empty set */
+    val empty: Set = Set(0)
+
+    /** Include trees whose symbol is overridden by `sym` */
+    val overridden: Set = Set(1 << 0)
+
+    /**
+     * Include trees whose symbol overrides `sym` (but for performance only in same source
+     * file)
+     */
+    val overriding: Set = Set(1 << 1)
+
+    /** Include references */
+    val references: Set = Set(1 << 2)
+
+    /** Include definitions */
+    val definitions: Set = Set(1 << 3)
+
+    /** Include `sym.linkedClass */
+    val linkedClass: Set = Set(1 << 4)
+
+    /** Include imports in the results */
+    val imports: Set = Set(1 << 5)
   }
 
   /** Does this tree define a symbol ? */
@@ -112,9 +140,9 @@ object Interactive {
 
     (  sym == tree.symbol
     || sym.exists && sym == tree.symbol.sourceSymbol
-    || include != 0 && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
-       && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
-          || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
+    || !include.isEmpty && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
+       && (  include.isOverridden && overrides(sym, tree.symbol)
+          || include.isOverriding && overrides(tree.symbol, sym)
           )
     )
   }
@@ -290,7 +318,7 @@ object Interactive {
   def namedTrees(trees: List[SourceTree], nameSubstring: String)
    (implicit ctx: Context): List[SourceTree] = {
     val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
-    namedTrees(trees, 0, predicate)
+    namedTrees(trees, Include.empty, predicate)
   }
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
@@ -299,15 +327,13 @@ object Interactive {
    */
   def namedTrees(trees: List[SourceTree], include: Include.Set, treePredicate: NameTree => Boolean)
     (implicit ctx: Context): List[SourceTree] = safely {
-    val includeReferences = (include & Include.references) != 0
-    val includeImports = (include & Include.imports) != 0
     val buf = new mutable.ListBuffer[SourceTree]
 
     def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
-            case imp: untpd.Import if includeImports && tree.hasType =>
+            case imp: untpd.Import if include.isImports && tree.hasType =>
               val tree = imp.asInstanceOf[tpd.Import]
               val selections = tpd.importSelections(tree)
               traverse(imp.expr)
@@ -318,7 +344,7 @@ object Interactive {
                    && !tree.symbol.is(Synthetic)
                    && tree.pos.exists
                    && !tree.pos.isZeroExtent
-                   && (includeReferences || isDefinition(tree))
+                   && (include.isReferences || isDefinition(tree))
                    && treePredicate(tree))
                 buf += SourceTree(tree, source)
               traverseChildren(tree)
@@ -350,13 +376,11 @@ object Interactive {
                         predicate: NameTree => Boolean = util.common.alwaysTrue
                        )(implicit ctx: Context): List[SourceTree] = {
     val linkedSym = symbol.linkedClass
-    val includeDeclaration = (includes & Include.definitions) != 0
-    val includeLinkedClass = (includes & Include.linkedClass) != 0
     val fullPredicate: NameTree => Boolean = tree =>
       (  !tree.symbol.isPrimaryConstructor
-      && (includeDeclaration || !Interactive.isDefinition(tree))
+      && (includes.isDefinitions || !Interactive.isDefinition(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
-         || ( includeLinkedClass
+         || ( includes.isLinkedClass
             && linkedSym.exists
             && Interactive.matchSymbol(tree, linkedSym, includes)
             )
@@ -469,7 +493,7 @@ object Interactive {
             }
             (trees, Include.definitions | Include.overriding)
           case _ =>
-            (Nil, 0)
+            (Nil, Include.empty)
         }
 
       findTreesMatching(trees, include, sym)

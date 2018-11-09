@@ -311,7 +311,8 @@ class DottyLanguageServer extends LanguageServer
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
-      Include.references | Include.overriding | Include.imports | (if (includeDeclaration) Include.definitions else 0)
+      Include.references | Include.overriding | Include.imports |
+        (if (includeDeclaration) Include.definitions else Include.empty)
     }
 
     val uriTrees = driver.openedTrees(uri)
@@ -442,7 +443,7 @@ class DottyLanguageServer extends LanguageServer
 
     val uriTrees = driver.openedTrees(uri)
 
-    val defs = Interactive.namedTrees(uriTrees, 0, _ => true)
+    val defs = Interactive.namedTrees(uriTrees, Include.empty, _ => true)
     (for {
       d <- defs if !isWorksheetWrapper(d)
       info <- symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source))
@@ -484,7 +485,7 @@ class DottyLanguageServer extends LanguageServer
           val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
           tree => predicates.exists(_(tree))
         }
-        val matches = Interactive.namedTrees(trees, 0, predicate)(ctx)
+        val matches = Interactive.namedTrees(trees, Include.empty, predicate)(ctx)
         matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
       }
     }.toList
