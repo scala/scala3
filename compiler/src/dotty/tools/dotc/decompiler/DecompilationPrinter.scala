@@ -39,7 +39,8 @@ class DecompilationPrinter extends Phase {
     if (ctx.settings.printTasty.value) {
       new TastyPrinter(unit.pickled.head._2).printContents()
     } else {
-      out.println(s"/** Decompiled from $unit */")
+      val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
+      out.println(s"/** Decompiled from $unitFile */")
       out.println(new TastyImpl(ctx).showSourceCode.showTree(unit.tpdTree)(ctx))
     }
   }
