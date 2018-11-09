@@ -129,50 +129,56 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     Thicket(field, getter)
   }
 
-  /** Replace a local lazy val inside a method,
-    * with a LazyHolder from
-    * dotty.runtime(eg dotty.runtime.LazyInt)
-    */
+  /** Desugar a local `lazy val x: Int = <RHS>` into:
+   *
+   *  ```
+   *  val x$lzy = new scala.runtime.LazyInt()
+   *
+   *  def x$lzycompute(): Int = x$lzy.synchronized {
+   *    if (x$lzy.initialized()) x$lzy.value()
+   *    else x$lzy.initialize(<RHS>)
+   *      // TODO: Implement Unit-typed lazy val optimization described below
+   *      // for a Unit-typed lazy val, this becomes `{ rhs ; x$lzy.initialize() }`
+   *      // to avoid passing around BoxedUnit
+   *  }
+   *
+   *  def x(): Int = if (x$lzy.initialized()) x$lzy.value() else x$lzycompute()
+   *  ```
+   */
   def transformLocalDef(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
-      val valueInitter = x.rhs
-      val xname = x.name.asTermName
-      val holderName = LazyLocalName.fresh(xname)
-      val initName = LazyLocalInitName.fresh(xname)
-      val tpe = x.tpe.widen.resultType.widen
+    val xname = x.name.asTermName
+    val tpe = x.tpe.widen.resultType.widen
 
-      val holderType =
-        if (tpe isRef defn.IntClass) "LazyInt"
-        else if (tpe isRef defn.LongClass) "LazyLong"
-        else if (tpe isRef defn.BooleanClass) "LazyBoolean"
-        else if (tpe isRef defn.FloatClass) "LazyFloat"
-        else if (tpe isRef defn.DoubleClass) "LazyDouble"
-        else if (tpe isRef defn.ByteClass) "LazyByte"
-        else if (tpe isRef defn.CharClass) "LazyChar"
-        else if (tpe isRef defn.ShortClass) "LazyShort"
-        else "LazyRef"
+    // val x$lzy = new scala.runtime.LazyInt()
+    val holderName = LazyLocalName.fresh(xname)
+    val holderImpl = defn.LazyHolder()(ctx)(tpe.typeSymbol)
+    val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.pos)
+    val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Nil))
 
+    val holderRef = ref(holderSymbol)
+    val getValue = holderRef.select(lazyNme.value).ensureApplied.withPos(x.pos)
+    val initialized = holderRef.select(lazyNme.initialized).ensureApplied
 
-      val holderImpl = ctx.requiredClass("dotty.runtime." + holderType)
+    // def x$lzycompute(): Int = x$lzy.synchronized {
+    //   if (x$lzy.initialized()) x$lzy.value()
+    //   else x$lzy.initialize(<RHS>)
+    // }
+    val initName = LazyLocalInitName.fresh(xname)
+    val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
+    val rhs = x.rhs.changeOwnerAfter(x.symbol, initSymbol, this)
+    val initialize = holderRef.select(lazyNme.initialize).appliedTo(rhs)
+    val initBody = holderRef
+      .select(defn.Object_synchronized)
+      .appliedToType(tpe)
+      .appliedTo(If(initialized, getValue, initialize).ensureConforms(tpe))
+    val initTree = DefDef(initSymbol, initBody)
 
-      val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.pos)
-      val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
-      val result = ref(holderSymbol).select(lazyNme.value).withPos(x.pos)
-      val flag = ref(holderSymbol).select(lazyNme.initialized)
-      val initer = valueInitter.changeOwnerAfter(x.symbol, initSymbol, this)
-      val initBody =
-        adaptToType(
-          ref(holderSymbol).select(defn.Object_synchronized).appliedTo(
-            adaptToType(mkNonThreadSafeDef(result, flag, initer, nullables = Nil), defn.ObjectType)),
-          tpe)
-      val initTree = DefDef(initSymbol, initBody)
-      val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
-      val methodBody = tpd.If(flag.ensureApplied,
-        result.ensureApplied,
-        ref(initSymbol).ensureApplied).ensureConforms(tpe)
+    // def x(): Int = if (x$lzy.initialized()) x$lzy.value() else x$lzycompute()
+    val accessorBody = If(initialized, getValue, ref(initSymbol).ensureApplied).ensureConforms(tpe)
+    val accessor = DefDef(x.symbol.asTerm, accessorBody)
 
-      val methodTree = DefDef(x.symbol.asTerm, methodBody)
-      ctx.debuglog(s"found a lazy val ${x.show},\nrewrote with ${holderTree.show}")
-      Thicket(holderTree, initTree, methodTree)
+    ctx.debuglog(s"found a lazy val ${x.show},\nrewrote with ${holderTree.show}")
+    Thicket(holderTree, initTree, accessor)
   }
 
 
@@ -458,6 +464,7 @@ object LazyVals {
     val result: TermName      = "result".toTermName
     val value: TermName       = "value".toTermName
     val initialized: TermName = "initialized".toTermName
+    val initialize: TermName  = "initialize".toTermName
     val retry: TermName       = "retry".toTermName
   }
 }
