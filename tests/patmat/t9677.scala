@@ -15,7 +15,7 @@ object ExhaustiveMatchWarning {
 
   def test: Unit = {
     val b: Base = A("blabla")
-    b match {
+    b match {    // A.apply creates anonymous class <: Base
       case A.Root => println("Root")
       case path: A => println("Not root")
     }

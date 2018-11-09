@@ -8,6 +8,7 @@ import Symbols._
 import SymDenotations._
 import Names._
 import NameOps._
+import StdNames._
 import NameKinds._
 import Flags._
 import Annotations._
@@ -132,16 +133,17 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** If this symbol is an enum value or a named class, register it as a child
    *  in all direct parent classes which are sealed.
-   *   @param  @late  If true, register only inaccessible children (all others are already
-   *                  entered at this point).
    */
-  def registerIfChild(late: Boolean = false)(implicit ctx: Context): Unit = {
+  def registerIfChild()(implicit ctx: Context): Unit = {
     def register(child: Symbol, parent: Type) = {
       val cls = parent.classSymbol
-      if (cls.is(Sealed) && (!late || child.isInaccessibleChildOf(cls)))
-        cls.addAnnotation(Annotation.Child(child))
+      if (cls.is(Sealed)) {
+        if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !self.hasAnonymousChild)
+          cls.addAnnotation(Annotation.Child(cls))
+        else cls.addAnnotation(Annotation.Child(child))
+      }
     }
-    if (self.isClass && !self.isAnonymousClass)
+    if (self.isClass && !self.isEnumAnonymClass)
       self.asClass.classParents.foreach { parent =>
         val child = if (self.is(Module)) self.sourceModule else self
         register(child, parent)
@@ -149,6 +151,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else if (self.is(CaseVal, butNot = Method | Module))
       register(self, self.info)
   }
+
+  /** Does this symbol refer to anonymous classes synthesized by enum desugaring? */
+  def isEnumAnonymClass(implicit ctx: Context): Boolean =
+    self.isAnonymousClass && (self.owner.name.eq(nme.DOLLAR_NEW) || self.owner.is(CaseVal))
 
   /** Is this symbol defined locally (i.e. at some level owned by a term) and
    *  defined in a different toplevel class than its supposed parent class `cls`?
@@ -162,6 +168,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.annotations.collect {
       case Annotation.Child(child) => child
     }
+
+  def hasAnonymousChild(implicit ctx: Context): Boolean =
+    children.exists(_ `eq` self)
 
   /** Is symbol directly or indirectly owned by a term symbol? */
   @tailrec final def isLocal(implicit ctx: Context): Boolean = {

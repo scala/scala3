@@ -730,6 +730,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val res =
       (tp.classSymbol.is(Sealed) &&
         tp.classSymbol.is(AbstractOrTrait) &&
+        !tp.classSymbol.hasAnonymousChild &&
         tp.classSymbol.children.nonEmpty ) ||
       dealiasedTp.isInstanceOf[OrType] ||
       (dealiasedTp.isInstanceOf[AndType] && {
@@ -849,6 +850,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (mergeList) "_: _*" else "_: List"
         else if (scalaConsType.isRef(sym))
           if (mergeList) "_, _: _*"  else "List(_, _: _*)"
+        else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
+          "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class
           showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")
