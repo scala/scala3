@@ -435,15 +435,19 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
 
-  /** Translate a type of the form From[T] to To[T], keep other types as they are.
+  /** Translate a type of the form From[T] to either To[T] or To[_ <: T] (if `wildcardArg` is set). Keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
    */
-  def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type = self match {
+  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(implicit ctx: Context): Type = self match {
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
-      if (self.derivesFrom(from)) to.typeRef.appliedTo(self.baseType(from).argInfos)
+      if (self.derivesFrom(from)) {
+        val arg = self.baseType(from).argInfos.head
+        val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
+        to.typeRef.appliedTo(arg1)
+      }
       else self
   }
 
@@ -453,7 +457,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
     if (self.isRepeatedParam) {
       val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
-      translateParameterized(defn.RepeatedParamClass, seqClass)
+      // If `isJava` is set, then we want to turn `RepeatedParam[T]` into `Array[_ <: T]`,
+      // since arrays aren't covariant until after erasure. See `tests/pos/i5140`.
+      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = isJava)
     }
     else self
 
