@@ -134,7 +134,7 @@ object Jar {
       m
     }
   }
-  implicit class WManifest(val manifest: JManifest) {
+  implicit final class WManifest(val manifest: JManifest) {
     for ((k, v) <- initialMainAttrs)
       this(k) = v
 

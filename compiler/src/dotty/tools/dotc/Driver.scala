@@ -40,10 +40,13 @@ class Driver {
       }
     else ctx.reporter
 
+  @scala.annotation.init
   protected def initCtx: Context = (new ContextBase).initialCtx
 
+  @scala.annotation.init
   protected def sourcesRequired: Boolean = true
 
+  @scala.annotation.init
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)

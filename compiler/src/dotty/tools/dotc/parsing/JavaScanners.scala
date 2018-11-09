@@ -11,7 +11,7 @@ import scala.tasty.util.Chars._
 
 object JavaScanners {
 
-  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+  final class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
 
     def toToken(idx: Int): Token =
       if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER

@@ -1972,7 +1972,8 @@ object SymDenotations {
     def sourceModule(implicit ctx: Context): Symbol = mySourceModuleFn(ctx)
     def moduleClass(implicit ctx: Context): Symbol = myModuleClassFn(ctx)
 
-    def withDecls(decls: Scope): this.type = { myDecls = decls; this }
+    @scala.annotation.init
+    def withDecls(decls: Scope): this.type = { myDecls = decls; this: @unchecked }
     def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
   }

@@ -29,7 +29,7 @@ import NameKinds.SuperAccessorName
  *
  *  (4) Super calls do not go to synthetic field accessors
  */
-class SuperAccessors(thisPhase: DenotTransformer) {
+class SuperAccessors(thisPhase: DenotTransformer @scala.annotation.cold) {
 
   import tpd._
 

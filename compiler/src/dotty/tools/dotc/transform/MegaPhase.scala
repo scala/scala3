@@ -425,7 +425,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   // Initialization code
 
   for ((phase, idx) <- miniPhases.zipWithIndex) {
-    phase.superPhase = this
+    phase.superPhase = this: @unchecked
     phase.idxInGroup = idx
   }
 

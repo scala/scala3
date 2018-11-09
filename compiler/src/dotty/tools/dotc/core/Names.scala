@@ -651,7 +651,7 @@ object Names {
   /** Create a type name from a string, without encoding operators */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
 
-  table(0) = new SimpleName(-1, 0, null)
+  table(0) = new SimpleName(-1, 0, null): @unchecked
 
   /** The term name represented by the empty string */
   val EmptyTermName: TermName = table(0)

@@ -31,7 +31,7 @@ import ValueClasses.isDerivedValueClass
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
-class SyntheticMethods(thisPhase: DenotTransformer) {
+class SyntheticMethods(thisPhase: DenotTransformer @scala.annotation.cold) {
   import ast.tpd._
 
   private[this] var myValueSymbols: List[Symbol] = Nil

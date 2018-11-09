@@ -8,8 +8,9 @@ trait ResourceFinder {
     */
   /*final*/ case class ResourceNotFoundException(message: String) extends Exception(message)
 
+  @scala.annotation.init
   protected def getResource(r: String): String =
-    Option(getClass.getResourceAsStream(r))
+    Option((getClass: @unchecked).getResourceAsStream(r))
       .map(scala.io.Source.fromInputStream(_)(scala.io.Codec.UTF8))
       .map(_.mkString)
       .getOrElse(throw ResourceNotFoundException(r))

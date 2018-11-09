@@ -171,7 +171,7 @@ object Scanners {
 
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+  final class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
     val keepComments: Boolean = !ctx.settings.YdropComments.value
 
     /** All doc comments kept by their end position in a `Map` */

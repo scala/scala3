@@ -1,12 +1,12 @@
-/** Decompiled from out/posTestFromTasty/pos/selftypes/selftypes.class */
+/** Decompiled from out/posTestFromTasty/pos/selftypes/selftypes.tasty */
 object selftypes {
-  trait A() extends java.lang.Object { self: selftypes.AB =>
+  @scala.annotation.init() trait A() extends java.lang.Object { self: selftypes.AB =>
     type AA = scala.List[this.BX]
-    class AX()
+    @scala.annotation.init() class AX()
   }
-  trait B() extends java.lang.Object { self: selftypes.AB =>
+  @scala.annotation.init() trait B() extends java.lang.Object { self: selftypes.AB =>
     type BB = B.this.AA
-    class BX()
+    @scala.annotation.init() class BX()
   }
-  class AB() extends selftypes.A with selftypes.B
+  @scala.annotation.init() class AB() extends selftypes.A with selftypes.B
 }

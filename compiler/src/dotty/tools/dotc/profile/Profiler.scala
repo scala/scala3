@@ -91,20 +91,20 @@ private [profile] object RealProfiler {
   private val idGen = new AtomicInteger()
 }
 
-private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: Context) extends Profiler with NotificationListener {
+private[profile] final class RealProfiler(reporter : ProfileReporter)(implicit ctx: Context) extends Profiler with NotificationListener {
   def completeBackground(threadRange: ProfileRange): Unit = {
     reporter.reportBackground(this, threadRange)
   }
 
   def outDir: AbstractFile = ctx.settings.outputDir.value
 
+  private val mainThread = Thread.currentThread()
+
   val id: Int = RealProfiler.idGen.incrementAndGet()
   RealProfiler.gcMx foreach {
     case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
     case gc => println(s"Cant connect gcListener to ${gc.getClass}")
   }
-
-  private val mainThread = Thread.currentThread()
 
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
     import RealProfiler._

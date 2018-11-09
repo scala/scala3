@@ -1,4 +1,4 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleSingleton/Foo.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleSingleton/Foo.tasty */
 class Foo() {
   def foo(x: scala.Int): scala.Unit = {
     val a: x.type = x
@@ -10,5 +10,5 @@ class Foo() {
   }
 }
 object Foo {
-  object Bar
+  @scala.annotation.init() object Bar
 }

@@ -16,7 +16,7 @@ object DesugarEnums {
   import untpd._
 
   @sharable object CaseKind extends Enumeration {
-    val Simple, Object, Class: Value = Value
+    val Simple, Object, Class: Value = Value : @unchecked
   }
 
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */

@@ -14,6 +14,7 @@ object Files {
 trait LocalResources extends DocDriver {
   import Files._
 
+  @scala.annotation.init
   def getFiles(file: JFile): Array[JFile] =
     if (file.isDirectory) file.listFiles.flatMap(getFiles)
     else if (file.getAbsolutePath.endsWith(".scala")) Array(file)

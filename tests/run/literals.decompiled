@@ -1,7 +1,7 @@
-/** Decompiled from out/runTestFromTasty/run/literals/Test.class */
+/** Decompiled from out/runTestFromTasty/run/literals/Test.tasty */
 object Test {
   def αρετη: java.lang.String = "alpha rho epsilon tau eta"
-  case class GGG(i: scala.Int) {
+  @scala.annotation.init() case class GGG(i: scala.Int) {
     def αα(that: Test.GGG): scala.Int = GGG.this.i.+(that.i)
     override def hashCode(): scala.Int = {
       var acc: scala.Int = 767242539
@@ -25,7 +25,7 @@ object Test {
         throw new java.lang.IndexOutOfBoundsException(n.toString())
     }
   }
-  object GGG extends scala.Function1[scala.Int, Test.GGG]
+  @scala.annotation.init() object GGG extends scala.Function1[scala.Int, Test.GGG]
   def check_success[a](name: scala.Predef.String, closure: => a, expected: a): scala.Unit = {
     scala.Predef.print("test ".+(name))
     try {

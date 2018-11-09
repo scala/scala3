@@ -1,11 +1,11 @@
-/** Decompiled from out/posTestFromTasty/pos/i1444/Test.class */
+/** Decompiled from out/posTestFromTasty/pos/i1444/Test.tasty */
 object Test {
-  class Cls(implicit x: Test.X)
-  class ClsImpl() extends Test.Cls()(Test.AnX)
-  trait Tr1(implicit x: Test.X) extends java.lang.Object
-  class TrtImpl() extends Test.Tr1()(Test.AnX)
-  trait Tr2()(implicit x: Test.X) extends java.lang.Object
-  class Tr2Impl() extends Test.Tr2()(Test.AnX)
-  trait X() extends java.lang.Object
-  object AnX extends Test.X
+  @scala.annotation.init() class Cls(implicit x: Test.X)
+  @scala.annotation.init() class ClsImpl() extends Test.Cls()(Test.AnX)
+  @scala.annotation.init() trait Tr1(implicit x: Test.X) extends java.lang.Object
+  @scala.annotation.init() class TrtImpl() extends Test.Tr1()(Test.AnX)
+  @scala.annotation.init() trait Tr2()(implicit x: Test.X) extends java.lang.Object
+  @scala.annotation.init() class Tr2Impl() extends Test.Tr2()(Test.AnX)
+  @scala.annotation.init() trait X() extends java.lang.Object
+  @scala.annotation.init() object AnX extends Test.X
 }

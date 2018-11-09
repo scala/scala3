@@ -44,16 +44,20 @@ object StdNames {
   }
 
   abstract class DefinedNames[N <: Name] {
+    @scala.annotation.init
     protected implicit def fromString(s: String): N
+    @scala.annotation.init
     protected def fromName(name: Name): N = fromString(name.toString)
 
     private val kws = mutable.Set[N]()
+    @scala.annotation.init
     protected def kw(name: N): N = { kws += name; name }
 
     final val keywords: collection.Set[N] = kws
   }
 
   abstract class ScalaNames[N <: Name] extends DefinedNames[N] {
+    @scala.annotation.init
     protected def encode(s: String): N = fromName(fromString(s).encode)
 
 // Keywords, need to come first -----------------------

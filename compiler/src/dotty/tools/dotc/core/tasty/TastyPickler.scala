@@ -76,6 +76,6 @@ class TastyPickler(val rootCls: ClassSymbol) {
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  val treePkl: TreePickler = new TreePickler(this)
+  val treePkl: TreePickler = new TreePickler(this: @unchecked)
 
 }

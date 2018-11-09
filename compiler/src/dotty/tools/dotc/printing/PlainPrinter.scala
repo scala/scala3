@@ -14,6 +14,7 @@ import scala.util.control.NonFatal
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
+  @scala.annotation.init
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
   private[this] var openRecs: List[RecType] = Nil

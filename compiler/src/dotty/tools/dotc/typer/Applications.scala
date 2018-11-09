@@ -211,15 +211,18 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
+    @scala.annotation.init
     protected def fail(msg: => Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
+    @scala.annotation.init
     protected def fail(msg: => Message): Unit
 
     protected def appPos: Position
 
     /** The current function part, which might be affected by lifting.
      */
+    @scala.annotation.init
     protected def normalizedFun: Tree
 
     protected def typeOfArg(arg: Arg): Type
@@ -227,11 +230,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** If constructing trees, pull out all parts of the function
      *  which are not idempotent into separate prefix definitions
      */
+    @scala.annotation.init
     protected def liftFun(): Unit = ()
 
     /** Whether `liftFun` is needed? It is the case if default arguments are used.
      */
-    protected def needLiftFun: Boolean = {
+    final protected def needLiftFun: Boolean = {
       def requiredArgNum(tp: Type): Int = tp.widen match {
         case funType: MethodType =>
           val paramInfos = funType.paramInfos
@@ -252,7 +256,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** A flag signalling that the typechecking the application was so far successful */
     private[this] var _ok = true
 
+    @scala.annotation.init
     def ok: Boolean = _ok
+    @scala.annotation.init
     def ok_=(x: Boolean): Unit = {
       assert(x || ctx.reporter.errorsReported || !ctx.typerState.isCommittable) // !!! DEBUG
       _ok = x
@@ -261,13 +267,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    lazy val methType: Type = liftedFunType.widen match {
+    final lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
     }
 
-    lazy val liftedFunType: Type =
+    final lazy val liftedFunType: Type =
       if (needLiftFun) {
         liftFun()
         normalizedFun.tpe
@@ -277,12 +283,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The arguments re-ordered so that each named argument matches the
      *  same-named formal parameter.
      */
-    lazy val orderedArgs: List[Arg] =
+    final lazy val orderedArgs: List[Arg] =
       if (hasNamedArg(args))
         reorder(args.asInstanceOf[List[untpd.Tree]]).asInstanceOf[List[Arg]]
       else
         args
 
+    @scala.annotation.init
     protected def init(): Unit = methType match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
@@ -303,13 +310,14 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
 
     /** The application was successful */
+    @scala.annotation.init
     def success: Boolean = ok
 
-    protected def methodType: MethodType = methType.asInstanceOf[MethodType]
+    final protected def methodType: MethodType = methType.asInstanceOf[MethodType]
     private def methString: String = i"${methRef.symbol}: ${methType.show}"
 
     /** Re-order arguments to correctly align named arguments */
-    def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
+    final def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
 
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
@@ -461,7 +469,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
 
     /** Is `sym` a constructor of a Java-defined annotation? */
-    def isJavaAnnotConstr(sym: Symbol): Boolean =
+    @scala.annotation.init
+    final def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.AnnotationClass)
 
     /** Match re-ordered arguments against formal parameters

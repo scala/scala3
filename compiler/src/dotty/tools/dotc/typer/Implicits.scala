@@ -419,6 +419,7 @@ trait ImplicitRunInfo { self: Run =>
      *  abstract types are eliminated.
      */
     object liftToClasses extends TypeMap {
+      @unchecked
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {

@@ -11,6 +11,7 @@ abstract class TokensCommon {
   type Token = Int
   type TokenSet = BitSet
 
+  @scala.annotation.init
   def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi: _*)
 
   def showTokenDetailed(token: Int): String = debugString(token)
@@ -22,6 +23,7 @@ abstract class TokensCommon {
 
   val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
 
+  @scala.annotation.init
   def enter(token: Int, str: String, debugStr: String = ""): Unit = {
     assert(tokenString(token) == null)
     tokenString(token) = str

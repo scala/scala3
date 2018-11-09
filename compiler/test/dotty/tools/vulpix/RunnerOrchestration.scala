@@ -33,14 +33,17 @@ import scala.collection.mutable
 trait RunnerOrchestration {
 
   /** The maximum amount of active runners, which contain a child JVM */
+  @scala.annotation.init
   def numberOfSlaves: Int
 
   /** The maximum duration the child process is allowed to consume before
    *  getting destroyed
    */
+  @scala.annotation.init
   def maxDuration: Duration
 
   /** Destroy and respawn process after each test */
+  @scala.annotation.init
   def safeMode: Boolean
 
   /** Running a `Test` class's main method from the specified `dir` */
@@ -168,7 +171,7 @@ trait RunnerOrchestration {
         .start()
     }
 
-    private[this] val allRunners = List.fill(numberOfSlaves)(new Runner(createProcess))
+    private[this] val allRunners = List.fill(numberOfSlaves)(new Runner(createProcess): @unchecked)
     private[this] val freeRunners = mutable.Queue(allRunners: _*)
     private[this] val busyRunners = mutable.Set.empty[Runner]
 

@@ -804,7 +804,7 @@ object Trees {
       trees foreach (_.foreachInThicket(op))
   }
 
-  class EmptyValDef[T >: Untyped] extends ValDef[T](
+  final class EmptyValDef[T >: Untyped] extends ValDef[T](
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
     override def isEmpty: Boolean = true

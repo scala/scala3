@@ -40,11 +40,11 @@ object Parsers {
   }
 
   @sharable object Location extends Enumeration {
-    val InParens, InBlock, InPattern, ElseWhere: Value = Value
+    val InParens, InBlock, InPattern, ElseWhere: Value = Value: @unchecked
   }
 
   @sharable object ParamOwner extends Enumeration {
-    val Class, Type, TypeParam, Def: Value = Value
+    val Class, Type, TypeParam, Def: Value = Value: @unchecked
   }
 
   private implicit class AddDeco(val buf: ListBuffer[Tree]) extends AnyVal {

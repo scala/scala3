@@ -89,11 +89,13 @@ object Contexts {
 
     /** The outer context */
     private[this] var _outer: Context = _
+    @scala.annotation.init
     protected def outer_=(outer: Context): Unit = _outer = outer
     def outer: Context = _outer
 
     /** The current context */
     private[this] var _period: Period = _
+    @scala.annotation.init
     protected def period_=(period: Period): Unit = {
       assert(period.firstPhaseId == period.lastPhaseId, period)
       _period = period
@@ -102,46 +104,55 @@ object Contexts {
 
     /** The scope nesting level */
     private[this] var _mode: Mode = _
+    @scala.annotation.init
     protected def mode_=(mode: Mode): Unit = _mode = mode
     def mode: Mode = _mode
 
     /** The current owner symbol */
     private[this] var _owner: Symbol = _
+    @scala.annotation.init
     protected def owner_=(owner: Symbol): Unit = _owner = owner
     def owner: Symbol = _owner
 
     /** The current tree */
     private[this] var _tree: Tree[_ >: Untyped]= _
+    @scala.annotation.init
     protected def tree_=(tree: Tree[_ >: Untyped]): Unit = _tree = tree
     def tree: Tree[_ >: Untyped] = _tree
 
     /** The current scope */
     private[this] var _scope: Scope = _
+    @scala.annotation.init
     protected def scope_=(scope: Scope): Unit = _scope = scope
     def scope: Scope = _scope
 
     /** The current type comparer */
     private[this] var _typerState: TyperState = _
+    @scala.annotation.init
     protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
     def typerState: TyperState = _typerState
 
     /** The current type assigner or typer */
     private[this] var _typeAssigner: TypeAssigner = _
+    @scala.annotation.init
     protected def typeAssigner_=(typeAssigner: TypeAssigner): Unit = _typeAssigner = typeAssigner
     def typeAssigner: TypeAssigner = _typeAssigner
 
     /** The currently active import info */
     private[this] var _importInfo: ImportInfo = _
+    @scala.annotation.init
     protected def importInfo_=(importInfo: ImportInfo): Unit = _importInfo = importInfo
     def importInfo: ImportInfo = _importInfo
 
     /** The current bounds in force for type parameters appearing in a GADT */
     private[this] var _gadt: GADTMap = _
+    @scala.annotation.init
     protected def gadt_=(gadt: GADTMap): Unit = _gadt = gadt
     def gadt: GADTMap = _gadt
 
     /** The history of implicit searches that are currently active */
     private[this] var _searchHistory: SearchHistory = null
+    @scala.annotation.init
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
@@ -149,6 +160,7 @@ object Contexts {
      *  each new context.
      */
     private[this] var _typeComparer: TypeComparer = _
+    @scala.annotation.init
     protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
       if (_typeComparer.ctx ne this)
@@ -160,6 +172,7 @@ object Contexts {
      *  Typically used for attributes that are read and written only in special situations.
      */
     private[this] var _moreProperties: Map[Key[Any], Any] = _
+    @scala.annotation.init
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
     def moreProperties: Map[Key[Any], Any] = _moreProperties
 
@@ -172,6 +185,7 @@ object Contexts {
      *  slightly slower than a normal field access would be.
      */
     private var _store: Store = _
+    @scala.annotation.init
     protected def store_=(store: Store): Unit = _store = store
     def store: Store = _store
 
@@ -219,7 +233,7 @@ object Contexts {
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
-          else new ContextualImplicits(implicitRefs, outerImplicits)(this)
+          else new ContextualImplicits(implicitRefs, outerImplicits)(this: @unchecked)
         }
       implicitsCache
     }
@@ -544,7 +558,7 @@ object Contexts {
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
-  private class InitialContext(val base: ContextBase, settingsGroup: SettingGroup) extends FreshContext {
+  private class InitialContext(val base: ContextBase @scala.annotation.cold, settingsGroup: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
@@ -554,14 +568,14 @@ object Contexts {
     typeAssigner = TypeAssigner
     moreProperties = Map.empty
     store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
-    typeComparer = new TypeComparer(this)
+    typeComparer = new TypeComparer(this: @unchecked)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
   }
 
   @sharable object NoContext extends Context {
     val base: ContextBase = null
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this: @unchecked)
   }
 
   /** A context base defines state and associated methods that exist once per
@@ -673,7 +687,7 @@ object Contexts {
     private[core] var phasesPlan: List[List[Phase]] = _
 
     /** Phases by id */
-    private[dotc] var phases: Array[Phase] = _
+    final private[dotc] var phases: Array[Phase] = _
 
     /** Phases with consecutive Transforms grouped into a single phase, Empty array if squashing is disabled */
     private[core] var squashedPhases: Array[Phase] = Array.empty[Phase]

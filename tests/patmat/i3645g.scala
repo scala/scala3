@@ -1,12 +1,9 @@
-import scala.annotation.filled
-
 object App {
   def main(args: Array[String]): Unit = {
     trait ModuleSig {
       type F[_]
       type U
 
-      @filled
       trait FooSig {
         type Type = F[U]
         def subst[F[_]](fa: F[Int]): F[Type]

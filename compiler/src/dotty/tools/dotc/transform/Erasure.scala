@@ -317,7 +317,7 @@ object Erasure {
       }
   }
 
-  class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
+  class Typer(erasurePhase: DenotTransformer @scala.annotation.cold) extends typer.ReTyper with NoChecking {
     import Boxing._
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {

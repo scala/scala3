@@ -21,7 +21,7 @@ import config.Printers.typr
  *  Do the same also if there are intermediate inaccessible parameter accessor forwarders.
  *  The aim of this transformation is to avoid redundant parameter accessor fields.
  */
-class ParamForwarding(thisPhase: DenotTransformer) {
+class ParamForwarding(thisPhase: DenotTransformer @scala.annotation.cold) {
   import ast.tpd._
 
   def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {

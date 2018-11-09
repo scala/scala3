@@ -134,6 +134,7 @@ object Phases {
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
+    @scala.annotation.init
     final def usePhases(phasess: List[Phase], squash: Boolean = true): Unit = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
@@ -171,17 +172,17 @@ object Phases {
             val miniPhases = p.miniPhases
             miniPhases.foreach{ phase =>
               checkRequirements(phase)
-              phase.init(this, nextPhaseId)}
-            p.init(this, miniPhases.head.id, miniPhases.last.id)
+              phase.init(this: @unchecked, nextPhaseId)}
+            p.init(this: @unchecked, miniPhases.head.id, miniPhases.last.id)
           case _ =>
-            phase.init(this, nextPhaseId)
+            phase.init(this: @unchecked, nextPhaseId)
             checkRequirements(phase)
         }
 
         i += 1
       }
 
-      phases.last.init(this, nextPhaseId) // init terminal phase
+      phases.last.init(this: @unchecked, nextPhaseId) // init terminal phase
 
       i = phases.length
       var lastTransformerId = i
@@ -315,9 +316,11 @@ object Phases {
     def isTyper: Boolean = false
 
     /** Can this transform create or delete non-private members? */
+    @scala.annotation.init
     def changesMembers: Boolean = false
 
     /** Can this transform change the parents of a class? */
+    @scala.annotation.init
     def changesParents: Boolean = false
 
     def exists: Boolean = true
@@ -337,11 +340,11 @@ object Phases {
      * is reserved for NoPhase and the first real phase is at position 1.
      * -1 if the phase is not installed in the context.
      */
-    def id: Int = myPeriod.firstPhaseId
+    final def id: Int = myPeriod.firstPhaseId
 
-    def period: Period = myPeriod
-    def start: Int = myPeriod.firstPhaseId
-    def end: Periods.PhaseId = myPeriod.lastPhaseId
+    final def period: Period = myPeriod
+    final def start: Int = myPeriod.firstPhaseId
+    final def end: Periods.PhaseId = myPeriod.lastPhaseId
 
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
@@ -352,6 +355,7 @@ object Phases {
     final def sameParentsStartId: Int = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
 
+    @scala.annotation.init
     protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")

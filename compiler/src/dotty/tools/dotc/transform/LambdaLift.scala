@@ -24,7 +24,7 @@ object LambdaLift {
   private class NoPath extends Exception
 
   /** The core lambda lift functionality. */
-  class Lifter(thisPhase: MiniPhase with DenotTransformer)(implicit ctx: Context) {
+  final class Lifter(thisPhase: MiniPhase with DenotTransformer)(implicit ctx: Context) {
 
     private type SymSet = TreeSet[Symbol]
 
@@ -59,10 +59,10 @@ object LambdaLift {
     val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
 
     /** A flag to indicate whether new free variables have been found */
-    private[this] var changedFreeVars: Boolean = _
+    private[this] var changedFreeVars: Boolean = false
 
     /** A flag to indicate whether lifted owners have changed */
-    private[this] var changedLiftedOwner: Boolean = _
+    private[this] var changedLiftedOwner: Boolean = false
 
     private val ord: Ordering[Symbol] = Ordering.by((_: Symbol).id) // Dotty deviation: Type annotation needed. TODO: figure out why
     private def newSymSet = TreeSet.empty[Symbol](ord)

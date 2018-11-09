@@ -751,6 +751,7 @@ object Denotations {
     private[this] var myValidFor: Period = Nowhere
 
     def validFor: Period = myValidFor
+    @scala.annotation.init
     def validFor_=(p: Period): Unit = {
       myValidFor = p
       symbol.invalidateDenotCache()
