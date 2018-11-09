@@ -24,31 +24,12 @@ import collection.mutable
 object Value {
 
   def checkParams(sym: Symbol, paramInfos: List[Type], values: Int => Value, argPos: Int => Position, onlyHot: Boolean = false)(implicit setting: Setting): Res = {
-    def display(tp: Type): String = tp match {
-      case tp: NamedType => tp.symbol.name.show
-      case tp => tp.show
-    }
-    def message(v: OpaqueValue) = {
-      s"Unsafe leak of value under initialization to ${sym.show}" +
-      (v match {
-        case w @ WarmValue(deps, _) if deps.nonEmpty =>
-          deps.map(display).mkString("\nThe value captures ", ", ", ".") +
-          {
-            w.widen(setting.copy(propagateDeps = true)) match {
-              case w @ WarmValue(deps2, _) if deps2 != deps =>
-                deps2.map(display).mkString("\nIt transitively captures ", ", ", ".")
-              case _ => ""
-            }
-          }
-        case _ => v.show(setting.showSetting)
-      })
-    }
     paramInfos.zipWithIndex.foreach { case (tp, index) =>
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
       val wValue = value.widen(setting.widening)
       if (!wValue.isHot && (onlyHot || !tp.value.isCold) || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
-        return Res(effects = Vector(Generic(message(wValue), pos)))
+        return Res(effects = Vector(Generic(wValue.debugInfo, pos)))
     }
     Res()
   }
@@ -169,6 +150,26 @@ sealed trait Value {
   def isWarm: Boolean = this.isInstanceOf[WarmValue]
   def isHot:  Boolean = this == HotValue
   def isOpaque:  Boolean = this.isInstanceOf[OpaqueValue]
+
+  def debugInfo(implicit setting: Setting): String = {
+    def display(tp: Type): String = tp match {
+      case tp: NamedType => tp.symbol.name.show
+      case tp => tp.show
+    }
+
+    this match {
+      case w @ WarmValue(deps, _) if deps.nonEmpty =>
+        deps.map(display).mkString("\nThe value captures ", ", ", ".") +
+        {
+          w.widen(setting.copy(propagateDeps = true)) match {
+            case w @ WarmValue(deps2, _) if deps2 != deps =>
+              deps2.map(display).mkString("\nIt transitively captures ", ", ", ".")
+            case _ => ""
+          }
+        }
+      case _ => this.show(setting.showSetting)
+    }
+  }
 }
 
 /** The value is absent */
@@ -671,7 +672,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false, var cooking: Boolean 
   override def clone: ObjectValue = super.clone.asInstanceOf[ObjectValue]
 
   // handle dynamic dispatch
-  private def resolve(sym: Symbol)(implicit ctx: Context): Symbol = {
+  def resolve(sym: Symbol)(implicit ctx: Context): Symbol = {
     if (sym.isClass || sym.isConstructor || sym.owner == classSymbol || sym.isEffectivelyFinal) sym
     else {
       // the method may crash, see tests/pos/t7517.scala

@@ -315,8 +315,12 @@ trait Indexer { self: Analyzer =>
       }
       else if (!res.hasErrors) {
         val value = res.value.widen
-        if (!value.isHot && sym.isEffectiveInit) setting.ctx.warning("Init lazy value must return a full value", sym.pos)
-        else if (value.isHot && !sym.isEffectiveInit) sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
+        if (!value.isHot && sym.isEffectiveInit) {
+          setting.ctx.warning("Init lazy value must return a full value\n" + value.debugInfo, sym.pos)
+        }
+        else if (value.isHot && !sym.isEffectiveInit) {
+          sym.annotate(defn.InitAnnotType)  // infer @init for lazy fields
+        }
       }
 
       if (!sym.is(ParamAccessor) && sym.isCalledAbove(cls))

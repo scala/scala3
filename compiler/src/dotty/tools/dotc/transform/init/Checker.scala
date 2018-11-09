@@ -95,9 +95,21 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def check(curCls: ClassSymbol): Unit = {
       calledSymsIn(curCls).foreach { sym =>
-        val res = obj.select(sym)(setting)
+        val target = obj.resolve(sym)
+        val res =
+          if (!curCls.isSubClass(target.owner) && !target.owner.isSubClass(curCls)) {
+            if (target.owner.is(Trait)) {
+              if (target.isField) {
+                ctx.warning(s"The field ${target.name.show} in ${target.owner} is initialized too late.\nIt is used in the initializer of $curCls.", cls.pos)
+                Res()
+              }
+              else IcyValue.select(target)(setting)
+            }
+            else WarmValue().select(target)(setting)
+          }
+          else Res()
+
         if (res.hasErrors) {
-          val target = sym.matchingMember(tp)
           ctx.warning(invalidImplementMsg(target, sym.owner), cls.pos)
         }
       }

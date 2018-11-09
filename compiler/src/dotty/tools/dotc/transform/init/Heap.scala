@@ -9,6 +9,7 @@ import Names._
 import ast._
 import tpd._
 import Symbols._
+import SymUtils._
 import Types._
 import Decorators._
 import util.Positions._

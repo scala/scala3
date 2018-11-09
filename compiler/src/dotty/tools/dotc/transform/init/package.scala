@@ -90,8 +90,8 @@ package object init {
     def isNonParamField(implicit ctx: Context) =
       sym.isTerm && sym.is(AnyFlags, butNot = Method | ParamAccessor | Lazy | Deferred)
 
-    def isField(implicit ctx: Context) =
-      sym.isTerm && sym.is(AnyFlags, butNot = Method | Lazy | Deferred)
+    // def isField(implicit ctx: Context) =
+    //   sym.isTerm && sym.is(AnyFlags, butNot = Method | Lazy | Deferred)
 
     def annotate(tp: Type)(implicit ctx: Context) =
       sym.addAnnotation(Annotations.ConcreteAnnotation(tpd.New(tp, Nil)))
