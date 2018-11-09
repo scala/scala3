@@ -157,7 +157,8 @@ sealed trait Value {
       case tp => tp.show
     }
 
-    this match {
+    "Unsafe leak of value under initialization." ++
+    (this match {
       case w @ WarmValue(deps, _) if deps.nonEmpty =>
         deps.map(display).mkString("\nThe value captures ", ", ", ".") +
         {
@@ -167,8 +168,8 @@ sealed trait Value {
             case _ => ""
           }
         }
-      case _ => this.show(setting.showSetting)
-    }
+      case _ => "\n" + this.show(setting.showSetting)
+    })
   }
 }
 
