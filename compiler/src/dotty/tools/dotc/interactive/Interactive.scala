@@ -310,6 +310,7 @@ object Interactive {
             case imp: untpd.Import if includeImports && tree.hasType =>
               val tree = imp.asInstanceOf[tpd.Import]
               val selections = tpd.importSelections(tree)
+              traverse(imp.expr)
               selections.foreach(traverse)
             case utree: untpd.NameTree if tree.hasType =>
               val tree = utree.asInstanceOf[tpd.NameTree]
