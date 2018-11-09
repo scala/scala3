@@ -227,7 +227,7 @@ object CommentParsing {
 
   /** A map from tag name to all boundaries for this tag */
   def groupedSections(str: String, sections: List[(Int, Int)]): Map[String, List[(Int, Int)]] = {
-    val map = mutable.Map.empty[String, List[(Int, Int)]].withDefault(_ => Nil)
+    val map = mutable.Map.empty[String, List[(Int, Int)]].withDefaultValue(Nil)
     sections.reverse.foreach { bounds =>
       val tag = extractSectionTag(str, bounds)
       map.update(tag, (skipTag(str, bounds._1), bounds._2) :: map(tag))
