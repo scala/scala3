@@ -29,7 +29,6 @@ object Interactive {
     val definitions: Int = 8 // include definitions
     val linkedClass: Int = 16 // include `symbol.linkedClass`
     val imports: Int = 32 // include imports in the results
-    val renamingImports: Int = 64 // Include renamed symbols and renaming part of imports in the results
   }
 
   /** Does this tree define a symbol ? */
@@ -302,7 +301,6 @@ object Interactive {
     (implicit ctx: Context): List[SourceNamedTree] = safely {
     val includeReferences = (include & Include.references) != 0
     val includeImports = (include & Include.imports) != 0
-    val includeRenamingImports = (include & Include.renamingImports) != 0
     val buf = new mutable.ListBuffer[SourceNamedTree]
 
     def traverser(source: SourceFile) = {
@@ -340,30 +338,31 @@ object Interactive {
   /**
    * Find trees that match `symbol` in `trees`.
    *
-   * @param trees    The trees to inspect.
-   * @param includes Whether to include references, definitions, etc.
-   * @param symbol   The symbol for which we want to find references.
+   * @param trees     The trees to inspect.
+   * @param includes  Whether to include references, definitions, etc.
+   * @param symbol    The symbol for which we want to find references.
+   * @param predicate An additional predicate that the trees must match.
    */
   def findTreesMatching(trees: List[SourceTree],
                         includes: Include.Set,
-                        symbol: Symbol)(implicit ctx: Context): List[SourceNamedTree] = {
+                        symbol: Symbol,
+                        predicate: NameTree => Boolean = util.common.alwaysTrue
+                       )(implicit ctx: Context): List[SourceNamedTree] = {
     val linkedSym = symbol.linkedClass
     val includeDeclaration = (includes & Include.definitions) != 0
     val includeLinkedClass = (includes & Include.linkedClass) != 0
-    val includeRenamingImports = (includes & Include.renamingImports) != 0
-    val predicate: NameTree => Boolean = tree =>
+    val fullPredicate: NameTree => Boolean = tree =>
       (  !tree.symbol.isPrimaryConstructor
       && (includeDeclaration || !Interactive.isDefinition(tree))
-      && (includeRenamingImports || !isRenamed(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
-         || (  includeDeclaration
-            && includeLinkedClass
+         || ( includeLinkedClass
             && linkedSym.exists
             && Interactive.matchSymbol(tree, linkedSym, includes)
             )
          )
+      && predicate(tree)
       )
-    namedTrees(trees, includes, predicate)
+    namedTrees(trees, includes, fullPredicate)
   }
 
   /** The reverse path to the node that closest encloses position `pos`,
@@ -574,37 +573,6 @@ object Interactive {
         stats.exists(isImportRenaming)
       case _ =>
         false
-    }
-  }
-
-  /**
-   * In `enclosing`, find all the references to any of `syms` that have been renamed to `toName`.
-   *
-   * If `enclosing` is empty, it means the renaming import was top-level and the whole source file
-   * should be considered. Otherwise, we can restrict the search to this tree because renaming
-   * imports are local.
-   *
-   * @param toName    The name that is set by the renaming.
-   * @param enclosing The tree that encloses the renaming import, if it exists.
-   * @param syms      The symbols to which we want to find renamed references.
-   * @param allTrees  All the trees in this source file, in case we can't find `enclosing`.
-   * @param source    The sourcefile that where to look for references.
-   * @return All the references to the symbol under the cursor that are using `toName`.
-   */
-  def findTreesMatchingRenaming(toName: Name,
-                                syms: List[Symbol],
-                                trees: List[SourceTree]
-                               )(implicit ctx: Context): List[SourceNamedTree] = {
-
-    val includes =
-      Include.references | Include.imports | Include.renamingImports
-
-    syms.flatMap { sym =>
-      Interactive.namedTrees(trees,
-        includes,
-        tree =>
-          Interactive.sameName(tree.name, toName) &&
-          (Interactive.matchSymbol(tree, sym, includes) || Interactive.matchSymbol(tree, sym.linkedClass, includes)))
     }
   }
 

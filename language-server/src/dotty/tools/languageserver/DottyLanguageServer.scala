@@ -311,8 +311,7 @@ class DottyLanguageServer extends LanguageServer
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
-      Include.references | Include.overriding | Include.imports | Include.renamingImports |
-        (if (includeDeclaration) Include.definitions else 0)
+      Include.references | Include.overriding | Include.imports | (if (includeDeclaration) Include.definitions else 0)
     }
 
     val uriTrees = driver.openedTrees(uri)
@@ -360,11 +359,17 @@ class DottyLanguageServer extends LanguageServer
       path match {
         // Selected a renaming in an import node
         case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.pos.contains(pos.pos) =>
-          Interactive.findTreesMatchingRenaming(rename.name, syms, uriTrees)
+          val includes = Include.references | Include.linkedClass | Include.imports
+          syms.flatMap { sym =>
+            Interactive.findTreesMatching(uriTrees, includes, sym, t => Interactive.sameName(t.name, rename.name))
+          }
 
         // Selected a reference that has been renamed
         case (nameTree: NameTree) :: rest if Interactive.isRenamed(nameTree) =>
-          Interactive.findTreesMatchingRenaming(nameTree.name, syms, uriTrees)
+          val includes = Include.references | Include.linkedClass | Include.imports
+          syms.flatMap { sym =>
+            Interactive.findTreesMatching(uriTrees, includes, sym, t => Interactive.sameName(t.name, nameTree.name))
+          }
 
         case _ =>
           val includes =
@@ -372,7 +377,7 @@ class DottyLanguageServer extends LanguageServer
 
           syms.flatMap { sym =>
             val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-            Interactive.findTreesMatching(trees, includes, sym)
+            Interactive.findTreesMatching(trees, includes, sym, t => Interactive.sameName(t.name, sym.name))
           }
       }
 
@@ -395,7 +400,7 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
     val path = Interactive.pathTo(uriTrees, pos)
     val syms = Interactive.enclosingSourceSymbols(path, pos)
-    val includes = Include.definitions | Include.references | Include.imports | Include.renamingImports
+    val includes = Include.definitions | Include.references | Include.imports
 
     syms.flatMap { sym =>
       val refs = Interactive.findTreesMatching(uriTrees, includes, sym)
