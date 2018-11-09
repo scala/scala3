@@ -27,6 +27,7 @@ import collection.mutable
 import dotty.tools.io.VirtualFile
 
 import scala.util.control.NonFatal
+import dotty.tools.backend.sjs
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -41,7 +42,23 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   protected[this] def rootContext(implicit ctx: Context): Context = {
     ctx.initialize()(ctx)
-    ctx.base.setPhasePlan(comp.phases)
+
+    val actualPhases = if (ctx.settings.scalajs.value) {
+      // Remove phases that Scala.js does not want
+      comp.phases.mapConserve(_.filter {
+        case _: transform.FunctionalInterfaces => false
+        case _ => true
+      }).filter(_.nonEmpty)
+    } else {
+      // Remove Scala.js-related phases
+      comp.phases.mapConserve(_.filter {
+        case _: sjs.GenSJSIR => false
+        case _ => true
+      }).filter(_.nonEmpty)
+    }
+
+    ctx.base.setPhasePlan(actualPhases)
+
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
       .setPeriod(Period(comp.nextRunId, FirstPhaseId))

@@ -20,6 +20,8 @@ val scalap = Build.scalap
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
 
+val sjsSandbox = Build.sjsSandbox
+
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
 

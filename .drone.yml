@@ -37,6 +37,13 @@ pipeline:
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
       - ./project/scripts/bootstrapCmdTests
 
+  test_sjs:
+    group: test
+    image: lampepfl/dotty:2018-10-01
+    commands:
+      - cp -R . /tmp/3/ && cd /tmp/3/
+      - ./project/scripts/sbt ";sjsSandbox/run"
+
   test_sbt:
     group: test
     image: lampepfl/dotty:2018-10-01

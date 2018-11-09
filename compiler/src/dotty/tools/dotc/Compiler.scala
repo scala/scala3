@@ -7,6 +7,7 @@ import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
+import dotty.tools.backend.sjs
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -113,6 +114,7 @@ class Compiler {
 
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
+    List(new sjs.GenSJSIR) ::        // Generate .sjsir files for Scala.js (not enabled by default)
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 

@@ -22,7 +22,7 @@ import reporting._
 import reporting.diagnostic.Message
 import collection.mutable
 import printing._
-import config.{JavaPlatform, Platform, ScalaSettings}
+import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 
 import scala.annotation.internal.sharable
 
@@ -590,7 +590,8 @@ object Contexts {
     }
 
     protected def newPlatform(implicit ctx: Context): Platform =
-      new JavaPlatform
+      if (settings.scalajs.value) new SJSPlatform
+      else new JavaPlatform
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)

@@ -5,7 +5,7 @@ import Contexts._
 import dotty.tools.dotc.util.Positions
 import Positions.Position
 
-import org.scalajs.core.ir
+import org.scalajs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
 class JSPositions()(implicit ctx: Context) {
