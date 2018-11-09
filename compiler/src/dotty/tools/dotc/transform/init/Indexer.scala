@@ -224,7 +224,7 @@ trait Indexer { self: Analyzer =>
       if (res.hasErrors) return res
 
       // mixin check
-      mixinCheck(cls, tmpl, obj)(setting)
+      mixinCheck(cls, tmpl, obj, values)(setting)
 
       // check current class body
       res ++= checkStats(tmpl.body)(setting2).effects
@@ -236,11 +236,11 @@ trait Indexer { self: Analyzer =>
     }
   }
 
-  def mixinCheck(cls: ClassSymbol, tmpl: tpd.Template, obj: ObjectValue)(implicit setting: Setting) = {
+  def mixinCheck(cls: ClassSymbol, tmpl: tpd.Template, obj: ObjectValue, values: List[Value])(implicit setting: Setting) = {
     def settingFresh(): Setting = {
       val setting2 = setting.freshHeap
       val obj2 = obj.clone
-      val slice = indexSlice(cls, tmpl, obj2, i => tmpl.constr.vparamss.flatten.apply(i).tpe.value)(setting2)
+      val slice = indexSlice(cls, tmpl, obj2, i => values(i))(setting2)
       setting2.withEnv(slice.innerEnv).copy(inferInit = false, autoApply = true, trace = true)
     }
 

@@ -22,7 +22,7 @@ import Constants.Constant
 import collection.mutable
 
 package object init {
-  implicit class TypeOps(val tp: Type) extends AnyVal {
+  implicit class TypesOps(val tp: Type) extends AnyVal {
     def isIcy(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.IcyAnnot)
 
     def isCold(implicit ctx: Context) = tp.dealiasKeepAnnots.hasAnnotation(defn.ColdAnnot)

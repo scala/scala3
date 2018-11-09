@@ -28,7 +28,7 @@ object Value {
       val value = scala.util.Try(values(index)).getOrElse(HotValue)
       val pos = scala.util.Try(argPos(index)).getOrElse(NoPosition)
       val wValue = value.widen(setting.widening)
-      if (!wValue.isHot && (onlyHot || !tp.value.isCold) || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
+      if (!wValue.isHot && (onlyHot || !tp.isCold) || wValue.isIcy)  // warm objects only leak as cold, for safety and simplicity
         return Res(effects = Vector(Generic(wValue.debugInfo, pos)))
     }
     Res()
@@ -242,7 +242,6 @@ abstract sealed class OpaqueValue extends SingleValue {
       else WarmValue(deps1 ++ deps2, unknownDeps = false)
     case (w: WarmValue, _) => w
     case (_, w: WarmValue) => w
-    case _ => HotValue
   }
 
   def meet(that: OpaqueValue): OpaqueValue = (this, that) match {
