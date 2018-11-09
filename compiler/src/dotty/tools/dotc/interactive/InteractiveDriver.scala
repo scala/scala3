@@ -253,9 +253,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       case PackageDef(_, stats) =>
         stats.foreach(addTrees)
       case imp: Import =>
-        trees += SourceImportTree(imp, source)
+        trees += SourceTree(imp, source)
       case tree: TypeDef =>
-        trees += SourceNamedTree(tree, source)
+        trees += SourceTree(tree, source)
       case _ =>
     }
     addTrees(topTree)

@@ -279,7 +279,7 @@ object Interactive {
    *  source code.
    */
   def namedTrees(trees: List[SourceTree], include: Include.Set, sym: Symbol)
-   (implicit ctx: Context): List[SourceNamedTree] =
+   (implicit ctx: Context): List[SourceTree] =
     if (!sym.exists)
       Nil
     else
@@ -288,7 +288,7 @@ object Interactive {
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
    */
   def namedTrees(trees: List[SourceTree], nameSubstring: String)
-   (implicit ctx: Context): List[SourceNamedTree] = {
+   (implicit ctx: Context): List[SourceTree] = {
     val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
     namedTrees(trees, 0, predicate)
   }
@@ -298,10 +298,10 @@ object Interactive {
    *  @param includeReferences  If true, include references and not just definitions
    */
   def namedTrees(trees: List[SourceTree], include: Include.Set, treePredicate: NameTree => Boolean)
-    (implicit ctx: Context): List[SourceNamedTree] = safely {
+    (implicit ctx: Context): List[SourceTree] = safely {
     val includeReferences = (include & Include.references) != 0
     val includeImports = (include & Include.imports) != 0
-    val buf = new mutable.ListBuffer[SourceNamedTree]
+    val buf = new mutable.ListBuffer[SourceTree]
 
     def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
@@ -319,7 +319,7 @@ object Interactive {
                    && !tree.pos.isZeroExtent
                    && (includeReferences || isDefinition(tree))
                    && treePredicate(tree))
-                buf += SourceNamedTree(tree, source)
+                buf += SourceTree(tree, source)
               traverseChildren(tree)
             case tree: untpd.Inlined =>
               traverse(tree.call)
@@ -347,7 +347,7 @@ object Interactive {
                         includes: Include.Set,
                         symbol: Symbol,
                         predicate: NameTree => Boolean = util.common.alwaysTrue
-                       )(implicit ctx: Context): List[SourceNamedTree] = {
+                       )(implicit ctx: Context): List[SourceTree] = {
     val linkedSym = symbol.linkedClass
     val includeDeclaration = (includes & Include.definitions) != 0
     val includeLinkedClass = (includes & Include.linkedClass) != 0
@@ -450,7 +450,7 @@ object Interactive {
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceNamedTree] = {
+  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
     enclosingSourceSymbols(path, pos).flatMap { sym =>
       val enclTree = enclosingTree(path)
 
