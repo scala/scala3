@@ -20,7 +20,7 @@ assigning a type to a constant expression. The new rule is:
      - the expressions `Es` are partitioned into `Int` constants on the
        one hand, and all other expressions on the other hand,
      - if all the other expressions have the same numeric type `T`
-       (which can be one of `Byte`, `Short`, `Int`, `Long`, `Float`,
+       (which can be one of `Byte`, `Short`, `Char`, `Int`, `Long`, `Float`,
        `Double`), possibly after widening, and if none of the `Int`
        literals would incur a loss of precision when converted to `T`,
        then they are thus converted (the other expressions are left
