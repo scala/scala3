@@ -77,8 +77,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   // Like in `ZipArchiveFileLookup` we assume that zips are immutable
-  private val zipClassPathClasses: Seq[String] = {
-    val names = new mutable.ListBuffer[String]
+  private val zipClassPathClasses: Seq[TypeName] = {
+    val names = new mutable.ListBuffer[TypeName]
     zipClassPaths.foreach { zipCp =>
       val zipFile = new ZipFile(zipCp.zipFile)
       classesFromZip(zipFile, names)
@@ -105,7 +105,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def sourceTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
     val fromBuffers = openedTrees.values.flatten.toList
     val fromCompilationOutput = {
-      val classNames = new mutable.ListBuffer[String]
+      val classNames = new mutable.ListBuffer[TypeName]
       val output = ctx.settings.outputDir.value
       if (output.isDirectory) {
         classesFromDir(output.jpath, classNames)
@@ -114,8 +114,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         classesFromZip(zipFile, classNames)
       }
       classNames.flatMap { cls =>
-        val className = cls.toTypeName
-        treesFromClassName(className, id = "")
+        treesFromClassName(cls, id)
       }
     }
     (fromBuffers ++ fromCompilationOutput).distinct
@@ -138,8 +137,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
-      val className = cls.toTypeName
-      treesFromClassName(className, id)
+      treesFromClassName(cls, id)
     }
     (fromSource ++ fromClassPath).distinct
   }
@@ -205,8 +203,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   // FIXME: classfiles in directories may change at any point, so we retraverse
   // the directories each time, if we knew when classfiles changed (sbt
   // server-mode might help here), we could do cache invalidation instead.
-  private def dirClassPathClasses: Seq[String] = {
-    val names = new mutable.ListBuffer[String]
+  private def dirClassPathClasses: Seq[TypeName] = {
+    val names = new mutable.ListBuffer[TypeName]
     dirClassPaths.foreach { dirCp =>
       val root = dirCp.dir.toPath
       classesFromDir(root, names)
@@ -215,19 +213,19 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   /** Adds the names of the classes that are defined in `zipFile` to `buffer`. */
-  private def classesFromZip(zipFile: ZipFile, buffer: mutable.ListBuffer[String]): Unit = {
+  private def classesFromZip(zipFile: ZipFile, buffer: mutable.ListBuffer[TypeName]): Unit = {
     try {
       for {
         entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
         name = entry.getName
         tastySuffix <- tastySuffixes.find(name.endsWith)
-      } buffer += name.replace("/", ".").stripSuffix(tastySuffix)
+      } buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
     }
   finally zipFile.close()
   }
 
   /** Adds the names of the classes that are defined in `dir` to `buffer`. */
-  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[String]): Unit = {
+  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit = {
     try
       Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
@@ -237,7 +235,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
               tastySuffix <- tastySuffixes
               if name.endsWith(tastySuffix)
             } {
-              buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+              buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
             }
           }
           FileVisitResult.CONTINUE

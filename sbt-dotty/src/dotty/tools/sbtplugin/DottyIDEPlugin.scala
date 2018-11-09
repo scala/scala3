@@ -374,16 +374,16 @@ object DottyIDEPlugin extends AutoPlugin {
   /**
    * Detect the eligible configuration dependencies from a given configuration.
    *
-   * A configuration is elibile if the project defines it and `bloopGenerate`
+   * A configuration is eligible if the project defines it and `compile`
    * exists for it. Otherwise, the configuration dependency is ignored.
    *
    * This is required to prevent transitive configurations like `Runtime` from
-   * generating useless bloop configuration files and possibly incorrect project
+   * generating useless IDE configuration files and possibly incorrect project
    * dependencies. For example, if we didn't do this then the dependencies of
-   * `IntegrationTest` would be `projectName-runtime` and `projectName-compile`,
+   * `IntegrationTest` would be `projectName/runtime` and `projectName/compile`,
    * whereas the following logic will return only the configuration `Compile`
    * so that the use site of this function can create the project dep
-   * `projectName-compile`.
+   * `projectName/compile`.
    */
   private def eligibleDepsFromConfig(config: Configuration): Def.Initialize[Task[List[Configuration]]] = {
     Def.task {

@@ -512,7 +512,8 @@ object Interactive {
       in(targetDriver) { implicit ctx =>
         val base: Symbol = ctx.definitions.RootClass
         owners.tail.foldLeft(base) { (prefix, symbolName) =>
-          prefix.info.member(symbolName).symbol
+          if (prefix.exists) prefix.info.member(symbolName).symbol
+          else NoSymbol
         }
       }
     }
