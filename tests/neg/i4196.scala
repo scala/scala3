@@ -1,6 +1,6 @@
 object Test {
   @annotation.tailrec
-  def foo(i: implicit Unit => Int): implicit Unit => Int =  // error: method not tail recursive
+  def foo(i: implicit Unit => Int): implicit Unit => Int =
     if (i == 0)
       0
     else
