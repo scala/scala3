@@ -192,11 +192,18 @@ trait Printers
           this += "TypeBoundsTree(" += lo += ", " += hi += ")"
         case SyntheticBounds() =>
           this += s"SyntheticBounds()"
+        case TypeTree.MatchType(bound, selector, cases) =>
+          this += "TypeTree.MatchType(" += bound += ", " += selector += ", " ++= cases += ")"
       }
 
       def visitCaseDef(x: CaseDef): Buffer = {
         val CaseDef(pat, guard, body) = x
         this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
+      }
+
+      def visitTypeCaseDef(x: TypeCaseDef): Buffer = {
+        val TypeCaseDef(pat, body) = x
+        this += "TypeCaseDef(" += pat += ", " += body += ")"
       }
 
       def visitPattern(x: Pattern): Buffer = x match {
@@ -252,6 +259,8 @@ trait Printers
           this += "Type.AndType(" += left += ", " += right += ")"
         case Type.OrType(left, right) =>
           this += "Type.OrType(" += left += ", " += right += ")"
+        case Type.MatchType(bound, scrutinee, cases) =>
+          this += "Type.MatchType(" += bound += ", " += scrutinee += ", " ++= cases += ")"
         case Type.ByNameType(underlying) =>
           this += "Type.ByNameType(" += underlying += ")"
         case Type.ParamRef(binder, idx) =>
@@ -324,6 +333,11 @@ trait Printers
       private implicit class CaseDefOps(buff: Buffer) {
         def +=(x: CaseDef): Buffer = { visitCaseDef(x); buff }
         def ++=(x: List[CaseDef]): Buffer = { visitList(x, visitCaseDef); buff }
+      }
+
+      private implicit class TypeCaseDefOps(buff: Buffer) {
+        def +=(x: TypeCaseDef): Buffer = { visitTypeCaseDef(x); buff }
+        def ++=(x: List[TypeCaseDef]): Buffer = { visitList(x, visitTypeCaseDef); buff }
       }
 
       private implicit class PatternOps(buff: Buffer) {
@@ -871,6 +885,19 @@ trait Printers
         this
       }
 
+      def printTypes(trees: List[Type], sep: String): Buffer = {
+        def printSeparated(list: List[Type]): Unit = list match {
+          case Nil =>
+          case x :: Nil => printType(x)
+          case x :: xs =>
+            printType(x)
+            this += sep
+            printSeparated(xs)
+        }
+        printSeparated(trees)
+        this
+      }
+
       def printImportSelectors(selectors: List[ImportSelector]): Buffer = {
         def printSeparated(list: List[ImportSelector]): Unit = list match {
           case Nil =>
@@ -891,6 +918,19 @@ trait Printers
           case x :: Nil => printCaseDef(x)
           case x :: xs =>
             printCaseDef(x)
+            this += sep
+            printSeparated(xs)
+        }
+        printSeparated(cases)
+        this
+      }
+
+      def printTypeCases(cases: List[TypeCaseDef], sep: String): Buffer = {
+        def printSeparated(list: List[TypeCaseDef]): Unit = list match {
+          case Nil =>
+          case x :: Nil => printTypeCaseDef(x)
+          case x :: xs =>
+            printTypeCaseDef(x)
             this += sep
             printSeparated(xs)
         }
@@ -976,6 +1016,12 @@ trait Printers
             }
             inSquare(printSeparated(tparams))
             if (isMember) {
+              body match {
+                case TypeTree.MatchType(Some(bound), _, _) =>
+                  this +=  " <: "
+                  printTypeTree(bound)
+                case _ =>
+              }
               this += " = "
               printTypeOrBoundsTree(body)
             }
@@ -1064,6 +1110,14 @@ trait Printers
               printTree(body)
           }
         }
+        this
+      }
+
+      def printTypeCaseDef(caseDef: TypeCaseDef): Buffer = {
+        this += highlightValDef("case ", color)
+        printTypeTree(caseDef.pattern)
+        this += highlightValDef(" => ", color)
+        printTypeTree(caseDef.rhs)
         this
       }
 
@@ -1201,6 +1255,11 @@ trait Printers
           this += highlightTypeDef(" | ", color)
           printTypeTree(right)
 
+        case TypeTree.MatchType(bound, selector, cases) =>
+          printTypeTree(selector)
+          this += highlightKeyword(" match ", color)
+          inBlock(printTypeCases(cases, lineBreak()))
+
         case TypeTree.ByName(result) =>
           this += highlightTypeDef("=> ", color)
           printTypeTree(result)
@@ -1299,6 +1358,11 @@ trait Printers
           printType(left)
           this += highlightTypeDef(" | ", color)
           printType(right)
+
+        case Type.MatchType(bound, scrutinee, cases) =>
+          printType(scrutinee)
+          this += highlightKeyword(" match ", color)
+          inBlock(printTypes(cases, lineBreak()))
 
         case Type.ByNameType(tp) =>
           this += highlightTypeDef(" => ", color)
@@ -1553,7 +1617,7 @@ trait Printers
       }
     }
 
-    // TODO Provide some of these in scala.tasty.Reflect.scala and implement them using checks on symbols for performance
+    // TODO Provide some of these in scala.tasty.Reflection.scala and implement them using checks on symbols for performance
     private object Types {
 
       object JavaLangObject {

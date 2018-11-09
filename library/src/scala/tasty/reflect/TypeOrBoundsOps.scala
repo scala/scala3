@@ -92,6 +92,11 @@ trait TypeOrBoundsOps extends Core {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
     }
 
+    val MatchType: MatchTypeExtractor
+    abstract class MatchTypeExtractor {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])]
+    }
+
     val ByNameType: ByNameTypeExtractor
     abstract class ByNameTypeExtractor {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]

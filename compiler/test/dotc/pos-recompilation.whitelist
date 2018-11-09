@@ -376,7 +376,6 @@ lookupswitch
 macro-deprecate-dont-touch-backquotedidents
 Map
 match
-matchtype
 matthias3
 matthias4
 matthias5

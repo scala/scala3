@@ -123,6 +123,13 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
+    object MatchType extends MatchTypeExtractor {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])] = x match {
+        case Types.MatchType(bound, scrutinee, cases) => Some((bound, scrutinee, cases))
+        case _ => None
+      }
+    }
+
     object ByNameType extends ByNameTypeExtractor {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ExprType(resType) => Some(resType.stripTypeVar)

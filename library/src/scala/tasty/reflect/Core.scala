@@ -46,6 +46,7 @@ package scala.tasty.reflect
  *                         |               +- Annotated
  *                         |               +- And
  *                         |               +- Or
+ *                         |               +- MatchType
  *                         |               +- ByName
  *                         |               +- TypeLambdaTree
  *                         |               +- Bind
@@ -54,6 +55,7 @@ package scala.tasty.reflect
  *                         +- SyntheticBounds
  *
  *  +- CaseDef
+ *  +- TypeCaseDef
  *
  *  +- Pattern --+- Value
  *               +- Bind
@@ -75,6 +77,7 @@ package scala.tasty.reflect
  *                                  +- AnnotatedType
  *                                  +- AndType
  *                                  +- OrType
+ *                                  +- MatchType
  *                                  +- ByNameType
  *                                  +- ParamRef
  *                                  +- ThisType
@@ -136,6 +139,9 @@ trait Core {
 
   /** Branch of a pattern match or catch clause */
   type CaseDef
+
+  /** Branch of a type pattern match */
+  type TypeCaseDef
 
   /** Pattern tree of the pattern part of a CaseDef */
   type Pattern

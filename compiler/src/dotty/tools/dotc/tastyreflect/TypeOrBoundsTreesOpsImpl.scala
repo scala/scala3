@@ -100,6 +100,13 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
       }
     }
 
+    object MatchType extends MatchTypeExtractor {
+      def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[CaseDef])] = x match {
+        case x: tpd.MatchTypeTree => Some((if (x.bound == tpd.EmptyTree) None else Some(x.bound), x.selector, x.cases))
+        case _ => None
+      }
+    }
+
     object ByName extends ByNameExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[TypeTree] = x match {
         case x: tpd.ByNameTypeTree => Some(x.result)

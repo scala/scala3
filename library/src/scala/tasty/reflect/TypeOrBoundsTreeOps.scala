@@ -77,6 +77,11 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 
+    val MatchType: MatchTypeExtractor
+    abstract class MatchTypeExtractor {
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
+    }
+
     val ByName: ByNameExtractor
     abstract class ByNameExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
