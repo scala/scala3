@@ -11,7 +11,7 @@ public class ProjectConfig {
   public final File[] sourceDirectories;
   public final File[] dependencyClasspath;
   public final File classDirectory;
-  public final String[] dependencies;
+  public final String[] projectDependencies;
 
   @JsonCreator
   public ProjectConfig(
@@ -21,13 +21,13 @@ public class ProjectConfig {
       @JsonProperty("sourceDirectories") File[] sourceDirectories,
       @JsonProperty("dependencyClasspath") File[] dependencyClasspath,
       @JsonProperty("classDirectory") File classDirectory,
-      @JsonProperty("dependencies") String[] dependencies) {
+      @JsonProperty("projectDependencies") String[] projectDependencies) {
      this.id = id;
      this.compilerVersion = compilerVersion;
      this.compilerArguments = compilerArguments;
      this.sourceDirectories = sourceDirectories;
      this.dependencyClasspath = dependencyClasspath;
      this.classDirectory = classDirectory;
-     this.dependencies = dependencies;
+     this.projectDependencies = projectDependencies;
   }
 }

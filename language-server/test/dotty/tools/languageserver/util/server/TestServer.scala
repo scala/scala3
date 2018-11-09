@@ -60,7 +60,7 @@ class TestServer(testFolder: Path, projects: List[Project]) {
          |  "sourceDirectories" : ${showSeq(sourceDirectory(project, wipe = false) :: Nil)},
          |  "dependencyClasspath" : ${showSeq(dependencyClasspath(project))},
          |  "classDirectory" : "${classDirectory(project, wipe = false).toString.replace('\\','/')}",
-         |  "dependencies": ${showSeq(project.dependsOn.map(_.name))}
+         |  "projectDependencies": ${showSeq(project.dependsOn.map(_.name))}
          |}
          |""".stripMargin
     }

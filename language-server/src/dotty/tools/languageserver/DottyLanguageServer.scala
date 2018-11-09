@@ -134,7 +134,7 @@ class DottyLanguageServer extends LanguageServer
       val allProjects = drivers.keySet
 
       def transitiveDependencies(config: ProjectConfig): Set[ProjectConfig] = {
-        val dependencies = config.dependencies.map(idToConfig).toSet
+        val dependencies = config.projectDependencies.map(idToConfig).toSet
         dependencies ++ dependencies.flatMap(transitiveDependencies)
       }
 
