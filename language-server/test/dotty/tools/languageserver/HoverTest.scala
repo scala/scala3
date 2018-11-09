@@ -129,45 +129,45 @@ class HoverTest {
         hoverContent("[T, U](fizz: Int, buzz: String)(implicit ev: Boolean): Any",
                      """Does something
                        |
-                       |Type Parameters:
+                       |#### Type Parameters:
                        | - **T** A first type param
                        | - **U** Another type param
                        |
-                       |Parameters:
+                       |#### Parameters:
                        | - **fizz** Again another number
                        | - **buzz** A String
                        | - **ev** An implicit boolean
                        |
-                       |Returns:
+                       |#### Returns:
                        | - Something
                        |
-                       |Throws:
+                       |#### Throws:
                        | - **java.lang.NullPointerException** if you're unlucky
                        | - **java.lang.InvalidArgumentException** if the argument is invalid
                        |
-                       |See Also:
+                       |#### See Also:
                        | - java.nio.file.Paths#get()
                        |
-                       |Examples:
+                       |#### Examples:
                        | - ```scala
                        |   myFoo.bar[Int, String](0, "hello, world")
                        |   ```
                        |
-                       |Usecases:
+                       |#### Usecases:
                        | - ```scala
                        |   def bar(fizz: Int, buzz: String): Any
                        |   ```
                        |
-                       |Note:
+                       |#### Note:
                        | - A note
                        |
-                       |Authors:
+                       |#### Authors:
                        | - John Doe
                        |
-                       |Since:
+                       |#### Since:
                        | - 0.1
                        |
-                       |Version:
+                       |#### Version:
                        | - 1.0""".stripMargin))
 
   }

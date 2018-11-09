@@ -48,7 +48,7 @@ class ParsedComment(val comment: Comment) {
   /**
    * Renders this comment as markdown.
    *
-   * The different sections are formatted according to the maping in `knownTags`.
+   * The different sections are formatted according to the mapping in `knownTags`.
    */
   def renderAsMarkdown: String = {
     val buf = new StringBuilder
@@ -193,7 +193,7 @@ object ParsedComment {
       case Nil =>
         None
       case items =>
-        Some(s"""$title:
+        Some(s"""#### $title:
                 |${fn(items)}
                 |""".stripMargin)
     }
