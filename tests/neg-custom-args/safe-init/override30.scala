@@ -1,6 +1,7 @@
 import scala.annotation.init
 
 class Foo {
+  @init
   def f: Int = 50
 
   @init

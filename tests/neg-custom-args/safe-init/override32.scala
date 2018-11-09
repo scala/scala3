@@ -6,7 +6,7 @@ trait Foo {
 }
 
 trait Bar {
-  val m = "hello"
+  final val m = "hello"
 
   @scala.annotation.init
   def foo(n: Int) =  m

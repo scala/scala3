@@ -223,6 +223,9 @@ trait Indexer { self: Analyzer =>
       val res = checkParents(cls, tmpl.parents, obj)(setting2)
       if (res.hasErrors) return res
 
+      // mixin check
+      mixinCheck(cls, tmpl, obj)(setting)
+
       // check current class body
       res ++= checkStats(tmpl.body)(setting2).effects
 
@@ -231,6 +234,51 @@ trait Indexer { self: Analyzer =>
 
       res
     }
+  }
+
+  def mixinCheck(cls: ClassSymbol, tmpl: tpd.Template, obj: ObjectValue)(implicit setting: Setting) = {
+    def settingFresh(): Setting = {
+      val setting2 = setting.freshHeap
+      val obj2 = obj.clone
+      val slice = indexSlice(cls, tmpl, obj2, i => tmpl.constr.vparamss.flatten.apply(i).tpe.value)(setting2)
+      setting2.withEnv(slice.innerEnv).copy(inferInit = false, autoApply = true, trace = true)
+    }
+
+    // check mixin implememntation of init methods
+    def invalidMethodMsg(sym: Symbol, usedIn: Symbol) = {
+      val msg =
+        s"""|@scala.annotation.icy required for ${sym.show} in ${sym.owner.show}
+            |Because the method is called in ${usedIn.show} during initialization."""
+          .stripMargin
+      setting.ctx.warning(msg, cls.pos)
+    }
+
+    def invalidFieldMsg(target: Symbol, usedIn: Symbol) = {
+      val msg =
+        s"""|The field ${target.name.show} in ${target.owner} is initialized too late.
+            |It is used in the initializer of $usedIn."""
+          .stripMargin
+      setting.ctx.warning(msg, cls.pos)
+    }
+
+    def check(curCls: ClassSymbol): Unit = {
+      implicit val setting: Setting = settingFresh()
+      calledSymsIn(curCls).foreach { sym =>
+        val target = obj.resolve(sym)
+        if (!curCls.isSubClass(target.owner) && !target.owner.isSubClass(curCls)) {
+          if (target.owner.is(Trait)) {
+            if (target.isField) invalidFieldMsg(target, curCls)
+            else if (!target.isIcy) invalidMethodMsg(target, curCls)
+          }
+          else if (!target.isField) {
+            val res = obj.select(target)
+            if (res.hasErrors) res.effects.foreach(eff => eff.report(setting.ctx))
+          }
+        }
+      }
+    }
+
+    cls.baseClasses.tail.foreach(check)  // no need to check methods defined in current class
   }
 
   def coldCheck(cls: ClassSymbol, tmpl: tpd.Template, obj: ObjectValue)(implicit setting: Setting) = {
@@ -368,7 +416,7 @@ trait Indexer { self: Analyzer =>
 
     tmpl.body.foreach {
       case ddef: DefDef if !ddef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
-        checkMethod(ddef)(setting.withPos(ddef.symbol.pos))
+        checkMethod(ddef)(setting.withPos(ddef.symbol.pos).copy(inferInit = false, anchor = ddef.symbol, trace = true))
       case vdef: ValDef if vdef.symbol.is(Lazy) && !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
         checkLazy(vdef)(setting.withPos(vdef.symbol.pos).widening)
       case vdef: ValDef if !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>

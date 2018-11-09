@@ -35,8 +35,8 @@ package object init {
       else HotValue
   }
 
-  def calledSymsIn(cls: ClassSymbol)(implicit ctx: Context): List[Symbol] =
-    cls.self.annotations.collect {
+  def calledSymsIn(anchor: Symbol)(implicit ctx: Context): List[Symbol] =
+    anchor.self.annotations.collect {
       case Annotation.Call(sym) => sym
     }
 
@@ -62,8 +62,8 @@ package object init {
       !sym.isEffectiveCold &&
       (sym.isInit || sym.allOverriddenSymbols.exists(_.isInit))
 
-    def isCalledIn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-      calledSymsIn(cls).exists(_ == sym) || sym.allOverriddenSymbols.exists(_.isCalledIn(cls))
+    def isCalledIn(anchor: Symbol)(implicit ctx: Context): Boolean =
+      calledSymsIn(anchor).exists(_ == sym) || sym.allOverriddenSymbols.exists(_.isCalledIn(anchor))
 
     def isCalledAbove(from: ClassSymbol)(implicit ctx: Context) =
       from.baseClasses.tail.exists(cls => sym.isCalledIn(cls))

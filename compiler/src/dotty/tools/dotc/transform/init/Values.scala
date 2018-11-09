@@ -700,13 +700,20 @@ class ObjectValue(val tp: Type, val open: Boolean = false, var cooking: Boolean 
         else ColdValue
       }
 
-    if (open && !isStaticDispatch && !target.isClass && !target.isEffectivelyFinal) {
+
+    if (open && !isStaticDispatch && !target.isClass) {
       val res =
         if (target.is(Flags.Method)) Res(value = Value.defaultFunctionValue(target))
         else Res()
 
+      // propagate calls. TODO: odering problem in propagation
+      if (target.isEffectiveInit) calledSymsIn(target).foreach { sym =>
+        setting.analyzer.indentedDebug(s"propagating call $sym in $target")
+        res ++= select(sym, isStaticDispatch = false).effects
+      }
+
       // annotation on current class even though it's called above
-      if (target.isEffectiveInit || setting.inferInit && cooking) {
+      if (target.isEffectiveInit || setting.inferInit && cooking && !target.isEffectivelyFinal) {
         if (!target.is(Flags.Deferred)) {
           val res2 = receiver.select(target)
           if (target.is(Flags.Method)) res.value = Value.dynamicMethodValue(target, res2.value)
@@ -714,12 +721,12 @@ class ObjectValue(val tp: Type, val open: Boolean = false, var cooking: Boolean 
           res ++= res2.effects
         }
 
-        if (!res.hasErrors && !target.isCalledIn(classSymbol))
-          classSymbol.addAnnotation(Annotation.Call(target))
+        if (setting.trace && !res.hasErrors && !target.isCalledIn(setting.anchor))
+          setting.anchor.addAnnotation(Annotation.Call(target))
 
         res
       }
-      else if (!target.isCalledIn(classSymbol) && !target.is(Flags.ParamAccessor)) {
+      else if (!target.isCalledIn(classSymbol) && !target.is(Flags.ParamAccessor) && !target.isEffectivelyFinal) {
         res += Generic(s"Dynamic call to $sym found", setting.pos) // useful in widening
         res
       }

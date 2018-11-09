@@ -67,7 +67,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     // current class env needs special setup
     val root = Heap.createRootEnv
-    val setting = Setting(root, cls.pos, ctx, analyzer, inferInit = true)
+    val setting = Setting(root, cls.pos, ctx, analyzer, inferInit = true, anchor = cls)
     val tref = cls.typeRef
     val tp = tref.appliedTo(tref.typeParams.map(_.paramInfo))
     val obj = new ObjectValue(tp = tp, open = !cls.is(Final) && !cls.isAnonymousClass, cooking = true)
@@ -84,36 +84,5 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val res = classValue.init(constr.symbol, values, poss, obj)(setting)
 
     res.effects.foreach(_.report)
-
-    // check mixin implememntation of init methods
-    def invalidImplementMsg(sym: Symbol, cls: Symbol) = {
-      val annot = if (sym.owner.is(Trait)) "icy" else "init"
-      s"""|@scala.annotation.$annot required for ${sym.show} in ${sym.owner.show}
-          |Because the method is called in ${cls.show} during initialization."""
-        .stripMargin
-    }
-
-    def check(curCls: ClassSymbol): Unit = {
-      calledSymsIn(curCls).foreach { sym =>
-        val target = obj.resolve(sym)
-        val res =
-          if (!curCls.isSubClass(target.owner) && !target.owner.isSubClass(curCls)) {
-            if (target.owner.is(Trait)) {
-              if (target.isField) {
-                ctx.warning(s"The field ${target.name.show} in ${target.owner} is initialized too late.\nIt is used in the initializer of $curCls.", cls.pos)
-                Res()
-              }
-              else IcyValue.select(target)(setting)
-            }
-            else WarmValue().select(target)(setting)
-          }
-          else Res()
-
-        if (res.hasErrors) {
-          ctx.warning(invalidImplementMsg(target, sym.owner), cls.pos)
-        }
-      }
-    }
-    cls.baseClasses.tail.foreach(check)  // no need to check methods defined in current class
   }
 }
