@@ -97,28 +97,8 @@ object Interactive {
         List(enclosingTree(path).symbol)
     }
 
-    syms.map(Interactive.sourceSymbol).filter(_.exists)
+    syms.map(_.sourceSymbol).filter(_.exists)
   }
-
-  /** A symbol related to `sym` that is defined in source code.
-   *
-   *  @see enclosingSourceSymbols
-   */
-  @tailrec def sourceSymbol(sym: Symbol)(implicit ctx: Context): Symbol =
-    if (!sym.exists)
-      sym
-    else if (sym.is(ModuleVal))
-      sourceSymbol(sym.moduleClass) // The module val always has a zero-extent position
-    else if (sym.is(Synthetic)) {
-      val linked = sym.linkedClass
-      if (linked.exists && !linked.is(Synthetic))
-        linked
-      else
-        sourceSymbol(sym.owner)
-    }
-    else if (sym.isPrimaryConstructor)
-      sourceSymbol(sym.owner)
-    else sym
 
   /** Check if `tree` matches `sym`.
    *  This is the case if the symbol defined by `tree` equals `sym`,
@@ -132,7 +112,7 @@ object Interactive {
       sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
 
     (  sym == tree.symbol
-    || sym.exists && sym == sourceSymbol(tree.symbol)
+    || sym.exists && sym == tree.symbol.sourceSymbol
     || include != 0 && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
        && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
           || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
@@ -327,37 +307,12 @@ object Interactive {
 
     def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
-        private def handleImport(imp: tpd.Import): Unit = {
-          val imported =
-            imp.selectors.flatMap {
-              case id: untpd.Ident =>
-                importedSymbols(imp.expr, id.name).map((_, id, None))
-              case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
-                val renaming = if (includeRenamingImports) Some(newName) else None
-                importedSymbols(imp.expr, id.name).map((_, id, renaming))
-            }
-          imported match {
-            case Nil =>
-              traverse(imp.expr)
-            case syms =>
-              syms.foreach { case (sym, name, rename) =>
-                val tree = tpd.Select(imp.expr, sym.name).withPos(name.pos)
-                val renameTree = rename.map { r =>
-                  // Get the type of the symbol that is actually selected, and construct a select
-                  // node with the new name and the type of the real symbol.
-                  val name = if (sym.name.isTypeName) r.name.toTypeName else r.name
-                  val actual = tpd.Select(imp.expr, sym.name)
-                  tpd.Select(imp.expr, name).withPos(r.pos).withType(actual.tpe)
-                }
-                renameTree.foreach(traverse)
-                traverse(tree)
-              }
-          }
-        }
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
-            case imp: untpd.Import if includeImports =>
-              handleImport(imp.asInstanceOf[tpd.Import])
+            case imp: untpd.Import if includeImports && tree.hasType =>
+              val tree = imp.asInstanceOf[tpd.Import]
+              val selections = tpd.importSelections(tree)
+              selections.foreach(traverse)
             case utree: untpd.NameTree if tree.hasType =>
               val tree = utree.asInstanceOf[tpd.NameTree]
               if (tree.symbol.exists
@@ -571,44 +526,6 @@ object Interactive {
         false
     }
   }
-
-  /**
-   * All the symbols that are imported by import statement `imp`, if it matches
-   * the predicate `selectorPredicate`.
-   *
-   * @param imp The import statement to analyze
-   * @param selectorPredicate A test to find the selector to use.
-   * @return The symbols imported.
-   */
-   private def importedSymbols(imp: tpd.Import,
-                       selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
-                      (implicit ctx: Context): List[Symbol] = {
-     val symbols = imp.selectors.find(selectorPredicate) match {
-       case Some(id: untpd.Ident) =>
-         importedSymbols(imp.expr, id.name)
-       case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
-         importedSymbols(imp.expr, id.name)
-       case _ =>
-         Nil
-     }
-
-     symbols.map(sourceSymbol).filter(_.exists).distinct
-   }
-
-   /**
-    * The symbols that are imported with `expr.name`
-    *
-    * @param expr The base of the import statement
-    * @param name The name that is being imported.
-    * @return All the symbols that would be imported with `expr.name`.
-    */
-   private def importedSymbols(expr: tpd.Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
-     def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
-       List(lookup(name.toTermName),
-            lookup(name.toTypeName),
-            lookup(name.moduleClassName),
-            lookup(name.sourceModuleName))
-   }
 
   /**
    * Is this tree using a renaming introduced by an import statement?

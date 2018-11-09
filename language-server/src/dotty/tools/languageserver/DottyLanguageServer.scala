@@ -419,11 +419,14 @@ class DottyLanguageServer extends LanguageServer
 
     if (tp.isError || tpw == NoType) null // null here indicates that no response should be sent
     else {
-      val symbol = Interactive.enclosingSourceSymbols(path, pos).headOption.orNull
-      if (symbol == null) return null
-      val docComment = ParsedComment.docOf(symbol)
-      val content = hoverContent(Some(tpw.show), docComment)
-      new Hover(content, null)
+      Interactive.enclosingSourceSymbols(path, pos) match {
+        case Nil =>
+          null
+        case symbol :: _ =>
+          val docComment = ParsedComment.docOf(symbol)
+          val content = hoverContent(Some(tpw.show), docComment)
+          new Hover(content, null)
+      }
     }
   }
 

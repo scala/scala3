@@ -1147,5 +1147,65 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _ =>
       EmptyTree
   }
+
+  /**
+   * The symbols that are imported with `expr.name`
+   *
+   * @param expr The base of the import statement
+   * @param name The name that is being imported.
+   * @return All the symbols that would be imported with `expr.name`.
+   */
+  def importedSymbols(expr: Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
+    def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
+    List(lookup(name.toTermName),
+         lookup(name.toTypeName),
+         lookup(name.moduleClassName),
+         lookup(name.sourceModuleName))
+  }
+
+  /**
+   * All the symbols that are imported by the first selector of `imp` that matches
+   * `selectorPredicate`.
+   *
+   * @param imp The import statement to analyze
+   * @param selectorPredicate A test to find the selector to use.
+   * @return The symbols imported.
+   */
+  def importedSymbols(imp: Import,
+                      selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
+                     (implicit ctx: Context): List[Symbol] = {
+    val symbols = imp.selectors.find(selectorPredicate) match {
+      case Some(id: untpd.Ident) =>
+        importedSymbols(imp.expr, id.name)
+      case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
+        importedSymbols(imp.expr, id.name)
+      case _ =>
+        Nil
+    }
+
+    symbols.map(_.sourceSymbol).filter(_.exists).distinct
+  }
+
+  def importSelections(imp: Import)(implicit ctx: Context): List[Select] = {
+    val imported =
+      imp.selectors.flatMap {
+        case id: untpd.Ident =>
+          importedSymbols(imp.expr, id.name).map((_, id, None))
+        case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
+          val renaming = Some(newName)
+          importedSymbols(imp.expr, id.name).map((_, id, renaming))
+      }
+    imported.flatMap { case (symbol, name, rename) =>
+      val tree = Select(imp.expr, symbol.name).withPos(name.pos)
+      val renameTree = rename.map { r =>
+        // Get the type of the symbol that is actually selected, and construct a select
+        // node with the new name and the type of the real symbol.
+        val name = if (symbol.name.isTypeName) r.name.toTypeName else r.name
+        val actual = Select(imp.expr, symbol.name)
+        Select(imp.expr, name).withPos(r.pos).withType(actual.tpe)
+      }
+      tree :: renameTree.toList
+    }
+  }
 }
 
