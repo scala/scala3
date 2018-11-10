@@ -2,7 +2,7 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core.Decorators._
 
-trait IdOpsImpl extends scala.tasty.reflect.IdOps with TastyCoreImpl {
+trait IdOpsImpl extends scala.tasty.reflect.IdOps with CoreImpl {
 
   def IdDeco(id: Id): IdAPI = new IdAPI {
     def pos(implicit ctx: Context): Position = id.pos

@@ -26,8 +26,8 @@ object Index {
 
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ~succImpl[K, H, T]
 
-  def succImpl[K, H, T](implicit tasty: Tasty, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
-    import tasty._
+  def succImpl[K, H, T](implicit reflect: Reflection, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
+    import reflect._
 
     def name(tp: TypeOrBounds): String = tp match {
       case Type.ConstantType(Constant.String(str)) => str
@@ -38,8 +38,8 @@ object Index {
       case _ => Nil
     }
 
-    val key = name(k.toTasty.tpe)
-    val keys = name(h.toTasty.tpe) :: names(t.toTasty.tpe)
+    val key = name(k.reflect.tpe)
+    val keys = name(h.reflect.tpe) :: names(t.reflect.tpe)
 
     val index = keys.indexOf(key)
 

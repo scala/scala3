@@ -1,32 +1,31 @@
 import scala.quoted._
 
-import scala.tasty.Tasty
-import scala.tasty.util.{TreeTraverser, Show}
+import scala.tasty.Reflection
 
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
     ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val buff = new StringBuilder
 
-    val output = new TreeTraverser(tasty) {
+    val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
-        implicit val printer = new DummyShow(tasty)
+        val printer = dummyShow
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.show)
+            buff.append(printer.showTree(tree))
             buff.append("\n\n")
           case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.show)
+            buff.append(printer.showTree(tree))
             buff.append("\n\n")
           case _ =>
         }
@@ -34,20 +33,22 @@ object Macros {
       }
     }
 
-    val tree = x.toTasty
+    val tree = x.reflect
     output.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }
 
-}
+  def dummyShow(implicit reflect: Reflection): reflect.Printer = {
+    import reflect._
+    new Printer {
+      def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
+      def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
+      def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
+      def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = "TypeOrBoundsTree"
+      def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
+      def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
+      def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
+    }
+  }
 
-class DummyShow[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
-  import tasty._
-  def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-  def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
-  def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
-  def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = "TypeOrBoundsTree"
-  def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
-  def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
-  def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
 }

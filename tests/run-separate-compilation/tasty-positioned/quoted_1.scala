@@ -11,8 +11,8 @@ object Positioned {
 
   implicit inline def apply[T](x: => T): Positioned[T] = ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
-    import tasty.{Position => _, _}
+  def impl[T](x: Expr[T])(implicit ev: Type[T], reflect: Reflection): Expr[Positioned[T]] = {
+    import reflect.{Position => _, _}
     val pos = rootPosition
 
     val path = pos.sourceFile.toString.toExpr

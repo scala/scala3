@@ -1,7 +1,7 @@
 package dotty.tools.dotc.tastyreflect
 
 
-trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with TastyCoreImpl with Helpers {
+trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with CoreImpl with Helpers {
 
   def CaseDefDeco(caseDef: CaseDef): CaseDefAPI = new CaseDefAPI {
     def pattern(implicit ctx: Context): Pattern = caseDef.pat

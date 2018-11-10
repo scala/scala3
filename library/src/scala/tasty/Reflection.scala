@@ -2,8 +2,8 @@ package scala.tasty
 
 import scala.tasty.reflect._
 
-abstract class Tasty
-    extends TastyCore
+abstract class Reflection
+    extends Core
     with CaseDefOps
     with ConstantOps
     with ContextOps
@@ -18,10 +18,11 @@ abstract class Tasty
     with StandardDefinitions
     with SymbolOps
     with TreeOps
+    with TreeUtils
     with TypeOrBoundsTreeOps
     with TypeOrBoundsOps
 
-object Tasty {
+object Reflection {
   /** Compiler tasty context available in a top level ~ of an inline macro */
-  def macroContext: Tasty = throw new Exception("Not in inline macro.")
+  def macroContext: Reflection = throw new Exception("Not in inline macro.")
 }

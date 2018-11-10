@@ -2,9 +2,9 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core._
 
-class TastyImpl(val rootContext: Contexts.Context)
-    extends scala.tasty.Tasty
-    with TastyCoreImpl
+class ReflectionImpl(val rootContext: Contexts.Context)
+    extends scala.tasty.Reflection
+    with CoreImpl
     with CaseDefOpsImpl
     with ConstantOpsImpl
     with ContextOpsImpl

@@ -1,14 +1,13 @@
 import scala.quoted._
 
 import scala.tasty._
-import scala.tasty.util.TreeTraverser
 
 object Macros {
 
   inline def testDefinitions(): Unit = ~testDefinitionsImpl
 
-  def testDefinitionsImpl(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def testDefinitionsImpl(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {

@@ -1,6 +1,6 @@
 package scala.tasty.reflect
 
-trait SignatureOps extends TastyCore {
+trait SignatureOps extends Core {
 
   val Signature: SignatureExtractor
   abstract class SignatureExtractor {

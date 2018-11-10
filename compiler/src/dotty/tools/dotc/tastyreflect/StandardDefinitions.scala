@@ -4,7 +4,7 @@ import dotty.tools.dotc.core.Symbols._
 
 
 trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
-    tasty: TastyImpl =>
+    tasty: ReflectionImpl =>
 
   private implicit def ctx: Context = rootContext
 

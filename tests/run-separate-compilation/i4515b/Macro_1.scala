@@ -1,6 +1,6 @@
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 object Macro {
   inline def foo: Unit = ~fooImpl
-  def fooImpl(implicit tasty: Tasty): quoted.Expr[Unit] = '()
+  def fooImpl(implicit reflect: Reflection): quoted.Expr[Unit] = '()
 }

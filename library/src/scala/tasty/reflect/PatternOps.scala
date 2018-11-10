@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait PatternOps extends TastyCore {
+trait PatternOps extends Core {
 
   trait PatternAPI {
     def tpe(implicit ctx: Context): Type

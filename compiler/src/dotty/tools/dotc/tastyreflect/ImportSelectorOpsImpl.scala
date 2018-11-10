@@ -3,7 +3,7 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.ast.{Trees, untpd}
 import dotty.tools.dotc.core.StdNames.nme
 
-trait ImportSelectorOpsImpl extends scala.tasty.reflect.ImportSelectorOps with TastyCoreImpl {
+trait ImportSelectorOpsImpl extends scala.tasty.reflect.ImportSelectorOps with CoreImpl {
 
   object SimpleSelector extends SimpleSelectorExtractor {
     def unapply(x: ImportSelector)(implicit ctx: Context): Option[Id] = x match {

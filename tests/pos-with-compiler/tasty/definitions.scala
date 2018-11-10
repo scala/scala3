@@ -343,7 +343,7 @@ abstract class Tasty {
 }
 
 // The concrete implementation - hidden from users.
-object TastyImpl extends Tasty {
+object ReflectionImpl extends Tasty {
   import definitions._
   import dotty.tools.dotc._
   import ast.tpd
@@ -399,7 +399,7 @@ object TastyImpl extends Tasty {
 
       val tasty: Tasty
 
-    this val is implemented reflectively, loading TastyImpl on demand. TastyImpl in turn
+    this val is implemented reflectively, loading ReflectionImpl on demand. ReflectionImpl in turn
     depends on `tools.dotc`.
 
 */
@@ -411,7 +411,7 @@ object TastyImpl extends Tasty {
    This still does full information hiding, but should be almost
    as fast as native access.
 
-object TastyImpl extends TastyAST {
+object ReflectionImpl extends TastyAST {
   import definitions._
   import dotty.tools.dotc._
   import ast.tpd
