@@ -293,7 +293,7 @@ object desugar {
     val impl @ Template(constr0, parents, self, _) = cdef.rhs
     val mods = cdef.mods
     val companionMods = mods
-        .withFlags((mods.flags & AccessFlags).toCommonFlags)
+        .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
         .withMods(Nil)
 
     var defaultGetters: List[Tree] = Nil
