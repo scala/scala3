@@ -119,7 +119,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       if (!opc.overriding.is(Deferred)) {
         addBridgeIfNeeded(opc.overriding, opc.overridden)
 
-        if (needsImplicitShortcut(opc.overriding)(ectx))
+        if (needsImplicitShortcut(opc.overriding)(ectx) && needsImplicitShortcut(opc.overridden)(ectx))
           // implicit shortcuts do not show up in the Bridges cursor, since they
           // are created only when referenced. Therefore we need to generate a bridge
           // for them specifically, if one is needed for the original methods.
