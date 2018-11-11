@@ -140,6 +140,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
 
     def toTextDependentFunction(appType: MethodType): Text = {
+      // TODO: change to |=>
       (keywordText("implicit ") provided appType.isImplicitMethod) ~
       "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
     }

@@ -233,7 +233,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val previousParamRefs = if (isParamDependent) new mutable.ListBuffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type): TermSymbol = {
-          val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
+          val maybeImplicit =
+            if (tp.isContextualMethod) Implicit | Contextual
+            else if (tp.isImplicitMethod) Implicit
+            else EmptyFlags
           val maybeErased = if (tp.isErasedMethod) Erased else EmptyFlags
 
           def makeSym(info: Type) = ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)

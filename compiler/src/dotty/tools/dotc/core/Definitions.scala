@@ -860,6 +860,7 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
+    // TODO: make implicit function types contextual
     def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Type =
       FunctionType(args.length, isImplicit, isErased).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context): Option[(List[Type], Type, Boolean, Boolean)] = {
