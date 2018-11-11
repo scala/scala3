@@ -96,7 +96,7 @@ trait Convertible[From, To] {
 }
 
 witness [From, To] with (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
-  def convert (this x: ListFrom]): List[To] = x.map(c.convert)
+  def convert (this x: List[From]): List[To] = x.map(c.convert)
 }
 ```
 

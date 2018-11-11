@@ -506,7 +506,8 @@ object Parsers {
       recur(top)
     }
 
-    /** operand { infixop operand} [postfixop],
+    /**   operand { infixop operand | ‘with’ (operand | ParArgumentExprs) } [postfixop],
+     *
      *  respecting rules of associativity and precedence.
      *  @param notAnOperator  a token that does not count as operator.
      *  @param maybePostfix   postfix operators are allowed.
@@ -517,23 +518,37 @@ object Parsers {
         isOperator: => Boolean = true,
         maybePostfix: Boolean = false): Tree = {
       val base = opStack
-      var top = first
-      while (isIdent && isOperator) {
-        val op = if (isType) typeIdent() else termIdent()
-        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name, isType)
-        opStack = OpInfo(top, op, in.offset) :: opStack
-        newLineOptWhenFollowing(canStartOperand)
-        if (maybePostfix && !canStartOperand(in.token)) {
-          val topInfo = opStack.head
-          opStack = opStack.tail
-          val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
-          return atSpan(startOffset(od), topInfo.offset) {
-            PostfixOp(od, topInfo.operator)
+
+      def recur(top: Tree): Tree =
+        if (isIdent && isOperator) {
+          val op = if (isType) typeIdent() else termIdent()
+          val top1 = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name, isType)
+          opStack = OpInfo(top1, op, in.offset) :: opStack
+          newLineOptWhenFollowing(canStartOperand)
+          if (maybePostfix && !canStartOperand(in.token)) {
+            val topInfo = opStack.head
+            opStack = opStack.tail
+            val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
+            atSpan(startOffset(od), topInfo.offset) {
+              PostfixOp(od, topInfo.operator)
+            }
           }
+          else recur(operand())
         }
-        top = operand()
-      }
-      reduceStack(base, top, 0, true, in.name, isType)
+        else if (in.token == WITH) {
+          val top1 = reduceStack(base, top, minInfixPrec, leftAssoc = true, nme.WITHkw, isType)
+          assert(opStack `eq` base)
+          val app = atSpan(startOffset(top1), in.offset) {
+            in.nextToken()
+            val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
+            Apply(top, args)
+          }
+          app.pushAttachment(WithApply, ())
+          recur(app)
+        }
+        else reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
+
+      recur(first)
     }
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
@@ -1394,6 +1409,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
+     *                  | InfixExpr ‘with’ (InfixExpr | ParArgumentExprs)
      */
     def postfixExpr(): Tree =
       infixOps(prefixExpr(), canStartExpressionTokens, prefixExpr, maybePostfix = true)
@@ -1993,12 +2009,10 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' [FunArgMods] ClsParams `)']
-     *  ClsParamClause    ::=  [nl] `(' [`erased'] [ClsParams] ')'
+    /** ClsParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
-     *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [FunArgMods] DefParams `)']
-     *  DefParamClause    ::=  [nl] `(' [`erased'] [DefParams] ')'
+     *  DefParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
@@ -2008,9 +2022,9 @@ object Parsers {
     def paramClause(ofClass: Boolean = false,                // owner is a class
                     ofCaseClass: Boolean = false,            // owner is a case class
                     prefix: Boolean = false,                 // clause precedes name of an extension method
-                    firstClause: Boolean = false)            // clause is the first in regular list of clauses
-                    : List[ValDef] = {
-      var impliedMods: Modifiers = EmptyModifiers
+                    firstClause: Boolean = false,            // clause is the first in regular list of clauses
+                    initialMods: Modifiers = EmptyModifiers): List[ValDef] = {
+      var impliedMods: Modifiers = initialMods
 
       def param(): ValDef = {
         val start = in.offset
@@ -2071,13 +2085,13 @@ object Parsers {
         if (in.token == RPAREN && !prefix) Nil
         else {
           def funArgMods(mods: Modifiers): Modifiers =
-            if (in.token == IMPLICIT)
+            if (in.token == IMPLICIT && !mods.is(Contextual))
               funArgMods(addMod(mods, atSpan(accept(IMPLICIT)) { Mod.Implicit() }))
             else if (in.token == ERASED)
               funArgMods(addMod(mods, atSpan(accept(ERASED)) { Mod.Erased() }))
             else mods
 
-          impliedMods = funArgMods(EmptyModifiers)
+          impliedMods = funArgMods(impliedMods)
           val clause =
             if (prefix) param() :: Nil
             else commaSeparated(() => param())
@@ -2093,16 +2107,24 @@ object Parsers {
      *  @return  The parameter definitions
      */
     def paramClauses(ofClass: Boolean = false,
-                     ofCaseClass: Boolean = false): (List[List[ValDef]]) = {
+                     ofCaseClass: Boolean = false,
+                     ofWitness: Boolean = false): List[List[ValDef]] = {
       def recur(firstClause: Boolean): List[List[ValDef]] = {
+        val initialMods =
+          if (in.token == WITH) {
+            in.nextToken()
+            Modifiers(Contextual | Implicit)
+          }
+          else EmptyModifiers
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == LPAREN) {
+        if (initialMods.is(Contextual) || in.token == LPAREN && !ofWitness) {
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
-              firstClause = firstClause)
+              firstClause = firstClause,
+              initialMods = initialMods)
           val lastClause =
-            params.nonEmpty && params.head.mods.flags.is(Implicit)
+            params.nonEmpty && params.head.mods.flags.is(Implicit, butNot = Contextual)
           params :: (if (lastClause) Nil else recur(firstClause = false))
         }
         else Nil
@@ -2493,15 +2515,15 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** WitnessDef  ::=  [id] [DefTypeParamClause] [‘for’ [ConstrApps]] TemplateBody
-     *                |  id [DefTypeParamClause] ‘for’ Type [‘=’ Expr]
+    /** WitnessDef    ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
+     *                  |  id WitnessParams ‘:’ Type ‘=’ Expr
+     *                  |  id ‘=’ Expr
+     *  WitnessParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
      */
     def witnessDef(start: Offset, mods: Modifiers, witnessMod: Mod) = atPos(start, nameStart) {
       val name = if (isIdent) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val (vparamss, _) = paramClauses()
-      for (vparams <- vparamss; vparam <- vparams)
-        if (!vparam.mods.is(Implicit)) syntaxError("witness can only have implicit parameters", vparam.pos)
+      val vparamss = paramClauses(ofWitness = true)
       val parents =
         if (in.token == FOR) {
           in.nextToken()

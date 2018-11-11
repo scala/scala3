@@ -21,7 +21,7 @@ def maximum[T](xs: List[T]) with (cmp: Ord[T]): T =
   xs.reduceLeft((x, y) => if (x < y) y else x)
 
 def descending[T] with (asc: Ord[T]): Ord[T] = new Ord[T] {
-  def compareTo(this x: Int)(y: Int) = asc.compareTo(y)(x)
+  def compareTo(this x: T)(y: T) = asc.compareTo(y)(x)
 }
 
 def minimum[T](xs: List[T]) with (cmp: Ord[T]) =

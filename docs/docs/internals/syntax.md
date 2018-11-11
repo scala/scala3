@@ -289,8 +289,8 @@ HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
 HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] | ‘_’)
                        TypeBounds
 
-ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘)’]
-ClsParamClause    ::=  [nl | ‘with’] ‘(’ [ClsParams] ‘)’
+ClsParamClauses   ::=  {ClsParamClause}
+ClsParamClause    ::=  [nl | ‘with’] ‘(’ [[FunArgMods] ClsParams] ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param

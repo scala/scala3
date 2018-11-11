@@ -106,7 +106,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
-  @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(NoSource) with WithoutTypeOrPos[Untyped] {
+  @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY) with WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
   }
 
@@ -270,6 +270,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  TypeTree is derived.
    */
   val OriginalSymbol: Property.Key[Symbol] = new Property.Key
+
+  /** Property key for contextual Apply trees of the form `fn with arg` */
+  val WithApply: Property.StickyKey[Unit] = new Property.StickyKey
 
   // ------ Creation methods for untyped only -----------------
 
