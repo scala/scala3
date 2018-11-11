@@ -431,9 +431,9 @@ object desugar {
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
-    //     def _1 = this.p1
+    //     def _1: T1 = this.p1
     //     ...
-    //     def _N = this.pN
+    //     def _N: TN = this.pN
     //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
     //              pN: TN = pN: @uncheckedVariance)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
@@ -442,12 +442,13 @@ object desugar {
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths = {
-      def syntheticProperty(name: TermName, rhs: Tree) =
-        DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
+      def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
+        DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
       def productElemMeths = {
-        val caseParams = constrVparamss.head.toArray
+        val caseParams = derivedVparamss.head.toArray
         for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
-        yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
+        yield syntheticProperty(nme.selectorName(i), caseParams(i).tpt,
+          Select(This(EmptyTypeIdent), caseParams(i).name))
       }
       def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
       def copyMeths = {
