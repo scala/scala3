@@ -56,13 +56,13 @@ object O6 {
 object myAttrs {
   class a1 extends scala.annotation.Annotation;
   class a2(x: Int) extends scala.annotation.Annotation;
-  class a3(x: a1) extends scala.annotation.Annotation;
+  class a3(x: a1|Null) extends scala.annotation.Annotation;
 }
 class a4(ns: Array[Int]) extends scala.annotation.Annotation;
 object O7 {
   class a1 extends scala.annotation.Annotation;
   class a2(x: Int) extends scala.annotation.Annotation;
-  class a3(x: a1) extends scala.annotation.Annotation;
+  class a3(x: a1|Null) extends scala.annotation.Annotation;
 
   final val x = new a1;
   @a1  class C1;
