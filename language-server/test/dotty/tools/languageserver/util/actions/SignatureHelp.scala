@@ -1,9 +1,10 @@
 package dotty.tools.languageserver.util.actions
 
+import dotty.tools.languageserver.DottyLanguageServer
 import dotty.tools.languageserver.util.PositionContext
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-import dotty.tools.languageserver.Signatures.Signature
+import dotty.tools.dotc.util.Signatures.Signature
 
 import org.eclipse.lsp4j.{MarkupContent, ParameterInformation, SignatureInformation}
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
@@ -28,7 +29,7 @@ class SignatureHelp(override val marker: CodeMarker,
                     activeSignature: Option[Int],
                     activeParam: Int) extends ActionOnMarker {
 
-   val expectedSignatures = expected.map(_.toSignatureInformation)
+   val expectedSignatures = expected.map(DottyLanguageServer.signatureToSignatureInformation)
 
   override def execute(): Exec[Unit] = {
     val results = server.signatureHelp(marker.toTextDocumentPositionParams).get()

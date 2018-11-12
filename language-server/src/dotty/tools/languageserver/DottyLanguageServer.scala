@@ -470,58 +470,9 @@ class DottyLanguageServer extends LanguageServer
     val path = Interactive.pathTo(trees, pos).dropWhile(!_.isInstanceOf[Apply])
 
     val (paramN, callableN, alternatives) = Signatures.callInfo(path, pos.pos)
+    val signatureInfos = alternatives.flatMap(Signatures.toSignature)
 
-    val signatureInfos = alternatives.flatMap { denot =>
-      val symbol = denot.symbol
-      val docComment = ParsedComment.docOf(symbol)
-      val classTree = symbol.topLevelClass.asClass.rootTree
-      val isImplicit: TermName => Boolean = tpd.defPath(symbol, classTree).lastOption match {
-        case Some(DefDef(_, _, paramss, _, _)) =>
-          val flatParams = paramss.flatten
-          name => flatParams.find(_.name == name).map(_.symbol.is(Implicit)).getOrElse(false)
-        case _ =>
-          _ => false
-      }
-
-      denot.info.stripPoly match {
-        case tpe: MethodType =>
-          val infos = {
-            tpe.paramInfoss.zip(tpe.paramNamess).map { (infos, names) =>
-              infos.zip(names).map { (info, name) =>
-                Signatures.Param(name.show,
-                                 info.widenTermRefExpr.show,
-                                 docComment.flatMap(_.paramDoc(name)),
-                                 isImplicit = isImplicit(name))
-              }
-            }
-          }
-
-          val typeParams = denot.info match {
-            case poly: PolyType =>
-              poly.paramNames.zip(poly.paramInfos).map((x, y) => x.show + y.show)
-            case _ =>
-              Nil
-          }
-
-          val (name, returnType) =
-            if (symbol.isConstructor) (symbol.owner.name.show, None)
-            else (denot.name.show, Some(tpe.finalResultType.widenTermRefExpr.show))
-
-          val signature =
-            Signatures.Signature(name,
-                                 typeParams,
-                                 infos,
-                                 returnType,
-                                 docComment.map(_.mainDoc))
-
-          Some(signature)
-
-        case other =>
-          None
-      }
-    }
-
-    new SignatureHelp(signatureInfos.map(_.toSignatureInformation).asJava, callableN, paramN)
+    new SignatureHelp(signatureInfos.map(signatureToSignatureInformation).asJava, callableN, paramN)
   }
 
   override def getTextDocumentService: TextDocumentService = this
@@ -829,5 +780,31 @@ object DottyLanguageServer {
         null
 
     location(pos, positionMapper).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName))
+  }
+
+  /** Convert `signature` to a `SignatureInformation` */
+  def signatureToSignatureInformation(signature: Signatures.Signature): lsp4j.SignatureInformation = {
+    val paramInfoss = signature.paramss.map(_.map(paramToParameterInformation))
+    val paramLists = signature.paramss.map { paramList =>
+      val labels = paramList.map(_.show)
+      val prefix = if (paramList.exists(_.isImplicit)) "implicit " else ""
+      labels.mkString(prefix, ", ", "")
+    }.mkString("(", ")(", ")")
+    val tparamsLabel = if (signature.tparams.isEmpty) "" else signature.tparams.mkString("[", ", ", "]")
+    val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
+    val label = s"${signature.name}$tparamsLabel$paramLists$returnTypeLabel"
+    val documentation = signature.doc.map(DottyLanguageServer.hoverContent)
+    val sig = new lsp4j.SignatureInformation(label)
+    sig.setParameters(paramInfoss.flatten.asJava)
+    documentation.foreach(sig.setDocumentation(_))
+    sig
+  }
+
+  /** Convert `param` to `ParameterInformation` */
+  private def paramToParameterInformation(param: Signatures.Param): lsp4j.ParameterInformation = {
+    val documentation = param.doc.map(DottyLanguageServer.hoverContent)
+    val info = new lsp4j.ParameterInformation(param.show)
+    documentation.foreach(info.setDocumentation(_))
+    info
   }
 }

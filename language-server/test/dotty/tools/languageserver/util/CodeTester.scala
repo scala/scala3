@@ -1,10 +1,12 @@
 package dotty.tools.languageserver.util
 
-import dotty.tools.languageserver.Signatures.Signature
 import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
+
+import dotty.tools.dotc.util.Signatures.Signature
+
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
 
 /**

@@ -3,7 +3,8 @@ package dotty.tools.languageserver
 import org.junit.Test
 
 import dotty.tools.languageserver.util.Code._
-import dotty.tools.languageserver.Signatures.{Param => P, Signature => S}
+
+import dotty.tools.dotc.util.Signatures.{Param => P, Signature => S}
 
 class SignatureHelpTest {
 
