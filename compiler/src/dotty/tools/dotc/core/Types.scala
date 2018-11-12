@@ -1004,6 +1004,12 @@ object Types {
       case _ => this
     }
 
+    /** Strips the nullability from a type: `T | Null` goes to `T` */
+    def stripNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
+      case OrType(left, right) if right.isRefToNull => left.stripNull
+      case _ => this
+    }
+
     /** Converts types of the form `Null | T` to `T | Null`. Does not do any widening or dealiasing. */
     def normalizeNull(implicit ctx: Context): Type = {
       this match {
