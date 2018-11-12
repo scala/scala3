@@ -85,7 +85,12 @@ trait SymbolOps extends Core {
     /** Fields of a case class type -- only the ones declared in primary constructor */
     def caseFields(implicit ctx: Context): List[ValSymbol]
 
+    /** The class symbol of the companion module class */
     def companionClass(implicit ctx: Context): Option[ClassSymbol]
+
+    /** The symbol of the companion module */
+    def companionModule(implicit ctx: Context): Option[ValSymbol]
+
   }
   implicit def ClassSymbolDeco(symbol: ClassSymbol): ClassSymbolAPI
 
@@ -122,6 +127,10 @@ trait SymbolOps extends Core {
 
   trait ValSymbolAPI {
     def tree(implicit ctx: Context): ValDef
+
+    /** The class symbol of the companion module class */
+    def companionClass(implicit ctx: Context): Option[ClassSymbol]
+
   }
   implicit def ValSymbolDeco(symbol: ValSymbol): ValSymbolAPI
 

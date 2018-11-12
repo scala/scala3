@@ -154,6 +154,11 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
       if (sym.exists) Some(sym.asClass) else None
     }
 
+    def companionModule(implicit ctx: Context): Option[ValSymbol] = {
+      val sym = symbol.companionModule
+      if (sym.exists) Some(sym.asTerm) else None
+    }
+
     private def isField(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
   }
 
@@ -173,6 +178,11 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def ValSymbolDeco(symbol: ValSymbol): ValSymbolAPI = new ValSymbolAPI {
     def tree(implicit ctx: Context): ValDef = FromSymbol.valDefFromSym(symbol)
+
+    def companionClass(implicit ctx: Context): Option[ClassSymbol] = {
+      val sym = symbol.companionClass
+      if (sym.exists) Some(sym.asClass) else None
+    }
   }
 
   object IsBindSymbol extends IsBindSymbolExtractor {

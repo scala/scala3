@@ -96,17 +96,19 @@ object TypeToolbox {
   inline def companion[T1, T2]: Boolean = ~companionImpl('[T1], '[T2])
   private def companionImpl(t1: Type[_], t2: Type[_])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
-    val res = t1.reflect.symbol.asClass.companionClass.contains(t2.reflect.symbol)
+    val res = t1.reflect.symbol.asClass.companionModule.contains(t2.reflect.symbol)
     res.toExpr
   }
 
   inline def companionName[T1]: String = ~companionNameImpl('[T1])
   private def companionNameImpl(tp: Type[_])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    tp.reflect.symbol match {
-      case IsClassSymbol(sym) => sym.companionClass.map(_.fullName).getOrElse("").toExpr
-      case _ => '("")
+    val companionClassOpt = tp.reflect.symbol match {
+      case IsClassSymbol(sym) => sym.companionClass
+      case IsValSymbol(sym) => sym.companionClass
+      case _ => None
     }
+    companionClassOpt.map(_.fullName).getOrElse("").toExpr
   }
 
   // TODO add to the std lib
