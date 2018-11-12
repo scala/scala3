@@ -3,7 +3,6 @@ package dotty.semanticdb
 import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 
-import scala.tasty.util.TreeTraverser
 import dotty.tools.dotc.tastyreflect
 import scala.collection.mutable.HashMap
 import scala.meta.internal.{semanticdb => s}
@@ -13,35 +12,12 @@ import dotty.semanticdb.Scala._
 class SemanticdbConsumer extends TastyConsumer {
   var stack: List[String] = Nil
 
-  /*
-  val symbolsDefs : HashMap[String, Int] = HashMap()
-  val symbolsVals : HashMap[String, Int] = HashMap()
-
-  def insertPathDefDef(path: String): String = {
-    if (symbolsDefs.contains(path)) {
-      symbolsDefs += (path -> (symbolsDefs(path) + 1))
-      "+" + (symbolsDefs(path) - 1)
-    } else {
-      symbolsDefs += (path -> 1)
-      ""
-    }
-  }
-  def insertPathValDef(path: String): String = {
-    if (symbolsVals.contains(path)) {
-      symbolsVals += (path -> (symbolsVals(path) + 1))
-      "+" + (symbolsVals(path) - 1)
-    } else {
-      symbolsVals += (path -> 1)
-      ""
-    }
-  }*/
   val semantic: s.TextDocument = s.TextDocument()
   var occurrences: Seq[s.SymbolOccurrence] = Seq()
 
   def toSemanticdb(text: String): s.TextDocument = {
     s.TextDocument(text = text, occurrences = occurrences)
   }
-
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -67,12 +43,12 @@ class SemanticdbConsumer extends TastyConsumer {
     }
 
     object Traverser extends TreeTraverser {
-      val symbolsCache: HashMap[tasty.Symbol, String] = HashMap()
+      val symbolsCache: HashMap[Symbol, String] = HashMap()
       val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
       implicit class TreeExtender(tree: Tree) {
         def isUserCreated: Boolean = {
           val children: List[Position] =
-            ChildTraverser.getChildren(tree)(tasty.rootContext)
+            ChildTraverser.getChildren(tree)(reflect.rootContext)
           return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
             .exists(_ == tree.pos))
         }
@@ -114,9 +90,6 @@ class SemanticdbConsumer extends TastyConsumer {
         // TODO : implement it
         def isJavaClass: Boolean = false
       }
-
-      val symbolsCache: HashMap[tasty.Symbol, String] = HashMap()
-      val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
 
       def disimbiguate(symbol_path: String): String = {
         if (symbolPathsDisimbiguator.contains(symbol_path)) {
@@ -238,7 +211,6 @@ class SemanticdbConsumer extends TastyConsumer {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         //println(tree.pos.startColumn, tree.symbol.name, tree.pos.endColumn)
-        println(tree)
         tree match {
           case IsDefinition(body) => {
             tree match {
