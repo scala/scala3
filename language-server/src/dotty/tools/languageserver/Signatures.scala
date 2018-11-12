@@ -19,7 +19,7 @@ object Signatures {
       case Apply(fun, params) :: _ =>
         val alreadyAppliedCount = Signatures.countParams(fun)
         val paramIndex = params.indexWhere(_.pos.contains(pos)) match {
-          case -1 => (params.length - 1 max 0) + alreadyAppliedCount
+          case -1 => ((params.length - 1) max 0) + alreadyAppliedCount
           case n => n + alreadyAppliedCount
         }
 
