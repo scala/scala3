@@ -305,7 +305,6 @@ class DottyLanguageServer extends LanguageServer
   override def references(params: ReferenceParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
@@ -313,25 +312,31 @@ class DottyLanguageServer extends LanguageServer
     }
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val path = Interactive.pathTo(driver.openedTrees(uri), pos)
 
-    // Find definitions of the symbol under the cursor, so that we can determine
-    // what projects are worth exploring
-    val definitions = Interactive.findDefinitions(path, driver)
-    val projectsToInspect =
-      if (definitions.isEmpty) {
-        drivers.keySet
-      } else {
-        for {
-          definition <- definitions
-          uri <- toUriOption(definition.pos.source).toSet
-          config = configFor(uri)
-          project <- dependentProjects(config) + config
-        } yield project
-      }
+    val (definitions, projectsToInspect, originalSymbol, originalSymbolName) = {
+      implicit val ctx: Context = driver.currentCtx
+      val path = Interactive.pathTo(driver.openedTrees(uri), pos)
+      val originalSymbol = Interactive.enclosingSourceSymbol(path)
+      val originalSymbolName = originalSymbol.name.sourceModuleName.toString
 
-    val originalSymbol = Interactive.enclosingSourceSymbol(path)
-    val symbolName = originalSymbol.name.sourceModuleName.toString
+      // Find definitions of the symbol under the cursor, so that we can determine
+      // what projects are worth exploring
+      val definitions = Interactive.findDefinitions(path, driver)
+      val projectsToInspect =
+        if (definitions.isEmpty) {
+          drivers.keySet
+        } else {
+          for {
+            definition <- definitions
+            uri <- toUriOption(definition.pos.source).toSet
+            config = configFor(uri)
+            project <- dependentProjects(config) + config
+          } yield project
+        }
+
+      (definitions, projectsToInspect, originalSymbol, originalSymbolName)
+    }
+
     val references = {
       // Collect the information necessary to look into each project separately: representation of
       // `originalSymbol` in this project, the context and correct Driver.
@@ -343,12 +348,13 @@ class DottyLanguageServer extends LanguageServer
       }
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
-        val trees = remoteDriver.sourceTreesContaining(symbolName)(ctx)
-        Interactive.findTreesMatching(trees, includes, definition)(ctx)
+        val trees = remoteDriver.sourceTreesContaining(originalSymbolName)(ctx)
+        val matches = Interactive.findTreesMatching(trees, includes, definition)(ctx)
+        matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
       }
     }.toList
 
-    references.flatMap(ref => location(ref.namePos, positionMapperFor(ref.source))).asJava
+    references.flatten.asJava
   }
 
   override def rename(params: RenameParams) = computeAsync { cancelToken =>
