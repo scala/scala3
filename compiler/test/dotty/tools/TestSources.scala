@@ -12,7 +12,7 @@ object TestSources {
 
   private def blacklistFile: String = "compiler/test/dotc/scala-collections.blacklist"
 
-  def stdLibWhitelisted: List[String] = all.diff(stdLibBlacklisted)
+  def stdLibWhitelisted: List[String] = all.diff(stdLibBlacklisted).sorted
   def stdLibBlacklisted: List[String] = loadList(blacklistFile).map(stdLibPath + _)
 
   private def all: List[String] = {
