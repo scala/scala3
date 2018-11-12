@@ -299,15 +299,17 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   /**
-   * Initialize this driver and compiler by "compiling" a fake, empty source file.
+   * Initialize this driver and compiler.
    *
    * This is necessary because an `InteractiveDriver` can be put to work without having
    * compiled anything (for instance, resolving a symbol coming from a different compiler in
-   * this compiler). In those cases, an un-initialized compiler will crash.
+   * this compiler). In those cases, an un-initialized compiler may crash (for instance if
+   * late-compilation is needed).
    */
   private[this] def initialize(): Unit = {
-    val fakeSource = new File("fake.scala")
-    run(fakeSource.toURI, "")
+    val run = compiler.newRun(myInitCtx.fresh)
+    myCtx = run.runContext
+    run.compileUnits(Nil, myCtx)
   }
 
 }
