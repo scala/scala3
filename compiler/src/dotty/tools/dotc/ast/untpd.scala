@@ -122,6 +122,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Sealed() extends Mod(Flags.Sealed)
 
+    case class Opaque() extends Mod(Flags.Opaque)
+
     case class Override() extends Mod(Flags.Override)
 
     case class Abstract() extends Mod(Flags.Abstract)

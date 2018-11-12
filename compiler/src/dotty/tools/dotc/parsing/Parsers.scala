@@ -1744,6 +1744,7 @@ object Parsers {
       case PRIVATE     => Mod.Private()
       case PROTECTED   => Mod.Protected()
       case SEALED      => Mod.Sealed()
+      case OPAQUE      => Mod.Opaque()
       case IDENTIFIER if name == nme.INLINEkw => Mod.Inline()
     }
 

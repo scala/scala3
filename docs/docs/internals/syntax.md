@@ -291,7 +291,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
-                    |  ‘transparent’
+                    |  ‘opaque’
                     |  ‘inline’
                     |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]

@@ -22,10 +22,9 @@ object FirstTransform {
   val name: String = "firstTransform"
 }
 
-
 /** The first tree transform
  *   - eliminates some kinds of trees: Imports, NamedArgs
- *   - stubs out native and typelevel methods
+ *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types

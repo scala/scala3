@@ -250,8 +250,13 @@ object Flags {
 
   final val AccessorOrSealed: FlagSet = Accessor.toCommonFlags
 
- /** A mutable var */
+  /** A mutable var */
   final val Mutable: FlagSet = termFlag(12, "mutable")
+
+  /** An opqaue type */
+  final val Opaque: FlagSet = typeFlag(12, "opaque")
+
+  final val MutableOrOpaque: FlagSet = Mutable.toCommonFlags
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -263,7 +268,7 @@ object Flags {
    */
   final val ParamAccessor: FlagSet = termFlag(14, "<paramaccessor>")
 
-    /** A value or class implementing a module */
+  /** A value or class implementing a module */
   final val Module: FlagSet = commonFlag(15, "module")
   final val ModuleVal: FlagSet = Module.toTermFlags
   final val ModuleClass: FlagSet = Module.toTypeFlags
@@ -435,15 +440,20 @@ object Flags {
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
-  final val SourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Abstract, Final, Inline,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
+  private val CommonSourceModifierFlags: FlagSet =
+    commonFlags(Private, Protected, Final, Case, Implicit, Override, JavaStatic)
+
+  final val TypeSourceModifierFlags: FlagSet =
+    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
+
+  final val TermSourceModifierFlags: FlagSet =
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags: FlagSet =
-    SourceModifierFlags | Module | Param | Synthetic | Package | Local |
-    commonFlags(Mutable)
-      // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
+    TypeSourceModifierFlags.toCommonFlags |
+    TermSourceModifierFlags.toCommonFlags |
+    commonFlags(Module, Param, Synthetic, Package, Local, Mutable, Trait)
 
   assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)
 
@@ -454,7 +464,7 @@ object Flags {
   final val FromStartFlags: FlagSet =
     Module | Package | Deferred | Method.toCommonFlags |
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
-    Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
+    Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
@@ -516,7 +526,13 @@ object Flags {
     Accessor | AbsOverride | Stable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
+    ImplClass | Enum | Opaque
+
+  /** Flags that are copied from a synthetic companion to a user-defined one
+   *  when the two are merged. See: Namer.mergeCompanionDefs
+   */
+  final val RetainedSyntheticCompanionFlags: FlagSet = Opaque
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags: FlagSet =
@@ -629,6 +645,9 @@ object Flags {
   /** A Java companion object */
   final val JavaModule: FlagConjunction = allOf(JavaDefined, Module)
 
+  /** An opaque companion object */
+  final val OpaqueModule: FlagConjunction = allOf(Opaque, Module)
+
   /** A Java companion object */
   final val JavaProtected: FlagConjunction = allOf(JavaDefined, Protected)
 
@@ -665,15 +684,18 @@ object Flags {
   /** Java symbol which is `protected` and `static` */
   final val StaticProtected: FlagConjunction = allOf(JavaDefined, Protected, JavaStatic)
 
+  final val Scala2Trait: FlagConjunction = allOf(Scala2x, Trait)
+
   final val AbstractFinal: FlagConjunction = allOf(Abstract, Final)
   final val AbstractSealed: FlagConjunction = allOf(Abstract, Sealed)
+  final val AbstractAndOverride: FlagConjunction = allOf(Abstract, Override)
+
   final val SyntheticArtifact: FlagConjunction = allOf(Synthetic, Artifact)
   final val SyntheticModule: FlagConjunction = allOf(Synthetic, Module)
   final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
   final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-  final val AbstractAndOverride: FlagConjunction = allOf(Abstract, Override)
-  final val Scala2Trait: FlagConjunction = allOf(Scala2x, Trait)
+  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)
