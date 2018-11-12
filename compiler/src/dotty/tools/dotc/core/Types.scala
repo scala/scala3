@@ -338,8 +338,8 @@ object Types {
     /** Is this a MethodType which has implicit or contextual parameters */
     def isImplicitMethod: Boolean = false
 
-    /** Is this a MethodType which has contextual parameters */
-    def isContextualMethod: Boolean = false
+    /** Is this a Method or PolyType which has contextual parameters as first value parameter list? */
+    def isContextual: Boolean = false
 
     /** Is this a MethodType for which the parameters will not be used */
     def isErasedMethod: Boolean = false
@@ -3082,10 +3082,10 @@ object Types {
 
     final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean =
-      companion.eq(ImplicitMethodType) || companion.eq(ErasedImplicitMethodType) || isContextualMethod
-    final override def isContextualMethod: Boolean =
-      companion.eq(ContextualMethodType) || companion.eq(ErasedContextualMethodType)
+      companion.eq(ImplicitMethodType) || companion.eq(ErasedImplicitMethodType) || isContextual
     final override def isErasedMethod: Boolean = companion.eq(ErasedMethodType) || companion.eq(ErasedImplicitMethodType)
+    final override def isContextual: Boolean =
+      companion.eq(ContextualMethodType) || companion.eq(ErasedContextualMethodType)
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
@@ -3276,6 +3276,8 @@ object Types {
     assert(paramNames.nonEmpty)
 
     def computeSignature(implicit ctx: Context): Signature = resultSignature
+
+    override def isContextual = resType.isContextual
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.

@@ -761,10 +761,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  Block node.
    */
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
-    val isContextual = tree.getAttachment(untpd.WithApply).nonEmpty
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this)(argCtx(tree))
+      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isContextual)(argCtx(tree))
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as

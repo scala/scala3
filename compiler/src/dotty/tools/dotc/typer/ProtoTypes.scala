@@ -229,7 +229,8 @@ object ProtoTypes {
    *
    *  [](args): resultType
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer, state: FunProtoState = new FunProtoState)(implicit ctx: Context)
+  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
+    override val isContextual: Boolean, state: FunProtoState = new FunProtoState)(implicit ctx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(implicit ctx: Context): Type = resType
 
@@ -238,7 +239,7 @@ object ProtoTypes {
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
-      else new FunProto(args, resultType)(typer)
+      else new FunProto(args, resultType)(typer, isContextual)
 
     override def notApplied: Type = WildcardType
 
@@ -322,7 +323,7 @@ object ProtoTypes {
       case pt: FunProto =>
         pt
       case _ =>
-        state.tupled = new FunProto(untpd.Tuple(args) :: Nil, resultType)(typer)
+        state.tupled = new FunProto(untpd.Tuple(args) :: Nil, resultType)(typer, isContextual)
         tupled
     }
 
@@ -357,14 +358,14 @@ object ProtoTypes {
 
     override def withContext(newCtx: Context): ProtoType =
       if (newCtx `eq` ctx) this
-      else new FunProto(args, resType)(typer, state)(newCtx)
+      else new FunProto(args, resType)(typer, isContextual, state)(newCtx)
   }
 
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType, where args are known to be typed
    */
-  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer)(implicit ctx: Context) extends FunProto(args, resultType)(typer)(ctx) {
+  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isContextual: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isContextual)(ctx) {
     override def typedArgs: List[tpd.Tree] = args
     override def withContext(ctx: Context): FunProtoTyped = this
   }
@@ -411,7 +412,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer, isContextual = false)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
