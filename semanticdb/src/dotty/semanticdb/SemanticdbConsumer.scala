@@ -45,9 +45,44 @@ class SemanticdbConsumer extends TastyConsumer {
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
+
+    object ChildTraverser extends TreeTraverser {
+      var depth: Int = 0
+      var children: List[Tree] = Nil
+      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
+        if (depth == 0) {
+          depth = depth + 1
+          super.traverseTree(tree)
+          depth = depth - 1
+        } else {
+          children = tree :: children
+        }
+      }
+      def getChildren(tree: Tree)(implicit ctx: Context): List[Position] = {
+        children = Nil
+        depth = 0
+        traverseTree(tree)(ctx)
+        return children.map(_.pos)
+      }
+    }
+
     object Traverser extends TreeTraverser {
       val symbolsCache: HashMap[tasty.Symbol, String] = HashMap()
       val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
+      implicit class TreeExtender(tree: Tree) {
+        def isUserCreated: Boolean = {
+          val children: List[Position] =
+            ChildTraverser.getChildren(tree)(tasty.rootContext)
+          return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
+            .exists(_ == tree.pos))
+        }
+      }
+
+      implicit class TypeTreeExtender(tree: TypeTree) {
+        def isUserCreated: Boolean = {
+          return !(tree.pos.exists && tree.pos.start == tree.pos.end)
+        }
+      }
 
       implicit class SymbolExtender(symbol: Symbol) {
         def isTypeParameter: Boolean = symbol match {
@@ -57,17 +92,17 @@ class SemanticdbConsumer extends TastyConsumer {
 
         def isType: Boolean = symbol match {
           case IsTypeSymbol(_) => true
-          case _ => false
+          case _               => false
         }
 
         def isMethod: Boolean = symbol match {
           case IsDefSymbol(_) => true
-          case _ => false
+          case _              => false
         }
 
         def isPackage: Boolean = symbol match {
           case IsPackageSymbol(_) => true
-          case _ => false
+          case _                  => false
         }
 
         def isObject: Boolean = symbol.flags.isObject
@@ -106,23 +141,24 @@ class SemanticdbConsumer extends TastyConsumer {
             } else {
               val previous_symbol = iterateParent(symbol.owner)
               val next_atom =
-              if (symbol.isPackage) {
-                d.Package(symbol.name)
-              } else if (symbol.isObject) {
-                d.Term(symbol.companionModule.name)
-              } else if (symbol.isMethod) {
-                d.Method(symbol.name, disimbiguate(previous_symbol + symbol.name))
-              } else if (symbol.isValueParameter) {
-                d.Parameter(symbol.name)
-              } else if (symbol.isTypeParameter)  {
-                d.TypeParameter(symbol.name)
-              } else if (symbol.isType || symbol.isTrait) {
-                //println(symbol.name, symbol.companionClass.name, symbol.companionModule.name, symbol.flags.toString)
+                if (symbol.isPackage) {
+                  d.Package(symbol.name)
+                } else if (symbol.isObject) {
+                  d.Term(symbol.companionModule.name)
+                } else if (symbol.isMethod) {
+                  d.Method(symbol.name,
+                           disimbiguate(previous_symbol + symbol.name))
+                } else if (symbol.isValueParameter) {
+                  d.Parameter(symbol.name)
+                } else if (symbol.isTypeParameter) {
+                  d.TypeParameter(symbol.name)
+                } else if (symbol.isType || symbol.isTrait) {
+                  //println(symbol.name, symbol.companionClass.name, symbol.companionModule.name, symbol.flags.toString)
 
-                d.Type(symbol.name)
-              } else {
-                d.Term(symbol.name)
-              }
+                  d.Type(symbol.name)
+                } else {
+                  d.Term(symbol.name)
+                }
 
               Symbols.Global(previous_symbol, next_atom)
             }
@@ -134,10 +170,8 @@ class SemanticdbConsumer extends TastyConsumer {
       def addOccurence(symbol: Symbol,
                        type_symbol: s.SymbolOccurrence.Role,
                        range: s.Range): Unit = {
-        //if (symbolsCache.contains(symbol)) return
-
         val symbol_path = iterateParent(symbol)
-        if (symbol_path == "" || symbol.name == "<init>") return
+        if (symbol_path == "") return
 
         occurrences =
           occurrences :+
@@ -146,12 +180,29 @@ class SemanticdbConsumer extends TastyConsumer {
               symbol_path,
               type_symbol
             )
+
+      }
+
+      def addOccurenceTree(tree: Tree,
+                           type_symbol: s.SymbolOccurrence.Role,
+                           range: s.Range,
+                           force_add: Boolean = false): Unit = {
+        if (tree.isUserCreated || force_add) {
+          addOccurence(tree.symbol, type_symbol, range)
+        }
+      }
+      def addOccurenceTypeTree(typetree: TypeTree,
+                               type_symbol: s.SymbolOccurrence.Role,
+                               range: s.Range): Unit = {
+        if (typetree.isUserCreated) {
+          addOccurence(typetree.symbol, type_symbol, range)
+        }
       }
 
       def range(tree: Tree, pos: Position, name: String): s.Range = {
         val offset = tree match {
-            case IsPackageClause(tree) => "package ".length
-            case _ => 0
+          case IsPackageClause(tree) => "package ".length
+          case _                     => 0
         }
 
         val range_end_column =
@@ -161,7 +212,10 @@ class SemanticdbConsumer extends TastyConsumer {
             pos.startColumn + name.length
           }
 
-        s.Range(pos.startLine, pos.startColumn + offset, pos.startLine, range_end_column + offset)
+        s.Range(pos.startLine,
+                pos.startColumn + offset,
+                pos.startLine,
+                range_end_column + offset)
       }
 
       def rangeExclude(range: Position, exclude: Position): s.Range = {
@@ -176,48 +230,63 @@ class SemanticdbConsumer extends TastyConsumer {
         typetree match {
           case TypeTree.Synthetic => ()
           case _ =>
-            addOccurence(typetree.symbol,
-                         s.SymbolOccurrence.Role.REFERENCE,
-                         range(tree, typetree.pos, typetree.symbol.name))
+            addOccurenceTypeTree(
+              typetree,
+              s.SymbolOccurrence.Role.REFERENCE,
+              range(tree, typetree.pos, typetree.symbol.name))
         }
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         //println(tree.pos.startColumn, tree.symbol.name, tree.pos.endColumn)
+        println(tree)
         tree match {
           case IsDefinition(body) => {
-            if (tree.symbol.name != "<init>") {
-              val _ = tree match {
-                case DefDef(_, _, _, typetree, _) => typetreeSymbol(tree, typetree)
-                case ValDef(_, typetree, _)       => typetreeSymbol(tree, typetree)
-                case _                            => ()
-              }
+            tree match {
+              case DefDef(name, _, _, typetree, _) =>
+                typetreeSymbol(tree, typetree)
+              case ValDef(_, typetree, _) =>
+                typetreeSymbol(tree, typetree)
+              case _ => ()
             }
-            addOccurence(tree.symbol,
-                         s.SymbolOccurrence.Role.DEFINITION,
-                         range(tree, tree.symbol.pos, tree.symbol.name))
 
+            val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
+            if (tree.symbol.name == "<init>" && !tree.isUserCreated) {
+              val range_symbol2 = s.Range(range_symbol.startLine,
+                                          range_symbol.startCharacter - 4,
+                                          range_symbol.endLine,
+                                          range_symbol.endCharacter - 4)
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.DEFINITION,
+                               range_symbol2,
+                               true)
+
+            } else {
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.DEFINITION,
+                               range_symbol)
+            }
             super.traverseTree(body)
           }
 
           case Term.Select(qualifier, _, _) => {
             val range = rangeExclude(tree.pos, qualifier.pos)
-            addOccurence(tree.symbol, s.SymbolOccurrence.Role.REFERENCE, range)
+            addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range)
             super.traverseTree(tree)
           }
 
           case Term.Ident(_) => {
             // To avoid adding the identifier of the package symbol
             if (tree.symbol.owner.name != "<root>") {
-              addOccurence(tree.symbol,
-                         s.SymbolOccurrence.Role.REFERENCE,
-                         range(tree, tree.pos, tree.symbol.name))
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.REFERENCE,
+                               range(tree, tree.pos, tree.symbol.name))
             }
             super.traverseTree(tree)
           }
           case PackageClause(_) =>
-            addOccurence(tree.symbol,
-                         s.SymbolOccurrence.Role.REFERENCE,
-                         range(tree, tree.pos, tree.symbol.name))
+            addOccurenceTree(tree,
+                             s.SymbolOccurrence.Role.REFERENCE,
+                             range(tree, tree.pos, tree.symbol.name))
             super.traverseTree(tree)
 
           case tree =>
