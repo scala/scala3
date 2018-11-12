@@ -356,26 +356,25 @@ class DottyLanguageServer extends LanguageServer
     val syms = Interactive.enclosingSourceSymbols(path, pos)
     val newName = params.getNewName
 
+    def findRenamedReferences(trees: List[SourceTree], syms: List[Symbol], withName: Name): List[SourceTree] = {
+      val includes = Include.all
+      syms.flatMap { sym =>
+        Interactive.findTreesMatching(trees, Include.all, sym, t => Interactive.sameName(t.name, withName))
+      }
+    }
+
     val refs =
       path match {
         // Selected a renaming in an import node
         case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.pos.contains(pos.pos) =>
-          val includes = Include.references | Include.linkedClass | Include.imports
-          syms.flatMap { sym =>
-            Interactive.findTreesMatching(uriTrees, includes, sym, t => Interactive.sameName(t.name, rename.name))
-          }
+          findRenamedReferences(uriTrees, syms, rename.name)
 
         // Selected a reference that has been renamed
         case (nameTree: NameTree) :: rest if Interactive.isRenamed(nameTree) =>
-          val includes = Include.references | Include.linkedClass | Include.imports
-          syms.flatMap { sym =>
-            Interactive.findTreesMatching(uriTrees, includes, sym, t => Interactive.sameName(t.name, nameTree.name))
-          }
+          findRenamedReferences(uriTrees, syms, nameTree.name)
 
         case _ =>
-          val includes =
-            Include.references | Include.definitions | Include.linkedClass | Include.overriding | Include.imports
-
+          val includes = Include.all.except(Include.overridden)
           syms.flatMap { sym =>
             val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
             Interactive.findTreesMatching(trees, includes, sym, t => Interactive.sameName(t.name, sym.name))

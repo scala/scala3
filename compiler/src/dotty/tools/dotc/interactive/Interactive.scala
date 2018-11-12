@@ -24,6 +24,7 @@ object Interactive {
   object Include {
     case class Set private (val bits: Int) extends AnyVal {
       def | (that: Set): Set = Set(bits | that.bits)
+      def except(that: Set): Set = Set(bits & ~that.bits)
 
       def isEmpty: Boolean = bits == 0
       def isOverridden: Boolean = (bits & overridden.bits) != 0
@@ -57,6 +58,9 @@ object Interactive {
 
     /** Include imports in the results */
     val imports: Set = Set(1 << 5)
+
+    /** All the flags */
+    val all: Set = Set(~0)
   }
 
   /** Does this tree define a symbol ? */
