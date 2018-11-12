@@ -15,7 +15,7 @@ import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.transform.PostTyper
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Positions._
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results._
 
@@ -196,10 +196,8 @@ class ReplCompiler extends Compiler {
           val symbols = extractSymbols(stat)
           val doc = for {
             sym <- symbols
-            docCtx <- ctx.docCtx
-            comment <- docCtx.docstring(sym)
-            body <- comment.expandedBody
-          } yield body
+            comment <- ParsedComment.docOf(sym)
+          } yield comment.renderAsMarkdown
 
           if (doc.hasNext) doc.next()
           else s"// No doc for `$expr`"

@@ -4,7 +4,9 @@ import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.printing.SyntaxHighlighting
 
+import scala.Console.{BOLD, RESET, UNDERLINED}
 import scala.collection.immutable.ListMap
 import scala.util.matching.Regex
 
@@ -50,7 +52,7 @@ class ParsedComment(val comment: Comment) {
    *
    * The different sections are formatted according to the mapping in `knownTags`.
    */
-  def renderAsMarkdown: String = {
+  def renderAsMarkdown(implicit ctx: Context): String = {
     val buf = new StringBuilder
     buf.append(mainDoc + System.lineSeparator + System.lineSeparator)
     val groupedSections = CommentParsing.groupedSections(content, tagIndex)
@@ -131,12 +133,12 @@ object ParsedComment {
    * @param items The items to format into a list.
    * @return A markdown list of descriptions.
    */
-  private def toDescriptionList(items: List[String]): String = {
+  private def toDescriptionList(ctx: Context, items: List[String]): String = {
     val formattedItems = items.map { p =>
       val name :: rest = p.split(" ", 2).toList
-      s"**$name** ${rest.mkString("").trim}"
+      s"${bold(name)(ctx)} ${rest.mkString("").trim}"
     }
-    toMarkdownList(formattedItems)
+    toMarkdownList(ctx, formattedItems)
   }
 
   /**
@@ -145,34 +147,41 @@ object ParsedComment {
    * @param items The items to put in a list.
    * @return The list of items, in markdown.
    */
-  private def toMarkdownList(items: List[String]): String = {
+  private def toMarkdownList(ctx: Context, items: List[String]): String = {
     val formattedItems = items.map(_.lines.mkString(System.lineSeparator + "   "))
     formattedItems.mkString(" - ", System.lineSeparator + " - ", "")
   }
 
   /**
-   * Wrap each of `snippets` into a markdown code fence, using `language`. All the code fences are
-   * put into a markdown list.
+   * If the color is enabled, add syntax highlighting to each of `snippets`, otherwise wrap each
+   * of them in a markdown code fence.
+   * The results are put into a markdown list.
    *
    * @param language The language to use for the code fences
    * @param snippets The list of snippets to format.
    * @return A markdown list of code fences.
    * @see toCodeFence
    */
-  private def toCodeFences(language: String)(snippets: List[String]): String =
-    toMarkdownList(snippets.map(toCodeFence(language)))
+  private def toCodeFences(language: String)(ctx: Context, snippets: List[String]): String =
+    toMarkdownList(ctx, snippets.map(toCodeFence(language)(ctx, _)))
 
   /**
-   * Wraps `snippet` in a markdown code fence, using `language`.
+   * Formats `snippet` for display. If the color is enabled, the syntax is highlighted,
+   * otherwise the snippet is wrapped in a markdown code fence.
    *
    * @param language The language to use.
    * @param snippet  The code snippet
    * @return `snippet`, wrapped in a code fence.
    */
-  private def toCodeFence(language: String)(snippet: String): String =
-    s"""```$language
-       |$snippet
-       |```""".stripMargin
+  private def toCodeFence(language: String)(ctx: Context, snippet: String): String = {
+    if (colorEnabled(ctx)) {
+      SyntaxHighlighting.highlight(snippet)(ctx)
+    } else {
+      s"""```$language
+         |$snippet
+         |```""".stripMargin
+    }
+  }
 
   /**
    * Format the elements of documentation associated with a given tag using `fn`, and starts the
@@ -181,7 +190,7 @@ object ParsedComment {
    * @param title The title to give to the formatted items.
    * @param fn    The formatting function to use.
    */
-  private case class TagFormatter(title: String, fn: List[String] => String) {
+  private case class TagFormatter(title: String, fn: (Context, List[String]) => String) {
 
     /**
      * Format `item` using `fn` if `items` is not empty.
@@ -189,14 +198,33 @@ object ParsedComment {
      * @param items The items to format
      * @return If items is not empty, the items formatted using `fn`.
      */
-    def apply(items: List[String]): Option[String] = items match {
+    def apply(items: List[String])(implicit ctx: Context): Option[String] = items match {
       case Nil =>
         None
       case items =>
-        Some(s"""#### $title:
-                |${fn(items)}
+        Some(s"""${heading(title)}:
+                |${fn(ctx, items)}
                 |""".stripMargin)
     }
+  }
+
+  /** Is the color enabled in the context? */
+  private def colorEnabled(implicit ctx: Context): Boolean =
+    ctx.settings.color.value != "never"
+
+  /**
+   * If the color is enabled, underline `str`, otherwise make it a markdown header by
+   * prepending `####`.
+   */
+  private def heading(str: String)(implicit ctx: Context): String = {
+    if (colorEnabled) s"$UNDERLINED$str$RESET"
+    else s"#### $str"
+  }
+
+  /** Show `str` in bold */
+  private def bold(str: String)(implicit ctx: Context): String = {
+    if (colorEnabled) s"$BOLD$str$RESET"
+    else s"**$str**"
   }
 
 }

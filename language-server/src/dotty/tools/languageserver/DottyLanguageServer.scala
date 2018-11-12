@@ -665,7 +665,9 @@ object DottyLanguageServer {
     }
   }
 
-  private def hoverContent(typeInfo: Option[String], comment: Option[ParsedComment]): lsp4j.MarkupContent = {
+  private def hoverContent(typeInfo: Option[String],
+                           comment: Option[ParsedComment]
+                          )(implicit ctx: Context): lsp4j.MarkupContent = {
     val buf = new StringBuilder
     typeInfo.foreach { info =>
       buf.append(s"""```scala

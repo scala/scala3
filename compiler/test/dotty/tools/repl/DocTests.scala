@@ -8,52 +8,52 @@ class DocTests extends ReplTest {
 
   @Test def docOfDef =
     eval("/** doc */ def foo = 0").andThen { implicit s =>
-      assertEquals("/** doc */", doc("foo"))
+      assertEquals("doc", doc("foo"))
     }
 
   @Test def docOfVal =
     eval("/** doc */ val foo = 0").andThen { implicit s =>
-      assertEquals("/** doc */", doc("foo"))
+      assertEquals("doc", doc("foo"))
     }
 
   @Test def docOfObject =
     eval("/** doc */ object Foo").andThen { implicit s =>
-      assertEquals("/** doc */", doc("Foo"))
+      assertEquals("doc", doc("Foo"))
     }
 
   @Test def docOfClass =
     eval("/** doc */ class Foo").andThen { implicit s =>
-      assertEquals("/** doc */", doc("new Foo"))
+      assertEquals("doc", doc("new Foo"))
     }
 
   @Test def docOfTrait =
     eval("/** doc */ trait Foo").andThen { implicit s =>
-      assertEquals("/** doc */", doc("new Foo"))
+      assertEquals("doc", doc("new Foo"))
     }
 
   @Test def docOfDefInObject =
     eval("object O { /** doc */ def foo = 0 }").andThen { implicit s =>
-      assertEquals("/** doc */", doc("O.foo"))
+      assertEquals("doc", doc("O.foo"))
     }
 
   @Test def docOfValInObject =
     eval("object O { /** doc */ val foo = 0 }").andThen { implicit s =>
-      assertEquals("/** doc */", doc("O.foo"))
+      assertEquals("doc", doc("O.foo"))
     }
 
   @Test def docOfObjectInObject =
     eval("object O { /** doc */ object Foo }").andThen { implicit s =>
-      assertEquals("/** doc */", doc("O.Foo"))
+      assertEquals("doc", doc("O.Foo"))
     }
 
   @Test def docOfClassInObject =
     eval("object O { /** doc */ class Foo }").andThen { implicit s =>
-      assertEquals("/** doc */", doc("new O.Foo"))
+      assertEquals("doc", doc("new O.Foo"))
     }
 
   @Test def docOfTraitInObject =
     eval("object O { /** doc */ trait Foo }").andThen { implicit s =>
-      assertEquals("/** doc */", doc("new O.Foo"))
+      assertEquals("doc", doc("new O.Foo"))
     }
 
   @Test def docOfDefInClass =
@@ -61,7 +61,7 @@ class DocTests extends ReplTest {
       """class C { /** doc */ def foo = 0 }
         |val c = new C
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc */", doc("c.foo"))
+      assertEquals("doc", doc("c.foo"))
     }
 
   @Test def docOfValInClass =
@@ -69,7 +69,7 @@ class DocTests extends ReplTest {
       """class C { /** doc */ val foo = 0 }
         |val c = new C
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc */", doc("c.foo"))
+      assertEquals("doc", doc("c.foo"))
     }
 
   @Test def docOfObjectInClass =
@@ -77,7 +77,7 @@ class DocTests extends ReplTest {
       """class C { /** doc */ object Foo }
         |val c = new C
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc */", doc("c.Foo"))
+      assertEquals("doc", doc("c.Foo"))
     }
 
   @Test def docOfClassInClass =
@@ -85,7 +85,7 @@ class DocTests extends ReplTest {
       """class C { /** doc */ class Foo }
         |val c = new C
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc */", doc("new c.Foo"))
+      assertEquals("doc", doc("new c.Foo"))
     }
 
   @Test def docOfTraitInClass =
@@ -93,7 +93,7 @@ class DocTests extends ReplTest {
       """class C { /** doc */ trait Foo }
         |val c = new C
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc */", doc("new c.Foo"))
+      assertEquals("doc", doc("new c.Foo"))
     }
 
   @Test def docOfOverloadedDef =
@@ -103,8 +103,8 @@ class DocTests extends ReplTest {
         |  /** doc1 */ def foo(x: String) = x
         |}
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc0 */", doc("O.foo(_: Int)"))
-      assertEquals("/** doc1 */", doc("O.foo(_: String)"))
+      assertEquals("doc0", doc("O.foo(_: Int)"))
+      assertEquals("doc1", doc("O.foo(_: String)"))
     }
 
   @Test def docOfInherited =
@@ -112,7 +112,7 @@ class DocTests extends ReplTest {
       """class C { /** doc */ def foo = 0 }
         |object O extends C
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc */", doc("O.foo"))
+      assertEquals("doc", doc("O.foo"))
     }
 
   @Test def docOfOverride =
@@ -126,8 +126,8 @@ class DocTests extends ReplTest {
         |  /** overridden doc */ override def foo(x: String): String = x
         |}
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** doc0 */", doc("O.foo(_: Int)"))
-      assertEquals("/** overridden doc */", doc("O.foo(_: String)"))
+      assertEquals("doc0", doc("O.foo(_: Int)"))
+      assertEquals("overridden doc", doc("O.foo(_: String)"))
     }
 
   @Test def docOfOverrideObject =
@@ -142,8 +142,8 @@ class DocTests extends ReplTest {
         |  }
         |}
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** companion */", doc("O.foo"))
-      assertEquals("/** doc0 */", doc("O.foo.bar"))
+      assertEquals("companion", doc("O.foo"))
+      assertEquals("doc0", doc("O.foo.bar"))
     }
 
   @Test def docIsCooked =
@@ -157,7 +157,7 @@ class DocTests extends ReplTest {
         |  def hello = "world"
         |}
       """.stripMargin).andThen { implicit s =>
-      assertEquals("/** Expansion: some-value */", doc("Foo.hello"))
+      assertEquals("Expansion: some-value", doc("Foo.hello"))
     }
 
   private def eval(code: String): State =
