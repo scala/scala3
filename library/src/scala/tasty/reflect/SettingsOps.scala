@@ -6,6 +6,7 @@ trait SettingsOps extends Core {
   def settings: Settings
 
   trait SettingsAPI {
+    /** Can print output using colors? */
     def color: Boolean
   }
   implicit def SettingsDeco(settings: Settings): SettingsAPI

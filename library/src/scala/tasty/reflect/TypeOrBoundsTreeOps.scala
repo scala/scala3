@@ -11,7 +11,9 @@ trait TypeOrBoundsTreeOps extends Core {
   // ----- TypeTrees ------------------------------------------------
 
   trait TypeTreeAPI {
+    /** Position in the source code */
     def pos(implicit ctx: Context): Position
+
     def tpe(implicit ctx: Context): Type
     def symbol(implicit ctx: Context): Symbol
   }
