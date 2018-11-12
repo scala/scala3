@@ -18,13 +18,13 @@ object arrays4 {
 // #2461
 object arrays3 {
   import scala.collection.JavaConversions._
-  def apply[X](xs : X*) : java.util.List[X] = java.util.Arrays.asList(xs: _*)
+  def apply[X](xs : X*) : java.util.List[X|Null]|Null = java.util.Arrays.asList(xs: _*)
 
-  def apply1[X <: String](xs : X*) : java.util.List[X] = java.util.Arrays.asList(xs: _*)
-  def apply2[X <: AnyVal](xs : X*) : java.util.List[X] = java.util.Arrays.asList(xs: _*)
-  def apply3(xs : Int*) : java.util.List[Int] = java.util.Arrays.asList(xs: _*)
-  def apply4(xs : Unit*) : java.util.List[Unit] = java.util.Arrays.asList(xs: _*)
-  def apply5(xs : Null*) : java.util.List[Null] = java.util.Arrays.asList(xs: _*)
-  def apply6(xs : Nothing*) : java.util.List[Nothing] = java.util.Arrays.asList(xs: _*)
+  def apply1[X <: String](xs : X*) : java.util.List[X|Null]|Null = java.util.Arrays.asList(xs: _*)
+  def apply2[X <: AnyVal](xs : X*) : java.util.List[X|Null]|Null = java.util.Arrays.asList(xs: _*)
+  def apply3(xs : Int*) : java.util.List[Int|Null]|Null = java.util.Arrays.asList(xs: _*)
+  def apply4(xs : Unit*) : java.util.List[Unit|Null]|Null = java.util.Arrays.asList(xs: _*)
+  def apply5(xs : Null*) : java.util.List[Null]|Null = java.util.Arrays.asList(xs: _*)
+  def apply6(xs : Nothing*) : java.util.List[Nothing|Null]|Null = java.util.Arrays.asList(xs: _*)
 }
 
