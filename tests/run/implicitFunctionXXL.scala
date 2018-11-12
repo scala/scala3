@@ -5,7 +5,7 @@ object Test {
     implicit val intWorld: Int = 42
     implicit val strWorld: String = "Hello "
 
-    val i1 = (implicit (x1: Int,
+    val i1 = (         (x1: Int,
                         x2: String,
                         x3: Int,
                         x4: Int,
@@ -30,7 +30,7 @@ object Test {
                         x23: Int,
                         x24: Int,
                         x25: Int,
-                        x26: Int) => x2 + x1)
+                        x26: Int) |=> x2 + x1)
 
     println(i1)
   }

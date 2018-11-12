@@ -3,7 +3,7 @@ import scala.tasty.Reflection
 
 object SourceFiles {
 
-  type Macro[X] = implicit Reflection => Expr[X]
+  type Macro[X] = Reflection |=> Expr[X]
   def tastyContext(implicit ctx: Reflection): Reflection = ctx
 
   implicit inline def getThisFile: String =

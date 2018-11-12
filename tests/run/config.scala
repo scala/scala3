@@ -29,13 +29,13 @@ object Imperative {
     ).onError(None)
 
   def main(args: Array[String]) = {
-    println(readPerson(Config("John Doe", 20)))
-    println(readPerson(Config("Incognito", 99)))
+    println(readPerson with Config("John Doe", 20))
+    println(readPerson with Config("Incognito", 99))
   }
 }
 
 object Configs {
-  type Configured[T] = implicit Config => T
+  type Configured[T] = Config |=> T
   def config: Configured[Config] = implicitly[Config]
 }
 
@@ -47,7 +47,7 @@ object Exceptions {
     private[Exceptions] def throwE() = throw new E
   }
 
-  type Possibly[T] = implicit CanThrow => T
+  type Possibly[T] = CanThrow |=> T
 
   def require(p: Boolean)(implicit ct: CanThrow): Unit =
     if (!p) ct.throwE()
@@ -56,7 +56,7 @@ object Exceptions {
 
   class OnError[T](op: Possibly[T]) {
     def onError(fallback: => T): T =
-      try op(new CanThrow)
+      try op with (new CanThrow)
       catch { case ex: E => fallback }
   }
 }
@@ -85,8 +85,8 @@ object Test extends App {
   val config1 = Config("John Doe", 20)
   val config2 = Config("Incognito", 99)
 
-  println(readPerson(config1))
-  println(readPerson(config2))
+  println(readPerson with config1)
+  println(readPerson with config2)
 }
 
 object OptionTest extends App {

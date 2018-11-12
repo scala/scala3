@@ -82,14 +82,25 @@ A |=> B |=> T
 ```
 The `|=>` syntax was chosen for its resemblance with a turnstile symbol `|-` which signifies context dependencies.
 
+The old syntax `implicit A => B` is no longer available.
+Implicit function types are applied using `with`:
+```scala
+val f: A |=> B
+val a: A
+f with a    // OK
+f(a)        // error: `f` does not take parameters
+```
+Since application of regular function types and implicit function types different, implicit function types are no longer subtypes of regular function types.
+
 The `|=>` syntax can also be used for closures. It turns the parameter bindings into implicit
-parameters.
+parameters and makes the closure's type an implicit function type
 ```scala
 case class Context(value: String)
-ctx |=> ctx.value
-(ctx: Context) |=> ctx.value
-(a: A, b: B) |=> t
+val f1: Context |=> String  =  ctx |=> ctx.value
+val f2: Context |=> String  =  (ctx: Context) |=> ctx.value
+val f3: (A, B) |=> T        =  (a: A, b: B) |=> t
 ```
+The old syntax `implicit (a: A) => B` now creates a closure of a regular function type `A => B` instead of an implicit function type `A |=> B`. This matches the types of implicit closures in Scala 2.x.
 
 ## Example
 
@@ -127,9 +138,9 @@ ClsParamClause    ::=  ...
 DefParamClause    ::=  ...
                     |  ‘with’ ‘(’ [DefParams] ‘)’
 Type              ::=  ...
-                    |  FunArgTypes ‘|=>’ Type
+                    |  [‘erased’] FunArgTypes ‘|=>’ Type
 Expr              ::=  ...
-                    |  FunParams ‘|=>’ Expr
+                    |  [‘erased’] FunParams ‘|=>’ Expr
 InfixExpr         ::=  ...
                     |  InfixExpr ‘with’ (InfixExpr | ParArgumentExprs)
 ```

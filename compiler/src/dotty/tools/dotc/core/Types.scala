@@ -341,6 +341,9 @@ object Types {
     /** Is this a Method or PolyType which has contextual parameters as first value parameter list? */
     def isContextual: Boolean = false
 
+    /** Is this a Method or PolyType which has implicit parameters as first value parameter list? */
+    def isImplicit: Boolean = false
+
     /** Is this a MethodType for which the parameters will not be used */
     def isErasedMethod: Boolean = false
 
@@ -1446,7 +1449,7 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        val isImplicit = mt.isImplicitMethod && !ctx.erasedTypes
+        val isContextual = mt.isContextual && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType()
@@ -1454,7 +1457,7 @@ object Types {
         }
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
-          result1, isImplicit, isErased)
+          result1, isContextual, isErased)
         if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
@@ -3082,10 +3085,17 @@ object Types {
 
     final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean =
-      companion.eq(ImplicitMethodType) || companion.eq(ErasedImplicitMethodType) || isContextual
-    final override def isErasedMethod: Boolean = companion.eq(ErasedMethodType) || companion.eq(ErasedImplicitMethodType)
+      companion.eq(ImplicitMethodType) ||
+      companion.eq(ErasedImplicitMethodType) ||
+      isContextual
+    final override def isErasedMethod: Boolean =
+      companion.eq(ErasedMethodType) ||
+      companion.eq(ErasedImplicitMethodType) ||
+      companion.eq(ErasedContextualMethodType)
     final override def isContextual: Boolean =
-      companion.eq(ContextualMethodType) || companion.eq(ErasedContextualMethodType)
+      companion.eq(ContextualMethodType) ||
+      companion.eq(ErasedContextualMethodType)
+    final override def isImplicit = isImplicitMethod
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
@@ -3278,6 +3288,7 @@ object Types {
     def computeSignature(implicit ctx: Context): Signature = resultSignature
 
     override def isContextual = resType.isContextual
+    override def isImplicit = resType.isImplicit
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.

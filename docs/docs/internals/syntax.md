@@ -136,8 +136,7 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
-                    |  FunArgMods ‘|=>’ Type
+Type              ::=  [‘erased’] FunArgTypes (‘=>’ | ‘|=>’) Type               Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
@@ -177,7 +176,7 @@ TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                
 ### Expressions
 ```ebnf
 Expr              ::=  [FunArgMods] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
-                    |  FunParams ‘|=>’ Expr
+                    |  [‘erased’] FunParams ‘|=>’ Expr
                     |  Expr1
 BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
                     |  Expr1
