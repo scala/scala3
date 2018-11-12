@@ -46,7 +46,10 @@ object PickledQuotes {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
         case value => Literal(Constant(value))
       }
-    case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
+    case expr: TastyTreeExpr[Tree] @unchecked =>
+      if (contextId != expr.ctxId)
+        throw new scala.quoted.QuoteError("Scope extrusion!")
+      healOwner(expr.tree)
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
   }
@@ -187,4 +190,12 @@ object PickledQuotes {
       case _ => tree
     }
   }
+
+  /** Id of the current compilation (macros) or Expr[_] run */
+  def contextId(implicit ctx: Context): Int = {
+    def root(ctx: Context): Context =
+      if (ctx.outer != NoContext) root(ctx.outer) else ctx
+    root(ctx).hashCode
+  }
+
 }

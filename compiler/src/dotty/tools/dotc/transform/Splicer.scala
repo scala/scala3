@@ -95,7 +95,7 @@ object Splicer {
     }
 
     protected def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Exprs.TastyTreeExpr(tree)
+      new scala.quoted.Exprs.TastyTreeExpr(tree, PickledQuotes.contextId)
 
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.quoted.Types.TreeType(tree)

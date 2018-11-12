@@ -49,7 +49,7 @@ object Exprs {
    *
    *  May contain references to code defined outside this TastyTreeExpr instance.
    */
-  final class TastyTreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+  final class TastyTreeExpr[Tree](val tree: Tree, val ctxId: Int) extends quoted.Expr[Any] {
     override def toString: String = s"Expr(<tasty tree>)"
   }
 

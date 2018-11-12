@@ -19,7 +19,7 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
 
     def reify[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
       typecheck(ctx)
-      new scala.quoted.Exprs.TastyTreeExpr(term).asInstanceOf[scala.quoted.Expr[T]]
+      new scala.quoted.Exprs.TastyTreeExpr(term, PickledQuotes.contextId).asInstanceOf[scala.quoted.Expr[T]]
     }
 
     private def typecheck[T: scala.quoted.Type](ctx: Context): Unit = {
