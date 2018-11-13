@@ -92,14 +92,20 @@ class CodeTester(projects: List[Project]) {
    * Performs a workspace-wide renaming of the symbol under `marker`, verifies that the positions to
    * update match `expected`.
    *
-   * @param marker   The position from which to ask for renaming.
-   * @param newName  The new name to give to the symbol.
-   * @param expected The expected positions to change.
+   * @param marker         The position from which to ask for renaming.
+   * @param newName        The new name to give to the symbol.
+   * @param expected       The expected positions to change.
+   * @param withOverridden If `None`, do not expect the server to ask whether to include overridden
+   *                       symbol. Otherwise, wait for this question from the server and include
+   *                       overridden symbols if this is true.
    *
    * @see dotty.tools.languageserver.util.actions.CodeRename
    */
-  def rename(marker: CodeMarker, newName: String, expected: Set[CodeRange]): this.type =
-    doAction(new CodeRename(marker, newName, expected)) // TODO apply changes to the sources and positions
+  def rename(marker: CodeMarker,
+             newName: String,
+             expected: Set[CodeRange],
+             withOverridden: Option[Boolean] = None): this.type =
+    doAction(new CodeRename(marker, newName, expected, withOverridden)) // TODO apply changes to the sources and positions
 
   /**
    * Queries for all the symbols referenced in the source file in `marker`, verifies that they match

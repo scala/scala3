@@ -216,19 +216,23 @@ class RenameTest {
   }
 
   @Test def renameOverridden: Unit = {
-    def testRename(m: CodeMarker) =
+    def testRename(m: CodeMarker, expectations: Set[CodeRange], withOverridden: Option[Boolean]) =
       withSources(
         code"""class A { def ${m1}foo${m2}: Int = 0 }
                class B extends A { override def ${m3}foo${m4}: Int = 1 }
                class C extends A { override def ${m5}foo${m6}: Int = 2 }"""
-      ).rename(m, "NewName", Set(m1 to m2, m3 to m4, m5 to m6))
+      ).rename(m, "NewName", expectations, withOverridden)
 
-    testRename(m1)
-    testRename(m2)
-    testRename(m3)
-    testRename(m4)
-    testRename(m5)
-    testRename(m6)
+    testRename(m1, Set(m1 to m2, m3 to m4, m5 to m6), withOverridden = None)
+    testRename(m2, Set(m1 to m2, m3 to m4, m5 to m6), withOverridden = None)
+    testRename(m3, Set(m1 to m2, m3 to m4, m5 to m6), withOverridden = Some(true))
+    testRename(m4, Set(m1 to m2, m3 to m4, m5 to m6), withOverridden = Some(true))
+    testRename(m5, Set(m1 to m2, m3 to m4, m5 to m6), withOverridden = Some(true))
+    testRename(m6, Set(m1 to m2, m3 to m4, m5 to m6), withOverridden = Some(true))
+    testRename(m3, Set(m3 to m4), withOverridden = Some(false))
+    testRename(m4, Set(m3 to m4), withOverridden = Some(false))
+    testRename(m5, Set(m5 to m6), withOverridden = Some(false))
+    testRename(m6, Set(m5 to m6), withOverridden = Some(false))
 
   }
 
