@@ -215,4 +215,23 @@ class RenameTest {
     testRename(m8)
   }
 
+  @Test def renameOverridden: Unit = {
+    def testRename(m: CodeMarker) =
+      withSources(
+        code"""class A { def ${m1}foo${m2}: Int = 0 }
+               class B extends A { override def ${m3}foo${m4}: Int = 1 }
+               class C extends A { override def ${m5}foo${m6}: Int = 2 }"""
+      ).rename(m, "NewName", Set(m1 to m2, m3 to m4, m5 to m6))
+
+    testRename(m1)
+    testRename(m2)
+    testRename(m3)
+    testRename(m4)
+    testRename(m5)
+    testRename(m6)
+
+  }
+
+
+
 }

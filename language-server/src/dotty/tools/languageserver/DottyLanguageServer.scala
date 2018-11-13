@@ -353,7 +353,9 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
     val pos = sourcePosition(driver, uri, params.getPosition)
     val path = Interactive.pathTo(uriTrees, pos)
-    val syms = Interactive.enclosingSourceSymbols(path, pos)
+    val syms = Interactive.enclosingSourceSymbols(path, pos).flatMap { sym =>
+      sym :: sym.allOverriddenSymbols.toList
+    }
     val newName = params.getNewName
 
     def findRenamedReferences(trees: List[SourceTree], syms: List[Symbol], withName: Name): List[SourceTree] = {
@@ -374,10 +376,13 @@ class DottyLanguageServer extends LanguageServer
           findRenamedReferences(uriTrees, syms, nameTree.name)
 
         case _ =>
-          val includes = Include.all.except(Include.overridden)
+          val names = syms.map(_.name.sourceModuleName).toSet
+          val trees = names.flatMap(name => driver.allTreesContaining(name.toString)).toList
           syms.flatMap { sym =>
-            val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-            Interactive.findTreesMatching(trees, includes, sym, t => Interactive.sameName(t.name, sym.name))
+            Interactive.findTreesMatching(trees,
+                                          Include.all,
+                                          sym,
+                                          t => names.exists(Interactive.sameName(t.name, _)))
           }
       }
 
