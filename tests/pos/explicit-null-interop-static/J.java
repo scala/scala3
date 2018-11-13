@@ -1,4 +1,4 @@
 
 class J {
-	static int foo(S s) { return 42; }
+	static int foo(String s) { return 42; }
 }

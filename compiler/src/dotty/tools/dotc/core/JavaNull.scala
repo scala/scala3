@@ -129,10 +129,13 @@ object JavaNull {
 
     def shouldDescend(tp: AppliedType): Boolean = {
       val AppliedType(tycons, _) = tp
-      // Since `Class` objects are runtime representations of _classes_, it doesn't make
-      // sense to talk about e.g. Class[String | JavaNull], so we don't recursive inside `Class`
-      // while nullifying things.
-      tycons != defn.ClassClass.typeRef
+      // Only nullify the inside of Scala-defined constructors.
+      // This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
+      // `java.util.List[String|Null]` contain nullable elements.
+      tycons.widenDealias match {
+        case tp: TypeRef if !tp.symbol.is(JavaDefined) => true
+        case _ => false
+      }
     }
 
     override def apply(tp: Type): Type = {
