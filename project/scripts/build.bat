@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 rem only for interactive debugging
-set _DEBUG=1
+set _DEBUG=0
 
 rem ##########################################################################
 rem ## Environment setup
@@ -31,17 +31,20 @@ if not %_EXITCODE%==0 ( goto end
 ) else if defined _HELP ( goto end
 )
 
-set _OUT_DIR=%TEMP%\%_BASENAME%_out
+if exist "C:\Temp\" ( set _TMP_DIR=C:\Temp
+) else ( set _TMP_DIR=%TEMP%
+)
+set _OUT_DIR=%_TMP_DIR%\%_BASENAME%_out
 if not exist "%_OUT_DIR%" mkdir "%_OUT_DIR%"
 
-set _OUT1_DIR=%TEMP%\%_BASENAME%_out1
+set _OUT1_DIR=%_TMP_DIR%\%_BASENAME%_out1
 if not exist "%_OUT1_DIR%" mkdir "%_OUT1_DIR%"
 
-set _TMP_FILE=%TEMP%\%_BASENAME%_tmp.txt
+set _TMP_FILE=%_TMP_DIR%\%_BASENAME%_tmp.txt
 
 where /q git.exe
 if not %ERRORLEVEL%==0 (
-    echo Error: Git command not found ^(run setenv.bat^) 1>&2
+    echo Error: Git command not found ^(check your PATH variable^) 1>&2
     set _EXITCODE=1
     goto end
 )
@@ -49,11 +52,11 @@ set _GIT_CMD=git.exe
 
 where /q sbt.bat
 if not %ERRORLEVEL%==0 (
-    echo Error: SBT command not found ^(run setenv.bat^) 1>&2
+    echo Error: SBT command not found ^(check your PATH variable^) 1>&2
     set _EXITCODE=1
     goto end
 )
-rem full path of SBT command is required
+rem full path is required for sbt to run successfully
 for /f %%i in ('where sbt.bat') do set _SBT_CMD=%%i
 
 rem see file project/scripts/sbt
@@ -69,27 +72,40 @@ set SBT_OPTS=-Ddotty.drone.mem=4096m ^
 rem ##########################################################################
 rem ## Main
 
-if defined _CLEAN (
-    if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" clean
-    call "%_SBT_CMD%" clean
-    goto end
+if %_VERBOSE%==1 (
+    for /f %%i in ('where git.exe') do set _GIT_CMD1=%%i
+    echo _GIT_CMD=!_GIT_CMD1!
+    echo _SBT_CMD=%_SBT_CMD%
+    echo JAVA_OPTS=%JAVA_OPTS%
+    echo SBT_OPTS=%SBT_OPTS%
+    echo.
 )
-
-call :clone
-if not %_EXITCODE%==0 goto end
-
-call :test
-if not %_EXITCODE%==0 goto end
-
+if defined _CLEAN_ALL (
+    call :clean_all
+    if not !_EXITCODE!==0 goto end
+)
+if defined _CLONE (
+    call :clone
+    if not !_EXITCODE!==0 goto end
+)
+if defined _BUILD (
+    call :test
+    if not !_EXITCODE!==0 goto end
+)
 if defined _BOOTSTRAP (
     call :test_bootstrapped
     rem if not !_EXITCODE!==0 goto end
-    if not !_EXITCODE!==0 echo ###### Warning: _EXITCODE=!_EXITCODE! ####### 1>&2
+    if not !_EXITCODE!==0 (
+        if defined _IGNORE ( echo ###### Warning: _EXITCODE=!_EXITCODE! ####### 1>&2
+        ) else ( goto end
+        )
+    )
 )
 if defined _DOCUMENTATION (
     call :documentation
     if not !_EXITCODE!==0 goto end
 )
+
 if defined _ARCHIVES (
     call :archives
     if not !_EXITCODE!==0 goto end
@@ -105,7 +121,8 @@ rem output parameters: _VERBOSE, _DOCUMENTATION
 set _VERBOSE=0
 set _ARCHIVES=
 set _BOOTSTRAP=
-set _CLEAN=
+set _BUILD=
+set _CLEAN_ALL=
 set _DOCUMENTATION=
 set __N=0
 :args_loop
@@ -117,10 +134,16 @@ if not defined __ARG (
 )
 if /i "%__ARG%"=="help" ( call :help & goto :eof
 ) else if /i "%__ARG%"=="-verbose" ( set _VERBOSE=1
-) else if /i "%__ARG:~0,4%"=="arch" ( set _ARCHIVES=1
-) else if /i "%__ARG:~0,4%"=="boot" ( set _BOOTSTRAP=1
-) else if /i "%__ARG%"=="clean" ( set _CLEAN=1
-) else if /i "%__ARG:~0,3%"=="doc" ( set _DOCUMENTATION=1
+) else if /i "%__ARG:~0,4%"=="arch" (
+    if not "%__ARG:~-5%"=="-only" set _BUILD=1 & set _BOOTSTRAP=1
+    set _ARCHIVES=1
+) else if /i "%__ARG:~0,4%"=="boot" (
+    if not "%__ARG:~-5%"=="-only" set _BUILD=1
+    set _BOOTSTRAP=1
+) else if /i "%__ARG%"=="cleanall" ( set _CLEAN_ALL=1
+) else if /i "%__ARG:~0,3%"=="doc" (
+    if not "%__ARG:~-5%"=="-only" set _BUILD=1 & set _BOOTSTRAP=1
+    set _DOCUMENTATION=1
 ) else (
     echo %_BASENAME%: Unknown subcommand %__ARG%
     set _EXITCODE=1
@@ -135,13 +158,31 @@ goto :eof
 set _HELP=1
 echo Usage: setenv { options ^| subcommands }
 echo   Options:
-echo     -verbose         display environment settings
+echo     -verbose               display environment settings
 echo   Subcommands:
-echo     arch[ives]       generate gz/zip archives
-echo     boot[strap]      generate compiler bootstrap
-echo     clean            clean project and leave
-echo     doc[umentation]  generate documentation
-echo     help             display this help message
+echo     arch[ives]             generate gz/zip archives (after bootstrap)
+echo     arch[ives]-only        generate ONLY gz/zip archives
+echo     boot[strap]            generate compiler bootstrap (after build)
+echo     boot[strap]-only       generate ONLY compiler bootstrap
+echo     cleanall               clean project (sbt+git) and quit
+echo     doc[umentation]        generate documentation (after bootstrap)
+echo     doc[umentation]-only]  generate ONLY documentation
+echo     help                   display this help message
+goto :eof
+
+:clean_all
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" clean
+call "%_SBT_CMD%" clean
+if not %ERRORLEVEL%==0 (
+    set _EXITCODE=1
+    goto :eof
+)
+if %_DEBUG%==1 echo [%_BASENAME%] %_GIT_CMD% clean -xdf
+%_GIT_CMD% clean -xdf
+if not %ERRORLEVEL%==0 (
+    set _EXITCODE=1
+    goto :eof
+)
 goto :eof
 
 :clone
@@ -172,6 +213,7 @@ goto :eof
 set __PATTERN=%~1
 set __FILE=%~2
 
+if %_DEBUG%==1 echo [%_BASENAME%] findstr "%__PATTERN%" "%__FILE%
 findstr "%__PATTERN%" "%__FILE%"
 if not %ERRORLEVEL%==0 (
     echo Error: Failed to find pattern "%__PATTERN%" in file %__FILE% 1>&2
@@ -217,8 +259,8 @@ if not %_EXITCODE%==0 goto :eof
 goto :eof
 
 :test
-if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";clean ;compile ;test"
-call "%_SBT_CMD%" ";clean ;compile ;test"
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";compile ;test"
+call "%_SBT_CMD%" ";compile ;test"
 if not %ERRORLEVEL%==0 (
     echo Error: Failed to build Dotty 1>&2
     set _EXITCODE=1
@@ -364,6 +406,7 @@ if not exist "%__TARGET_DIR%\" (
     goto :eof
 )
 if %_DEBUG%==1 (
+    echo.
     echo Output directory: %__TARGET_DIR%\
     dir /b /a-d "%__TARGET_DIR%"
 )
