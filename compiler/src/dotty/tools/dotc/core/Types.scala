@@ -1087,9 +1087,16 @@ object Types {
      */
     def widenUnion(implicit ctx: Context): Type = this match {
       case OrType(tp1, tp2) =>
-        ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
-          case union: OrType => union.join
-          case res => res
+        if (isNullableUnion) {
+          normalizeNull match {
+            case OrType(leftTpe, nullTpe) => OrType(leftTpe.widenUnion, nullTpe)
+            case tpe => assert(false, s"Expected a union type, but got ${tpe.show}"); tpe
+          }
+        } else {
+          ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
+            case union: OrType => union.join
+            case res => res
+          }
         }
       case tp @ AndType(tp1, tp2) =>
         tp derived_& (tp1.widenUnion, tp2.widenUnion)

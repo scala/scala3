@@ -16,9 +16,9 @@ object T {
   class Ident[X >: Null] extends Tree[X]
   class Apply[X >: Null] extends Tree[X]
 
-  val x: Ident[Symbol] | Apply[Symbol] = ???
+  val x: Ident[Symbol|Null] | Apply[Symbol|Null] = ???
   val y = x.tpe
-  val z: Symbol = y
+  val z: Symbol|Null = y
 
 
 }
