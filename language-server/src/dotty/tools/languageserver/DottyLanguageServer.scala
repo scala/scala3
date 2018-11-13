@@ -23,7 +23,7 @@ import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenota
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
 import typer.Typer
-import util._
+import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._
 import Interactive.Include
 import config.Printers.interactiv
@@ -60,6 +60,8 @@ class DottyLanguageServer extends LanguageServer
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
+  private[this] var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = _
+
   def drivers: Map[ProjectConfig, InteractiveDriver] = thisServer.synchronized {
     if (myDrivers == null) {
       assert(rootUri != null, "`drivers` cannot be called before `initialize`")
@@ -80,6 +82,7 @@ class DottyLanguageServer extends LanguageServer
         val settings =
           defaultFlags ++
           config.compilerArguments.toList
+            .update("-d", config.classDirectory.getAbsolutePath)
             .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
             .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator)) :+
           "-scansource"
@@ -106,19 +109,42 @@ class DottyLanguageServer extends LanguageServer
   private def checkMemory() =
     if (Memory.isCritical()) CompletableFutures.computeAsync { _ => restart() }
 
-  /** The driver instance responsible for compiling `uri` */
-  def driverFor(uri: URI): InteractiveDriver = thisServer.synchronized {
-    val matchingConfig =
+  /** The configuration of the project that owns `uri`. */
+  def configFor(uri: URI): ProjectConfig = thisServer.synchronized {
+    val config =
       drivers.keys.find(config => config.sourceDirectories.exists(sourceDir =>
         new File(uri.getPath).getCanonicalPath.startsWith(sourceDir.getCanonicalPath)))
-    matchingConfig match {
-      case Some(config) =>
-        drivers(config)
-      case None =>
-        val config = drivers.keys.head
-        // println(s"No configuration contains $uri as a source file, arbitrarily choosing ${config.id}")
-        drivers(config)
+
+    config.getOrElse {
+      val config = drivers.keys.head
+      // println(s"No configuration contains $uri as a source file, arbitrarily choosing ${config.id}")
+      config
     }
+  }
+
+  /** The driver instance responsible for compiling `uri` */
+  def driverFor(uri: URI): InteractiveDriver = {
+    drivers(configFor(uri))
+  }
+
+  /** A mapping from project `p` to the set of projects that transitively depend on `p`. */
+  def dependentProjects: Map[ProjectConfig, Set[ProjectConfig]] = thisServer.synchronized {
+    if (myDependentProjects == null) {
+      val idToConfig = drivers.keys.map(k => k.id -> k).toMap
+      val allProjects = drivers.keySet
+
+      def transitiveDependencies(config: ProjectConfig): Set[ProjectConfig] = {
+        val dependencies = config.projectDependencies.map(idToConfig).toSet
+        dependencies ++ dependencies.flatMap(transitiveDependencies)
+      }
+
+      myDependentProjects = new mutable.HashMap().withDefaultValue(mutable.Set.empty)
+      for { project <- allProjects
+            dependency <- transitiveDependencies(project) } {
+        myDependentProjects(dependency) += project
+      }
+    }
+    myDependentProjects
   }
 
   def connect(client: WorksheetClient): Unit = {
@@ -279,24 +305,56 @@ class DottyLanguageServer extends LanguageServer
   override def references(params: ReferenceParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+
+    val includes = {
+      val includeDeclaration = params.getContext.isIncludeDeclaration
+      Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
+    }
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val sym = Interactive.enclosingSourceSymbol(driver.openedTrees(uri), pos)
 
-    if (sym == NoSymbol) Nil.asJava
-    else {
-      // FIXME: this will search for references in all trees on the classpath, but we really
-      // only need to look for trees in the target directory if the symbol is defined in the
-      // current project
-      val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val includeDeclaration = params.getContext.isIncludeDeclaration
-      val includes =
-        Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
-      val refs = Interactive.findTreesMatching(trees, includes, sym)
+    val (definitions, projectsToInspect, originalSymbol, originalSymbolName) = {
+      implicit val ctx: Context = driver.currentCtx
+      val path = Interactive.pathTo(driver.openedTrees(uri), pos)
+      val originalSymbol = Interactive.enclosingSourceSymbol(path)
+      val originalSymbolName = originalSymbol.name.sourceModuleName.toString
 
-      refs.flatMap(ref => location(ref.namePos, positionMapperFor(ref.source))).asJava
+      // Find definitions of the symbol under the cursor, so that we can determine
+      // what projects are worth exploring
+      val definitions = Interactive.findDefinitions(path, driver)
+      val projectsToInspect =
+        if (definitions.isEmpty) {
+          drivers.keySet
+        } else {
+          for {
+            definition <- definitions
+            uri <- toUriOption(definition.pos.source).toSet
+            config = configFor(uri)
+            project <- dependentProjects(config) + config
+          } yield project
+        }
+
+      (definitions, projectsToInspect, originalSymbol, originalSymbolName)
     }
+
+    val references = {
+      // Collect the information necessary to look into each project separately: representation of
+      // `originalSymbol` in this project, the context and correct Driver.
+      val perProjectInfo = projectsToInspect.toList.map { config =>
+        val remoteDriver = drivers(config)
+        val ctx = remoteDriver.currentCtx
+        val definition = Interactive.localize(originalSymbol, driver, remoteDriver)
+        (remoteDriver, ctx, definition)
+      }
+
+      perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
+        val trees = remoteDriver.sourceTreesContaining(originalSymbolName)(ctx)
+        val matches = Interactive.findTreesMatching(trees, includes, definition)(ctx)
+        matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
+      }
+    }.toList
+
+    references.flatten.asJava
   }
 
   override def rename(params: RenameParams) = computeAsync { cancelToken =>

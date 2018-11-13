@@ -36,77 +36,26 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   private[this] var myCtx: Context = myInitCtx
-
   def currentCtx: Context = myCtx
+
+  private val compiler: Compiler = new InteractiveCompiler
 
   private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
     override def default(key: URI) = NoSource
   }
+  def openedFiles: Map[URI, SourceFile] = myOpenedFiles
 
   private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
     override def default(key: URI) = Nil
   }
+  def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
 
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
-
-  def openedFiles: Map[URI, SourceFile] = myOpenedFiles
-  def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
   def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
-
-  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
-
-  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
-    val fromSource = openedTrees.values.flatten.toList
-    val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
-      val className = cls.toTypeName
-      List(tree(className, id), tree(className.moduleClassName, id)).flatten
-    }
-    (fromSource ++ fromClassPath).distinct
-  }
-
-  private def tree(className: TypeName, id: String)(implicit ctx: Context): Option[SourceTree] = {
-    val clsd = ctx.base.staticRef(className)
-    clsd match {
-      case clsd: ClassDenotation =>
-        clsd.ensureCompleted()
-        SourceTree.fromSymbol(clsd.symbol.asClass, id)
-      case _ =>
-        None
-    }
-  }
 
   // Presence of a file with one of these suffixes indicates that the
   // corresponding class has been pickled with TASTY.
   private val tastySuffixes = List(".hasTasty", ".tasty")
-
-  private def classNames(cp: ClassPath, packageName: String): List[String] = {
-    def className(classSegments: List[String]) =
-      classSegments.mkString(".").stripSuffix(".class")
-
-    val ClassPathEntries(pkgs, classReps) = cp.list(packageName)
-
-    classReps
-      .filter((classRep: ClassRepresentation) => classRep.binary match {
-        case None =>
-          true
-        case Some(binFile) =>
-          val prefix =
-            if (binFile.name.endsWith(".class"))
-              binFile.name.stripSuffix(".class")
-            else
-              null
-          prefix != null && {
-            binFile match {
-              case pf: PlainFile =>
-                tastySuffixes.map(suffix => pf.givenPath.parent / (prefix + suffix)).exists(_.exists)
-              case _ =>
-                sys.error(s"Unhandled file type: $binFile [getClass = ${binFile.getClass}]")
-            }
-          }
-      })
-      .map(classRep => (packageName ++ (if (packageName != "") "." else "") ++ classRep.name)).toList ++
-    pkgs.flatMap(pkg => classNames(cp, pkg.name))
-  }
 
   // FIXME: All the code doing classpath handling is very fragile and ugly,
   // improving this requires changing the dotty classpath APIs to handle our usecases.
@@ -128,100 +77,69 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   // Like in `ZipArchiveFileLookup` we assume that zips are immutable
-  private val zipClassPathClasses: Seq[String] = zipClassPaths.flatMap { zipCp =>
-    val zipFile = new ZipFile(zipCp.zipFile)
-
-    try {
-      for {
-        entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
-        name = entry.getName
-        tastySuffix <- tastySuffixes.find(name.endsWith)
-      } yield name.replace("/", ".").stripSuffix(tastySuffix)
+  private val zipClassPathClasses: Seq[TypeName] = {
+    val names = new mutable.ListBuffer[TypeName]
+    zipClassPaths.foreach { zipCp =>
+      val zipFile = new ZipFile(zipCp.zipFile)
+      classesFromZip(zipFile, names)
     }
-    finally zipFile.close()
+    names
   }
 
-  // FIXME: classfiles in directories may change at any point, so we retraverse
-  // the directories each time, if we knew when classfiles changed (sbt
-  // server-mode might help here), we could do cache invalidation instead.
-  private def dirClassPathClasses: Seq[String] = {
-    val names = new mutable.ListBuffer[String]
-    dirClassPaths.foreach { dirCp =>
-      val root = dirCp.dir.toPath
-      try
-        Files.walkFileTree(root, new SimpleFileVisitor[Path] {
-          override def visitFile(path: Path, attrs: BasicFileAttributes) = {
-            if (!attrs.isDirectory) {
-              val name = path.getFileName.toString
-              for {
-                tastySuffix <- tastySuffixes
-                if name.endsWith(tastySuffix)
-              } {
-                names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
-              }
-            }
-            FileVisitResult.CONTINUE
-          }
-        })
-      catch {
-        case _: NoSuchFileException =>
-      }
-    }
-    names.toList
-  }
+  initialize()
 
-  private def topLevelClassTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
-    val trees = new mutable.ListBuffer[SourceTree]
-
-    def addTrees(tree: Tree): Unit = tree match {
-      case PackageDef(_, stats) =>
-        stats.foreach(addTrees)
-      case tree: TypeDef =>
-        trees += SourceTree(tree, source)
-      case _ =>
-    }
-    addTrees(topTree)
-
-    trees.toList
-  }
-
-  private val compiler: Compiler = new InteractiveCompiler
-
-  /** Remove attachments and error out completers. The goal is to avoid
-   *  having a completer hanging in a typed tree which can capture the context
-   *  of a previous run. Note that typed trees can have untyped or partially
-   *  typed children if the source contains errors.
+  /**
+   * The trees for all the source files in this project.
+   *
+   * This includes the trees for the buffers that are presently open in the IDE, and the trees
+   * from the target directory.
    */
-  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-    val seen = mutable.Set.empty[tpd.Tree]
-    def cleanupTree(tree: tpd.Tree): Unit = {
-      seen += tree
-      tree.foreachSubTree { t =>
-        if (t.symbol.exists && t.hasType) {
-          if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
-          t.symbol.annotations.foreach { annot =>
-            /* In some cases annotations are are used on themself (possibly larger cycles).
-            *  This is the case with the java.lang.annotation.Target annotation, would end
-            *  in an infinite loop while cleaning. The `seen` is added to ensure that those
-            *  trees are not cleand twice.
-            *  TODO: Find a less expensive way to check for those cycles.
-            */
-            if (annot.isEvaluated && !seen(annot.tree))
-              cleanupTree(annot.tree)
-          }
-        }
-        t.removeAllAttachments()
+  def sourceTrees(implicit ctx: Context): List[SourceTree] = sourceTreesContaining("")
+
+  /**
+   * The trees for all the source files in this project that contain `id`.
+   *
+   * This includes the trees for the buffers that are presently open in the IDE, and the trees
+   * from the target directory.
+   */
+  def sourceTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+    val fromBuffers = openedTrees.values.flatten.toList
+    val fromCompilationOutput = {
+      val classNames = new mutable.ListBuffer[TypeName]
+      val output = ctx.settings.outputDir.value
+      if (output.isDirectory) {
+        classesFromDir(output.jpath, classNames)
+      } else {
+        val zipFile = new ZipFile(output.file)
+        classesFromZip(zipFile, classNames)
+      }
+      classNames.flatMap { cls =>
+        treesFromClassName(cls, id)
       }
     }
-    cleanupTree(tree)
+    (fromBuffers ++ fromCompilationOutput).distinct
   }
 
-  private def toSource(uri: URI, sourceCode: String): SourceFile = {
-    val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
-    writer.write(sourceCode)
-    writer.close()
-    new SourceFile(virtualFile, Codec.UTF8)
+  /**
+   * All the trees for this project.
+   *
+   * This includes the trees of the sources of this project, along with the trees that are found
+   * on this project's classpath.
+   */
+  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
+
+  /**
+   * All the trees for this project that contain `id`.
+   *
+   * This includes the trees of the sources of this project, along with the trees that are found
+   * on this project's classpath.
+   */
+  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+    val fromSource = openedTrees.values.flatten.toList
+    val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
+      treesFromClassName(cls, id)
+    }
+    (fromSource ++ fromClassPath).distinct
   }
 
   def run(uri: URI, sourceCode: String): List[MessageContainer] = run(uri, toSource(uri, sourceCode))
@@ -262,6 +180,138 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     myOpenedTrees.remove(uri)
     myCompilationUnits.remove(uri)
   }
+
+  /**
+   * The `SourceTree`s that define the class `className` and/or module `className`.
+   *
+   * @see SourceTree.fromSymbol
+   */
+  private def treesFromClassName(className: TypeName, id: String)(implicit ctx: Context): List[SourceTree] = {
+    def tree(className: TypeName, id: String): Option[SourceTree] = {
+      val clsd = ctx.base.staticRef(className)
+      clsd match {
+        case clsd: ClassDenotation =>
+          clsd.ensureCompleted()
+          SourceTree.fromSymbol(clsd.symbol.asClass, id)
+        case _ =>
+          None
+      }
+    }
+    List(tree(className, id), tree(className.moduleClassName, id)).flatten
+  }
+
+  // FIXME: classfiles in directories may change at any point, so we retraverse
+  // the directories each time, if we knew when classfiles changed (sbt
+  // server-mode might help here), we could do cache invalidation instead.
+  private def dirClassPathClasses: Seq[TypeName] = {
+    val names = new mutable.ListBuffer[TypeName]
+    dirClassPaths.foreach { dirCp =>
+      val root = dirCp.dir.toPath
+      classesFromDir(root, names)
+    }
+    names
+  }
+
+  /** Adds the names of the classes that are defined in `zipFile` to `buffer`. */
+  private def classesFromZip(zipFile: ZipFile, buffer: mutable.ListBuffer[TypeName]): Unit = {
+    try {
+      for {
+        entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
+        name = entry.getName
+        tastySuffix <- tastySuffixes.find(name.endsWith)
+      } buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
+    }
+  finally zipFile.close()
+  }
+
+  /** Adds the names of the classes that are defined in `dir` to `buffer`. */
+  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit = {
+    try
+      Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
+        override def visitFile(path: Path, attrs: BasicFileAttributes) = {
+          if (!attrs.isDirectory) {
+            val name = path.getFileName.toString
+            for {
+              tastySuffix <- tastySuffixes
+              if name.endsWith(tastySuffix)
+            } {
+              buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
+            }
+          }
+          FileVisitResult.CONTINUE
+        }
+      })
+    catch {
+      case _: NoSuchFileException =>
+    }
+  }
+
+  private def topLevelClassTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
+    val trees = new mutable.ListBuffer[SourceTree]
+
+    def addTrees(tree: Tree): Unit = tree match {
+      case PackageDef(_, stats) =>
+        stats.foreach(addTrees)
+      case tree: TypeDef =>
+        trees += SourceTree(tree, source)
+      case _ =>
+    }
+    addTrees(topTree)
+
+    trees.toList
+  }
+
+  /** Remove attachments and error out completers. The goal is to avoid
+   *  having a completer hanging in a typed tree which can capture the context
+   *  of a previous run. Note that typed trees can have untyped or partially
+   *  typed children if the source contains errors.
+   */
+  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    val seen = mutable.Set.empty[tpd.Tree]
+    def cleanupTree(tree: tpd.Tree): Unit = {
+      seen += tree
+      tree.foreachSubTree { t =>
+        if (t.symbol.exists && t.hasType) {
+          if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
+          t.symbol.annotations.foreach { annot =>
+            /* In some cases annotations are are used on themself (possibly larger cycles).
+            *  This is the case with the java.lang.annotation.Target annotation, would end
+            *  in an infinite loop while cleaning. The `seen` is added to ensure that those
+            *  trees are not cleand twice.
+            *  TODO: Find a less expensive way to check for those cycles.
+            */
+            if (annot.isEvaluated && !seen(annot.tree))
+              cleanupTree(annot.tree)
+          }
+        }
+        t.removeAllAttachments()
+      }
+    }
+    cleanupTree(tree)
+  }
+
+  private def toSource(uri: URI, sourceCode: String): SourceFile = {
+    val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    writer.write(sourceCode)
+    writer.close()
+    new SourceFile(virtualFile, Codec.UTF8)
+  }
+
+  /**
+   * Initialize this driver and compiler.
+   *
+   * This is necessary because an `InteractiveDriver` can be put to work without having
+   * compiled anything (for instance, resolving a symbol coming from a different compiler in
+   * this compiler). In those cases, an un-initialized compiler may crash (for instance if
+   * late-compilation is needed).
+   */
+  private[this] def initialize(): Unit = {
+    val run = compiler.newRun(myInitCtx.fresh)
+    myCtx = run.runContext
+    run.compileUnits(Nil, myCtx)
+  }
+
 }
 
 object InteractiveDriver {
