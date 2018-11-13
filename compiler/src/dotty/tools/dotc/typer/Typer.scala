@@ -781,26 +781,27 @@ class Typer extends Namer
 
   def typedFunctionType(tree: untpd.Function, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.Function(args, body) = tree
-    val (isContextual, isErased) = tree match {
-      case tree: untpd.FunctionWithMods =>
-        val isContextual = tree.mods.is(Contextual)
-        var isErased = tree.mods.is(Erased)
-        if (isErased && args.isEmpty) {
-          ctx.error("An empty function cannot not be erased", tree.sourcePos)
-          isErased = false
-        }
-        (isContextual, isErased)
-      case _ => (false, false)
+    var funFlags = tree match {
+      case tree: untpd.FunctionWithMods => tree.mods.flags
+      case _ => EmptyFlags
+    }
+    if (funFlags.is(Erased) && args.isEmpty) {
+      ctx.error("An empty function cannot not be erased", tree.sourcePos)
+      funFlags = funFlags &~ Erased
     }
 
-    val funCls = defn.FunctionClass(args.length, isContextual, isErased)
+    val funCls = defn.FunctionClass(args.length,
+        isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
       completeParams(params)
       val params1 = params.map(typedExpr(_).asInstanceOf[ValDef])
+      if (!funFlags.isEmpty)
+        params1.foreach(_.symbol.setFlag(funFlags))
       val resultTpt = typed(body)
-      val companion = MethodType.maker(isContextual = isContextual, isErased = isErased)
+      val companion = MethodType.maker(
+          isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.sourcePos)
@@ -2349,6 +2350,7 @@ class Typer extends Namer
 
       def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
         case wtp: MethodOrPoly =>
+          def methodStr = methPart(tree).symbol.showLocated
           if (matchingApply(wtp, pt))
             if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
               adapt(tree, pt.tupled, locked)
@@ -2357,7 +2359,7 @@ class Typer extends Namer
           else if (wtp.isContextual)
             adaptNoArgs(wtp)  // insert arguments implicitly
           else
-            errorTree(tree, em"Missing arguments for ${methPart(tree).symbol.showLocated}")
+            errorTree(tree, em"Missing arguments for $methodStr")
         case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
           errorTree(tree, MethodDoesNotTakeParameters(tree))
         }
