@@ -19,7 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
 import typer.Typer
@@ -198,6 +198,8 @@ class DottyLanguageServer extends LanguageServer
     c.setCompletionProvider(new CompletionOptions(
       /* resolveProvider = */ false,
       /* triggerCharacters = */ List(".").asJava))
+    c.setSignatureHelpProvider(new SignatureHelpOptions(
+      /* triggerCharacters = */ List("(").asJava))
 
     // Do most of the initialization asynchronously so that we can return early
     // from this method and thus let the client know our capabilities.
@@ -457,6 +459,22 @@ class DottyLanguageServer extends LanguageServer
     implementations.flatten.asJava
   }
 
+  override def signatureHelp(params: TextDocumentPositionParams) = computeAsync { canceltoken =>
+
+    val uri = new URI(params.getTextDocument.getUri)
+    val driver = driverFor(uri)
+    implicit val ctx = driver.currentCtx
+
+    val pos = sourcePosition(driver, uri, params.getPosition)
+    val trees = driver.openedTrees(uri)
+    val path = Interactive.pathTo(trees, pos).dropWhile(!_.isInstanceOf[Apply])
+
+    val (paramN, callableN, alternatives) = Signatures.callInfo(path, pos.pos)
+    val signatureInfos = alternatives.flatMap(Signatures.toSignature)
+
+    new SignatureHelp(signatureInfos.map(signatureToSignatureInformation).asJava, callableN, paramN)
+  }
+
   override def getTextDocumentService: TextDocumentService = this
   override def getWorkspaceService: WorkspaceService = this
 
@@ -469,7 +487,6 @@ class DottyLanguageServer extends LanguageServer
   override def onTypeFormatting(params: DocumentOnTypeFormattingParams) = null
   override def resolveCodeLens(params: CodeLens) = null
   override def resolveCompletionItem(params: CompletionItem) = null
-  override def signatureHelp(params: TextDocumentPositionParams) = null
 
   /**
    * Find the set of projects that have any of `definitions` on their classpath.
@@ -510,7 +527,6 @@ class DottyLanguageServer extends LanguageServer
       (remoteDriver, ctx, definition)
     }
   }
-
 
 }
 
@@ -764,5 +780,31 @@ object DottyLanguageServer {
         null
 
     location(pos, positionMapper).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName))
+  }
+
+  /** Convert `signature` to a `SignatureInformation` */
+  def signatureToSignatureInformation(signature: Signatures.Signature): lsp4j.SignatureInformation = {
+    val paramInfoss = signature.paramss.map(_.map(paramToParameterInformation))
+    val paramLists = signature.paramss.map { paramList =>
+      val labels = paramList.map(_.show)
+      val prefix = if (paramList.exists(_.isImplicit)) "implicit " else ""
+      labels.mkString(prefix, ", ", "")
+    }.mkString("(", ")(", ")")
+    val tparamsLabel = if (signature.tparams.isEmpty) "" else signature.tparams.mkString("[", ", ", "]")
+    val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
+    val label = s"${signature.name}$tparamsLabel$paramLists$returnTypeLabel"
+    val documentation = signature.doc.map(DottyLanguageServer.hoverContent)
+    val sig = new lsp4j.SignatureInformation(label)
+    sig.setParameters(paramInfoss.flatten.asJava)
+    documentation.foreach(sig.setDocumentation(_))
+    sig
+  }
+
+  /** Convert `param` to `ParameterInformation` */
+  private def paramToParameterInformation(param: Signatures.Param): lsp4j.ParameterInformation = {
+    val documentation = param.doc.map(DottyLanguageServer.hoverContent)
+    val info = new lsp4j.ParameterInformation(param.show)
+    documentation.foreach(info.setDocumentation(_))
+    info
   }
 }
