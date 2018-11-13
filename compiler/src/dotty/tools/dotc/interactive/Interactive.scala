@@ -519,4 +519,26 @@ object Interactive {
     }
   }
 
+  /**
+   * Return a predicate function that determines whether a given `NameTree` is an implementation of
+   * `sym`.
+   *
+   * @param sym The symbol whose implementations to find.
+   * @return A function that determines whether a `NameTree` is an implementation of `sym`.
+   */
+  def implementationFilter(sym: Symbol)(implicit ctx: Context): NameTree => Boolean = {
+    if (sym.isClass) {
+      case td: TypeDef =>
+        val treeSym = td.symbol
+        (treeSym != sym || !treeSym.is(AbstractOrTrait)) && treeSym.derivesFrom(sym)
+      case _ =>
+        false
+    } else {
+      case md: MemberDef =>
+        matchSymbol(md, sym, Include.overriding) && !md.symbol.is(Deferred)
+      case _ =>
+        false
+    }
+  }
+
 }
