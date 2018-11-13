@@ -202,7 +202,7 @@ object ParsedComment {
       case Nil =>
         None
       case items =>
-        Some(s"""${heading(title)}:
+        Some(s"""${bold(title)}
                 |${fn(ctx, items)}
                 |""".stripMargin)
     }
@@ -211,15 +211,6 @@ object ParsedComment {
   /** Is the color enabled in the context? */
   private def colorEnabled(implicit ctx: Context): Boolean =
     ctx.settings.color.value != "never"
-
-  /**
-   * If the color is enabled, underline `str`, otherwise make it a markdown header by
-   * prepending `####`.
-   */
-  private def heading(str: String)(implicit ctx: Context): String = {
-    if (colorEnabled) s"$UNDERLINED$str$RESET"
-    else s"#### $str"
-  }
 
   /** Show `str` in bold */
   private def bold(str: String)(implicit ctx: Context): String = {
