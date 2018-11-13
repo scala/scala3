@@ -442,9 +442,9 @@ class DottyLanguageServer extends LanguageServer
       Interactive.enclosingSourceSymbols(path, pos) match {
         case Nil =>
           null
-        case symbol :: _ =>
-          val docComment = ParsedComment.docOf(symbol)
-          val content = hoverContent(Some(tpw.show), docComment)
+        case symbols =>
+          val docComments = symbols.flatMap(ParsedComment.docOf)
+          val content = hoverContent(Some(tpw.show), docComments)
           new Hover(content, null)
       }
     }
@@ -810,7 +810,7 @@ object DottyLanguageServer {
   }
 
   private def hoverContent(typeInfo: Option[String],
-                           comment: Option[ParsedComment]
+                           comments: List[ParsedComment]
                           )(implicit ctx: Context): lsp4j.MarkupContent = {
     val buf = new StringBuilder
     typeInfo.foreach { info =>
@@ -819,8 +819,7 @@ object DottyLanguageServer {
                     |```
                     |""".stripMargin)
     }
-
-    comment.foreach { comment =>
+    comments.foreach { comment =>
       buf.append(comment.renderAsMarkdown)
     }
 
