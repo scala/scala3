@@ -975,13 +975,13 @@ object Trees {
      * so that they selectively retype themselves. Retyping needs a context.
      */
     abstract class TreeCopier {
-      def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
-      def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
+      protected def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
+      protected def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
-      def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
+      protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
         postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
-      def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
+      protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
         postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
       def Ident(tree: Tree)(name: Name): Ident = tree match {

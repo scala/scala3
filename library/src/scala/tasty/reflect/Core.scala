@@ -13,8 +13,9 @@ package scala.tasty.reflect
  *                         |               +- DefDef
  *                         |               +- ValDef
  *                         |
- *                         +- Term --------+- Ident
- *                                         +- Select
+ *                         +- Term --------+- Ref -+- Ident
+ *                                         |       +- Select
+ *                                         |
  *                                         +- Literal
  *                                         +- This
  *                                         +- New
@@ -49,8 +50,8 @@ package scala.tasty.reflect
  *                         |               +- MatchType
  *                         |               +- ByName
  *                         |               +- LambdaTypeTree
- *                         |               +- Bind
- *                         |               +- Block
+ *                         |               +- TypeBind
+ *                         |               +- TypeBlock
  *                         |
  *                         +- TypeBoundsTree
  *                         +- WildcardTypeTree
@@ -61,7 +62,7 @@ package scala.tasty.reflect
  *  +- Pattern --+- Value
  *               +- Bind
  *               +- Unapply
- *               +- Alternative
+ *               +- Alternatives
  *               +- TypeTest
  *
  *
@@ -164,11 +165,14 @@ trait Core {
       /** Trees representing an expression in the source code */
       trait TermCoreModule {
 
-        /** Tree representing a reference to definition with a given name */
-        type Ident <: Term
+        /** Tree representing a reference to definition */
+        type Ref <: Term
 
-        /** Tree representing a selection of definition with a given name on a given prefix */
-        type Select <: Term
+          /** Tree representing a reference to definition with a given name */
+          type Ident <: Ref
+
+          /** Tree representing a selection of definition with a given name on a given prefix */
+          type Select <: Ref
 
         /** Tree representing a literal value in the source code */
         type Literal <: Term
@@ -248,7 +252,7 @@ trait Core {
     type Unapply <: Pattern
 
     /** Pattern representing `X | Y | ...` alternatives. */
-    type Alternative <: Pattern
+    type Alternatives <: Pattern
 
     /** Pattern representing a `x: Y` type test. */
     type TypeTest <: Pattern
@@ -275,7 +279,7 @@ trait Core {
       type Select <: TypeTree
 
       /** Type tree representing a selection of definition with a given name on a given type prefix */
-      type Project <: TypeTree
+      type Projection <: TypeTree
 
       /** Type tree representing a singleton type */
       type Singleton <: TypeTree
@@ -305,10 +309,10 @@ trait Core {
       type LambdaTypeTree <: TypeTree
 
       /** Type tree representing a type binding */
-      type Bind <: TypeTree
+      type TypeBind <: TypeTree
 
       /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
-      type Block <: TypeTree
+      type TypeBlock <: TypeTree
 
     }
 
@@ -316,7 +320,7 @@ trait Core {
     type TypeBoundsTree <: TypeOrBoundsTree
 
     /** Type tree representing wildcard type bounds written in the source.
-     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that 
+     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
      *  represents a type but has `TypeBound`a inside.
      */
     type WildcardType <: TypeOrBoundsTree

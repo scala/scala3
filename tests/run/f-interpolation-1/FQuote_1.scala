@@ -33,7 +33,7 @@ object FQuote {
 
     // FQuote.SCOps(StringContext.apply([p0, ...]: String*)
     val parts = receiver.unseal.underlyingArgument match {
-      case Term.Apply(conv, List(Term.Apply(fun, List(Term.Typed(Term.Repeated(values), _)))))
+      case Term.Apply(conv, List(Term.Apply(fun, List(Term.Typed(Term.Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
@@ -43,7 +43,7 @@ object FQuote {
     }
 
     // [a0, ...]: Any*
-    val Term.Typed(Term.Repeated(allArgs), _) = args.unseal.underlyingArgument
+    val Term.Typed(Term.Repeated(allArgs, _), _) = args.unseal.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {

@@ -135,8 +135,8 @@ trait Printers
           this += "Term.While(" += cond += ", " += body += ")"
         case Term.Try(block, handlers, finalizer) =>
           this += "Term.Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
-        case Term.Repeated(elems) =>
-          this += "Term.Repeated(" ++= elems += ")"
+        case Term.Repeated(elems, elemtpt) =>
+          this += "Term.Repeated(" ++= elems += ", " += elemtpt += ")"
         case Term.Inlined(call, bindings, expansion) =>
           this += "Term.Inlined("
           visitOption(call, visitTermOrTypeTree)
@@ -166,8 +166,8 @@ trait Printers
           this += "TypeTree.Ident(\"" += name += "\")"
         case TypeTree.Select(qualifier, name) =>
           this += "TypeTree.Select(" += qualifier += ", \"" += name += "\")"
-        case TypeTree.Project(qualifier, name) =>
-          this += "TypeTree.Project(" += qualifier += ", \"" += name += "\")"
+        case TypeTree.Projection(qualifier, name) =>
+          this += "TypeTree.Projection(" += qualifier += ", \"" += name += "\")"
         case TypeTree.Singleton(ref) =>
           this += "TypeTree.Singleton(" += ref += ")"
         case TypeTree.And(left, right) =>
@@ -184,10 +184,10 @@ trait Printers
           this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
         case TypeTree.LambdaTypeTree(tparams, body) =>
           this += "TypeTree.LambdaTypeTree(" ++= tparams += ", " += body += ")"
-        case TypeTree.Bind(name, bounds) =>
-          this += "TypeTree.Bind(" += name += ", " += bounds += ")"
-        case TypeTree.Block(aliases, tpt) =>
-          this += "TypeTree.Block(" ++= aliases += ", " += tpt += ")"
+        case TypeTree.TypeBind(name, bounds) =>
+          this += "TypeTree.TypeBind(" += name += ", " += bounds += ")"
+        case TypeTree.TypeBlock(aliases, tpt) =>
+          this += "TypeTree.TypeBlock(" ++= aliases += ", " += tpt += ")"
         case TypeBoundsTree(lo, hi) =>
           this += "TypeBoundsTree(" += lo += ", " += hi += ")"
         case WildcardTypeTree() =>
@@ -213,7 +213,7 @@ trait Printers
           this += "Pattern.Bind(\"" += name += "\", " += body += ")"
         case Pattern.Unapply(fun, implicits, patterns) =>
           this += "Pattern.Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
-        case Pattern.Alternative(patterns) =>
+        case Pattern.Alternatives(patterns) =>
           this += "Pattern.Alternative(" ++= patterns += ")"
         case Pattern.TypeTest(tpt) =>
           this += "Pattern.TypeTest(" += tpt += ")"
@@ -725,7 +725,7 @@ trait Printers
             case _ => printTree(fn)
           }
           val args1 = args match {
-            case init :+ Term.Typed(Term.Repeated(Nil), _) => init // drop empty var args at the end
+            case init :+ Term.Typed(Term.Repeated(Nil, _), _) => init // drop empty var args at the end
             case _ => args
           }
 
@@ -755,7 +755,7 @@ trait Printers
           tpt.tpe match {
             case Types.Repeated(_) =>
               term match {
-                case Term.Repeated(_) =>
+                case Term.Repeated(_, _) =>
                   printTree(term)
                 case _ =>
                   printTree(term)
@@ -830,7 +830,7 @@ trait Printers
           this += "return "
           printTree(expr)
 
-        case Term.Repeated(elems) =>
+        case Term.Repeated(elems, _) =>
           printTrees(elems, ", ")
 
         case _ =>
@@ -1203,7 +1203,7 @@ trait Printers
           }
           inParens(printPatterns(patterns, ", "))
 
-        case Pattern.Alternative(trees) =>
+        case Pattern.Alternatives(trees) =>
           inParens(printPatterns(trees, " | "))
 
         case Pattern.TypeTest(tpt) =>
@@ -1270,7 +1270,7 @@ trait Printers
         case TypeTree.Select(qual, name) =>
           printTree(qual) += "." += highlightTypeDef(name, color)
 
-        case TypeTree.Project(qual, name) =>
+        case TypeTree.Projection(qual, name) =>
           printTypeTree(qual) += "#" += highlightTypeDef(name, color)
 
         case TypeTree.Singleton(ref) =>
@@ -1325,10 +1325,10 @@ trait Printers
           this += highlightTypeDef(" => ", color)
           printTypeOrBoundsTree(body)
 
-        case TypeTree.Bind(name, _) =>
+        case TypeTree.TypeBind(name, _) =>
           this += highlightTypeDef(name, color)
 
-        case TypeTree.Block(aliases, tpt) =>
+        case TypeTree.TypeBlock(aliases, tpt) =>
           inBlock {
             printTrees(aliases, lineBreak())
             printTypeTree(tpt)

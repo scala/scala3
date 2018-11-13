@@ -26,7 +26,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     def name(implicit ctx: Contexts.Context): String = x.name.toString
   }
 
-  def ProjectDeco(x: TypeTree.Project): TypeTree.ProjectAPI = new TypeTree.ProjectAPI {
+  def ProjectionDeco(x: TypeTree.Projection): TypeTree.ProjectionAPI = new TypeTree.ProjectionAPI {
     def qualifier(implicit ctx: Contexts.Context): TypeTree = x.qualifier
     def name(implicit ctx: Contexts.Context): String = x.name.toString
   }
@@ -75,12 +75,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     def body(implicit ctx: Contexts.Context): TypeOrBoundsTree = x.body
   }
 
-  def BindDeco(x: Bind): TypeTree.BindAPI = new TypeTree.BindAPI {
+  def TypeBindDeco(x: TypeTree.TypeBind): TypeTree.TypeBindAPI = new TypeTree.TypeBindAPI {
     def name(implicit ctx: Contexts.Context): String = x.name.toString
     def body(implicit ctx: Contexts.Context): TypeOrBoundsTree = x.body
   }
 
-  def TypeBlockDeco(x: TypeTree.Block): TypeTree.BlockAPI = new TypeTree.BlockAPI {
+  def TypeBlockDeco(x: TypeTree.TypeBlock): TypeTree.TypeBlockAPI = new TypeTree.TypeBlockAPI {
     def aliases(implicit ctx: Contexts.Context): List[TypeDef] = x.stats.map { case alias: TypeDef => alias }
     def tpt(implicit ctx: Contexts.Context): TypeTree = x.expr
   }
@@ -94,10 +94,15 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
   // ----- TypeTrees ------------------------------------------------
 
   object IsTypeTree extends IsTypeTreeModule {
-    def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
-      if (x.isType) Some(x) else None
-    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
-      if (termOrTypeTree.isType) Some(termOrTypeTree) else None
+    def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] = x match {
+      case x: tpd.TypeBoundsTree => None
+      case _ => if (x.isType) Some(x) else None
+    }
+
+    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] = termOrTypeTree match {
+      case _: tpd.TypeBoundsTree => None
+      case _ => if (termOrTypeTree.isType) Some(termOrTypeTree) else None
+    }
   }
 
   object TypeTree extends TypeTreeModule with TypeTreeCoreModuleImpl {
@@ -110,6 +115,8 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Inferred extends InferredModule {
+      def apply(tpe: Type)(implicit ctx: Context): Inferred = tpd.TypeTree(tpe)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
         case x @ Trees.TypeTree() => !x.tpe.isInstanceOf[Types.TypeBounds]
         case _ => false
@@ -124,6 +131,8 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Ident extends IdentModule {
+      def copy(original: Ident)(name: String)(implicit ctx: Context): Ident =
+        tpd.cpy.Ident(original)(name.toTypeName)
       def unapply(x: TypeTree)(implicit ctx: Context): Option[String] = x match {
         case x: tpd.Ident if x.isType => Some(x.name.toString)
         case _ => None
@@ -138,20 +147,29 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Select extends SelectModule {
+      def apply(qualifier: Term, name: String)(implicit ctx: Context): Select =
+        tpd.Select(qualifier, name.toTypeName)
+
+      def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select =
+        tpd.cpy.Select(original)(qualifier, name.toTypeName)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)] = x match {
         case x: tpd.Select if x.isType && x.qualifier.isTerm => Some(x.qualifier, x.name.toString)
         case _ => None
       }
     }
 
-    object IsProject extends IsProjectModule {
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Project] = tpt match {
+    object IsProjection extends IsProjectionModule {
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Projection] = tpt match {
         case tpt: tpd.Select if tpt.isType && tpt.qualifier.isType => Some(tpt)
         case _ => None
       }
     }
 
-    object Project extends ProjectModule {
+    object Projection extends ProjectionModule {
+      def copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection =
+        tpd.cpy.Select(original)(qualifier, name.toTypeName)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, String)] = x match {
         case x: tpd.Select if x.isType && x.qualifier.isType => Some(x.qualifier, x.name.toString)
         case _ => None
@@ -166,6 +184,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Singleton extends SingletonModule {
+      def apply(ref: Term)(implicit ctx: Context): Singleton =
+        tpd.SingletonTypeTree(ref)
+
+      def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton =
+        tpd.cpy.SingletonTypeTree(original)(ref)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[Term] = x match {
         case x: tpd.SingletonTypeTree => Some(x.ref)
         case _ => None
@@ -180,6 +204,9 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Refined extends RefinedModule {
+      def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined =
+        tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] = x match {
         case x: tpd.RefinedTypeTree => Some(x.tpt, x.refinements)
         case _ => None
@@ -194,6 +221,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Applied extends AppliedModule {
+      def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
+        tpd.AppliedTypeTree(tpt, args)
+
+      def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
+        tpd.cpy.AppliedTypeTree(original)(tpt, args)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])] = x match {
         case x: tpd.AppliedTypeTree => Some(x.tpt, x.args)
         case _ => None
@@ -208,6 +241,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Annotated extends AnnotatedModule {
+      def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
+        tpd.Annotated(arg, annotation)
+
+      def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
+        tpd.cpy.Annotated(original)(arg, annotation)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, Term)] = x match {
         case x: tpd.Annotated => Some(x.arg, x.annot)
         case _ => None
@@ -222,6 +261,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object And extends AndModule {
+      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): And =
+        tpd.AndTypeTree(left, right)
+
+      def copy(original: And)(left: TypeTree, right: TypeTree)(implicit ctx: Context): And =
+        tpd.cpy.AndTypeTree(original)(left, right)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
         case x: tpd.AndTypeTree => Some(x.left, x.right)
         case _ => None
@@ -236,6 +281,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Or extends OrModule {
+      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or =
+        tpd.OrTypeTree(left, right)
+
+      def copy(original: Or)(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or =
+        tpd.cpy.OrTypeTree(original)(left, right)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
         case x: tpd.OrTypeTree => Some(x.left, x.right)
         case _ => None
@@ -250,6 +301,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object MatchType extends MatchTypeModule {
+      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
+        tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)
+
+      def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
+        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
+
       def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[CaseDef])] = x match {
         case x: tpd.MatchTypeTree => Some((if (x.bound == tpd.EmptyTree) None else Some(x.bound), x.selector, x.cases))
         case _ => None
@@ -264,6 +321,12 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object ByName extends ByNameModule {
+      def apply(result: TypeTree)(implicit ctx: Context): ByName =
+        tpd.ByNameTypeTree(result)
+
+      def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName =
+        tpd.cpy.ByNameTypeTree(original)(result)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[TypeTree] = x match {
         case x: tpd.ByNameTypeTree => Some(x.result)
         case _ => None
@@ -278,35 +341,50 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object LambdaTypeTree extends LambdaTypeTreeModule {
+      def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
+        tpd.LambdaTypeTree(tparams, body)
+
+      def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
+        tpd.cpy.LambdaTypeTree(original)(tparams, body)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)] = x match {
         case Trees.LambdaTypeTree(tparams, body) => Some((tparams, body))
         case _ => None
       }
     }
 
-    object IsBind extends IsBindModule {
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Bind] = tpt match {
+    object IsTypeBind extends IsTypeBindModule {
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBind] = tpt match {
         case tpt: tpd.Bind if tpt.name.isTypeName => Some(tpt)
         case _ => None
       }
     }
 
-    object Bind extends BindModule {
+    object TypeBind extends TypeBindModule {
+      def copy(original: TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind =
+        tpd.cpy.Bind(original)(name.toTypeName, tpt)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)] = x match {
         case x: tpd.Bind if x.name.isTypeName => Some((x.name.toString, x.body))
         case _ => None
       }
     }
 
-    object IsBlock extends IsBlockModule {
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Block] = tpt match {
+    object IsTypeBlock extends IsTypeBlockModule {
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBlock] = tpt match {
         case tpt: tpd.Block => Some(tpt)
         case _ => None
       }
     }
 
 
-    object Block extends BlockModule {
+    object TypeBlock extends TypeBlockModule {
+      def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
+        tpd.Block(aliases, tpt)
+
+      def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
+        tpd.cpy.Block(original)(aliases, tpt)
+
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] = x match {
         case x: tpd.Block => Some((x.stats.map { case alias: TypeDef => alias }, x.expr))
         case _ => None
