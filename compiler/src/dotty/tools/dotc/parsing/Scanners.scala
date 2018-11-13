@@ -177,6 +177,12 @@ object Scanners {
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
+    /* A Buffer for comment positions */
+    private[this] val commentPosBuf = new mutable.ListBuffer[Position]
+
+    /** Return a list of all the comment positions */
+    def commentPositions: List[Position] = commentPosBuf.toList
+
     private[this] def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
@@ -616,6 +622,7 @@ object Scanners {
         if (keepComments) {
           val pos = Position(start, charOffset - 1, start)
           val comment = Comment(pos, flushBuf(commentBuf))
+          commentPosBuf += pos
 
           if (comment.isDocComment) {
             addComment(comment)

@@ -28,7 +28,6 @@ class SyntaxHighlightingTests extends DottyTest {
   }
 
   @Test
-  @Ignore("Comments are currently not supported")
   def comments = {
     test("// a", "<C|// a>")
     test("/** a */", "<C|/** a */>")
