@@ -44,7 +44,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     ) else ( set _CP_ARG=!_CP_ARG!%_PSEP%.
     )
     if %_CLASS_PATH_COUNT% gtr 1 (
-        echo warning: multiple classpaths are found, dotr only use the last one.
+        echo Warning: Multiple classpaths are found, dotr only use the last one. 1>&2
     )
     if %_WITH_COMPILER%==1 (
         set _CP_ARG=!_CP_ARG!%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SCALA_ASM%
@@ -53,7 +53,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     if %_DEBUG%==1 echo [%_BASENAME%] %_JAVACMD% !_JAVA_ARGS!
     %_JAVACMD% !_JAVA_ARGS!
 ) else (
-    echo warning: command option is not correct.
+    echo Warning: Command option is not correct. 1>&2
 )
 
 goto end
@@ -74,25 +74,25 @@ set _JAVA_OPTIONS=
 
 :args_loop
 if "%1"=="" goto args_done
-set "_ARG=%1"
-if %_DEBUG%==1 echo [%_BASENAME%] _ARG=%_ARG%
-if /i "%_ARG%"=="-repl" (
+set "__ARG=%1"
+if %_DEBUG%==1 echo [%_BASENAME%] __ARG=%__ARG%
+if /i "%__ARG%"=="-repl" (
     set _EXECUTE_REPL=1
-) else if /i "%_ARG%"=="-run" (
+) else if /i "%__ARG%"=="-run" (
     set _EXECUTE_RUN=1
-) else if /i "%_ARG%"=="-classpath" (
+) else if /i "%__ARG%"=="-classpath" (
     set _CLASS_PATH=%2
     set /a _CLASS_PATH_COUNT+=1
     shift
-) else if /i "%_ARG%"=="-with-compiler" (
+) else if /i "%__ARG%"=="-with-compiler" (
     set _WITH_COMPILER=1
-) else if /i "%_ARG%"=="-d" (
+) else if /i "%__ARG%"=="-d" (
     set _JAVA_DEBUG=%_DEBUG_STR%
 ) else if /i "%_ARG:~0,2%"=="-J" (
-    set _JVM_OPTIONS=!_JVM_OPTIONS! %_ARG%
-    set _JAVA_OPTIONS=!_JAVA_OPTIONS! %_ARG%
+    set _JVM_OPTIONS=!_JVM_OPTIONS! %__ARG%
+    set _JAVA_OPTIONS=!_JAVA_OPTIONS! %__ARG%
 ) else (
-    set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %_ARG%
+    set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %__ARG%
 )
 shift
 goto args_loop

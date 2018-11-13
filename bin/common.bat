@@ -1,3 +1,6 @@
+rem ##########################################################################
+rem ## Code common to dotc.bat, dotd.bat and dotr.bat
+
 if defined JAVACMD (
     set _JAVACMD=%JAVACMD%
     if %_DEBUG%==1 echo [%_BASENAME%] Using environment variable JAVACMD
@@ -28,7 +31,7 @@ if defined JAVACMD (
     )
 )
 if not exist "%_JAVACMD%" (
-   if %_DEBUG%==1 echo [%_BASENAME%] Error: Java executable not found ^(%_JAVACMD%^)
+   echo Error: Java executable not found ^(%_JAVACMD%^) 1>&2
    set _EXITCODE=1
    goto :eof
 )
@@ -44,17 +47,17 @@ if defined DOTTY_HOME (
 
 set _PSEP=;
 
-for /f %%f in ('dir /b "%_LIB_DIR%\*dotty-compiler*"')       do set _DOTTY_COMP=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*dotty-interfaces*"')     do set _DOTTY_INTF=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*dotty-library*"')        do set _DOTTY_LIB=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*scala-asm*"')            do set _SCALA_ASM=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*scala-library*"')        do set _SCALA_LIB=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*scala-xml*"')            do set _SCALA_XML=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*compiler-interface*"')   do set _SBT_INTF=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*jline-reader-3*"')       do set _JLINE_READER=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*jline-terminal-3*"')     do set _JLINE_TERMINAL=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*jline-terminal-jna-3*"') do set _JLINE_TERMINAL_JNA=%_LIB_DIR%\%%f
-for /f %%f in ('dir /b "%_LIB_DIR%\*jna-4*"')                do set _JNA=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-compiler*"')       do set _DOTTY_COMP=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-interfaces*"')     do set _DOTTY_INTF=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-library*"')        do set _DOTTY_LIB=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-asm*"')            do set _SCALA_ASM=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-library*"')        do set _SCALA_LIB=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-xml*"')            do set _SCALA_XML=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*compiler-interface*"')   do set _SBT_INTF=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-reader-3*"')       do set _JLINE_READER=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-terminal-3*"')     do set _JLINE_TERMINAL=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-terminal-jna-3*"') do set _JLINE_TERMINAL_JNA=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jna-4*"')                do set _JNA=%_LIB_DIR%\%%f
 
 rem debug
 set _DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
