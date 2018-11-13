@@ -27,9 +27,8 @@ set _MAIN=HelloWorld
 set _EXPECTED_OUTPUT=hello world
 
 call :args %*
-if not %_EXITCODE%==0 ( goto end
-) else if defined _HELP ( goto end
-)
+if not %_EXITCODE%==0 goto end
+if defined _HELP call :help & exit /b %_EXITCODE%
 
 if exist "C:\Temp\" ( set _TMP_DIR=C:\Temp
 ) else ( set _TMP_DIR=%TEMP%
@@ -118,31 +117,28 @@ rem ## Subroutines
 rem input parameter: %*
 rem output parameters: _VERBOSE, _DOCUMENTATION
 :args
-set _VERBOSE=0
 set _ARCHIVES=
 set _BOOTSTRAP=
 set _BUILD=
 set _CLEAN_ALL=
 set _DOCUMENTATION=
-set __N=0
+set _HELP=
+set _VERBOSE=0
+
 :args_loop
 set __ARG=%~1
-if not defined __ARG (
-    goto args_done
-) else if not "%__ARG:~0,1%"=="-" (
-    set /a __N=+1
-)
-if /i "%__ARG%"=="help" ( call :help & goto :eof
+if not defined __ARG goto args_done
+if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else if /i "%__ARG%"=="-verbose" ( set _VERBOSE=1
 ) else if /i "%__ARG:~0,4%"=="arch" (
-    if not "%__ARG:~-5%"=="-only" set _BUILD=1 & set _BOOTSTRAP=1
+    if not "%__ARG:~-5%"=="-only" set _BUILD=1& set _BOOTSTRAP=1
     set _ARCHIVES=1
 ) else if /i "%__ARG:~0,4%"=="boot" (
     if not "%__ARG:~-5%"=="-only" set _BUILD=1
     set _BOOTSTRAP=1
 ) else if /i "%__ARG%"=="cleanall" ( set _CLEAN_ALL=1
 ) else if /i "%__ARG:~0,3%"=="doc" (
-    if not "%__ARG:~-5%"=="-only" set _BUILD=1 & set _BOOTSTRAP=1
+    if not "%__ARG:~-5%"=="-only" set _BUILD=1& set _BOOTSTRAP=1
     set _DOCUMENTATION=1
 ) else (
     echo %_BASENAME%: Unknown subcommand %__ARG%
@@ -150,13 +146,12 @@ if /i "%__ARG%"=="help" ( call :help & goto :eof
     goto :eof
 )
 shift
-goto :args_loop
+goto args_loop
 :args_done
 goto :eof
 
 :help
-set _HELP=1
-echo Usage: setenv { options ^| subcommands }
+echo Usage: %_BASENAME% { options ^| subcommands }
 echo   Options:
 echo     -verbose               display environment settings
 echo   Subcommands:
@@ -307,22 +302,22 @@ call "%_SBT_CMD%" dist-bootstrapped/pack
 rem # check that `dotc` compiles and `dotr` runs it
 echo testing ./bin/dotc and ./bin/dotr
 call :clear_out "%_OUT_DIR%"
-call %_BIN_DIR%\dotc "%_SOURCE%" -d "%_OUT_DIR%"
-call %_BIN_DIR%\dotr -classpath "%_OUT_DIR%" "%_MAIN%" > "%_TMP_FILE%"
+call %_BIN_DIR%\dotc.bat "%_SOURCE%" -d "%_OUT_DIR%"
+call %_BIN_DIR%\dotr.bat -classpath "%_OUT_DIR%" "%_MAIN%" > "%_TMP_FILE%"
 call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 
 rem # check that `dotc -from-tasty` compiles and `dotr` runs it
 echo testing ./bin/dotc -from-tasty and dotr -classpath
 call :clear_out "%_OUT1_DIR%"
-call %_BIN_DIR%\dotc -from-tasty -classpath "%_OUT_DIR%" -d "%_OUT1_DIR%" "%_MAIN%"
-call %_BIN_DIR%\dotr -classpath "%_OUT1_DIR%" "%_MAIN%" > "%_TMP_FILE%"
+call %_BIN_DIR%\dotc.bat -from-tasty -classpath "%_OUT_DIR%" -d "%_OUT1_DIR%" "%_MAIN%"
+call %_BIN_DIR%\dotr.bat -classpath "%_OUT1_DIR%" "%_MAIN%" > "%_TMP_FILE%"
 call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 
 rem # echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
 
 echo testing ./bin/dotd
 call :clear_out "%_OUT_DIR%"
-call %_BIN_DIR%\dotd -project Hello -siteroot "%_OUT_DIR%" "%_SOURCE%"
+call %_BIN_DIR%\dotd.bat -project Hello -siteroot "%_OUT_DIR%" "%_SOURCE%"
 
 goto :eof
 
