@@ -1,9 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-rem only for interactive debugging !
-set _DEBUG=0
-
 rem ##########################################################################
 rem ## Environment setup
 
@@ -32,12 +29,11 @@ call :classpathArgs
 if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 ) else ( set _JAVA_OPTS=-Xmx768m -Xms768m
 )
-if %_DEBUG%==1 echo [%_BASENAME%] "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% %_JVM_CP_ARGS% -Dscala.usejavacp=true %_PROG_NAME% %_SCALA_ARGS% %_RESIDUAL_ARGS%
 "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% %_JVM_CP_ARGS% ^
 -Dscala.usejavacp=true ^
 %_PROG_NAME% %_SCALA_ARGS% %_RESIDUAL_ARGS%
 if not %ERRORLEVEL%==0 (
-    if %_DEBUG%==1 echo [%_BASENAME%] Dotty compiler execution failed
+    rem echo Error: Dotty compiler execution failed 1>&2
     set _EXITCODE=1
     goto end
 )
@@ -59,7 +55,6 @@ set _RESIDUAL_ARGS=
 :args_loop
 if "%~1"=="" goto args_done
 set __ARG=%~1
-if %_DEBUG%==1 echo [%_BASENAME%] __ARG=%__ARG%
 if "%__ARG%"=="--" (
     rem for arg; do addResidual "$arg"; done; set -- ;;
 ) else if /i "%__ARG%"=="-h" (
@@ -105,26 +100,21 @@ rem will be available as system properties.
 shift
 goto args_loop
 :args_done
-if %_DEBUG%==1 echo [%_BASENAME%] _VERBOSE=%_VERBOSE%
-if %_DEBUG%==1 echo [%_BASENAME%] _PROG_NAME=%_PROG_NAME%
 goto :eof
 
 rem output parameter: _SCALA_ARGS
 :addScala
 set _SCALA_ARGS=%_SCALA_ARGS% %~1
-if %_DEBUG%==1 echo [%_BASENAME%] _SCALA_ARGS=%_SCALA_ARGS%
 goto :eof
 
 rem output parameter: _JAVA_ARGS
 :addJava
 set _JAVA_ARGS=%_JAVA_ARGS% %~1
-if %_DEBUG%==1 echo [%_BASENAME%] _JAVA_ARGS=%_JAVA_ARGS%
 goto :eof
 
 rem output parameter: _RESIDUAL_ARGS
 :addResidual
 set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %~1
-if %_DEBUG%==1 echo [%_BASENAME%] _RESIDUAL_ARGS=%_RESIDUAL_ARGS%
 goto :eof
 
 rem output parameter: _JVM_CP_ARGS
@@ -157,7 +147,6 @@ rem ##########################################################################
 rem ## Cleanups
 
 :end
-if %_DEBUG%==1 echo [%_BASENAME%] _EXITCODE=%_EXITCODE%
 exit /b %_EXITCODE%
 endlocal
 
