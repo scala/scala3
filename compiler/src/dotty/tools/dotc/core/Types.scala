@@ -998,15 +998,15 @@ object Types {
       case _ => this
     }
 
-    /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
-    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
-      case OrType(left, right) if right.isJavaNullType => left.stripJavaNull
-      case _ => this
-    }
-
     /** Strips the nullability from a type: `T | Null` goes to `T` */
     def stripNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
       case OrType(left, right) if right.isRefToNull => left.stripNull
+      case _ => this
+    }
+
+    /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
+    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
+      case OrType(left, right) if right.isJavaNullType => left.stripJavaNull
       case _ => this
     }
 
@@ -4280,6 +4280,7 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
+
         if ((tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
         else NoType
       case tp: AppliedType =>
@@ -4295,6 +4296,7 @@ object Types {
       case _ =>
         NoType
     }
+
     def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = zeroParamClass(tp) match {
       case cinfo: ClassInfo =>
         val selfType = cinfo.selfType.asSeenFrom(tp, cinfo.cls)
@@ -4302,15 +4304,21 @@ object Types {
       case _ =>
         false
     }
-    def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] =
-      if (isInstantiatable(tp)) {
-        val absMems = tp.abstractTermMembers
+
+    def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] = {
+      // Strip the nullability from the type (if it exists) before matching
+      // against the SAM type. This is so that we can use e.g. `Function1[Int, Int]|Null`
+      // as a prototype for e.g. `(x) => x`.
+      // See tests/pos/explicit-null-sam-types.scala
+      val strippedTp = tp.stripNull
+      if (isInstantiatable(strippedTp)) {
+        val absMems = strippedTp.abstractTermMembers
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent &&
-                !defn.isImplicitFunctionType(mt.resultType) =>
-              val cls = tp.classSymbol
+              !defn.isImplicitFunctionType(mt.resultType) =>
+              val cls = strippedTp.classSymbol
 
               // Given a SAM type such as:
               //
@@ -4336,7 +4344,7 @@ object Types {
                         mapOver(info.alias)
                       case TypeBounds(lo, hi) =>
                         range(atVariance(-variance)(apply(lo)), apply(hi))
-                       case _ =>
+                      case _ =>
                         range(defn.NothingType, defn.AnyType) // should happen only in error cases
                     }
                   case _ =>
@@ -4348,17 +4356,18 @@ object Types {
             case _ =>
               None
           }
-        else if (tp isRef defn.PartialFunctionClass)
-          // To maintain compatibility with 2.x, we treat PartialFunction specially,
-          // pretending it is a SAM type. In the future it would be better to merge
-          // Function and PartialFunction, have Function1 contain a isDefinedAt method
-          //     def isDefinedAt(x: T) = true
-          // and overwrite that method whenever the function body is a sequence of
-          // case clauses.
+        else if (strippedTp isRef defn.PartialFunctionClass)
+        // To maintain compatibility with 2.x, we treat PartialFunction specially,
+        // pretending it is a SAM type. In the future it would be better to merge
+        // Function and PartialFunction, have Function1 contain a isDefinedAt method
+        //     def isDefinedAt(x: T) = true
+        // and overwrite that method whenever the function body is a sequence of
+        // case clauses.
           absMems.find(_.symbol.name == nme.apply).map(_.info.asInstanceOf[MethodType])
         else None
       }
       else None
+    }
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

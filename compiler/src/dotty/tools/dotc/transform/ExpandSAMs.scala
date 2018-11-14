@@ -38,10 +38,10 @@ class ExpandSAMs extends MiniPhase {
           tree // it's a plain function
         case tpe if defn.isImplicitFunctionType(tpe) =>
           tree
-        case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
+        case tpe @ SAMType(_) if tpe.stripNull.isRef(defn.PartialFunctionClass) =>
           val tpe1 = checkRefinements(tpe, fn.pos)
           toPartialFunction(tree, tpe1)
-        case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
+        case tpe @ SAMType(_) if isPlatformSam(tpe.stripNull.classSymbol.asClass) =>
           checkRefinements(tpe, fn.pos)
           tree
         case tpe =>
