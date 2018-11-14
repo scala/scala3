@@ -115,17 +115,17 @@ package scala.tasty.reflect
 trait Core {
 
   /** Compilation context */
-  type Context
+  type Context <: AnyRef
 
   /** Settings */
-  type Settings
+  type Settings <: AnyRef
 
   // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly in other files
   /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
-  type TermOrTypeTree /* Term | TypeTree */
+  type TermOrTypeTree /* Term | TypeTree */ <: AnyRef
 
   /** Tree representing code written in the source */
-  type Tree
+  type Tree <: AnyRef
 
     /** Tree representing a pacakage clause in the source code */
     type PackageClause <: Tree
@@ -161,13 +161,13 @@ trait Core {
 
 
   /** Branch of a pattern match or catch clause */
-  type CaseDef
+  type CaseDef <: AnyRef
 
   /** Branch of a type pattern match */
-  type TypeCaseDef
+  type TypeCaseDef <: AnyRef
 
   /** Pattern tree of the pattern part of a CaseDef */
-  type Pattern
+  type Pattern <: AnyRef
 
     /** Pattern representing a value. This includes `1`, ```x``` and `_` */
     type Value <: Pattern
@@ -185,7 +185,7 @@ trait Core {
     type TypeTest <: Pattern
 
   /** Type tree representing a type or a bounds written in the source */
-  type TypeOrBoundsTree
+  type TypeOrBoundsTree <: AnyRef
 
     /** Type tree representing a type written in the source */
     type TypeTree <: TypeOrBoundsTree
@@ -197,7 +197,7 @@ trait Core {
     type TypeBoundsTree <: TypeOrBoundsTree
 
   /** Type or bounds */
-  type TypeOrBounds
+  type TypeOrBounds <: AnyRef
 
     /** NoPrefix for a type selection */
     type NoPrefix <: TypeOrBounds
@@ -231,24 +231,24 @@ trait Core {
    *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
    *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
    */
-  type ImportSelector
+  type ImportSelector <: AnyRef
 
   /** Untyped identifier */
-  type Id
+  type Id <: AnyRef
 
   /** JVM signature of a method */
-  type Signature
+  type Signature <: AnyRef
 
   /** Source position */
-  type Position
+  type Position <: AnyRef
 
   /** Constant value represented as the constant itself */
-  type Constant
+  type Constant <: AnyRef
 
   /** Symbol of a definition.
    *  Then can be compared with == to know if the definition is the same.
    */
-  type Symbol
+  type Symbol <: AnyRef
 
     /** Symbol of a package defnition */
     type PackageSymbol <: Symbol
