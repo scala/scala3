@@ -65,7 +65,7 @@ if defined _CLONE (
     call :clone
     if not !_EXITCODE!==0 goto end
 )
-if defined _BUILD (
+if defined _COMPILE (
     call :test
     if not !_EXITCODE!==0 goto end
 )
@@ -97,7 +97,7 @@ rem output parameters: _VERBOSE, _DOCUMENTATION
 :args
 set _ARCHIVES=
 set _BOOTSTRAP=
-set _BUILD=
+set _COMPILE=
 set _CLEAN_ALL=
 set _CLONE=
 set _DOCUMENTATION=
@@ -110,15 +110,18 @@ if not defined __ARG goto args_done
 if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else if /i "%__ARG%"=="-verbose" ( set _VERBOSE=1
 ) else if /i "%__ARG:~0,4%"=="arch" (
-    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _BUILD=1& set _BOOTSTRAP=1
+    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
     set _ARCHIVES=1
 ) else if /i "%__ARG:~0,4%"=="boot" (
-    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _BUILD=1
+    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1
     set _BOOTSTRAP=1
 ) else if /i "%__ARG%"=="cleanall" ( set _CLEAN_ALL=1
 ) else if /i "%__ARG%"=="clone" ( set _CLONE=1
+) else if /i "%__ARG%"=="compile" (
+    if not "%__ARG:~-5%"=="-only" set _CLONE=1
+    set _COMPILE=1
 ) else if /i "%__ARG:~0,3%"=="doc" (
-    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _BUILD=1& set _BOOTSTRAP=1
+    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
     set _DOCUMENTATION=1
 ) else (
     echo Error: Unknown subcommand %__ARG%
@@ -137,10 +140,12 @@ echo     -verbose               display environment settings
 echo   Subcommands:
 echo     arch[ives]             generate gz/zip archives (after bootstrap)
 echo     arch[ives]-only        generate ONLY gz/zip archives
-echo     boot[strap]            generate compiler bootstrap (after build)
+echo     boot[strap]            generate compiler bootstrap (after compile)
 echo     boot[strap]-only       generate ONLY compiler bootstrap
 echo     cleanall               clean project (sbt+git) and quit
 echo     clone                  update submodules
+echo     compile                generate compiler 1st stage (after clone)
+echo     compile-only           generate ONLY compiler 1st stage
 echo     doc[umentation]        generate documentation (after bootstrap)
 echo     doc[umentation]-only]  generate ONLY documentation
 echo     help                   display this help message
@@ -265,6 +270,7 @@ if not %_EXITCODE%==0 goto :eof
 goto :eof
 
 :test
+echo sbt compile and sbt test
 if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";compile ;test"
 call "%_SBT_CMD%" ";compile ;test"
 if not %ERRORLEVEL%==0 (
