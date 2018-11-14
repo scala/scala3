@@ -8,28 +8,46 @@ trait SymbolOps extends Core {
 
   trait SymbolAPI {
 
+    /** Owner of this symbol. The owner is the symbol in which this symbol is defined. */
     def owner(implicit ctx: Context): Symbol
 
+    /** Flags of this symbol */
     def flags(implicit ctx: Context): FlagSet
 
+    /** This symbol is private within the resulting type. */
     def privateWithin(implicit ctx: Context): Option[Type]
+
+    /** This symbol is protected within the resulting type. */
     def protectedWithin(implicit ctx: Context): Option[Type]
 
-    /** Name of the definition */
+    /** The name of this symbol. */
     def name(implicit ctx: Context): String
 
-    /** Full name of the definition from the _root_ package */
+    /** The full name of this symbol up to the root package. */
     def fullName(implicit ctx: Context): String
 
+    /** Returns the context within this symbol. */
     def localContext(implicit ctx: Context): Context
 
+    /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safly check and cast to PackageSymbol */
     def asPackage(implicit ctx: Context): PackageSymbol
+
+    /** Unsafe cast as to ClassSymbol. Use IsClassSymbol to safly check and cast to ClassSymbol */
     def asClass(implicit ctx: Context): ClassSymbol
+
+    /** Unsafe cast as to DefSymbol. Use IsDefSymbol to safly check and cast to DefSymbol */
     def asDef(implicit ctx: Context): DefSymbol
+
+    /** Unsafe cast as to ValSymbol. Use IsValSymbol to safly check and cast to ValSymbol */
     def asVal(implicit ctx: Context): ValSymbol
+
+    /** Unsafe cast as to TypeSymbol. Use IsTypeSymbol to safly check and cast to TypeSymbol */
     def asType(implicit ctx: Context): TypeSymbol
+
+    /** Unsafe cast as to BindSymbol. Use IsBindSymbol to safly check and cast to BindSymbol */
     def asBind(implicit ctx: Context): BindSymbol
 
+    /** Annotations attached to this symbol */
     def annots(implicit ctx: Context): List[Term]
 
   }
@@ -61,7 +79,7 @@ trait SymbolOps extends Core {
   }
 
   trait ClassSymbolAPI {
-    /** Tree of this class definition */
+    /** ClassDef tree of this defintion. */
     def tree(implicit ctx: Context): ClassDef
 
     /** Fields directly declared in the class */
@@ -102,6 +120,7 @@ trait SymbolOps extends Core {
   }
 
   trait TypeSymbolAPI {
+    /** TypeDef tree of this defintion. */
     def tree(implicit ctx: Context): TypeDef
   }
   implicit def TypeSymbolDeco(symbol: TypeSymbol): TypeSymbolAPI
@@ -114,6 +133,7 @@ trait SymbolOps extends Core {
   }
 
   trait DefSymbolAPI {
+    /** DefDef tree of this defintion. */
     def tree(implicit ctx: Context): DefDef
   }
   implicit def DefSymbolDeco(symbol: DefSymbol): DefSymbolAPI
@@ -126,6 +146,7 @@ trait SymbolOps extends Core {
   }
 
   trait ValSymbolAPI {
+    /** ValDef tree of this defintion. */
     def tree(implicit ctx: Context): ValDef
 
     /** The class symbol of the companion module class */
@@ -142,6 +163,7 @@ trait SymbolOps extends Core {
   }
 
   trait BindSymbolAPI {
+    /** Bind pattern of this defintion. */
     def tree(implicit ctx: Context): Bind
   }
   implicit def BindSymbolDeco(symbol: BindSymbol): BindSymbolAPI

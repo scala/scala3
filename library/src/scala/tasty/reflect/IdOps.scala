@@ -4,6 +4,7 @@ package reflect
 trait IdOps extends Core {
 
   trait IdAPI {
+    /** Position in the source code */
     def pos(implicit ctx: Context): Position
     def name(implicit ctx: Context): String
   }
