@@ -1,11 +1,8 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 rem # Wrapper for the published dotc/dotr script that check for file changes
 rem # and use sbt to re build the compiler as needed.
-
-rem only for interactive debugging
-set _DEBUG=1
 
 rem ##########################################################################
 rem ## Environment setup
@@ -23,21 +20,21 @@ rem ##########################################################################
 rem ## Main
 
 rem # Create the target if absent or if file changed in ROOT/compiler
-rem new_files="$(find "$ROOT/compiler" \( -iname "*.scala" -o -iname "*.java" \) -newer "$version" 2> /dev/null)"
 call :new_files "%_VERSION%"
 
 if exist "%_VERSION%" if %_NEW_FILES%==0 goto target
 echo Building Dotty...
-pushd %_ROOT% && sbt.bat "dist-bootstrapped/pack"
+pushd %_ROOT%
+sbt.bat "dist-bootstrapped/pack"
+popd
 
 :target
 set _TARGET=%~1
 rem # Mutates %* by deleting the first element (%1)
 shift
 
-if %_DEBUG%==1 echo [%_BASENAME%] call %_TARGET% %*
 call %_TARGET% %*
-popd
+
 goto end
 
 rem ##########################################################################
@@ -50,7 +47,6 @@ set __VERSION_FILE=%~1
 
 call :timestamp "%__VERSION_FILE%"
 set __VERSION_TIMESTAMP=%_TIMESTAMP%
-if %_DEBUG%==1 echo [%_BASENAME%] %__VERSION_TIMESTAMP% %__VERSION_FILE%
 
 set __JAVA_SOURCE_FILES=
 for /f %%i in ('dir /s /b "%_ROOT_DIR%compiler\*.java" 2^>NUL') do (
@@ -73,18 +69,14 @@ set __TIMESTAMP_FILE=%~1
 set __SOURCE_FILES=%~2
 
 set __SOURCE_TIMESTAMP=00000000000000
-set __N=0
 for %%i in (%__SOURCE_FILES%) do (
     call :timestamp "%%i"
-    if %_DEBUG%==1 echo [%_BASENAME%] !_TIMESTAMP! %%i
     call :newer !_TIMESTAMP! !__SOURCE_TIMESTAMP!
     if !_NEWER!==1 set __SOURCE_TIMESTAMP=!_TIMESTAMP!
-    set /a __N=!__N!+1
 )
 if exist "%__TIMESTAMP_FILE%" ( set /p __CLASS_TIMESTAMP=<%__TIMESTAMP_FILE%
 ) else ( set __CLASS_TIMESTAMP=00000000000000
 )
-if %_DEBUG%==1 echo [%_BASENAME%] %__CLASS_TIMESTAMP% %__TIMESTAMP_FILE%
 
 call :newer %__SOURCE_TIMESTAMP% %__CLASS_TIMESTAMP%
 set _COMPILE_REQUIRED=%_NEWER%
