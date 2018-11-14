@@ -81,6 +81,9 @@ object SyntaxHighlighting {
         }
       }
 
+      for (pos <- scanner.commentPositions)
+        highlightPosition(pos, CommentColor)
+
       object TreeHighlighter extends untpd.UntypedTreeTraverser {
         import untpd._
 

@@ -105,7 +105,8 @@ class CheckRealizable(implicit ctx: Context) {
   /** `Realizable` if `tp` has good bounds, a `HasProblem...` instance
    *  pointing to a bad bounds member otherwise. "Has good bounds" means:
    *
-   *    - all type members have good bounds
+   *    - all type members have good bounds (except for opaque helpers)
+   *    - all refinements of the underlying type have good bounds (except for opaque companions)
    *    - all base types are class types, and if their arguments are wildcards
    *      they have good bounds.
    *    - base types do not appear in multiple instances with different arguments.
@@ -114,10 +115,15 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private def boundsRealizability(tp: Type) = {
 
+    def isOpaqueCompanionThis = tp match {
+      case tp: ThisType => tp.cls.isOpaqueCompanion
+      case _ => false
+    }
+
     val memberProblems =
       for {
         mbr <- tp.nonClassTypeMembers
-        if !(mbr.info.loBound <:< mbr.info.hiBound)
+        if !(mbr.info.loBound <:< mbr.info.hiBound) && !mbr.symbol.isOpaqueHelper
       }
       yield new HasProblemBounds(mbr.name, mbr.info)
 
@@ -126,7 +132,7 @@ class CheckRealizable(implicit ctx: Context) {
         name <- refinedNames(tp)
         if (name.isTypeName)
         mbr <- tp.member(name).alternatives
-        if !(mbr.info.loBound <:< mbr.info.hiBound)
+        if !(mbr.info.loBound <:< mbr.info.hiBound) && !isOpaqueCompanionThis
       }
       yield new HasProblemBounds(name, mbr.info)
 

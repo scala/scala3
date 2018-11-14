@@ -490,4 +490,55 @@ object Interactive {
     }
   }
 
+  /**
+   * Given `sym`, originating from `sourceDriver`, find its representation in
+   * `targetDriver`.
+   *
+   * @param symbol The symbol to expression in the new driver.
+   * @param sourceDriver The driver from which `symbol` originates.
+   * @param targetDriver The driver in which we want to get a representation of `symbol`.
+   * @return A representation of `symbol` in `targetDriver`.
+   */
+  def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
+
+    def in[T](driver: InteractiveDriver)(fn: Context => T): T =
+      fn(driver.currentCtx)
+
+    if (sourceDriver == targetDriver) symbol
+    else {
+      val owners = in(sourceDriver) { implicit ctx =>
+        symbol.ownersIterator.toList.reverse.map(_.name)
+      }
+      in(targetDriver) { implicit ctx =>
+        val base: Symbol = ctx.definitions.RootClass
+        owners.tail.foldLeft(base) { (prefix, symbolName) =>
+          if (prefix.exists) prefix.info.member(symbolName).symbol
+          else NoSymbol
+        }
+      }
+    }
+  }
+
+  /**
+   * Return a predicate function that determines whether a given `NameTree` is an implementation of
+   * `sym`.
+   *
+   * @param sym The symbol whose implementations to find.
+   * @return A function that determines whether a `NameTree` is an implementation of `sym`.
+   */
+  def implementationFilter(sym: Symbol)(implicit ctx: Context): NameTree => Boolean = {
+    if (sym.isClass) {
+      case td: TypeDef =>
+        val treeSym = td.symbol
+        (treeSym != sym || !treeSym.is(AbstractOrTrait)) && treeSym.derivesFrom(sym)
+      case _ =>
+        false
+    } else {
+      case md: MemberDef =>
+        matchSymbol(md, sym, Include.overriding) && !md.symbol.is(Deferred)
+      case _ =>
+        false
+    }
+  }
+
 }

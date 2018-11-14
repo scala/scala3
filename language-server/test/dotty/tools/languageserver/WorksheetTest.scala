@@ -164,16 +164,16 @@ class WorksheetTest {
   def hoverContent(typeInfo: String, comment: String): Option[String] =
     Some(s"""```scala
             |$typeInfo
-            |$comment
-            |```""".stripMargin)
+            |```
+            |$comment""".stripMargin)
   @Test def worksheetHover(): Unit = {
     ws"""/** A class */ class ${m1}Foo${m2} { /** A method */ def ${m3}bar${m4} = 123  }
          val x = new ${m5}Foo${m6}
          x.${m7}bar${m8}""".withSource
-      .hover(m1 to m2, hoverContent(s"${WorksheetWrapper}.Foo", "/** A class */"))
-      .hover(m3 to m4, hoverContent("Int", "/** A method */"))
-      .hover(m5 to m6, hoverContent(s"${WorksheetWrapper}.Foo", "/** A class */"))
-      .hover(m7 to m8, hoverContent("Int", "/** A method */"))
+      .hover(m1 to m2, hoverContent(s"${WorksheetWrapper}.Foo", "A class"))
+      .hover(m3 to m4, hoverContent("Int", "A method"))
+      .hover(m5 to m6, hoverContent(s"${WorksheetWrapper}.Foo", "A class"))
+      .hover(m7 to m8, hoverContent("Int", "A method"))
   }
 
   @Test def worksheetDocumentSymbol(): Unit = {

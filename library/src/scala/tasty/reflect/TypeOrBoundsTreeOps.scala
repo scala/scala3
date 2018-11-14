@@ -13,6 +13,7 @@ trait TypeOrBoundsTreeOps extends Core {
   trait TypeTreeAPI {
     def pos(implicit ctx: Context): Position
     def tpe(implicit ctx: Context): Type
+    def symbol(implicit ctx: Context): Symbol
   }
   implicit def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI
 

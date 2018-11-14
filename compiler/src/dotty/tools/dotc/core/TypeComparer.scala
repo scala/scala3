@@ -830,9 +830,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
       *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
       */
-      def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
+      def compareLower(tycon2bounds: TypeBounds, followSuperType: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
-          if (tyconIsTypeRef) recur(tp1, tp2.superType)
+          if (followSuperType) recur(tp1, tp2.superType)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
@@ -841,13 +841,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
           canConstrain(param2) && canInstantiate(param2) ||
-          compareLower(bounds(param2), tyconIsTypeRef = false)
+          compareLower(bounds(param2), followSuperType = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
           defn.isTypelevel_S(tycon2.symbol) && compareS(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
-                compareLower(info2, tyconIsTypeRef = true)
+                val gbounds2 = ctx.gadt.bounds(tycon2.symbol)
+                if (gbounds2 == null) compareLower(info2, followSuperType = true)
+                else compareLower(gbounds2 & info2, followSuperType = false)
               case info2: ClassInfo =>
                 tycon2.name.toString.startsWith("Tuple") &&
                   defn.isTupleType(tp2) && isSubType(tp1, tp2.toNestedPairs) ||
@@ -883,8 +885,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
           !sym.isClass && (
-            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
-            recur(tp1.superType, tp2))
+            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) || {
+              val gbounds1 = ctx.gadt.bounds(tycon1.symbol)
+              if (gbounds1 == null) recur(tp1.superType, tp2)
+              else recur((gbounds1.hi & tycon1.info.bounds.hi).applyIfParameterized(args1), tp2)
+            })
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>

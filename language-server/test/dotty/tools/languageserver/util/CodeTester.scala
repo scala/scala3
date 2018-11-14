@@ -4,6 +4,9 @@ import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
+
+import dotty.tools.dotc.util.Signatures.Signature
+
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
 
 /**
@@ -157,6 +160,32 @@ class CodeTester(projects: List[Project]) {
    */
   def cancelRun(marker: CodeMarker, afterMs: Long): this.type =
     doAction(new WorksheetCancel(marker, afterMs))
+
+  /**
+   * Find implementations of the symbol in `range`, compares that the results match `expected.
+   *
+   * @param range    The range of position over which to run `textDocument/implementation`.
+   * @param expected The expected result.
+   */
+  def implementation(range: CodeRange, expected: List[CodeRange]): this.type =
+    doAction(new Implementation(range, expected))
+
+  /**
+   * Requests `textDocument/signatureHelp` from the language server at the specified `marker`,
+   * verifies that the results match the expectations.
+   *
+   * @param marker          A maker that specifies the cursor position.
+   * @param expected        The expected list of signature returned by the server.
+   * @param activeSignature The expected active signature.
+   * @param activeParam     The expected active parameter.
+   *
+   * @see dotty.tools.languageserver.util.actions.SignatureHelp
+   */
+  def signatureHelp(marker: CodeMarker,
+                    expected: List[Signature],
+                    activeSignature: Option[Int],
+                    activeParam: Int): this.type =
+    doAction(new SignatureHelp(marker, expected, activeSignature, activeParam))
 
   private def doAction(action: Action): this.type = {
     try {

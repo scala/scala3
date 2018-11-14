@@ -59,7 +59,8 @@ class TestServer(testFolder: Path, projects: List[Project]) {
          |  "compilerArguments" : ${showSeq(BuildInfo.ideTestsCompilerArguments)},
          |  "sourceDirectories" : ${showSeq(sourceDirectory(project, wipe = false) :: Nil)},
          |  "dependencyClasspath" : ${showSeq(dependencyClasspath(project))},
-         |  "classDirectory" : "${classDirectory(project, wipe = false).toString.replace('\\','/')}"
+         |  "classDirectory" : "${classDirectory(project, wipe = false).toString.replace('\\','/')}",
+         |  "projectDependencies": ${showSeq(project.dependsOn.map(_.name))}
          |}
          |""".stripMargin
     }
@@ -106,8 +107,8 @@ class TestServer(testFolder: Path, projects: List[Project]) {
     val path = testFolder.resolve(project.name).resolve("out")
     if (wipe) {
       Directory(path).deleteRecursively()
-      Files.createDirectories(path)
     }
+    Files.createDirectories(path)
     path.toAbsolutePath
   }
 

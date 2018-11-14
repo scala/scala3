@@ -5,6 +5,8 @@
  */
 package dotty.tools.dotc.util
 
+import scala.collection.mutable
+
 /** The comment parsing in `dotc` is used by both the comment cooking and the
   * dottydoc tool.
   *
@@ -223,6 +225,15 @@ object CommentParsing {
     result
   }
 
+  /** A map from tag name to all boundaries for this tag */
+  def groupedSections(str: String, sections: List[(Int, Int)]): Map[String, List[(Int, Int)]] = {
+    val map = mutable.Map.empty[String, List[(Int, Int)]].withDefaultValue(Nil)
+    sections.reverse.foreach { bounds =>
+      val tag = extractSectionTag(str, bounds)
+      map.update(tag, (skipTag(str, bounds._1), bounds._2) :: map(tag))
+    }
+    map.toMap
+  }
 
   def removeSections(raw: String, xs: String*): String = {
     val sections = tagIndex(raw)

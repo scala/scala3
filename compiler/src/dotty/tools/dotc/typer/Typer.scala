@@ -706,7 +706,7 @@ class Typer extends Namer
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
-    val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
+    val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
       val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
       thenp1 :: elsep1 :: Nil
@@ -979,7 +979,7 @@ class Typer extends Namer
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
+    val cases1 = harmonic(harmonize, pt)(typedCases(tree.cases, selType, pt.notApplied))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
@@ -1135,7 +1135,7 @@ class Typer extends Namer
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
-    val expr2 :: cases2x = harmonic(harmonize) {
+    val expr2 :: cases2x = harmonic(harmonize, pt) {
       val expr1 = typed(tree.expr, pt.notApplied)
       val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
       expr1 :: cases1
@@ -1587,7 +1587,11 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
-    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    if (cls.isOpaqueCompanion) {
+      // this is necessary to ensure selftype is correctly pickled
+      self1 = tpd.cpy.ValDef(self1)(tpt = TypeTree(cls.classInfo.selfType))
+    }
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
@@ -2230,9 +2234,7 @@ class Typer extends Namer
             readaptSimplified(tree.withType(alt))
           case Nil =>
             def noMatches =
-              errorTree(tree,
-                em"""none of the ${err.overloadedAltsStr(altDenots)}
-                    |match ${err.expectedTypeStr(pt)}""")
+              errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
             def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
             pt match {
               case pt: FunProto =>
@@ -2244,8 +2246,11 @@ class Typer extends Namer
                   noMatches
             }
           case alts =>
-            val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
+            else {
+              val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
+              errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            }
         }
       }
 

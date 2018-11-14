@@ -64,7 +64,8 @@ class Compiler {
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new TryCatchPatterns,       // Compile cases in try/catch
+    List(new ElimOpaque,             // Turn opaque into normal aliases
+         new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
