@@ -51,7 +51,14 @@ class SymbolTest {
 
     withProjects(p0, p1)
       .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class))
+  }
 
-
+  @Test def noLocalSymbols: Unit = {
+    code"""object O {
+             def foo = {
+               val hello = 0
+             }
+           }""".withSource
+      .symbol("hello")
   }
 }

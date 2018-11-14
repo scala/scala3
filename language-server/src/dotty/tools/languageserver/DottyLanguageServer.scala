@@ -22,6 +22,7 @@ import core._, core.Decorators.{sourcePos => _, _}
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
+import transform.SymUtils.decorateSymbol
 import typer.Typer
 import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._
@@ -466,12 +467,14 @@ class DottyLanguageServer extends LanguageServer
 
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
     val query = params.getQuery
+    def predicate(implicit ctx: Context): NameTree => Boolean =
+      tree => tree.symbol.exists && !tree.symbol.isLocal && tree.name.toString.contains(query)
 
     drivers.values.toList.flatMap { driver =>
       implicit val ctx = driver.currentCtx
 
       val trees = driver.sourceTreesContaining(query)
-      val defs = Interactive.namedTrees(trees, nameSubstring = query)
+      val defs = Interactive.namedTrees(trees, includeReferences = false, predicate)
       defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source)))
     }.asJava
   }
