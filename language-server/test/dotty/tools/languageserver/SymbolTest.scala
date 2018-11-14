@@ -39,4 +39,19 @@ class SymbolTest {
       .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Module),
                      (m3 to m4).symInfo("Foo", SymbolKind.Class))
   }
+
+  @Test def multipleProjects0: Unit = {
+    val p0 = Project.withSources(
+      code"""class ${m1}Foo${m2}"""
+    )
+
+    val p1 = Project.dependingOn(p0).withSources(
+      code"""class ${m3}Bar${m4} extends Foo"""
+    )
+
+    withProjects(p0, p1)
+      .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class))
+
+
+  }
 }
