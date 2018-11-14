@@ -124,7 +124,7 @@ trait Core {
   /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
   type TermOrTypeTree /* Term | TypeTree */
 
-  /** Tree representing executable code written in the source */
+  /** Tree representing code written in the source */
   type Tree
 
     /** Tree representing a pacakage clause in the source code */
