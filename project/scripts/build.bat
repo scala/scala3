@@ -41,27 +41,10 @@ if not exist "%_OUT1_DIR%" mkdir "%_OUT1_DIR%"
 
 set _TMP_FILE=%_TMP_DIR%\%_BASENAME%_tmp.txt
 
-where /q git.exe
-if not %ERRORLEVEL%==0 (
-    echo Error: Git command not found ^(check your PATH variable^) 1>&2
-    set _EXITCODE=1
-    goto end
-)
-set _GIT_CMD=git.exe
-
-where /q sbt.bat
-if not %ERRORLEVEL%==0 (
-    echo Error: SBT command not found ^(check your PATH variable^) 1>&2
-    set _EXITCODE=1
-    goto end
-)
-rem full path is required for sbt to run successfully
-for /f %%i in ('where sbt.bat') do set _SBT_CMD=%%i
-
 rem see file project/scripts/sbt
 rem SBT uses the value of the JAVA_OPTS environment variable if defined, rather than the config.
-set JAVA_OPTS=-Xmx4096m ^
--XX:ReservedCodeCacheSize=1024m ^
+set JAVA_OPTS=-Xmx2048m ^
+-XX:ReservedCodeCacheSize=2048m ^
 -XX:MaxMetaspaceSize=1024m
 
 set SBT_OPTS=-Ddotty.drone.mem=4096m ^
@@ -71,14 +54,9 @@ set SBT_OPTS=-Ddotty.drone.mem=4096m ^
 rem ##########################################################################
 rem ## Main
 
-if %_VERBOSE%==1 (
-    for /f %%i in ('where git.exe') do set _GIT_CMD1=%%i
-    echo _GIT_CMD=!_GIT_CMD1!
-    echo _SBT_CMD=%_SBT_CMD%
-    echo JAVA_OPTS=%JAVA_OPTS%
-    echo SBT_OPTS=%SBT_OPTS%
-    echo.
-)
+call :init
+if not %_EXITCODE%==0 goto end
+
 if defined _CLEAN_ALL (
     call :clean_all
     if not !_EXITCODE!==0 goto end
@@ -141,7 +119,7 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
     if not "%__ARG:~-5%"=="-only" set _BUILD=1& set _BOOTSTRAP=1
     set _DOCUMENTATION=1
 ) else (
-    echo %_BASENAME%: Unknown subcommand %__ARG%
+    echo Error: Unknown subcommand %__ARG%
     set _EXITCODE=1
     goto :eof
 )
@@ -165,7 +143,37 @@ echo     doc[umentation]-only]  generate ONLY documentation
 echo     help                   display this help message
 goto :eof
 
+rem output parameters: _GIT_CMD, _SBT_CMD
+:init
+where /q git.exe
+if not %ERRORLEVEL%==0 (
+    echo Error: Git command not found ^(check your PATH variable^) 1>&2
+    set _EXITCODE=1
+    goto end
+)
+set _GIT_CMD=git.exe
+
+where /q sbt.bat
+if not %ERRORLEVEL%==0 (
+    echo Error: SBT command not found ^(check your PATH variable^) 1>&2
+    set _EXITCODE=1
+    goto end
+)
+rem full path is required for sbt to run successfully
+for /f %%i in ('where sbt.bat') do set _SBT_CMD=%%i
+
+if %_VERBOSE%==1 (
+    for /f %%i in ('where git.exe') do set _GIT_CMD1=%%i
+    echo _GIT_CMD=!_GIT_CMD1!
+    echo _SBT_CMD=%_SBT_CMD%
+    echo JAVA_OPTS=%JAVA_OPTS%
+    echo SBT_OPTS=%SBT_OPTS%
+    echo.
+)
+goto :eof
+
 :clean_all
+echo run sbt clean and git clean -xdf
 if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" clean
 call "%_SBT_CMD%" clean
 if not %ERRORLEVEL%==0 (

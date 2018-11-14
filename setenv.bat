@@ -31,8 +31,6 @@ if not %_EXITCODE%==0 goto end
 call :git
 if not %_EXITCODE%==0 goto end
 
-if "%~1"=="clean" call :clean
-
 goto end
 
 rem ##########################################################################
@@ -50,7 +48,7 @@ if not defined __ARG goto args_done
 if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else if /i "%__ARG%"=="-verbose" ( set _VERBOSE=1
 ) else (
-    echo %_BASENAME%: Unknown subcommand %__ARG%
+    echo Error: Unknown subcommand %__ARG% 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -86,7 +84,7 @@ if defined JDK_HOME (
     )
 )
 if not exist "%_JDK_HOME%\bin\javac.exe" (
-    if %_DEBUG%==1 echo [%_BASENAME%] javac executable not found ^(%_JDK_HOME%^)
+    echo Error: javac executable not found ^(%_JDK_HOME%^) 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -109,7 +107,7 @@ if defined SBT_HOME (
     )
 )
 if not exist "%_SBT_HOME%\bin\sbt.bat" (
-    if %_DEBUG%==1 echo [%_BASENAME%] sbt executable not found ^(%_SBT_HOME%^)
+    echo Error: sbt executable not found ^(%_SBT_HOME%^) 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -138,21 +136,11 @@ if defined GIT_HOME (
     )
 )
 if not exist "%_GIT_HOME%\bin\git.exe" (
-    echo Git executable not found ^(%_GIT_HOME%^)
+    echo Error: Git executable not found ^(%_GIT_HOME%^) 1>&2
     set _EXITCODE=1
     goto :eof
 )
 set "_GIT_PATH=;%_GIT_HOME%\bin;%_GIT_HOME%\usr\bin"
-goto :eof
-
-:clean
-for %%f in ("%~dp0") do set __ROOT_DIR=%%~sf
-for /f %%i in ('dir /ad /b "%__ROOT_DIR%\" 2^>NUL') do (
-    for /f %%j in ('dir /ad /b "%%i\target\scala-*" 2^>NUL') do (
-        if %_DEBUG%==1 echo [%_BASENAME%] rmdir /s /q %__ROOT_DIR%%%i\target\%%j\classes 1^>NUL 2^>^&1
-        rmdir /s /q %__ROOT_DIR%%%i\target\%%j\classes 1>NUL 2>&1
-    )
-)
 goto :eof
 
 rem output parameter: _SBT_VERSION
