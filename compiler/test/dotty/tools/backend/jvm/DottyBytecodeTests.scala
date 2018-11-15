@@ -546,4 +546,23 @@ class TestBCode extends DottyBytecodeTest {
       assertFalse(doBox)
     }
   }
+
+  /** Test that the size of lazy field accesors is under a certain threshold
+   *
+   *  - Changed from 19 to 14
+   */
+  @Test def lazyFields = {
+    val source =
+      """class Test {
+        |  lazy val test = 1
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method  = getMethod(clsNode, "test")
+      assertEquals(14, instructionsFromMethod(method).size)
+    }
+  }
 }
