@@ -38,7 +38,6 @@ class SemanticdbConsumer extends TastyConsumer {
 
     object Traverser extends TreeTraverser {
       val symbolsCache: HashMap[Symbol, String] = HashMap()
-      val symbolPathsDisimbiguator: HashMap[String, Int] = HashMap()
       implicit class TreeExtender(tree: Tree) {
         def isUserCreated: Boolean = {
           val children: List[Position] =
@@ -85,14 +84,29 @@ class SemanticdbConsumer extends TastyConsumer {
         def isJavaClass: Boolean = false
       }
 
-      def disimbiguate(symbol_path: String): String = {
-        if (symbolPathsDisimbiguator.contains(symbol_path)) {
-          symbolPathsDisimbiguator +=
-            (symbol_path -> (symbolPathsDisimbiguator(symbol_path) + 1))
-          "(+" + (symbolPathsDisimbiguator(symbol_path) - 1) + ")"
-        } else {
-          symbolPathsDisimbiguator += (symbol_path -> 1)
+      def resolveClass(symbol: ClassSymbol): Symbol =
+        (symbol.companionClass, symbol.companionModule) match {
+            case (_, Some(module)) if symbol.flags.isObject => module
+            case (Some(c), _) => c
+            case _ => symbol
+        }
+
+      def disimbiguate(symbol_path: String, symbol: Symbol): String = {
+        val symbolcl = resolveClass(symbol.owner.asClass)
+        val methods = symbolcl.asClass.method(symbol.name)
+        val (methods_count, method_pos) =
+          methods.foldLeft((0, -1))((x:Tuple2[Int, Int], m:Symbol) => {
+            if (m == symbol)
+              (x._1+1, x._1)
+             else
+             (x._1+1, x._2)
+            })
+        val real_pos = methods_count - method_pos - 1
+
+        if (real_pos == 0) {
           "()"
+        } else {
+          "(+" + real_pos + ")"
         }
       }
 
@@ -111,20 +125,15 @@ class SemanticdbConsumer extends TastyConsumer {
                 if (symbol.isPackage) {
                   d.Package(symbol.name)
                 } else if (symbol.isObject) {
-                  symbol.asClass.companionModule match {
-                    case Some(module) => d.Term(module.name)
-                    case _ => d.Term(symbol.name)
-                  }
+                  d.Term(resolveClass(symbol.asClass).name)
                 } else if (symbol.isMethod) {
                   d.Method(symbol.name,
-                           disimbiguate(previous_symbol + symbol.name))
+                           disimbiguate(previous_symbol + symbol.name, symbol))
                 } else if (symbol.isValueParameter) {
                   d.Parameter(symbol.name)
                 } else if (symbol.isTypeParameter) {
                   d.TypeParameter(symbol.name)
                 } else if (symbol.isType || symbol.isTrait) {
-                  //println(symbol.name, symbol.companionClass.name, symbol.companionModule.name, symbol.flags.toString)
-
                   d.Type(symbol.name)
                 } else {
                   d.Term(symbol.name)
