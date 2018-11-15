@@ -55,7 +55,7 @@ class Foo {
           LazyVals.wait4Notification(this, bitmap_offset, flag, <field-id>)
         case <state-3> =>
           retry = false
-          result = $target
+          result = value_0
         }
       }
     result

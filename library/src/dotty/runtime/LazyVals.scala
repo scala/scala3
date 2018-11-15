@@ -43,7 +43,7 @@ object LazyVals {
     var retry = true
     while (retry) {
       val cur = get(t, offset)
-      if (STATE(cur, ord) == 1) retry = CAS(t, offset, cur, v, ord)
+      if (STATE(cur, ord) == 1) retry = !CAS(t, offset, cur, v, ord)
       else {
         // cur == 2, somebody is waiting on monitor
         if (CAS(t, offset, cur, v, ord)) {
@@ -67,7 +67,8 @@ object LazyVals {
       else if (state == 2) {
         val monitor = getMonitor(t, ord)
         monitor.synchronized {
-          monitor.wait()
+          if (STATE(get(t, offset), ord) == 2) // make sure notification did not happen yet.
+            monitor.wait()
         }
       }
       else retry = false
