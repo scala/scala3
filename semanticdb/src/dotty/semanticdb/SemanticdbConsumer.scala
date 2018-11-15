@@ -23,22 +23,16 @@ class SemanticdbConsumer extends TastyConsumer {
     import reflect._
 
     object ChildTraverser extends TreeTraverser {
-      var depth: Int = 0
       var children: List[Tree] = Nil
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
-        if (depth == 0) {
-          depth = depth + 1
-          super.traverseTree(tree)
-          depth = depth - 1
-        } else {
-          children = tree :: children
-        }
-      }
-      def getChildren(tree: Tree)(implicit ctx: Context): List[Position] = {
+      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = children = tree::children
+      override def traversePattern(pattern: Pattern)(implicit ctx: Context): Unit = ()
+      override def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = ()
+      override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit = ()
+
+      def getChildren(tree: Tree)(implicit ctx: Context): List[Tree] = {
         children = Nil
-        depth = 0
-        traverseTree(tree)(ctx)
-        return children.map(_.pos)
+        traverseTreeChildren(tree)(ctx)
+        return children
       }
     }
 
@@ -48,7 +42,7 @@ class SemanticdbConsumer extends TastyConsumer {
       implicit class TreeExtender(tree: Tree) {
         def isUserCreated: Boolean = {
           val children: List[Position] =
-            ChildTraverser.getChildren(tree)(reflect.rootContext)
+            ChildTraverser.getChildren(tree)(reflect.rootContext).map(_.pos)
           return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
             .exists(_ == tree.pos))
         }
@@ -117,7 +111,10 @@ class SemanticdbConsumer extends TastyConsumer {
                 if (symbol.isPackage) {
                   d.Package(symbol.name)
                 } else if (symbol.isObject) {
-                  d.Term(symbol.companionModule.name)
+                  symbol.asClass.companionModule match {
+                    case Some(module) => d.Term(module.name)
+                    case _ => d.Term(symbol.name)
+                  }
                 } else if (symbol.isMethod) {
                   d.Method(symbol.name,
                            disimbiguate(previous_symbol + symbol.name))

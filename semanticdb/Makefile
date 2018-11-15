@@ -8,4 +8,4 @@ test: all
 	cd ..; sbt dotty-semanticdb/test; cd -
 
 %.tasty: $(files)
-	cd $(dir $^); $(CURDIR)/../bin/dotc $(notdir $^)
+	cd $(dir $<); $(CURDIR)/../bin/dotc $(notdir $^)

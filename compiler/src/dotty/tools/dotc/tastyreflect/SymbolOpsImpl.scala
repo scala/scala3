@@ -30,10 +30,6 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
     def owner(implicit ctx: Context): Symbol = symbol.owner
 
-    def companionModule(implicit ctx: Context): Symbol = symbol.companionModule
-
-    def companionClass(implicit ctx: Context): Symbol = symbol.companionClass
-
     def localContext(implicit ctx: Context): Context = {
       if (symbol.exists) ctx.withOwner(symbol)
       else ctx
