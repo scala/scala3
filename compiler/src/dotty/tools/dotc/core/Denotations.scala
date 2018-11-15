@@ -343,7 +343,7 @@ object Denotations {
      *  as a member of type `site`, `NoDenotation` if none exists.
      */
     def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation = {
-      def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType)
+      def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType, ignoreNull = sym.is(JavaDefined))
       if (isOverloaded) {
         atSignature(targetType.signature, site, relaxed = true) match {
           case sd: SingleDenotation => sd.matchingDenotation(site, targetType)
