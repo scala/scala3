@@ -181,7 +181,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     Thicket(holderTree, initTree, accessor)
   }
 
-
   override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context): List[Tree] = {
     // backend requires field usage to be after field definition
     // need to bring containers to start of method
@@ -201,6 +200,66 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       field.setFlag(Flags.Mutable)
       ref(field).becomes(nullConst)
     }
+  }
+
+  /** Desugar a lazy field `lazy val x: Int = <RHS>` into:
+   *
+   *  ```
+   *  private var container: Int = _
+   *  @volatile private var flag: Boolean = _
+   *
+   *  private def x$lzycompute(): Int = this.synchronized {
+   *    if (!flag) {
+   *      container = <RHS>
+   *      flag = true
+   *      nullable = null
+   *    }
+   *    container
+   *  }
+   *
+   *  def x(): Int = if (flag) container else x$lzycompute()
+   *  ```
+   */
+  def transformMemberDefScala2Compat(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
+    val xname = x.name.asTermName
+    val owner = x.symbol.owner.asClass
+    val tpe = x.tpe.widen.resultType.widen
+
+    val containerName = LazyLocalName.fresh(xname)
+    val containerSymbol = ctx.newSymbol(owner, containerName,
+      x.symbol.flags &~ containerFlagsMask | containerFlags | Flags.Private,
+      tpe, coord = x.symbol.coord
+    ).enteredAfter(this)
+    val containerTree = ValDef(containerSymbol, defaultValue(tpe))
+    val containerRef = ref(containerSymbol)
+
+    val flagName = LazyBitMapName.fresh(xname)
+    val flagSymbol = ctx.newSymbol(owner, flagName,  containerFlags | Flags.Private, defn.BooleanType).enteredAfter(this)
+    flagSymbol.addAnnotation(Annotation(defn.VolatileAnnot))
+    val flagTree = ValDef(flagSymbol, Literal(Constant(false)))
+    val flagRef = ref(flagSymbol)
+
+    val initName = LazyLocalInitName.fresh(xname)
+    val initSymbol = ctx.newSymbol(owner, initName,
+      initFlags | Flags.Private, MethodType(Nil, tpe), coord = x.symbol.coord
+    ).enteredAfter(this)
+    val rhs = x.rhs.changeOwnerAfter(x.symbol, initSymbol, this)
+    val stats = containerRef.becomes(rhs) :: flagRef.becomes(Literal(Constant(true))) :: nullOut(nullableFor(x.symbol))
+    val initialize = If(
+      flagRef.select(nme.UNARY_!).ensureApplied,
+      Block(stats.init, stats.last),
+      unitLiteral
+    )
+    val initBody = This(owner)
+      .select(defn.Object_synchronized)
+      .appliedToType(tpe)
+      .appliedTo(Block(List(initialize), containerRef))
+    val initTree = DefDef(initSymbol, initBody)
+
+    val accessorBody = If(flagRef, containerRef, ref(initSymbol).ensureApplied)
+    val accessorTree = DefDef(x.symbol.asTerm, accessorBody)
+
+    Thicket(List(containerTree, flagTree, initTree, accessorTree))
   }
 
   /** Create non-threadsafe lazy accessor equivalent to such code
