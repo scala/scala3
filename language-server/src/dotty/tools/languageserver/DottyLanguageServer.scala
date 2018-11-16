@@ -289,10 +289,9 @@ class DottyLanguageServer extends LanguageServer
       /*isIncomplete = */ false, items.map(completionItem).asJava))
   }
 
-  /** If cursor is on a reference, show its definition and all overriding definitions in
-   *  the same source as the primary definition.
+  /** If cursor is on a reference, show its definition and all overriding definitions.
    *  If cursor is on a definition, show this definition together with all overridden
-   *  and overriding definitions (in all sources).
+   *  and overriding definitions.
    */
   override def definition(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)

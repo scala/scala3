@@ -43,10 +43,7 @@ object Interactive {
     /** Include trees whose symbol is overridden by `sym` */
     val overridden: Set = Set(1 << 0)
 
-    /**
-     * Include trees whose symbol overrides `sym` (but for performance only in same source
-     * file)
-     */
+    /** Include trees whose symbol overrides `sym` */
     val overriding: Set = Set(1 << 1)
 
     /** Include references */
@@ -328,34 +325,45 @@ object Interactive {
     path.find(_.isInstanceOf[DefTree]).getOrElse(EmptyTree)
 
   /**
-   * Find the definitions of the symbol at the end of `path`.
+   * Find the definitions of the symbol at the end of `path`. In the case of an import node,
+   * all imported symbols will be considered.
    *
    * @param path   The path to the symbol for which we want the definitions.
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
-    enclosingSourceSymbols(path, pos).flatMap { sym =>
-      val enclTree = enclosingTree(path)
+  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver): List[SourceTree] = {
+    implicit val ctx = driver.currentCtx
+    val enclTree = enclosingTree(path)
+    val includeOverridden = enclTree.isInstanceOf[MemberDef]
+    val symbols = enclosingSourceSymbols(path, pos)
+    val includeExternal = symbols.exists(!_.isLocal)
+    findDefinitions(symbols, driver, includeOverridden, includeExternal)
+  }
+
+  /**
+   * Find the definitions of `symbols`.
+   *
+   * @param symbols           The list of symbols for which to find a definition.
+   * @param driver            The driver responsible for the given symbols.
+   * @param includeOverridden If true, also include the symbols overridden by any of `symbols`.
+   * @param includeExternal   If true, also look for definitions on the classpath.
+   * @return The definitions for the symbols in `symbols`, and if `includeOverridden` is set, the
+   *         definitions for the symbols that they override.
+   */
+  def findDefinitions(symbols: List[Symbol],
+                      driver: InteractiveDriver,
+                      includeOverridden: Boolean,
+                      includeExternal: Boolean): List[SourceTree] = {
+    implicit val ctx = driver.currentCtx
+    val include = Include.definitions | Include.overriding |
+      (if (includeOverridden) Include.overridden else Include.empty)
+    symbols.flatMap { sym =>
+      val name = sym.name.sourceModuleName.toString
       val includeLocal = if (sym.exists && sym.isLocal) Include.local else Include.empty
-
-      val (trees, include) =
-        if (enclTree.isInstanceOf[MemberDef])
-          (driver.allTreesContaining(sym.name.sourceModuleName.toString),
-            Include.definitions | Include.overriding | Include.overridden)
-        else sym.topLevelClass match {
-          case cls: ClassSymbol =>
-            val trees = Option(cls.sourceFile).flatMap(InteractiveDriver.toUriOption) match {
-              case Some(uri) if driver.openedTrees.contains(uri) =>
-                driver.openedTrees(uri)
-              case _ => // Symbol comes from the classpath
-                SourceTree.fromSymbol(cls).toList
-            }
-            (trees, Include.definitions | Include.overriding)
-          case _ =>
-            (Nil, Include.empty)
-        }
-
+      val trees =
+        if (includeExternal) driver.allTreesContaining(name)
+        else driver.sourceTreesContaining(name)
       findTreesMatching(trees, include | includeLocal, sym)
     }
   }

@@ -322,4 +322,26 @@ class DefinitionTest {
      .definition(m11 to m12, List(m3 to m4))
   }
 
+  @Test def definitionShowOverrides: Unit = {
+    withSources(
+      code"""class A { def ${m1}foo${m2}: Int = 0 }""",
+      code"""class B extends A { def ${m3}foo${m4}: Int = 1 }""",
+      code"""class C extends A { def ${m5}foo${m6}: Int = 2 }""",
+      code"""class D extends C { def ${m7}foo${m8}: Int = 3 }""",
+      code"""object O {
+               val a = new A().${m9}foo${m10}
+               val b = new B().${m11}foo${m12}
+               val c = new C().${m13}foo${m14}
+               val d = new D().${m15}foo${m16}
+             }"""
+    ).definition(m1 to m2, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+     .definition(m3 to m4, List(m1 to m2, m3 to m4))
+     .definition(m5 to m6, List(m1 to m2, m5 to m6, m7 to m8))
+     .definition(m7 to m8, List(m1 to m2, m5 to m6, m7 to m8))
+     .definition(m9 to m10, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+     .definition(m11 to m12, List(m3 to m4))
+     .definition(m13 to m14, List(m5 to m6, m7 to m8))
+     .definition(m15 to m16, List(m7 to m8))
+  }
+
 }
