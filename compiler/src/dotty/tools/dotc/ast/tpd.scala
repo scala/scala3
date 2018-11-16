@@ -1147,5 +1147,91 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _ =>
       EmptyTree
   }
+
+  /**
+   * The symbols that are imported with `expr.name`
+   *
+   * @param expr The base of the import statement
+   * @param name The name that is being imported.
+   * @return All the symbols that would be imported with `expr.name`.
+   */
+  def importedSymbols(expr: Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
+    def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
+    val symbols =
+      List(lookup(name.toTermName),
+           lookup(name.toTypeName),
+           lookup(name.moduleClassName),
+           lookup(name.sourceModuleName))
+
+    symbols.map(_.sourceSymbol).filter(_.exists).distinct
+  }
+
+  /**
+   * All the symbols that are imported by the first selector of `imp` that matches
+   * `selectorPredicate`.
+   *
+   * @param imp The import statement to analyze
+   * @param selectorPredicate A test to find the selector to use.
+   * @return The symbols imported.
+   */
+  def importedSymbols(imp: Import,
+                      selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
+                     (implicit ctx: Context): List[Symbol] = {
+    imp.selectors.find(selectorPredicate) match {
+      case Some(id: untpd.Ident) =>
+        importedSymbols(imp.expr, id.name)
+      case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
+        importedSymbols(imp.expr, id.name)
+      case _ =>
+        Nil
+    }
+  }
+
+  /**
+   * The list of select trees that resolve to the same symbols as the ones that are imported
+   * by `imp`.
+   */
+  def importSelections(imp: Import)(implicit ctx: Context): List[Select] = {
+    def imported(sym: Symbol, id: untpd.Ident, rename: Option[untpd.Ident]): List[Select] = {
+      // Give a zero-extent position to the qualifier to prevent it from being included several
+      // times in results in the language server.
+      val noPosExpr = focusPositions(imp.expr)
+      val selectTree = Select(noPosExpr, sym.name).withPos(id.pos)
+      rename match {
+        case None =>
+          selectTree :: Nil
+        case Some(rename) =>
+          // Get the type of the symbol that is actually selected, and construct a select
+          // node with the new name and the type of the real symbol.
+          val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
+          val actual = Select(noPosExpr, sym.name)
+          val renameTree = Select(noPosExpr, name).withPos(rename.pos).withType(actual.tpe)
+          selectTree :: renameTree :: Nil
+      }
+    }
+
+    imp.selectors.flatMap {
+      case Ident(nme.WILDCARD) =>
+        Nil
+      case id: untpd.Ident =>
+        importedSymbols(imp.expr, id.name).flatMap { sym =>
+          imported(sym, id, None)
+        }
+      case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
+        importedSymbols(imp.expr, id.name).flatMap { sym =>
+          imported(sym, id, Some(newName))
+        }
+    }
+  }
+
+  /** Replaces all positions in `tree` with zero-extent positions */
+  private def focusPositions(tree: Tree)(implicit ctx: Context): Tree = {
+    val transformer = new tpd.TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+        super.transform(tree).withPos(tree.pos.focus)
+      }
+    }
+    transformer.transform(tree)
+  }
 }
 

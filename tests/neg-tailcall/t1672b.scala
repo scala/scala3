@@ -43,12 +43,12 @@ object Test1772B {
 
   // the `liftedTree` local method will prevent a tail call here.
   @tailrec
-  def bar(i : Int) : Int = { // error: TailRec optimisation not applicable
+  def bar(i : Int) : Int = {
     if (i == 0) 0
     else 1 + (try {
       throw new RuntimeException
     } catch {
-      case _: Throwable => bar(i - 1) // old error: cannot rewrite recursive call
+      case _: Throwable => bar(i - 1) // error: it is not in tail position
     })
   }
 }

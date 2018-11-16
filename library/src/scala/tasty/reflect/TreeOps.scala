@@ -4,7 +4,9 @@ package reflect
 trait TreeOps extends Core {
 
   trait TreeAPI {
+    /** Position in the source code */
     def pos(implicit ctx: Context): Position
+
     def symbol(implicit ctx: Context): Symbol
   }
   implicit def TreeDeco(tree: Tree): TreeAPI
