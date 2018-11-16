@@ -7,18 +7,18 @@ Witnesses provide a concise and uniform syntax for defining implicit values. Exa
 
 ```scala
 trait Ord[T] {
-  def (x: T) compareTo (y: T): Int
-  def (x: T) < (y: T) = x.compareTo(y) < 0
-  def (x: T) > (y: T) = x.compareTo(y) > 0
+  def compareTo(this x: T)(y: T): Int
+  def < (this x: T)(y: T) = x.compareTo(y) < 0
+  def > (this x: T)(y: T) = x.compareTo(y) > 0
 }
 
 witness IntOrd for Ord[Int] {
-  def (x: Int) compareTo (y: Int) =
+  def compareTo(this x: Int)(y: Int) =
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
 witness ListOrd[T: Ord] for Ord[List[T]] {
-  def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
+  def compareTo(this xs: List[T])(ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
     case (_, Nil) => +1
@@ -32,12 +32,12 @@ witness ListOrd[T: Ord] for Ord[List[T]] {
 Witness can be seen as shorthands for what is currently expressed as implicit definitions. The witnesses above could also have been formulated as implicits as follows:
 ```scala
 implicit object IntOrd extends Ord[Int] {
-  def (x: Int) compareTo (y: Int) =
+  def compareTo(this x: Int)(y: Int) =
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
 class ListOrd[T: Ord] extends Ord[List[T]] {
-  def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
+  def compareTo(this xs: List[T])(ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
     case (_, Nil) => +1
@@ -60,14 +60,14 @@ Witnesses can also be defined without a `for` clause. A typical application is t
 
 ```scala
 witness StringOps {
-  def (xs: Seq[String]) longestStrings: Seq[String] = {
+  def longestStrings(this xs: Seq[String]): Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
 witness ListOps {
-  def (xs: List[T]) second[T] = xs.tail.head
+  def second[T](this xs: List[T]) = xs.tail.head
 }
 ```
 Witnesses like these translate to `implicit` objects without an extends clause.
@@ -80,7 +80,7 @@ witness for Ord[Int] { ... }
 witness [T: Ord] for Ord[List[T]] { ... }
 
 witness {
-  def (xs: List[T]) second[T] = xs.tail.head
+  def second[T](this xs: List[T]) = xs.tail.head
 }
 ```
 If the name of a witness is missing, the compiler will synthesize a name from
@@ -92,11 +92,11 @@ extension method. Details remain to be specified.
 A witness can depend on another witness being defined. For instance:
 ```scala
 trait Convertible[From, To] {
-  def (x: From) convert: To
+  def convert (this x: From): To
 }
 
 witness [From, To] with (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
-  def (x: List[From]) convert: List[To] = x.map(c.convert)
+  def convert (this x: List[From]): List[To] = x.map(c.convert)
 }
 ```
 
@@ -105,7 +105,7 @@ The `with` clause in a witness defines required witnesses. The witness for `Conv
 ```scala
 class Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
 extends Convertible[List[From], List[To]] {
-  def (x: List[From]) convert: List[To] = x.map(c.convert)
+  def convert (this x: List[From]): List[To] = x.map(c.convert)
 }
 implicit def Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
   : Convertible[List[From], List[To]] =
@@ -132,45 +132,42 @@ Semigroups and monoids:
 
 ```scala
 trait SemiGroup[T] {
-  def (x: T) combine (y: T): T
+  def combine(this x: T)(y: T): T
 }
 trait Monoid[T] extends SemiGroup[T] {
   def unit: T
 }
-object Monoid {
-  def apply[T: Monoid] = summon[Monoid[T]]
-}
 
 witness for Monoid[String] {
-  def (x: String) combine (y: String): String = x.concat(y)
+  def combine(this x: String)(y: String): String = x.concat(y)
   def unit: String = ""
 }
 
 def sum[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(Monoid[T].unit)(_.combine(_))
+    xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
 ```
 Functors and monads:
 ```scala
 trait Functor[F[_]] {
-  def (x: F[A]) map[A, B] (f: A => B): F[B]
+  def map[A, B](this x: F[A])(f: A => B): F[B]
 }
 
 trait Monad[F[_]] extends Functor[F] {
-  def (x: F[A]) flatMap[A, B] (f: A => F[B]): F[B]
-  def (x: F[A]) map[A, B] (f: A => B) = x.flatMap(f `andThen` pure)
+  def flatMap[A, B](this x: F[A])(f: A => F[B]): F[B]
+  def map[A, B](this x: F[A])(f: A => B) = x.flatMap(f `andThen` pure)
 
   def pure[A](x: A): F[A]
 }
 
 witness ListMonad for Monad[List] {
-  def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
+  def flatMap[A, B](this xs: List[A])(f: A => List[B]): List[B] =
     xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
 }
 
 witness ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
-  def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
+  def flatMap[A, B](this r: Ctx => A)(f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =
     ctx => x
