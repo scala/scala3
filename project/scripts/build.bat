@@ -93,7 +93,7 @@ rem ##########################################################################
 rem ## Subroutines
 
 rem input parameter: %*
-rem output parameters: _VERBOSE, _DOCUMENTATION
+rem output parameters: _CLONE, _COMPILE, _DOCUMENTATION, _TIMER, _VERBOSE,
 :args
 set _ARCHIVES=
 set _BOOTSTRAP=
@@ -102,12 +102,14 @@ set _CLEAN_ALL=
 set _CLONE=
 set _DOCUMENTATION=
 set _HELP=
+set _TIMER=0
 set _VERBOSE=0
 
 :args_loop
 set __ARG=%~1
 if not defined __ARG goto args_done
 if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
+) else if /i "%__ARG%"=="-timer" ( set _TIMER=1
 ) else if /i "%__ARG%"=="-verbose" ( set _VERBOSE=1
 ) else if /i "%__ARG:~0,4%"=="arch" (
     if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
@@ -117,7 +119,7 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
     set _BOOTSTRAP=1
 ) else if /i "%__ARG%"=="cleanall" ( set _CLEAN_ALL=1
 ) else if /i "%__ARG%"=="clone" ( set _CLONE=1
-) else if /i "%__ARG%"=="compile" (
+) else if /i "%__ARG:~0,7%"=="compile" (
     if not "%__ARG:~-5%"=="-only" set _CLONE=1
     set _COMPILE=1
 ) else if /i "%__ARG:~0,3%"=="doc" (
@@ -136,6 +138,7 @@ goto :eof
 :help
 echo Usage: %_BASENAME% { options ^| subcommands }
 echo   Options:
+echo     -timer                 display total build time
 echo     -verbose               display environment settings
 echo   Subcommands:
 echo     arch[ives]             generate gz/zip archives (after bootstrap)
@@ -177,6 +180,9 @@ if %_VERBOSE%==1 (
     echo JAVA_OPTS=%JAVA_OPTS%
     echo SBT_OPTS=%SBT_OPTS%
     echo.
+)
+if %_TIMER%==1 (
+    for /f "delims=" %%i in ('powershell -c "(Get-Date)"') do set _TIMER_START=%%i
 )
 goto :eof
 
@@ -424,9 +430,27 @@ if %_DEBUG%==1 (
 )
 goto :eof
 
+rem output parameter: _DURATION
+:duration
+set __START=%~1
+set __END=%~2
+
+for /f "delims=" %%i in ('powershell -c "$interval = New-TimeSpan -Start '%__START%' -End '%__END%'; Write-Host $interval"') do set _DURATION=%%i
+goto :eof
+
+rem input parameter: 1=start time
+:total
+set __TIMER_START=%~1
+
+for /f "delims=" %%i in ('powershell -c "(Get-Date)"') do set __TIMER_END=%%i
+call :duration "%_TIMER_START%" "!__TIMER_END!"
+echo Total execution time: %_DURATION%
+goto :eof
+
 rem ##########################################################################
 rem ## Cleanups
 
 :end
+if %_TIMER%==1 call :total "%_TIMER_START%"
 if %_DEBUG%==1 echo [%_BASENAME%] _EXITCODE=%_EXITCODE%
 exit /b %_EXITCODE%
