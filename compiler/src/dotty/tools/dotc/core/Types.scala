@@ -868,7 +868,7 @@ object Types {
         matchLoosely && {
           val this1 = widenNullary(this)
           val that1 = widenNullary(that)
-          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(this1, matchLoosely = false)
+          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, matchLoosely = false)
         }
       )
     }
