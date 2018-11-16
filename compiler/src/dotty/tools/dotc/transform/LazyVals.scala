@@ -86,11 +86,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
            !sym.is(Flags.Synthetic))
             // module class is user-defined.
             // Should be threadsafe, to mimic safety guaranteed by global object
-          transformMemberDefVolatile(tree)
+          transformMemberDefScala2Compat(tree)
         else if (sym.is(Flags.Module)) // synthetic module
           transformSyntheticModule(tree)
         else
-          transformMemberDefNonVolatile(tree)
+          transformMemberDefScala2Compat(tree)
       }
       else transformLocalDef(tree)
     }
