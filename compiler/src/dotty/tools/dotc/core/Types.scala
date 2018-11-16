@@ -925,18 +925,24 @@ object Types {
       ctx.typeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
     }
 
-    /** This is the same as `matches` except that it also matches => T with T and
-     *  vice versa.
-     *  Additionally, if `ignoreNull` is set, nullable unions embedded in the types will be
-     *  removed: e.g. `String|Null` will match `String` and `C[String|Null]|Null` will match `C[String]`.
+    /** This is the same as `matches` except that
+     *    (1) it also matches => T with T and vice versa
+     *    (2) it ignores "| JavaNull" unions embedded in the types
      */
-    def matchesLoosely(that: Type, ignoreNull: Boolean = false)(implicit ctx: Context): Boolean =
+    def matchesLoosely(that: Type)(implicit ctx: Context): Boolean =
       (this matches that) || {
-        val thisResult = if (ignoreNull) this.widenExpr.stripNullStruct else this.widenExpr
-        val thatResult = if(ignoreNull) that.widenExpr.stripNullStruct else that.widenExpr
+        var thisResult = this.widenExpr
+        var thatResult = that.widenExpr
+        // If either of the types contains a `| JavaNull` union, then we want to get right of _all_ nullable
+        // unions that appear in places where Java code could have a `JavaNull`.
+        // e.g. we want `String|Null => String` to `String|JavaNull => String|JavaNull`.
+        if (JavaNull.containsJavaNullableUnions(thisResult) || JavaNull.containsJavaNullableUnions(thatResult)) {
+          thisResult = JavaNull.stripNullableUnions(thisResult)
+          thatResult = JavaNull.stripNullableUnions(thatResult)
+        }
         // TODO(abeln): was the requirement that only of the types changes just an optimization?
-//        (this eq thisResult) != (that eq thatResult) && thisResult.matchesLoosely(thatResult, ignoreNull)
-        ((this ne thisResult) || (that ne thatResult)) && thisResult.matchesLoosely(thatResult, ignoreNull)
+        // (this eq thisResult) != (that eq thatResult) && thisResult.matchesLoosely(thatResult)
+        ((this ne thisResult) || (that ne thatResult)) && thisResult.matchesLoosely(thatResult)
       }
 
     /** The basetype of this type with given class symbol, NoType if `base` is not a class. */
@@ -1006,23 +1012,6 @@ object Types {
     def stripNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
       case OrType(left, right) if right.isRefToNull => left.stripNull
       case _ => this
-    }
-
-    /** Structurally strips the nullability from a type.
-     *  e.g. `T|Null` => `T`
-     *       `Array[T|Null]|Null` => `Array[T]`
-     *       `(x: T|Null): String|Null` => `(x: T): String`
-     */
-    def stripNullStruct(implicit ctx: Context): Type = {
-      object StripNullMap extends TypeMap {
-        override def apply(tp: Type): Type = tp match {
-          case tp: OrType => mapOver(tp).stripNull
-          case _ => mapOver(tp)
-        }
-      }
-      // TODO(abeln): can we make this a no-op if the type isn't modified?
-      // In particular, can we avoid widening the type?
-      StripNullMap(this.widenDealias)
     }
 
     /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */

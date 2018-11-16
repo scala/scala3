@@ -749,7 +749,7 @@ object RefChecks {
     def hasMatchingSym(inclazz: Symbol, member: Symbol): Boolean = {
 
       def isSignatureMatch(sym: Symbol) = !sym.isTerm ||
-        clazz.thisType.memberInfo(sym).matchesLoosely(member.info, inclazz.is(JavaDefined))
+        clazz.thisType.memberInfo(sym).matchesLoosely(member.info)
 
       /* The rules for accessing members which have an access boundary are more
          * restrictive in java than scala.  Since java has no concept of package nesting,

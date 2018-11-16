@@ -1,3 +1,5 @@
+// Check that `|JavaNull` is ignored in override checks
+
 class S extends J {
   override def foo(x: String): Unit = {}
   override def bar(x: C[C[C[String]]]): Unit = {}
@@ -5,7 +7,7 @@ class S extends J {
 
 class S2 extends J {
   override def foo(x: String|Null): Unit = {}
-  override def bar(x: C[C[C[String|Null]|Null]|Null]|Null): Unit = {}
+  override def bar(x: C[C[C[String]]]|Null): Unit = {}
 }
 
 class Base {
