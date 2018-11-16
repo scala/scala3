@@ -16,8 +16,19 @@ The witness proposal consists of two main parts:
 
 New and old syntax would co-exist initially. Rewrite rules could rewrite old syntax to new automatically. This is trivial in the case of implicit parameters and implicit function types. It is a bit more involved in the case of implicit definitions, since more extensive pattern matching is required to recognize a definition that can be rewritten to a witness.
 
-The third part (replacing existing implicits) should be adopted well after the first two parts
-are implemented. Alias and abstract witnesses could be introduced together with the other witness definitions, but could also come later.
+To make gradual change possible, we allow the new `with` application syntax also for
+old style implicit parameters.
+
+One tricky question concerns context bounds. During the migration period, should they map to old style implicit parameters or new style context parameters? Mapping them to context parameters could break things in difficult to diagnose ways since then an explicit argument for a context bound would be treated as a type error, or, in the worst case, would be constructed as an argument for an `apply` of the result of method with the
+context bound. Also, it would remove context bounds from the common subset that is
+treated the same in Scala 2 and 3. We therefore opt to map context bounds to old style implicit parameters for the time being. In the future, migrating context bounds implies a three-step process:
+
+ - Step 1: Deprecate passing arguments to evidence parameters defined by context bounds
+   directly. All such parameters should be passed with `with`.
+ - Step 2: Remove ability to pass context bound arguments directly.
+ - Step 3: Map context bounds to context parameters.
+
+The third part (replacing existing implicits) should be adopted well after the first two parts are implemented. Alias and abstract witnesses could be introduced together with the other witness definitions, but could also come later.
 
 ## Discussion
 
