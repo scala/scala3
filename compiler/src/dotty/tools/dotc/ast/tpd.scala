@@ -1193,6 +1193,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def importSelections(imp: Import)(implicit ctx: Context): List[Select] = {
     def imported(sym: Symbol, id: untpd.Ident, rename: Option[untpd.Ident]): List[Select] = {
+      // Give a zero-extent position to the qualifier to prevent it from being included several
+      // times in results in the language server.
       val noPosExpr = focusPositions(imp.expr)
       val selectTree = Select(noPosExpr, sym.name).withPos(id.pos)
       rename match {

@@ -556,11 +556,11 @@ object Interactive {
   }
 
   /**
-   * Is this tree using a renaming introduced by an import statement?
+   * Is this tree using a renaming introduced by an import statement or an alias for `this`?
    *
    * @param tree The tree to inspect
    * @return True, if this tree's name is different than its symbol's name, indicating that
-   *         it uses a renaming introduced by an import statement.
+   *         it uses a renaming introduced by an import statement or an alias for `this`.
    */
   def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
     val symbol = tree.symbol
@@ -570,39 +570,6 @@ object Interactive {
   /** Are the two names the same? */
   def sameName(n0: Name, n1: Name): Boolean = {
     n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
-  }
-
-  /**
-   * Is this tree immediately enclosing an import that renames a symbol to `toName`?
-   *
-   * @param toName        The target name to check
-   * @param tree          The tree to check
-   * @return True if this tree immediately encloses an import that renames a symbol to `toName`,
-   *         false otherwise.
-   */
-  def immediatelyEnclosesRenaming(toName: Name, inTree: Tree)(implicit ctx: Context): Boolean = {
-    def isImportRenaming(tree: Tree): Boolean = {
-      tree match {
-        case Import(_, selectors) =>
-          selectors.exists {
-            case Thicket(_ :: Ident(rename) :: Nil) => sameName(rename, toName)
-            case _ => false
-          }
-        case _ =>
-          false
-      }
-    }
-
-    inTree match {
-      case PackageDef(_, stats) =>
-        stats.exists(isImportRenaming)
-      case template: Template =>
-        template.body.exists(isImportRenaming)
-      case Block(stats, _) =>
-        stats.exists(isImportRenaming)
-      case _ =>
-        false
-    }
   }
 
 }

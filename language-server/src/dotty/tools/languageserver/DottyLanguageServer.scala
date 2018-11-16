@@ -415,7 +415,7 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
     val path = Interactive.pathTo(uriTrees, pos)
     val syms = Interactive.enclosingSourceSymbols(path, pos)
-    val includes = Include.definitions | Include.references | Include.imports
+    val includes = Include.all.except(Include.linkedClass)
 
     syms.flatMap { sym =>
       val refs = Interactive.findTreesMatching(uriTrees, includes, sym)
