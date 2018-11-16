@@ -187,6 +187,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     protected final val realStdout = System.out
     protected final val realStderr = System.err
 
+    protected final val EOL: String = sys.props("line.separator")
+
     /** A runnable that logs its contents in a buffer */
     trait LoggedRunnable extends Runnable {
       /** Instances of `LoggedRunnable` implement this method instead of the
@@ -535,16 +537,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                     val ignoredFilePathLine = "/** Decompiled from"
                     val stripTrailingWhitespaces = "(.*\\S|)\\s+".r
                     val output = Source.fromFile(outDir.getParent + "_decompiled" + JFile.separator + outDir.getName
-                      + JFile.separator + "decompiled.scala").getLines().map {line =>
+                      + JFile.separator + "decompiled.scala", "UTF-8").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
                     }.toList
 
-                    val check: String = Source.fromFile(checkFile).getLines().filter(!_.startsWith(ignoredFilePathLine))
-                      .mkString("\n")
+                    val check: String = Source.fromFile(checkFile, "UTF-8").getLines().filter(!_.startsWith(ignoredFilePathLine))
+                      .mkString(EOL)
 
-                    if (output.filter(!_.startsWith(ignoredFilePathLine)).mkString("\n") != check) {
+                    if (output.filter(!_.startsWith(ignoredFilePathLine)).mkString(EOL) != check) {
                       val outFile = dotty.tools.io.File(checkFile.toPath).addExtension(".out")
-                      outFile.writeAll(output.mkString("\n"))
+                      outFile.writeAll(output.mkString(EOL))
                       val msg =
                         s"""Output differed for test $name, use the following command to see the diff:
                            |  > diff $checkFile $outFile
@@ -617,7 +619,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
           val outputLines = output.linesIterator.toArray :+ DiffUtil.EOF
-          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray :+ DiffUtil.EOF
+          val checkLines: Array[String] = Source.fromFile(checkFile.get, "UTF-8").getLines().toArray :+ DiffUtil.EOF
           val sourceTitle = testSource.title
 
           def linesMatch =
@@ -726,7 +728,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val errorMap = new HashMap[String, Integer]()
           var expectedErrors = 0
           files.filter(_.getName.endsWith(".scala")).foreach { file =>
-            Source.fromFile(file).getLines().zipWithIndex.foreach { case (line, lineNbr) =>
+            Source.fromFile(file, "UTF-8").getLines().zipWithIndex.foreach { case (line, lineNbr) =>
               val errors = line.sliding("// error".length).count(_.mkString == "// error")
               if (errors > 0)
                 errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)

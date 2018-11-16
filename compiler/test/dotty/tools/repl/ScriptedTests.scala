@@ -14,6 +14,8 @@ import dotc.reporting.MessageRendering
 /** Runs all tests contained in `compiler/test-resources/repl/` */
 class ScriptedTests extends ReplTest with MessageRendering {
 
+  private final val EOL: String = sys.props("line.separator")
+
   private def scripts(path: String): Array[JFile] = {
     val dir = new JFile(getClass.getResource(path).getPath)
     assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
@@ -22,7 +24,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
 
   private def testFile(f: JFile): Unit = {
     val prompt = "scala>"
-    val lines = Source.fromFile(f).getLines().buffered
+    val lines = Source.fromFile(f, "UTF-8").getLines().buffered
 
     assert(lines.head.startsWith(prompt),
       s"""Each file has to start with the prompt: "$prompt"""")
@@ -44,7 +46,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
     def evaluate(state: State, input: String, prompt: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
-        val out = input + "\n" + storedOutput()
+        val out = input + EOL + storedOutput()
         (out, nstate)
       }
       catch {
@@ -60,7 +62,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
       }
 
     val expectedOutput =
-      Source.fromFile(f).getLines().flatMap(filterEmpties).mkString("\n")
+      Source.fromFile(f, "UTF-8").getLines().flatMap(filterEmpties).mkString(EOL)
     val actualOutput = {
       resetToInitial()
       val inputRes = extractInputs(prompt)
@@ -70,7 +72,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
         buf.append(out)
         nstate
       }
-      buf.flatMap(filterEmpties).mkString("\n")
+      buf.flatMap(filterEmpties).mkString(EOL)
     }
 
     if (expectedOutput != actualOutput) {

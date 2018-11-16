@@ -5,6 +5,8 @@ import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
 
+  private final val EOL: String = sys.props("line.separator")
+
   @Test def compileSingle = fromInitialState { implicit state =>
     run("def foo: 1 = 1")
     assertEquals("def foo: Int(1)", storedOutput().trim)
@@ -51,7 +53,7 @@ class ReplCompilerTests extends ReplTest {
       "val res1: Int = 20"
     )
 
-    assertEquals(expected, storedOutput().split("\n").toList)
+    assertEquals(expected, storedOutput().split(EOL).toList)
   }
 
   @Test def testImportMutable =
@@ -122,6 +124,6 @@ class ReplCompilerTests extends ReplTest {
     )
 
     run(source)
-    assertEquals(expected, storedOutput().split("\n").toList)
+    assertEquals(expected, storedOutput().split(EOL).toList)
   }
 }

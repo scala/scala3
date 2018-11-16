@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.PrintStream
+import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -324,9 +324,9 @@ class ReplDriver(settings: Array[String],
       state
 
     case Load(path) =>
-      val file = new java.io.File(path)
+      val file = new JFile(path)
       if (file.exists) {
-        val contents = scala.io.Source.fromFile(file).mkString
+        val contents = scala.io.Source.fromFile(file, "UTF-8").mkString
         run(contents)
       }
       else {
