@@ -8,7 +8,7 @@ import scala.collection._
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
-import util.Positions._, util.SourcePosition
+import util.Positions._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
@@ -21,13 +21,46 @@ import StdNames.nme
 object Interactive {
   import ast.tpd._
 
-  object Include { // should be an enum, really.
-    type Set = Int
-    val overridden: Int = 1 // include trees whose symbol is overridden by `sym`
-    val overriding: Int = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
-    val references: Int = 4 // include references
-    val definitions: Int = 8 // include definitions
-    val linkedClass: Int = 16 // include `symbol.linkedClass`
+  object Include {
+    case class Set private (val bits: Int) extends AnyVal {
+      def | (that: Set): Set = Set(bits | that.bits)
+      def except(that: Set): Set = Set(bits & ~that.bits)
+
+      def isEmpty: Boolean = bits == 0
+      def isOverridden: Boolean = (bits & overridden.bits) != 0
+      def isOverriding: Boolean = (bits & overriding.bits) != 0
+      def isReferences: Boolean = (bits & references.bits) != 0
+      def isDefinitions: Boolean = (bits & definitions.bits) != 0
+      def isLinkedClass: Boolean = (bits & linkedClass.bits) != 0
+      def isImports: Boolean = (bits & imports.bits) != 0
+    }
+
+    /** The empty set */
+    val empty: Set = Set(0)
+
+    /** Include trees whose symbol is overridden by `sym` */
+    val overridden: Set = Set(1 << 0)
+
+    /**
+     * Include trees whose symbol overrides `sym` (but for performance only in same source
+     * file)
+     */
+    val overriding: Set = Set(1 << 1)
+
+    /** Include references */
+    val references: Set = Set(1 << 2)
+
+    /** Include definitions */
+    val definitions: Set = Set(1 << 3)
+
+    /** Include `sym.linkedClass */
+    val linkedClass: Set = Set(1 << 4)
+
+    /** Include imports in the results */
+    val imports: Set = Set(1 << 5)
+
+    /** All the flags */
+    val all: Set = Set(~0)
   }
 
   /** Does this tree define a symbol ? */
@@ -52,75 +85,51 @@ object Interactive {
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /**
-   * The source symbol that is the closest to `path`.
+   * The source symbols that are the closest to `path`.
    *
-   * @param path The path to the tree whose symbol to extract.
-   * @return The source symbol that is the closest to `path`.
+   * If this path ends in an import, then this returns all the symbols that are imported by this
+   * import statement.
+   *
+   * @param path The path to the tree whose symbols to extract.
+   * @return The source symbols that are the closest to `path`.
    *
    * @see sourceSymbol
    */
-  def enclosingSourceSymbol(path: List[Tree])(implicit ctx: Context): Symbol = {
-    val sym = path match {
+  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
+    val syms = path match {
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
         if (funSym.name == StdNames.nme.copy
           && funSym.is(Synthetic)
           && funSym.owner.is(CaseClass)) {
-            funSym.owner.info.member(name).symbol
+            List(funSym.owner.info.member(name).symbol)
         } else {
           val classTree = funSym.topLevelClass.asClass.rootTree
-          tpd.defPath(funSym, classTree).lastOption.flatMap {
-            case DefDef(_, _, paramss, _, _) =>
-              paramss.flatten.find(_.name == name).map(_.symbol)
-          }.getOrElse(fn.symbol)
+          val paramSymbol =
+            for {
+              DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              param <- paramss.flatten.find(_.name == name)
+            } yield param.symbol
+          List(paramSymbol.getOrElse(fn.symbol))
         }
 
       // For constructor calls, return the `<init>` that was selected
       case _ :: (_:  New) :: (select: Select) :: _ =>
-        select.symbol
+        List(select.symbol)
+
+      case (_: Thicket) :: (imp: Import) :: _ =>
+        importedSymbols(imp, _.pos.contains(pos.pos))
+
+      case (imp: Import) :: _ =>
+        importedSymbols(imp, _.pos.contains(pos.pos))
 
       case _ =>
-        enclosingTree(path).symbol
+        List(enclosingTree(path).symbol)
     }
-    Interactive.sourceSymbol(sym)
-  }
 
-  /**
-   * The source symbol that is the closest to the path to `pos` in `trees`.
-   *
-   * Computes the path from the tree with position `pos` in `trees`, and extract it source
-   * symbol.
-   *
-   * @param trees The trees in which to look for a path to `pos`.
-   * @param pos   That target position of the path.
-   * @return The source symbol that is the closest to the computed path.
-   *
-   * @see sourceSymbol
-   */
-  def enclosingSourceSymbol(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Symbol = {
-    enclosingSourceSymbol(pathTo(trees, pos))
+    syms.map(_.sourceSymbol).filter(_.exists)
   }
-
-  /** A symbol related to `sym` that is defined in source code.
-   *
-   *  @see enclosingSourceSymbol
-   */
-  @tailrec def sourceSymbol(sym: Symbol)(implicit ctx: Context): Symbol =
-    if (!sym.exists)
-      sym
-    else if (sym.is(ModuleVal))
-      sourceSymbol(sym.moduleClass) // The module val always has a zero-extent position
-    else if (sym.is(Synthetic)) {
-      val linked = sym.linkedClass
-      if (linked.exists && !linked.is(Synthetic))
-        linked
-      else
-        sourceSymbol(sym.owner)
-    }
-    else if (sym.isPrimaryConstructor)
-      sourceSymbol(sym.owner)
-    else sym
 
   /** Check if `tree` matches `sym`.
    *  This is the case if the symbol defined by `tree` equals `sym`,
@@ -134,10 +143,10 @@ object Interactive {
       sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
 
     (  sym == tree.symbol
-    || sym.exists && sym == sourceSymbol(tree.symbol)
-    || include != 0 && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
-       && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
-          || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
+    || sym.exists && sym == tree.symbol.sourceSymbol
+    || !include.isEmpty && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
+       && (  include.isOverridden && overrides(sym, tree.symbol)
+          || include.isOverriding && overrides(tree.symbol, sym)
           )
     )
   }
@@ -306,35 +315,40 @@ object Interactive {
     if (!sym.exists)
       Nil
     else
-      namedTrees(trees, (include & Include.references) != 0, matchSymbol(_, sym, include))
+      namedTrees(trees, include, matchSymbol(_, sym, include))
 
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
    */
   def namedTrees(trees: List[SourceTree], nameSubstring: String)
    (implicit ctx: Context): List[SourceTree] = {
     val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
-    namedTrees(trees, includeReferences = false, predicate)
+    namedTrees(trees, Include.empty, predicate)
   }
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
    *
    *  @param includeReferences  If true, include references and not just definitions
    */
-  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, treePredicate: NameTree => Boolean)
+  def namedTrees(trees: List[SourceTree], include: Include.Set, treePredicate: NameTree => Boolean)
     (implicit ctx: Context): List[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
-    trees foreach { case SourceTree(topTree, source) =>
+    def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
+            case imp: untpd.Import if include.isImports && tree.hasType =>
+              val tree = imp.asInstanceOf[tpd.Import]
+              val selections = tpd.importSelections(tree)
+              traverse(imp.expr)
+              selections.foreach(traverse)
             case utree: untpd.NameTree if tree.hasType =>
               val tree = utree.asInstanceOf[tpd.NameTree]
               if (tree.symbol.exists
                    && !tree.symbol.is(Synthetic)
                    && tree.pos.exists
                    && !tree.pos.isZeroExtent
-                   && (includeReferences || isDefinition(tree))
+                   && (include.isReferences || isDefinition(tree))
                    && treePredicate(tree))
                 buf += SourceTree(tree, source)
               traverseChildren(tree)
@@ -344,8 +358,10 @@ object Interactive {
               traverseChildren(tree)
           }
         }
-      }.traverse(topTree)
+      }
     }
+
+    trees.foreach(t => traverser(t.source).traverse(t.tree))
 
     buf.toList
   }
@@ -353,29 +369,29 @@ object Interactive {
   /**
    * Find trees that match `symbol` in `trees`.
    *
-   * @param trees    The trees to inspect.
-   * @param includes Whether to include references, definitions, etc.
-   * @param symbol   The symbol for which we want to find references.
+   * @param trees     The trees to inspect.
+   * @param includes  Whether to include references, definitions, etc.
+   * @param symbol    The symbol for which we want to find references.
+   * @param predicate An additional predicate that the trees must match.
    */
   def findTreesMatching(trees: List[SourceTree],
                         includes: Include.Set,
-                        symbol: Symbol)(implicit ctx: Context): List[SourceTree] = {
+                        symbol: Symbol,
+                        predicate: NameTree => Boolean = util.common.alwaysTrue
+                       )(implicit ctx: Context): List[SourceTree] = {
     val linkedSym = symbol.linkedClass
-    val includeReferences  = (includes & Include.references) != 0
-    val includeDeclaration = (includes & Include.definitions) != 0
-    val includeLinkedClass = (includes & Include.linkedClass) != 0
-    val predicate: NameTree => Boolean = tree =>
+    val fullPredicate: NameTree => Boolean = tree =>
       (  !tree.symbol.isPrimaryConstructor
-      && (includeDeclaration || !Interactive.isDefinition(tree))
+      && (includes.isDefinitions || !Interactive.isDefinition(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
-         || (  includeDeclaration
-            && includeLinkedClass
+         || ( includes.isLinkedClass
             && linkedSym.exists
             && Interactive.matchSymbol(tree, linkedSym, includes)
             )
          )
+      && predicate(tree)
       )
-    namedTrees(trees, includeReferences, predicate)
+    namedTrees(trees, includes, fullPredicate)
   }
 
   /** The reverse path to the node that closest encloses position `pos`,
@@ -463,10 +479,8 @@ object Interactive {
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
-    val sym = enclosingSourceSymbol(path)
-    if (sym == NoSymbol) Nil
-    else {
+  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
+    enclosingSourceSymbols(path, pos).flatMap { sym =>
       val enclTree = enclosingTree(path)
 
       val (trees, include) =
@@ -483,7 +497,7 @@ object Interactive {
             }
             (trees, Include.definitions | Include.overriding)
           case _ =>
-            (Nil, 0)
+            (Nil, Include.empty)
         }
 
       findTreesMatching(trees, include, sym)
@@ -539,6 +553,23 @@ object Interactive {
       case _ =>
         false
     }
+  }
+
+  /**
+   * Is this tree using a renaming introduced by an import statement or an alias for `this`?
+   *
+   * @param tree The tree to inspect
+   * @return True, if this tree's name is different than its symbol's name, indicating that
+   *         it uses a renaming introduced by an import statement or an alias for `this`.
+   */
+  def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
+    val symbol = tree.symbol
+    symbol.exists && !sameName(tree.name, symbol.name)
+  }
+
+  /** Are the two names the same? */
+  def sameName(n0: Name, n1: Name): Boolean = {
+    n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
   }
 
 }
