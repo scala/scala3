@@ -40,7 +40,7 @@ Further examples of alias witnesses:
 ```scala
 witness ctx = outer.ctx
 witness ctx: Context = outer.ctx
-witness byNameCtx(): Context = outer.ctx
+witness byNameCtx: => Context = outer.ctx
 witness f[T]: C[T] = new C[T]
 witness g with (ctx: Context): D = new D(ctx)
 ```
@@ -55,14 +55,15 @@ witness listOrd[T: Ord]: Ord[List[T]] = new ListOrd[T]
 The result type of a alias witness is mandatory unless the witness definition
 occurs as a statement in a block and lacks any type or value parameters. This corresponds to the same restriction for implicit vals in Dotty.
 
-Abstract witnesses are equivalent to abstract implicit defs. Alias witnesses are equivalent to implicit defs if they are parameterized or for implicit vals otherwise. For instance, the witnesses defined so far in this section are equivalent to:
+Abstract witnesses are equivalent to abstract implicit defs. Alias witnesses are equivalent to implicit defs if they are parameterized or have a `=> T` result type.
+They translate to implicit vals otherwise. For instance, the witnesses defined so far in this section are equivalent to:
 ```scala
 implicit def symDeco: SymDeco
 implicit val symDeco: SymDeco = compilerSymOps
 
 implicit val ctx = outer.ctx
 implicit val ctx: Context = outer.ctx
-implicit def byNameCtx(): Ctx = outer.ctx
+implicit def byNameCtx: Ctx = outer.ctx
 implicit def f[T]: C[T] = new C[T]
 implicit def g(implicit ctx: Context): D = new D(ctx)
 
@@ -107,6 +108,7 @@ The syntax changes for this page are summarized as follows:
 ```
 WitnessDef      ::=  ...
                   |  id WitnessParams ‘:’ Type ‘=’ Expr
+                  |  id ‘:’ ‘=>’ Type ‘=’ Expr
                   |  id ‘=’ Expr
 ```
 In addition, the `implicit` modifier is removed together with all [productions]((http://dotty.epfl.ch/docs/internals/syntax.html) that reference it.

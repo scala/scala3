@@ -370,8 +370,9 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 WitnessDef        ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
                     |  id WitnessParams ‘:’ Type ‘=’ Expr
+                    |  id ‘:’ ‘=>’ Type ‘=’ Expr
                     |  id ‘=’ Expr
-WitnessParams     ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
+WitnessParams     ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)'}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

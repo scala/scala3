@@ -55,4 +55,6 @@ object DottyPredef {
    * @group utilities
    */
   @forceInline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
+
+  @forceInline def summon[T](implicit x: T) = x
 }

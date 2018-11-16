@@ -2542,6 +2542,7 @@ object Parsers {
 
     /** WitnessDef    ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
      *                  |  id WitnessParams ‘:’ Type ‘=’ Expr
+     *                  |  id ‘:’ ‘=>’ Type ‘=’ Expr
      *                  |  id ‘=’ Expr
      *  WitnessParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
      */
@@ -2556,7 +2557,7 @@ object Parsers {
         }
         else Nil
       newLineOptWhenFollowedBy(LBRACE)
-      if ((name.isEmpty || parents.isEmpty) && in.token != LBRACE)
+      if (name.isEmpty && in.token != LBRACE)
         syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
       var mods1 = addMod(mods, witnessMod)
       val wdef =
@@ -2566,17 +2567,26 @@ object Parsers {
           else TypeDef(name.toTypeName, templ)
         }
         else {
+          var byName = false
+          val tpt =
+            if (in.token == COLON) {
+              in.nextToken()
+              if (in.token == ARROW && tparams.isEmpty && vparamss.isEmpty) {
+                in.nextToken()
+                byName = true
+              }
+              toplevelTyp()
+            }
+            else TypeTree()
+          if (tpt.isEmpty && in.token != EQUALS)
+            syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
           val rhs =
             if (in.token == EQUALS) {
               in.nextToken()
               expr()
             }
             else EmptyTree
-          val tpt = constrAppsToType(parents)
-          if (tparams.isEmpty && vparamss.isEmpty) {
-            mods1 |= Lazy
-            ValDef(name, tpt, rhs)
-          }
+          if (tparams.isEmpty && vparamss.isEmpty && !byName) ValDef(name, tpt, rhs)
           else DefDef(name, tparams, vparamss, tpt, rhs)
         }
       finalizeDef(wdef, mods1, start)

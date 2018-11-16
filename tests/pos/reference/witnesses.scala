@@ -28,8 +28,6 @@ class Common {
 
     def pure[A](x: A): F[A]
   }
-
-  inline def summon[T] with (x: T) = x
 }
 
 object Witnesses extends Common {
@@ -100,6 +98,59 @@ object Witnesses extends Common {
   class A
   class B
   val ab: (x: A, y: B) |=> Int = (a: A, b: B) |=> 22
+
+  trait TastyAPI {
+    type Symbol
+    trait SymDeco {
+      def name(this sym: Symbol): String
+    }
+    witness symDeco: SymDeco
+  }
+  object TastyImpl extends TastyAPI {
+    type Symbol = String
+    witness symDeco: SymDeco = new SymDeco {
+      def name(this sym: Symbol) = sym
+    }
+  }
+
+  class D[T]
+
+  class C with (ctx: Context) {
+    def f() = {
+      locally {
+        witness ctx = this.ctx
+        println(summon[Context].value)
+      }
+      locally {
+        lazy witness ctx = this.ctx
+        println(summon[Context].value)
+      }
+      locally {
+        witness ctx: Context = this.ctx
+        println(summon[Context].value)
+      }
+      locally {
+        witness ctx: => Context = this.ctx
+        println(summon[Context].value)
+      }
+      locally {
+        witness f[T]: D[T] = new D[T]
+        println(summon[D[Int]])
+      }
+      locally {
+        witness g with (ctx: Context): D[Int] = new D[Int]
+        println(summon[D[Int]])
+      }
+    }
+  }
+
+  class Token(str: String)
+
+  witness StringToToken for ImplicitConverter[String, Token] {
+    def apply(str: String): Token = new Token(str)
+  }
+
+  val x: Token = "if"
 }
 
 object PostConditions {
