@@ -717,12 +717,22 @@ object Contexts {
     def derived: GADTMap
   }
 
-  final class SmartGADTMap(
-    private[this] var myConstraint: Constraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
-    private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar] = SimpleIdentityMap.Empty,
-    private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol] = SimpleIdentityMap.Empty
+  final class SmartGADTMap private (
+    private[this] var myConstraint: Constraint,
+    private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar],
+    private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+    private[this] var boundCache: SimpleIdentityMap[Symbol, TypeBounds],
+    private[this] var dirtyFlag: Boolean
   ) extends GADTMap with ConstraintHandling {
     import dotty.tools.dotc.config.Printers.gadts
+
+    def this() = this(
+      myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
+      mapping = SimpleIdentityMap.Empty,
+      reverseMapping = SimpleIdentityMap.Empty,
+      boundCache = SimpleIdentityMap.Empty,
+      dirtyFlag = false
+    )
 
     override def debugBoundsDescription(implicit ctx: Context): String = {
       val sb = new mutable.StringBuilder
@@ -733,6 +743,8 @@ object Contexts {
       }
       sb.result
     }
+
+    private[this] var checkInProgress = false
 
     // TODO: dirty kludge - should this class be an inner class of TyperState instead?
     private[this] var myCtx: Context = null
@@ -749,9 +761,10 @@ object Contexts {
     override def isSubType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
     override def isSameType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
 
-    private[this] def tvar(sym: Symbol)(implicit ctx: Context): TypeVar = inCtx(ctx) {
-      val res = mapping(sym) match {
-        case tv: TypeVar => tv
+    private[this] def tvar(sym: Symbol)(implicit ctx: Context): TypeVar = {
+      mapping(sym) match {
+        case tv: TypeVar =>
+          tv
         case null =>
           val res = {
             import NameKinds.DepParamName
@@ -769,12 +782,13 @@ object Contexts {
           reverseMapping = reverseMapping.updated(res.origin, sym)
           res
       }
-      res
     }
 
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
-    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = inCtx(ctx) {
+    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try inCtx(ctx) {
+      dirtyFlag = true
+      checkInProgress = true
       @annotation.tailrec def stripInst(tp: Type): Type = tp match {
         case tv: TypeVar =>
           val inst = instType(tv)
@@ -795,8 +809,8 @@ object Contexts {
 
         val outerCtx = ctx
         val res =  {
-          implicit val ctx : Context =
-            if (allowNarrowing) outerCtx else outerCtx.fresh.retractMode(Mode.GADTflexible)
+//          implicit val ctx : Context =
+//            if (allowNarrowing) outerCtx else outerCtx.fresh.retractMode(Mode.GADTflexible)
 
           // TypeComparer.explain[Boolean](gadts.println) { implicit ctx =>
           if (isSubtype) externalizedTp1 frozen_<:< externalizedTp2
@@ -811,6 +825,7 @@ object Contexts {
         case tv: TypeVar => tv
         case inst =>
           gadts.println(i"instantiated: $sym -> $inst")
+//          return true
           return cautiousSubtype(inst, bound, isSubtype = isUpper, allowNarrowing = true)
       }
 
@@ -847,15 +862,35 @@ object Contexts {
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $tvarBound )"
       }
       res
-    }
+    } finally checkInProgress = false
 
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = inCtx(ctx) {
       mapping(sym) match {
         case null => null
         case tv =>
-          val tb = constraint.fullBounds(tv.origin)
-          val res = (new TypeVarRemovingMap)(tb).asInstanceOf[TypeBounds]
-          // gadts.println(i"gadt bounds $sym: $res\t( $tv: $tb )")
+          def retrieveBounds: TypeBounds = {
+            val tb = constraint.fullBounds(tv.origin)
+            (new TypeVarRemovingMap)(tb).asInstanceOf[TypeBounds]
+          }
+          val res =
+//            retrieveBounds
+            if (checkInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
+            else {
+              if (dirtyFlag) {
+                dirtyFlag = false
+                val bounds = retrieveBounds
+                boundCache = SimpleIdentityMap.Empty.updated(sym, bounds)
+                bounds
+              } else boundCache(sym) match {
+                case tb: TypeBounds =>
+                  tb
+                case null =>
+                  val bounds = retrieveBounds
+                  boundCache = boundCache.updated(sym, bounds)
+                  bounds
+              }
+            }
+          // gadts.println(i"gadt bounds $sym: $res")
           res
       }
     }
@@ -863,9 +898,11 @@ object Contexts {
     override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 
     override def derived: GADTMap = new SmartGADTMap(
-      this.myConstraint,
-      this.mapping,
-      this.reverseMapping
+      myConstraint,
+      mapping,
+      reverseMapping,
+      boundCache,
+      dirtyFlag
     )
 
     private final class TypeVarInsertingMap extends TypeMap {
