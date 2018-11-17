@@ -46,31 +46,6 @@ def g with (xy: (A, B))
 g with ((a, b))
 ```
 
-## Application: Dependency Injection
-
-Witnesses can be used for dependency injection with constructor parameters. As an example, say we have four components `C1,...,C4` each of which depend on some subset of the other components. Constructor-based dependency injection defines these components as classes with explicitly passed parameters. E.g.,
-```scala
-class C1(c2: C2, c3: C3) { ... }
-class C2(c1: C1, c4: C4) { ... }
-class C3(c2: C3, c4: C4) { ... }
-class C4(c1: C1, c3: C3, c3: C3) { ... }
-```
-The components can then be "wired together" by defining a set of local witnesses:
-```scala
-{ witness c1 with (c1: C1, c2: C2, c3: C3) for C1(c1, c2, c3)
-  witness c2 with (c1: C1, c4: C4)         for C2 (c1, c4)
-  witness c3 with (c2: C3, c4: C4)         for C3(c2, c4)
-  witness c4 with (c1: C1, c3: C3, c4: C4) for C4(c1, c3, c4)
-  (c1, c2, c3, c4)
-}
-```
-Note that component dependencies in `C1, ..., C4` are _not_ defined themselves as implicit parameters. This prevents components from spreading into the implicit namespace of other components and keeps the wiring strictly to the interface of these modules.
-
-This scheme is essentially what MacWire does. MacWire was implemented as a macro library. It requires whitebox macros which will no longer be supported in Scala 3.
-
-I considered for a while an alternative design where the two notions of an implicit parameter (argument gets synthesized vs. parameter is itself available as an implicit value) are separated. This would allow a nicer expression of component assembly which would not require that dependencies are repeated in the witnesses. The most significant downside of the alternative design is that it's likely to induce choice fatigue. In most cases, implicit parameters should be available itself as a witness, so asking for an opt-in each time a parameter is defined
-became quickly tiresome.
-
 ## Implicit Function Types and Closures
 
 Implicit function types are expressed using the new reserved operator `|=>`. Examples:
