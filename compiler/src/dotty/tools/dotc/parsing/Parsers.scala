@@ -1968,15 +1968,21 @@ object Parsers {
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
+     *
+     *  @return   the list of parameter definitions
      */
-    def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
-      var imods: Modifiers = EmptyModifiers
+    def paramClause(ofClass: Boolean = false,                // owner is a class
+                    ofCaseClass: Boolean = false,            // owner is a case class
+                    ofMethod: Boolean = false,               // owner is a method or constructor
+                    prefix: Boolean = false,                 // clause precedes name of an extension method
+                    firstClause: Boolean = false)            // clause is the first in regular list of clauses
+                    : List[ValDef] = {
       var implicitOffset = -1 // use once
-      var firstClauseOfCaseClass = ofCaseClass
-      def param(): ValDef = {
+
+      def param(impliedMods: Modifiers): ValDef = {
         val start = in.offset
-        var mods = annotsAsMods()
-        if (owner.isTypeName) {
+        var mods = impliedMods.withAnnotations(annotations())
+        if (ofClass) {
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             atPos(start, in.offset) {
@@ -1989,9 +1995,9 @@ object Parsers {
                 addMod(mods, mod)
               }
               else {
-                if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
+                if (!(mods.flags &~ (ParamAccessor | Inline | impliedMods.flags)).isEmpty)
                   syntaxError("`val' or `var' expected")
-                if (firstClauseOfCaseClass) mods
+                if (firstClause && ofCaseClass) mods
                 else mods | PrivateLocal
               }
             }
@@ -2004,7 +2010,7 @@ object Parsers {
         atPos(start, nameStart) {
           val name = ident()
           accept(COLON)
-          if (in.token == ARROW && owner.isTypeName && !(mods is Local))
+          if (in.token == ARROW && ofClass && !(mods is Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods is Mutable))
           val tpt = paramType()
           val default =
@@ -2014,55 +2020,74 @@ object Parsers {
             mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
             implicitOffset = -1
           }
-          for (imod <- imods.mods) mods = addMod(mods, imod)
           ValDef(name, tpt, default).withMods(mods)
         }
       }
-      def paramClause(): List[ValDef] = inParens {
-        if (in.token == RPAREN) Nil
+
+      def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
+        case Nil =>
+        case _ :: Nil if !prefix =>
+        case vparam :: rest =>
+          vparam.tpt match {
+            case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
+              syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
+            case _ =>
+          }
+          checkVarArgsRules(rest)
+      }
+
+      // begin paramClause
+      inParens {
+        if (in.token == RPAREN && !prefix) Nil
         else {
-          def funArgMods(): Unit = {
+          def funArgMods(mods: Modifiers): Modifiers =
             if (in.token == IMPLICIT) {
               implicitOffset = in.offset
-              imods = addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() })
-              funArgMods()
-            } else if (in.token == ERASED) {
-              imods = addMod(imods, atPos(accept(ERASED)) { Mod.Erased() })
-              funArgMods()
+              funArgMods(addMod(mods, atPos(accept(IMPLICIT)) { Mod.Implicit() }))
             }
-          }
-          funArgMods()
+            else if (in.token == ERASED)
+              funArgMods(addMod(mods, atPos(accept(ERASED)) { Mod.Erased() }))
+            else mods
 
-          commaSeparated(() => param())
+          val paramMods = funArgMods(EmptyModifiers)
+          val clause =
+            if (prefix) param(paramMods) :: Nil
+            else commaSeparated(() => param(paramMods))
+          checkVarArgsRules(clause)
+          clause
         }
       }
-      def clauses(): List[List[ValDef]] = {
+    }
+
+    /** ClsParamClauses   ::=  {ClsParamClause}
+     *  DefParamClauses   ::=  {DefParamClause}
+     *
+     *  @return  The parameter definitions
+     */
+    def paramClauses(ofClass: Boolean = false,
+                     ofCaseClass: Boolean = false,
+                     ofMethod: Boolean = false): (List[List[ValDef]]) = {
+      def recur(firstClause: Boolean): List[List[ValDef]] = {
         newLineOptWhenFollowedBy(LPAREN)
         if (in.token == LPAREN) {
-          imods = EmptyModifiers
-          paramClause() :: {
-            firstClauseOfCaseClass = false
-            if (imods is Implicit) Nil else clauses()
-          }
-        } else Nil
-      }
-      val start = in.offset
-      val result = clauses()
-      if (owner == nme.CONSTRUCTOR && (result.isEmpty || (result.head take 1 exists (_.mods is Implicit)))) {
-        in.token match {
-          case LBRACKET   => syntaxError("no type parameters allowed here")
-          case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
-          case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), start)
+          val params = paramClause(
+              ofClass = ofClass,
+              ofCaseClass = ofCaseClass,
+              ofMethod = ofMethod,
+              firstClause = firstClause)
+          val lastClause =
+            params.nonEmpty && params.head.mods.flags.is(Implicit)
+          params :: (if (lastClause) Nil else recur(firstClause = false))
         }
+        else Nil
       }
-      val listOfErrors = checkVarArgsRules(result)
-      listOfErrors.foreach { vparam =>
-        syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
-      }
-      result
+      recur(firstClause = true)
     }
 
 /* -------- DEFS ------------------------------------------- */
+
+    def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
+      md.withMods(mods).setComment(in.getDocComment(start))
 
     /** Import  ::= import ImportExpr {`,' ImportExpr}
      */
@@ -2189,29 +2214,16 @@ object Parsers {
         } else EmptyTree
       lhs match {
         case (id @ Ident(name: TermName)) :: Nil => {
-          ValDef(name, tpt, rhs).withMods(mods).setComment(in.getDocComment(start))
+          finalizeDef(ValDef(name, tpt, rhs), mods, start)
         } case _ =>
           PatDef(mods, lhs, tpt, rhs)
-      }
-    }
-
-    private def checkVarArgsRules(vparamss: List[List[ValDef]]): List[ValDef] = {
-      def isVarArgs(tpt: Trees.Tree[Untyped]): Boolean = tpt match {
-        case PostfixOp(_, op) if op.name == tpnme.raw.STAR => true
-        case _ => false
-      }
-
-      vparamss.flatMap { params =>
-        if (params.nonEmpty) {
-          params.init.filter(valDef => isVarArgs(valDef.tpt))
-        } else List()
       }
     }
 
     /** DefDef ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
      *           | this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
-     *  DefSig ::= id [DefTypeParamClause] ParamClauses
+     *  DefSig ::= ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] ParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atPos(start, nameStart) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
@@ -2225,7 +2237,13 @@ object Parsers {
       }
       if (in.token == THIS) {
         in.nextToken()
-        val vparamss = paramClauses(nme.CONSTRUCTOR)
+        val vparamss = paramClauses()
+        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.is(Implicit)))
+          in.token match {
+            case LBRACKET   => syntaxError("no type parameters allowed here")
+            case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
+            case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), nameStart)
+          }
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
         val rhs = {
           if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
@@ -2233,10 +2251,15 @@ object Parsers {
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       } else {
-        val mods1 = addFlag(mods, Method)
+        val (leadingParamss: List[List[ValDef]], flags: FlagSet) =
+          if (in.token == LPAREN)
+            (paramClause(ofMethod = true, prefix = true) :: Nil, Method | Extension)
+          else
+            (Nil, Method)
+        val mods1 = addFlag(mods, flags)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(name)
+        val vparamss = leadingParamss ::: paramClauses(ofMethod = true)
         var tpt = fromWithinReturnType {
           if (in.token == SUBTYPE && mods.is(Inline)) {
             in.nextToken()
@@ -2262,7 +2285,7 @@ object Parsers {
             accept(EQUALS)
             expr()
           }
-        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1).setComment(in.getDocComment(start))
+        finalizeDef(DefDef(name, tparams, vparamss, tpt, rhs), mods1, start)
       }
     }
 
@@ -2302,7 +2325,7 @@ object Parsers {
         val name = ident().toTypeName
         val tparams = typeParamClauseOpt(ParamOwner.Type)
         def makeTypeDef(rhs: Tree): Tree =
-          TypeDef(name, lambdaAbstract(tparams, rhs)).withMods(mods).setComment(in.getDocComment(start))
+          finalizeDef(TypeDef(name, lambdaAbstract(tparams, rhs)), mods, start)
         in.token match {
           case EQUALS =>
             in.nextToken()
@@ -2355,23 +2378,23 @@ object Parsers {
     }
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef = {
-      val constr = classConstr(name, isCaseClass = mods is Case)
+      val constr = classConstr(isCaseClass = mods.is(Case))
       val templ = templateOpt(constr)
-      TypeDef(name, templ).withMods(mods).setComment(in.getDocComment(start))
+      finalizeDef(TypeDef(name, templ), mods, start)
     }
 
     /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsParamClauses
      */
-    def classConstr(owner: TypeName, isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
+    def classConstr(isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
       val tparams = typeParamClauseOpt(ParamOwner.Class)
-      val cmods = fromWithinClassConstr(constrModsOpt(owner))
-      val vparamss = paramClauses(owner, isCaseClass)
+      val cmods = fromWithinClassConstr(constrModsOpt())
+      val vparamss = paramClauses(ofClass = true, ofCaseClass = isCaseClass)
       makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
     /** ConstrMods        ::=  {Annotation} [AccessModifier]
      */
-    def constrModsOpt(owner: Name): Modifiers =
+    def constrModsOpt(): Modifiers =
       modifiers(accessModifierTokens, annotsAsMods())
 
     /** ObjectDef       ::= id TemplateOpt
@@ -2382,7 +2405,7 @@ object Parsers {
 
     def objectDefRest(start: Offset, mods: Modifiers, name: TermName): ModuleDef = {
       val template = templateOpt(emptyConstructor)
-      ModuleDef(name, template).withMods(mods).setComment(in.getDocComment(start))
+      finalizeDef(ModuleDef(name, template), mods, start)
     }
 
     /**  EnumDef ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
@@ -2390,9 +2413,9 @@ object Parsers {
     def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): TypeDef = atPos(start, nameStart) {
       val modName = ident()
       val clsName = modName.toTypeName
-      val constr = classConstr(clsName)
+      val constr = classConstr()
       val impl = templateOpt(constr, isEnum = true)
-      TypeDef(clsName, impl).withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
+      finalizeDef(TypeDef(clsName, impl), addMod(mods, enumMod), start)
     }
 
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
@@ -2416,12 +2439,12 @@ object Parsers {
           val caseDef =
             if (in.token == LBRACKET || in.token == LPAREN || in.token == AT || isModifier) {
               val clsName = id.name.toTypeName
-              val constr = classConstr(clsName, isCaseClass = true)
+              val constr = classConstr(isCaseClass = true)
               TypeDef(clsName, caseTemplate(constr))
             }
             else
               ModuleDef(id.name.toTermName, caseTemplate(emptyConstructor))
-          caseDef.withMods(mods1).setComment(in.getDocComment(start))
+          finalizeDef(caseDef, mods1, start)
         }
       }
     }
@@ -2564,7 +2587,7 @@ object Parsers {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withPos(first.pos)
             case _ =>
-              val ValDef(name, tpt, _) = convertToParam(first, expected = "self type clause")
+              val ValDef(name, tpt, _) = convertToParam(first, EmptyModifiers, "self type clause")
               if (name != nme.ERROR)
                 self = makeSelfDef(name, tpt).withPos(first.pos)
           }

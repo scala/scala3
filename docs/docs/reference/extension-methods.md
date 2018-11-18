@@ -272,7 +272,7 @@ The required syntax extension just adds one clause for extension methods relativ
 to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md).
 ```
 DefSig            ::=  ...
-                    |  ‘(’ DefParam ‘)’ id [DefTypeParamClause] DefParamClauses
+                    |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 ```
 
 
