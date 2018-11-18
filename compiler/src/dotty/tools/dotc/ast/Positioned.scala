@@ -208,10 +208,20 @@ abstract class Positioned extends Product {
         // Leave out tparams, they are copied with wrong positions from parent class
         check(tree.mods)
         check(tree.vparamss)
-      case tree: DefDef if tree.mods.is(Extension) && tree.vparamss.nonEmpty =>
-        check(tree.vparamss.head)
-        check(tree.tparams)
-        check(tree.vparamss.tail)
+      case tree: DefDef if tree.mods.is(Extension) =>
+        tree.vparamss match {
+          case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+            check(vparams2)
+            check(tree.tparams)
+            check(vparams1)
+            check(rest)
+          case vparams1 :: rest =>
+            check(vparams1)
+            check(tree.tparams)
+            check(rest)
+          case _ =>
+            check(tree.tparams)
+        }
         check(tree.tpt)
         check(tree.rhs)
       case _ =>

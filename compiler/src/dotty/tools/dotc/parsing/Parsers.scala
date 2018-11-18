@@ -2259,7 +2259,12 @@ object Parsers {
         val mods1 = addFlag(mods, flags)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = leadingParamss ::: paramClauses(ofMethod = true)
+        val vparamss = paramClauses(ofMethod = true) match {
+          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(name) =>
+            rparams :: leadingParamss ::: rparamss
+          case rparamss =>
+            leadingParamss ::: rparamss
+        }
         var tpt = fromWithinReturnType {
           if (in.token == SUBTYPE && mods.is(Inline)) {
             in.nextToken()
