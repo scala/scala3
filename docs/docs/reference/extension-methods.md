@@ -32,8 +32,6 @@ def circumference(c: Circle): Double = c.radius * math.Pi * 2
 assert(circle.circumference == CircleOps.circumference(circle))
 ```
 
-
-
 ### Translation of Calls to Extension Methods
 
 When is an extension method considered? There are two possibilities. The first (and recommended one) is by defining the extension method as a member of an implicit value. The method can then be used as an extension method wherever the implicit value is applicable. The second possibility is by making the extension method itself visible under a simple name, typically by importing it. As an example, consider an extension method `longestStrings` on `String`. We can either define it like this:
@@ -175,7 +173,7 @@ that problem, it is recommended that the name of an extension method is
 preceded by a space and is also followed by a space if there are more parameters
 to come.
 
-`### Extension Methods and TypeClasses
+### Extension Methods and TypeClasses
 
 The rules for expanding extension methods make sure that they work seamlessly with typeclasses. For instance, consider `SemiGroup` and `Monoid`.
 ```scala
