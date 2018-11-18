@@ -35,6 +35,14 @@ object Test extends App {
     def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
+  // A right associative op
+  witness Prepend {
+    def (x: T) ::[T] (xs: Seq[T]) = x +: xs
+  }
+  val ss: Seq[Int] = List(1, 2, 3)
+  val ss1 = 0 :: ss
+  assert(ss1 == List(0, 1, 2, 3))
+
   assert(List(names, List("!")).flattened == names :+ "!")
   assert(Nil.flattened == Nil)
 
