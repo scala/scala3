@@ -14,7 +14,7 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
-import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
+import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -555,7 +555,7 @@ object Contexts {
     moreProperties = Map.empty
     store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
     typeComparer = new TypeComparer(this)
-    searchHistory = new SearchHistory(0, Map())
+    searchHistory = new SearchRoot
     gadt = EmptyGADTMap
   }
 

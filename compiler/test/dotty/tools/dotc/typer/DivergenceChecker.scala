@@ -1,0 +1,73 @@
+package dotty.tools.dotc.typer
+
+import dotty.tools.DottyTest
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+
+import org.junit.Test
+import org.junit.Assert.{ assertFalse, assertTrue, fail }
+
+class DivergenceCheckerTests extends DottyTest {
+  @Test
+  def testCoveringSet: Unit = {
+    val source = """
+      |class A
+      |class B extends A
+    """.stripMargin
+
+    val types = List(
+      "A",
+      "B",
+      "List[_]",
+      "List[Int]",
+      "List[AnyRef]",
+      "List[String]",
+      "List[List[(A, B)]]",
+      "List[List[(A, B) { type Baz = Int }]] { type Foo = A }"
+    )
+
+    val elements = List("A", "B", "Nothing", "Object", "String", "Tuple2[_, _]", "Int", "List[_]")
+
+    checkTypes(source, List(types, elements)) {
+      case (List(tpes, elements0), context) =>
+        implicit val ctx = context
+
+        val List(a, b, n, o, s, t2, i, l) = elements0.map(_.typeConstructor)
+        val expectedCoveringSets = List(
+          Set(a),
+          Set(b),
+          Set(l),
+          Set(l, i),
+          Set(l, o),
+          Set(l, s),
+          Set(l, t2, a, b),
+          Set(l, t2, a, b, i)
+        ).map(_.map(_.dealias.typeSymbol))
+
+        val expectedSizes = List(
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          3,
+          5
+        )
+
+        (tpes, expectedSizes, expectedCoveringSets).zipped.foreach {
+          case (tpe, expectedSize, expectedCoveringSet) =>
+            val size = tpe.typeSize
+            val cs = tpe.coveringSet
+
+            assertTrue(size == expectedSize)
+            assertTrue(cs == expectedCoveringSet)
+        }
+
+      case _ => fail
+    }
+  }
+}

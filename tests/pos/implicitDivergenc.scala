@@ -9,5 +9,5 @@ object Test {
   implicitly[C[C[C[String]]]]
   implicitly[C[C[C[C[String]]]]]
   implicitly[C[C[C[C[C[String]]]]]]
-  implicitly[C[C[C[C[C[C[String]]]]]]] // error: no implicit argument found (because of divergence)
+  implicitly[C[C[C[C[C[C[String]]]]]]]
 }
