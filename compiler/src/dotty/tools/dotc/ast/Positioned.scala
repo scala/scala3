@@ -4,7 +4,7 @@ package ast
 import util.Positions._
 import core.Contexts.Context
 import core.Decorators._
-import core.Flags.JavaDefined
+import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
 
 /** A base class for things that have positions (currently: modifiers and trees)
@@ -208,6 +208,12 @@ abstract class Positioned extends Product {
         // Leave out tparams, they are copied with wrong positions from parent class
         check(tree.mods)
         check(tree.vparamss)
+      case tree: DefDef if tree.mods.is(Extension) && tree.vparamss.nonEmpty =>
+        check(tree.vparamss.head)
+        check(tree.tparams)
+        check(tree.vparamss.tail)
+        check(tree.tpt)
+        check(tree.rhs)
       case _ =>
         val end = productArity
         var n = 0

@@ -1022,7 +1022,7 @@ object Parsers {
 
     def typedOpt(): Tree =
       if (in.token == COLON) { in.nextToken(); toplevelTyp() }
-      else TypeTree()
+      else TypeTree().withPos(Position(in.lastOffset))
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
