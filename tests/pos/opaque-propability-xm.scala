@@ -19,17 +19,17 @@ object prob {
     implicit val ordering: Ordering[Probability] =
       implicitly[Ordering[Double]]
 
-    def unary_~(this p1: Probability): Probability = Certain - p1
-    def &(this p1: Probability)(p2: Probability): Probability = p1 * p2
-    def |(this p1: Probability)(p2: Probability): Probability = p1 + p2 - (p1 * p2)
+    def (p1: Probability) unary_~ : Probability = Certain - p1
+    def (p1: Probability) & (p2: Probability): Probability = p1 * p2
+    def (p1: Probability) | (p2: Probability): Probability = p1 + p2 - (p1 * p2)
 
-    def isImpossible(this p1: Probability): Boolean = p1 == Never
-    def isCertain(this p1: Probability): Boolean = p1 == Certain
+    def (p1: Probability) isImpossible: Boolean = p1 == Never
+    def (p1: Probability) isCertain: Boolean = p1 == Certain
 
     import scala.util.Random
 
-    def sample(this p1: Probability)(r: Random = Random): Boolean = r.nextDouble <= p1
-    def toDouble(this p1: Probability): Double = p1
+    def (p1: Probability) sample (r: Random = Random): Boolean = r.nextDouble <= p1
+    def (p1: Probability) toDouble: Double = p1
   }
 
   val caughtTrain = Probability.unsafe(0.3)

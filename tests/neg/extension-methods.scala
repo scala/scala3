@@ -1,7 +1,7 @@
 object Test {
 
   implicit object O {
-    def l1(this x: String) = x.length
+    def (x: String) l1 = x.length
     def l1(x: Int) = x * x
     def l2(x: String) = x.length
   }

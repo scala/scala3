@@ -1,7 +1,7 @@
 object Test extends App {
 
   implicit object O {
-    def em(this x: Int): Boolean = x > 0
+    def (x: Int) em: Boolean = x > 0
   }
 
   assert(1.em == O.em(1))
@@ -9,7 +9,7 @@ object Test extends App {
   case class Circle(x: Double, y: Double, radius: Double)
 
   implicit object CircleOps {
-    def circumference(this c: Circle): Double = c.radius * math.Pi * 2
+    def (c: Circle) circumference: Double = c.radius * math.Pi * 2
   }
 
   val circle = new Circle(1, 1, 2.0)
@@ -17,7 +17,7 @@ object Test extends App {
   assert(circle.circumference == CircleOps.circumference(circle))
 
   implicit object StringOps {
-    def longestStrings(this xs: Seq[String]): Seq[String] = {
+    def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
@@ -26,20 +26,20 @@ object Test extends App {
   assert(names.longestStrings == List("hello", "world"))
 
   implicit object SeqOps {
-    def second[T](this xs: Seq[T]) = xs.tail.head
+    def (xs: Seq[T]) second[T] = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
   implicit object ListListOps {
-    def flattened[T](this xs: List[List[T]]) = xs.foldLeft[List[T]](Nil)(_ ++ _)
+    def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
   assert(List(names, List("!")).flattened == names :+ "!")
   assert(Nil.flattened == Nil)
 
   trait SemiGroup[T] {
-    def combine(this x: T)(y: T): T
+    def (x: T) combine (y: T): T
   }
   trait Monoid[T] extends SemiGroup[T] {
     def unit: T
@@ -47,7 +47,7 @@ object Test extends App {
 
   // An instance declaration:
   implicit object StringMonoid extends Monoid[String] {
-    def combine(this x: String)(y: String): String = x.concat(y)
+    def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
 
@@ -58,20 +58,20 @@ object Test extends App {
   println(sum(names))
 
   trait Ord[T] {
-    def compareTo(this x: T)(y: T): Int
-    def < (this x: T)(y: T) = x.compareTo(y) < 0
-    def > (this x: T)(y: T) = x.compareTo(y) > 0
+    def (x: T) compareTo (y: T): Int
+    def (x: T) < (y: T) = x.compareTo(y) < 0
+    def (x: T) > (y: T) = x.compareTo(y) > 0
     val minimum: T
   }
 
   implicit object IntOrd extends Ord[Int] {
-    def compareTo(this x: Int)(y: Int) =
+    def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
   class ListOrd[T: Ord] extends Ord[List[T]] {
-    def compareTo(this xs: List[T])(ys: List[T]): Int = (xs, ys) match {
+    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -93,25 +93,25 @@ object Test extends App {
   println(max(List(1, 2, 3), List(2)))
 
   trait Functor[F[_]] {
-    def map[A, B](this x: F[A])(f: A => B): F[B]
+    def (x: F[A]) map [A, B](f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    def flatMap[A, B](this x: F[A])(f: A => F[B]): F[B]
-    def map[A, B](this x: F[A])(f: A => B) = x.flatMap(f `andThen` pure)
+    def (x: F[A]) flatMap [A, B](f: A => F[B]): F[B]
+    def (x: F[A]) map [A, B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
   implicit object ListMonad extends Monad[List] {
-    def flatMap[A, B](this xs: List[A])(f: A => List[B]): List[B] =
+    def (xs: List[A]) flatMap [A, B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
   class ReaderMonad[Ctx] extends Monad[[X] => Ctx => X] {
-    def flatMap[A, B](this r: Ctx => A)(f: A => Ctx => B): Ctx => B =
+    def (r: Ctx => A) flatMap [A, B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
