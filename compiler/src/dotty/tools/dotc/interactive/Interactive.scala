@@ -22,7 +22,7 @@ object Interactive {
   import ast.tpd._
 
   object Include {
-    case class Set private (val bits: Int) extends AnyVal {
+    case class Set private[Include] (val bits: Int) extends AnyVal {
       def | (that: Set): Set = Set(bits | that.bits)
       def except(that: Set): Set = Set(bits & ~that.bits)
 
