@@ -148,7 +148,7 @@ object ParsedComment {
    * @return The list of items, in markdown.
    */
   private def toMarkdownList(ctx: Context, items: List[String]): String = {
-    val formattedItems = items.map(_.lines.mkString(System.lineSeparator + "   "))
+    val formattedItems = items.map(_.linesIterator.mkString(System.lineSeparator + "   "))
     formattedItems.mkString(" - ", System.lineSeparator + " - ", "")
   }
 

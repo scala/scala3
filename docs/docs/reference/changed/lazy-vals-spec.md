@@ -40,7 +40,7 @@ class Foo {
       flag = LazyVals.get(this, bitmap_offset)
       LazyVals.STATE(flag, <field-id>) match {
         case <state-0> =>
-          if (LazyVals.CAS(this, bitmap_offset, flag, <state-1>)) {
+          if (LazyVals.CAS(this, bitmap_offset, flag, <state-1>, <field-id>)) {
             try result = <RHS>
             catch {
               case ex =>
