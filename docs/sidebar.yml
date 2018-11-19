@@ -9,6 +9,8 @@ sidebar:
           url: docs/usage/sbt-projects.html
         - title: IDE support for Dotty
           url: docs/usage/ide-support.html
+        - title: Worksheet mode in Dotty IDE
+          url: docs/usage/worksheet-mode.html
         - title: cbt-projects
           url: docs/usage/cbt-projects.html
         - title: Dottydoc
