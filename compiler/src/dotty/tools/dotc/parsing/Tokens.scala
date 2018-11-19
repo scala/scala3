@@ -4,6 +4,7 @@ package parsing
 
 import collection.immutable.BitSet
 import core.Decorators._
+import core.StdNames.nme
 
 abstract class TokensCommon {
   def maxToken: Int
@@ -93,7 +94,6 @@ abstract class TokensCommon {
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   //final val ENUM = 62;             enter(ENUM, "enum")
   //final val ERASED = 63;           enter(ERASED, "erased")
-  //final val OPAQUE = 64;           enter(OPAQUE, "opaque")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -178,7 +178,6 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val OPAQUE = 64;           enter(OPAQUE, "opaque")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -199,7 +198,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, OPAQUE)
+  final val alphaKeywords: TokenSet = tokenRange(IF, ERASED)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens: TokenSet = tokenRange(COMMA, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
@@ -227,7 +226,7 @@ object Tokens extends TokensCommon {
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 
   final val localModifierTokens: TokenSet = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, ERASED, OPAQUE)
+    ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, ERASED)
 
   final val accessModifierTokens: TokenSet = BitSet(
     PRIVATE, PROTECTED)
@@ -236,6 +235,8 @@ object Tokens extends TokensCommon {
     OVERRIDE)
 
   final val modifierTokensOrCase: TokenSet = modifierTokens | BitSet(CASE)
+
+  final val modifierFollowers = modifierTokens | defIntroTokens
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, PACKAGE)
@@ -247,4 +248,6 @@ object Tokens extends TokensCommon {
     TYPE, RPAREN, RBRACE, RBRACKET)
 
   final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
+
+  final val softModifierNames = Set(nme.`inline`, nme.`opaque`)
 }

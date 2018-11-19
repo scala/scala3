@@ -70,8 +70,7 @@ object SyntaxHighlighting {
           case _ if alphaKeywords.contains(token) =>
             highlightRange(start, end, KeywordColor)
 
-          case IDENTIFIER if name == nme.INLINEkw =>
-            // `inline` is a "soft" keyword
+          case IDENTIFIER if scanner.isSoftModifierInModifierPosition =>
             highlightRange(start, end, KeywordColor)
 
           case IDENTIFIER if name == nme.??? =>
