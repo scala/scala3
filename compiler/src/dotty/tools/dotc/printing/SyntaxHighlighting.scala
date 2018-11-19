@@ -53,6 +53,7 @@ object SyntaxHighlighting {
         val start = scanner.offset
         val token = scanner.token
         val name = scanner.name
+        val isSoftModifier = scanner.isSoftModifierInModifierPosition
         scanner.nextToken()
         val end = scanner.lastOffset
 
@@ -67,10 +68,7 @@ object SyntaxHighlighting {
             // we don't highlight it, hence the `-1`
             highlightRange(start, end - 1, LiteralColor)
 
-          case _ if alphaKeywords.contains(token) =>
-            highlightRange(start, end, KeywordColor)
-
-          case IDENTIFIER if scanner.isSoftModifierInModifierPosition =>
+          case _ if alphaKeywords.contains(token) || isSoftModifier =>
             highlightRange(start, end, KeywordColor)
 
           case IDENTIFIER if name == nme.??? =>

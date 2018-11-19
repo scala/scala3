@@ -125,5 +125,8 @@ class SyntaxHighlightingTests extends DottyTest {
     test("inline def foo = 1", "<K|inline> <K|def> <V|foo> = <L|1>")
     test("@inline def foo = 1", "<T|@inline> <K|def> <V|foo> = <L|1>")
     test("class inline", "<K|class> <T|inline>")
+    test("val inline = 2", "<K|val> <V|inline> = <L|2>")
+    test("def inline = 2", "<K|def> <V|inline> = <L|2>")
+    test("def foo(inline: Int) = 2", "<K|def> <V|foo>(<V|inline>: <T|Int>) = <L|2>")
   }
 }
