@@ -259,7 +259,8 @@ trait TypeAssigner {
       qualType = errorType(em"$qualType takes type parameters", qual1.pos)
     else if (!qualType.isInstanceOf[TermType]) qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.pos)
     val ownType = selectionType(qualType, tree.name, tree.pos)
-    ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
+    if (tree.getAttachment(desugar.SuppressAccessCheck).isDefined) ownType
+    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
   }
 
   /** Type assignment method. Each method takes as parameters
