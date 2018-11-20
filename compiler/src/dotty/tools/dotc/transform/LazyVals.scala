@@ -10,7 +10,7 @@ import Symbols._
 import Decorators._
 import NameKinds._
 import Types._
-import Flags.FlagSet
+import Flags._
 import StdNames.nme
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
@@ -275,34 +275,31 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /** Create a threadsafe lazy accessor equivalent to such code
     * ```
     * def methodSymbol(): Int = {
-    *   val result: Int = 0
-    *   val retry: Boolean = true
-    *   var flag: Long = 0L
-    *   while retry do {
-    *     flag = dotty.runtime.LazyVals.get(this, $claz.$OFFSET)
-    *     dotty.runtime.LazyVals.STATE(flag, 0) match {
-    *       case 0 =>
-    *         if dotty.runtime.LazyVals.CAS(this, $claz.$OFFSET, flag, 1, $ord) {
-    *           try {result = rhs} catch {
-    *             case x: Throwable =>
-    *               dotty.runtime.LazyVals.setFlag(this, $claz.$OFFSET, 0, $ord)
-    *               throw x
-    *           }
-    *           $target = result
-    *           dotty.runtime.LazyVals.setFlag(this, $claz.$OFFSET, 3, $ord)
-    *           retry = false
-    *           }
-    *       case 1 =>
-    *         dotty.runtime.LazyVals.wait4Notification(this, $claz.$OFFSET, flag, $ord)
-    *       case 2 =>
-    *         dotty.runtime.LazyVals.wait4Notification(this, $claz.$OFFSET, flag, $ord)
-    *       case 3 =>
-    *         retry = false
-    *         result = $target
+    *   while (true) {
+    *     val flag = LazyVals.get(this, bitmap_offset)
+    *     val state = LazyVals.STATE(flag, <field-id>)
+    *
+    *     if (state == <state-3>) {
+    *       return value_0
+    *     } else if (state == <state-0>) {
+    *       if (LazyVals.CAS(this, bitmap_offset, flag, <state-1>, <field-id>)) {
+    *         try {
+    *           val result = <RHS>
+    *           value_0 = result
+    *           nullable = null
+    *           LazyVals.setFlag(this, bitmap_offset, <state-3>, <field-id>)
+    *           return result
+    *         }
+    *         catch {
+    *           case ex =>
+    *             LazyVals.setFlag(this, bitmap_offset, <state-0>, <field-id>)
+    *             throw ex
+    *         }
     *       }
+    *     } else /* if (state == <state-1> || state == <state-2>) */ {
+    *       LazyVals.wait4Notification(this, bitmap_offset, flag, <field-id>)
     *     }
-    *   nullable = null
-    *   result
+    *   }
     * }
     * ```
     */
@@ -321,69 +318,59 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
                       nullables: List[Symbol])(implicit ctx: Context): DefDef = {
     val initState = Literal(Constant(0))
     val computeState = Literal(Constant(1))
-    val notifyState = Literal(Constant(2))
     val computedState = Literal(Constant(3))
-    val flagSymbol = ctx.newSymbol(methodSymbol, lazyNme.flag, containerFlags, defn.LongType)
-    val flagDef = ValDef(flagSymbol, Literal(Constant(0L)))
 
     val thiz = This(claz)(ctx.fresh.setOwner(claz))
+    val fieldId = Literal(Constant(ord))
 
-    val resultSymbol = ctx.newSymbol(methodSymbol, lazyNme.result, containerFlags, tp)
-    val resultDef = ValDef(resultSymbol, defaultValue(tp))
+    val flagSymbol = ctx.newSymbol(methodSymbol, lazyNme.flag, Synthetic, defn.LongType)
+    val flagDef = ValDef(flagSymbol, getFlag.appliedTo(thiz, offset))
+    val flagRef = ref(flagSymbol)
 
-    val retrySymbol = ctx.newSymbol(methodSymbol, lazyNme.retry, containerFlags, defn.BooleanType)
-    val retryDef = ValDef(retrySymbol, Literal(Constant(true)))
-
-    val whileCond = ref(retrySymbol)
+    val stateSymbol = ctx.newSymbol(methodSymbol, lazyNme.state, Synthetic, defn.LongType)
+    val stateDef = ValDef(stateSymbol, stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))))
+    val stateRef = ref(stateSymbol)
 
     val compute = {
-      val handlerSymbol = ctx.newSymbol(methodSymbol, nme.ANON_FUN, Flags.Synthetic,
-        MethodType(List(nme.x_1), List(defn.ThrowableType), defn.IntType))
+      val resultSymbol = ctx.newSymbol(methodSymbol, lazyNme.result, Synthetic, tp)
+      val resultRef = ref(resultSymbol)
+      val stats = (
+        ValDef(resultSymbol, rhs) ::
+        ref(target).becomes(resultRef) ::
+        (nullOut(nullableFor(methodSymbol)) :+
+        setFlagState.appliedTo(thiz, offset, computedState, fieldId))
+      )
+      Block(stats, Return(resultRef, methodSymbol))
+    }
+
+    val retryCase = {
       val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Flags.Synthetic, defn.ThrowableType)
-      val triggerRetry = setFlagState.appliedTo(thiz, offset, initState, Literal(Constant(ord)))
-      val complete = setFlagState.appliedTo(thiz, offset, computedState, Literal(Constant(ord)))
-
-      val handler = CaseDef(Bind(caseSymbol, ref(caseSymbol)), EmptyTree,
-        Block(List(triggerRetry), Throw(ref(caseSymbol))
-      ))
-
-      val compute = ref(resultSymbol).becomes(rhs)
-      val tr = Try(compute, List(handler), EmptyTree)
-      val assign = ref(target).becomes(ref(resultSymbol))
-      val noRetry = ref(retrySymbol).becomes(Literal(Constant(false)))
-      val body = If(casFlag.appliedTo(thiz, offset, ref(flagSymbol), computeState, Literal(Constant(ord))),
-        Block(tr :: assign :: complete :: noRetry :: Nil, Literal(Constant(()))),
-        Literal(Constant(())))
-
-      CaseDef(initState, EmptyTree, body)
+      val triggerRetry = setFlagState.appliedTo(thiz, offset, initState, fieldId)
+      CaseDef(
+        Bind(caseSymbol, ref(caseSymbol)),
+        EmptyTree,
+        Block(List(triggerRetry), Throw(ref(caseSymbol)))
+      )
     }
 
-    val waitFirst = {
-      val wait = waitOnLock.appliedTo(thiz, offset, ref(flagSymbol), Literal(Constant(ord)))
-      CaseDef(computeState, EmptyTree, wait)
-    }
+    val initialize = If(
+      casFlag.appliedTo(thiz, offset, flagRef, computeState, fieldId),
+      Try(compute, List(retryCase), EmptyTree),
+      unitLiteral
+    )
 
-    val waitSecond = {
-      val wait = waitOnLock.appliedTo(thiz, offset, ref(flagSymbol), Literal(Constant(ord)))
-      CaseDef(notifyState, EmptyTree, wait)
-    }
+    val condition = If(
+      stateRef.equal(computedState),
+      Return(ref(target), methodSymbol),
+      If(
+        stateRef.equal(initState),
+        initialize,
+        waitOnLock.appliedTo(thiz, offset, flagRef, fieldId)
+      )
+    )
 
-    val computed = {
-      val noRetry = ref(retrySymbol).becomes(Literal(Constant(false)))
-      val result = ref(resultSymbol).becomes(ref(target))
-      val body = Block(noRetry :: result :: Nil, Literal(Constant(())))
-      CaseDef(computedState, EmptyTree, body)
-    }
-
-    val default = CaseDef(Underscore(defn.LongType), EmptyTree, Literal(Constant(())))
-
-    val cases = Match(stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))),
-      List(compute, waitFirst, waitSecond, computed, default)) //todo: annotate with @switch
-
-    val whileBody = Block(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset)) :: Nil, cases)
-    val cycle = WhileDo(whileCond, whileBody)
-    val setNullables = nullOut(nullables)
-    DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: setNullables, ref(resultSymbol)))
+    val loop = WhileDo(EmptyTree, Block(List(flagDef, stateDef), condition))
+    DefDef(methodSymbol, loop)
   }
 
   def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
@@ -465,6 +452,7 @@ object LazyVals {
       val getOffset: TermName         = N.getOffset.toTermName
     }
     val flag: TermName        = "flag".toTermName
+    val state: TermName       = "state".toTermName
     val result: TermName      = "result".toTermName
     val value: TermName       = "value".toTermName
     val initialized: TermName = "initialized".toTermName
