@@ -21,11 +21,11 @@ class SymbolTest {
       code"class $Bar",
       code"""package foo
             |class $fooFoo {
-            |  class Bar
+            |  class ${m7}Bar$m8
             |}
           """
     ) .symbol("Foo", Foo.range.symInfo("Foo", SymbolKind.Class), fooFoo.range.symInfo("Foo", SymbolKind.Class, "foo"))
-      .symbol("Bar", Bar.range.symInfo("Bar", SymbolKind.Class))
+      .symbol("Bar", Bar.range.symInfo("Bar", SymbolKind.Class), (m7 to m8).symInfo("Bar", SymbolKind.Class, "Foo"))
   }
 
   @Test def symbolShowModule: Unit = {
