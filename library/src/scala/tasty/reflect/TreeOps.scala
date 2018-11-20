@@ -172,7 +172,7 @@ trait TreeOps extends Core {
 
   /** Scala term. Any tree that can go in expression position. */
   val Term: TermModule
-  abstract class TermModule {
+  abstract class TermModule extends TermCoreModule {
 
     /** Scala term identifier */
     val Ident: IdentExtractor

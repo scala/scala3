@@ -48,7 +48,7 @@ package scala.tasty.reflect
  *                         |               +- Or
  *                         |               +- MatchType
  *                         |               +- ByName
- *                         |               +- TypeLambdaTree
+ *                         |               +- LambdaTypeTree
  *                         |               +- Bind
  *                         |
  *                         +- TypeBoundsTree
@@ -136,29 +136,97 @@ trait Core {
       /** Tree representing an import in the source code */
       type Import <: Statement
 
-      /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef`*/
+      /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
       type Definition <: Statement
 
-        /** Tree representing a package definition. This includes definitions in all source files. */
+        /** Tree representing a package definition. This includes definitions in all source files */
         type PackageDef <: Definition
 
-        /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object. */
+        /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
         type ClassDef <: Definition
 
-        /** Tree representing a type (paramter or member) definition in the source code. */
+        /** Tree representing a type (paramter or member) definition in the source code */
         type TypeDef <: Definition
 
-        /** Tree representing a method definition in the source code. */
+        /** Tree representing a method definition in the source code */
         type DefDef <: Definition
 
-        /** Tree representing a value definition in the source code. This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+        /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
         type ValDef <: Definition
 
-      /** Tree representing an expression in the source code. */
+      /** Tree representing an expression in the source code */
       type Term <: Statement
 
-        // TODO Add subtype types of Term for documentation? Or support refined bindings and add the types.
+      /** Trees representing an expression in the source code */
+      val Term: TermCoreModule
 
+      /** Trees representing an expression in the source code */
+      trait TermCoreModule {
+
+        /** Tree representing a reference to definition with a given name */
+        type Ident <: Term
+
+        /** Tree representing a selection of definition with a given name on a given prefix */
+        type Select <: Term
+
+        /** Tree representing a literal value in the source code */
+        type Literal <: Term
+
+        /** Tree representing `this` in the source code */
+        type This <: Term
+
+        /** Tree representing `new` in the source code */
+        type New <: Term
+
+        /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
+        type NamedArg <: Term
+
+        /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
+        type Apply <: Term
+
+        /** Tree an application of type arguments */
+        type TypeApply <: Term
+
+        /** Tree representing `super` in the source code */
+        type Super <: Term
+
+        /** Tree representing a type ascription `x: T` in the source code */
+        type Typed <: Term
+
+        /** Tree representing an assignment `x = y` in the source code */
+        type Assign <: Term
+
+        /** Tree representing a block `{ ... }` in the source code */
+        type Block <: Term
+
+        /** Tree representing a lambda `(...) => ...` in the source code */
+        type Lambda <: Term
+
+        /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
+        type If <: Term
+
+        /** Tree representing a pattern match `x match  { ... }` in the source code */
+        type Match <: Term
+
+        /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
+        type Try <: Term
+
+        /** Tree representing a `return` in the source code */
+        type Return <: Term
+
+        /** Tree representing a variable argument list in the source code */
+        type Repeated <: Term
+
+        /** Tree representing the scope of an inlined tree */
+        type Inlined <: Term
+
+        /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
+        type SelectOuter <: Term
+
+        /** Tree representing a while loop */
+        type While <: Term
+
+      }
 
   /** Branch of a pattern match or catch clause */
   type CaseDef <: AnyRef
@@ -190,8 +258,55 @@ trait Core {
     /** Type tree representing a type written in the source */
     type TypeTree <: TypeOrBoundsTree
 
-      // TODO Add subtype types of TypeTree for documentation? Or support refined bindings and add the types.
+    /** Type trees representing a type written in the source */
+    val TypeTree: TypeTreeCoreModule
 
+    /** Type trees representing a type written in the source */
+    abstract class TypeTreeCoreModule {
+
+      /** Type tree representing an inferred type */
+      type Synthetic <: TypeTree
+
+      /** Type tree representing a reference to definition with a given name */
+      type Ident <: TypeTree
+
+      /** Type tree representing a selection of definition with a given name on a given term prefix */
+      type Select <: TypeTree
+
+      /** Type tree representing a selection of definition with a given name on a given type prefix */
+      type Project <: TypeTree
+
+      /** Type tree representing a singleton type */
+      type Singleton <: TypeTree
+
+      /** Type tree representing a type refinement */
+      type Refined <: TypeTree
+
+      /** Type tree representing a type application */
+      type Applied <: TypeTree
+
+      /** Type tree representing an annotated type */
+      type Annotated <: TypeTree
+
+      /** Type tree representing an intersection type */
+      type And <: TypeTree
+
+      /** Type tree representing a union type */
+      type Or <: TypeTree
+
+      /** Type tree representing a type match */
+      type MatchType <: TypeTree
+
+      /** Type tree representing a by name parameter */
+      type ByName <: TypeTree
+
+      /** Type tree representing a lambda abstraction type */
+      type LambdaTypeTree <: TypeTree
+
+      /** Type tree representing a type binding */
+      type Bind <: TypeTree
+
+    }
 
     /** Type tree representing a type bound written in the source */
     type TypeBoundsTree <: TypeOrBoundsTree
@@ -250,25 +365,25 @@ trait Core {
    */
   type Symbol <: AnyRef
 
-    /** Symbol of a package defnition */
+    /** Symbol of a package definition */
     type PackageSymbol <: Symbol
 
-    /** Symbol of a class defnition. This includes annonymus class definitions and the class of a module object. */
+    /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
     type ClassSymbol <: Symbol
 
-    /** Symbol of a type (paramter or member) definition. */
+    /** Symbol of a type (parameter or member) definition. */
     type TypeSymbol <: Symbol
 
     /** Symbol representing a method definition. */
     type DefSymbol <: Symbol
 
-    /** Symbol representing a value definition. This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+    /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
     type ValSymbol <: Symbol
 
     /** Symbol representing a bind definition. */
     type BindSymbol <: Symbol
 
-    /** No symbol availabe. */
+    /** No symbol available. */
     type NoSymbol <: Symbol
 
 }
