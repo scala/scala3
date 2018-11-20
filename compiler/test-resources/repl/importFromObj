@@ -9,7 +9,6 @@ scala> buf += xs
   |        ^^
   |        found:    List[Int](o.xs)
   |        required: Int
-  |
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foo
