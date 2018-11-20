@@ -1955,7 +1955,8 @@ object Parsers {
             }
         }
         else {
-          if (isIdent(nme.`inline`)) mods = addModifier(mods)
+          if (isIdent(nme.`inline`) && in.isSoftModifierInParamModifierPosition)
+            mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
         atPos(start, nameStart) {
@@ -2614,7 +2615,7 @@ object Parsers {
           if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
             var imods = modifiers(funArgMods)
-            if (isBindingIntro && !isIdent(nme.`inline`))
+            if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
             else
               stats +++= localDef(start, imods)

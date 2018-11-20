@@ -742,6 +742,9 @@ object Scanners {
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
 
+    def isSoftModifierInParamModifierPosition: Boolean =
+      isSoftModifier && !lookaheadIn(BitSet(COLON))
+
 // Literals -----------------------------------------------------------------
 
     private def getStringLit() = {
