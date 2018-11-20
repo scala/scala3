@@ -166,7 +166,6 @@ object Parsers {
     def isSimpleLiteral: Boolean = simpleLiteralTokens contains in.token
     def isLiteral: Boolean = literalTokens contains in.token
     def isNumericLit: Boolean = numericLitTokens contains in.token
-    def isBindingIntro: Boolean = canStartBindingTokens contains in.token
     def isTemplateIntro: Boolean = templateIntroTokens contains in.token
     def isDclIntro: Boolean = dclIntroTokens contains in.token
     def isStatSeqEnd: Boolean = in.token == RBRACE || in.token == EOF
@@ -174,6 +173,10 @@ object Parsers {
 
     /** Is current token a hard or soft modifier (in modifier position or not)? */
     def isModifier: Boolean = modifierTokens.contains(in.token) || in.isSoftModifier
+
+    def isBindingIntro: Boolean =
+      canStartBindingTokens.contains(in.token) &&
+      !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
       canStartExpressionTokens.contains(in.token) &&
