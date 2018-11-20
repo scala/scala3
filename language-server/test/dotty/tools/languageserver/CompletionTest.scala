@@ -138,4 +138,9 @@ class CompletionTest {
            }""".withSource
       .completion(m1, Set(("FileDescriptor", Module, "java.io.FileDescriptor")))
   }
+
+  @Test def importRename: Unit = {
+    code"""import java.io.{FileDesc${m1} => Foo}""".withSource
+      .completion(m1, Set(("FileDescriptor", Class, "Object{...}")))
+  }
 }

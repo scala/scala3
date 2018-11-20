@@ -190,11 +190,17 @@ object Interactive {
     }
 
     val (completionPos, prefix, termOnly, typeOnly, inImport) = path match {
+      case (Thicket(name :: _ :: Nil)) :: (imp: Import) :: _ =>
+        if (name.pos.contains(pos.pos))
+          completionInfo(name.asInstanceOf[tpd.Tree] :: Nil, /* inImport = */ true)
+        else completionInfo(path, /* inImport = */ true)
+
       case (imp: Import) :: _ =>
         imp.selectors.find(_.pos.contains(pos.pos)) match {
           case None      => (imp.expr.pos.point, "", false, false, true)
           case Some(sel) => completionInfo(sel.asInstanceOf[tpd.Tree] :: Nil, /* inImport = */ true)
         }
+
       case other =>
         completionInfo(other, /* inImport = */ false)
     }
@@ -313,9 +319,10 @@ object Interactive {
     }
 
     path match {
-      case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
-      case (imp @ Import(expr, _)) :: _ => getMemberCompletions(expr)
-      case _  => getScopeCompletions(ctx)
+      case Select(qual, _) :: _                 => getMemberCompletions(qual)
+      case Import(expr, _) :: _                 => getMemberCompletions(expr)
+      case (_: Thicket) :: Import(expr, _) :: _ => getMemberCompletions(expr)
+      case _                                    => getScopeCompletions(ctx)
     }
 
     val completionList = completions.toList
