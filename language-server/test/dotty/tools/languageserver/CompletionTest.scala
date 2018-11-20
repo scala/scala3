@@ -25,7 +25,7 @@ class CompletionTest {
     withSources(
       code"""object Foo { class MyClass }""",
       code"""import Foo.My${m1}"""
-    ).completion(m1, Set(("MyClass", Class, "Object{...}")))
+    ).completion(m1, Set(("MyClass", Class, "Foo.MyClass")))
   }
 
   @Test def ImportCompleteClassNoPrefix: Unit = {
@@ -33,8 +33,8 @@ class CompletionTest {
       code"""object Foo { class MyClass }""",
       code"""import Foo.${m1}"""
     ).completion(m1, results => {
-      val myClass = ("MyClass", Class, "Object{...}")
-      assertTrue(results.contains(("MyClass", Class, "Object{...}")))
+      val myClass = ("MyClass", Class, "Foo.MyClass")
+      assertTrue(results.contains(("MyClass", Class, "Foo.MyClass")))
 
       // Verify that apart from `MyClass`, we only have the methods that exists on `Foo`
       assertTrue((results - myClass).forall { case (_, kind, _) => kind == Method })
@@ -50,7 +50,7 @@ class CompletionTest {
              class MyClass""",
       code"""package b
              import a.My${m1}"""
-    ).completion(m1, Set(("MyClass", Class, "Object{...}")))
+    ).completion(m1, Set(("MyClass", Class, "a.MyClass")))
   }
 
   @Test def importCompleteFromClass: Unit = {
@@ -87,7 +87,7 @@ class CompletionTest {
              object Foo""",
       code"""package pgk1
              import pkg0.F${m1}"""
-    ).completion(m1, Set(("Foo", Class, "Object{...}")))
+    ).completion(m1, Set(("Foo", Class, "pkg0.Foo")))
   }
 
   @Test def importCompleteIncludePackage: Unit = {
@@ -95,7 +95,7 @@ class CompletionTest {
       code"""package foo.bar
              class Fizz""",
       code"""import foo.b${m1}"""
-    ).completion(m1, Set(("bar", Module, "{...}")))
+    ).completion(m1, Set(("bar", Module, "foo.bar")))
   }
 
   @Test def importCompleteIncludeMembers: Unit = {
@@ -113,13 +113,13 @@ class CompletionTest {
                          ("myDef", Method, "=> Int"),
                          ("myVar", Variable, "Int"),
                          ("myObject", Module, "MyObject.myObject"),
-                         ("myClass", Class, "Object{...}"),
-                         ("myTrait", Class, "Object{...}")))
+                         ("myClass", Class, "MyObject.myClass"),
+                         ("myTrait", Class, "MyObject.myTrait")))
   }
 
   @Test def importJavaClass: Unit = {
     code"""import java.io.FileDesc${m1}""".withSource
-      .completion(m1, Set(("FileDescriptor", Class, "Object{...}")))
+      .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor")))
   }
 
   @Test def importJavaStaticMethod: Unit = {
@@ -141,6 +141,6 @@ class CompletionTest {
 
   @Test def importRename: Unit = {
     code"""import java.io.{FileDesc${m1} => Foo}""".withSource
-      .completion(m1, Set(("FileDescriptor", Class, "Object{...}")))
+      .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor")))
   }
 }
