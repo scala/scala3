@@ -16,4 +16,5 @@ object OpaqueType {
     def singleton0[A](a: A): Set[A] = (_: A) == a
   }
 
+  def singleton[A](a: A): Set[A] = _ == a       // error: missing parameter type
 }
