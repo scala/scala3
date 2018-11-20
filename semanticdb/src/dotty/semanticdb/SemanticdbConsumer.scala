@@ -5,6 +5,7 @@ import scala.tasty.file.TastyConsumer
 
 import dotty.tools.dotc.tastyreflect
 import scala.collection.mutable.HashMap
+import scala.collection.mutable.Set
 import scala.meta.internal.{semanticdb => s}
 import dotty.semanticdb.Scala.{Descriptor => d}
 import dotty.semanticdb.Scala._
@@ -18,16 +19,25 @@ class SemanticdbConsumer extends TastyConsumer {
   def toSemanticdb(text: String): s.TextDocument = {
     s.TextDocument(text = text, occurrences = occurrences)
   }
+  val package_definitions: Set[String] = Set()
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
+    val symbolsCache: HashMap[Symbol, String] = HashMap()
+
     object ChildTraverser extends TreeTraverser {
       var children: List[Tree] = Nil
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = children = tree::children
-      override def traversePattern(pattern: Pattern)(implicit ctx: Context): Unit = ()
-      override def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = ()
-      override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit = ()
+      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit =
+        children = tree :: children
+      override def traversePattern(pattern: Pattern)(
+          implicit ctx: Context): Unit = ()
+      override def traverseTypeTree(tree: TypeOrBoundsTree)(
+          implicit ctx: Context): Unit = ()
+      override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit =
+        ()
+      override def traverseTypeCaseDef(tree: TypeCaseDef)(implicit ctx: Context): Unit =
+        ()
 
       def getChildren(tree: Tree)(implicit ctx: Context): List[Tree] = {
         children = Nil
@@ -37,7 +47,6 @@ class SemanticdbConsumer extends TastyConsumer {
     }
 
     object Traverser extends TreeTraverser {
-      val symbolsCache: HashMap[Symbol, String] = HashMap()
       implicit class TreeExtender(tree: Tree) {
         def isUserCreated: Boolean = {
           val children: List[Position] =
@@ -86,21 +95,21 @@ class SemanticdbConsumer extends TastyConsumer {
 
       def resolveClass(symbol: ClassSymbol): Symbol =
         (symbol.companionClass, symbol.companionModule) match {
-            case (_, Some(module)) if symbol.flags.isObject => module
-            case (Some(c), _) => c
-            case _ => symbol
+          case (_, Some(module)) if symbol.flags.isObject => module
+          case (Some(c), _)                               => c
+          case _                                          => symbol
         }
 
       def disimbiguate(symbol_path: String, symbol: Symbol): String = {
         val symbolcl = resolveClass(symbol.owner.asClass)
         val methods = symbolcl.asClass.method(symbol.name)
         val (methods_count, method_pos) =
-          methods.foldLeft((0, -1))((x:Tuple2[Int, Int], m:Symbol) => {
+          methods.foldLeft((0, -1))((x: Tuple2[Int, Int], m: Symbol) => {
             if (m == symbol)
-              (x._1+1, x._1)
-             else
-             (x._1+1, x._2)
-            })
+              (x._1 + 1, x._1)
+            else
+              (x._1 + 1, x._2)
+          })
         val real_pos = methods_count - method_pos - 1
 
         if (real_pos == 0) {
@@ -262,9 +271,12 @@ class SemanticdbConsumer extends TastyConsumer {
             super.traverseTree(tree)
           }
           case PackageClause(_) =>
-            addOccurenceTree(tree,
-                             s.SymbolOccurrence.Role.REFERENCE,
-                             range(tree, tree.pos, tree.symbol.name))
+            if (!package_definitions(tree.symbol.name)) {
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.REFERENCE,
+                               range(tree, tree.pos, tree.symbol.name))
+              package_definitions += tree.symbol.name
+            }
             super.traverseTree(tree)
 
           case tree =>

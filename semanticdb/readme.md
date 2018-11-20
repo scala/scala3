@@ -10,14 +10,6 @@ sbt
 > compile
 ```
 
-You will also need to generate the tasty files for the test. For now, you can
-easily do it by executing the makefile in this folder:
-```
-make
-```
-Please note that the makefile will also compile the `semanticdb/input` project.
-
-
 In the second terminal, run `sbt dotty-semanticdb/test` from the main dotty
 build
 

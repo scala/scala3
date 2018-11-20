@@ -393,12 +393,9 @@ object Build {
     baseDirectory in Test := baseDirectory.value / "..",
     unmanagedSourceDirectories in Test += baseDirectory.value / "input" / "src" / "main" / "scala",
     libraryDependencies ++= List(
-      ("org.scalameta" %% "semanticdb" % "4.0.0" % Compile).withDottyCompat(scalaVersion.value),
-      "com.novocode" % "junit-interface" % "0.11" % Compile,
-      "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0" % Compile,
-      ("org.scalameta" %% "semanticdb" % "4.0.0" % Test).withDottyCompat(scalaVersion.value),
-      "com.novocode" % "junit-interface" % "0.11" % Test,
-      "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0" % Test
+      ("org.scalameta" %% "semanticdb" % "4.0.0").withDottyCompat(scalaVersion.value),
+      "com.novocode" % "junit-interface" % "0.11",
+      "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0"
     )
   )
 
