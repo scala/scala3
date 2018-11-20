@@ -99,13 +99,11 @@ trait TreeUtils
       case TypeTree.Applied(tpt, args) => foldTypeTrees(foldTypeTree(x, tpt), args)
       case TypeTree.ByName(result) => foldTypeTree(x, result)
       case TypeTree.Annotated(arg, annot) => foldTree(foldTypeTree(x, arg), annot)
-      case TypeTree.TypeLambdaTree(typedefs, arg) => foldTrees(foldTypeTree(x, arg), typedefs)
+      case TypeTree.TypeLambdaTree(typedefs, arg) => foldTypeTree(foldTrees(x, typedefs), arg)
       case TypeTree.Bind(_, tbt) => foldTypeTree(x, tbt)
-      case TypeTree.Block(typedefs, tpt) => foldTrees(foldTypeTree(x, tpt), typedefs)
-      case TypeTree.MatchType(boundopt, selector, cases) => {
-        val bound_fold_result = boundopt.map(foldTypeTree(x, _)).getOrElse(x)
-        foldTypeCaseDefs(foldTypeTree(bound_fold_result, selector), cases)
-      }
+      case TypeTree.Block(typedefs, tpt) => foldTypeTree(foldTrees(x, typedefs), tpt)
+      case TypeTree.MatchType(boundopt, selector, cases) =>
+        foldTypeCaseDefs(foldTypeTree(boundopt.fold(x)(foldTypeTree(x, _)), selector), cases)
       case TypeBoundsTree(lo, hi) => foldTypeTree(foldTypeTree(x, lo), hi)
     }
 
@@ -116,7 +114,6 @@ trait TreeUtils
     def foldOverTypeCaseDef(x: X, tree: TypeCaseDef)(implicit ctx: Context): X = tree match {
       case TypeCaseDef(pat, body) => foldTypeTree(foldTypeTree(x, pat), body)
     }
-
 
     def foldOverPattern(x: X, tree: Pattern)(implicit ctx: Context): X = tree match {
       case Pattern.Value(v) => foldTree(x, v)
