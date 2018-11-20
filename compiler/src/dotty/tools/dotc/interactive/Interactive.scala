@@ -167,29 +167,40 @@ object Interactive {
     val completions = Scopes.newScope.openForMutations
 
     /**
+     * The information about the current completion.
+     *
+     * @param position The position where the completion result should be inserted.
+     * @param prefix   A prefix that potential completion results must match.
+     * @param termOnly If set, only terms should be considered as completion results.
+     * @param typeOnly If set, only types should be considered as completion results.
+     * @param inImport If set, indicates that this is the completion of an import node.
+     */
+    case class CompletionInfo(position: Int, prefix: String, termOnly: Boolean, typeOnly: Boolean, inImport: Boolean)
+
+    /**
      * Extract basic info about completion location and the kind of symbols to include.
      *
      * @param path     The path to the position where completion happens
      * @param inImport If set, indicates that this is the completion of an import node. When
      *                 completing imports, both types and terms are always included.
-     * @return The point where to insert completion, whether terms should be included in results,
-     *         whether types should be included, and whether we're completing an import.
+     * @return The completion info
      */
-    def completionInfo(path: List[Tree], inImport: Boolean): (Int, String, Boolean, Boolean, Boolean) = path match {
+    def completionInfo(path: List[Tree], inImport: Boolean): CompletionInfo = path match {
       case (ref: RefTree) :: _ =>
         if (ref.name == nme.ERROR)
-          (ref.pos.point, "", false, false, inImport)
+          CompletionInfo(ref.pos.point, "", false, false, inImport)
         else
-          (ref.pos.point,
-           ref.name.toString.take(pos.pos.point - ref.pos.point),
-           !inImport && ref.name.isTermName, // Types and terms are always accepted in imports
-           !inImport && ref.name.isTypeName,
-           inImport)
+          CompletionInfo(
+            ref.pos.point,
+            ref.name.toString.take(pos.pos.point - ref.pos.point),
+            !inImport && ref.name.isTermName, // Types and terms are always accepted in imports
+            !inImport && ref.name.isTypeName,
+            inImport)
       case _ =>
-        (0, "", false, false, false)
+        CompletionInfo(0, "", false, false, false)
     }
 
-    val (completionPos, prefix, termOnly, typeOnly, inImport) = path match {
+    val info = path match {
       case (Thicket(name :: _ :: Nil)) :: (imp: Import) :: _ =>
         if (name.pos.contains(pos.pos))
           completionInfo(name.asInstanceOf[tpd.Tree] :: Nil, /* inImport = */ true)
@@ -197,7 +208,7 @@ object Interactive {
 
       case (imp: Import) :: _ =>
         imp.selectors.find(_.pos.contains(pos.pos)) match {
-          case None      => (imp.expr.pos.point, "", false, false, true)
+          case None      => CompletionInfo(imp.expr.pos.point, "", false, false, true)
           case Some(sel) => completionInfo(sel.asInstanceOf[tpd.Tree] :: Nil, /* inImport = */ true)
         }
 
@@ -225,15 +236,15 @@ object Interactive {
      *  classes.
      */
     def include(sym: Symbol) =
-      sym.name.startsWith(prefix) &&
-      !sym.name.toString.drop(prefix.length).contains('$') &&
+      sym.name.startsWith(info.prefix) &&
+      !sym.name.toString.drop(info.prefix.length).contains('$') &&
       !sym.isPrimaryConstructor &&
       sym.sourceSymbol.exists &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
-      (!inImport || !sym.is(allOf(JavaDefined, Module), butNot = Package)) &&
+      (!info.inImport || !sym.is(allOf(JavaDefined, Module), butNot = Package)) &&
       !sym.is(allOf(Mutable, Accessor)) &&
-      (!termOnly || sym.isTerm) &&
-      (!typeOnly || sym.isType)
+      (!info.termOnly || sym.isTerm) &&
+      (!info.typeOnly || sym.isType)
 
     def enter(sym: Symbol) =
       if (include(sym)) completions.enter(sym)
@@ -311,7 +322,7 @@ object Interactive {
 
     def getMemberCompletions(qual: Tree): Unit = {
       addAccessibleMembers(qual.tpe)
-      if (!inImport) {
+      if (!info.inImport) {
         // Implicit conversions do not kick in when importing
         implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
           .foreach(addAccessibleMembers(_))
@@ -326,8 +337,8 @@ object Interactive {
     }
 
     val completionList = completions.toList
-    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $completionList%, %")
-    (completionPos, completionList)
+    interactiv.println(i"completion with pos = $pos, prefix = $info.prefix, termOnly = $info.termOnly, typeOnly = $info.typeOnly = $completionList%, %")
+    (info.position, completionList)
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
