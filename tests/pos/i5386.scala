@@ -1,4 +1,5 @@
 object Test {
+
   ~{
     println("!")
     1
@@ -22,4 +23,12 @@ object Test {
   { println("1"); 1 } + { println("2"); 2}
 
   !(try true finally{()})
+
+
+  class C {
+    def foo: 1 = 1
+  }
+
+  { println("!"); new C }.foo
+
 }
