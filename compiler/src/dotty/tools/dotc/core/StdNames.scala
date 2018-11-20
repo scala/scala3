@@ -74,7 +74,6 @@ object StdNames {
     final val IFkw: N        = kw("if")
     final val IMPLICITkw: N  = kw("implicit")
     final val IMPORTkw: N    = kw("import")
-    final val INLINEkw: N    = kw("inline")
     final val LAZYkw: N      = kw("lazy")
     final val MACROkw: N     = kw("macro")
     final val MATCHkw: N     = kw("match")
@@ -436,6 +435,7 @@ object StdNames {
     val implicitConversions: N  = "implicitConversions"
     val implicitly: N           = "implicitly"
     val in: N                   = "in"
+    val inline: N               = "inline"
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
     val internal: N             = "internal"
@@ -478,6 +478,7 @@ object StdNames {
     val notify_ : N             = "notify"
     val null_ : N               = "null"
     val ofDim: N                = "ofDim"
+    val opaque: N               = "opaque"
     val origin: N               = "origin"
     val prefix : N              = "prefix"
     val productArity: N         = "productArity"

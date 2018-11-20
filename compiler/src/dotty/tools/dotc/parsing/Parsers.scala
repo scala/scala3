@@ -166,22 +166,27 @@ object Parsers {
     def isSimpleLiteral: Boolean = simpleLiteralTokens contains in.token
     def isLiteral: Boolean = literalTokens contains in.token
     def isNumericLit: Boolean = numericLitTokens contains in.token
-    def isModifier: Boolean = modifierTokens.contains(in.token) || isIdent(nme.INLINEkw)
-    def isBindingIntro: Boolean = canStartBindingTokens contains in.token
     def isTemplateIntro: Boolean = templateIntroTokens contains in.token
     def isDclIntro: Boolean = dclIntroTokens contains in.token
     def isStatSeqEnd: Boolean = in.token == RBRACE || in.token == EOF
     def mustStartStat: Boolean = mustStartStatTokens contains in.token
 
+    /** Is current token a hard or soft modifier (in modifier position or not)? */
+    def isModifier: Boolean = modifierTokens.contains(in.token) || in.isSoftModifier
+
+    def isBindingIntro: Boolean =
+      canStartBindingTokens.contains(in.token) &&
+      !in.isSoftModifierInModifierPosition
+
     def isExprIntro: Boolean =
-      (canStartExpressionTokens `contains` in.token) &&
-        (!isIdent(nme.INLINEkw) || lookaheadIn(canStartExpressionTokens))
+      canStartExpressionTokens.contains(in.token) &&
+      !in.isSoftModifierInModifierPosition
 
     def isDefIntro(allowedMods: BitSet): Boolean =
       in.token == AT ||
       (defIntroTokens `contains` in.token) ||
       (allowedMods `contains` in.token) ||
-      isIdent(nme.INLINEkw) && lookaheadIn(BitSet(AT) | defIntroTokens | allowedMods)
+      in.isSoftModifierInModifierPosition
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
@@ -454,14 +459,6 @@ object Parsers {
     }
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
-
-    /** Is the token following the current one in `tokens`? */
-    def lookaheadIn(tokens: BitSet): Boolean = {
-      val lookahead = in.lookaheadScanner
-      do lookahead.nextToken()
-      while (lookahead.token == NEWLINE || lookahead.token == NEWLINES)
-      tokens.contains(lookahead.token)
-    }
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -841,7 +838,7 @@ object Parsers {
 
     /** Is current ident a `*`, and is it followed by a `)` or `,`? */
     def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && lookaheadIn(BitSet(RPAREN, COMMA))
+      in.name == nme.raw.STAR && in.lookaheadIn(BitSet(RPAREN, COMMA))
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
@@ -899,7 +896,7 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
-      else if (isIdent(nme.raw.TILDE) && lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
+      else if (isIdent(nme.raw.TILDE) && in.lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
         atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
@@ -1744,8 +1741,11 @@ object Parsers {
       case PRIVATE     => Mod.Private()
       case PROTECTED   => Mod.Protected()
       case SEALED      => Mod.Sealed()
-      case OPAQUE      => Mod.Opaque()
-      case IDENTIFIER if name == nme.INLINEkw => Mod.Inline()
+      case IDENTIFIER =>
+        name match {
+          case nme.inline => Mod.Inline()
+          case nme.opaque => Mod.Opaque()
+        }
     }
 
     /** Drop `private' modifier when followed by a qualifier.
@@ -1816,7 +1816,8 @@ object Parsers {
       @tailrec
       def loop(mods: Modifiers): Modifiers = {
         if (allowed.contains(in.token) ||
-            isIdent(nme.INLINEkw) && localModifierTokens.subsetOf(allowed)) {
+            in.isSoftModifier &&
+              localModifierTokens.subsetOf(allowed)) { // soft modifiers are admissible everywhere local modifiers are
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
           loop(if (isAccessMod) accessQualifierOpt(mods1) else mods1)
@@ -1957,7 +1958,8 @@ object Parsers {
             }
         }
         else {
-          if (isIdent(nme.INLINEkw)) mods = addModifier(mods)
+          if (isIdent(nme.inline) && in.isSoftModifierInParamModifierPosition)
+            mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
         atPos(start, nameStart) {
@@ -2616,7 +2618,7 @@ object Parsers {
           if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
             var imods = modifiers(funArgMods)
-            if (isBindingIntro && !isIdent(nme.INLINEkw))
+            if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
             else
               stats +++= localDef(start, imods)
