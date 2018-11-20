@@ -486,7 +486,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *        Select
    *        TypeApply
    *
-   *  (2) A unary operator expression `pre.op` where `op` is one of `+`, `-`, `~`, `!`
+   *  (2) A primitive unary operator expression `pre.op` where `op` is one of `+`, `-`, `~`, `!`
    *  that has a constant type `ConstantType(v)` but that is not a constant expression
    *  (i.e. `pre` has side-effects) is translated to
    *
@@ -501,7 +501,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         if (isIdempotentExpr(tree1)) Literal(value)
         else tree1 match {
           case Select(qual, _) if tree1.tpe.isInstanceOf[ConstantType] =>
-            // it's a unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
+            // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
             Block(qual :: Nil, Literal(value))
           case _ =>
             tree1
