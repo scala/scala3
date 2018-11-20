@@ -116,4 +116,26 @@ class CompletionTest {
                          ("myClass", Class, "Object{...}"),
                          ("myTrait", Class, "Object{...}")))
   }
+
+  @Test def importJavaClass: Unit = {
+    code"""import java.io.FileDesc${m1}""".withSource
+      .completion(m1, Set(("FileDescriptor", Class, "Object{...}")))
+  }
+
+  @Test def importJavaStaticMethod: Unit = {
+    code"""import java.lang.System.lineSep${m1}""".withSource
+      .completion(m1, Set(("lineSeparator", Method, "(): String")))
+  }
+
+  @Test def importJavaStaticField: Unit = {
+    code"""import java.lang.System.ou${m1}""".withSource
+      .completion(m1, Set(("out", Field, "java.io.PrintStream")))
+  }
+
+  @Test def completeJavaModuleClass: Unit = {
+    code"""object O {
+             val out = java.io.FileDesc${m1}
+           }""".withSource
+      .completion(m1, Set(("FileDescriptor", Module, "java.io.FileDescriptor")))
+  }
 }

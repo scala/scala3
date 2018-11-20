@@ -205,8 +205,9 @@ object Interactive {
      *   3. are not a primary constructor,
      *   4. have an existing source symbol,
      *   5. are the module class in case of packages,
-     *   6. are mutable accessors, to exclude setters for `var`,
-     *   7. have same term/type kind as name prefix given so far
+     *   6. are not Java module classes when completing imports (to avoid duplicate results).
+     *   7. are mutable accessors, to exclude setters for `var`,
+     *   8. have same term/type kind as name prefix given so far
      *
      *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
      *  as completion results. However, if a user explicitly writes all '$' characters in an
@@ -223,6 +224,7 @@ object Interactive {
       !sym.isPrimaryConstructor &&
       sym.sourceSymbol.exists &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
+      (!inImport || !sym.is(allOf(JavaDefined, Module), butNot = Package)) &&
       !sym.is(allOf(Mutable, Accessor)) &&
       (!termOnly || sym.isTerm) &&
       (!typeOnly || sym.isType)
