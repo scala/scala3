@@ -34,6 +34,8 @@ Status
 - Type information on hover
 - Go to definition (in the current project)
 - Find all references
+- Documentation on hover
+- [Worksheet mode](worksheet-mode.html)
 
 ## Partially working features:
 - Completion
@@ -41,7 +43,6 @@ Status
 - Go to definition in external projects
 
 ## Unimplemented features:
-- Documentation on hover
 - Formatting code (requires integrating with scalafmt)
 - Quick fixes (probably by integrating with scalafix)
 
