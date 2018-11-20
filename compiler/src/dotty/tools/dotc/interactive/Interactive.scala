@@ -220,28 +220,19 @@ object Interactive {
      *   1. start with given name prefix, and
      *   2. do not contain '$' except in prefix where it is explicitly written by user, and
      *   3. are not a primary constructor,
-     *   4. have an existing source symbol,
-     *   5. are the module class in case of packages,
-     *   6. are not Java module classes when completing imports (to avoid duplicate results).
-     *   7. are mutable accessors, to exclude setters for `var`,
-     *   8. have same term/type kind as name prefix given so far
+     *   4. are the module class in case of packages,
+     *   5. are mutable accessors, to exclude setters for `var`,
+     *   6. have same term/type kind as name prefix given so far
      *
      *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
      *  as completion results. However, if a user explicitly writes all '$' characters in an
      *  identifier, we should complete the rest.
-     *
-     *  The reason for (4) is that we want to filter, for instance, non-existnet `Module`
-     *  symbols that accompany class symbols. We can't simply return only the source symbols,
-     *  because this would discard some synthetic symbols such as the copy method of case
-     *  classes.
      */
     def include(sym: Symbol) =
       sym.name.startsWith(info.prefix) &&
       !sym.name.toString.drop(info.prefix.length).contains('$') &&
       !sym.isPrimaryConstructor &&
-      sym.sourceSymbol.exists &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
-      (!info.inImport || !sym.is(allOf(JavaDefined, Module), butNot = Package)) &&
       !sym.is(allOf(Mutable, Accessor)) &&
       (!info.termOnly || sym.isTerm) &&
       (!info.typeOnly || sym.isType)
@@ -336,7 +327,16 @@ object Interactive {
       case _                                    => getScopeCompletions(ctx)
     }
 
-    val completionList = completions.toList
+    val completionList =
+      if (!info.inImport) completions.toList
+      else {
+        // In imports, show only the type symbols when there are multiple options with the same name
+        completions.toList.groupBy(_.name.stripModuleClassSuffix.toSimpleName).mapValues {
+          case sym :: Nil => sym :: Nil
+          case syms => syms.filter(_.isType)
+        }.values.flatten.toList
+      }
+
     interactiv.println(i"completion with pos = $pos, prefix = $info.prefix, termOnly = $info.termOnly, typeOnly = $info.typeOnly = $completionList%, %")
     (info.position, completionList)
   }

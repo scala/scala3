@@ -80,14 +80,14 @@ class CompletionTest {
     ).completion(m1, Set(("MyObject", Module, "O.MyObject")))
   }
 
-  @Test def importCompleteIncludeClassAndCompanion: Unit = {
+  @Test def importCompleteWithClassAndCompanion: Unit = {
     withSources(
       code"""package pkg0
              class Foo
              object Foo""",
       code"""package pgk1
              import pkg0.F${m1}"""
-    ).completion(m1, Set(("Foo", Class, "Object{...}"), ("Foo", Module, "pkg0.Foo")))
+    ).completion(m1, Set(("Foo", Class, "Object{...}")))
   }
 
   @Test def importCompleteIncludePackage: Unit = {
