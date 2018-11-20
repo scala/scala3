@@ -5,9 +5,12 @@ import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 
+import dotty.tools.dotc.reporting.diagnostic.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
-import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
+import org.eclipse.lsp4j.{ CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
+
+import org.junit.Assert.assertEquals
 
 /**
  * Simulates an LSP client for test in a project defined by `sources`.
@@ -29,6 +32,31 @@ class CodeTester(projects: List[Project]) {
     }
 
   private val positions: PositionContext = getPositions(files)
+
+  /** Check that the last diagnostics that have been published so far by the server
+   *  for a given file match `expected`.
+   *
+   * @param marker   The marker defining the source file from which to query.
+   * @param expected The expected diagnostics to be found
+   */
+  def diagnostics(marker: CodeMarker,
+      expected: (CodeRange, String, DiagnosticSeverity, Option[ErrorMessageID])*): this.type = {
+    implicit val posCtx = positions
+
+    def toDiagnostic(range: CodeRange, message: String, severity: DiagnosticSeverity,
+        errorCode: Option[ErrorMessageID]): Diagnostic = {
+      new Diagnostic(range.toRange, message, severity, /*source =*/"",
+        errorCode.map(_.errorNumber.toString).orNull)
+    }
+
+    val expectedParams = marker.toPublishDiagnosticsParams(expected.toList.map(toDiagnostic))
+    // Find the latest published diagnostics for the current source file
+    val actualParams = testServer.client.diagnostics.get.reverse.find(_.getUri == marker.uri)
+      .getOrElse(throw new Exception(s"No published diagnostics for ${marker.uri}"))
+    assertEquals(expectedParams, actualParams)
+
+    this
+  }
 
   /**
    * Perform a hover over `range`, verifies that result matches `expected`.

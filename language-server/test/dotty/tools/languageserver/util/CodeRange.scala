@@ -19,7 +19,7 @@ case class CodeRange(start: CodeMarker, end: CodeMarker) {
     if (!checked) {
       assert(start.file == end.file, s"$start and $end where not in the same file")
       assert(start.line <= end.line, s"Expected $end to be after $start")
-      assert(start.line != end.line || start.character < end.character, s"Expected $end to be after $start")
+      assert(start.line != end.line || start.character <= end.character, s"Expected $end to be at or after $start")
       checked = true
     }
   }
