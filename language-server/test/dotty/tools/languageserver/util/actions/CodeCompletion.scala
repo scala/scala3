@@ -13,11 +13,13 @@ import scala.collection.JavaConverters._
  * An action requesting for code completion at `marker`, expecting `expected`.
  * This action corresponds to the `textDocument/completion` method of the Language Server Protocol.
  *
- * @param marker    The marker indicating the position where completion should be requested.
- * @param expected The expected results from the language server.
+ * @param marker       The marker indicating the position where completion should be requested.
+ * @param checkResults A function that takes the results and verifies that they match
+ *                     expectations.
  */
 class CodeCompletion(override val marker: CodeMarker,
-                     expected: Set[(String, CompletionItemKind, String)]) extends ActionOnMarker {
+                     checkResults: Set[(String, CompletionItemKind, String)] => Unit)
+    extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
     val result = server.completion(marker.toCompletionParams).get()
@@ -26,9 +28,9 @@ class CodeCompletion(override val marker: CodeMarker,
     val completionResults = result.getRight.getItems.asScala.toSet.map { item =>
       (item.getLabel, item.getKind, item.getDetail)
     }
-    assertEquals(expected, completionResults)
+    checkResults(completionResults)
   }
 
   override def show: PositionContext.PosCtx[String] =
-    s"CodeCompletion(${marker.show}, $expected)"
+    s"CodeCompletion(${marker.show}, $checkResults)"
 }

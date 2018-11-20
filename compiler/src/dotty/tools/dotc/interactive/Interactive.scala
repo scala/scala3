@@ -166,31 +166,64 @@ object Interactive {
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
     val completions = Scopes.newScope.openForMutations
 
-    val (completionPos, prefix, termOnly, typeOnly) = path match {
+    /**
+     * Extract basic info about completion location and the kind of symbols to include.
+     *
+     * @param path     The path to the position where completion happens
+     * @param inImport If set, indicates that this is the completion of an import node. When
+     *                 completing imports, both types and terms are always included.
+     * @return The point where to insert completion, whether terms should be included in results,
+     *         whether types should be included, and whether we're completing an import.
+     */
+    def completionInfo(path: List[Tree], inImport: Boolean): (Int, String, Boolean, Boolean, Boolean) = path match {
       case (ref: RefTree) :: _ =>
         if (ref.name == nme.ERROR)
-          (ref.pos.point, "", false, false)
+          (ref.pos.point, "", false, false, inImport)
         else
           (ref.pos.point,
            ref.name.toString.take(pos.pos.point - ref.pos.point),
-           ref.name.isTermName,
-           ref.name.isTypeName)
+           !inImport && ref.name.isTermName, // Types and terms are always accepted in imports
+           !inImport && ref.name.isTypeName,
+           inImport)
       case _ =>
-        (0, "", false, false)
+        (0, "", false, false, false)
+    }
+
+    val (completionPos, prefix, termOnly, typeOnly, inImport) = path match {
+      case (imp: Import) :: _ =>
+        imp.selectors.find(_.pos.contains(pos.pos)) match {
+          case None      => (imp.expr.pos.point, "", false, false, true)
+          case Some(sel) => completionInfo(sel.asInstanceOf[tpd.Tree] :: Nil, /* inImport = */ true)
+        }
+      case other =>
+        completionInfo(other, /* inImport = */ false)
     }
 
     /** Include in completion sets only symbols that
      *   1. start with given name prefix, and
      *   2. do not contain '$' except in prefix where it is explicitly written by user, and
-     *   3. have same term/type kind as name prefix given so far
+     *   3. are not a primary constructor,
+     *   4. have an existing source symbol,
+     *   5. are the module class in case of packages,
+     *   6. are mutable accessors, to exclude setters for `var`,
+     *   7. have same term/type kind as name prefix given so far
      *
      *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
      *  as completion results. However, if a user explicitly writes all '$' characters in an
      *  identifier, we should complete the rest.
+     *
+     *  The reason for (4) is that we want to filter, for instance, non-existnet `Module`
+     *  symbols that accompany class symbols. We can't simply return only the source symbols,
+     *  because this would discard some synthetic symbols such as the copy method of case
+     *  classes.
      */
     def include(sym: Symbol) =
       sym.name.startsWith(prefix) &&
       !sym.name.toString.drop(prefix.length).contains('$') &&
+      !sym.isPrimaryConstructor &&
+      sym.sourceSymbol.exists &&
+      (!sym.is(Package) || !sym.moduleClass.exists) &&
+      !sym.is(allOf(Mutable, Accessor)) &&
       (!termOnly || sym.isTerm) &&
       (!typeOnly || sym.isType)
 
@@ -270,12 +303,16 @@ object Interactive {
 
     def getMemberCompletions(qual: Tree): Unit = {
       addAccessibleMembers(qual.tpe)
-      implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
-        .foreach(addAccessibleMembers(_))
+      if (!inImport) {
+        // Implicit conversions do not kick in when importing
+        implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
+          .foreach(addAccessibleMembers(_))
+      }
     }
 
     path match {
       case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
+      case (imp @ Import(expr, _)) :: _ => getMemberCompletions(expr)
       case _  => getScopeCompletions(ctx)
     }
 

@@ -779,7 +779,7 @@ object DottyLanguageServer {
     def completionItemKind(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItemKind = {
       import lsp4j.{CompletionItemKind => CIK}
 
-      if (sym.is(Package))
+      if (sym.is(Package) || sym.is(Module))
         CIK.Module // No CompletionItemKind.Package (https://github.com/Microsoft/language-server-protocol/issues/155)
       else if (sym.isConstructor)
         CIK.Constructor

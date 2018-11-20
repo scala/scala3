@@ -12,6 +12,8 @@ import org.eclipse.lsp4j.{ CompletionItemKind, DocumentHighlightKind, Diagnostic
 
 import org.junit.Assert.assertEquals
 
+import org.junit.Assert.assertEquals
+
 /**
  * Simulates an LSP client for test in a project defined by `sources`.
  *
@@ -114,7 +116,19 @@ class CodeTester(projects: List[Project]) {
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
   def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): this.type =
-    doAction(new CodeCompletion(marker, expected))
+    completion(marker, assertEquals(expected, _))
+
+  /**
+   * Requests completion at the position defined by `marker`, and pass the results to
+   * `checkResults`.
+   *
+   * @param marker       The position from which to ask for completions.
+   * @param checkResults A function that verifies that the results of completion are correct.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def completion(marker: CodeMarker, checkResults: Set[(String, CompletionItemKind, String)] => Unit): this.type =
+    doAction(new CodeCompletion(marker, checkResults))
 
   /**
    * Performs a workspace-wide renaming of the symbol under `marker`, verifies that the positions to
