@@ -104,7 +104,7 @@ trait TreeUtils
       case TypeTree.Block(typedefs, tpt) => foldTypeTree(foldTrees(x, typedefs), tpt)
       case TypeTree.MatchType(boundopt, selector, cases) =>
         foldTypeCaseDefs(foldTypeTree(boundopt.fold(x)(foldTypeTree(x, _)), selector), cases)
-      case SyntheticBounds() => x
+      case WildcardTypeTree() => x
       case TypeBoundsTree(lo, hi) => foldTypeTree(foldTypeTree(x, lo), hi)
     }
 

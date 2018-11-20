@@ -159,7 +159,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
   }
 
-  object SyntheticBounds extends SyntheticBoundsExtractor {
+  object WildcardTypeTree extends WildcardTypeTreeExtractor {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Boolean = x match {
       case x @ Trees.TypeTree() => x.tpe.isInstanceOf[Types.TypeBounds]
       case Trees.Ident(nme.WILDCARD) => x.tpe.isInstanceOf[Types.TypeBounds]
