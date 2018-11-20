@@ -46,7 +46,7 @@ object Test extends App {
   }
 
   // An instance declaration:
-  witness for Monoid[String] {
+  witness of Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -64,13 +64,13 @@ object Test extends App {
     val minimum: T
   }
 
-  witness for Ord[Int] {
+  witness of Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  witness [T: Ord] for Ord[List[T]] {
+  witness [T: Ord] of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -102,14 +102,14 @@ object Test extends App {
     def pure[A](x: A): F[A]
   }
 
-  witness for Monad[List] {
+  witness of Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  witness [Ctx] for Monad[[X] => Ctx => X] {
+  witness [Ctx] of Monad[[X] => Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

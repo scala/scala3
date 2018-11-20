@@ -2547,11 +2547,11 @@ object Parsers {
      *  WitnessParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
      */
     def witnessDef(start: Offset, mods: Modifiers, witnessMod: Mod) = atPos(start, nameStart) {
-      val name = if (isIdent) ident() else EmptyTermName
+      val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val vparamss = paramClauses(ofWitness = true)
       val parents =
-        if (in.token == FOR) {
+        if (isIdent(nme.of)) {
           in.nextToken()
           tokenSeparated(WITH, constrApp)
         }

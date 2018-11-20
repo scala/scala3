@@ -32,12 +32,12 @@ class Common {
 
 object Witnesses extends Common {
 
-  witness IntOrd for Ord[Int] {
+  witness IntOrd of Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  witness ListOrd[T] with (ord: Ord[T]) for Ord[List[T]] {
+  witness ListOrd[T] with (ord: Ord[T]) of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -59,14 +59,14 @@ object Witnesses extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  witness ListMonad for Monad[List] {
+  witness ListMonad of Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  witness ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+  witness ReaderMonad[Ctx] of Monad[[X] => Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -130,7 +130,7 @@ object Witnesses extends Common {
         println(summon[Context].value)
       }
       locally {
-        witness ctx: => Context = this.ctx
+        witness ctx with (): Context = this.ctx
         println(summon[Context].value)
       }
       locally {
@@ -146,7 +146,7 @@ object Witnesses extends Common {
 
   class Token(str: String)
 
-  witness StringToToken for ImplicitConverter[String, Token] {
+  witness StringToToken of ImplicitConverter[String, Token] {
     def apply(str: String): Token = new Token(str)
   }
 
@@ -172,12 +172,12 @@ object PostConditions {
 }
 
 object AnonymousWitnesses extends Common {
-  witness for Ord[Int] {
+  witness of Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  witness [T: Ord] for Ord[List[T]] {
+  witness [T: Ord] of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -199,11 +199,11 @@ object AnonymousWitnesses extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  witness [From, To] with (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
+  witness [From, To] with (c: Convertible[From, To]) of Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  witness for Monoid[String] {
+  witness of Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }

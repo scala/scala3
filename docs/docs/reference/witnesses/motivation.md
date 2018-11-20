@@ -35,7 +35,7 @@ Can implicit function types help? Implicit function types allow to abstract over
 
 `implicit` is a modifier that gets attached to various constructs. I.e. we talk about implicit vals, defs, objects, parameters, or arguments. This conveys mechanism rather than intent. What _is_ the intent that we want to convey? Ultimately it's "trade types for terms". The programmer specifies a type and the compiler fills in the term matching that type automatically. So the concept we are after would serve to express definitions that provide the canonical instances for certain types.
 
-I believe a good name for this concept is _witness_. A term is a witness for a type if it is an implicit instance of this type. It is secondary whether this instance takes the form of a `val` or `object` or whether it is a method. It would be better to have a uniform syntax for all of these kinds of instances.
+I believe a good name for this concept is _witness_. A term is a witness of a type if it is an implicit instance of this type. It is secondary whether this instance takes the form of a `val` or `object` or whether it is a method. It would be better to have a uniform syntax for all of these kinds of instances.
 
 The next sections elaborate such an alternative design. It consists of three proposals:
 

@@ -106,7 +106,7 @@ object Test {
 ```
 ## Syntax
 
-Here is the new syntax for parameters, arguments, and implicit function types seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
+Here is the new syntax of parameters, arguments, and implicit function types seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
 ClsParamClause    ::=  ...
                     |  ‘with’ ‘(’ [ClsParams] ‘)’

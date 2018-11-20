@@ -10,7 +10,7 @@ This addresses all the issues mentioned in the [Motivation](./motivation.md), bu
 ## Abstract and Alias Witnesses
 
 Witness definitions can be abstract.
-As an example for an abstract witness consider the following fragment that's derived from Scala's Tasty extractor framework:
+As an example of an abstract witness consider the following fragment that's derived from Scala's Tasty extractor framework:
 ```scala
 trait TastyAPI {
   type Symbol
@@ -21,7 +21,7 @@ trait TastyAPI {
   witness symDeco: SymDeco
 }
 ```
-Here, `symDeco` is available as a witness for the `SymDeco` trait but its actual implementation
+Here, `symDeco` is available as a witness of the `SymDeco` trait but its actual implementation
 is deferred to subclasses of the `TastyAPI` trait.
 
 An example of an alias witness would be an implementation of `symDeco` in terms of some internal compiler structure:
@@ -33,8 +33,8 @@ trait TastyImpl extends TastyAPI {
 Note that the result type of an abstract or alias witness is introduced with a colon instead of a `for`. This seems more natural since it evokes the similarity to implicit parameters, whose type is also given following a `:`. It also avoids the syntactic ambiguity with a witness
 for a class that does not add any new definitions. I.e.
 ```scala
-witness a for C   // concrete witness for class C, no definitions added
-witness b: C      // abstract witness for class C
+witness a of C   // concrete witness for class C, no definitions added
+witness b: C     // abstract witness for class C
 ```
 Further examples of alias witnesses:
 ```scala
@@ -87,7 +87,7 @@ The only use cases that are not yet covered by the proposal are implicit convers
 ```
 One can define all implicit conversions as witnesses of this class. E.g.
 ```scala
-witness StringToToken for ImplicitConverter[String, Token] {
+witness StringToToken of ImplicitConverter[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
@@ -97,7 +97,7 @@ That leaves implicit classes. Most use cases of implicit classes are probably al
 
 ## Summoning a Witness
 
-Besides `implicit`, there is also `implicitly`, a method defined in `Predef` that computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to introduce the name `summon` for this operation. So `summon[T]` summons a witness for `T`, in the same way as `implicitly[T]` did. The definition of `summon` is straightforward:
+Besides `implicit`, there is also `implicitly`, a method defined in `Predef` that computes an implicit value for a given type. Keeping with the "witness" terminology, it seems apt to introduce the name `summon` for this operation. So `summon[T]` summons a witness of `T`, in the same way as `implicitly[T]` did. The definition of `summon` is straightforward:
 ```scala
 def summon[T] with (x: T) = x
 ```
