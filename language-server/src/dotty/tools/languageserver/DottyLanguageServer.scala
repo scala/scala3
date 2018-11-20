@@ -19,6 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
+import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
@@ -800,6 +801,7 @@ object DottyLanguageServer {
     ParsedComment.docOf(sym).foreach { doc =>
       item.setDocumentation(markupContent(doc.renderAsMarkdown))
     }
+    item.setDeprecated(sym.isDeprecated)
     item.setKind(completionItemKind(sym))
     item
   }

@@ -1,10 +1,11 @@
 package dotty.tools.languageserver
 
-import org.junit.Assert.{assertTrue, assertFalse}
+import org.junit.Assert.{assertEquals, assertTrue, assertFalse}
 import org.junit.Test
 import org.eclipse.lsp4j.CompletionItemKind._
 
 import dotty.tools.languageserver.util.Code._
+import dotty.tools.languageserver.util.actions.CodeCompletion
 
 class CompletionTest {
 
@@ -32,7 +33,8 @@ class CompletionTest {
     withSources(
       code"""object Foo { class MyClass }""",
       code"""import Foo.${m1}"""
-    ).completion(m1, results => {
+    ).completion(m1, completionItems => {
+      val results = CodeCompletion.simplifyResults(completionItems)
       val myClass = ("MyClass", Class, "Foo.MyClass")
       assertTrue(results.contains(("MyClass", Class, "Foo.MyClass")))
 
@@ -142,5 +144,19 @@ class CompletionTest {
   @Test def importRename: Unit = {
     code"""import java.io.{FileDesc${m1} => Foo}""".withSource
       .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor")))
+  }
+
+  @Test def markDeprecatedSymbols: Unit = {
+    code"""object Foo {
+             @deprecated
+             val bar = 0
+           }
+           import Foo.ba${m1}""".withSource
+      .completion(m1, results => {
+        assertEquals(1, results.size)
+        val result = results.head
+        assertEquals("bar", result.getLabel)
+        assertTrue("bar was not deprecated", result.getDeprecated)
+      })
   }
 }

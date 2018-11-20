@@ -8,7 +8,7 @@ import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 import dotty.tools.dotc.reporting.diagnostic.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
-import org.eclipse.lsp4j.{ CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
+import org.eclipse.lsp4j.{ CompletionItem, CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
 
 import org.junit.Assert.assertEquals
 
@@ -116,7 +116,7 @@ class CodeTester(projects: List[Project]) {
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
   def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): this.type =
-    completion(marker, assertEquals(expected, _))
+    completion(marker, results => assertEquals(expected, CodeCompletion.simplifyResults(results)))
 
   /**
    * Requests completion at the position defined by `marker`, and pass the results to
@@ -127,7 +127,7 @@ class CodeTester(projects: List[Project]) {
    *
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
-  def completion(marker: CodeMarker, checkResults: Set[(String, CompletionItemKind, String)] => Unit): this.type =
+  def completion(marker: CodeMarker, checkResults: Set[CompletionItem] => Unit): this.type =
     doAction(new CodeCompletion(marker, checkResults))
 
   /**
