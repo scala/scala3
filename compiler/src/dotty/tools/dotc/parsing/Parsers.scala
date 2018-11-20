@@ -1740,8 +1740,8 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
-          case nme.`inline` => Mod.Inline()
-          case nme.`opaque` => Mod.Opaque()
+          case nme.inline => Mod.Inline()
+          case nme.opaque => Mod.Opaque()
         }
     }
 
@@ -1955,7 +1955,7 @@ object Parsers {
             }
         }
         else {
-          if (isIdent(nme.`inline`) && in.isSoftModifierInParamModifierPosition)
+          if (isIdent(nme.inline) && in.isSoftModifierInParamModifierPosition)
             mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
