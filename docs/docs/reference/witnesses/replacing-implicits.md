@@ -40,7 +40,7 @@ Further examples of alias witnesses:
 ```scala
 witness ctx = outer.ctx
 witness ctx: Context = outer.ctx
-witness byNameCtx: => Context = outer.ctx
+witness byNameCtx with (): Context = outer.ctx
 witness f[T]: C[T] = new C[T]
 witness g with (ctx: Context): D = new D(ctx)
 ```

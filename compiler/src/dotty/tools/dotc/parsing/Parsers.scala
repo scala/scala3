@@ -2567,17 +2567,7 @@ object Parsers {
           else TypeDef(name.toTypeName, templ)
         }
         else {
-          var byName = false
-          val tpt =
-            if (in.token == COLON) {
-              in.nextToken()
-              if (in.token == ARROW && tparams.isEmpty && vparamss.isEmpty) {
-                in.nextToken()
-                byName = true
-              }
-              toplevelTyp()
-            }
-            else TypeTree()
+          val tpt = typedOpt()
           if (tpt.isEmpty && in.token != EQUALS)
             syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
           val rhs =
@@ -2586,7 +2576,7 @@ object Parsers {
               expr()
             }
             else EmptyTree
-          if (tparams.isEmpty && vparamss.isEmpty && !byName) ValDef(name, tpt, rhs)
+          if (tparams.isEmpty && vparamss.isEmpty) ValDef(name, tpt, rhs)
           else DefDef(name, tparams, vparamss, tpt, rhs)
         }
       finalizeDef(wdef, mods1, start)
