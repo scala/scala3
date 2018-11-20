@@ -1083,6 +1083,14 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(implicit ctx: Context): Type = dealias1(keepIfRefining)
 
+    /** If this is a synthetic opaque type, its opaque alias, otherwise the type itself */
+    final def followSyntheticOpaque(implicit ctx: Context): Type = this match {
+      case tp: TypeProxy if tp.typeSymbol.is(SyntheticOpaque) =>
+        val AndType(alias, _) = tp.superType
+        alias
+      case _ => this
+    }
+
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
      */
