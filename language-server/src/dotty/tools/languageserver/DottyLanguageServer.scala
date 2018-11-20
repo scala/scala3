@@ -594,10 +594,11 @@ class DottyLanguageServer extends LanguageServer
     request.setMessage(message)
     request.setType(tpe)
 
-    client.showMessageRequest(request).thenApply { (answer: MessageActionItem) =>
-      choices.find(_._1 == answer.getTitle).map {
-        case (_, action) => action()
-      }
+    client.showMessageRequest(request).thenApply { (message: MessageActionItem) =>
+      for {
+        answer <- Option(message)
+        (_, action) <- choices.find(_._1 == answer.getTitle)
+      } yield action()
     }
   }
 }
