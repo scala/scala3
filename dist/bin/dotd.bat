@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+rem only for interactive debugging !
+set _DEBUG=0
+
 rem ##########################################################################
 rem ## Environment setup
 
@@ -18,9 +21,10 @@ rem ## Main
 
 call :javaClassPath
 
+if %_DEBUG%==1 echo [%_BASENAME%] "%_JAVACMD%" -Dscala.usejavacp=true -classpath "%_CLASS_PATH%" dotty.tools.dottydoc.Main %*
 "%_JAVACMD%" -Dscala.usejavacp=true -classpath "%_CLASS_PATH%" dotty.tools.dottydoc.Main %*
 if not %ERRORLEVEL%==0 (
-    rem echo Error: Dottydoc execution failed 1>&2
+    if %_DEBUG%==1 echo [%_BASENAME%] Dottydoc execution failed
     set _EXITCODE=1
     goto end
 )
@@ -95,5 +99,6 @@ rem ##########################################################################
 rem ## Cleanups
 
 :end
+if %_DEBUG%==1 echo [%_BASENAME%] _EXITCODE=%_EXITCODE%
 exit /b %_EXITCODE%
 endlocal

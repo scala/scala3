@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+rem only for interactive debugging !
+set _DEBUG=0
+
 rem ##########################################################################
 rem ## Environment setup
 
@@ -32,6 +35,7 @@ if %_CASE_1%==1 (
     if defined _CLASS_PATH set _DOTC_ARGS=-classpath "%_CLASS_PATH%"
     set _DOTC_ARGS=!_DOTC_ARGS! %_JAVA_OPTIONS% -repl %_RESIDUAL_ARGS%
     echo Starting dotty REPL...
+    if %_DEBUG%==1 echo [%_BASENAME%] %_PROG_HOME%\bin\dotc.bat !_DOTC_ARGS!
     %_PROG_HOME%\bin\dotc.bat !_DOTC_ARGS!
 rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
 ) else if %_CASE_2%==1 (
@@ -46,6 +50,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
         set _CP_ARG=!_CP_ARG!%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SCALA_ASM%
     )
     set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_RESIDUAL_ARGS%
+    if %_DEBUG%==1 echo [%_BASENAME%] %_JAVACMD% !_JAVA_ARGS!
     %_JAVACMD% !_JAVA_ARGS!
 ) else (
     echo Warning: Command option is not correct. 1>&2
@@ -98,5 +103,6 @@ rem ##########################################################################
 rem ## Cleanups
 
 :end
+if %_DEBUG%==1 echo [%_BASENAME%] _EXITCODE=%_EXITCODE%
 exit /b %_EXITCODE%
 endlocal
