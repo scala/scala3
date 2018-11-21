@@ -3,6 +3,8 @@ package decompiler
 
 import java.io.{OutputStream, PrintStream}
 
+import scala.io.Codec
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
@@ -24,8 +26,8 @@ class DecompilationPrinter extends Phase {
       var os: OutputStream = null
       var ps: PrintStream = null
       try {
-        os = File(outputDir.fileNamed("decompiled.scala").path).outputStream(append = true)
-        ps = new PrintStream(os)
+        os = File(outputDir.fileNamed("decompiled.scala").path)(Codec.UTF8).outputStream(append = true)
+        ps = new PrintStream(os, /* autoFlush = */ false, "UTF-8")
         printToOutput(ps)
       } finally {
         if (os ne null) os.close()

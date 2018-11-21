@@ -3,26 +3,26 @@ package tools
 package vulpix
 
 import java.io.{File => JFile}
-import java.text.SimpleDateFormat
-import java.util.HashMap
+import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.text.SimpleDateFormat
+import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
-import java.util.{Timer, TimerTask}
 
-import scala.io.Source
-import scala.util.control.NonFatal
-import scala.util.Try
 import scala.collection.mutable
+import scala.io.Source
+import scala.util.{Random, Try}
+import scala.util.control.NonFatal
 import scala.util.matching.Regex
-import scala.util.Random
+
+import dotc.{Compiler, Driver}
 import dotc.core.Contexts._
+import dotc.decompiler
+import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.diagnostic.MessageContainer
-import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
-import dotc.{Compiler, Driver}
-import dotc.decompiler
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -535,16 +535,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                     val ignoredFilePathLine = "/** Decompiled from"
                     val stripTrailingWhitespaces = "(.*\\S|)\\s+".r
                     val output = Source.fromFile(outDir.getParent + "_decompiled" + JFile.separator + outDir.getName
-                      + JFile.separator + "decompiled.scala").getLines().map {line =>
+                      + JFile.separator + "decompiled.scala", "UTF-8").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
                     }.toList
 
-                    val check: String = Source.fromFile(checkFile).getLines().filter(!_.startsWith(ignoredFilePathLine))
-                      .mkString("\n")
+                    val check: String = Source.fromFile(checkFile, "UTF-8").getLines().filter(!_.startsWith(ignoredFilePathLine))
+                      .mkString(EOL)
 
-                    if (output.filter(!_.startsWith(ignoredFilePathLine)).mkString("\n") != check) {
+                    if (output.filter(!_.startsWith(ignoredFilePathLine)).mkString(EOL) != check) {
                       val outFile = dotty.tools.io.File(checkFile.toPath).addExtension(".out")
-                      outFile.writeAll(output.mkString("\n"))
+                      outFile.writeAll(output.mkString(EOL))
                       val msg =
                         s"""Output differed for test $name, use the following command to see the diff:
                            |  > diff $checkFile $outFile
@@ -617,7 +617,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
           val outputLines = output.linesIterator.toArray :+ DiffUtil.EOF
-          val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray :+ DiffUtil.EOF
+          val checkLines: Array[String] = Source.fromFile(checkFile.get, "UTF-8").getLines().toArray :+ DiffUtil.EOF
           val sourceTitle = testSource.title
 
           def linesMatch =
@@ -726,7 +726,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val errorMap = new HashMap[String, Integer]()
           var expectedErrors = 0
           files.filter(_.getName.endsWith(".scala")).foreach { file =>
-            Source.fromFile(file).getLines().zipWithIndex.foreach { case (line, lineNbr) =>
+            Source.fromFile(file, "UTF-8").getLines().zipWithIndex.foreach { case (line, lineNbr) =>
               val errors = line.sliding("// error".length).count(_.mkString == "// error")
               if (errors > 0)
                 errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)
