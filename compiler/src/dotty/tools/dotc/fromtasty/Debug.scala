@@ -6,7 +6,7 @@ import scala.util.control.NonFatal
 
 import dotty.tools.io.Directory
 
-import java.io{File => JFile}
+import java.io.{File => JFile}
 import java.nio.file.{Files, Paths}
 
 object Debug {
