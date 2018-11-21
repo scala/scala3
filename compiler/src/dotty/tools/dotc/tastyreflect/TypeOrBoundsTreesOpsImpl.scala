@@ -29,7 +29,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
       if (termOrTypeTree.isType) Some(termOrTypeTree) else None
   }
 
-  object TypeTree extends TypeTreeModule {
+  object TypeTree extends TypeTreeModule with TypeTreeCoreModuleImpl {
 
     object Synthetic extends SyntheticExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {

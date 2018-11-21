@@ -26,7 +26,7 @@ trait TypeOrBoundsTreeOps extends Core {
   }
 
   val TypeTree: TypeTreeModule
-  abstract class TypeTreeModule {
+  abstract class TypeTreeModule extends TypeTreeCoreModule {
 
     /** TypeTree containing an inferred type */
     val Synthetic: SyntheticExtractor

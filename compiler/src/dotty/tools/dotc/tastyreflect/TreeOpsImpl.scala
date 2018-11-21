@@ -200,7 +200,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
   }
 
-  object Term extends TermModule {
+  object Term extends TermModule with TermCoreModuleImpl {
 
     object Ident extends IdentExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
