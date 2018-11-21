@@ -264,7 +264,7 @@ object ProtoTypes {
           targ = arg.withType(WildcardType)
         else {
           targ = typerFn(arg)
-          if (!ctx.reporter.hasPendingErrors) {
+          if (!ctx.reporter.hasUnreportedErrors) {
             // FIXME: This can swallow warnings by updating the typerstate from a nested
             // context that gets discarded later. But we do have to update the
             // typerstate if there are no errors. If we also omitted the next two lines

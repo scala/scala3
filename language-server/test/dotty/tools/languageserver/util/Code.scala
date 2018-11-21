@@ -106,7 +106,7 @@ object Code {
       }
 
       if (pi.hasNext)
-        stringBuilder.append(pi.next())
+        stringBuilder.append(pi.next().stripMargin)
 
       (stringBuilder.result(), positions.result())
     }

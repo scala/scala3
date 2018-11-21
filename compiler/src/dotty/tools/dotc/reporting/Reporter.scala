@@ -238,8 +238,10 @@ abstract class Reporter extends interfaces.ReporterResult {
   def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
     ctx.mode.is(Mode.Printing)
 
-  /** Does this reporter contain not yet reported errors or warnings? */
-  def hasPendingErrors: Boolean = false
+  /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
+   *  Note: this is always false when there is no outer reporter.
+   */
+  def hasUnreportedErrors: Boolean = false
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] = Nil

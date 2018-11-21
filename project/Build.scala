@@ -894,7 +894,7 @@ object Build {
     ).
     settings(
       ideTestsCompilerVersion := (version in `dotty-compiler`).value,
-      ideTestsCompilerArguments := (scalacOptions in `dotty-compiler`).value,
+      ideTestsCompilerArguments := Seq(),
       ideTestsDependencyClasspath := {
         val dottyLib = (classDirectory in `dotty-library-bootstrapped` in Compile).value
         val scalaLib =

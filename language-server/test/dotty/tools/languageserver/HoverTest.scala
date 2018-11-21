@@ -153,11 +153,6 @@ class HoverTest {
                        |   myFoo.bar[Int, String](0, "hello, world")
                        |   ```
                        |
-                       |**Usecases**
-                       | - ```scala
-                       |   def bar(fizz: Int, buzz: String): Any
-                       |   ```
-                       |
                        |**Note**
                        | - A note
                        |
