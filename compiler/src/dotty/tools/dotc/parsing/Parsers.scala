@@ -2593,22 +2593,6 @@ object Parsers {
       else t
     }
 
-    def constrAppsToType(apps: List[Tree]): Tree = {
-      def constrType(app: Tree): Tree = app match {
-        case Apply(app1, _) =>
-          syntaxError(i"illegal type of witness alias: $app", app.pos)
-          constrType(app1)
-        case Select(app1, nme.CONSTRUCTOR) => constrType(app1)
-        case New(app1) => app1
-        case _ => TypeTree()
-      }
-      if (apps.isEmpty) TypeTree()
-      else {
-        val tpes = apps.map(constrType)
-        tpes.filterNot(_.isInstanceOf[TypeTree]).reduce(AndTypeTree)
-      }
-    }
-
     /** ConstrApps ::=  ConstrApp {‘with’ ConstrApp}  (to be deprecated in 3.1)
      *               |  ConstrApp {‘,’ ConstrApp}
      */
