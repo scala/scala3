@@ -658,8 +658,6 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
-  val AccessOrSynthetic: FlagSet = AccessFlags | Synthetic
-
   /** Expand
    *
    *    object name extends parents { self => body }
