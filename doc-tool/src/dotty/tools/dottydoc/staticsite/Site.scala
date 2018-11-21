@@ -408,7 +408,7 @@ case class Site(
   }
 
   private def toSourceFile(f: JFile): SourceFile =
-    SourceFile(AbstractFile.getFile(new File(f.toPath)), Source.fromFile(f, "UTF-8").toArray)
+    SourceFile(AbstractFile.getFile(new File(f.toPath)), Source.fromFile(f).toArray)
 
   private def collectFiles(dir: JFile, includes: String => Boolean): Array[JFile] =
     dir
