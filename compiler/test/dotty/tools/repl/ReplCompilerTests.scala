@@ -1,11 +1,11 @@
 package dotty.tools.repl
 
+import java.lang.System.{lineSeparator => EOL}
+
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
-
-  private final val EOL: String = sys.props("line.separator")
 
   @Test def compileSingle = fromInitialState { implicit state =>
     run("def foo: 1 = 1")

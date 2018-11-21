@@ -26,9 +26,8 @@ class DecompilationPrinter extends Phase {
       var os: OutputStream = null
       var ps: PrintStream = null
       try {
-        implicit val codec = Codec.UTF8
-        os = File(outputDir.fileNamed("decompiled.scala").path).outputStream(append = true)
-        ps = new PrintStream(os, /*autoFlush*/false, "UTF-8")
+        os = File(outputDir.fileNamed("decompiled.scala").path)(Codec.UTF8).outputStream(append = true)
+        ps = new PrintStream(os, /* autoFlush = */ false, "UTF-8")
         printToOutput(ps)
       } finally {
         if (os ne null) os.close()

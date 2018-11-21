@@ -1,7 +1,8 @@
 package dotty.tools
 package repl
 
-import java.io.{ File => JFile }
+import java.io.{File => JFile}
+import java.lang.System.{lineSeparator => EOL}
 
 import org.junit.Assert._
 import org.junit.Test
@@ -13,8 +14,6 @@ import dotc.reporting.MessageRendering
 
 /** Runs all tests contained in `compiler/test-resources/repl/` */
 class ScriptedTests extends ReplTest with MessageRendering {
-
-  private final val EOL: String = sys.props("line.separator")
 
   private def scripts(path: String): Array[JFile] = {
     val dir = new JFile(getClass.getResource(path).getPath)

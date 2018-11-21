@@ -3,26 +3,26 @@ package tools
 package vulpix
 
 import java.io.{File => JFile}
-import java.text.SimpleDateFormat
-import java.util.HashMap
+import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.text.SimpleDateFormat
+import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
-import java.util.{Timer, TimerTask}
 
-import scala.io.Source
-import scala.util.control.NonFatal
-import scala.util.Try
 import scala.collection.mutable
+import scala.io.Source
+import scala.util.{Random, Try}
+import scala.util.control.NonFatal
 import scala.util.matching.Regex
-import scala.util.Random
+
+import dotc.{Compiler, Driver}
 import dotc.core.Contexts._
+import dotc.decompiler
+import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.diagnostic.MessageContainer
-import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
-import dotc.{Compiler, Driver}
-import dotc.decompiler
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -186,8 +186,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     protected final val realStdout = System.out
     protected final val realStderr = System.err
-
-    protected final val EOL: String = sys.props("line.separator")
 
     /** A runnable that logs its contents in a buffer */
     trait LoggedRunnable extends Runnable {

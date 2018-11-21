@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import java.lang.System.{lineSeparator => EOL}
+
 import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
@@ -15,8 +17,6 @@ import scala.annotation.switch
 import scala.collection.mutable
 
 trait MessageRendering {
-
-  private final val EOL: String = sys.props("line.separator")
 
   /** Remove ANSI coloring from `str`, useful for getting real length of
     * strings
