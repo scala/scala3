@@ -242,7 +242,7 @@ object Scanners {
 
 // Scala 2 compatibility
 
-    val isScala2Mode: Boolean = ctx.settings.language.value.contains(nme.Scala2.toString)
+    val isScala2Mode: Boolean = ctx.scala2Setting
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
     def testScala2Mode(msg: String, pos: Position = Position(offset)): Boolean = {

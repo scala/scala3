@@ -436,6 +436,8 @@ object desugar {
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
 
+    val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
+
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def _1: T1 = this.p1
     //     ...
@@ -475,7 +477,7 @@ object desugar {
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
-            .withMods(synthetic) :: Nil
+            .withFlags(Synthetic | constr1.mods.flags & copiedAccessFlags) :: Nil
         }
       }
 
@@ -580,7 +582,7 @@ object desugar {
           if (mods is Abstract) Nil
           else
             DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
-              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
+              .withFlags(Synthetic | constr1.mods.flags & (DefaultParameterized | copiedAccessFlags)) :: widenDefs
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
@@ -663,8 +665,6 @@ object desugar {
 
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
-
-  val AccessOrSynthetic: FlagSet = AccessFlags | Synthetic
 
   /** Expand
    *
