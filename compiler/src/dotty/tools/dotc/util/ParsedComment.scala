@@ -117,7 +117,6 @@ object ParsedComment {
     "@throws"  -> TagFormatter("Throws", toDescriptionList),
     "@see"     -> TagFormatter("See Also", toMarkdownList),
     "@example" -> TagFormatter("Examples", toCodeFences("scala")),
-    "@usecase" -> TagFormatter("Usecases", toCodeFences("scala")),
     "@note"    -> TagFormatter("Note", toMarkdownList),
     "@author"  -> TagFormatter("Authors", toMarkdownList),
     "@since"   -> TagFormatter("Since", toMarkdownList),
