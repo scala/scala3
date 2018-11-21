@@ -1973,7 +1973,6 @@ object Parsers {
      */
     def paramClause(ofClass: Boolean = false,                // owner is a class
                     ofCaseClass: Boolean = false,            // owner is a case class
-                    ofMethod: Boolean = false,               // owner is a method or constructor
                     prefix: Boolean = false,                 // clause precedes name of an extension method
                     firstClause: Boolean = false)            // clause is the first in regular list of clauses
                     : List[ValDef] = {
@@ -2065,15 +2064,13 @@ object Parsers {
      *  @return  The parameter definitions
      */
     def paramClauses(ofClass: Boolean = false,
-                     ofCaseClass: Boolean = false,
-                     ofMethod: Boolean = false): (List[List[ValDef]]) = {
+                     ofCaseClass: Boolean = false): (List[List[ValDef]]) = {
       def recur(firstClause: Boolean): List[List[ValDef]] = {
         newLineOptWhenFollowedBy(LPAREN)
         if (in.token == LPAREN) {
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
-              ofMethod = ofMethod,
               firstClause = firstClause)
           val lastClause =
             params.nonEmpty && params.head.mods.flags.is(Implicit)
@@ -2253,13 +2250,13 @@ object Parsers {
       } else {
         val (leadingParamss: List[List[ValDef]], flags: FlagSet) =
           if (in.token == LPAREN)
-            (paramClause(ofMethod = true, prefix = true) :: Nil, Method | Extension)
+            (paramClause(prefix = true) :: Nil, Method | Extension)
           else
             (Nil, Method)
         val mods1 = addFlag(mods, flags)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(ofMethod = true) match {
+        val vparamss = paramClauses() match {
           case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(name) =>
             rparams :: leadingParamss ::: rparamss
           case rparamss =>
