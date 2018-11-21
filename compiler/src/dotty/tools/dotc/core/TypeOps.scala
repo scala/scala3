@@ -327,6 +327,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
     scala2Mode
   }
+
+  /** Is option -language:Scala2 set?
+   *  This test is used when we are too early in the pipeline to consider imports.
+   */
+  def scala2Setting = ctx.settings.language.value.contains(nme.Scala2.toString)
 }
 
 object TypeOps {
