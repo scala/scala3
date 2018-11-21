@@ -8,6 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
+import util.Property
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -17,6 +18,11 @@ import scala.annotation.internal.sharable
 object desugar {
   import untpd._
   import DesugarEnums._
+
+  /** If a Select node carries this attachment, suppress the check
+   *  that its type refers to an acessible symbol.
+   */
+  val SuppressAccessCheck = new Property.Key[Unit]
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -727,9 +733,11 @@ object desugar {
           fwd
       }
       val moduleName = tdef.name.toTermName
-      val aliasType = cpy.TypeDef(tdef)(
-        rhs = completeForwarder(Select(Ident(moduleName), tdef.name)))
-      val localType = tdef.withFlags(Synthetic | Opaque)
+      val localRef = Select(Ident(moduleName), tdef.name)
+      localRef.pushAttachment(SuppressAccessCheck, ())
+      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef))
+      val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
+
       val companions = moduleDef(ModuleDef(
         moduleName, Template(emptyConstructor, Nil, EmptyValDef, localType :: Nil))
           .withFlags(Synthetic | Opaque))

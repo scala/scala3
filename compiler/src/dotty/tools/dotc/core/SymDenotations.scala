@@ -985,7 +985,7 @@ object SymDenotations {
       if (is(Module)) sourceModule
       else if (isOpaqueAlias)
         info match {
-          case TypeAlias(TypeRef(TermRef(prefix, _), _)) => prefix.termSymbol
+          case TypeAlias(TypeRef(prefix: TermRef, _)) => prefix.termSymbol
         }
       else registeredCompanion.sourceModule
 
