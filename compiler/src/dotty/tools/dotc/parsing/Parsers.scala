@@ -1209,7 +1209,7 @@ object Parsers {
       case FOR =>
         forExpr()
       case _ =>
-        if (isIdent(nme.INLINEkw)) {
+        if (isIdent(nme.inline) && !in.inModifierPosition() && in.lookaheadIn(canStartExpressionTokens)) {
           val start = in.skipToken()
           in.token match {
             case IF =>
