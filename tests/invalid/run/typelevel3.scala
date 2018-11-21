@@ -1,4 +1,4 @@
-
+// This test requires retyping from untyped trees after inlining, which is not supported anymore
 trait HList {
   def length: Int = 0
   def head: Any

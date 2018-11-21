@@ -88,8 +88,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length expr_Term call_Term? ValOrDefDef*
                   LAMBDA         Length meth_Term target_Type?
-                  IF             Length cond_Term then_Term else_Term
-                  MATCH          Length sel_Term CaseDef*
+                  IF             Length [INLINE] cond_Term then_Term else_Term
+                  MATCH          Length (IMPLICIT | [INLINE] sel_Term) CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
                   WHILE          Length cond_Term body_Term

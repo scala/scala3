@@ -338,6 +338,11 @@ class Definitions {
   def NullType: TypeRef = NullClass.typeRef
   lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
 
+  lazy val ImplicitScrutineeTypeSym =
+    newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
+  def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
+
+
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
 
@@ -1296,5 +1301,4 @@ class Definitions {
       isInitialized = true
     }
   }
-
 }

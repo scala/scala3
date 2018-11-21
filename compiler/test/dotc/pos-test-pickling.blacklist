@@ -11,6 +11,7 @@ i3976.scala
 i4125.scala
 implicit-dep.scala
 inline-access-levels
+inline-rewrite.scala
 macro-with-array
 macro-with-type
 matchtype.scala
@@ -43,3 +44,4 @@ t7264
 t7532b
 t8062
 typeclass-encoding2.scala
+typelevel0.scala

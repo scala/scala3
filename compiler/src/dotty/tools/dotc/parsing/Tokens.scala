@@ -249,5 +249,5 @@ object Tokens extends TokensCommon {
 
   final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
 
-  final val softModifierNames = Set(nme.`inline`, nme.`opaque`)
+  final val softModifierNames = Set(nme.inline, nme.opaque)
 }

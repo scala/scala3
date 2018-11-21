@@ -361,15 +361,26 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
+        val isInline = tree.isInstanceOf[Trees.InlineIf[_]]
         changePrec(GlobalPrec) {
-          keywordStr("if ") ~ toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
+          keywordStr(if (isInline) "inline if " else "if ") ~
+          toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~
+          toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
         }
       case Closure(env, ref, target) =>
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
-        if (sel.isEmpty) blockText(cases)
-        else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
+        val isInline = tree.isInstanceOf[Trees.InlineMatch[_]]
+        if (sel.isEmpty && !isInline) blockText(cases)
+        else changePrec(GlobalPrec) {
+          val selTxt: Text =
+            if (isInline)
+              if (sel.isEmpty) keywordStr("implicit")
+              else keywordStr("inline ") ~ toText(sel)
+            else toText(sel)
+          selTxt ~ keywordStr(" match ") ~ blockText(cases)
+        }
       case CaseDef(pat, guard, body) =>
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
       case Labeled(bind, expr) =>

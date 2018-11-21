@@ -3,3 +3,6 @@ eff-dependent.scala
 
 # It seems we still harmonize types in fromTasty. Not sure where this happens
 puzzle.scala
+
+# Need to print empty tree for implicit match
+implicitMatch.scala
