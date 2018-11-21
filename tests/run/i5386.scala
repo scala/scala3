@@ -1,4 +1,4 @@
-object Test {
+object Test extends App {
 
   ~{
     println("!")
@@ -26,7 +26,7 @@ object Test {
 
 
   class C {
-    def foo: 1 = 1
+    def foo: 1 = { println("1"); 1 }
   }
 
   { println("!"); new C }.foo
