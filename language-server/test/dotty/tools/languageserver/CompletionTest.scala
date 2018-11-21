@@ -159,4 +159,11 @@ class CompletionTest {
         assertTrue("bar was not deprecated", result.getDeprecated)
       })
   }
+
+  @Test def i4397: Unit = {
+    code"""class Foo {
+          |  .${m1}
+          |}""".withSource
+      .completion(m1, Set())
+  }
 }
