@@ -25,4 +25,17 @@ class DiagnosticsTest {
         (m1 to m1, """found:    Null
                      |required: Boolean""".stripMargin, Error, Some(TypeMismatchID))
       )
+
+  @Test def diagnosticPureExpression: Unit =
+    code"""object Test {
+          |  ${m1}1$m2
+          |}""".withSource
+     .diagnostics(m1,
+       (m1 to m2,
+        "a pure expression does nothing in statement position; you may be omitting necessary parentheses",
+        Warning, Some(PureExpressionInStatementPositionID)))
+
+  @Test def diagnosticWorksheetPureExpression: Unit =
+    ws"""${m1}1""".withSource
+     .diagnostics(m1 /* no "pure expression" warning because this is a worksheet */)
 }
