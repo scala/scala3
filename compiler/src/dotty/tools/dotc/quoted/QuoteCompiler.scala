@@ -67,7 +67,7 @@ class QuoteCompiler extends Compiler {
       */
     private def inClass(expr: Expr[_])(implicit ctx: Context): Tree = {
       val pos = Position(0)
-      val assocFile = new VirtualFile(Path("<quote>").path)
+      val assocFile = new VirtualFile("<quote>")
 
       val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
         defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
