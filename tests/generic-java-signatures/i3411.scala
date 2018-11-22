@@ -4,7 +4,7 @@ object Foo {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    val f1 = Foo.getClass.getMethods.find(_.getName.endsWith("foo")).get
-    println(f1.toGenericString)
+    val f1 = Foo.getClass.getMethods.find(_.nn.getName.endsWith("foo")).get
+    println(f1.nn.toGenericString)
   }
 }
