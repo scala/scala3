@@ -123,7 +123,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Bind extends BindExtractor {
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)] = x match {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)] = x match {
         case x: tpd.Bind if x.name.isTypeName => Some((x.name.toString, x.body))
         case _ => None
       }
@@ -141,27 +141,33 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
   def TypeBoundsTreeDeco(bounds: TypeBoundsTree): TypeBoundsTreeAPI = new TypeBoundsTreeAPI {
     def tpe(implicit ctx: Context): TypeBounds = bounds.tpe.asInstanceOf[Types.TypeBounds]
-    def low(implicit ctx: Context): TypeTree = bounds.asInstanceOf[tpd.TypeBoundsTree].lo
-    def hi(implicit ctx: Context): TypeTree = bounds.asInstanceOf[tpd.TypeBoundsTree].hi
+    def low(implicit ctx: Context): TypeTree = bounds.lo
+    def hi(implicit ctx: Context): TypeTree = bounds.hi
   }
 
   object IsTypeBoundsTree extends IsTypeBoundsTreeExtractor {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] = x match {
       case x: tpd.TypeBoundsTree => Some(x)
+      case x @ Trees.TypeTree() =>
+        // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
+        x.tpe match {
+          case tpe: Types.TypeBounds =>
+            Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withPos(x.pos), tpd.TypeTree(tpe.hi).withPos(x.pos)))
+          case _ => None
+        }
       case _ => None
     }
   }
 
   object TypeBoundsTree extends TypeBoundsTreeExtractor {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
-      case x: tpd.TypeBoundsTree => Some(x.lo, x.hi)
+      case IsTypeBoundsTree(x) => Some((x.lo, x.hi))
       case _ => None
     }
   }
 
   object WildcardTypeTree extends WildcardTypeTreeExtractor {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Boolean = x match {
-      case x @ Trees.TypeTree() => x.tpe.isInstanceOf[Types.TypeBounds]
       case Trees.Ident(nme.WILDCARD) => x.tpe.isInstanceOf[Types.TypeBounds]
       case _ => false
     }

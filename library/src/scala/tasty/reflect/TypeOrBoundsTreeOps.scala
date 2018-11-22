@@ -98,7 +98,7 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Bind: BindExtractor
     abstract class BindExtractor{
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)]
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)]
     }
 
     val Block: BlockExtractor
