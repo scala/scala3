@@ -26,7 +26,8 @@ trait SymbolOps extends Core {
     /** The full name of this symbol up to the root package. */
     def fullName(implicit ctx: Context): String
 
-    /** Returns the context within this symbol. */
+    def pos(implicit ctx: Context): Position
+
     def localContext(implicit ctx: Context): Context
 
     /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safly check and cast to PackageSymbol */

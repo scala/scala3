@@ -18,8 +18,8 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
   def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
     def pos(implicit ctx: Context): Position = tpt.pos
-    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
     def symbol(implicit ctx: Context): Symbol = tpt.symbol
+    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }
 
   object IsTypeTree extends IsTypeTreeExtractor {
