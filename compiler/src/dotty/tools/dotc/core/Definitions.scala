@@ -1069,7 +1069,8 @@ class Definitions {
 
   val PredefImportFns: List[() => TermRef] = List[() => TermRef](
     () => ScalaPredefModuleRef,
-    () => DottyPredefModuleRef
+    () => DottyPredefModuleRef,
+    () => ctx.requiredModuleRef("scala.NonNull") // TODO(abeln): move to right place
   )
 
   lazy val RootImportFns: List[() => TermRef] =
