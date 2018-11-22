@@ -746,7 +746,7 @@ object Contexts {
 
     private[this] var checkInProgress = false
 
-    // TODO: dirty kludge - should this class be an inner class of TyperState instead?
+    // TODO: clean up this dirty kludge
     private[this] var myCtx: Context = null
     implicit override def ctx = myCtx
     @forceInline private[this] final def inCtx[T](_ctx: Context)(op: => T) = {
@@ -769,8 +769,8 @@ object Contexts {
           val res = {
             import NameKinds.DepParamName
             // avoid registering the TypeVar with TyperState / TyperState#constraint
-            // TyperState TypeVars get instantiated when we don't want them to (see pos/i3500.scala)
-            // TyperState#constraint TypeVars can be narrowed in subtype checks - don't want that either
+            // - we don't want TyperState instantiating these TypeVars
+            // - we don't want TypeComparer constraining these TypeVars
             val poly = PolyType(DepParamName.fresh(sym.name.toTypeName) :: Nil)(
               pt => TypeBounds.empty :: Nil,
               pt => defn.AnyType)
@@ -796,27 +796,22 @@ object Contexts {
         case _ => tp
       }
 
-      def cautiousSubtype(tp1: Type, tp2: Type, isSubtype: Boolean, allowNarrowing: Boolean = false): Boolean = {
+      def cautiousSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
         val externalizedTp1 = (new TypeVarRemovingMap)(tp1)
         val externalizedTp2 = (new TypeVarRemovingMap)(tp2)
 
         def descr = {
           def op = s"frozen_${if (isSubtype) "<:<" else ">:>"}"
-          def flex = s"GADTFlexible=$allowNarrowing"
-          i"$tp1 $op $tp2\n\t$externalizedTp1 $op $externalizedTp2 ($flex)"
+          i"$tp1 $op $tp2\n\t$externalizedTp1 $op $externalizedTp2"
         }
         // gadts.println(descr)
 
-        val outerCtx = ctx
-        val res =  {
-//          implicit val ctx : Context =
-//            if (allowNarrowing) outerCtx else outerCtx.fresh.retractMode(Mode.GADTflexible)
-
+        val res =
           // TypeComparer.explain[Boolean](gadts.println) { implicit ctx =>
-          if (isSubtype) externalizedTp1 frozen_<:< externalizedTp2
+          if (isSubtype) externalizedTp1 frozen_<:<  externalizedTp2
           else externalizedTp2 frozen_<:< externalizedTp1
           // }
-        }
+
         gadts.println(i"$descr = $res")
         res
       }
@@ -825,8 +820,8 @@ object Contexts {
         case tv: TypeVar => tv
         case inst =>
           gadts.println(i"instantiated: $sym -> $inst")
-//          return true
-          return cautiousSubtype(inst, bound, isSubtype = isUpper, allowNarrowing = true)
+          // this is wrong in general, but "correct" due to a subtype check in TypeComparer#narrowGadtBounds
+          return true
       }
 
       def doAddBound(bound: Type): Boolean = {
@@ -873,7 +868,6 @@ object Contexts {
             (new TypeVarRemovingMap)(tb).asInstanceOf[TypeBounds]
           }
           val res =
-//            retrieveBounds
             if (checkInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
             else {
               if (dirtyFlag) {
@@ -882,8 +876,7 @@ object Contexts {
                 boundCache = SimpleIdentityMap.Empty.updated(sym, bounds)
                 bounds
               } else boundCache(sym) match {
-                case tb: TypeBounds =>
-                  tb
+                case tb: TypeBounds => tb
                 case null =>
                   val bounds = retrieveBounds
                   boundCache = boundCache.updated(sym, bounds)

@@ -1237,8 +1237,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         val newBounds =
           if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
           else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
-        // gadtMap can check its own satisfiability, but the subtype check is still necessary
-        // see tests/patmat/gadt-nontrivial2.scala
         isSubType(newBounds.lo, newBounds.hi) &&
           (if (isUpper) gadtAddUpperBound(tparam, bound) else gadtAddLowerBound(tparam, bound))
       }
