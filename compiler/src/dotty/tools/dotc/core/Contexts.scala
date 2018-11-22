@@ -723,7 +723,7 @@ object Contexts {
     private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
     private[this] var boundCache: SimpleIdentityMap[Symbol, TypeBounds],
     private[this] var dirtyFlag: Boolean
-  ) extends GADTMap with ConstraintHandling {
+  ) extends GADTMap with ConstraintHandling[Context] {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
     def this() = this(
@@ -748,20 +748,13 @@ object Contexts {
 
     private[this] var checkInProgress = false
 
-    // TODO: clean up this dirty kludge
-    private[this] var myCtx: Context = null
-    implicit override def ctx = myCtx
-    @forceInline private[this] final def inCtx[T](_ctx: Context)(op: => T) = {
-      val savedCtx = myCtx
-      myCtx = _ctx
-      try op finally myCtx = savedCtx
-    }
+    implicit override def ctx(implicit ctx: Context): Context = ctx
 
     override protected def constraint = myConstraint
     override protected def constraint_=(c: Constraint) = myConstraint = c
 
-    override def isSubType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
-    override def isSameType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
+    override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
+    override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
 
     private[this] def tvar(sym: Symbol)(implicit ctx: Context): TypeVar = {
       mapping(sym) match {
@@ -788,7 +781,7 @@ object Contexts {
 
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
-    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try inCtx(ctx) {
+    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
       dirtyFlag = true
       checkInProgress = true
       @annotation.tailrec def stripInst(tp: Type): Type = tp match {
@@ -799,8 +792,8 @@ object Contexts {
       }
 
       def cautiousSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
-        val externalizedTp1 = (new TypeVarRemovingMap)(tp1)
-        val externalizedTp2 = (new TypeVarRemovingMap)(tp2)
+        val externalizedTp1 = (new TypeVarRemovingMap()(ctx))(tp1)
+        val externalizedTp2 = (new TypeVarRemovingMap()(ctx))(tp2)
 
         def descr = {
           def op = s"frozen_${if (isSubtype) "<:<" else ">:>"}"
@@ -846,7 +839,7 @@ object Contexts {
         constraint = constraint.updateEntry(tv.origin, tp)
       }
 
-      val tvarBound = (new TypeVarInsertingMap)(bound)
+      val tvarBound = (new TypeVarInsertingMap()(ctx))(bound)
       val res = tvarBound match {
         case boundTvar: TypeVar =>
           doAddBound(boundTvar)
@@ -861,13 +854,13 @@ object Contexts {
       res
     } finally checkInProgress = false
 
-    override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = inCtx(ctx) {
+    override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
         case null => null
         case tv =>
           def retrieveBounds: TypeBounds = {
             val tb = constraint.fullBounds(tv.origin)
-            (new TypeVarRemovingMap)(tb).asInstanceOf[TypeBounds]
+            (new TypeVarRemovingMap()(ctx))(tb).asInstanceOf[TypeBounds]
           }
           val res =
             if (checkInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
@@ -900,7 +893,7 @@ object Contexts {
       dirtyFlag
     )
 
-    private final class TypeVarInsertingMap extends TypeMap {
+    private final class TypeVarInsertingMap(implicit ctx: Context) extends TypeMap {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
           val sym = tp.typeSymbol
@@ -910,7 +903,7 @@ object Contexts {
       }
     }
 
-    private final class TypeVarRemovingMap extends TypeMap {
+    private final class TypeVarRemovingMap(implicit ctx: Context) extends TypeMap {
       override def apply(tp: Type): Type = tp match {
         case tpr: TypeParamRef =>
           reverseMapping(tpr) match {

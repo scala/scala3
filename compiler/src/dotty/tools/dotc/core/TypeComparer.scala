@@ -17,11 +17,16 @@ import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import reporting.trace
 
+final class AbsentContext
+object AbsentContext {
+  implicit val absentContext: AbsentContext = new AbsentContext
+}
+
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling {
+class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   import TypeComparer._
-  implicit val ctx: Context = initctx
+  implicit def ctx(implicit nc: AbsentContext): Context = initctx
 
   val state = ctx.typerState
   def constraint: Constraint = state.constraint
@@ -138,7 +143,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     finally this.approx = saved
   }
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
+  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, NoApprox)
 
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
@@ -185,7 +190,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
-          implicit val ctx = this.ctx
+          implicit val ctx: Context = this.ctx
           tp2.info match {
             case info2: TypeAlias => recur(tp1, info2.alias)
             case _ => tp1 match {
@@ -1323,7 +1328,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   // Type equality =:=
 
   /** Two types are the same if are mutual subtypes of each other */
-  def isSameType(tp1: Type, tp2: Type): Boolean =
+  def isSameType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean =
     if (tp1 eq NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
@@ -1844,12 +1849,12 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   val footprint: mutable.Set[Type] = mutable.Set[Type]()
 
-  override def bounds(param: TypeParamRef): TypeBounds = {
+  override def bounds(param: TypeParamRef)(implicit nc: AbsentContext): TypeBounds = {
     if (param.binder `ne` caseLambda) footprint += param
     super.bounds(param)
   }
 
-  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean = {
+  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit nc: AbsentContext): Boolean = {
     if (param.binder `ne` caseLambda) footprint += param
     super.addOneBound(param, bound, isUpper)
   }
@@ -1960,7 +1965,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean =
+  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
     traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
       super.addConstraint(param, bound, fromBelow)
     }
