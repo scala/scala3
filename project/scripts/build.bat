@@ -138,20 +138,22 @@ goto :eof
 :help
 echo Usage: %_BASENAME% { options ^| subcommands }
 echo   Options:
-echo     -timer                 display total build time
+echo     -timer                 display total execution time
 echo     -verbose               display environment settings
 echo   Subcommands:
 echo     arch[ives]             generate gz/zip archives (after bootstrap)
-echo     arch[ives]-only        generate ONLY gz/zip archives
 echo     boot[strap]            generate compiler bootstrap (after compile)
-echo     boot[strap]-only       generate ONLY compiler bootstrap
 echo     cleanall               clean project (sbt+git) and quit
 echo     clone                  update submodules
 echo     compile                generate compiler 1st stage (after clone)
-echo     compile-only           generate ONLY compiler 1st stage
 echo     doc[umentation]        generate documentation (after bootstrap)
-echo     doc[umentation]-only]  generate ONLY documentation
 echo     help                   display this help message
+echo   Advanced subcommands (no deps):
+echo     arch[ives]-only        generate ONLY gz/zip archives
+echo     boot[strap]-only       generate ONLY compiler bootstrap
+echo     compile-only           generate ONLY compiler 1st stage
+echo     doc[umentation]-only]  generate ONLY documentation
+
 goto :eof
 
 rem output parameters: _GIT_CMD, _SBT_CMD
