@@ -57,7 +57,34 @@ class Driver {
     }
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
-    (fileNames, ctx)
+    fromTastySetup(fileNames, ctx)
+  }
+
+  /** Setup extra classpath and figure out class names for tasty file inputs */
+  private def fromTastySetup(fileNames0: List[String], ctx0: Context) = {
+    if (ctx0.settings.fromTasty.value(ctx0)) {
+      // Resolve classpath and class names of tasty files
+      val (classPaths, classNames) = fileNames0.map { name =>
+        val path = Paths.get(name)
+        if (!name.endsWith(".tasty")) ("", name)
+        else if (Files.exists(path)) {
+          TastyFileUtil.getClassName(path) match {
+            case Some(res) => res
+            case _ =>
+              ctx0.error(s"Could not load classname from $name.")
+              ("", name)
+          }
+        } else {
+          ctx0.error(s"File $name does not exist.")
+          ("", name)
+        }
+      }.unzip
+      val ctx1 = ctx0.fresh
+      val classPaths1 = classPaths.distinct.filter(_ != "")
+      val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(ctx1)).mkString(java.io.File.pathSeparator)
+      ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
+      (classNames, ctx1)
+    } else (fileNames0, ctx0)
   }
 
   /** Entry point to the compiler that can be conveniently used with Java reflection.
@@ -135,31 +162,7 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    val (fileNames0, ctx0) = setup(args, rootCtx)
-    val (fileNames, ctx) =
-      if (ctx0.settings.fromTasty.value(ctx0)) {
-        // Resolve classpath and class names of tasty files
-        val (classPaths, classNames) = fileNames0.map { name =>
-          val path = Paths.get(name)
-          if (!name.endsWith(".tasty")) ("", name)
-          else if (Files.exists(path)) {
-            TastyFileUtil.getClassName(path) match {
-              case Some(res) => res
-              case _ =>
-                ctx0.error(s"Could not load classname from $name.")
-                ("", name)
-            }
-          } else {
-            ctx0.error(s"File $name does not exist.")
-            ("", name)
-          }
-        }.unzip
-        val ctx1 = ctx0.fresh
-        val classPaths1 = classPaths.distinct.filter(_ != "")
-        val fullClassPath = (ctx1.settings.classpath.value(ctx1) :: classPaths1).mkString(java.io.File.pathSeparator)
-        ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
-        (classNames, ctx1)
-      } else (fileNames0, ctx0)
+    val (fileNames, ctx) = setup(args, rootCtx)
     doCompile(newCompiler(ctx), fileNames)(ctx)
   }
 
