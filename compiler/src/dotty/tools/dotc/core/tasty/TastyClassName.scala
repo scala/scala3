@@ -27,29 +27,29 @@ class TastyClassName(bytes: Array[Byte]) {
         val idx = readNat()
         nameAtRef(NameRef(idx))
       }
-      def readNames(pack: TermName): (TermName, TermName) = {
+      def readNames(packageName: TermName): (TermName, TermName) = {
         val tag = readByte()
         if (tag >= firstLengthTreeTag) {
           val len = readNat()
           val end = currentAddr + len
           tag match {
             case TYPEDEF =>
-              val name = readName()
+              val className = readName()
               goto(end)
-              (pack, name)
+              (packageName, className)
             case IMPORT | VALDEF =>
               goto(end)
-              readNames(pack)
+              readNames(packageName)
             case PACKAGE =>
-              readNames(pack)
+              readNames(packageName)
           }
         }
         else tag match {
           case TERMREFpkg | TYPEREFpkg =>
-            val packName = readName()
-            readNames(packName)
+            val subPackageName = readName()
+            readNames(subPackageName)
           case _ =>
-            readNames(pack)
+            readNames(packageName)
         }
       }
       readNames(nme.EMPTY_PACKAGE)

@@ -26,8 +26,8 @@ object TastyFileUtil {
     assert(Files.exists(path))
     val bytes = Files.readAllBytes(path)
     val names = new core.tasty.TastyClassName(bytes).readName()
-    names.map { case (packName, className) =>
-      val fullName = s"$packName.${className.lastPart}"
+    names.map { case (packageName, className) =>
+      val fullName = s"$packageName.${className.lastPart}"
       val classInPath = fullName.replace(".", io.File.separator) + ".tasty"
       val classpath = path.toString.replace(classInPath, "")
       (classpath, fullName)
