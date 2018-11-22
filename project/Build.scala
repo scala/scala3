@@ -420,7 +420,8 @@ object Build {
 
       val sources =
         unmanagedSources.in(Compile, compile).value ++
-        unmanagedSources.in(`dotty-compiler`, Compile).value
+        unmanagedSources.in(`dotty-compiler`, Compile).value ++
+        unmanagedSources.in(`dotty-library`, Compile).value
       val args = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
