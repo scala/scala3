@@ -6,3 +6,5 @@ puzzle.scala
 
 # Need to print empty tree for implicit match
 implicitMatch.scala
+typeclass-derivation1.scala
+
