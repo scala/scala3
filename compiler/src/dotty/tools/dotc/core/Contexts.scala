@@ -724,7 +724,7 @@ object Contexts {
     private[this] var boundCache: SimpleIdentityMap[Symbol, TypeBounds],
     private[this] var dirtyFlag: Boolean
   ) extends GADTMap with ConstraintHandling {
-    import dotty.tools.dotc.config.Printers.gadts
+    import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
     def this() = this(
       myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
@@ -733,6 +733,8 @@ object Contexts {
       boundCache = SimpleIdentityMap.Empty,
       dirtyFlag = false
     )
+
+    override def constr_println(msg: => String): Unit = gadtsConstr.println(msg)
 
     override def debugBoundsDescription(implicit ctx: Context): String = {
       val sb = new mutable.StringBuilder
