@@ -792,8 +792,8 @@ object Contexts {
       }
 
       def cautiousSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
-        val externalizedTp1 = (new TypeVarRemovingMap()(ctx))(tp1)
-        val externalizedTp2 = (new TypeVarRemovingMap()(ctx))(tp2)
+        val externalizedTp1 = removeTypeVars(tp1)
+        val externalizedTp2 = removeTypeVars(tp2)
 
         def descr = {
           def op = s"frozen_${if (isSubtype) "<:<" else ">:>"}"
@@ -824,7 +824,7 @@ object Contexts {
           return true
       }
 
-      val internalizedBound = (new TypeVarInsertingMap()(ctx))(bound)
+      val internalizedBound = insertTypeVars(bound)
       val res = stripInst(internalizedBound) match {
         case boundTvar: TypeVar =>
           if (boundTvar eq symTvar) true
@@ -850,7 +850,7 @@ object Contexts {
         case tv =>
           def retrieveBounds: TypeBounds = {
             val tb = constraint.fullBounds(tv.origin)
-            (new TypeVarRemovingMap()(ctx))(tb).asInstanceOf[TypeBounds]
+            removeTypeVars(tb).asInstanceOf[TypeBounds]
           }
           val res =
             if (checkInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
@@ -883,31 +883,33 @@ object Contexts {
       dirtyFlag
     )
 
+    private def insertTypeVars(tp: Type, map: TypeMap = null)(implicit ctx: Context) = tp match {
+      case tp: TypeRef =>
+        val sym = tp.typeSymbol
+        if (contains(sym)) tvar(sym) else tp
+      case _ =>
+        (if (map != null) map else new TypeVarInsertingMap()).mapOver(tp)
+    }
     private final class TypeVarInsertingMap(implicit ctx: Context) extends TypeMap {
-      override def apply(tp: Type): Type = tp match {
-        case tp: TypeRef =>
-          val sym = tp.typeSymbol
-          if (contains(sym)) tvar(sym) else tp
-        case _ =>
-          mapOver(tp)
-      }
+      override def apply(tp: Type): Type = insertTypeVars(tp, this)
     }
 
+    private def removeTypeVars(tp: Type, map: TypeMap = null)(implicit ctx: Context) = tp match {
+      case tpr: TypeParamRef =>
+        reverseMapping(tpr) match {
+          case null => tpr
+          case sym => sym.typeRef
+        }
+      case tv: TypeVar =>
+        reverseMapping(tv.origin) match {
+          case null => tv
+          case sym => sym.typeRef
+        }
+      case _ =>
+        (if (map != null) map else new TypeVarRemovingMap()).mapOver(tp)
+    }
     private final class TypeVarRemovingMap(implicit ctx: Context) extends TypeMap {
-      override def apply(tp: Type): Type = tp match {
-        case tpr: TypeParamRef =>
-          reverseMapping(tpr) match {
-            case null => tpr
-            case sym => sym.typeRef
-          }
-        case tv: TypeVar =>
-          reverseMapping(tv.origin) match {
-            case null => tv
-            case sym => sym.typeRef
-          }
-        case _ =>
-          mapOver(tp)
-      }
+      override def apply(tp: Type): Type = removeTypeVars(tp, this)
     }
   }
 
