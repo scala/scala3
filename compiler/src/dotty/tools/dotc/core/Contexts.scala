@@ -811,6 +811,11 @@ object Contexts {
         res
       }
 
+      def unify(tv: TypeVar, tp: Type): Unit = {
+        gadts.println(i"manually unifying $tv with $tp")
+        constraint = constraint.updateEntry(tv.origin, tp)
+      }
+
       val symTvar: TypeVar = stripInst(tvar(sym)) match {
         case tv: TypeVar => tv
         case inst =>
@@ -819,37 +824,22 @@ object Contexts {
           return true
       }
 
-      def doAddBound(bound: Type): Boolean = {
-        val res = stripInst(bound) match {
-          case boundTvar: TypeVar =>
-            if (boundTvar eq symTvar) true
-            else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
-            else addLess(boundTvar.origin, symTvar.origin)
-          case bound =>
-            if (cautiousSubtype(symTvar, bound, isSubtype = !isUpper)) { unify(symTvar, bound); true }
-            else if (isUpper) addUpperBound(symTvar.origin, bound)
-            else addLowerBound(symTvar.origin, bound)
-        }
-
-        res
-      }
-
-      def unify(tv: TypeVar, tp: Type): Unit = {
-        gadts.println(i"manually unifying $tv with $tp")
-        constraint = constraint.updateEntry(tv.origin, tp)
-      }
-
-      val tvarBound = (new TypeVarInsertingMap()(ctx))(bound)
-      val res = tvarBound match {
+      val internalizedBound = (new TypeVarInsertingMap()(ctx))(bound)
+      val res = stripInst(internalizedBound) match {
         case boundTvar: TypeVar =>
-          doAddBound(boundTvar)
-        case tp => doAddBound(tp)
+          if (boundTvar eq symTvar) true
+          else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
+          else addLess(boundTvar.origin, symTvar.origin)
+        case bound =>
+          if (cautiousSubtype(symTvar, bound, isSubtype = !isUpper)) { unify(symTvar, bound); true }
+          else if (isUpper) addUpperBound(symTvar.origin, bound)
+          else addLowerBound(symTvar.origin, bound)
       }
 
       gadts.println {
         val descr = if (isUpper) "upper" else "lower"
         val op = if (isUpper) "<:" else ">:"
-        i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $tvarBound )"
+        i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
       }
       res
     } finally checkInProgress = false
