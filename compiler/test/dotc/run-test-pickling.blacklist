@@ -9,3 +9,4 @@ t8133b
 tuples1.scala
 tuples1a.scala
 implicitMatch.scala
+typeclass-derivation1.scala

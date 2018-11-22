@@ -12,6 +12,7 @@ i4125.scala
 implicit-dep.scala
 inline-access-levels
 inline-rewrite.scala
+inline-caseclass.scala
 macro-with-array
 macro-with-type
 matchtype.scala
