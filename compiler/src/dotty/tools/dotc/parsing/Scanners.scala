@@ -631,7 +631,11 @@ object Scanners {
       nextChar()
       if (ch == '/') { skipLine(); finishComment() }
       else if (ch == '*') { nextChar(); skipComment(); finishComment() }
-      else false
+      else {
+        // This was not a comment, remove the `/` from the buffer
+        commentBuf.clear()
+        false
+      }
     }
 
 // Lookahead ---------------------------------------------------------------
