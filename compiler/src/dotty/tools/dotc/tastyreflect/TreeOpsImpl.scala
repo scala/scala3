@@ -13,7 +13,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     def symbol(implicit ctx: Context): Symbol = tree.symbol
   }
 
-  object IsPackageClause extends IsPackageClauseExtractor {
+  object IsPackageClause extends IsPackageClauseModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause] = tree match {
       case x: tpd.PackageDef => Some(x)
       case _ => None
@@ -47,7 +47,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   // ----- Definitions ----------------------------------------------
 
-  object IsDefinition extends IsDefinitionExtractor {
+  object IsDefinition extends IsDefinitionModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = tree match {
       case tree: tpd.MemberDef => Some(tree)
       case tree: PackageDefinition => Some(tree)
@@ -61,7 +61,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   // ClassDef
 
-  object IsClassDef extends IsClassDefExtractor {
+  object IsClassDef extends IsClassDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = tree match {
       case x: tpd.TypeDef if x.isClassDef => Some(x)
       case _ => None
@@ -87,7 +87,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   // DefDef
 
-  object IsDefDef extends IsDefDefExtractor {
+  object IsDefDef extends IsDefDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
       case x: tpd.DefDef => Some(x)
       case _ => None
@@ -112,7 +112,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   // ValDef
 
-  object IsValDef extends IsValDefExtractor {
+  object IsValDef extends IsValDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = tree match {
       case x: tpd.ValDef => Some(x)
       case _ => None
@@ -135,7 +135,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   // TypeDef
 
-  object IsTypeDef extends IsTypeDefExtractor {
+  object IsTypeDef extends IsTypeDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = tree match {
       case x: tpd.TypeDef if !x.symbol.isClass => Some(x)
       case _ => None
@@ -168,7 +168,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     def symbol(implicit ctx: Context): PackageSymbol = pdef.symbol
   }
 
-  object IsPackageDef extends IsPackageDefExtractor {
+  object IsPackageDef extends IsPackageDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef] = tree match {
       case x: PackageDefinition => Some(x)
       case _ => None
@@ -193,7 +193,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     def underlying(implicit ctx: Context): Term = term.underlying
   }
 
-  object IsTerm extends IsTermExtractor {
+  object IsTerm extends IsTermModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
       if (tree.isTerm) Some(tree) else None
     def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
@@ -202,9 +202,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   object Term extends TermModule with TermCoreModuleImpl {
 
+    object IsIdent extends IsIdentModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Ident] = x match {
+        case x: tpd.Ident if x.isTerm => Some(x)
+        case _ => None
+      }
+    }
+
     object Ident extends IdentExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
         case x: tpd.Ident if x.isTerm => Some(x.name.show)
+        case _ => None
+      }
+    }
+
+    object IsSelect extends IsSelectModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Select] = x match {
+        case x: tpd.Select if x.isTerm => Some(x)
         case _ => None
       }
     }
@@ -220,9 +234,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsLiteral extends IsLiteralModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Literal] = x match {
+        case x: tpd.Literal => Some(x)
+        case _ => None
+      }
+    }
+
     object Literal extends LiteralExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[Constant] = x match {
         case Trees.Literal(const) => Some(const)
+        case _ => None
+      }
+    }
+
+    object IsThis extends IsThisModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[This] = x match {
+        case x: tpd.This => Some(x)
         case _ => None
       }
     }
@@ -234,9 +262,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsNew extends IsNewModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[New] = x match {
+        case x: tpd.New => Some(x)
+        case _ => None
+      }
+    }
+
     object New extends NewExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[TypeTree] = x match {
         case x: tpd.New => Some(x.tpt)
+        case _ => None
+      }
+    }
+
+    object IsNamedArg extends IsNamedArgModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[NamedArg] = x match {
+        case x: tpd.NamedArg if x.name.isInstanceOf[Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
         case _ => None
       }
     }
@@ -248,9 +290,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsApply extends IsApplyModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Apply] = x match {
+        case x: tpd.Apply => Some(x)
+        case _ => None
+      }
+    }
+
     object Apply extends ApplyExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])] = x match {
         case x: tpd.Apply => Some((x.fun, x.args))
+        case _ => None
+      }
+    }
+
+    object IsTypeApply extends IsTypeApplyModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[TypeApply] = x match {
+        case x: tpd.TypeApply => Some(x)
         case _ => None
       }
     }
@@ -262,9 +318,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsSuper extends IsSuperModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Super] = x match {
+        case x: tpd.Super => Some(x)
+        case _ => None
+      }
+    }
+
     object Super extends SuperExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])] = x match {
         case x: tpd.Super => Some((x.qual, if (x.mix.isEmpty) None else Some(x.mix)))
+        case _ => None
+      }
+    }
+
+    object IsTyped extends IsTypedModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Typed] = x match {
+        case x: tpd.Typed => Some(x)
         case _ => None
       }
     }
@@ -276,9 +346,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsAssign extends IsAssignModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Assign] = x match {
+        case x: tpd.Assign => Some(x)
+        case _ => None
+      }
+    }
+
     object Assign extends AssignExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
         case x: tpd.Assign => Some((x.lhs, x.rhs))
+        case _ => None
+      }
+    }
+
+    object IsBlock extends IsBlockModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Block] = Block.normalizedLoops(x) match {
+        case x: tpd.Block => Some(x)
         case _ => None
       }
     }
@@ -292,7 +376,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
        *  i) Put `while` and `doWhile` loops in their own blocks: `{ def while$() = ...; while$() }`
        *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
        */
-      private def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+      private[Term] def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
         case block: tpd.Block if block.stats.size > 1 =>
           def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
             case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
@@ -318,10 +402,24 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsInlined extends IsInlinedModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Inlined] = x match {
+        case x: tpd.Inlined => Some(x)
+        case _ => None
+      }
+    }
+
     object Inlined extends InlinedExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Statement], Term)] = x match {
         case x: tpd.Inlined =>
           Some((optional(x.call), x.bindings, x.expansion))
+        case _ => None
+      }
+    }
+
+    object IsLambda extends IsLambdaModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Lambda] = x match {
+        case x: tpd.Closure => Some(x)
         case _ => None
       }
     }
@@ -333,9 +431,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsIf extends IsIfModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[If] = x match {
+        case x: tpd.If => Some(x)
+        case _ => None
+      }
+    }
+
     object If extends IfExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term, Term)] = x match {
         case x: tpd.If => Some((x.cond, x.thenp, x.elsep))
+        case _ => None
+      }
+    }
+
+    object IsMatch extends IsMatchModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Match] = x match {
+        case x: tpd.Match => Some(x)
         case _ => None
       }
     }
@@ -347,9 +459,23 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsTry extends IsTryModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Try] = x match {
+        case x: tpd.Try => Some(x)
+        case _ => None
+      }
+    }
+
     object Try extends TryExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] = x match {
         case x: tpd.Try => Some((x.expr, x.cases, optional(x.finalizer)))
+        case _ => None
+      }
+    }
+
+    object IsReturn extends IsReturnModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Return] = x match {
+        case x: tpd.Return => Some(x)
         case _ => None
       }
     }
@@ -361,9 +487,27 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       }
     }
 
+    object IsRepeated extends IsRepeatedModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[Repeated] = x match {
+        case x: tpd.SeqLiteral => Some(x)
+        case _ => None
+      }
+    }
+
     object Repeated extends RepeatedExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[List[Term]] = x match {
         case x: tpd.SeqLiteral => Some(x.elems)
+        case _ => None
+      }
+    }
+
+    object IsSelectOuter extends IsSelectOuterModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[SelectOuter] = x match {
+        case x: tpd.Select =>
+          x.name match {
+            case NameKinds.OuterSelectName(_, _) => Some(x)
+            case _ => None
+          }
         case _ => None
       }
     }
@@ -375,6 +519,13 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
             case NameKinds.OuterSelectName(_, levels) => Some((x.qualifier, levels, x.tpe.stripTypeVar))
             case _ => None
           }
+        case _ => None
+      }
+    }
+
+    object IsWhile extends IsWhileModule {
+      def unapply(x: Term)(implicit ctx: Context): Option[While] = x match {
+        case x: tpd.WhileDo => Some(x)
         case _ => None
       }
     }
