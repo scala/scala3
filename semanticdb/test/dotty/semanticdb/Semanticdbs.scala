@@ -7,7 +7,7 @@ import scala.collection.JavaConverters._
 import dotty.tools.dotc.util.SourceFile
 
 object Semanticdbs {
-
+  private val buildSubFolder = "semanticdb/input/"
   /**
    * Utility to load SemanticDB for Scala source files.
    *
@@ -17,7 +17,7 @@ object Semanticdbs {
    *                  if you only care about reading SemanticDB files from a single project.
    */
   class Loader(sourceroot: Path, classpath: List[Path]) {
-    private val META_INF = Paths.get("META-INF", "semanticdb")
+    private val META_INF = Paths.get("META-INF", "semanticdb").resolve(buildSubFolder)
     private val classLoader = new java.net.URLClassLoader(classpath.map(_.toUri.toURL).toArray)
     /** Returns a SemanticDB for a single Scala source file, if any. The path must be absolute. */
     def resolve(scalaAbsolutePath: Path): Option[s.TextDocument] = {
@@ -43,7 +43,7 @@ object Semanticdbs {
       scalaRelativePath: Path,
       semanticdbAbsolutePath: Path
   ): s.TextDocument = {
-    val reluri = scalaRelativePath.iterator.asScala.mkString("/")
+    val reluri = buildSubFolder + scalaRelativePath.iterator.asScala.mkString("/")
     val sdocs = parseTextDocuments(semanticdbAbsolutePath)
     sdocs.documents.find(_.uri == reluri) match {
       case None => throw new NoSuchElementException(reluri)

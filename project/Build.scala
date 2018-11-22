@@ -919,6 +919,11 @@ object Build {
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
 
   lazy val `dotty-semanticdb` = project.in(file("semanticdb")).asDottySemanticdb(Bootstrapped)
+  lazy val `dotty-semanticdb-input` = project.in(file("semanticdb/input")).settings(
+    scalaVersion := "2.12.7",
+    scalacOptions += "-Yrangepos",
+    addCompilerPlugin("org.scalameta" % "semanticdb-scalac" % "4.0.0" cross CrossVersion.full)
+  )
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
@@ -1317,6 +1322,7 @@ object Build {
       enablePlugins(JmhPlugin)
 
     def asDottySemanticdb(implicit mode: Mode): Project = project.withCommonSettings.
+      aggregate(`dotty-semanticdb-input`).
       dependsOn(dottyCompiler).
       settings(semanticdbSettings)
 
