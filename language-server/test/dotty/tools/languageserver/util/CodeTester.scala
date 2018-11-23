@@ -8,7 +8,9 @@ import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 import dotty.tools.dotc.reporting.diagnostic.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
-import org.eclipse.lsp4j.{ CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
+import org.eclipse.lsp4j.{ CompletionItem, CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
+
+import org.junit.Assert.assertEquals
 
 import org.junit.Assert.assertEquals
 
@@ -114,7 +116,19 @@ class CodeTester(projects: List[Project]) {
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
   def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): this.type =
-    doAction(new CodeCompletion(marker, expected))
+    completion(marker, results => assertEquals(expected, CodeCompletion.simplifyResults(results)))
+
+  /**
+   * Requests completion at the position defined by `marker`, and pass the results to
+   * `checkResults`.
+   *
+   * @param marker       The position from which to ask for completions.
+   * @param checkResults A function that verifies that the results of completion are correct.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def completion(marker: CodeMarker, checkResults: Set[CompletionItem] => Unit): this.type =
+    doAction(new CodeCompletion(marker, checkResults))
 
   /**
    * Performs a workspace-wide renaming of the symbol under `marker`, verifies that the positions to

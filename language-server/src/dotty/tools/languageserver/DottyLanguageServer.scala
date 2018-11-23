@@ -19,6 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
+import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
@@ -280,7 +281,7 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val items = driver.compilationUnits.get(uri) match {
-      case Some(unit) => Interactive.completions(pos)(ctx.fresh.setCompilationUnit(unit))._2
+      case Some(unit) => Completion.completions(pos)(ctx.fresh.setCompilationUnit(unit))._2
       case None => Nil
     }
 
@@ -779,7 +780,7 @@ object DottyLanguageServer {
     def completionItemKind(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItemKind = {
       import lsp4j.{CompletionItemKind => CIK}
 
-      if (sym.is(Package))
+      if (sym.is(Package) || sym.is(Module))
         CIK.Module // No CompletionItemKind.Package (https://github.com/Microsoft/language-server-protocol/issues/155)
       else if (sym.isConstructor)
         CIK.Constructor
@@ -795,12 +796,17 @@ object DottyLanguageServer {
 
     val label = sym.name.show
     val item = new lsp4j.CompletionItem(label)
-    item.setDetail(sym.info.widenTermRefExpr.show)
+    val detail = if (sym.isType) sym.showFullName else sym.info.widenTermRefExpr.show
+    item.setDetail(detail)
+    ParsedComment.docOf(sym).foreach { doc =>
+      item.setDocumentation(markupContent(doc.renderAsMarkdown))
+    }
+    item.setDeprecated(sym.isDeprecated)
     item.setKind(completionItemKind(sym))
     item
   }
 
-  def hoverContent(content: String): lsp4j.MarkupContent = {
+  def markupContent(content: String): lsp4j.MarkupContent = {
     if (content.isEmpty) null
     else {
       val markup = new lsp4j.MarkupContent
@@ -824,7 +830,7 @@ object DottyLanguageServer {
       buf.append(comment.renderAsMarkdown)
     }
 
-    hoverContent(buf.toString)
+    markupContent(buf.toString)
   }
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
@@ -869,7 +875,7 @@ object DottyLanguageServer {
     val tparamsLabel = if (signature.tparams.isEmpty) "" else signature.tparams.mkString("[", ", ", "]")
     val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
     val label = s"${signature.name}$tparamsLabel$paramLists$returnTypeLabel"
-    val documentation = signature.doc.map(DottyLanguageServer.hoverContent)
+    val documentation = signature.doc.map(DottyLanguageServer.markupContent)
     val sig = new lsp4j.SignatureInformation(label)
     sig.setParameters(paramInfoss.flatten.asJava)
     documentation.foreach(sig.setDocumentation(_))
@@ -878,7 +884,7 @@ object DottyLanguageServer {
 
   /** Convert `param` to `ParameterInformation` */
   private def paramToParameterInformation(param: Signatures.Param): lsp4j.ParameterInformation = {
-    val documentation = param.doc.map(DottyLanguageServer.hoverContent)
+    val documentation = param.doc.map(DottyLanguageServer.markupContent)
     val info = new lsp4j.ParameterInformation(param.show)
     documentation.foreach(info.setDocumentation(_))
     info
