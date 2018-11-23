@@ -1,9 +1,11 @@
+import scala.collection.mutable
+
+// Generic deriving infrastructure
 object Deriving {
-  import scala.typelevel._
 
   enum Shape {
     case Sum[Alts <: Tuple]
-    case Product[T, Elems <: Tuple]
+    case Case[T, Elems <: Tuple]
   }
 
   case class GenericCase[+T](ordinal: Int, elems: Array[Object])
@@ -14,88 +16,187 @@ object Deriving {
   }
 
   abstract class HasShape[T, S <: Shape] extends GenericMapper[T]
+}
 
-  enum Lst[+T] {
-    case Cons(hd: T, tl: Lst[T])
-    case Nil
-  }
+// A datatype
+enum Lst[+T] {
+  case Cons(hd: T, tl: Lst[T])
+  case Nil
+}
 
-  object Lst {
-    type LstShape[T] = Shape.Sum[(
-      Shape.Product[Cons[T], (T, Lst[T])],
-      Shape.Product[Nil.type, Unit]
-    )]
+object Lst {
+  // common compiler-generated infrastructure
+  import Deriving._
 
-    implicit def lstShape[T]: HasShape[Lst[T], LstShape[T]] = new {
-      def toGenericCase(xs: Lst[T]): GenericCase[Lst[T]] = xs match {
-        case Cons(x, xs1) => GenericCase[Cons[T]](0, Array(x.asInstanceOf, xs1))
-        case Nil => GenericCase[Nil.type](1, Array())
-      }
-      def fromGenericCase(c: GenericCase[Lst[T]]): Lst[T] = c.ordinal match {
-        case 0 => Cons[T](c.elems(0).asInstanceOf, c.elems(1).asInstanceOf)
-        case 1 => Nil
-      }
+  type LstShape[T] = Shape.Sum[(
+    Shape.Case[Cons[T], (T, Lst[T])],
+    Shape.Case[Nil.type, Unit]
+  )]
+
+  implicit def lstShape[T]: HasShape[Lst[T], LstShape[T]] = new {
+    def toGenericCase(xs: Lst[T]): GenericCase[Lst[T]] = xs match {
+      case Cons(x, xs1) => GenericCase[Cons[T]](0, Array(x.asInstanceOf, xs1))
+      case Nil => GenericCase[Nil.type](1, Array())
     }
-
-    implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
-  }
-
-  trait Eq[T] {
-    def equals(x: T, y: T): Boolean
-  }
-
-  object Eq {
-    inline def tryEq[T](x: T, y: T) = implicit match {
-      case eq: Eq[T] => eq.equals(x, y)
+    def fromGenericCase(c: GenericCase[Lst[T]]): Lst[T] = c.ordinal match {
+      case 0 => Cons[T](c.elems(0).asInstanceOf, c.elems(1).asInstanceOf)
+      case 1 => Nil
     }
+  }
 
-    inline def deriveForSum[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
-      inline erasedValue[Alts] match {
-        case _: (Shape.Product[alt, elems] *: alts1) =>
-          x match {
-            case x: `alt` =>
-              y match {
-                case y: `alt` => deriveForProduct[T, elems](mapper, x, y)
-                case _ => false
-              }
-          case _ => deriveForSum[T, alts1](mapper, x, y)
-        }
+  // two clauses that could be generated from a `derives` clause
+  implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
+  implicit def LstPickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
+}
+
+// A typeclass
+trait Eq[T] {
+  def equals(x: T, y: T): Boolean
+}
+
+object Eq {
+  import scala.typelevel._
+  import Deriving._
+
+  inline def tryEquals[T](x: T, y: T) = implicit match {
+    case eq: Eq[T] => eq.equals(x, y)
+  }
+
+  inline def equalsElems[Elems <: Tuple](xs: Array[Object], ys: Array[Object], n: Int): Boolean =
+    inline erasedValue[Elems] match {
+      case _: (elem *: elems1) =>
+        tryEquals[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
+        equalsElems[elems1](xs, ys, n + 1)
       case _: Unit =>
-        false
+        true
     }
 
-    inline def deriveForProduct[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
-      deriveForTuple[Elems](0, mapper.toGenericCase(x).elems, mapper.toGenericCase(y).elems)
+  inline def equalsCase[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
+    equalsElems[Elems](mapper.toGenericCase(x).elems, mapper.toGenericCase(y).elems, 0)
 
-    inline def deriveForTuple[Elems <: Tuple](n: Int, xs: Array[Object], ys: Array[Object]): Boolean =
-      inline erasedValue[Elems] match {
-        case _: (elem *: elems1) =>
-          tryEq[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
-          deriveForTuple[elems1](n + 1, xs, ys)
-        case _: Unit =>
-          true
+  inline def equalsSum[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
+    inline erasedValue[Alts] match {
+      case _: (Shape.Case[alt, elems] *: alts1) =>
+        x match {
+          case x: `alt` =>
+            y match {
+              case y: `alt` => equalsCase[T, elems](mapper, x, y)
+              case _ => false
+            }
+          case _ => equalsSum[T, alts1](mapper, x, y)
       }
+    case _: Unit =>
+      false
+  }
 
-    inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Eq[T] = new {
-      def equals(x: T, y: T): Boolean = inline erasedValue[S] match {
-        case _: Shape.Sum[alts] =>
-          deriveForSum[T, alts](ev, x, y)
-        case _: Shape.Product[_, elems] =>
-          deriveForProduct[T, elems](ev, x, y)
-      }
+  inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Eq[T] = new {
+    def equals(x: T, y: T): Boolean = inline erasedValue[S] match {
+      case _: Shape.Sum[alts] =>
+        equalsSum[T, alts](ev, x, y)
+      case _: Shape.Case[_, elems] =>
+        equalsCase[T, elems](ev, x, y)
     }
+  }
 
-    implicit object eqInt extends Eq[Int] {
-      def equals(x: Int, y: Int) = x == y
-    }
+  implicit object IntEq extends Eq[Int] {
+    def equals(x: Int, y: Int) = x == y
   }
 }
 
+// Another typeclass
+trait Pickler[T] {
+  def pickle(buf: mutable.ListBuffer[Int], x: T): Unit
+  def unpickle(buf: mutable.ListBuffer[Int]): T
+}
+
+object Pickler {
+  import scala.typelevel._
+  import Deriving._
+
+  def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
+
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = implicit match {
+    case pkl: Pickler[T] => pkl.pickle(buf, x)
+  }
+
+  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
+    inline erasedValue[Elems] match {
+      case _: (elem *: elems1) =>
+        tryPickle[elem](buf, elems(n).asInstanceOf[elem])
+        pickleElems[elems1](buf, elems, n + 1)
+      case _: Unit =>
+    }
+
+  inline def pickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit = {
+    val c = mapper.toGenericCase(x)
+    buf += c.ordinal
+    pickleElems[Elems](buf, c.elems, 0)
+  }
+
+  inline def pickleSum[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit =
+    inline erasedValue[Alts] match {
+      case _: (Shape.Case[alt, elems] *: alts1) =>
+        x match {
+          case x: `alt` => pickleCase[T, elems](mapper, buf, x)
+          case _ => pickleSum[T, alts1](mapper, buf, x)
+        }
+      case _: Unit =>
+    }
+
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implicit match {
+    case pkl: Pickler[T] => pkl.unpickle(buf)
+  }
+
+  inline def unpickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
+    inline erasedValue[Elems] match {
+      case _: (elem *: elems1) =>
+        elems(n) = tryUnpickle[elem](buf).asInstanceOf[AnyRef]
+        unpickleElems[elems1](buf, elems, n + 1)
+      case _: Unit =>
+    }
+
+  inline def unpickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
+    val elems = new Array[Object](constValue[Tuple.Size[Elems]])
+    unpickleElems[Elems](buf, elems, 0)
+    mapper.fromGenericCase(GenericCase(ordinal, elems))
+  }
+
+  inline def unpickleSum[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+    inline erasedValue[Alts] match {
+      case _: (Shape.Case[alt, elems] *: alts1) =>
+        if (n == ordinal) unpickleCase[T, elems](mapper, buf, ordinal)
+        else unpickleSum[T, alts1](mapper, buf, ordinal, n + 1)
+      case _ =>
+        throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
+    }
+
+  inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Pickler[T] = new {
+    def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
+      case _: Shape.Sum[alts] =>
+        pickleSum[T, alts](ev, buf, x)
+      case _: Shape.Case[_, elems] =>
+        pickleCase[T, elems](ev, buf, x)
+    }
+    def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
+      case _: Shape.Sum[alts] =>
+        unpickleSum[T, alts](ev, buf, nextInt(buf), 0)
+      case _: Shape.Case[_, elems] =>
+        unpickleCase[T, elems](ev, buf, 0)
+    }
+  }
+
+  implicit object IntPickler extends Pickler[Int] {
+    def pickle(buf: mutable.ListBuffer[Int], x: Int): Unit = buf += x
+    def unpickle(buf: mutable.ListBuffer[Int]): Int = nextInt(buf)
+  }
+}
+
+// Tests
 object Test extends App {
   import Deriving._
   val eq = implicitly[Eq[Lst[Int]]]
-  val xs = Lst.Cons(1, Lst.Cons(2, Lst.Cons(3, Lst.Nil)))
-  val ys = Lst.Cons(1, Lst.Cons(2, Lst.Nil))
+  val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
+  val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))
   assert(eq.equals(xs, xs))
   assert(!eq.equals(xs, ys))
   assert(!eq.equals(ys, xs))
@@ -108,4 +209,21 @@ object Test extends App {
   assert(!eq2.equals(xss, yss))
   assert(!eq2.equals(yss, xss))
   assert(eq2.equals(yss, yss))
+
+  val buf = new mutable.ListBuffer[Int]
+  val pkl = implicitly[Pickler[Lst[Int]]]
+  pkl.pickle(buf, xs)
+  println(buf)
+  val xs1 = pkl.unpickle(buf)
+  println(xs1)
+  assert(xs1 == xs)
+  assert(eq.equals(xs1, xs))
+
+  val pkl2 = implicitly[Pickler[Lst[Lst[Int]]]]
+  pkl2.pickle(buf, xss)
+  println(buf)
+  val xss1 = pkl2.unpickle(buf)
+  println(xss1)
+  assert(xss == xss1)
+  assert(eq2.equals(xss, xss1))
 }
