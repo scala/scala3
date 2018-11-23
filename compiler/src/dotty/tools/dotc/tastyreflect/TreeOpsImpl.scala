@@ -361,22 +361,16 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     }
 
     object IsBlock extends IsBlockModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Block] = Block.normalizedLoops(x) match {
+      def unapply(x: Term)(implicit ctx: Context): Option[Block] = normalizedLoops(x) match {
         case x: tpd.Block => Some(x)
         case _ => None
       }
-    }
 
-    object Block extends BlockExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = normalizedLoops(x) match {
-        case Trees.Block(stats, expr) => Some((stats, expr))
-        case _ => None
-      }
       /** Normalizes non Blocks.
        *  i) Put `while` and `doWhile` loops in their own blocks: `{ def while$() = ...; while$() }`
        *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
        */
-      private[Term] def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+      private def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
         case block: tpd.Block if block.stats.size > 1 =>
           def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
             case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
@@ -399,6 +393,13 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       private def needsNormalization(tree: tpd.Tree)(implicit ctx: Context): Boolean = tree match {
         case _: tpd.Closure => true
         case _ => false
+      }
+    }
+
+    object Block extends BlockExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = x match {
+        case IsBlock(x) => Some((x.stats, x.expr))
+        case _ => None
       }
     }
 
