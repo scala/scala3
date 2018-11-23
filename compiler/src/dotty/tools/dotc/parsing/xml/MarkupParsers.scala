@@ -130,7 +130,7 @@ object MarkupParsers {
             try handle.parseAttribute(Position(start, curOffset, mid), tmp)
             catch {
               case e: RuntimeException =>
-                errorAndResult("error parsing attribute value", parser.errorTermTree)
+                errorAndResult("error parsing attribute value", parser.errorTermTree(inPattern = false))
             }
 
           case '{'  =>
@@ -330,7 +330,7 @@ object MarkupParsers {
       finally parser.in resume Tokens.XMLSTART
 
       if (output == null)
-        parser.errorTermTree
+        parser.errorTermTree(inPattern = false)
       else
         output
     }
