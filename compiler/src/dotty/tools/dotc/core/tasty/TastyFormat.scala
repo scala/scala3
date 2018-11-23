@@ -649,7 +649,8 @@ object TastyFormat {
     case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
-    case POLYtype | METHODtype | TYPELAMBDAtype => -1
+    case POLYtype | METHODtype | IMPLICITMETHODtype | ERASEDMETHODtype | ERASEDIMPLICITMETHODtype |
+         TYPELAMBDAtype => -1
     case _ => 0
   }
 }

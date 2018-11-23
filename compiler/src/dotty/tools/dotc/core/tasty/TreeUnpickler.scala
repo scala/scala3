@@ -869,6 +869,14 @@ class TreeUnpickler(reader: TastyReader,
       val end = readEnd()
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
       val vparams = readIndexedParams[ValDef](PARAM)
+      // It's important to index the class definitions before unpickling the parents
+      // (see the parents-cycle test for examples where this matter)
+      val bodyFlags = {
+        val bodyIndexer = fork
+        // The first DEFDEF corresponds to the primary constructor
+        while (bodyIndexer.reader.nextByte != DEFDEF) bodyIndexer.skipTree()
+        bodyIndexer.indexStats(end)
+      }
       val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
         nextUnsharedTag match {
           case APPLY | TYPEAPPLY | BLOCK => readTerm()(parentCtx)
@@ -884,7 +892,7 @@ class TreeUnpickler(reader: TastyReader,
         else EmptyValDef
       cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
         if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setNoInitsFlags(parentsKind(parents), fork.indexStats(end))
+      cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 
