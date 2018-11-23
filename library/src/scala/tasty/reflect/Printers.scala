@@ -160,8 +160,8 @@ trait Printers
       }
 
       def visitTypeTree(x: TypeOrBoundsTree): Buffer = x match {
-        case TypeTree.Synthetic() =>
-          this += "TypeTree.Synthetic()"
+        case TypeTree.Inferred() =>
+          this += "TypeTree.Inferred()"
         case TypeTree.Ident(name) =>
           this += "TypeTree.Ident(\"" += name += "\")"
         case TypeTree.Select(qualifier, name) =>
@@ -1191,7 +1191,7 @@ trait Printers
       }
 
       def printTypeTree(tree: TypeTree): Buffer = tree match {
-        case TypeTree.Synthetic() =>
+        case TypeTree.Inferred() =>
           // TODO try to move this logic into `printType`
           def printTypeAndAnnots(tpe: Type): Buffer = tpe match {
             case Type.AnnotatedType(tp, annot) =>
@@ -1510,13 +1510,13 @@ trait Printers
 
       def printBoundsTree(bounds: TypeBoundsTree): Buffer = {
         bounds.low match {
-          case TypeTree.Synthetic() =>
+          case TypeTree.Inferred() =>
           case low =>
             this += " >: "
             printTypeTree(low)
         }
         bounds.hi match {
-          case TypeTree.Synthetic() => this
+          case TypeTree.Inferred() => this
           case hi =>
             this += " <: "
             printTypeTree(hi)

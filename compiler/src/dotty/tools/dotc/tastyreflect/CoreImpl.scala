@@ -64,7 +64,7 @@ trait CoreImpl extends scala.tasty.reflect.Core {
     type TypeTree = tpd.Tree
     val TypeTree: TypeTreeCoreModuleImpl
     trait TypeTreeCoreModuleImpl extends TypeTreeCoreModule {
-      type Synthetic = tpd.TypeTree
+      type Inferred = tpd.TypeTree
       type Ident = tpd.Ident
       type Select = tpd.Select
       type Project = tpd.Select

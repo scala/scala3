@@ -31,7 +31,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
   object TypeTree extends TypeTreeModule with TypeTreeCoreModuleImpl {
 
-    object Synthetic extends SyntheticExtractor {
+    object Inferred extends InferredExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
         case x @ Trees.TypeTree() => !x.tpe.isInstanceOf[Types.TypeBounds]
         case _ => false
