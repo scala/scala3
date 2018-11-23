@@ -188,4 +188,15 @@ class CompletionTest {
         assertFalse(results.exists((label, _, _) => label == "Zig"))
       })
   }
+
+  @Test def typeCompletionShowsTerm: Unit = {
+    code"""class Bar
+          |object Foo {
+          |  val bar = new Bar
+          |  def baz = new Bar
+          |  object bat
+          |  val bizz: ba${m1}
+          |}""".withSource
+      .completion(m1, Set(("bar", Field, "Bar"), ("bat", Module, "Foo.bat")))
+  }
 }

@@ -3,6 +3,7 @@ package dotty.tools.dotc.interactive
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts.{Context, NoContext}
+import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators.StringInterpolators
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags._
@@ -13,7 +14,7 @@ import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Scopes
 import dotty.tools.dotc.core.StdNames.{nme, tpnme}
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{NamedType, NameFilter, Type, takeAllFilter}
+import dotty.tools.dotc.core.Types.{NamedType, Type, takeAllFilter}
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 
@@ -219,8 +220,19 @@ object Completion {
       !sym.is(allOf(Mutable, Accessor)) &&
       (
            (mode.is(Mode.Term) && sym.isTerm)
+        || (mode.is(Mode.StableTerm) && sym.isTerm && validPathSegment(sym))
         || (mode.is(Mode.Type) && sym.isType)
       )
+
+    /** Can this symbol be part of a path? See SLS 3.1 for a definition of a valid path. */
+    private def validPathSegment(sym: Symbol)(implicit ctx: Context): Boolean = {
+      def isRealizable = {
+        val realizability = CheckRealizable.realizability(sym.info)
+        realizability == CheckRealizable.Realizable
+      }
+
+      !sym.is(Method) && isRealizable
+    }
 
     /**
      * Find all the members of `site` that are accessible and which should be included in `info`.
@@ -298,11 +310,13 @@ object Completion {
     /** Term symbols are allowed */
     val Term: Mode = new Mode(1)
 
+    val StableTerm: Mode = new Mode(2)
+
     /** Type symbols are allowed */
-    val Type: Mode = new Mode(2)
+    val Type: Mode = new Mode(4) | StableTerm
 
     /** Both term and type symbols are allowed */
-    val Import: Mode = new Mode(4) | Term | Type
+    val Import: Mode = new Mode(8) | Term | Type
   }
 
 }
