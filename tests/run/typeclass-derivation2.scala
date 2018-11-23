@@ -4,7 +4,7 @@ import scala.collection.mutable
 object Deriving {
 
   enum Shape {
-    case Sum[Alts <: Tuple]
+    case Cases[Alts <: Tuple]
     case Case[T, Elems <: Tuple]
   }
 
@@ -29,7 +29,7 @@ object Lst {
   // common compiler-generated infrastructure
   import Deriving._
 
-  type LstShape[T] = Shape.Sum[(
+  type LstShape[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
     Shape.Case[Nil.type, Unit]
   )]
@@ -96,7 +96,7 @@ object Eq {
   inline def equalsCase[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
     equalsElems[Elems](mapper.toGenericCase(x).elems, mapper.toGenericCase(y).elems, 0)
 
-  inline def equalsSum[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
+  inline def equalsCases[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
@@ -105,7 +105,7 @@ object Eq {
               case y: `alt` => equalsCase[T, elems](mapper, x, y)
               case _ => false
             }
-          case _ => equalsSum[T, alts1](mapper, x, y)
+          case _ => equalsCases[T, alts1](mapper, x, y)
       }
     case _: Unit =>
       false
@@ -113,8 +113,8 @@ object Eq {
 
   inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Eq[T] = new {
     def equals(x: T, y: T): Boolean = inline erasedValue[S] match {
-      case _: Shape.Sum[alts] =>
-        equalsSum[T, alts](ev, x, y)
+      case _: Shape.Cases[alts] =>
+        equalsCases[T, alts](ev, x, y)
       case _: Shape.Case[alt, elems] =>
         equalsCase[T, elems](ev, x, y)
     }
@@ -152,7 +152,7 @@ object Pickler {
   inline def pickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit =
     pickleElems[Elems](buf, mapper.toGenericCase(x).elems, 0)
 
-  inline def pickleSum[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
+  inline def pickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
@@ -160,7 +160,7 @@ object Pickler {
             buf += n
             pickleCase[T, elems](mapper, buf, x)
           case _ =>
-            pickleSum[T, alts1](mapper, buf, x, n + 1)
+            pickleCases[T, alts1](mapper, buf, x, n + 1)
         }
       case _: Unit =>
     }
@@ -183,25 +183,25 @@ object Pickler {
     mapper.fromGenericCase(GenericCase(ordinal, elems))
   }
 
-  inline def unpickleSum[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+  inline def unpickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (n == ordinal) unpickleCase[T, elems](mapper, buf, ordinal)
-        else unpickleSum[T, alts1](mapper, buf, ordinal, n + 1)
+        else unpickleCases[T, alts1](mapper, buf, ordinal, n + 1)
       case _ =>
         throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
     }
 
   inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Pickler[T] = new {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
-      case _: Shape.Sum[alts] =>
-        pickleSum[T, alts](ev, buf, x, 0)
+      case _: Shape.Cases[alts] =>
+        pickleCases[T, alts](ev, buf, x, 0)
       case _: Shape.Case[alt, elems] =>
         pickleCase[T, elems](ev, buf, x)
     }
     def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
-      case _: Shape.Sum[alts] =>
-        unpickleSum[T, alts](ev, buf, nextInt(buf), 0)
+      case _: Shape.Cases[alts] =>
+        unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
       case _: Shape.Case[alt, elems] =>
         unpickleCase[T, elems](ev, buf, 0)
     }
@@ -260,6 +260,7 @@ object Test extends App {
   pklp.pickle(buf, p1)
   println(buf)
   val p1a = pklp.unpickle(buf)
+  println(p1a)
   assert(p1 == p1a)
   assert(eqp.equals(p1, p1a))
 }
