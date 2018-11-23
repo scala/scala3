@@ -98,7 +98,7 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Bind: BindExtractor
     abstract class BindExtractor{
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)]
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)]
     }
 
     val Block: BlockExtractor
@@ -126,10 +126,10 @@ trait TypeOrBoundsTreeOps extends Core {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
   }
 
-  /** TypeBoundsTree containing an inferred type bounds */
-  val SyntheticBounds: SyntheticBoundsExtractor
-  abstract class SyntheticBoundsExtractor {
-    /** Matches a TypeBoundsTree containing inferred type bounds */
+  /** TypeBoundsTree containing wildcard type bounds */
+  val WildcardTypeTree: WildcardTypeTreeExtractor
+  abstract class WildcardTypeTreeExtractor {
+    /** Matches a TypeBoundsTree containing wildcard type bounds */
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
   }
 

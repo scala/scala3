@@ -79,7 +79,8 @@ trait CoreImpl extends scala.tasty.reflect.Core {
       type LambdaTypeTree = tpd.LambdaTypeTree
       type Bind = tpd.Bind
     }
-    type TypeBoundsTree = tpd.Tree
+    type TypeBoundsTree = tpd.TypeBoundsTree
+    type WildcardType = tpd.TypeTree
 
   type TypeOrBounds = Types.Type
     type NoPrefix = Types.NoPrefix.type

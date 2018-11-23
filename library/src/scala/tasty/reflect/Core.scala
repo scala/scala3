@@ -52,7 +52,7 @@ package scala.tasty.reflect
  *                         |               +- Bind
  *                         |
  *                         +- TypeBoundsTree
- *                         +- SyntheticBounds
+ *                         +- WildcardTypeTree
  *
  *  +- CaseDef
  *  +- TypeCaseDef
@@ -310,6 +310,12 @@ trait Core {
 
     /** Type tree representing a type bound written in the source */
     type TypeBoundsTree <: TypeOrBoundsTree
+
+    /** Type tree representing wildcard type bounds written in the source.
+     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that 
+     *  represents a type but has `TypeBound`a inside.
+     */
+    type WildcardType <: TypeOrBoundsTree
 
   /** Type or bounds */
   type TypeOrBounds <: AnyRef

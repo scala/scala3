@@ -190,8 +190,8 @@ trait Printers
           this += "TypeTree.Block(" ++= aliases += ", " += tpt += ")"
         case TypeBoundsTree(lo, hi) =>
           this += "TypeBoundsTree(" += lo += ", " += hi += ")"
-        case SyntheticBounds() =>
-          this += s"SyntheticBounds()"
+        case WildcardTypeTree() =>
+          this += s"WildcardTypeTree()"
         case TypeTree.MatchType(bound, selector, cases) =>
           this += "TypeTree.MatchType(" += bound += ", " += selector += ", " ++= cases += ")"
       }
@@ -996,7 +996,7 @@ trait Printers
         this += arg.name
         arg.rhs match {
           case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
-          case rhs @ SyntheticBounds() =>
+          case rhs @ WildcardTypeTree() =>
             printTypeOrBound(rhs.tpe)
           case rhs @ TypeTree.TypeLambdaTree(tparams, body) =>
             def printParam(t: TypeOrBoundsTree): Unit = t match {
@@ -1184,7 +1184,7 @@ trait Printers
           printTypeTree(lo)
           this += " <: "
           printTypeTree(hi)
-        case tpt @ SyntheticBounds() =>
+        case tpt @ WildcardTypeTree() =>
           printTypeOrBound(tpt.tpe)
         case IsTypeTree(tpt) =>
           printTypeTree(tpt)
