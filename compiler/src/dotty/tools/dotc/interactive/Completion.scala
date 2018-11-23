@@ -45,7 +45,7 @@ object Completion {
   private def completionMode(path: List[Tree], pos: SourcePosition): Mode = {
     path match {
       case (ref: RefTree) :: _ =>
-        if (ref.name == nme.ERROR) Mode.None
+        if (ref.name == nme.ERROR) Mode.Term | Mode.Type
         else if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
@@ -301,7 +301,7 @@ object Completion {
     val Type: Mode = new Mode(2)
 
     /** Both term and type symbols are allowed */
-    val Import: Mode = Term | Type
+    val Import: Mode = new Mode(4) | Term | Type
   }
 
 }

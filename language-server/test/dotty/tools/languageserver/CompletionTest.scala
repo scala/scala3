@@ -166,4 +166,13 @@ class CompletionTest {
           |}""".withSource
       .completion(m1, Set())
   }
+
+  @Test def completeNoPrefix: Unit = {
+    code"""class Foo { def foo = 0 }
+          |object Bar {
+          |  val foo = new Foo
+          |  foo.${m1}
+          |}""".withSource
+      .completion(m1, results => assertTrue(results.nonEmpty))
+  }
 }
