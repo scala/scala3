@@ -135,14 +135,11 @@ object Completion {
      * preferred over term symbols.
      */
     def getCompletions(implicit ctx: Context): List[Symbol] = {
-      if (!mode.is(Mode.Import)) completions.toList
-      else {
-        // In imports, show only the type symbols when there are multiple options with the same name
-        completions.toList.groupBy(_.name.stripModuleClassSuffix.toSimpleName).mapValues {
-          case sym :: Nil => sym :: Nil
-          case syms => syms.filter(_.isType)
-        }.values.flatten.toList
-      }
+      // Show only the type symbols when there are multiple options with the same name
+      completions.toList.groupBy(_.name.stripModuleClassSuffix.toSimpleName).mapValues {
+        case sym :: Nil => sym :: Nil
+        case syms => syms.filter(_.isType)
+      }.values.flatten.toList
     }
 
     /**
