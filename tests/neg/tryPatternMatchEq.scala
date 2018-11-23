@@ -4,7 +4,7 @@ import java.lang.IllegalArgumentException
 
 object IAE {
   def unapply(e: Exception): Option[String] =
-    if (e.isInstanceOf[IllegalArgumentException]) Some(e.getMessage)
+    if (e.isInstanceOf[IllegalArgumentException]) Some(e.getMessage.nn)
     else None
 }
 
