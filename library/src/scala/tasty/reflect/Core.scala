@@ -36,7 +36,7 @@ package scala.tasty.reflect
  *                                         +- DoWhile
  *
  *
- *                         +- TypeTree ----+- Synthetic
+ *                         +- TypeTree ----+- Inferred
  *                         |               +- Ident
  *                         |               +- Select
  *                         |               +- Project
@@ -265,7 +265,7 @@ trait Core {
     abstract class TypeTreeCoreModule {
 
       /** Type tree representing an inferred type */
-      type Synthetic <: TypeTree
+      type Inferred <: TypeTree
 
       /** Type tree representing a reference to definition with a given name */
       type Ident <: TypeTree

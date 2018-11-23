@@ -30,8 +30,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
 
     /** TypeTree containing an inferred type */
-    val Synthetic: SyntheticExtractor
-    abstract class SyntheticExtractor {
+    val Inferred: InferredExtractor
+    abstract class InferredExtractor {
       /** Matches a TypeTree containing an inferred type */
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
     }

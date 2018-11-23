@@ -88,7 +88,7 @@ trait TreeUtils
     }
 
     def foldOverTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X = tree match {
-      case TypeTree.Synthetic() => x
+      case TypeTree.Inferred() => x
       case TypeTree.Ident(_) => x
       case TypeTree.Select(qualifier, _) => foldTree(x, qualifier)
       case TypeTree.Project(qualifier, _) => foldTypeTree(x, qualifier)
