@@ -46,9 +46,7 @@ object Completion {
   private def completionMode(path: List[Tree], pos: SourcePosition): Mode = {
     path match {
       case (ref: RefTree) :: _ =>
-        if (ref.name == tpnme.ERROR) Mode.Type
-        else if (ref.name == nme.ERROR) Mode.Term
-        else if (ref.name.isTermName) Mode.Term
+        if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
 
@@ -220,19 +218,8 @@ object Completion {
       !sym.is(allOf(Mutable, Accessor)) &&
       (
            (mode.is(Mode.Term) && sym.isTerm)
-        || (mode.is(Mode.StableTerm) && sym.isTerm && validPathSegment(sym))
-        || (mode.is(Mode.Type) && sym.isType)
+        || (mode.is(Mode.Type) && (sym.isType || sym.isStable))
       )
-
-    /** Can this symbol be part of a path? See SLS 3.1 for a definition of a valid path. */
-    private def validPathSegment(sym: Symbol)(implicit ctx: Context): Boolean = {
-      def isRealizable = {
-        val realizability = CheckRealizable.realizability(sym.info)
-        realizability == CheckRealizable.Realizable
-      }
-
-      !sym.is(Method) && isRealizable
-    }
 
     /**
      * Find all the members of `site` that are accessible and which should be included in `info`.
@@ -310,13 +297,11 @@ object Completion {
     /** Term symbols are allowed */
     val Term: Mode = new Mode(1)
 
-    val StableTerm: Mode = new Mode(2)
-
-    /** Type symbols are allowed */
-    val Type: Mode = new Mode(4) | StableTerm
+    /** Type and stable term symbols are allowed */
+    val Type: Mode = new Mode(2)
 
     /** Both term and type symbols are allowed */
-    val Import: Mode = new Mode(8) | Term | Type
+    val Import: Mode = new Mode(4) | Term | Type
   }
 
 }
