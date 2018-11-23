@@ -18,7 +18,7 @@ trait Toolbox {
 
 class Test(val tb: Toolbox) {
   import tb._
-  implicit val cap: Cap = null
+  implicit val cap: Cap = ???
 
   def foo(tree: Tree): Int = (tree: Any) match {
     case tb.Apply(fun, args) => 3 // error, but error message is wrong
