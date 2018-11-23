@@ -227,10 +227,10 @@ object Build {
       .artifacts(Artifact.sources("dotty-sbt-bridge").withUrl(
         // We cannot use the `packageSrc` task because a setting cannot depend
         // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
-        Some((artifactPath in (`dotty-sbt-bridge`, Compile, packageSrc)).value.toURI.toURL))),
+        Some((artifactPath in (dottySbtBridgeRef, Compile, packageSrc)).value.toURI.toURL))),
     compile in Compile := (compile in Compile)
-      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile))
-      .dependsOn(compile in (`dotty-sbt-bridge`, Compile))
+      .dependsOn(packageSrc in (dottySbtBridgeRef, Compile))
+      .dependsOn(compile in (dottySbtBridgeRef, Compile))
       .value,
 
     // Use the same name as the non-bootstrapped projects for the artifacts
@@ -353,14 +353,17 @@ object Build {
   // Needed because the dotty project aggregates dotty-sbt-bridge but dotty-sbt-bridge
   // currently refers to dotty in its scripted task and "aggregate" does not take by-name
   // parameters: https://github.com/sbt/sbt/issues/2200
-  lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
+  val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
   // Same thing for the bootstrapped version
-  lazy val dottySbtBridgeBootstrappedRef = LocalProject("dotty-sbt-bridge-bootstrapped")
+  val dottySbtBridgeBootstrappedRef = LocalProject("dotty-sbt-bridge-bootstrapped")
 
   def dottySbtBridgeReference(implicit mode: Mode): LocalProject = mode match {
     case NonBootstrapped => dottySbtBridgeRef
     case _ => dottySbtBridgeBootstrappedRef
   }
+
+  // Avoid loops when loading settings
+  val dottyLibraryBootstrappedRef = LocalProject("dotty-library-bootstrapped")
 
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
@@ -421,7 +424,7 @@ object Build {
       val sources =
         unmanagedSources.in(Compile, compile).value ++
         unmanagedSources.in(`dotty-compiler`, Compile).value ++
-        unmanagedSources.in(`dotty-library`, Compile).value
+        unmanagedSources.in(dottyLibraryBootstrappedRef, Compile).value
       val args = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
@@ -729,20 +732,18 @@ object Build {
 
   lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     // packageAll packages all and then returns a map with the abs location
-    packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
-      Def.task {
-        Map(
-          "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
-          "dotty-compiler"      -> packageBin.in(Compile).value,
+    packageAll := {
+      Map(
+        "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
+        "dotty-compiler"      -> packageBin.in(Compile).value,
 
-          // NOTE: Using dotty-library-bootstrapped here is intentional: when
-          // running the compiler, we should always have the bootstrapped
-          // library on the compiler classpath since the non-bootstrapped one
-          // may not be binary-compatible.
-          "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value
-        ).mapValues(_.getAbsolutePath)
-      }
-    }.value,
+        // NOTE: Using dotty-library-bootstrapped here is intentional: when
+        // running the compiler, we should always have the bootstrapped
+        // library on the compiler classpath since the non-bootstrapped one
+        // may not be binary-compatible.
+        "dotty-library"       -> packageBin.in(dottyLibraryBootstrappedRef, Compile).value
+      ).mapValues(_.getAbsolutePath)
+    },
 
     testOptions in Test += Tests.Argument(
       TestFrameworks.JUnit,
