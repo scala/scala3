@@ -89,4 +89,12 @@ object Test extends App {
   assert(!eq.equals(xs, ys))
   assert(!eq.equals(ys, xs))
   assert(eq.equals(ys, ys))
+
+  val eq2 = implicitly[Eq[Lst[Lst[Int]]]]
+  val xss = Lst.Cons(xs, Lst.Cons(ys, Lst.Nil))
+  val yss = Lst.Cons(xs, Lst.Nil)
+  assert(eq2.equals(xss, xss))
+  assert(!eq2.equals(xss, yss))
+  assert(!eq2.equals(yss, xss))
+  assert(eq2.equals(yss, yss))
 }
