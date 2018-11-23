@@ -30,16 +30,10 @@ object Test {
     scala.Predef.print("test ".+(name))
     try {
       val actual: a = closure
-      if (actual.==(expected)) {
-        scala.Predef.print(" was successful")
-      } else {
-        scala.Predef.print(" failed: expected ".+(expected).+(", found ").+(actual))
-      }
+      if (actual.==(expected)) scala.Predef.print(" was successful") else scala.Predef.print(" failed: expected ".+(expected).+(", found ").+(actual))
     } catch {
       case exception: scala.Throwable =>
-        {
-          scala.Predef.print(" raised exception ".+(exception))
-        }
+        scala.Predef.print(" raised exception ".+(exception))
     }
     scala.Predef.println()
   }
