@@ -13,6 +13,7 @@ import Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
+import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -525,10 +526,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree match {
         case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
           tree1.withTypeUnchecked(tree.tpe)
-        case _ => tree.tpe match {
-          case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
-          case _ => tree1.withTypeUnchecked(tree.tpe)
-        }
+        case _ =>
+          val tree2 = tree.tpe match {
+            case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
+            case _ => tree1.withTypeUnchecked(tree.tpe)
+          }
+          ConstFold(tree2)
       }
     }
 

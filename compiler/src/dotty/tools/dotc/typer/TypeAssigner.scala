@@ -291,7 +291,7 @@ trait TypeAssigner {
 
       case _ => accessibleSelectionType(tree, qual)
     }
-    tree.withType(tp)
+    ConstFold(tree.withType(tp))
   }
 
   def assignType(tree: untpd.New, tpt: Tree)(implicit ctx: Context): New =
@@ -372,7 +372,7 @@ trait TypeAssigner {
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }
-    tree.withType(ownType)
+    ConstFold(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {

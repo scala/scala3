@@ -769,7 +769,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
-            convertNewGenericArray(ConstFold(app.result))
+            convertNewGenericArray(app.result)
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }

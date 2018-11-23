@@ -16,6 +16,7 @@ import Flags._
 import Constants._
 import Annotations._
 import NameKinds._
+import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Positions._
 import ast.{TreeTypeMap, Trees, tpd, untpd}
@@ -996,7 +997,7 @@ class TreeUnpickler(reader: TastyReader,
         val localCtx =
           if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
         val qual = readTerm()(localCtx)
-        untpd.Select(qual, name).withType(tpf(qual.tpe.widenIfUnstable))
+        ConstFold(untpd.Select(qual, name).withType(tpf(qual.tpe.widenIfUnstable)))
       }
 
       def readQualId(): (untpd.Ident, TypeRef) = {
