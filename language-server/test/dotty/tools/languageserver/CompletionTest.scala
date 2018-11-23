@@ -175,4 +175,17 @@ class CompletionTest {
           |}""".withSource
       .completion(m1, results => assertTrue(results.nonEmpty))
   }
+
+  @Test def completeErrorKnowsKind: Unit = {
+    code"""object Bar {
+          |  class Zig
+          |  val Zag: Int = 0
+          |  val b = 3 + Bar.${m1}
+          |}""".withSource
+      .completion(m1, completionItems => {
+        val results = CodeCompletion.simplifyResults(completionItems)
+        assertTrue(results.contains(("Zag", Field, "Int")))
+        assertFalse(results.exists((label, _, _) => label == "Zig"))
+      })
+  }
 }

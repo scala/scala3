@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps.NameDecorator
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Scopes
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.StdNames.{nme, tpnme}
 import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.Types.{NamedType, NameFilter, Type, takeAllFilter}
 import dotty.tools.dotc.printing.Texts._
@@ -45,7 +45,8 @@ object Completion {
   private def completionMode(path: List[Tree], pos: SourcePosition): Mode = {
     path match {
       case (ref: RefTree) :: _ =>
-        if (ref.name == nme.ERROR) Mode.Term | Mode.Type
+        if (ref.name == tpnme.ERROR) Mode.Type
+        else if (ref.name == nme.ERROR) Mode.Term
         else if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
