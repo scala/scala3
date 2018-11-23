@@ -73,55 +73,55 @@ object Pair {
 
 // A typeclass
 trait Eq[T] {
-  def equals(x: T, y: T): Boolean
+  def eql(x: T, y: T): Boolean
 }
 
 object Eq {
   import scala.typelevel._
   import Deriving._
 
-  inline def tryEquals[T](x: T, y: T) = implicit match {
-    case eq: Eq[T] => eq.equals(x, y)
+  inline def tryEql[T](x: T, y: T) = implicit match {
+    case eq: Eq[T] => eq.eql(x, y)
   }
 
-  inline def equalsElems[Elems <: Tuple](xs: Array[Object], ys: Array[Object], n: Int): Boolean =
+  inline def eqlElems[Elems <: Tuple](xs: Array[Object], ys: Array[Object], n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
-        tryEquals[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
-        equalsElems[elems1](xs, ys, n + 1)
+        tryEql[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
+        eqlElems[elems1](xs, ys, n + 1)
       case _: Unit =>
         true
     }
 
-  inline def equalsCase[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
-    equalsElems[Elems](mapper.toGenericCase(x).elems, mapper.toGenericCase(y).elems, 0)
+  inline def eqlCase[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
+    eqlElems[Elems](mapper.toGenericCase(x).elems, mapper.toGenericCase(y).elems, 0)
 
-  inline def equalsCases[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
+  inline def eqlCases[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
           case x: `alt` =>
             y match {
-              case y: `alt` => equalsCase[T, elems](mapper, x, y)
+              case y: `alt` => eqlCase[T, elems](mapper, x, y)
               case _ => false
             }
-          case _ => equalsCases[T, alts1](mapper, x, y)
+          case _ => eqlCases[T, alts1](mapper, x, y)
       }
     case _: Unit =>
       false
   }
 
-  inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Eq[T] = new {
-    def equals(x: T, y: T): Boolean = inline erasedValue[S] match {
+  inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]) <: Eq[T] = new {
+    def eql(x: T, y: T): Boolean = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
-        equalsCases[T, alts](ev, x, y)
-      case _: Shape.Case[alt, elems] =>
-        equalsCase[T, elems](ev, x, y)
+        eqlCases[T, alts](ev, x, y)
+      case _: Shape.Case[_, elems] =>
+        eqlCase[T, elems](ev, x, y)
     }
   }
 
   implicit object IntEq extends Eq[Int] {
-    def equals(x: Int, y: Int) = x == y
+    def eql(x: Int, y: Int) = x == y
   }
 }
 
@@ -185,7 +185,7 @@ object Pickler {
 
   inline def unpickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
-      case _: (Shape.Case[alt, elems] *: alts1) =>
+      case _: (Shape.Case[_, elems] *: alts1) =>
         if (n == ordinal) unpickleCase[T, elems](mapper, buf, ordinal)
         else unpickleCases[T, alts1](mapper, buf, ordinal, n + 1)
       case _ =>
@@ -196,13 +196,13 @@ object Pickler {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
         pickleCases[T, alts](ev, buf, x, 0)
-      case _: Shape.Case[alt, elems] =>
+      case _: Shape.Case[_, elems] =>
         pickleCase[T, elems](ev, buf, x)
     }
     def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
         unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
-      case _: Shape.Case[alt, elems] =>
+      case _: Shape.Case[_, elems] =>
         unpickleCase[T, elems](ev, buf, 0)
     }
   }
@@ -219,18 +219,18 @@ object Test extends App {
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
   val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))
-  assert(eq.equals(xs, xs))
-  assert(!eq.equals(xs, ys))
-  assert(!eq.equals(ys, xs))
-  assert(eq.equals(ys, ys))
+  assert(eq.eql(xs, xs))
+  assert(!eq.eql(xs, ys))
+  assert(!eq.eql(ys, xs))
+  assert(eq.eql(ys, ys))
 
   val eq2 = implicitly[Eq[Lst[Lst[Int]]]]
   val xss = Lst.Cons(xs, Lst.Cons(ys, Lst.Nil))
   val yss = Lst.Cons(xs, Lst.Nil)
-  assert(eq2.equals(xss, xss))
-  assert(!eq2.equals(xss, yss))
-  assert(!eq2.equals(yss, xss))
-  assert(eq2.equals(yss, yss))
+  assert(eq2.eql(xss, xss))
+  assert(!eq2.eql(xss, yss))
+  assert(!eq2.eql(yss, xss))
+  assert(eq2.eql(yss, yss))
 
   val buf = new mutable.ListBuffer[Int]
   val pkl = implicitly[Pickler[Lst[Int]]]
@@ -239,7 +239,7 @@ object Test extends App {
   val xs1 = pkl.unpickle(buf)
   println(xs1)
   assert(xs1 == xs)
-  assert(eq.equals(xs1, xs))
+  assert(eq.eql(xs1, xs))
 
   val pkl2 = implicitly[Pickler[Lst[Lst[Int]]]]
   pkl2.pickle(buf, xss)
@@ -247,14 +247,14 @@ object Test extends App {
   val xss1 = pkl2.unpickle(buf)
   println(xss1)
   assert(xss == xss1)
-  assert(eq2.equals(xss, xss1))
+  assert(eq2.eql(xss, xss1))
 
   val p1 = Pair(1, 2)
   val p2 = Pair(1, 2)
   val p3 = Pair(2, 1)
   val eqp = implicitly[Eq[Pair[Int]]]
-  assert(eqp.equals(p1, p2))
-  assert(!eqp.equals(p2, p3))
+  assert(eqp.eql(p1, p2))
+  assert(!eqp.eql(p2, p3))
 
   val pklp = implicitly[Pickler[Pair[Int]]]
   pklp.pickle(buf, p1)
@@ -262,5 +262,5 @@ object Test extends App {
   val p1a = pklp.unpickle(buf)
   println(p1a)
   assert(p1 == p1a)
-  assert(eqp.equals(p1, p1a))
+  assert(eqp.eql(p1, p1a))
 }

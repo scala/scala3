@@ -707,7 +707,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
               def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
                 val syms1 = t match {
-                  case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
+                  case t: Bind if t.symbol.isType =>
                     t.symbol.asType :: syms
                   case _ =>
                     syms
@@ -734,7 +734,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                   // ConstraintHandler#approximation does. However, this only works for constrained paramrefs
                   // not GADT-bound variables. Hopefully we will get some way to improve this when we
                   // re-implement GADTs in terms of constraints.
-                bindingsBuf += TypeDef(bv)
+                if (bv.name != nme.WILDCARD) bindingsBuf += TypeDef(bv)
               }
               reducePattern(bindingsBuf, scrut, pat1)
             }
