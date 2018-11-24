@@ -216,7 +216,7 @@ class SemanticdbConsumer extends TastyConsumer {
 
       def typetreeSymbol(tree: Tree, typetree: TypeTree): Unit =
         typetree match {
-          case TypeTree.Synthetic => ()
+          case TypeTree.Inferred => ()
           case _ =>
             addOccurenceTypeTree(
               typetree,
