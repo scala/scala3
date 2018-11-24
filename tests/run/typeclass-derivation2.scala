@@ -5,19 +5,19 @@ trait Deriving {
   import Deriving._
 
   /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
-  def mirror[T](ordinal: Int, product: Product): CaseMirror[T] =
-    new CaseMirror(this, ordinal, product)
+  def mirror(ordinal: Int, product: Product): Mirror =
+    new Mirror(this, ordinal, product)
 
   /** A mirror with elements given as an array */
-  def mirror[T](ordinal: Int, elems: Array[AnyRef]): CaseMirror[T] =
+  def mirror(ordinal: Int, elems: Array[AnyRef]): Mirror =
     mirror(ordinal, new ArrayProduct(elems))
 
   /** A mirror with an initial empty array of `numElems` elements, to be filled in. */
-  def mirror[T](ordinal: Int, numElems: Int): CaseMirror[T] =
+  def mirror(ordinal: Int, numElems: Int): Mirror =
     mirror(ordinal, new Array[AnyRef](numElems))
 
   /** A mirror of a case with no elements */
-  def mirror[T](ordinal: Int): CaseMirror[T] =
+  def mirror(ordinal: Int): Mirror =
     mirror(ordinal, EmptyProduct)
 
   /** The case and element labels of the described ADT as encoded strings. */
@@ -46,7 +46,7 @@ object Deriving {
    *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
    *  @param  elems     The elements of the case
    */
-  class CaseMirror[+T](val deriving: Deriving, val ordinal: Int, val elems: Product) {
+  class Mirror(val deriving: Deriving, val ordinal: Int, val elems: Product) {
 
     /** The `n`'th element of this generic case */
     def apply(n: Int): Any = elems.productElement(n)
@@ -64,16 +64,18 @@ object Deriving {
   abstract class Reflected[T] {
 
     /** The case mirror corresponding to ADT instance `x` */
-    def reflect(x: T): CaseMirror[T]
+    def reflect(x: T): Mirror
 
     /** The ADT instance corresponding to given `mirror` */
-    def reify(mirror: CaseMirror[T]): T
+    def reify(mirror: Mirror): T
 
     /** The companion object of the ADT */
     def deriving: Deriving
   }
 
-  /** The shape of an ADT in a sum of products representation */
+  /** The shape of an ADT.
+   *  This is eithe a product (`Case`) or a sum (`Cases`) of products.
+   */
   enum Shape {
 
     /** A sum with alternative types `Alts` */
@@ -84,7 +86,7 @@ object Deriving {
   }
 
   /** Every generic derivation starts with a typeclass instance of this type.
-   *  It informs that type `T` has shape `S` and also allows runtime reflection on `T`.
+   *  It informs that type `T` has shape `S` and also implements runtime reflection on `T`.
    */
   abstract class Shaped[T, S <: Shape] extends Reflected[T]
 
@@ -121,14 +123,14 @@ object Lst extends Deriving {
     Shape.Case[Nil.type, Unit]
   )]
 
-  val NilMirror = mirror[Nil.type](1)
+  val NilMirror = mirror(1)
 
   implicit def lstShape[T]: Shaped[Lst[T], Shape[T]] = new {
-    def reflect(xs: Lst[T]): CaseMirror[Lst[T]] = xs match {
-      case xs: Cons[T] => mirror[Cons[T]](0, xs)
+    def reflect(xs: Lst[T]): Mirror = xs match {
+      case xs: Cons[T] => mirror(0, xs)
       case Nil => NilMirror
      }
-    def reify(c: CaseMirror[Lst[T]]): Lst[T] = c.ordinal match {
+    def reify(c: Mirror): Lst[T] = c.ordinal match {
       case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
       case 1 => Nil
     }
@@ -154,8 +156,8 @@ object Pair extends Deriving {
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
     def reflect(xy: Pair[T]) =
-      mirror[Pair[T]](0, xy)
-    def reify(c: CaseMirror[Pair[T]]): Pair[T] =
+      mirror(0, xy)
+    def reify(c: Mirror): Pair[T] =
       Pair(c(0).asInstanceOf, c(1).asInstanceOf)
     def deriving = Pair
   }
@@ -180,7 +182,7 @@ object Eq {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
-  inline def eqlElems[Elems <: Tuple](xs: CaseMirror[_], ys: CaseMirror[_], n: Int): Boolean =
+  inline def eqlElems[Elems <: Tuple](xs: Mirror, ys: Mirror, n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryEql[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
@@ -237,7 +239,7 @@ object Pickler {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
-  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: CaseMirror[_], n: Int): Unit =
+  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Mirror, n: Int): Unit =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
@@ -276,11 +278,11 @@ object Pickler {
   inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      r.reify(r.deriving.mirror[T](ordinal))
+      r.reify(r.deriving.mirror(ordinal))
     else {
       val elems = new Array[Object](size)
       unpickleElems[Elems](buf, elems, 0)
-      r.reify(r.deriving.mirror[T](ordinal, elems))
+      r.reify(r.deriving.mirror(ordinal, elems))
     }
   }
 
@@ -326,7 +328,7 @@ object Show {
     case s: Show[T] => s.show(x)
   }
 
-  inline def showElems[Elems <: Tuple](elems: CaseMirror[_], n: Int): List[String] =
+  inline def showElems[Elems <: Tuple](elems: Mirror, n: Int): List[String] =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         val formal = elems.elementLabel(n)
