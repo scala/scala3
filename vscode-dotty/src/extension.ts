@@ -6,12 +6,13 @@ import * as compareVersions from 'compare-versions'
 
 import { ChildProcess } from "child_process"
 
-import { ExtensionContext } from 'vscode'
+import { ExtensionContext,  Disposable } from 'vscode'
 import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient'
 import { enableOldServerWorkaround } from './compat'
 import * as features from './features'
+import { DecompiledDocumentProvider } from './tasty-decompiler'
 
 export let client: LanguageClient
 
@@ -333,8 +334,18 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
+  // register DecompiledDocumentProvider for Tasty decompiler results
+  const provider = new DecompiledDocumentProvider()
+
+  const providerRegistration = Disposable.from(
+    vscode.workspace.registerTextDocumentContentProvider(DecompiledDocumentProvider.scheme, provider)
+  );
+
+  extensionContext.subscriptions.push(providerRegistration, provider)
+
   client = new LanguageClient(extensionName, "Dotty", serverOptions, clientOptions)
   client.registerFeature(new features.WorksheetRunFeature(client))
+  client.registerFeature(new features.TastyDecompilerFeature(client, provider))
 
   if (isOldServer)
     enableOldServerWorkaround(client)

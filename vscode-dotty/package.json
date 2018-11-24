@@ -14,7 +14,7 @@
     "vscode": "^1.27.1"
   },
   "categories": [
-    "Languages"
+    "Programming Languages"
   ],
   "keywords": [
     "scala",
@@ -37,6 +37,15 @@
         ],
         "aliases": [
           "Scala"
+        ]
+      },
+      {
+        "id": "tasty",
+        "extensions": [
+          ".tasty"
+        ],
+        "aliases": [
+          "Tasty"
         ]
       }
     ],
