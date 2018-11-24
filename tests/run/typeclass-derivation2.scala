@@ -3,18 +3,65 @@ import scala.collection.mutable
 // Generic deriving infrastructure
 object Deriving {
 
+  /** The shape of an ADT in a sum of products representation */
   enum Shape {
+
+    /** A sum with alternative types `Alts` */
     case Cases[Alts <: Tuple]
+
+    /** A product type `T` with element types `Elems` */
     case Case[T, Elems <: Tuple]
   }
 
-  case class GenericCase[+T](ordinal: Int, elems: Array[Object])
+  /** A generic representation of a case in an ADT
+   *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
+   *  @param  elems     The elements of the case
+   */
+  class GenericCase[+T](val ordinal: Int, val elems: Product) {
 
+    /** A generic case with elements given as an array */
+    def this(ordinal: Int, elems: Array[AnyRef]) =
+      this(ordinal, new ArrayProduct(elems))
+
+    /** A generic case with an initial empty array of `numElems` elements, to be filled in. */
+    def this(ordinal: Int, numElems: Int) =
+      this(ordinal, new Array[AnyRef](numElems))
+
+    /** A generic case with no elements */
+    def this(ordinal: Int) =
+      this(ordinal, EmptyProduct)
+
+    /** The `n`'th element of this generic case */
+    def apply(n: Int): Any = elems.productElement(n)
+  }
+
+  /** Helper class to turn arrays into products */
+  private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
+    def canEqual(that: Any): Boolean = true
+    def productElement(n: Int) = elems(n)
+    def productArity = elems.length
+    override def productIterator: Iterator[Any] = elems.iterator
+    def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
+  }
+
+  /** Helper object */
+  private object EmptyProduct extends Product {
+    def canEqual(that: Any): Boolean = true
+    def productElement(n: Int) = throw new IndexOutOfBoundsException
+    def productArity = 0
+  }
+
+  /** A class for mapping between an ADT value and
+   *  the generic case that represents the value
+   */
   abstract class GenericMapper[T] {
     def toGenericCase(x: T): GenericCase[T]
     def fromGenericCase(c: GenericCase[T]): T
   }
 
+  /** Every generic derivation starts with a typeclass instance of this type.
+   *  It informs that type `T` has shape `S` and is backed by the extended generic mapper.
+   */
   abstract class HasShape[T, S <: Shape] extends GenericMapper[T]
 }
 
@@ -34,13 +81,15 @@ object Lst {
     Shape.Case[Nil.type, Unit]
   )]
 
+  val NilCase = new GenericCase[Nil.type](1)
+
   implicit def lstShape[T]: HasShape[Lst[T], LstShape[T]] = new {
     def toGenericCase(xs: Lst[T]): GenericCase[Lst[T]] = xs match {
-      case Cons(x, xs1) => GenericCase[Cons[T]](0, Array(x.asInstanceOf, xs1))
-      case Nil => GenericCase[Nil.type](1, Array())
-    }
+      case xs: Cons[T] => new GenericCase[Cons[T]](0, xs)
+      case Nil => NilCase
+     }
     def fromGenericCase(c: GenericCase[Lst[T]]): Lst[T] = c.ordinal match {
-      case 0 => Cons[T](c.elems(0).asInstanceOf, c.elems(1).asInstanceOf)
+      case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
       case 1 => Nil
     }
   }
@@ -61,9 +110,9 @@ object Pair {
 
   implicit def pairShape[T]: HasShape[Pair[T], PairShape[T]] = new {
     def toGenericCase(xy: Pair[T]) =
-      GenericCase[Pair[T]](0, Array(xy._1.asInstanceOf, xy._2.asInstanceOf))
+      new GenericCase[Pair[T]](0, xy)
     def fromGenericCase(c: GenericCase[Pair[T]]): Pair[T] =
-      Pair(c.elems(0).asInstanceOf, c.elems(1).asInstanceOf)
+      Pair(c(0).asInstanceOf, c(1).asInstanceOf)
   }
 
   // two clauses that could be generated from a `derives` clause
@@ -84,7 +133,7 @@ object Eq {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
-  inline def eqlElems[Elems <: Tuple](xs: Array[Object], ys: Array[Object], n: Int): Boolean =
+  inline def eqlElems[Elems <: Tuple](xs: GenericCase[_], ys: GenericCase[_], n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryEql[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
@@ -94,7 +143,7 @@ object Eq {
     }
 
   inline def eqlCase[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
-    eqlElems[Elems](mapper.toGenericCase(x).elems, mapper.toGenericCase(y).elems, 0)
+    eqlElems[Elems](mapper.toGenericCase(x), mapper.toGenericCase(y), 0)
 
   inline def eqlCases[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
     inline erasedValue[Alts] match {
@@ -141,7 +190,7 @@ object Pickler {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
-  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
+  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: GenericCase[_], n: Int): Unit =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
@@ -150,7 +199,7 @@ object Pickler {
     }
 
   inline def pickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit =
-    pickleElems[Elems](buf, mapper.toGenericCase(x).elems, 0)
+    pickleElems[Elems](buf, mapper.toGenericCase(x), 0)
 
   inline def pickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
     inline erasedValue[Alts] match {
@@ -178,9 +227,14 @@ object Pickler {
     }
 
   inline def unpickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
-    val elems = new Array[Object](constValue[Tuple.Size[Elems]])
-    unpickleElems[Elems](buf, elems, 0)
-    mapper.fromGenericCase(GenericCase(ordinal, elems))
+    inline val size = constValue[Tuple.Size[Elems]]
+    inline if (size == 0)
+      mapper.fromGenericCase(new GenericCase[T](ordinal))
+    else {
+      val elems = new Array[Object](size)
+      unpickleElems[Elems](buf, elems, 0)
+      mapper.fromGenericCase(new GenericCase[T](ordinal, elems))
+    }
   }
 
   inline def unpickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
