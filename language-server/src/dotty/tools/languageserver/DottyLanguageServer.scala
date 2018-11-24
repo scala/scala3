@@ -26,11 +26,13 @@ import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
 import typer.Typer
 import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._
+import decompiler.IDEDecompilerDriver
 import Interactive.Include
 import config.Printers.interactiv
 
 import languageserver.config.ProjectConfig
-import languageserver.worksheet.{Worksheet, WorksheetClient, WorksheetService}
+import languageserver.worksheet.{Worksheet, WorksheetService}
+import languageserver.decompiler.{TastyDecompilerService}
 
 import lsp4j.services._
 
@@ -43,7 +45,7 @@ import lsp4j.services._
  *  - This implementation is based on the LSP4J library: https://github.com/eclipse/lsp4j
  */
 class DottyLanguageServer extends LanguageServer
-    with TextDocumentService with WorkspaceService with WorksheetService { thisServer =>
+    with TextDocumentService with WorkspaceService with WorksheetService with TastyDecompilerService { thisServer =>
   import ast.tpd._
 
   import DottyLanguageServer._
@@ -128,6 +130,25 @@ class DottyLanguageServer extends LanguageServer
     drivers(configFor(uri))
   }
 
+    /** The driver instance responsible for decompiling `uri` in `classPath` */
+  def decompilerDriverFor(uri: URI, classPath: String): IDEDecompilerDriver = thisServer.synchronized {
+    val config = configFor(uri)
+    val defaultFlags = List("-color:never")
+
+    implicit class updateDeco(ss: List[String]) {
+      def update(pathKind: String, pathInfo: String) = {
+        val idx = ss.indexOf(pathKind)
+        val ss1 = if (idx >= 0) ss.take(idx) ++ ss.drop(idx + 2) else ss
+        ss1 ++ List(pathKind, pathInfo)
+      }
+    }
+    val settings =
+      defaultFlags ++
+      config.compilerArguments.toList
+        .update("-classpath", (classPath +: config.dependencyClasspath).mkString(File.pathSeparator))
+    new IDEDecompilerDriver(settings)
+  }
+
   /** A mapping from project `p` to the set of projects that transitively depend on `p`. */
   def dependentProjects: Map[ProjectConfig, Set[ProjectConfig]] = thisServer.synchronized {
     if (myDependentProjects == null) {
@@ -184,7 +205,8 @@ class DottyLanguageServer extends LanguageServer
     rootUri = params.getRootUri
     assert(rootUri != null)
 
-    class DottyServerCapabilities(val worksheetRunProvider: Boolean = true) extends lsp4j.ServerCapabilities
+    class DottyServerCapabilities(val worksheetRunProvider: Boolean = true,
+                                  val tastyDecompiler: Boolean = true) extends lsp4j.ServerCapabilities
 
     val c = new DottyServerCapabilities
     c.setTextDocumentSync(TextDocumentSyncKind.Full)
