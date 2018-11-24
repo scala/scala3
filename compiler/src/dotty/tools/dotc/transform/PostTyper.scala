@@ -4,7 +4,9 @@ package transform
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import scala.collection.mutable
 import core._
-import typer.{Checking, VarianceChecker}
+import dotty.tools.dotc.typer.Checking
+import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.typer.VarianceChecker
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
@@ -237,17 +239,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          // Leave only a call trace consisting of
-          //  - a reference to the top-level class from which the call was inlined,
-          //  - the call's position
-          // in the call field of an Inlined node.
-          // The trace has enough info to completely reconstruct positions.
-          // The minimization is done for two reasons:
-          //  1. To save space (calls might contain large inline arguments, which would otherwise
-          //     be duplicated
-          //  2. To enable correct pickling (calls can share symbols with the inlined code, which
-          //     would trigger an assertion when pickling).
-          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          val callTrace = Inliner.inlineCallTrace(call.symbol, call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {

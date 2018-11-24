@@ -149,6 +149,15 @@ object Inliner {
       (new Reposition).transformInline(inlined)
     }
   }
+
+  /** Leave only a call trace consisting of
+   *  - a reference to the top-level class from which the call was inlined,
+   *  - the call's position
+   *  in the call field of an Inlined node.
+   *  The trace has enough info to completely reconstruct positions.
+   */
+  def inlineCallTrace(callSym: Symbol, pos: Position)(implicit ctx: Context): Tree =
+    Ident(callSym.topLevelClass.typeRef).withPos(pos)
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.

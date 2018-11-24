@@ -15,6 +15,7 @@ import typer.Implicits.SearchFailureType
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
+import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.util.SourcePosition
 
 
@@ -381,7 +382,12 @@ class Staging extends MacroTransformWithImplicits {
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          if (level == 0 && !ctx.inInlineMethod) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          if (level == 0 && !ctx.inInlineMethod) {
+            val body2 =
+              if (body1.isType) body1
+              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.pos), Nil, body1)
+            pickledQuote(body2, splices, body.tpe, isType).withPos(quote.pos)
+          }
           else {
             // In top-level splice in an inline def. Keep the tree as it is, it will be transformed at inline site.
             body
@@ -432,7 +438,11 @@ class Staging extends MacroTransformWithImplicits {
       else if (level == 1) {
         val (body1, quotes) = nested(isQuote = false).split(splice.qualifier)
         val tpe = outer.embedded.getHoleType(splice)
-        makeHole(body1, quotes, tpe).withPos(splice.pos)
+        val hole = makeHole(body1, quotes, tpe).withPos(splice.pos)
+        // We do not place add the inline marker for trees that where lifted as they come from the same file as their
+        // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
+        if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
+        else Inlined(EmptyTree, Nil, hole)
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
@@ -664,7 +674,12 @@ object Staging {
       map.get(splice.qualifier.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
     }
 
+    def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)
+
     /** Get the list of embedded trees */
     def getTrees: List[tpd.Tree] = trees.toList
+
+    override def toString: String = s"Embedded($trees, $map)"
+
   }
 }

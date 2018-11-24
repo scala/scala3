@@ -41,8 +41,8 @@ object Splicer {
       val interpreter = new Interpreter(pos, classLoader)
       try {
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-        val interpreted = interpreter.interpret[scala.quoted.Expr[Any]](tree)
-        interpreted.fold(tree)(x => PickledQuotes.quotedExprToTree(x))
+        val interpretedExpr = interpreter.interpret[scala.quoted.Expr[Any]](tree)
+        interpretedExpr.fold(tree)(x => PickledQuotes.quotedExprToTree(x))
       }
       catch {
         case ex: scala.quoted.QuoteError =>
