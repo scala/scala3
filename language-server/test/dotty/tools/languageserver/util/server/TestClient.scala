@@ -1,6 +1,8 @@
 package dotty.tools.languageserver.util.server
 
-import dotty.tools.languageserver.worksheet.{WorksheetRunOutput, WorksheetClient}
+import dotty.tools.languageserver.worksheet.{WorksheetRunOutput}
+import dotty.tools.languageserver.DottyClient
+
 
 import java.util.concurrent.CompletableFuture
 
@@ -9,7 +11,7 @@ import org.eclipse.lsp4j.services._
 
 import scala.collection.mutable.Buffer
 
-class TestClient extends WorksheetClient {
+class TestClient extends DottyClient {
 
   class Log[T] {
     private[this] val log = Buffer.empty[T]

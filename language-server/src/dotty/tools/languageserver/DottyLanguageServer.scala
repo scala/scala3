@@ -56,8 +56,8 @@ class DottyLanguageServer extends LanguageServer
 
   private[this] var rootUri: String = _
 
-  private[this] var myClient: WorksheetClient = _
-  def client: WorksheetClient = myClient
+  private[this] var myClient: DottyClient = _
+  def client: DottyClient = myClient
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
@@ -148,7 +148,7 @@ class DottyLanguageServer extends LanguageServer
     myDependentProjects
   }
 
-  def connect(client: WorksheetClient): Unit = {
+  def connect(client: DottyClient): Unit = {
     myClient = client
   }
 
