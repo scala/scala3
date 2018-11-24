@@ -339,7 +339,7 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
 
   const providerRegistration = Disposable.from(
     vscode.workspace.registerTextDocumentContentProvider(DecompiledDocumentProvider.scheme, provider)
-  );
+  )
 
   extensionContext.subscriptions.push(providerRegistration, provider)
 

@@ -78,8 +78,8 @@ export interface TastyDecompilerClientCapabilities {
 }
 
 export class TastyDecompilerFeature extends TextDocumentFeature<TextDocumentRegistrationOptions> {
-	constructor(client: BaseLanguageClient, readonly provider: DecompiledDocumentProvider) {
-		super(client, TastyDecompileRequest.type);
+  constructor(client: BaseLanguageClient, readonly provider: DecompiledDocumentProvider) {
+    super(client, TastyDecompileRequest.type)
   }
 
   fillClientCapabilities(capabilities: ClientCapabilities & TastyDecompilerClientCapabilities): void {
