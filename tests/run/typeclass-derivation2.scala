@@ -1,11 +1,34 @@
 import scala.collection.mutable
+import scala.annotation.tailrec
+
+trait Deriving {
+  import Deriving._
+
+  protected def caseNames: Array[String]
+
+  private final val separator = '\000'
+
+  private def cname(ordinal: Int, idx: Int): String = {
+    val cnames = caseNames(ordinal)
+    @tailrec def separatorPos(from: Int): Int =
+      if (from == cnames.length || cnames(from) == separator) from
+      else separatorPos(from + 1)
+    @tailrec def findName(count: Int, idx: Int): String =
+      if (idx == cnames.length) ""
+      else if (count == 0) cnames.substring(idx, separatorPos(idx))
+      else findName(if (cnames(idx) == separator) count - 1 else count, idx + 1)
+    findName(idx, 0)
+  }
+
+  def caseName(ordinal: Int): String = cname(ordinal, 0)
+  def elementName(ordinal: Int, idx: Int) = cname(ordinal, idx + 1)
+}
 
 // Generic deriving infrastructure
 object Deriving {
 
   /** The shape of an ADT in a sum of products representation */
   enum Shape {
-
     /** A sum with alternative types `Alts` */
     case Cases[Alts <: Tuple]
 
@@ -17,23 +40,40 @@ object Deriving {
    *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
    *  @param  elems     The elements of the case
    */
-  class CaseMirror[+T](val ordinal: Int, val elems: Product) {
+  class CaseMirror[+T](val deriving: Deriving, val ordinal: Int, val elems: Product) {
 
     /** A generic case with elements given as an array */
-    def this(ordinal: Int, elems: Array[AnyRef]) =
-      this(ordinal, new ArrayProduct(elems))
+    def this(deriving: Deriving, ordinal: Int, elems: Array[AnyRef]) =
+      this(deriving, ordinal, new ArrayProduct(elems))
 
     /** A generic case with an initial empty array of `numElems` elements, to be filled in. */
-    def this(ordinal: Int, numElems: Int) =
-      this(ordinal, new Array[AnyRef](numElems))
+    def this(deriving: Deriving, ordinal: Int, numElems: Int) =
+      this(deriving, ordinal, new Array[AnyRef](numElems))
 
     /** A generic case with no elements */
-    def this(ordinal: Int) =
-      this(ordinal, EmptyProduct)
+    def this(deriving: Deriving, ordinal: Int) =
+      this(deriving, ordinal, EmptyProduct)
 
     /** The `n`'th element of this generic case */
     def apply(n: Int): Any = elems.productElement(n)
+
+    def caseName: String = deriving.caseName(ordinal)
+    def elementName(idx: Int) = deriving.elementName(ordinal, idx)
   }
+
+  /** A class for mapping between an ADT value and
+   *  the case mirror that represents the value.
+   */
+  abstract class Reflected[T] {
+    def reflect(x: T): CaseMirror[T]
+    def reify(c: CaseMirror[T]): T
+    def deriving: Deriving
+  }
+
+  /** Every generic derivation starts with a typeclass instance of this type.
+   *  It informs that type `T` has shape `S` and also allows runtime reflection on `T`.
+   */
+  abstract class Shaped[T, S <: Shape] extends Reflected[T]
 
   /** Helper class to turn arrays into products */
   private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
@@ -50,19 +90,6 @@ object Deriving {
     def productElement(n: Int) = throw new IndexOutOfBoundsException
     def productArity = 0
   }
-
-  /** A class for mapping between an ADT value and
-   *  the generic case that represents the value
-   */
-  abstract class MirrorMapper[T] {
-    def toMirror(x: T): CaseMirror[T]
-    def fromMirror(c: CaseMirror[T]): T
-  }
-
-  /** Every generic derivation starts with a typeclass instance of this type.
-   *  It informs that type `T` has shape `S` and is backed by the extended generic mapper.
-   */
-  abstract class Shaped[T, S <: Shape] extends MirrorMapper[T]
 }
 
 // An algebraic datatype
@@ -72,7 +99,7 @@ enum Lst[+T] // derives Eq, Pickler
   case Nil
 }
 
-object Lst {
+object Lst extends Deriving {
   // common compiler-generated infrastructure
   import Deriving._
 
@@ -81,39 +108,46 @@ object Lst {
     Shape.Case[Nil.type, Unit]
   )]
 
-  val NilMirror = new CaseMirror[Nil.type](1)
+  val NilMirror = new CaseMirror[Nil.type](Lst, 1)
 
   implicit def lstShape[T]: Shaped[Lst[T], Shape[T]] = new {
-    def toMirror(xs: Lst[T]): CaseMirror[Lst[T]] = xs match {
-      case xs: Cons[T] => new CaseMirror[Cons[T]](0, xs)
+    def reflect(xs: Lst[T]): CaseMirror[Lst[T]] = xs match {
+      case xs: Cons[T] => new CaseMirror[Cons[T]](Lst, 0, xs)
       case Nil => NilMirror
      }
-    def fromMirror(c: CaseMirror[Lst[T]]): Lst[T] = c.ordinal match {
+    def reify(c: CaseMirror[Lst[T]]): Lst[T] = c.ordinal match {
       case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
       case 1 => Nil
     }
+    def deriving = Lst
   }
 
-  // two clauses that could be generated from a `derives` clause
+  protected val caseNames = Array("Cons\000hd\000tl", "Nil")
+
+  // three clauses that could be generated from a `derives` clause
   implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
   implicit def LstPickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
+  implicit def LstShow[T: Show]: Show[Lst[T]] = Show.derived
 }
 
 // A simple product type
 case class Pair[T](x: T, y: T) // derives Eq, Pickler
 
-object Pair {
+object Pair extends Deriving {
   // common compiler-generated infrastructure
   import Deriving._
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
-    def toMirror(xy: Pair[T]) =
-      new CaseMirror[Pair[T]](0, xy)
-    def fromMirror(c: CaseMirror[Pair[T]]): Pair[T] =
+    def reflect(xy: Pair[T]) =
+      new CaseMirror[Pair[T]](Pair, 0, xy)
+    def reify(c: CaseMirror[Pair[T]]): Pair[T] =
       Pair(c(0).asInstanceOf, c(1).asInstanceOf)
+    def deriving = Pair
   }
+
+  protected val caseNames = Array("Pair\000x\000y")
 
   // two clauses that could be generated from a `derives` clause
   implicit def PairEq[T: Eq]: Eq[Pair[T]] = Eq.derived
@@ -142,25 +176,25 @@ object Eq {
         true
     }
 
-  inline def eqlCase[T, Elems <: Tuple](mapper: MirrorMapper[T], x: T, y: T) =
-    eqlElems[Elems](mapper.toMirror(x), mapper.toMirror(y), 0)
+  inline def eqlCase[T, Elems <: Tuple](r: Reflected[T], x: T, y: T) =
+    eqlElems[Elems](r.reflect(x), r.reflect(y), 0)
 
-  inline def eqlCases[T, Alts <: Tuple](mapper: MirrorMapper[T], x: T, y: T): Boolean =
+  inline def eqlCases[T, Alts <: Tuple](r: Reflected[T], x: T, y: T): Boolean =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
           case x: `alt` =>
             y match {
-              case y: `alt` => eqlCase[T, elems](mapper, x, y)
+              case y: `alt` => eqlCase[T, elems](r, x, y)
               case _ => false
             }
-          case _ => eqlCases[T, alts1](mapper, x, y)
+          case _ => eqlCases[T, alts1](r, x, y)
       }
     case _: Unit =>
       false
   }
 
-  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]) <: Eq[T] = new {
+  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Eq[T] = new {
     def eql(x: T, y: T): Boolean = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
         eqlCases[T, alts](ev, x, y)
@@ -198,18 +232,18 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def pickleCase[T, Elems <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit =
-    pickleElems[Elems](buf, mapper.toMirror(x), 0)
+  inline def pickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T): Unit =
+    pickleElems[Elems](buf, r.reflect(x), 0)
 
-  inline def pickleCases[T, Alts <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
+  inline def pickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
           case x: `alt` =>
             buf += n
-            pickleCase[T, elems](mapper, buf, x)
+            pickleCase[T, elems](r, buf, x)
           case _ =>
-            pickleCases[T, alts1](mapper, buf, x, n + 1)
+            pickleCases[T, alts1](r, buf, x, n + 1)
         }
       case _: Unit =>
     }
@@ -226,22 +260,22 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def unpickleCase[T, Elems <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
+  inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      mapper.fromMirror(new CaseMirror[T](ordinal))
+      r.reify(new CaseMirror[T](r.deriving, ordinal))
     else {
       val elems = new Array[Object](size)
       unpickleElems[Elems](buf, elems, 0)
-      mapper.fromMirror(new CaseMirror[T](ordinal, elems))
+      r.reify(new CaseMirror[T](r.deriving, ordinal, elems))
     }
   }
 
-  inline def unpickleCases[T, Alts <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+  inline def unpickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[_, elems] *: alts1) =>
-        if (n == ordinal) unpickleCase[T, elems](mapper, buf, ordinal)
-        else unpickleCases[T, alts1](mapper, buf, ordinal, n + 1)
+        if (n == ordinal) unpickleCase[T, elems](r, buf, ordinal)
+        else unpickleCases[T, alts1](r, buf, ordinal, n + 1)
       case _ =>
         throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
     }
@@ -264,6 +298,59 @@ object Pickler {
   implicit object IntPickler extends Pickler[Int] {
     def pickle(buf: mutable.ListBuffer[Int], x: Int): Unit = buf += x
     def unpickle(buf: mutable.ListBuffer[Int]): Int = nextInt(buf)
+  }
+}
+
+// A third typeclass, making use of names
+trait Show[T] {
+  def show(x: T): String
+}
+object Show {
+  import scala.typelevel._
+  import Deriving._
+
+  inline def tryShow[T](x: T): String = implicit match {
+    case s: Show[T] => s.show(x)
+  }
+
+  inline def showElems[Elems <: Tuple](elems: CaseMirror[_], n: Int): List[String] =
+    inline erasedValue[Elems] match {
+      case _: (elem *: elems1) =>
+        val formal = elems.elementName(n)
+        val actual = tryShow[elem](elems(n).asInstanceOf)
+        s"$formal = $actual" :: showElems[elems1](elems, n + 1)
+      case _: Unit =>
+        Nil
+    }
+
+  inline def showCase[T, Elems <: Tuple](r: Reflected[T], x: T): String = {
+    val mirror = r.reflect(x)
+    val args = showElems[Elems](mirror, 0).mkString(", ")
+    s"${mirror.caseName}($args)"
+  }
+
+  inline def showCases[T, Alts <: Tuple](r: Reflected[T], x: T): String =
+    inline erasedValue[Alts] match {
+      case _: (Shape.Case[alt, elems] *: alts1) =>
+        x match {
+          case x: `alt` => showCase[T, elems](r, x)
+          case _ => showCases[T, alts1](r, x)
+        }
+      case _: Unit =>
+        throw new MatchError(x)
+    }
+
+  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Show[T] = new {
+    def show(x: T): String = inline erasedValue[S] match {
+      case _: Shape.Cases[alts] =>
+        showCases[T, alts](ev, x)
+      case _: Shape.Case[_, elems] =>
+        showCase[T, elems](ev, x)
+    }
+  }
+
+  implicit object IntShow extends Show[Int] {
+    def show(x: Int): String = x.toString
   }
 }
 
@@ -317,4 +404,9 @@ object Test extends App {
   println(p1a)
   assert(p1 == p1a)
   assert(eqp.eql(p1, p1a))
+
+  def showPrintln[T: Show](x: T): Unit =
+    println(implicitly[Show[T]].show(x))
+  showPrintln(xs)
+  showPrintln(xss)
 }
