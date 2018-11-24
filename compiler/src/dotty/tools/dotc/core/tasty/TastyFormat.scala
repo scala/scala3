@@ -526,6 +526,7 @@ object TastyFormat {
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
+    case ENUM => "ENUM"
     case LOCAL => "LOCAL"
     case SYNTHETIC => "SYNTHETIC"
     case ARTIFACT => "ARTIFACT"
