@@ -17,7 +17,7 @@ object Deriving {
    *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
    *  @param  elems     The elements of the case
    */
-  class GenericCase[+T](val ordinal: Int, val elems: Product) {
+  class CaseMirror[+T](val ordinal: Int, val elems: Product) {
 
     /** A generic case with elements given as an array */
     def this(ordinal: Int, elems: Array[AnyRef]) =
@@ -54,15 +54,15 @@ object Deriving {
   /** A class for mapping between an ADT value and
    *  the generic case that represents the value
    */
-  abstract class GenericMapper[T] {
-    def toGenericCase(x: T): GenericCase[T]
-    def fromGenericCase(c: GenericCase[T]): T
+  abstract class MirrorMapper[T] {
+    def toMirror(x: T): CaseMirror[T]
+    def fromMirror(c: CaseMirror[T]): T
   }
 
   /** Every generic derivation starts with a typeclass instance of this type.
    *  It informs that type `T` has shape `S` and is backed by the extended generic mapper.
    */
-  abstract class HasShape[T, S <: Shape] extends GenericMapper[T]
+  abstract class Shaped[T, S <: Shape] extends MirrorMapper[T]
 }
 
 // An algebraic datatype
@@ -76,19 +76,19 @@ object Lst {
   // common compiler-generated infrastructure
   import Deriving._
 
-  type LstShape[T] = Shape.Cases[(
+  type Shape[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
     Shape.Case[Nil.type, Unit]
   )]
 
-  val NilCase = new GenericCase[Nil.type](1)
+  val NilMirror = new CaseMirror[Nil.type](1)
 
-  implicit def lstShape[T]: HasShape[Lst[T], LstShape[T]] = new {
-    def toGenericCase(xs: Lst[T]): GenericCase[Lst[T]] = xs match {
-      case xs: Cons[T] => new GenericCase[Cons[T]](0, xs)
-      case Nil => NilCase
+  implicit def lstShape[T]: Shaped[Lst[T], Shape[T]] = new {
+    def toMirror(xs: Lst[T]): CaseMirror[Lst[T]] = xs match {
+      case xs: Cons[T] => new CaseMirror[Cons[T]](0, xs)
+      case Nil => NilMirror
      }
-    def fromGenericCase(c: GenericCase[Lst[T]]): Lst[T] = c.ordinal match {
+    def fromMirror(c: CaseMirror[Lst[T]]): Lst[T] = c.ordinal match {
       case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
       case 1 => Nil
     }
@@ -106,12 +106,12 @@ object Pair {
   // common compiler-generated infrastructure
   import Deriving._
 
-  type PairShape[T] = Shape.Case[Pair[T], (T, T)]
+  type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
-  implicit def pairShape[T]: HasShape[Pair[T], PairShape[T]] = new {
-    def toGenericCase(xy: Pair[T]) =
-      new GenericCase[Pair[T]](0, xy)
-    def fromGenericCase(c: GenericCase[Pair[T]]): Pair[T] =
+  implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
+    def toMirror(xy: Pair[T]) =
+      new CaseMirror[Pair[T]](0, xy)
+    def fromMirror(c: CaseMirror[Pair[T]]): Pair[T] =
       Pair(c(0).asInstanceOf, c(1).asInstanceOf)
   }
 
@@ -133,7 +133,7 @@ object Eq {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
-  inline def eqlElems[Elems <: Tuple](xs: GenericCase[_], ys: GenericCase[_], n: Int): Boolean =
+  inline def eqlElems[Elems <: Tuple](xs: CaseMirror[_], ys: CaseMirror[_], n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryEql[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
@@ -142,10 +142,10 @@ object Eq {
         true
     }
 
-  inline def eqlCase[T, Elems <: Tuple](mapper: GenericMapper[T], x: T, y: T) =
-    eqlElems[Elems](mapper.toGenericCase(x), mapper.toGenericCase(y), 0)
+  inline def eqlCase[T, Elems <: Tuple](mapper: MirrorMapper[T], x: T, y: T) =
+    eqlElems[Elems](mapper.toMirror(x), mapper.toMirror(y), 0)
 
-  inline def eqlCases[T, Alts <: Tuple](mapper: GenericMapper[T], x: T, y: T): Boolean =
+  inline def eqlCases[T, Alts <: Tuple](mapper: MirrorMapper[T], x: T, y: T): Boolean =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
@@ -160,7 +160,7 @@ object Eq {
       false
   }
 
-  inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]) <: Eq[T] = new {
+  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]) <: Eq[T] = new {
     def eql(x: T, y: T): Boolean = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
         eqlCases[T, alts](ev, x, y)
@@ -190,7 +190,7 @@ object Pickler {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
-  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: GenericCase[_], n: Int): Unit =
+  inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: CaseMirror[_], n: Int): Unit =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
@@ -198,10 +198,10 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def pickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit =
-    pickleElems[Elems](buf, mapper.toGenericCase(x), 0)
+  inline def pickleCase[T, Elems <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], x: T): Unit =
+    pickleElems[Elems](buf, mapper.toMirror(x), 0)
 
-  inline def pickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
+  inline def pickleCases[T, Alts <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         x match {
@@ -226,18 +226,18 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def unpickleCase[T, Elems <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
+  inline def unpickleCase[T, Elems <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      mapper.fromGenericCase(new GenericCase[T](ordinal))
+      mapper.fromMirror(new CaseMirror[T](ordinal))
     else {
       val elems = new Array[Object](size)
       unpickleElems[Elems](buf, elems, 0)
-      mapper.fromGenericCase(new GenericCase[T](ordinal, elems))
+      mapper.fromMirror(new CaseMirror[T](ordinal, elems))
     }
   }
 
-  inline def unpickleCases[T, Alts <: Tuple](mapper: GenericMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+  inline def unpickleCases[T, Alts <: Tuple](mapper: MirrorMapper[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[_, elems] *: alts1) =>
         if (n == ordinal) unpickleCase[T, elems](mapper, buf, ordinal)
@@ -246,7 +246,7 @@ object Pickler {
         throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
     }
 
-  inline def derived[T, S <: Shape](implicit ev: HasShape[T, S]): Pickler[T] = new {
+  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Pickler[T] = new {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
         pickleCases[T, alts](ev, buf, x, 0)
