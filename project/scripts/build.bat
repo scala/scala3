@@ -271,7 +271,7 @@ if not %_EXITCODE%==0 goto :eof
 
 echo testing loading tasty from .tasty file in jar
 call :clear_out "%_OUT_DIR%"
-call "%_SBT_CMD%" ";dotc -d %_OUT_DIR%\out.jar %_SOURCE%; dotc -decompile -classpath %_OUT_DIR%/out.jar -color:never %_MAIN%" > "%_TMP_FILE%"
+call "%_SBT_CMD%" ";dotc -d %_OUT_DIR%\out.jar %_SOURCE%; dotc -decompile -classpath %_OUT_DIR%\out.jar -color:never %_MAIN%" > "%_TMP_FILE%"
 call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto :eof
 
