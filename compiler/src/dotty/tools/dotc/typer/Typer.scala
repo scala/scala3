@@ -1290,7 +1290,6 @@ class Typer extends Namer
               case _ =>
             }
           if (desugaredArg.isType) {
-            var res = typed(desugaredArg, argPt)
             arg match {
               case TypeBoundsTree(EmptyTree, EmptyTree)
               if tparam.paramInfo.isLambdaSub &&
@@ -1302,10 +1301,10 @@ class Typer extends Namer
                 // type parameter in `C`.
                 // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                res = res.withType(tparamBounds)
+                TypeTree(tparamBounds).withPos(arg.pos)
               case _ =>
+                typed(desugaredArg, argPt)
             }
-            res
           }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
