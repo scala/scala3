@@ -141,6 +141,7 @@ class Tests {
     val path = sourceDirectory.resolve(filename)
     val scalac = getScalacSemanticdb(path)
     val tasty = getTastySemanticdb(path)
+    println(tasty.occurrences)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)
     assertNoDiff(obtained, expected)
@@ -175,6 +176,8 @@ class Tests {
 
 
   @Test def testExample(): Unit = checkFile("example/Example.scala")
+  @Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
+  //@Test def testLocals(): Unit = checkFile("example/Locals.scala")
   // TODO: add more tests
 
   def testOutput(className: String, expected: String): Unit = {

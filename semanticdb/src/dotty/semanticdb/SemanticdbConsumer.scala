@@ -19,7 +19,8 @@ class SemanticdbConsumer extends TastyConsumer {
   def toSemanticdb(text: String): s.TextDocument = {
     s.TextDocument(text = text, occurrences = occurrences)
   }
-  val package_definitions: Set[String] = Set()
+  val package_definitions: Set[Tuple2[String, Int]] = Set()
+  var local_offset: Int = 0
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -36,7 +37,8 @@ class SemanticdbConsumer extends TastyConsumer {
           implicit ctx: Context): Unit = ()
       override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit =
         ()
-      override def traverseTypeCaseDef(tree: TypeCaseDef)(implicit ctx: Context): Unit =
+      override def traverseTypeCaseDef(tree: TypeCaseDef)(
+          implicit ctx: Context): Unit =
         ()
 
       def getChildren(tree: Tree)(implicit ctx: Context): List[Tree] = {
@@ -73,6 +75,8 @@ class SemanticdbConsumer extends TastyConsumer {
           case _               => false
         }
 
+        def isTerm: Boolean = !symbol.isType
+
         def isMethod: Boolean = symbol match {
           case IsDefSymbol(_) => true
           case _              => false
@@ -83,6 +87,8 @@ class SemanticdbConsumer extends TastyConsumer {
           case _                  => false
         }
 
+        def isParameter: Boolean = symbol.flags.is(Flags.Param)
+
         def isObject: Boolean = symbol.flags.is(Flags.Object)
 
         def isTrait: Boolean = symbol.flags.is(Flags.Trait)
@@ -91,8 +97,45 @@ class SemanticdbConsumer extends TastyConsumer {
 
         // TODO : implement it
         def isJavaClass: Boolean = false
-      }
 
+        def isSelfParameter: Boolean =
+          symbol != NoSymbol && symbol.owner == symbol
+
+        def isSemanticdbLocal: Boolean = {
+          def definitelyGlobal = symbol.isPackage
+          def definitelyLocal =
+            symbol == NoSymbol ||
+              (symbol.owner.isTerm && !symbol.isParameter) ||
+              ((symbol.owner.isAliasType || symbol.owner.isAbstractType) && !symbol.isParameter) ||
+              symbol.isSelfParameter ||
+              symbol.isLocalDummy ||
+              symbol.isRefinementClass ||
+              symbol.isAnonymousClass ||
+              symbol.isAnonymousFunction /*||
+              symbol.isExistential*/
+          def ownerLocal = symbol.owner.isSemanticdbLocal
+          !definitelyGlobal && (definitelyLocal || ownerLocal)
+        }
+
+        def isUseless: Boolean = {
+          symbol == NoSymbol ||
+          symbol.isAnonymousClass || /*
+      sym.isSyntheticConstructor ||
+      sym.isStaticConstructor ||
+      sym.isLocalChild ||
+      sym.isSyntheticValueClassCompanion ||
+      sym.isUselessField ||
+      sym.isSyntheticCaseAccessor ||*/
+          symbol.isRefinementClass /* ||
+      sym.isSyntheticJavaModule*/
+        }
+        def isUseful: Boolean = !symbol.isUseless
+        def isUselessOccurrence: Boolean = {
+          symbol.isUseless /*&&
+      !symbol.isSyntheticJavaModule // references to static Java inner classes should have occurrences
+*/
+        }
+      }
       def resolveClass(symbol: ClassSymbol): Symbol =
         (symbol.companionClass, symbol.companionModule) match {
           case (_, Some(module)) if symbol.flags.is(Flags.Object) => module
@@ -101,21 +144,31 @@ class SemanticdbConsumer extends TastyConsumer {
         }
 
       def disimbiguate(symbol_path: String, symbol: Symbol): String = {
-        val symbolcl = resolveClass(symbol.owner.asClass)
-        val methods = symbolcl.asClass.method(symbol.name)
-        val (methods_count, method_pos) =
-          methods.foldLeft((0, -1))((x: Tuple2[Int, Int], m: Symbol) => {
-            if (m == symbol)
-              (x._1 + 1, x._1)
-            else
-              (x._1 + 1, x._2)
-          })
-        val real_pos = methods_count - method_pos - 1
+        try {
+          val symbolcl = resolveClass(symbol.owner.asClass)
+          symbolcl match {
+            case IsClassSymbol(classsymbol) => {
+              val methods = classsymbol.method(symbol.name)
+              val (methods_count, method_pos) =
+                methods.foldLeft((0, -1))((x: Tuple2[Int, Int], m: Symbol) => {
+                  if (m == symbol)
+                    (x._1 + 1, x._1)
+                  else
+                    (x._1 + 1, x._2)
+                })
+              val real_pos = methods_count - method_pos - 1
 
-        if (real_pos == 0) {
-          "()"
-        } else {
-          "(+" + real_pos + ")"
+              if (real_pos == 0) {
+                "()"
+              } else {
+                "(+" + real_pos + ")"
+              }
+            }
+            case _ =>
+              "()"
+          }
+        } catch {
+          case _ => "()"
         }
       }
 
@@ -134,14 +187,19 @@ class SemanticdbConsumer extends TastyConsumer {
                 if (symbol.isPackage) {
                   d.Package(symbol.name)
                 } else if (symbol.isObject) {
-                  d.Term(resolveClass(symbol.asClass).name)
+                  symbol match {
+                    case IsClassSymbol(classsymbol) =>
+                      d.Term(resolveClass(classsymbol).name)
+                    case _ =>
+                      d.Term(symbol.name)
+                  }
                 } else if (symbol.isMethod) {
                   d.Method(symbol.name,
                            disimbiguate(previous_symbol + symbol.name, symbol))
-                } else if (symbol.isValueParameter) {
-                  d.Parameter(symbol.name)
                 } else if (symbol.isTypeParameter) {
                   d.TypeParameter(symbol.name)
+                } else if (symbol.isValueParameter) {
+                  d.Parameter(symbol.name)
                 } else if (symbol.isType || symbol.isTrait) {
                   d.Type(symbol.name)
                 } else {
@@ -158,8 +216,22 @@ class SemanticdbConsumer extends TastyConsumer {
       def addOccurence(symbol: Symbol,
                        type_symbol: s.SymbolOccurrence.Role,
                        range: s.Range): Unit = {
-        val symbol_path = iterateParent(symbol)
-        if (symbol_path == "") return
+        val symbol_path =
+          if (symbol.isSemanticdbLocal) {
+            println("LOCAL: ", symbol)
+            if (symbolsCache.contains(symbol)) {
+              symbolsCache(symbol)
+            } else {
+              var localsymbol = Symbols.Local(local_offset.toString)
+              local_offset += 1
+              symbolsCache += (symbol -> localsymbol)
+              localsymbol
+            }
+          } else {
+            iterateParent(symbol)
+          }
+
+        if (symbol_path == "" || symbol.isUselessOccurrence) return
 
         occurrences =
           occurrences :+
@@ -168,16 +240,16 @@ class SemanticdbConsumer extends TastyConsumer {
               symbol_path,
               type_symbol
             )
-
       }
 
       def addOccurenceTree(tree: Tree,
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false): Unit = {
+                             println(tree.symbol)
         if (tree.isUserCreated || force_add) {
           addOccurence(tree.symbol, type_symbol, range)
-        }
+       }
       }
       def addOccurenceTypeTree(typetree: TypeTree,
                                type_symbol: s.SymbolOccurrence.Role,
@@ -185,6 +257,20 @@ class SemanticdbConsumer extends TastyConsumer {
         if (typetree.isUserCreated) {
           addOccurence(typetree.symbol, type_symbol, range)
         }
+      }
+      def addOccurenceId(parent_path: String, id: Id): Unit = {
+        val symbol_path = Symbols.Global(parent_path, d.Term(id.name))
+        occurrences =
+          occurrences :+
+            s.SymbolOccurrence(
+              Some(
+                s.Range(id.pos.startLine,
+                        id.pos.startColumn,
+                        id.pos.startLine,
+                        id.pos.endColumn)),
+              symbol_path,
+              s.SymbolOccurrence.Role.REFERENCE
+            )
       }
 
       def range(tree: Tree, pos: Position, name: String): s.Range = {
@@ -208,8 +294,8 @@ class SemanticdbConsumer extends TastyConsumer {
 
       def rangeExclude(range: Position, exclude: Position): s.Range = {
         def max(a: Int, b: Int): Int = { if (a > b) a else b }
-        return s.Range(max(range.startLine, exclude.startLine),
-                       max(range.startColumn, exclude.startColumn) + 1,
+        return s.Range(exclude.endLine,
+                       exclude.endColumn + 1,
                        range.endLine,
                        range.endColumn)
       }
@@ -224,9 +310,51 @@ class SemanticdbConsumer extends TastyConsumer {
               range(tree, typetree.pos, typetree.symbol.name))
         }
 
+      def getImportPath(path_term: Term): String = {
+        path_term match {
+          case Term.Select(qualifier, selected) => {
+            getImportPath(qualifier)
+            val range = rangeExclude(path_term.pos, qualifier.pos)
+            addOccurenceTree(path_term,
+                             s.SymbolOccurrence.Role.REFERENCE,
+                             range)
+            iterateParent(path_term.symbol)
+          }
+          case Term.Ident(x) => {
+            val range_x = range(path_term, path_term.pos, path_term.symbol.name)
+            addOccurenceTree(path_term,
+                             s.SymbolOccurrence.Role.REFERENCE,
+                             range_x)
+            iterateParent(path_term.symbol)
+          }
+        }
+      }
+
+      def getImportSelectors(parent_path: String,
+                             selectors: List[ImportSelector]): Unit = {
+        selectors.foreach(selector =>
+          selector match {
+            case SimpleSelector(id) => {
+              addOccurenceId(parent_path, id)
+            }
+            case RenameSelector(id, _) => {
+              addOccurenceId(parent_path, id)
+            }
+            case OmitSelector(id) => {
+              addOccurenceId(parent_path, id)
+            }
+        })
+      }
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         //println(tree.pos.startColumn, tree.symbol.name, tree.pos.endColumn)
         tree match {
+          case Import(path, selectors) =>
+            val key = (tree.symbol.name, tree.pos.start)
+            if (!package_definitions(key)) {
+              package_definitions += key
+              getImportSelectors(getImportPath(path), selectors)
+            }
           case IsDefinition(body) => {
             tree match {
               case DefDef(name, _, _, typetree, _) =>
@@ -236,27 +364,31 @@ class SemanticdbConsumer extends TastyConsumer {
               case _ => ()
             }
 
-            val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
-            if (tree.symbol.name == "<init>" && !tree.isUserCreated) {
-              val range_symbol2 = s.Range(range_symbol.startLine,
-                                          range_symbol.startCharacter - 4,
-                                          range_symbol.endLine,
-                                          range_symbol.endCharacter - 4)
-              addOccurenceTree(tree,
-                               s.SymbolOccurrence.Role.DEFINITION,
-                               range_symbol2,
-                               true)
+            println(tree.symbol.name)
+            if (tree.symbol.name != "<none>") {
+              val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
+              /*if (tree.symbol.name == "<init>" && !tree.isUserCreated && !tree.symbol.owner.flags.isObject) {
+                val range_symbol2 = s.Range(range_symbol.startLine,
+                                            range_symbol.startCharacter - 4,
+                                            range_symbol.endLine,
+                                            range_symbol.endCharacter - 4)
+                addOccurenceTree(tree,
+                                 s.SymbolOccurrence.Role.DEFINITION,
+                                 range_symbol2,
+                                 true)
 
-            } else {
-              addOccurenceTree(tree,
-                               s.SymbolOccurrence.Role.DEFINITION,
-                               range_symbol)
+              } else */ {
+                addOccurenceTree(tree,
+                                 s.SymbolOccurrence.Role.DEFINITION,
+                                 range_symbol)
+              }
             }
             super.traverseTree(body)
           }
 
           case Term.Select(qualifier, _) => {
             val range = rangeExclude(tree.pos, qualifier.pos)
+            println(range.startCharacter, range.endCharacter)
             addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range)
             super.traverseTree(tree)
           }
@@ -271,11 +403,12 @@ class SemanticdbConsumer extends TastyConsumer {
             super.traverseTree(tree)
           }
           case PackageClause(_) =>
-            if (!package_definitions(tree.symbol.name)) {
+            val key = (tree.symbol.name, tree.pos.start)
+            if (!package_definitions(key)) {
               addOccurenceTree(tree,
                                s.SymbolOccurrence.Role.REFERENCE,
                                range(tree, tree.pos, tree.symbol.name))
-              package_definitions += tree.symbol.name
+              package_definitions += key
             }
             super.traverseTree(tree)
 
@@ -285,7 +418,7 @@ class SemanticdbConsumer extends TastyConsumer {
       }
 
     }
-
+    println(root)
     Traverser.traverseTree(root)(reflect.rootContext)
   }
 

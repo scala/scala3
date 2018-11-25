@@ -173,7 +173,9 @@ object Scala {
     val Constructor: TermName = TermName("<init>")
 
     private[semanticdb] def encode(value: String): String = {
-      if (value == "") {
+      if (value == "scalaShadowing") {
+        "scala"
+      } else if (value == "") {
         "``"
       } else {
         val (start, parts) = (value.head, value.tail)

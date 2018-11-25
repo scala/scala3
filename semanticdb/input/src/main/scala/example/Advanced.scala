@@ -1,7 +1,6 @@
 package example
 
-import scala.language.existentials
-import scala.language.higherKinds
+import scala.language.{existentials, higherKinds=>h}
 import scala.language.reflectiveCalls
 
 class AdvC[T] {

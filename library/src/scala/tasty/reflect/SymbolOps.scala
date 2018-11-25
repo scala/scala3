@@ -14,6 +14,13 @@ trait SymbolOps extends Core {
     /** Flags of this symbol */
     def flags(implicit ctx: Context): Flags
 
+    def isLocalDummy(implicit ctx: Context): Boolean
+    def isRefinementClass(implicit ctx: Context): Boolean
+    def isAliasType(implicit ctx: Context): Boolean
+    def isAnonymousClass(implicit ctx: Context): Boolean
+    def isAnonymousFunction(implicit ctx: Context): Boolean
+    def isAbstractType(implicit ctx: Context): Boolean
+
     /** This symbol is private within the resulting type. */
     def privateWithin(implicit ctx: Context): Option[Type]
 
@@ -26,6 +33,7 @@ trait SymbolOps extends Core {
     /** The full name of this symbol up to the root package. */
     def fullName(implicit ctx: Context): String
 
+    /** The position of this symbol */
     def pos(implicit ctx: Context): Position
 
     def localContext(implicit ctx: Context): Context
@@ -170,7 +178,7 @@ trait SymbolOps extends Core {
   }
 
   trait BindSymbolAPI {
-    /** Bind pattern of this defintion. */
+    /** Bind pattern of this definition. */
     def tree(implicit ctx: Context): Bind
   }
   implicit def BindSymbolDeco(symbol: BindSymbol): BindSymbolAPI
