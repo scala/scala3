@@ -12,3 +12,6 @@ tcpoly_checkkinds_mix.scala
 i3050.scala
 i4006b.scala
 i4006c.scala
+
+# Decompiling RecThis as "this" is incorrect
+avoid.scala

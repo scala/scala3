@@ -393,7 +393,13 @@ class TreeUnpickler(reader: TastyReader,
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case RECtype =>
-          typeAtAddr.getOrElse(start, RecType(rt => registeringType(rt, readType())))
+          typeAtAddr.get(start) match {
+            case Some(tp) =>
+              skipTree(tag)
+              tp
+            case None =>
+              RecType(rt => registeringType(rt, readType()))
+          }
         case RECthis =>
           readTypeRef().asInstanceOf[RecType].recThis
         case TYPEALIAS =>
