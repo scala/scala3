@@ -730,13 +730,12 @@ class Typer extends Namer
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
     }
-    pt.stripTypeVar match {
-      case _ if defn.isNonDepFunctionType(pt) =>
+    pt.stripTypeVar.dealias.followSyntheticOpaque match {
+      case pt1 if defn.isNonDepFunctionType(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
-        val funType = pt.dealias
-        (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
+        (pt1.argTypesLo.init, typeTree(pt1.argTypesHi.last))
       case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
          if (sam.isResultDependent)
