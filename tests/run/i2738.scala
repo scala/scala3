@@ -28,7 +28,7 @@ object Test {
     qux.toString()
   }
 
-  def thisMethodName() = Thread.currentThread().getStackTrace()(2).getMethodName
+  def thisMethodName() = Thread.currentThread().getStackTrace()(2).getMethodName.nn
 
-  def thisMethodsClassName() = Thread.currentThread().getStackTrace()(2).getClassName
+  def thisMethodsClassName() = Thread.currentThread().getStackTrace()(2).getClassName.nn
 }

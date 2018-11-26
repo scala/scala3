@@ -9,7 +9,7 @@ object Test {
     def ser[T](o: T): Array[Byte] = {
       val baos = new ByteArrayOutputStream()
       new ObjectOutputStream(baos).writeObject(o)
-      baos.toByteArray()
+      baos.toByteArray().nn
     }
 
     def deser[T](bs: Array[Byte]): T =

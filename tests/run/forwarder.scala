@@ -14,7 +14,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     println(
       classOf[Foo].getMethods
-        .filter(m => (m.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
+        .filter(m => (m.nn.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
         .mkString("\n"))
   }
 }

@@ -13,7 +13,7 @@ object Test {
 
   def fail1(): Unit = {
     val b = new B
-    var x1: EE[A] = null // error: Type argument A does not conform to upper bound EC
+    var x1: EE[A] = ??? // error: Type argument A does not conform to upper bound EC
     var x2: EE[B] = new b.E // error: Type argument B does not conform to upper bound EC
 //    x1 = x2  // gives a prior type error: B#E, required: A#E, masked to get at the real thing.
   }

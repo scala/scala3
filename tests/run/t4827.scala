@@ -3,7 +3,7 @@ object Test {
 }
 
 trait CommonTrait {
-  def foo(): String = null
+  def foo(): String = "hello"
 }
 
 class Foo
@@ -11,5 +11,5 @@ class Foo
 object Foo {
   def goo() = new Foo() with CommonTrait
 
-  def foo(): String = null
+  def foo(): String = "world"
 }

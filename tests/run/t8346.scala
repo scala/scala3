@@ -7,7 +7,7 @@ object Test extends dotty.runtime.LegacyApp {
 
   def sctor[A <: Set[Int]](f: Int => A)(implicit A: ClassTag[A])
       : (String, Int => Set[Int]) =
-    (A.runtimeClass.getSimpleName, f)
+    (A.runtimeClass.getSimpleName.nn, f)
 
   val inits: Seq[(String, Int => Set[Int])] = {
     import collection.immutable.{Seq => _, _}
