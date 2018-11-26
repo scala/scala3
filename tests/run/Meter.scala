@@ -7,7 +7,7 @@ package a {
   class Meter(val underlying: Double) extends AnyVal with _root_.b.Printable {
     def + (other: Meter): Meter =
       new Meter(this.underlying + other.underlying)
-    def / (other: Meter)(implicit dummy: Meter.MeterArg = null): Double = this.underlying / other.underlying
+    def / (other: Meter)(implicit dummy: Meter.MeterArg|Null = null): Double = this.underlying / other.underlying
     def / (factor: Double): Meter = new Meter(this.underlying / factor)
     def < (other: Meter): Boolean = this.underlying < other.underlying
     def toFoot: Foot = new Foot(this.underlying * 0.3048)
