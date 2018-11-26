@@ -941,7 +941,7 @@ trait Implicits { self: Typer =>
       * a diverging search
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult = {
-      if(ctx.searchHistory.checkDivergence(cand, pt))
+      if (ctx.searchHistory.checkDivergence(cand, pt))
         SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
       else {
         val history = ctx.searchHistory.nest(cand, pt)
@@ -1180,7 +1180,7 @@ abstract class SearchHistory { outer =>
           (if (cand1.ref == cand.ref) {
             val wideTp = tp.widenExpr
             lazy val wildTp = wildApprox(wideTp)
-            if(belowByname && (wildTp <:< wildPt)) Some(false)
+            if (belowByname && (wildTp <:< wildPt)) Some(false)
             else if ((wideTp.typeSize < ptSize && wideTp.coveringSet == ptCoveringSet) || (wildTp == wildPt)) Some(true)
             else None
           } else None) match {
@@ -1197,7 +1197,7 @@ abstract class SearchHistory { outer =>
 
     refBynameImplicit(widePt).orElse {
       val bynamePt = isByname(pt)
-      if(!byname && !bynamePt) None
+      if (!byname && !bynamePt) None
       else {
         @tailrec
         def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Option[Type] = {
@@ -1228,7 +1228,7 @@ final class SearchRoot extends SearchHistory {
 
   var implicitDictionary0: mutable.Map[Type, (TermRef, tpd.Tree)] = null
   def implicitDictionary = {
-    if(implicitDictionary0 == null)
+    if (implicitDictionary0 == null)
       implicitDictionary0 = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
     implicitDictionary0
   }
@@ -1258,7 +1258,7 @@ final class SearchRoot extends SearchHistory {
   }
 
   override def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = {
-    if(implicitDictionary == null || implicitDictionary.isEmpty) result
+    if (implicitDictionary == null || implicitDictionary.isEmpty) result
     else {
       result match {
         case failure: SearchFailure => failure
@@ -1276,7 +1276,7 @@ final class SearchRoot extends SearchHistory {
                     case _ => false
                   })
               }
-              if(in.isEmpty) acc
+              if (in.isEmpty) acc
               else prune(in.map(_._2) ++ trees, out, in ++ acc)
           }
 

@@ -4930,15 +4930,15 @@ object Types {
         case tp if tp.isTopType || tp.isBottomType =>
           cs
         case tp: AppliedType =>
-          foldOver(cs+sym, tp)
+          foldOver(cs + sym, tp)
         case tp: RefinedType =>
-          foldOver(cs+sym, tp)
+          foldOver(cs + sym, tp)
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(cs, tp.superType)
         case tp: TypeBounds =>
           foldOver(cs, tp)
         case other =>
-          foldOver(cs+sym, tp)
+          foldOver(cs + sym, tp)
       }
     }
   }
