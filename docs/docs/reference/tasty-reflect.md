@@ -32,8 +32,8 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 }
 ```
 
-`import reflection._` will provide a `reflect` extension method on `quoted.Expr` and `quoted.Type` which return a `reflection.Term` and `reflection.TypeTree` respectivly.
-It will also import all extractors and methods on TASTy Reflect trees. For example the `Term.Literal(_)` extractor used bellow.
+`import reflection._` will provide a `reflect` extension method on `quoted.Expr` and `quoted.Type` which return a `reflection.Term` and `reflection.TypeTree` respectively.
+It will also import all extractors and methods on TASTy Reflect trees. For example the `Term.Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
@@ -50,7 +50,7 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 }
 ```
 
-To easily know which extractor are needed the `reflection.Term.show` method returns the string representation of the extractors.
+To easily know which extractors are needed, the `reflection.Term.show` method returns the string representation of the extractors.
 
 The method `reflection.Term.reify[T]` provides a way to to go back to a `quoted.Expr`.
 Note that the type must be set explicitly and that if it does not conform to it an exception will be thrown. 
