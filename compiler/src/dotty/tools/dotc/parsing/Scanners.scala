@@ -250,6 +250,11 @@ object Scanners {
       isScala2Mode
     }
 
+    /** A migration warning if in Scala-2 mode, an error otherwise */
+    def errorOrMigrationWarning(msg: String, pos: Position = Position(offset)): Unit =
+      if (isScala2Mode) ctx.migrationWarning(msg, source.atPos(pos))
+      else ctx.error(msg, source.atPos(pos))
+
 // Get next token ------------------------------------------------------------
 
     /** Are we directly in a string interpolation expression?

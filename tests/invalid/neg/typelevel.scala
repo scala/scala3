@@ -53,7 +53,7 @@ object Test {
   val rr1 = new Deco1(HCons(1, HNil)) ++ HNil
   val rr1a: HCons[Int, HNil.type] = rr1   // error (type error because no inline)
 
-  class Deco2(val as: HList) extends java.lang.Cloneable with java.lang.Comparable[Deco2] {
+  class Deco2(val as: HList) extends java.lang.Cloneable, java.lang.Comparable[Deco2] {
     inline def ++ (bs: HList) = concat(as, bs)
   }
 }
