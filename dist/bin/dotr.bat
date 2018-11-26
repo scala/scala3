@@ -45,7 +45,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     if %_WITH_COMPILER%==1 (
         set _CP_ARG=!_CP_ARG!%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SCALA_ASM%
     )
-    set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_RESIDUAL_ARGS%
+    set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_JVM_OPTIONS% %_RESIDUAL_ARGS%
     %_JAVACMD% !_JAVA_ARGS!
 ) else (
     echo Warning: Command option is not correct. 1>&2
@@ -82,8 +82,8 @@ if /i "%__ARG%"=="-repl" (
     set _WITH_COMPILER=1
 ) else if /i "%__ARG%"=="-d" (
     set _JAVA_DEBUG=%_DEBUG_STR%
-) else if /i "%_ARG:~0,2%"=="-J" (
-    set _JVM_OPTIONS=!_JVM_OPTIONS! %__ARG%
+) else if /i "%__ARG:~0,2%"=="-J" (
+    set _JVM_OPTIONS=!_JVM_OPTIONS! %__ARG:~2%
     set _JAVA_OPTIONS=!_JAVA_OPTIONS! %__ARG%
 ) else (
     set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %__ARG%

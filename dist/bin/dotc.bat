@@ -88,11 +88,11 @@ rem Optimize for short-running applications, see https://github.com/lampepfl/dot
 rem break out -D and -J options and add them to JAVA_OPTS as well
 rem so they reach the JVM in time to do some good. The -D options
 rem will be available as system properties.
-) else if "%_ARG:~0,2%"=="-D" (
+) else if "%__ARG:~0,2%"=="-D" (
     call :addJava "%__ARG%"
     call :addScala "%__ARG%"
-) else if "%_ARG:~0,2%"=="-J" (
-    call :addJava "%__ARG%"
+) else if "%__ARG:~0,2%"=="-J" (
+    call :addJava "%__ARG:~2%"
     call :addScala "%__ARG%"
 ) else (
     call :addResidual "%__ARG%"
