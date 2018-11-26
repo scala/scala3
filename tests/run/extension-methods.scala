@@ -1,39 +1,29 @@
 object Test extends App {
 
-  implicit object O {
-    def (x: Int) em: Boolean = x > 0
-  }
+  def (x: Int) em: Boolean = x > 0
 
-  assert(1.em == O.em(1))
+  assert(1.em == em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  implicit object CircleOps {
-    def (c: Circle) circumference: Double = c.radius * math.Pi * 2
-  }
+  def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 
   val circle = new Circle(1, 1, 2.0)
 
-  assert(circle.circumference == CircleOps.circumference(circle))
+  assert(circle.circumference == circumference(circle))
 
-  implicit object StringOps {
-    def (xs: Seq[String]) longestStrings: Seq[String] = {
-      val maxLength = xs.map(_.length).max
-      xs.filter(_.length == maxLength)
-    }
+  def (xs: Seq[String]) longestStrings: Seq[String] = {
+    val maxLength = xs.map(_.length).max
+    xs.filter(_.length == maxLength)
   }
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  implicit object SeqOps {
-    def (xs: Seq[T]) second[T] = xs.tail.head
-  }
+  def (xs: Seq[T]) second[T] = xs.tail.head
 
   assert(names.longestStrings.second == "world")
 
-  implicit object ListListOps {
-    def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
-  }
+  def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
 
   assert(List(names, List("!")).flattened == names :+ "!")
   assert(Nil.flattened == Nil)

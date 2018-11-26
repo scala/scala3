@@ -8,12 +8,10 @@ Extension methods allow one to add methods to a type after the type is defined. 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-implicit object CircleOps {
-  def (c: Circle) circumference: Double = c.radius * math.Pi * 2
-}
+def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 ```
 
-`CircleOps` adds an extension method `circumference` to values of class `Circle`. Like regular methods, extension methods can be invoked with infix `.`:
+Like regular methods, extension methods can be invoked with infix `.`:
 
 ```scala
   val circle = Circle(0, 0, 1)
@@ -29,21 +27,30 @@ to the plain method, and can also be invoked as such:
 ```scala
 def circumference(c: Circle): Double = c.radius * math.Pi * 2
 
-assert(circle.circumference == CircleOps.circumference(circle))
+assert(circle.circumference == circumference(circle))
 ```
 
 ### Translation of Calls to Extension Methods
 
-When is an extension method considered? There are two possibilities. The first (and recommended one) is by defining the extension method as a member of an implicit value. The method can then be used as an extension method wherever the implicit value is applicable. The second possibility is by making the extension method itself visible under a simple name, typically by importing it. As an example, consider an extension method `longestStrings` on `String`. We can either define it like this:
+When is an extension method applicable? There are two possibilities.
 
+ - An extension method is applicable if it is visible under a simple name, by being defined
+   or inherited or imported in a scope enclosing the application.
+ - An extension method is applicable if it is a member of an eligible implicit value at the point of the application.
+
+As an example, consider an extension method `longestStrings` on `String` defined in a trait `StringSeqOps`.
 
 ```scala
-implicit object StringSeqOps1 {
+trait StringSeqOps {
   def (xs: Seq[String]) longestStrings = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
+```
+We can make the extension method available by defining an implicit instance of `StringSeqOps`, like this:
+```scala
+implicit object ops1 extends StringSeqOps
 ```
 Then
 ```scala
@@ -53,13 +60,8 @@ is legal everywhere `StringSeqOps1` is available as an implicit value. Alternati
 as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
 
 ```scala
-object StringOps2 {
-  def (xs: Seq[String]) longestStrings = {
-    val maxLength = xs.map(_.length).max
-    xs.filter(_.length == maxLength)
-  }
-}
-import StringSeqOps2.longestStrings
+object ops2 extends StringSeqOps
+import ops2.longestStrings
 List("here", "is", "a", "list").longestStrings
 ```
 The precise rules for resolving a selection to an extension method are as follows.
@@ -100,30 +102,23 @@ to the implementation of right binding operators as normal methods.
 
 ### Generic Extensions
 
-The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible
-to extend a generic type by adding type parameters to an extension method:
+The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible to extend a generic type by adding type parameters to an extension method:
 
 ```scala
-implicit object ListOps {
-  def (xs: List[T]) second [T] = xs.tail.head
-}
+def (xs: List[T]) second [T] = xs.tail.head
 ```
 
 or:
 
 
 ```scala
-implicit object ListListOps {
-  def (xs: List[List[T]]) flattened [T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
-}
+def (xs: List[List[T]]) flattened [T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
 ```
 
 or:
 
 ```scala
-implicit object NumericOps {
-  def (x: T) + [T : Numeric](y: T): T = implicitly[Numeric[T]].plus(x, y)
-}
+def (x: T) + [T : Numeric](y: T): T = implicitly[Numeric[T]].plus(x, y)
 ```
 
 As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.
