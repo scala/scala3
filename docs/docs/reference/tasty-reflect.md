@@ -3,19 +3,19 @@ layout: doc-page
 title: "TASTy reflect"
 ---
 
-TASTy reflect provides an API that allows inspection and construction of Typed Abstract Syntax Trees (TAST). 
-It may be used on quoted expressions (`quoted.Expr`) and types (`quoted.Type`) from [Principled Meta-programming](./principled-meta-programming.html) 
+TASTy Reflect enables inspection and construction of Typed Abstract Syntax Trees (TAST).
+It may be used on quoted expressions (`quoted.Expr`) and quoted types (`quoted.Type`) from [Principled Meta-programming](./principled-meta-programming.html)
 or on full TASTy files.
 
-If you are starting using macros see first [Principled Meta-programming](./principled-meta-programming.html) and then follow with API (if really needed).
+If you are writing macros, please first read [Principled Meta-programming](./principled-meta-programming.html). 
+You may find all you need without using TASTy Reflect.
 
 
 ## From quotes and splices to TASTs and back
 
-`quoted.Expr` and `quoted.Type` are opaque TASTs. 
-The opaqueness required in [Principled Meta-programming](./principled-meta-programming.html) provide the guarantee that 
-the generation of code of the macro will be type correct.
-Using TASTy reflect will break these guarantees and may fail at macro expansion time, hence additional explicit check must be done. 
+`quoted.Expr` and `quoted.Type` are only meant for generative meta-programming, generation of code without inspecting the ASTs.
+[Principled Meta-programming](./principled-meta-programming.html) provides the guarantee that the generation of code will be type-correct.
+Using TASTy Reflect will break these guarantees and may fail at macro expansion time, hence additional explicit check must be done.
 
 
 To provide reflection capabilities in macro we need to add an implicit parameter of type `scala.tasty.Reflection` and import it in the scope where it is used.
@@ -32,8 +32,8 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 }
 ```
 
-`import reflection._` will provide a `reflect` extension method on `quoted.Expr` and `quoted.Type` with return a `reflection.Term` and `reflection.TypeTree` respectivly.
-It will also import all extractors and methods on TASTy reflect trees. For example the `Term.Literal(_)` extractor used bellow.
+`import reflection._` will provide a `reflect` extension method on `quoted.Expr` and `quoted.Type` which return a `reflection.Term` and `reflection.TypeTree` respectivly.
+It will also import all extractors and methods on TASTy Reflect trees. For example the `Term.Literal(_)` extractor used bellow.
 To easily know which extractor are needed the `reflection.Term.show` method returns the string representation of the extractors.
 
 
@@ -72,12 +72,16 @@ class Consumer extends TastyConsumer {
 Then the consumer can be instantiated with the following code to get the tree of the class `foo.Bar` for a foo in the classpath.
 
 ```scala
-ConsumeTasty(classpath, List("foo.Bar"), new Consumer)
+object Test {
+  def main(args: Array[String]): Unit = {
+    ConsumeTasty("", List("foo.Bar"), new Consumer)
+  }
+}
 ```
  
-## TASTy reflect ASTs
+## TASTy Reflect ASTs
 
-TASTy reflect provides the following types as defined in `scala.tasty.reflect.Core`.
+TASTy Reflect provides the following types:
 
 ```none
 +- Tree -+- PackageClause
@@ -187,7 +191,7 @@ Aliases:
  # TermOrTypeTree = Term | TypeTree
 ```
 
-## Other resources 
+## More Examples
 
-* Start plaing TASTy reflect ([link](https://github.com/nicolasstucki/tasty-reflection-exercise))
+* Start experimenting with TASTy Reflect ([link](https://github.com/nicolasstucki/tasty-reflection-exercise))
 
