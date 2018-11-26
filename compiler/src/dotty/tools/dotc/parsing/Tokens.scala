@@ -94,7 +94,6 @@ abstract class TokensCommon {
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   //final val ENUM = 62;             enter(ENUM, "enum")
   //final val ERASED = 63;           enter(ERASED, "erased")
-  //final val DERIVES = 64;          enter(DERIVES, "derives")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -179,7 +178,6 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val DERIVES = 64;          enter(DERIVES, "derives")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -200,7 +198,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, DERIVES)
+  final val alphaKeywords: TokenSet = tokenRange(IF, ERASED)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens: TokenSet = tokenRange(COMMA, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords

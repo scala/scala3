@@ -2532,7 +2532,7 @@ object Parsers {
         }
         else Nil
       val derived =
-        if (in.token == DERIVES) {
+        if (isIdent(nme.derives)) {
           in.nextToken()
           tokenSeparated(COMMA, qualId)
         }
@@ -2554,7 +2554,7 @@ object Parsers {
      */
     def templateOpt(constr: DefDef, isEnum: Boolean = false): Template = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == EXTENDS || in.token == DERIVES || in.token == LBRACE)
+      if (in.token == EXTENDS || isIdent(nme.derives) || in.token == LBRACE)
         template(constr, isEnum)
       else
         Template(constr, Nil, EmptyValDef, Nil)
