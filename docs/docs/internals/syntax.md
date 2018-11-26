@@ -86,6 +86,23 @@ nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
+## Keywords
+
+### Regular keywords
+
+```
+abstract  case      catch     class     def       do        else      enum
+erased    extends   false     final     finally   for       if        implicit
+import    lazy      match     new       null      object    package   private
+protected override  return    super     sealed    then      throw     trait
+true      try       type      val       var       while     with      yield
+:         =         <-        =>        <:        :>        #         @
+```
+
+### Soft keywords
+
+derives   inline    opaque
+~         *         |         &         +         -
 
 ## Context-free Syntax
 
