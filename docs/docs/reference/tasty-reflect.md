@@ -113,7 +113,6 @@ TASTy Reflect provides the following types:
                                        +- Inlined
                                        +- SelectOuter
                                        +- While
-                                       +- DoWhile
 
 
                        +- TypeTree ----+- Synthetic

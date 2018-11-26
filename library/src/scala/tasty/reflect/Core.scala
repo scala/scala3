@@ -34,7 +34,6 @@ package scala.tasty.reflect
  *                                         +- Inlined
  *                                         +- SelectOuter
  *                                         +- While
- *                                         +- DoWhile
  *
  *
  *                         +- TypeTree ----+- Synthetic
