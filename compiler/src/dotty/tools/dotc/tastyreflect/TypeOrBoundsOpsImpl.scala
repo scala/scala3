@@ -21,6 +21,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
 
     def classSymbol(implicit ctx: Context): Option[ClassSymbol] =
       if (tpe.classSymbol.exists) Some(tpe.classSymbol.asClass) else None
+
+    def typeSymbol(implicit ctx: Context): Symbol = tpe.typeSymbol
   }
 
   def ConstantTypeDeco(x: ConstantType): Type.ConstantTypeAPI = new Type.ConstantTypeAPI {

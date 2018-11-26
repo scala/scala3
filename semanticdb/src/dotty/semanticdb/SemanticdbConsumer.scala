@@ -133,7 +133,7 @@ class SemanticdbConsumer extends TastyConsumer {
         def isUselessOccurrence: Boolean = {
           symbol.isUseless /*&&
       !symbol.isSyntheticJavaModule // references to static Java inner classes should have occurrences
-*/
+         */
         }
       }
       def resolveClass(symbol: ClassSymbol): Symbol =
@@ -218,7 +218,6 @@ class SemanticdbConsumer extends TastyConsumer {
                        range: s.Range): Unit = {
         val symbol_path =
           if (symbol.isSemanticdbLocal) {
-            println("LOCAL: ", symbol)
             if (symbolsCache.contains(symbol)) {
               symbolsCache(symbol)
             } else {
@@ -246,10 +245,9 @@ class SemanticdbConsumer extends TastyConsumer {
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false): Unit = {
-                             println(tree.symbol)
         if (tree.isUserCreated || force_add) {
           addOccurence(tree.symbol, type_symbol, range)
-       }
+        }
       }
       def addOccurenceTypeTree(typetree: TypeTree,
                                type_symbol: s.SymbolOccurrence.Role,
@@ -275,8 +273,9 @@ class SemanticdbConsumer extends TastyConsumer {
 
       def range(tree: Tree, pos: Position, name: String): s.Range = {
         val offset = tree match {
-          case IsPackageClause(tree) => "package ".length
-          case _                     => 0
+          case IsPackageClause(tree)                          => "package ".length
+          case IsClassDef(tree) if tree.symbol.flags.is(Flags.Object) => -1
+          case _                                              => 0
         }
 
         val range_end_column =
@@ -346,6 +345,50 @@ class SemanticdbConsumer extends TastyConsumer {
         })
       }
 
+      override def traverseTypeTree(tree: TypeOrBoundsTree)(
+          implicit ctx: Context): Unit = {
+        tree match {
+          case TypeTree.Ident(_) => {
+            tree match {
+              case IsTypeTree(typetree) => {
+                addOccurenceTypeTree(typetree,
+                                     s.SymbolOccurrence.Role.REFERENCE,
+                                     s.Range(typetree.pos.startLine,
+                                             typetree.pos.startColumn,
+                                             typetree.pos.startLine,
+                                             typetree.pos.endColumn))
+              }
+              case _ =>
+                super.traverseTypeTree(tree)
+            }
+          }
+          case _ =>
+            super.traverseTypeTree(tree)
+        }
+      }
+
+      /*override def traversePattern(tree: Pattern)(implicit ctx: Context): Unit = {
+            println("CASE", tree)
+        tree match {
+          case Pattern.Value(term) => {
+            term match {
+
+          case Term.Ident(name) => {
+            // To avoid adding the identifier of the package symbol
+            if (term.symbol.owner.name != "<root>") {
+              addOccurenceTree(term,
+                               s.SymbolOccurrence.Role.REFERENCE,
+                               range(term, term.pos, term.symbol.name))
+            }
+            super.traversePattern(tree)
+          }
+          }
+          }
+          case _ =>
+          super.traversePattern(tree)
+        }
+      }*/
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         //println(tree.pos.startColumn, tree.symbol.name, tree.pos.endColumn)
         tree match {
@@ -355,16 +398,39 @@ class SemanticdbConsumer extends TastyConsumer {
               package_definitions += key
               getImportSelectors(getImportPath(path), selectors)
             }
-          case IsDefinition(body) => {
-            tree match {
-              case DefDef(name, _, _, typetree, _) =>
-                typetreeSymbol(tree, typetree)
-              case ValDef(_, typetree, _) =>
-                typetreeSymbol(tree, typetree)
-              case _ => ()
-            }
+          case IsDefinition(cdef) => {
 
-            println(tree.symbol.name)
+            if (cdef.symbol.flags.is(Flags.Protected)) {
+              cdef.symbol.protectedWithin match {
+                case Some(within) => {
+                  val startColumn = cdef.pos.startColumn + "protected[".length
+                  addOccurence(
+                    within.typeSymbol,
+                    s.SymbolOccurrence.Role.REFERENCE,
+                    s.Range(cdef.pos.startLine,
+                            startColumn,
+                            cdef.pos.startLine,
+                            startColumn + within.typeSymbol.name.length)
+                  )
+                }
+                case _ =>
+              }
+            } else {
+              cdef.symbol.privateWithin match {
+                case Some(within) => {
+                  val startColumn = cdef.pos.startColumn + "private[".length
+                  addOccurence(
+                    within.typeSymbol,
+                    s.SymbolOccurrence.Role.REFERENCE,
+                    s.Range(cdef.pos.startLine,
+                            startColumn,
+                            cdef.pos.startLine,
+                            startColumn + within.typeSymbol.name.length)
+                  )
+                }
+                case _ =>
+              }
+            }
             if (tree.symbol.name != "<none>") {
               val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
               /*if (tree.symbol.name == "<init>" && !tree.isUserCreated && !tree.symbol.owner.flags.isObject) {
@@ -383,17 +449,16 @@ class SemanticdbConsumer extends TastyConsumer {
                                  range_symbol)
               }
             }
-            super.traverseTree(body)
+            super.traverseTree(cdef)
           }
 
           case Term.Select(qualifier, _) => {
             val range = rangeExclude(tree.pos, qualifier.pos)
-            println(range.startCharacter, range.endCharacter)
             addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range)
             super.traverseTree(tree)
           }
 
-          case Term.Ident(_) => {
+          case Term.Ident(name) => {
             // To avoid adding the identifier of the package symbol
             if (tree.symbol.owner.name != "<root>") {
               addOccurenceTree(tree,
@@ -418,7 +483,6 @@ class SemanticdbConsumer extends TastyConsumer {
       }
 
     }
-    println(root)
     Traverser.traverseTree(root)(reflect.rootContext)
   }
 

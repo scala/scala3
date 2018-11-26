@@ -141,7 +141,6 @@ class Tests {
     val path = sourceDirectory.resolve(filename)
     val scalac = getScalacSemanticdb(path)
     val tasty = getTastySemanticdb(path)
-    println(tasty.occurrences)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)
     assertNoDiff(obtained, expected)
@@ -175,10 +174,32 @@ class Tests {
   }
 
 
-  @Test def testExample(): Unit = checkFile("example/Example.scala")
+  //@Test def testAccess(): Unit = checkFile("example/Access.scala")
   @Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
+  //WIP(assert) @Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
+  //WIP(assert because of case) @Test def testClasses(): Unit = checkFile("example/Classes.scala")
+  //@Test def testEmpty(): Unit = checkFile("example/Empty.scala")
+  //@Test def testEmptyObject(): Unit = checkFile("example/EmptyObject.scala")
+  //@Test def testExample(): Unit = checkFile("example/Example.scala")
+  //WIP @Test def testExample2(): Unit = checkFile("example/Example2.scala")
+  //@Test def testExclude(): Unit = checkFile("example/Exclude.scala")
+  //WIP(assert) @Test def testFlags(): Unit = checkFile("example/Flags.scala")
+  //@Test def testImports(): Unit = checkFile("example/Imports.scala")
+  //@Test def testIssue1749(): Unit = checkFile("example/Issue1749.scala")
+  //@Test def testLocalFile(): Unit = checkFile("example/local-file.scala")
   //@Test def testLocals(): Unit = checkFile("example/Locals.scala")
-  // TODO: add more tests
+  //@Test def testMacroAnnotations(): Unit = checkFile("example/MacroAnnotations.scala")
+  //WIP @Test def testMethods(): Unit = checkFile("example/Methods.scala")
+  //WIP @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
+  //@Test def testObjects(): Unit = checkFile("example/Objects.scala")
+  //@Test def testOverrides(): Unit = checkFile("example/Overrides.scala")
+  //WIP @Test def testPrefixes(): Unit = checkFile("example/Prefixes.scala")
+  //@Test def testSelfs(): Unit = checkFile("example/Selfs.scala")
+  //WIP(assert nodenotation owner) @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
+  //WIP @Test def testTraits(): Unit = checkFile("example/Traits.scala")
+  //WIP(assert) @Test def testTypes(): Unit = checkFile("example/Types.scala")
+  //WIP @Test def testVals(): Unit = checkFile("example/Vals.scala")
+
 
   def testOutput(className: String, expected: String): Unit = {
     val out = new StringBuilder
