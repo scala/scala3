@@ -25,6 +25,6 @@ class ConstantExtractor[R <: Reflection with Singleton](val reflect: Reflection)
       case Term.Inlined(_, Nil, e) => const(e)
       case _  => None
     }
-    const(expr.reflect)
+    const(expr.unseal)
   }
 }

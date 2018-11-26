@@ -9,7 +9,7 @@ object Macros {
   def impl[T](x: Type[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
 
-    val tree = x.reflect
+    val tree = x.unseal
     '{
       println(~tree.show.toExpr)
       println(~tree.tpe.show.toExpr)

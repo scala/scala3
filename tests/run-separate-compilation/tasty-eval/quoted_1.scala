@@ -21,7 +21,7 @@ object Macros {
     override def value(e: Expr[Int])(implicit reflect: Reflection): Option[Int] = {
       import reflect._
 
-      e.reflect.tpe match {
+      e.unseal.tpe match {
         case Type.SymRef(IsValSymbol(sym), pre) =>
           sym.tree.tpt.tpe match {
             case Type.ConstantType(Constant.Int(i)) => Some(i)

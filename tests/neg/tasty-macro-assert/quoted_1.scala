@@ -17,7 +17,7 @@ object Asserts {
   def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
 
-    val tree = cond.reflect
+    val tree = cond.unseal
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
       case Type.SymRef(IsDefSymbol(sym), _) => sym.name == "Ops" // TODO check that the parent is Asserts
@@ -34,7 +34,7 @@ object Asserts {
 
     tree match {
       case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
-        '(assertTrue(~left.reify[Boolean])) // Buggy code. To generate the errors
+        '(assertTrue(~left.seal[Boolean])) // Buggy code. To generate the errors
       case _ =>
         '(assertTrue(~cond))
     }
