@@ -246,7 +246,7 @@ object definitions {
     def isMutable: Boolean               // when used on a ValDef: a var
     def isLabel: Boolean                 // method generated as a label
     def isFieldAccessor: Boolean         // a getter or setter
-    def isCaseAcessor: Boolean           // getter for class parameter
+    def isCaseAccessor: Boolean          // getter for class parameter
     def isCovariant: Boolean             // type parameter marked “+”
     def isContravariant: Boolean         // type parameter marked “-”
     def isScala2X: Boolean               // Imported from Scala2.x

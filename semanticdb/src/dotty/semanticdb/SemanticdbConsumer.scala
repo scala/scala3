@@ -4,6 +4,7 @@ import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 
 import dotty.tools.dotc.tastyreflect
+import dotty.tools.dotc.core.StdNames._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.Set
 import scala.meta.internal.{semanticdb => s}
@@ -65,10 +66,12 @@ class SemanticdbConsumer extends TastyConsumer {
       }
 
       implicit class SymbolExtender(symbol: Symbol) {
-        def isTypeParameter: Boolean = symbol match {
-          case IsTypeSymbol(_) => symbol.flags.is(Flags.Param)
-          case _               => false
+        def isClass: Boolean = symbol match {
+          case IsClassSymbol(_) => true
+          case _                => false
         }
+
+        def isTypeParameter: Boolean = symbol.flags.is(Flags.Param) && symbol.isType
 
         def isType: Boolean = symbol match {
           case IsTypeSymbol(_) => true
@@ -95,13 +98,12 @@ class SemanticdbConsumer extends TastyConsumer {
 
         def isValueParameter: Boolean = symbol.flags.is(Flags.Param)
 
-        // TODO : implement it
-        def isJavaClass: Boolean = false
+        def isJavaClass: Boolean = symbol.isClass && symbol.flags.is(Flags.JavaDefined)
 
-        def isSelfParameter: Boolean =
+        def isSelfParameter(implicit ctx: Context): Boolean =
           symbol != NoSymbol && symbol.owner == symbol
 
-        def isSemanticdbLocal: Boolean = {
+        def isSemanticdbLocal(implicit ctx: Context): Boolean = {
           def definitelyGlobal = symbol.isPackage
           def definitelyLocal =
             symbol == NoSymbol ||
@@ -117,25 +119,107 @@ class SemanticdbConsumer extends TastyConsumer {
           !definitelyGlobal && (definitelyLocal || ownerLocal)
         }
 
-        def isUseless: Boolean = {
-          symbol == NoSymbol ||
-          symbol.isAnonymousClass || /*
-      sym.isSyntheticConstructor ||
-      sym.isStaticConstructor ||
-      sym.isLocalChild ||
-      sym.isSyntheticValueClassCompanion ||
-      sym.isUselessField ||
-      sym.isSyntheticCaseAccessor ||*/
-          symbol.isRefinementClass /* ||
-      sym.isSyntheticJavaModule*/
+        def isConstructor(implicit ctx: Context): Boolean =
+          symbol.name == "<init>"
+
+        def isSyntheticConstructor(implicit ctx: Context): Boolean = {
+          val isModuleConstructor = symbol.isConstructor && symbol.owner.isClass
+          val isTraitConstructor = symbol.isConstructor && symbol.owner.isTrait
+          val isInterfaceConstructor = symbol.isConstructor && symbol.owner.flags.is(Flags.JavaDefined)  && symbol.owner.isTrait
+          val isEnumConstructor = symbol.isConstructor && symbol.owner.flags.is(Flags.JavaDefined) && symbol.owner.flags.is(Flags.Enum)
+          /*val isStaticConstructor = symbol.name == g.TermName("<clinit>")*/
+          //val isClassfileAnnotationConstructor = symbol.owner.isClassfileAnnotation
+          isModuleConstructor || isTraitConstructor || isInterfaceConstructor ||
+          isEnumConstructor /*|| isStaticConstructor || isClassfileAnnotationConstructor*/
         }
-        def isUseful: Boolean = !symbol.isUseless
-        def isUselessOccurrence: Boolean = {
-          symbol.isUseless /*&&
-      !symbol.isSyntheticJavaModule // references to static Java inner classes should have occurrences
-         */
+        def isLocalChild(implicit ctx: Context): Boolean =
+          symbol.name == tpnme.LOCAL_CHILD.toString
+
+        def isSyntheticValueClassCompanion(implicit ctx: Context): Boolean = {
+          if (symbol.isClass) {
+            if (symbol.flags.is(Flags.Object)) {
+              symbol.asClass.moduleClass.fold(false)(c =>
+                c.isSyntheticValueClassCompanion)
+            } else {
+              symbol.flags.is(Flags.ModuleClass) &&
+              symbol.flags.is(Flags.Synthetic) &&
+              symbol.asClass.methods.length == 0
+            }
+          } else {
+            false
+          }
+        }
+        def isValMethod(implicit ctx: Context): Boolean = {
+          symbol.isMethod && {
+            (symbol.flags.is(Flags.FieldAccessor)  && symbol.flags.is(Flags.Stable) ) ||
+            (symbol.isUsefulField && !symbol.flags.is(Flags.Mutable) )
+          }
+        }
+        def isScalacField(implicit ctx: Context): Boolean = {
+          val isFieldForPrivateThis = symbol.flags.is(Flags.PrivateLocal)  && symbol.isTerm && !symbol.isMethod && !symbol.isObject
+          val isFieldForOther = false //symbol.name.endsWith(g.nme.LOCAL_SUFFIX_STRING)
+          val isJavaDefined = symbol.flags.is(Flags.JavaDefined)
+          (isFieldForPrivateThis || isFieldForOther) && !isJavaDefined
+        }
+        def isUselessField(implicit ctx: Context): Boolean = {
+          symbol.isScalacField && false /*symbol.getterIn(symbol.owner) != g.NoSymbol*/
+        }
+        def isUsefulField(implicit ctx: Context): Boolean = {
+          symbol.isScalacField && !symbol.isUselessField
+        }
+        def isSyntheticCaseAccessor(implicit ctx: Context): Boolean = {
+          symbol.flags.is(Flags.CaseAcessor)  && symbol.name.contains("$")
+        }
+        def isSyntheticJavaModule(implicit ctx: Context): Boolean = {
+          !symbol.flags.is(Flags.Package)  && symbol.flags.is(Flags.JavaDefined)  && symbol.flags.is(Flags.Object)
+        }
+        def isAnonymousClassConstructor(implicit ctx: Context): Boolean = {
+          symbol.isConstructor && symbol.owner.isAnonymousClass
+        }
+        def isSyntheticAbstractType(implicit ctx: Context): Boolean = {
+          symbol.flags.is(Flags.Synthetic)  && symbol.isAbstractType // these are hardlinked to TypeOps
+        }
+        def isEtaExpandedParameter(implicit ctx: Context): Boolean = {
+          // Term.Placeholder occurrences are not persisted so we don't persist their symbol information.
+          // We might want to revisit this decision https://github.com/scalameta/scalameta/issues/1657
+          symbol.isParameter &&
+          symbol.name.startsWith("x$") &&
+          symbol.owner.isAnonymousFunction
+        }
+        def isAnonymousSelfParameter(implicit ctx: Context): Boolean = {
+          symbol.isSelfParameter && {
+            symbol.name == tpnme.this_.toString || // hardlinked in ClassSignature.self
+            symbol.name.startsWith("x$") // wildcards can't be referenced: class A { _: B => }
+          }
+        }
+        def isStaticMember(implicit ctx: Context): Boolean =
+          (symbol == NoSymbol) &&
+            (symbol.flags.is(Flags.Static)  || symbol.owner.flags.is(Flags.ImplClass)  ||
+              /*symbol.annots.find(_ == ctx.definitions.ScalaStaticAnnot)*/ false)
+
+        def isStaticConstructor(implicit ctx: Context): Boolean = {
+          (symbol.isStaticMember && symbol.isClassConstructor) || (symbol.name == tpnme.STATIC_CONSTRUCTOR.toString)
+        }
+        def isUseless(implicit ctx: Context): Boolean = {
+          symbol == NoSymbol ||
+          symbol.isAnonymousClass ||
+          symbol.isAnonymousFunction ||
+          symbol.isSyntheticConstructor ||
+          symbol.isStaticConstructor ||
+          symbol.isLocalChild ||
+          symbol.isSyntheticValueClassCompanion ||
+          symbol.isUselessField ||
+          symbol.isSyntheticCaseAccessor ||
+          symbol.isRefinementClass ||
+          symbol.isSyntheticJavaModule
+        }
+        def isUseful(implicit ctx: Context): Boolean = !symbol.isUseless
+        def isUselessOccurrence(implicit ctx: Context): Boolean = {
+          symbol.isUseless &&
+          !symbol.isSyntheticJavaModule // references to static Java inner classes should have occurrences
         }
       }
+
       def resolveClass(symbol: ClassSymbol): Symbol =
         (symbol.companionClass, symbol.companionModule) match {
           case (_, Some(module)) if symbol.flags.is(Flags.Object) => module
@@ -221,6 +305,7 @@ class SemanticdbConsumer extends TastyConsumer {
             if (symbolsCache.contains(symbol)) {
               symbolsCache(symbol)
             } else {
+              println("local: ", symbol, local_offset)
               var localsymbol = Symbols.Local(local_offset.toString)
               local_offset += 1
               symbolsCache += (symbol -> localsymbol)
@@ -433,7 +518,7 @@ class SemanticdbConsumer extends TastyConsumer {
             }
             if (tree.symbol.name != "<none>") {
               val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
-              /*if (tree.symbol.name == "<init>" && !tree.isUserCreated && !tree.symbol.owner.flags.isObject) {
+              /*if (tree.symbol.name == "<init>" && !tree.isUserCreated && !tree.symbol.owner.flags.is(Flags.Object) ) {
                 val range_symbol2 = s.Range(range_symbol.startLine,
                                             range_symbol.startCharacter - 4,
                                             range_symbol.endLine,

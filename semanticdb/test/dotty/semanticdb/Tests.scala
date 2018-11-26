@@ -141,6 +141,7 @@ class Tests {
     val path = sourceDirectory.resolve(filename)
     val scalac = getScalacSemanticdb(path)
     val tasty = getTastySemanticdb(path)
+    println(tasty)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)
     assertNoDiff(obtained, expected)
@@ -175,8 +176,8 @@ class Tests {
 
 
   //@Test def testAccess(): Unit = checkFile("example/Access.scala")
-  @Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
-  //WIP(assert) @Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
+  //@Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
+  @Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
   //WIP(assert because of case) @Test def testClasses(): Unit = checkFile("example/Classes.scala")
   //@Test def testEmpty(): Unit = checkFile("example/Empty.scala")
   //@Test def testEmptyObject(): Unit = checkFile("example/EmptyObject.scala")
@@ -199,6 +200,7 @@ class Tests {
   //WIP @Test def testTraits(): Unit = checkFile("example/Traits.scala")
   //WIP(assert) @Test def testTypes(): Unit = checkFile("example/Types.scala")
   //WIP @Test def testVals(): Unit = checkFile("example/Vals.scala")
+  @Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
 
 
   def testOutput(className: String, expected: String): Unit = {

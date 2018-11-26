@@ -20,6 +20,7 @@ trait SymbolOps extends Core {
     def isAnonymousClass(implicit ctx: Context): Boolean
     def isAnonymousFunction(implicit ctx: Context): Boolean
     def isAbstractType(implicit ctx: Context): Boolean
+    def isClassConstructor(implicit ctx: Context): Boolean
 
     /** This symbol is private within the resulting type. */
     def privateWithin(implicit ctx: Context): Option[Type]
@@ -119,6 +120,7 @@ trait SymbolOps extends Core {
     /** The symbol of the companion module */
     def companionModule(implicit ctx: Context): Option[ValSymbol]
 
+    def moduleClass(implicit ctx: Context): Option[Symbol]
   }
   implicit def ClassSymbolDeco(symbol: ClassSymbol): ClassSymbolAPI
 

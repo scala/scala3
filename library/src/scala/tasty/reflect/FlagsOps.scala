@@ -101,6 +101,18 @@ trait FlagsOps extends Core {
 
     /** Is this symbol a parameter accessor */
     def ParamAccessor: Flags
+
+    def JavaDefined: Flags
+
+    def Enum: Flags
+
+    def ModuleClass: Flags
+
+    def PrivateLocal: Flags
+
+    def Package: Flags
+
+    def ImplClass: Flags
   }
 
 }
