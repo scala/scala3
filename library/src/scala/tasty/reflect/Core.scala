@@ -1,5 +1,6 @@
 package scala.tasty.reflect
 
+// Keep doc in syncwith docs/docs/reference/tasty-reflect.md
 /** Tasty reflect abstract types
  *
  *  ```none
@@ -33,7 +34,6 @@ package scala.tasty.reflect
  *                                         +- Inlined
  *                                         +- SelectOuter
  *                                         +- While
- *                                         +- DoWhile
  *
  *
  *                         +- TypeTree ----+- Inferred

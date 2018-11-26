@@ -51,6 +51,8 @@ sidebar:
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html
+            - title: TASTy Reflect
+              url: docs/reference/tasty-reflect.html
             - title: Opaque Type Aliases
               url: docs/reference/opaques.html
             - title: By-Name Implicits
