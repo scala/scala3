@@ -58,11 +58,16 @@ object equality {
 
     1 == true  // error
 
+    /*
     null == true // OK by eqProxy or eqJBoolSBool
     true == null // OK by eqSBoolJBool
     null == 1    // OK by eqProxy or eqNumInt
     1 == null    // OK by eqIntNum
-
+    */
+    null == true // error
+    true == null // error
+    null == 1    // error
+    1 == null    // error
 
     class Fruit
 
