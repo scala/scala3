@@ -1108,9 +1108,9 @@ trait Implicits { self: Typer =>
     /** Find a unique best implicit reference */
     def bestImplicit(contextual: Boolean): SearchResult = {
       ctx.searchHistory.recursiveRef(pt) match {
-        case Some(ref) =>
+        case ref: TermRef =>
           SearchSuccess(tpd.ref(ref).withPos(pos.startPos), ref, 0)(ctx.typerState)
-        case None =>
+        case _ =>
           val eligible =
             if (contextual) ctx.implicits.eligible(wildProto)
             else implicitScope(wildProto).eligible
@@ -1192,29 +1192,32 @@ abstract class SearchHistory { outer =>
     loop(open, isByname(pt))
   }
 
-  def recursiveRef(pt: Type)(implicit ctx: Context): Option[TermRef] = {
+  def recursiveRef(pt: Type)(implicit ctx: Context): Type = {
     val widePt = pt.widenExpr
 
     refBynameImplicit(widePt).orElse {
       val bynamePt = isByname(pt)
-      if (!byname && !bynamePt) None
+      if (!byname && !bynamePt) NoType
       else {
         @tailrec
-        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Option[Type] = {
+        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type = {
           ois match {
-            case (hd@(cand, tp)) :: tl if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt => Some(tp)
+            case (hd@(cand, tp)) :: tl if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt => tp
             case (_, tp) :: tl => loop(tl, belowByname || isByname(tp))
-            case _ => None
+            case _ => NoType
           }
         }
 
-        loop(open, bynamePt).map(tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr))
+        loop(open, bynamePt) match {
+          case NoType => NoType
+          case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
+        }
       }
     }
   }
 
   def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef = root.linkBynameImplicit(tpe)
-  def refBynameImplicit(tpe: Type)(implicit ctx: Context): Option[TermRef] = root.refBynameImplicit(tpe)
+  def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type = root.refBynameImplicit(tpe)
   def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = root.defineBynameImplicit(tpe, result)
   def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = result
 
@@ -1244,8 +1247,8 @@ final class SearchRoot extends SearchHistory {
     }
   }
 
-  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Option[TermRef] = {
-    implicitDictionary.get(tpe).map(_._1)
+  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type = {
+    implicitDictionary.get(tpe).map(_._1).getOrElse(NoType)
   }
 
   override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = {
