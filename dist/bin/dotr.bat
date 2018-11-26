@@ -70,7 +70,6 @@ set _JAVA_OPTIONS=
 :args_loop
 if "%1"=="" goto args_done
 set "__ARG=%1"
-if %_DEBUG%==1 echo [%_BASENAME%] __ARG=%__ARG%
 if /i "%__ARG%"=="-repl" (
     set _EXECUTE_REPL=1
 ) else if /i "%__ARG%"=="-run" (
