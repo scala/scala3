@@ -18,7 +18,7 @@ You may find all you need without using TASTy Reflect.
 Using TASTy Reflect will break these guarantees and may fail at macro expansion time, hence additional explicit check must be done.
 
 
-To provide reflection capabilities in macro we need to add an implicit parameter of type `scala.tasty.Reflection` and import it in the scope where it is used.
+To provide reflection capabilities in macros we need to add an implicit parameter of type `scala.tasty.Reflection` and import it in the scope where it is used.
 
 ```scala
 import scala.quoted._
@@ -34,8 +34,6 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 
 `import reflection._` will provide a `reflect` extension method on `quoted.Expr` and `quoted.Type` which return a `reflection.Term` and `reflection.TypeTree` respectivly.
 It will also import all extractors and methods on TASTy Reflect trees. For example the `Term.Literal(_)` extractor used bellow.
-To easily know which extractor are needed the `reflection.Term.show` method returns the string representation of the extractors.
-
 
 ```scala
 def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
@@ -51,6 +49,8 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
   }
 }
 ```
+
+To easily know which extractor are needed the `reflection.Term.show` method returns the string representation of the extractors.
 
 The method `reflection.Term.reify[T]` provides a way to to go back to a `quoted.Expr`.
 Note that the type must be set explicitly and that if it does not conform to it an exception will be thrown. 
