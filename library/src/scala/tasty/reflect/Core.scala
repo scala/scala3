@@ -33,7 +33,6 @@ package scala.tasty.reflect
  *                                         +- Inlined
  *                                         +- SelectOuter
  *                                         +- While
- *                                         +- DoWhile
  *
  *
  *                         +- TypeTree ----+- Inferred
@@ -50,6 +49,7 @@ package scala.tasty.reflect
  *                         |               +- ByName
  *                         |               +- LambdaTypeTree
  *                         |               +- Bind
+ *                         |               +- Block
  *                         |
  *                         +- TypeBoundsTree
  *                         +- WildcardTypeTree
@@ -306,6 +306,9 @@ trait Core {
       /** Type tree representing a type binding */
       type Bind <: TypeTree
 
+      /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
+      type Block <: TypeTree
+
     }
 
     /** Type tree representing a type bound written in the source */
@@ -329,22 +332,67 @@ trait Core {
     /** A type */
     type Type <: TypeOrBounds
 
-    /** A type that is recursively defined */
-    type RecursiveType <: Type
+      /** A singleton type representing a known constant value */
+      type ConstantType <: Type
 
-    // TODO can we add the bound back without an cake?
-    // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
-    /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-    type LambdaType[ParamInfo /*<: TypeOrBounds*/] <: Type
+      /** Type of a reference to a symbol */
+      type SymRef <: Type
 
-      /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-      type MethodType <: LambdaType[Type]
+      /** Type of a reference to a term */
+      type TermRef <: Type
 
-      /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-      type PolyType <: LambdaType[TypeBounds]
+      /** Type of a reference to a type */
+      type TypeRef <: Type
 
-      /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-      type TypeLambda <: LambdaType[TypeBounds]
+      /** Type of a `super` refernce */
+      type SuperType <: Type
+
+      /** A type with a type refinement `T { type U }` */
+      type Refinement <: Type
+
+      /** A higher kinded type applied to some types `T[U]` */
+      type AppliedType <: Type
+
+      /** A type with an anottation `T @foo` */
+      type AnnotatedType <: Type
+
+      /** Intersection type `T & U` */
+      type AndType <: Type
+
+      /** Union type `T | U` */
+      type OrType <: Type
+
+      /** Type match `T match { case U => ... }` */
+      type MatchType <: Type
+
+      /** Type of a by by name parameter */
+      type ByNameType <: Type
+
+      /** Type of a parameter reference */
+      type ParamRef <: Type
+
+      /** Type of `this` */
+      type ThisType <: Type
+
+      /** A type that is recursively defined `this` */
+      type RecursiveThis <: Type
+
+      /** A type that is recursively defined */
+      type RecursiveType <: Type
+
+      // TODO can we add the bound back without an cake?
+      // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
+      /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
+      type LambdaType[ParamInfo /*<: TypeOrBounds*/] <: Type
+
+        /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
+        type MethodType <: LambdaType[Type]
+
+        /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
+        type PolyType <: LambdaType[TypeBounds]
+
+        /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
+        type TypeLambda <: LambdaType[TypeBounds]
 
 
   /** Import selectors:

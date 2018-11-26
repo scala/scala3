@@ -78,6 +78,7 @@ trait CoreImpl extends scala.tasty.reflect.Core {
       type ByName = tpd.ByNameTypeTree
       type LambdaTypeTree = tpd.LambdaTypeTree
       type Bind = tpd.Bind
+      type Block = tpd.Block
     }
     type TypeBoundsTree = tpd.TypeBoundsTree
     type WildcardType = tpd.TypeTree
@@ -86,11 +87,26 @@ trait CoreImpl extends scala.tasty.reflect.Core {
     type NoPrefix = Types.NoPrefix.type
     type TypeBounds = Types.TypeBounds
     type Type = Types.Type
-    type RecursiveType = Types.RecType
-    type LambdaType[ParamInfo] = Types.LambdaType { type PInfo = ParamInfo }
-      type MethodType = Types.MethodType
-      type PolyType = Types.PolyType
-      type TypeLambda = Types.TypeLambda
+      type ConstantType = Types.ConstantType
+      type SymRef = Types.NamedType
+      type TermRef = Types.NamedType
+      type TypeRef = Types.NamedType
+      type SuperType = Types.SuperType
+      type Refinement = Types.RefinedType
+      type AppliedType = Types.AppliedType
+      type AnnotatedType = Types.AnnotatedType
+      type AndType = Types.AndType
+      type OrType = Types.OrType
+      type MatchType = Types.MatchType
+      type ByNameType = Types.ExprType
+      type ParamRef = Types.ParamRef
+      type ThisType = Types.ThisType
+      type RecursiveThis = Types.RecThis
+      type RecursiveType = Types.RecType
+      type LambdaType[ParamInfo] = Types.LambdaType { type PInfo = ParamInfo }
+        type MethodType = Types.MethodType
+        type PolyType = Types.PolyType
+        type TypeLambda = Types.TypeLambda
 
   type ImportSelector = untpd.Tree
 
