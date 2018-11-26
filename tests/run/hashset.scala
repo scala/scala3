@@ -26,7 +26,7 @@ object Test extends dotty.runtime.LegacyApp {
     println()
 
     println("*** " + creator.hashSetType + " Strings with null")
-    val h2 = creator.create[String]
+    val h2 = creator.create[String|Null]
     h2 += null
     for (i <- 0 until 20) h2 +=  "" + i
     println("null " + (h2 contains null))

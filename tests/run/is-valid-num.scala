@@ -203,7 +203,7 @@ object Test {
   }
 
   def checkBigInt(bi: BigInt): Unit = {
-    val bd = BigDecimal(bi, java.math.MathContext.UNLIMITED)
+    val bd = BigDecimal(bi, java.math.MathContext.UNLIMITED.nn)
     val isByte = bi >= Byte.MinValue && bi <= Byte.MaxValue
     val isShort = bi >= Short.MinValue && bi <= Short.MaxValue
     val isChar = bi >= Char.MinValue && bi <= Char.MaxValue

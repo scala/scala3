@@ -56,7 +56,7 @@ package bip {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    foo.bar.Main.main(null)
-    bip.bar.Main.main(null)
+    foo.bar.Main.main(Array.empty[String])
+    bip.bar.Main.main(Array.empty[String])
   }
 }
