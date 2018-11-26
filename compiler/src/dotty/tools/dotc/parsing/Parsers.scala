@@ -1392,7 +1392,7 @@ object Parsers {
       }
       else simpleExpr()
 
-    /** SimpleExpr    ::= new Template
+    /** SimpleExpr    ::= ‘new’ (ConstrApp [TemplateBody] | TemplateBody)
      *                 |  BlockExpr
      *                 |  ‘'{’ BlockExprContents ‘}’
      *                 |  ‘'(’ ExprsInParens ‘)’
@@ -1436,15 +1436,7 @@ object Parsers {
           atPos(in.offset)(Quote(inBrackets(typ())))
         case NEW =>
           canApply = false
-          val start = in.skipToken()
-          val (impl, missingBody) = template(emptyConstructor)
-          impl.parents match {
-            case parent :: Nil if missingBody =>
-              if (parent.isType) ensureApplied(wrapNew(parent))
-              else parent.withPos(Position(start, in.lastOffset))
-            case _ =>
-              New(impl.withPos(Position(start, in.lastOffset)))
-          }
+          newExpr()
         case _ =>
           if (isLiteral) literal()
           else {
@@ -1471,6 +1463,33 @@ object Parsers {
           atPos(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
           t
+      }
+    }
+
+    /** SimpleExpr    ::= ‘new’ (ConstrApp {`with` ConstrApp} [TemplateBody] | TemplateBody)
+     */
+    def newExpr(): Tree = {
+      val start = in.skipToken()
+      def reposition(t: Tree) = t.withPos(Position(start, in.lastOffset))
+      newLineOptWhenFollowedBy(LBRACE)
+      val parents =
+        if (in.token == LBRACE) Nil
+        else constrApp() :: {
+          if (in.token == WITH) {
+            // Enable this for 3.1, when we drop `with` for inheritance:
+            //   in.errorUnlessInScala2Mode(
+            //     "anonymous class with multiple parents is no longer supported; use a named class instead")
+            in.nextToken()
+            tokenSeparated(WITH, constrApp)
+          }
+          else Nil
+        }
+      newLineOptWhenFollowedBy(LBRACE)
+      parents match {
+        case parent :: Nil if in.token != LBRACE =>
+          reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+        case _ =>
+          New(reposition(templateBodyOpt(emptyConstructor, parents, isEnum = false)))
       }
     }
 
@@ -2381,18 +2400,18 @@ object Parsers {
     }
 
     def objectDefRest(start: Offset, mods: Modifiers, name: TermName): ModuleDef = {
-      val template = templateOpt(emptyConstructor)
-      ModuleDef(name, template).withMods(mods).setComment(in.getDocComment(start))
+      val templ = templateOpt(emptyConstructor)
+      ModuleDef(name, templ).withMods(mods).setComment(in.getDocComment(start))
     }
 
-    /**  EnumDef ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
+    /**  EnumDef ::=  id ClassConstr [`extends' ConstrApps] EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): TypeDef = atPos(start, nameStart) {
       val modName = ident()
       val clsName = modName.toTypeName
       val constr = classConstr(clsName)
-      val impl = templateOpt(constr, isEnum = true)
-      TypeDef(clsName, impl).withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
+      val templ = templateOpt(constr, isEnum = true)
+      TypeDef(clsName, templ).withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
     }
 
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
@@ -2448,34 +2467,48 @@ object Parsers {
       else t
     }
 
-    /** Template          ::=  ConstrApps [TemplateBody] | TemplateBody
-     *  ConstrApps        ::=  ConstrApp {`with' ConstrApp}
-     *
-     *  @return  a pair consisting of the template, and a boolean which indicates
-     *           whether the template misses a body (i.e. no {...} part).
+    /** ConstrApps ::=  ConstrApp {‘with’ ConstrApp}  (to be deprecated in 3.1)
+     *               |  ConstrApp {‘,’ ConstrApp}
      */
-    def template(constr: DefDef, isEnum: Boolean = false): (Template, Boolean) = {
-      newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) (templateBodyOpt(constr, Nil, isEnum), false)
-      else {
-        val parents = tokenSeparated(WITH, constrApp)
-        newLineOptWhenFollowedBy(LBRACE)
-        if (isEnum && in.token != LBRACE)
-          syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
-        val missingBody = in.token != LBRACE
-        (templateBodyOpt(constr, parents, isEnum), missingBody)
-      }
+    def constrApps(): List[Tree] = {
+      val t = constrApp()
+      val ts =
+        if (in.token == WITH) {
+          in.nextToken()
+          tokenSeparated(WITH, constrApp)
+        }
+        else if (in.token == COMMA) {
+          in.nextToken()
+          tokenSeparated(COMMA, constrApp)
+        }
+        else Nil
+      t :: ts
     }
 
-    /** TemplateOpt = [`extends' Template | TemplateBody]
+    /** Template          ::=  [‘extends’ ConstrApps] [TemplateBody]
      */
-    def templateOpt(constr: DefDef, isEnum: Boolean = false): Template =
-      if (in.token == EXTENDS) { in.nextToken(); template(constr, isEnum)._1 }
-      else {
-        newLineOptWhenFollowedBy(LBRACE)
-        if (in.token == LBRACE) template(constr, isEnum)._1
-        else Template(constr, Nil, EmptyValDef, Nil)
-      }
+    def template(constr: DefDef, isEnum: Boolean = false): Template = {
+      val parents =
+        if (in.token == EXTENDS) {
+          in.nextToken()
+          constrApps()
+        }
+        else Nil
+      newLineOptWhenFollowedBy(LBRACE)
+      if (isEnum && in.token != LBRACE)
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
+      templateBodyOpt(constr, parents, isEnum)
+    }
+
+    /** TemplateOpt = [Template]
+     */
+    def templateOpt(constr: DefDef, isEnum: Boolean = false): Template = {
+      newLineOptWhenFollowedBy(LBRACE)
+      if (in.token == EXTENDS || in.token == LBRACE)
+        template(constr, isEnum)
+      else
+        Template(constr, Nil, EmptyValDef, Nil)
+    }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */

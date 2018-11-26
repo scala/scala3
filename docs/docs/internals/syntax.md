@@ -186,7 +186,7 @@ PostfixExpr       ::=  InfixExpr [id]                                           
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
-SimpleExpr        ::=  ‘new’ Template                                           New(templ)
+SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
                     |  ''{’ BlockExprContents ‘}’
                     |  ‘'(’ ExprsInParens ‘)’
@@ -340,14 +340,14 @@ DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr          
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
-ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
+ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
+ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
-ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody         EnumDef(mods, name, tparams, template)
-TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
+ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
+EnumDef           ::=  id ClassConstr [‘extends’ ConstrApps] EnumBody           EnumDef(mods, name, tparams, template)
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
+                    |  ConstrApp {‘,’ ConstrApp}
 ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ConstrBlock
