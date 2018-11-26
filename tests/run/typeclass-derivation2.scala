@@ -108,8 +108,7 @@ object Deriving {
 }
 
 // An algebraic datatype
-enum Lst[+T] // derives Eq, Pickler
-{
+enum Lst[+T] derives Eq, Pickler, Show {
   case Cons(hd: T, tl: Lst[T])
   case Nil
 }
@@ -146,7 +145,7 @@ object Lst extends Deriving {
 }
 
 // A simple product type
-case class Pair[T](x: T, y: T) // derives Eq, Pickler
+case class Pair[T](x: T, y: T) derives Eq, Pickler
 
 object Pair extends Deriving {
   // common compiler-generated infrastructure

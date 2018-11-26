@@ -205,7 +205,8 @@ object Scanners {
     private def handleMigration(keyword: Token): Token =
       if (!isScala2Mode) keyword
       else if (  keyword == ENUM
-              || keyword == ERASED) treatAsIdent()
+              || keyword == ERASED
+              || keyword == DERIVES) treatAsIdent()
       else keyword
 
 
