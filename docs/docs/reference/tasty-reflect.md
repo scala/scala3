@@ -11,7 +11,7 @@ If you are writing macros, please first read [Principled Meta-programming](./pri
 You may find all you need without using TASTy Reflect.
 
 
-## From quotes and splices to TASTs and back
+## From quotes and splices to TASTs Reflect trees and back
 
 `quoted.Expr` and `quoted.Type` are only meant for generative meta-programming, generation of code without inspecting the ASTs.
 [Principled Meta-programming](./principled-meta-programming.html) provides the guarantee that the generation of code will be type-correct.
@@ -56,9 +56,9 @@ The method `reflection.Term.reify[T]` provides a way to to go back to a `quoted.
 Note that the type must be set explicitly and that if it does not conform to it an exception will be thrown. 
 In the code above we could have replaced `n.toExpr` by `xTree.reify[Int]`.
  
-## ASTs of a TASTy file
+## Inspect a TASTy file
 
-To inspect the TASTy trees of a TASTy file a consumer can be defined in the following way. 
+To inspect the TASTy Reflect trees of a TASTy file a consumer can be defined in the following way.
 
 ```scala
 class Consumer extends TastyConsumer {
@@ -79,7 +79,7 @@ object Test {
 }
 ```
  
-## TASTy Reflect ASTs
+## TASTy Reflect API
 
 TASTy Reflect provides the following types:
 
