@@ -200,8 +200,15 @@ class SemanticdbConsumer extends TastyConsumer {
         def isStaticConstructor(implicit ctx: Context): Boolean = {
           (symbol.isStaticMember && symbol.isClassConstructor) || (symbol.name == tpnme.STATIC_CONSTRUCTOR.toString)
         }
+
+        def isWildCard(implicit ctx: Context): Boolean = {
+          symbol.name.startsWith(tpnme.WILDCARD.toString) &&
+          symbol.name != tpnme.THIS.toString
+        }
+
         def isUseless(implicit ctx: Context): Boolean = {
           symbol == NoSymbol ||
+          symbol.isWildCard ||
           symbol.isAnonymousClass ||
           symbol.isAnonymousFunction ||
           symbol.isSyntheticConstructor ||
@@ -305,13 +312,13 @@ class SemanticdbConsumer extends TastyConsumer {
             if (symbolsCache.contains(symbol)) {
               symbolsCache(symbol)
             } else {
-              println("local: ", symbol, local_offset)
               var localsymbol = Symbols.Local(local_offset.toString)
               local_offset += 1
               symbolsCache += (symbol -> localsymbol)
               localsymbol
             }
           } else {
+              println("golbal: ", symbol)
             iterateParent(symbol)
           }
 
