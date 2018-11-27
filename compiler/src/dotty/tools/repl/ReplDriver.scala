@@ -149,8 +149,8 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Symbol)(implicit ctx: Context) = {
-      val displ = completion.name.toString
+    def makeCandidate(completion: Completion)(implicit ctx: Context) = {
+      val displ = completion.label
       new Candidate(
         /* value    = */ displ,
         /* displ    = */ displ, // displayed value

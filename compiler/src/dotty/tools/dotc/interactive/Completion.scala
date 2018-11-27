@@ -20,6 +20,17 @@ import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 
 import scala.collection.mutable
 
+/**
+ * One of the results of a completion query.
+ *
+ * @param label         The label of this completion result, or the text that this completion result
+ *                      should insert in the scope where the completion request happened.
+ * @param description   The description of this completion result: the fully qualified name for
+ *                      types, or the type for terms.
+ * @param symbols       The symbols that are matched by this completion result.
+ */
+case class Completion(label: String, description: String, symbols: List[Symbol])
+
 object Completion {
 
   import dotty.tools.dotc.ast.tpd._
@@ -28,7 +39,7 @@ object Completion {
    *
    *  @return offset and list of symbols for possible completions
    */
-  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
+  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Completion]) = {
     val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.pos)
     computeCompletions(pos, path)(Interactive.contextOfPath(path))
   }
@@ -100,7 +111,7 @@ object Completion {
     new CompletionBuffer(mode, prefix, pos)
   }
 
-  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
+  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Completion]) = {
 
     val offset = completionOffset(path)
     val buffer = completionBuffer(path, pos)
@@ -131,15 +142,27 @@ object Completion {
     /**
      * Return the list of symbols that shoudl be included in completion results.
      *
-     * If the mode is `Import` and several symbols share the same name, the type symbols are
-     * preferred over term symbols.
+     * If several symbols share the same name, the type symbols appear before term symbols inside
+     * the same `Completion`.
      */
-    def getCompletions(implicit ctx: Context): List[Symbol] = {
-      // Show only the type symbols when there are multiple options with the same name
-      completions.toList.groupBy(_.name.stripModuleClassSuffix.toSimpleName).mapValues {
-        case sym :: Nil => sym :: Nil
-        case syms => syms.filter(_.isType)
-      }.values.flatten.toList
+    def getCompletions(implicit ctx: Context): List[Completion] = {
+      val groupedSymbols = completions.toList.groupBy(_.name.stripModuleClassSuffix.toSimpleName).toList
+      groupedSymbols.map { case (name, symbols) =>
+        val typesFirst = symbols.sortWith((s, _) => s.isType)
+        // Use distinct to remove duplicates with class, module class, etc.
+        val descriptions = typesFirst.map(description).distinct.mkString(", ")
+        Completion(name.toString, descriptions, typesFirst)
+      }
+    }
+
+    /**
+     * A description for `sym`.
+     *
+     * For types, show the symbol's full name, or its type for term symbols.
+     */
+    private def description(sym: Symbol)(implicit ctx: Context): String = {
+      if (sym.isType) sym.showFullName
+      else sym.info.widenTermRefExpr.show
     }
 
     /**
