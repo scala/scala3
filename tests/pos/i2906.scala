@@ -1,6 +1,5 @@
 enum Foo {
   case A
-  private case B
-  @deprecated("Will be removed") case C
-  @deprecated("Will be removed") private case D
+  @deprecated("Will be removed") case B
+  @deprecated("Will be removed") @volatile case C
 }
