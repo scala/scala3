@@ -199,4 +199,19 @@ class CompletionTest {
           |}""".withSource
       .completion(m1, Set(("bar", Field, "Bar"), ("bat", Module, "Foo.bat")))
   }
+
+  @Test def completionOnRenamedImport: Unit = {
+    code"""import java.io.{FileDescriptor => AwesomeStuff}
+           trait Foo { val x: Awesom$m1 }""".withSource
+      .completion(m1, Set(("AwesomeStuff", Class, "java.io.FileDescriptor")))
+  }
+
+  @Test def completionOnRenamedImport2: Unit = {
+    code"""import java.util.{HashMap => MyImportedSymbol}
+           trait Foo {
+             import java.io.{FileDescriptor => MyImportedSymbol}
+             val x: MyImp$m1
+           }""".withSource
+      .completion(m1, Set(("MyImportedSymbol", Class, "java.io.FileDescriptor")))
+  }
 }

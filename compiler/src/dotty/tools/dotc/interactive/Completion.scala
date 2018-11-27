@@ -137,7 +137,7 @@ object Completion {
 
   private class CompletionBuffer(val mode: Mode, val prefix: String, pos: SourcePosition) {
 
-    private[this] val completions = Scopes.newScope.openForMutations
+    private[this] val completions = new RenameAwareScope
 
     /**
      * Return the list of symbols that shoudl be included in completion results.
@@ -146,7 +146,11 @@ object Completion {
      * the same `Completion`.
      */
     def getCompletions(implicit ctx: Context): List[Completion] = {
-      val groupedSymbols = completions.toList.groupBy(_.name.stripModuleClassSuffix.toSimpleName).toList
+      val groupedSymbols = {
+        val symbols = completions.toListWithNames
+        val nameToSymbols = symbols.groupBy(_._2.stripModuleClassSuffix.toSimpleName)
+        nameToSymbols.mapValues(_.map(_._1)).toList
+      }
       groupedSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s, _) => s.isType)
         // Use distinct to remove duplicates with class, module class, etc.
@@ -173,11 +177,11 @@ object Completion {
       if (ctx.owner.isClass) {
         addAccessibleMembers(ctx.owner.thisType)
         ctx.owner.asClass.classInfo.selfInfo match {
-          case selfSym: Symbol => add(selfSym)
+          case selfSym: Symbol => add(selfSym, selfSym.name)
           case _ =>
         }
       }
-      else if (ctx.scope != null) ctx.scope.foreach(add)
+      else if (ctx.scope != null) ctx.scope.foreach(s => add(s, s.name))
 
       addImportCompletions
 
@@ -208,15 +212,16 @@ object Completion {
      * If `sym` exists, no symbol with the same name is already included, and it satisfies the
      * inclusion filter, then add it to the completions.
      */
-    private def add(sym: Symbol)(implicit ctx: Context) =
-      if (sym.exists && !completions.lookup(sym.name).exists && include(sym)) {
-        completions.enter(sym)
+    private def add(sym: Symbol, nameInScope: Name)(implicit ctx: Context) =
+      if (sym.exists && !completions.lookup(nameInScope).exists && include(sym, nameInScope)) {
+        completions.enter(sym, nameInScope)
       }
 
     /** Lookup members `name` from `site`, and try to add them to the completion list. */
-    private def addMember(site: Type, name: Name)(implicit ctx: Context) =
-      if (!completions.lookup(name).exists)
-        for (alt <- site.member(name).alternatives) add(alt.symbol)
+    private def addMember(site: Type, name: Name, nameInScope: Name)(implicit ctx: Context) =
+      if (!completions.lookup(nameInScope).exists) {
+        for (alt <- site.member(name).alternatives) add(alt.symbol, nameInScope)
+      }
 
     /** Include in completion sets only symbols that
      *   1. start with given name prefix, and
@@ -230,9 +235,9 @@ object Completion {
      *  as completion results. However, if a user explicitly writes all '$' characters in an
      *  identifier, we should complete the rest.
      */
-    private def include(sym: Symbol)(implicit ctx: Context): Boolean =
-      sym.name.startsWith(prefix) &&
-      !sym.name.toString.drop(prefix.length).contains('$') &&
+    private def include(sym: Symbol, nameInScope: Name)(implicit ctx: Context): Boolean =
+      nameInScope.startsWith(prefix) &&
+      !nameInScope.toString.drop(prefix.length).contains('$') &&
       !sym.isPrimaryConstructor &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
       !sym.is(allOf(Mutable, Accessor)) &&
@@ -249,20 +254,20 @@ object Completion {
      */
     private def accessibleMembers(site: Type)(implicit ctx: Context): Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
-        site.decls.toList.filter(include) // Don't look inside package members -- it's too expensive.
+        site.decls.toList.filter(sym => include(sym, sym.name)) // Don't look inside package members -- it's too expensive.
       case _ =>
         def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives
           catch { case ex: TypeError => }
         site.memberDenots(takeAllFilter, appendMemberSyms).collect {
-          case mbr if include(mbr.symbol) => mbr.accessibleFrom(site, superAccess = true).symbol
+          case mbr if include(mbr.symbol, mbr.symbol.name) => mbr.accessibleFrom(site, superAccess = true).symbol
           case _ => NoSymbol
         }.filter(_.exists)
     }
 
     /** Add all the accessible members of `site` in `info`. */
     private def addAccessibleMembers(site: Type)(implicit ctx: Context): Unit =
-      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name)
+      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name, mbr.name)
 
     /**
      * Add in `info` the symbols that are imported by `ctx.importInfo`. If this is a wildcard import,
@@ -271,17 +276,18 @@ object Completion {
     private def addImportCompletions(implicit ctx: Context): Unit = {
       val imp = ctx.importInfo
       if (imp != null) {
-        def addImport(name: TermName) = {
-          addMember(imp.site, name)
-          addMember(imp.site, name.toTypeName)
+        def addImport(name: TermName, nameInScope: TermName) = {
+          addMember(imp.site, name, nameInScope)
+          addMember(imp.site, name.toTypeName, nameInScope.toTypeName)
         }
-        // FIXME: We need to also take renamed items into account for completions,
-        // That means we have to return list of a pairs (Name, Symbol) instead of a list
-        // of symbols from `completions`.!=
-        for (imported <- imp.originals if !imp.excluded.contains(imported)) addImport(imported)
+        imp.reverseMapping.foreachBinding { (nameInScope, original) =>
+          if (original != nameInScope || !imp.excluded.contains(original)) {
+            addImport(original, nameInScope)
+          }
+        }
         if (imp.isWildcardImport)
           for (mbr <- accessibleMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
-            addMember(imp.site, mbr.name)
+            addMember(imp.site, mbr.name, mbr.name)
       }
     }
 
@@ -323,5 +329,24 @@ object Completion {
     /** Both term and type symbols are allowed */
     val Import: Mode = new Mode(4) | Term | Type
   }
+
+   /** A scope that tracks renames of the entered symbols.
+    *  Useful for providing completions for renamed symbols
+    *  in the REPL and the IDE.
+    */
+   private class RenameAwareScope extends Scopes.MutableScope {
+     private[this] val renames: mutable.Map[Symbol, Name] = mutable.Map.empty
+
+     /** Enter the symbol `sym` in this scope, recording a potential renaming. */
+     def enter[T <: Symbol](sym: T, name: Name)(implicit ctx: Context): T = {
+       if (name != sym.name) renames += sym -> name
+       newScopeEntry(name, sym)
+       sym
+     }
+
+     /** Lists the symbols in this scope along with the name associated with them. */
+     def toListWithNames(implicit ctx: Context): List[(Symbol, Name)] =
+       toList.map(sym => (sym, renames.get(sym).getOrElse(sym.name)))
+   }
 
 }
