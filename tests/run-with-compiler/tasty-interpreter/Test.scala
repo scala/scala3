@@ -27,9 +27,9 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
   import reflect._
 
   object Call {
-    def unapply(arg: Tree): Option[(Tree, List[Tree])] = arg match {
+    def unapply(arg: Tree): Option[(Tree, List[List[Tree]])] = arg match {
       case fn@ Term.Select(_, _, _) => Some((fn, Nil))
-      case Term.Apply(Call(fn, args1), args2) => Some((fn, args1 ::: args2))
+      case Term.Apply(Call(fn, args1), args2) => Some((fn, args1 :+ args2))
       case Term.TypeApply(Call(fn, args), _) => Some((fn, args))
       case _ => None
     }
