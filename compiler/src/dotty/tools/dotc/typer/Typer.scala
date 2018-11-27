@@ -1215,7 +1215,7 @@ class Typer extends Namer
         }
       case _ =>
         tree.withType(
-          if (isFullyDefined(pt, ForceDegree.none)) pt else UnspecifiedErrorType)
+          if (isFullyDefined(pt, ForceDegree.noBottom)) pt else UnspecifiedErrorType)
     }
   }
 

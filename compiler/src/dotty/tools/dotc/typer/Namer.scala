@@ -1155,7 +1155,12 @@ class Namer { typer: Typer =>
       case TypeTree() =>
         checkMembersOK(inferredType, mdef.pos)
       case DependentTypeTree(tpFun) =>
-        tpFun(paramss.head)
+        val tpe = tpFun(paramss.head)
+        if (!isFullyDefined(tpe, ForceDegree.none)) {
+          typedAheadExpr(mdef.rhs, tpe).tpe
+        } else {
+          tpe
+        }
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
         mdef match {
