@@ -10,6 +10,7 @@ import Symbols._
 import NameOps._
 import TypeErasure.ErasedValueType
 import Contexts.Context
+import Annotations.Annotation
 import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
@@ -624,7 +625,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = untpd.Modifiers(
     sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
-    sym.annotations map (_.tree))
+    sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree))
+
+  protected def dropAnnotForModText(sym: Symbol): Boolean = sym == defn.BodyAnnot
 
   protected def optAscription[T >: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
@@ -748,13 +751,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
     val flags = (if (sym.exists) sym.flags else (mods.flags)) & flagMask
     val flagsText = if (flags.isEmpty) "" else keywordStr(flags.toString)
-    val annotations = filterModTextAnnots(
-      if (sym.exists) sym.annotations.filterNot(_.isInstanceOf[Annotations.BodyAnnotation]).map(_.tree)
-      else mods.annotations)
+    val annotations =
+      if (sym.exists) sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree)
+      else mods.annotations.filterNot(tree => dropAnnotForModText(tree.symbol))
     Text(annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
-
-  protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] = annots
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))
