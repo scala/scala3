@@ -27,7 +27,7 @@ object XmlQuote {
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
-        val head = x.reify[Any]
+        val head = x.seal[Any]
         val tail = liftListOfAny(xs)
         '{ ~head :: ~tail }
       case Nil => '(Nil)
@@ -45,7 +45,7 @@ object XmlQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = receiver.reflect.underlyingArgument match {
+    val parts = receiver.unseal.underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
@@ -56,7 +56,7 @@ object XmlQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(args0), _) = args.reflect.underlyingArgument
+    val Typed(Repeated(args0), _) = args.unseal.underlyingArgument
 
     val string = parts.mkString("??")
     '(new Xml(~string.toExpr, ~liftListOfAny(args0)))

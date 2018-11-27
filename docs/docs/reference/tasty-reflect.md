@@ -1,13 +1,13 @@
 ---
 layout: doc-page
-title: "TASTy reflect"
+title: "TASTy Reflect"
 ---
 
 TASTy Reflect enables inspection and construction of Typed Abstract Syntax Trees (TAST).
 It may be used on quoted expressions (`quoted.Expr`) and quoted types (`quoted.Type`) from [Principled Meta-programming](./principled-meta-programming.html)
 or on full TASTy files.
 
-If you are writing macros, please first read [Principled Meta-programming](./principled-meta-programming.html). 
+If you are writing macros, please first read [Principled Meta-programming](./principled-meta-programming.html).
 You may find all you need without using TASTy Reflect.
 
 
@@ -32,13 +32,13 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 }
 ```
 
-`import reflection._` will provide a `reflect` extension method on `quoted.Expr` and `quoted.Type` which return a `reflection.Term` and `reflection.TypeTree` respectively.
+`import reflection._` will provide a `unseal` extension method on `quoted.Expr` and `quoted.Type` which return a `reflection.Term` and `reflection.TypeTree` respectively.
 It will also import all extractors and methods on TASTy Reflect trees. For example the `Term.Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
   import reflection._
-  val xTree: Term = x.reflect
+  val xTree: Term = x.unseal
   xTree match {
     case Term.Literal(Constant.Int(n)) =>
       if (n <= 0)
@@ -53,9 +53,10 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 To easily know which extractors are needed, the `reflection.Term.show` method returns the string representation of the extractors.
 
 The method `reflection.Term.reify[T]` provides a way to to go back to a `quoted.Expr`.
-Note that the type must be set explicitly and that if it does not conform to it an exception will be thrown. 
+Note that the type must be set explicitly and that if it does not conform to it an exception will be thrown.
 In the code above we could have replaced `n.toExpr` by `xTree.reify[Int]`.
- 
+
+
 ## Inspect a TASTy file
 
 To inspect the TASTy Reflect trees of a TASTy file a consumer can be defined in the following way.
@@ -78,7 +79,7 @@ object Test {
   }
 }
 ```
- 
+
 ## TASTy Reflect API
 
 TASTy Reflect provides the following types:

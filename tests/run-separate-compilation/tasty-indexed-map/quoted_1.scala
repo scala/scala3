@@ -38,8 +38,8 @@ object Index {
       case _ => Nil
     }
 
-    val key = name(k.reflect.tpe)
-    val keys = name(h.reflect.tpe) :: names(t.reflect.tpe)
+    val key = name(k.unseal.tpe)
+    val keys = name(h.unseal.tpe) :: names(t.unseal.tpe)
 
     val index = keys.indexOf(key)
 
