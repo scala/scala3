@@ -214,4 +214,26 @@ class CompletionTest {
            }""".withSource
       .completion(m1, Set(("MyImportedSymbol", Class, "java.io.FileDescriptor")))
   }
+
+  @Test def completionRenamedAndOriginalNames: Unit = {
+    code"""import java.util.HashMap
+          |trait Foo {
+          |  import java.util.{HashMap => HashMap2}
+          |  val x: Hash$m1
+          |}""".withSource
+      .completion(m1, Set(("HashMap", Class, "java.util.HashMap"),
+                          ("HashMap2", Class, "java.util.HashMap")))
+  }
+
+  @Test def completionRenamedThrice: Unit = {
+    code"""import java.util.{HashMap => MyHashMap}
+          |import java.util.{HashMap => MyHashMap2}
+          |trait Foo {
+          |  import java.util.{HashMap => MyHashMap3}
+          |  val x: MyHash$m1
+          |}""".withSource
+      .completion(m1, Set(("MyHashMap", Class, "java.util.HashMap"),
+                          ("MyHashMap2", Class, "java.util.HashMap"),
+                          ("MyHashMap3", Class, "java.util.HashMap")))
+  }
 }

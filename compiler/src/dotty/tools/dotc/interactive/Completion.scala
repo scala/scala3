@@ -335,18 +335,22 @@ object Completion {
     *  in the REPL and the IDE.
     */
    private class RenameAwareScope extends Scopes.MutableScope {
-     private[this] val renames: mutable.Map[Symbol, Name] = mutable.Map.empty
+     private[this] val renames: mutable.Map[Symbol, List[Name]] = mutable.Map.empty
 
      /** Enter the symbol `sym` in this scope, recording a potential renaming. */
      def enter[T <: Symbol](sym: T, name: Name)(implicit ctx: Context): T = {
-       if (name != sym.name) renames += sym -> name
+       renames += sym -> (name :: renames.getOrElse(sym, Nil))
        newScopeEntry(name, sym)
        sym
      }
 
      /** Lists the symbols in this scope along with the name associated with them. */
-     def toListWithNames(implicit ctx: Context): List[(Symbol, Name)] =
-       toList.map(sym => (sym, renames.get(sym).getOrElse(sym.name)))
+     def toListWithNames(implicit ctx: Context): List[(Symbol, Name)] = {
+       for {
+         sym <- toList
+         name <- renames.getOrElse(sym, List(sym.name))
+       } yield (sym, name)
+     }
    }
 
 }
