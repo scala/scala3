@@ -52,6 +52,7 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait IdentAPI {
+      def name(implicit ctx: Context): String
     }
     implicit def IdentDeco(x: Ident): IdentAPI
 
@@ -67,6 +68,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait SelectAPI {
+      def qualifier(implicit ctx: Context): Term
+      def name(implicit ctx: Context): String
     }
     implicit def SelectDeco(x: Select): SelectAPI
 
@@ -82,6 +85,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait ProjectAPI {
+      def qualifier(implicit ctx: Context): TypeTree
+      def name(implicit ctx: Context): String
     }
     implicit def ProjectDeco(x: Project): ProjectAPI
 
@@ -97,6 +102,7 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait SingletonAPI {
+      def ref(implicit ctx: Context): Term
     }
     implicit def SingletonDeco(x: Singleton): SingletonAPI
 
@@ -112,6 +118,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait RefinedAPI {
+      def tpt(implicit ctx: Context): TypeTree
+      def refinements(implicit ctx: Context): List[Definition]
     }
     implicit def RefinedDeco(x: Refined): RefinedAPI
 
@@ -127,6 +135,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait AppliedAPI {
+      def tpt(implicit ctx: Context): TypeTree
+      def args(implicit ctx: Context): List[TypeOrBoundsTree]
     }
     implicit def AppliedDeco(x: Applied): AppliedAPI
 
@@ -142,6 +152,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait AnnotatedAPI {
+      def arg(implicit ctx: Context): TypeTree
+      def annotation(implicit ctx: Context): Term
     }
     implicit def AnnotatedDeco(x: Annotated): AnnotatedAPI
 
@@ -157,6 +169,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait AndAPI {
+      def left(implicit ctx: Context): TypeTree
+      def right(implicit ctx: Context): TypeTree
     }
     implicit def AndDeco(x: And): OrAPI
 
@@ -172,6 +186,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait OrAPI {
+      def left(implicit ctx: Context): TypeTree
+      def right(implicit ctx: Context): TypeTree
     }
     implicit def OrDeco(x: Or): OrAPI
 
@@ -187,6 +203,9 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait MatchTypeAPI {
+      def bound(implicit ctx: Context): Option[TypeTree]
+      def selector(implicit ctx: Context): TypeTree
+      def cases(implicit ctx: Context): List[TypeCaseDef]
     }
     implicit def MatchTypeDeco(x: MatchType): MatchTypeAPI
 
@@ -202,6 +221,7 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait ByNameAPI {
+      def result(implicit ctx: Context): TypeTree
     }
     implicit def ByNameDeco(x: ByName): ByNameAPI
 
@@ -217,6 +237,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait LambdaTypeTreeAPI {
+      def tparams(implicit ctx: Context): List[TypeDef]
+      def body(implicit ctx: Context): TypeOrBoundsTree
     }
     implicit def LambdaTypeTreeDeco(x: LambdaTypeTree): LambdaTypeTreeAPI
 
@@ -232,6 +254,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait BindAPI {
+      def name(implicit ctx: Context): String
+      def body(implicit ctx: Context): TypeOrBoundsTree
     }
     implicit def BindDeco(x: Bind): BindAPI
 
@@ -247,6 +271,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
 
     trait BlockAPI {
+      def aliases(implicit ctx: Context): List[TypeDef]
+      def tpt(implicit ctx: Context): TypeTree
     }
     implicit def BlockDeco(x: Block): BlockAPI
 

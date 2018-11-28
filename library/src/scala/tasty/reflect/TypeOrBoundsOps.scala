@@ -49,6 +49,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait ConstantTypeAPI {
+      def value(implicit ctx: Context): Any
     }
     implicit def ConstantTypeDeco(x: ConstantType): ConstantTypeAPI
 
@@ -64,6 +65,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait SymRefAPI {
+      def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */
     }
     implicit def SymRefDeco(x: SymRef): SymRefAPI
 
@@ -79,6 +81,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait TermRefAPI {
+      def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */
     }
     implicit def TermRefDeco(x: TermRef): TermRefAPI
 
@@ -94,6 +97,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait TypeRefAPI {
+      def name(implicit ctx: Context): String
+      def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */
     }
     implicit def TypeRefDeco(x: TypeRef): TypeRefAPI
 
@@ -109,6 +114,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait SuperTypeAPI {
+      def thistpe(implicit ctx: Context): Type
+      def supertpe(implicit ctx: Context): Type
     }
     implicit def SuperTypeDeco(x: SuperType): SuperTypeAPI
 
@@ -124,6 +131,9 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait RefinementAPI {
+      def parent(implicit ctx: Context): Type
+      def name(implicit ctx: Context): String
+      def info(implicit ctx: Context): TypeOrBounds
     }
     implicit def RefinementDeco(x: Refinement): RefinementAPI
 
@@ -139,6 +149,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait AppliedTypeAPI {
+      def tycon(implicit ctx: Context): Type
+      def args(implicit ctx: Context): List[TypeOrBounds /* Type | TypeBounds */]
     }
     implicit def AppliedTypeDeco(x: AppliedType): AppliedTypeAPI
 
@@ -154,6 +166,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait AnnotatedTypeAPI {
+      def underlying(implicit ctx: Context): Type
+      def annot(implicit ctx: Context): Term
     }
     implicit def AnnotatedTypeDeco(x: AnnotatedType): AnnotatedTypeAPI
 
@@ -169,6 +183,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait AndTypeAPI {
+      def left(implicit ctx: Context): Type
+      def right(implicit ctx: Context): Type
     }
     implicit def AndTypeDeco(x: AndType): AndTypeAPI
 
@@ -184,6 +200,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait OrTypeAPI {
+      def left(implicit ctx: Context): Type
+      def right(implicit ctx: Context): Type
     }
     implicit def OrTypeDeco(x: OrType): OrTypeAPI
 
@@ -199,6 +217,9 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait MatchTypeAPI {
+      def bound(implicit ctx: Context): Type
+      def scrutinee(implicit ctx: Context): Type
+      def cases(implicit ctx: Context): List[Type]
     }
     implicit def MatchTypeDeco(x: MatchType): MatchTypeAPI
 
@@ -214,6 +235,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait ByNameTypeAPI {
+      def underlying(implicit ctx: Context): Type
     }
     implicit def ByNameTypeDeco(x: ByNameType): ByNameTypeAPI
 
@@ -229,6 +251,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait ParamRefAPI {
+      def binder(implicit ctx: Context): LambdaType[TypeOrBounds]
+      def paramNum(implicit ctx: Context): Int
     }
     implicit def ParamRefDeco(x: ParamRef): ParamRefAPI
 
@@ -244,6 +268,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait ThisTypeAPI {
+      def underlying(implicit ctx: Context): Type
     }
     implicit def ThisTypeDeco(x: ThisType): ThisTypeAPI
 
@@ -259,6 +284,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait RecursiveThisAPI {
+      def binder(implicit ctx: Context): RecursiveType
     }
     implicit def RecursiveThisDeco(x: RecursiveThis): RecursiveThisAPI
 
@@ -274,6 +300,7 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait RecursiveTypeAPI {
+      def underlying(implicit ctx: Context): Type
     }
     implicit def RecursiveTypeDeco(x: RecursiveType): RecursiveTypeAPI
 
@@ -289,6 +316,9 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait MethodTypeAPI {
+      def paramNames(implicit ctx: Context): List[String]
+      def paramTypes(implicit ctx: Context): List[Type]
+      def resType(implicit ctx: Context): Type
     }
     implicit def MethodTypeDeco(x: MethodType): MethodTypeAPI
 
@@ -304,6 +334,9 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait PolyTypeAPI {
+      def paramNames(implicit ctx: Context): List[String]
+      def paramBounds(implicit ctx: Context): List[TypeBounds]
+      def resType(implicit ctx: Context): Type
     }
     implicit def PolyTypeDeco(x: PolyType): PolyTypeAPI
 
@@ -319,6 +352,9 @@ trait TypeOrBoundsOps extends Core {
     }
 
     trait TypeLambdaAPI {
+      def paramNames(implicit ctx: Context): List[String]
+      def paramBounds(implicit ctx: Context): List[TypeBounds]
+      def resType(implicit ctx: Context): Type
     }
     implicit def TypeLambdaDeco(x: TypeLambda): TypeLambdaAPI
 

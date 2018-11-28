@@ -49,7 +49,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def ConstantTypeDeco(x: ConstantType): ConstantTypeAPI = new ConstantTypeAPI {
-
+      def value(implicit ctx: Context): Any = x.value
     }
 
     object ConstantType extends ConstantTypeExtractor {
@@ -60,7 +60,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     object IsSymRef extends IsSymRefModule {
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] = tpe  match {
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] = tpe match {
         case tp: Types.NamedType =>
           tp.designator match {
             case sym: Symbol => Some(tp)
@@ -71,7 +71,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def SymRefDeco(x: SymRef): SymRefAPI = new SymRefAPI {
-
+      def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
     object SymRef extends SymRefExtractor {
@@ -97,7 +97,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def TermRefDeco(x: TermRef): TermRefAPI = new TermRefAPI {
-
+      def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
     object TermRef extends TermRefExtractor {
@@ -123,7 +123,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def TypeRefDeco(x: TypeRef): TypeRefAPI = new TypeRefAPI {
-
+      def name(implicit ctx: Context): String = x.name.toString
+      def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
     object TypeRef extends TypeRefExtractor {
@@ -145,7 +146,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def SuperTypeDeco(x: SuperType): SuperTypeAPI = new SuperTypeAPI {
-
+      def thistpe(implicit ctx: Context): Type = x.thistpe
+      def supertpe(implicit ctx: Context): Type = x.supertpe
     }
 
     object SuperType extends SuperTypeExtractor {
@@ -163,7 +165,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def RefinementDeco(x: Refinement): RefinementAPI = new RefinementAPI {
-
+      def parent(implicit ctx: Context): Type = x.parent
+      def name(implicit ctx: Context): String = x.refinedName.toString
+      def info(implicit ctx: Context): TypeOrBounds = x.refinedInfo
     }
 
     object Refinement extends RefinementExtractor {
@@ -181,7 +185,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def AppliedTypeDeco(x: AppliedType): AppliedTypeAPI = new AppliedTypeAPI {
-
+      def tycon(implicit ctx: Context): Type = x.tycon
+      def args(implicit ctx: Context): List[TypeOrBounds] = x.args
     }
 
     object AppliedType extends AppliedTypeExtractor {
@@ -199,7 +204,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def AnnotatedTypeDeco(x: AnnotatedType): AnnotatedTypeAPI = new AnnotatedTypeAPI {
-
+      def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
+      def annot(implicit ctx: Context): Term = x.annot.tree
     }
 
     object AnnotatedType extends AnnotatedTypeExtractor {
@@ -217,7 +223,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def AndTypeDeco(x: AndType): AndTypeAPI = new AndTypeAPI {
-
+      def left(implicit ctx: Context): Type = x.tp1.stripTypeVar
+      def right(implicit ctx: Context): Type = x.tp2.stripTypeVar
     }
 
     object AndType extends AndTypeExtractor {
@@ -235,7 +242,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def OrTypeDeco(x: OrType): OrTypeAPI = new OrTypeAPI {
-
+      def left(implicit ctx: Context): Type = x.tp1
+      def right(implicit ctx: Context): Type = x.tp2
     }
 
     object OrType extends OrTypeExtractor {
@@ -253,7 +261,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def MatchTypeDeco(x: MatchType): MatchTypeAPI = new MatchTypeAPI {
-
+      def bound(implicit ctx: Context): Type = x.bound
+      def scrutinee(implicit ctx: Context): Type = x.scrutinee
+      def cases(implicit ctx: Context): List[Type] = x.cases
     }
 
     object MatchType extends MatchTypeExtractor {
@@ -271,7 +281,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def ByNameTypeDeco(x: ByNameType): ByNameTypeAPI = new ByNameTypeAPI {
-
+      def underlying(implicit ctx: Context): Type = x.resType.stripTypeVar
     }
 
     object ByNameType extends ByNameTypeExtractor {
@@ -290,7 +300,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def ParamRefDeco(x: ParamRef): ParamRefAPI = new ParamRefAPI {
-
+      def binder(implicit ctx: Context): LambdaType[TypeOrBounds] =
+        x.binder.asInstanceOf[LambdaType[TypeOrBounds]] // Cast to tpd
+      def paramNum(implicit ctx: Context): Int = x.paramNum
     }
 
     object ParamRef extends ParamRefExtractor {
@@ -312,7 +324,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def ThisTypeDeco(x: ThisType): ThisTypeAPI = new ThisTypeAPI {
-
+      def underlying(implicit ctx: Context): Type = x.underlying
     }
 
     object ThisType extends ThisTypeExtractor {
@@ -330,7 +342,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def RecursiveThisDeco(x: RecursiveThis): RecursiveThisAPI = new RecursiveThisAPI {
-
+      def binder(implicit ctx: Context): RecursiveType = x.binder
     }
 
     object RecursiveThis extends RecursiveThisExtractor {
@@ -348,7 +360,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def RecursiveTypeDeco(x: RecursiveType): RecursiveTypeAPI = new RecursiveTypeAPI {
-
+      def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
     }
 
     object RecursiveType extends RecursiveTypeExtractor {
@@ -366,7 +378,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def MethodTypeDeco(x: MethodType): MethodTypeAPI = new MethodTypeAPI {
-
+      def paramNames(implicit ctx: Context): List[String] = x.paramNames.map(_.toString)
+      def paramTypes(implicit ctx: Context): List[Type] = x.paramInfos
+      def resType(implicit ctx: Context): Type = x.resType
     }
 
     object MethodType extends MethodTypeExtractor {
@@ -384,7 +398,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def PolyTypeDeco(x: PolyType): PolyTypeAPI = new PolyTypeAPI {
-
+      def paramNames(implicit ctx: Contexts.Context): List[String] = x.paramNames.map(_.toString)
+      def paramBounds(implicit ctx: Contexts.Context): List[TypeBounds] = x.paramInfos
+      def resType(implicit ctx: Contexts.Context): Type = x.resType
     }
 
     object PolyType extends PolyTypeExtractor {
@@ -402,7 +418,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     def TypeLambdaDeco(x: TypeLambda): TypeLambdaAPI = new TypeLambdaAPI {
-
+      def paramNames(implicit ctx: Contexts.Context): List[String] = x.paramNames.map(_.toString)
+      def paramBounds(implicit ctx: Contexts.Context): List[TypeBounds] = x.paramInfos
+      def resType(implicit ctx: Contexts.Context): Type = x.resType
     }
 
     object TypeLambda extends TypeLambdaExtractor {
