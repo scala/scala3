@@ -149,11 +149,7 @@ object Completion {
       val groupedSymbols = {
         val symbols = completions.toListWithNames
         val nameToSymbols = symbols.groupBy(_._2.stripModuleClassSuffix.toSimpleName)
-        nameToSymbols.mapValues { symbols =>
-          symbols
-            .map(_._1)
-            .distinct // Show symbols that have been renamed multiple times only once
-        }.toList
+        nameToSymbols.mapValues(_.map(_._1)).toList
       }
       groupedSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
@@ -352,11 +348,11 @@ object Completion {
     *  in the REPL and the IDE.
     */
    private class RenameAwareScope extends Scopes.MutableScope {
-     private[this] val renames: mutable.Map[Symbol, List[Name]] = mutable.Map.empty
+     private[this] val nameToSymbols: mutable.Map[Name, List[Symbol]] = mutable.Map.empty
 
      /** Enter the symbol `sym` in this scope, recording a potential renaming. */
      def enter[T <: Symbol](sym: T, name: Name)(implicit ctx: Context): T = {
-       renames += sym -> (name :: renames.getOrElse(sym, Nil))
+       nameToSymbols += name -> (sym :: nameToSymbols.getOrElse(name, Nil))
        newScopeEntry(name, sym)
        sym
      }
@@ -364,8 +360,8 @@ object Completion {
      /** Lists the symbols in this scope along with the name associated with them. */
      def toListWithNames(implicit ctx: Context): List[(Symbol, Name)] = {
        for {
-         sym <- toList
-         name <- renames.getOrElse(sym, List(sym.name))
+         (name, syms) <- nameToSymbols.toList
+         sym <- syms
        } yield (sym, name)
      }
    }
