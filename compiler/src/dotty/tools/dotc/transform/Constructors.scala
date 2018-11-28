@@ -281,8 +281,6 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
       else cpy.DefDef(constr)(rhs = Block(finalConstrStats, unitLiteral))
 
-    cpy.Template(tree)(
-      constr = expandedConstr,
-      body = clsStats.toList)
+    cpy.Template(tree)(constr = expandedConstr, body = clsStats.toList)
   }
 }

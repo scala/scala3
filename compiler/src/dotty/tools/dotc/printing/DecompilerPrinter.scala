@@ -69,7 +69,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       val bodyText = " {" ~~ toTextGlobal(impl.body, "\n") ~ "}"
       parentsText.provided(parents.nonEmpty) ~ bodyText
     }
-    else super.toTextTemplate(impl.copy(parents = parents, preBody = body), ofNew)
+    else super.toTextTemplate(impl.copy(parentsOrDerived = parents, preBody = body), ofNew)
   }
 
   override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {

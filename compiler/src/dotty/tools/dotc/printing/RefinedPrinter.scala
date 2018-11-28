@@ -700,7 +700,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
-    val Template(constr @ DefDef(_, tparams, vparamss, _, _), parents, self, _) = impl
+    val Template(constr @ DefDef(_, tparams, vparamss, _, _), _, self, _) = impl
     val tparamsTxt = withEnclosingDef(constr) { tparamsText(tparams) }
     val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
     val prefix: Text =
@@ -711,7 +711,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
         withEnclosingDef(constr) { addVparamssText(tparamsTxt ~~ modsText, vparamss) }
       }
-    val parentsText = Text(parents map constrText, keywordStr(" with "))
+    val parentsText = Text(impl.parents.map(constrText), if (ofNew) keywordStr(" with ") else ", ")
+    val derivedText = Text(impl.derived.map(toText(_)), ", ")
     val selfText = {
       val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
       (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
@@ -729,7 +730,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     val bodyText = " {" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
-    prefix ~ keywordText(" extends").provided(!ofNew && parents.nonEmpty) ~~ parentsText ~ bodyText
+    prefix ~
+    keywordText(" extends").provided(!ofNew && impl.parents.nonEmpty) ~~ parentsText ~
+    keywordText(" derives").provided(impl.derived.nonEmpty) ~~ derivedText ~
+    bodyText
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {

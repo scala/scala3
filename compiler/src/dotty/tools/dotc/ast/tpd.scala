@@ -293,7 +293,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val findLocalDummy = new FindLocalDummyAccumulator(cls)
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy.apply)
       .orElse(ctx.newLocalDummy(cls))
-    val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
+    val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
       .withType(localDummy.termRef)
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }

@@ -39,7 +39,19 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withName(name: Name)(implicit ctx: Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
-  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree)(implicit @constructorOnly src: SourceFile) extends Tree with TermTree
+  /** An untyped template with a derives clause. Derived parents are added to the end
+   *  of the `parents` list. `derivedCount` keeps track of how many there are.
+   *  This representation was chosen because it balances two concerns:
+   *   - maximize overlap between DerivingTemplate and Template for code streamlining
+   *   - keep invariant that elements of untyped trees align with source positions
+   */
+  class DerivingTemplate(constr: DefDef, parentsOrDerived: List[Tree], self: ValDef, preBody: LazyTreeList, derivedCount: Int)(implicit @constructorOnly src: SourceFile)
+  extends Template(constr, parentsOrDerived, self, preBody) {
+    override val parents = parentsOrDerived.dropRight(derivedCount)
+    override val derived = parentsOrDerived.takeRight(derivedCount)
+  }
+
+  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
 
   case class SymbolLit(str: String)(implicit @constructorOnly src: SourceFile) extends TermTree
 
@@ -303,7 +315,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): ValDef = new ValDef(name, tpt, rhs)
   def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree)(implicit src: SourceFile): TypeDef = new TypeDef(name, rhs)
-  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template = new Template(constr, parents, self, body)
+  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
+    if (derived.isEmpty) new Template(constr, parents, self, body)
+    else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
   def Import(expr: Tree, selectors: List[Tree])(implicit src: SourceFile): Import = new Import(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
@@ -431,8 +445,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => finalize(tree, untpd.ModuleDef(name, impl)(tree.source))
     }
     def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: ParsedTry
-        if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
+      case tree: ParsedTry if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
       case _ => finalize(tree, untpd.ParsedTry(expr, handler, finalizer)(tree.source))
     }
     def SymbolLit(tree: Tree)(str: String)(implicit ctx: Context): TermTree = tree match {
@@ -513,6 +526,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
+      case tree: DerivingTemplate =>
+        cpy.Template(tree)(transformSub(tree.constr), transform(tree.parents), transform(tree.derived), transformSub(tree.self), transformStats(tree.body))
       case ParsedTry(expr, handler, finalizer) =>
         cpy.ParsedTry(tree)(transform(expr), transform(handler), transform(finalizer))
       case SymbolLit(str) =>
@@ -560,6 +575,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)
+      case tree: DerivingTemplate =>
+        this(this(this(this(this(x, tree.constr), tree.parents), tree.derived), tree.self), tree.body)
       case ParsedTry(expr, handler, finalizer) =>
         this(this(this(x, expr), handler), finalizer)
       case SymbolLit(str) =>

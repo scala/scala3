@@ -56,6 +56,7 @@ abstract class MacroTransform extends Phase {
             cpy.Template(tree)(
               transformSub(constr),
               transform(parents)(ctx.superCallContext),
+              Nil,
               transformSelf(self),
               transformStats(impl.body, tree.symbol))
           case _ =>

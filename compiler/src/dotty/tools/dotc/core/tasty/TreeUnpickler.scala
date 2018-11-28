@@ -912,7 +912,7 @@ class TreeUnpickler(reader: TastyReader,
         tparams ++ vparams ++ stats
       })
       setSpan(start,
-        untpd.Template(constr, mappedParents, self, lazyStats)
+        untpd.Template(constr, mappedParents, Nil, self, lazyStats)
           .withType(localDummy.termRef))
     }
 

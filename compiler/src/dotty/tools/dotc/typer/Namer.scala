@@ -531,14 +531,20 @@ class Namer { typer: Typer =>
       to.putAttachment(References, fromRefs ++ toRefs)
     }
 
-    /** Merge the module class `modCls` in the expanded tree of `mdef` with the given stats */
-    def mergeModuleClass(mdef: Tree, modCls: TypeDef, stats: List[Tree]): TypeDef = {
+    /** Merge the module class `modCls` in the expanded tree of `mdef` with the
+     *  body and derived clause of the syntehtic module class `fromCls`.
+     */
+    def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
       var res: TypeDef = null
       val Thicket(trees) = expanded(mdef)
       val merged = trees.map { tree =>
         if (tree == modCls) {
-          val impl = modCls.rhs.asInstanceOf[Template]
-          res = cpy.TypeDef(modCls)(rhs = cpy.Template(impl)(body = stats ++ impl.body))
+          val fromTempl = fromCls.rhs.asInstanceOf[Template]
+          val modTempl = modCls.rhs.asInstanceOf[Template]
+          res = cpy.TypeDef(modCls)(
+            rhs = cpy.Template(modTempl)(
+              derived = fromTempl.derived ++ modTempl.derived,
+              body = fromTempl.body ++ modTempl.body))
           res
         }
         else tree
@@ -559,7 +565,7 @@ class Namer { typer: Typer =>
     def mergeIfSynthetic(fromStat: Tree, fromCls: TypeDef, toStat: Tree, toCls: TypeDef): Unit =
       if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic)) {
         removeInExpanded(fromStat, fromCls)
-        val mcls = mergeModuleClass(toStat, toCls, fromCls.rhs.asInstanceOf[Template].body)
+        val mcls = mergeModuleClass(toStat, toCls, fromCls)
         mcls.setMods(toCls.mods | (fromCls.mods.flags & RetainedSyntheticCompanionFlags))
         moduleClsDef(fromCls.name) = (toStat, mcls)
       }
@@ -838,7 +844,7 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
+    val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods is Param
@@ -850,6 +856,7 @@ class Namer { typer: Typer =>
 
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
+      val parents = impl.parents
 
       /* The type of a parent constructor. Types constructor arguments
        * only if parent type contains uninstantiated type parameters.
@@ -909,6 +916,23 @@ class Namer { typer: Typer =>
         }
       }
 
+      /* Check derived type tree `derived` for the following well-formedness conditions:
+       * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
+       * (2) It must have exactly one type parameter
+       * If it passes the checks, enter a typeclass instance for it in the class scope.
+       */
+      def addDerivedInstance(derived: untpd.Tree): Unit = {
+        val uncheckedType = typedAheadType(derived, AnyTypeConstructorProto).tpe.dealiasKeepAnnots
+        val derivedType = checkClassType(uncheckedType, derived.pos, traitReq = false, stablePrefixReq = true)
+        val nparams = derivedType.typeSymbol.typeParams.length
+        if (nparams == 1)
+        	println(i"todo: add derived instance $derived")
+        else
+          ctx.error(
+            i"derived class $derivedType should have one type paramater but has $nparams",
+            derived.pos)
+      }
+
       addAnnotations(denot.symbol)
 
       val selfInfo: TypeOrSymbol =
@@ -938,6 +962,8 @@ class Namer { typer: Typer =>
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
+
+      impl.derived.foreach(addDerivedInstance)
 
       val finalSelfInfo: TypeOrSymbol =
         if (cls.isOpaqueCompanion) {

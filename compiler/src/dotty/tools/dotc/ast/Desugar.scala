@@ -297,7 +297,8 @@ object desugar {
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
     val className = checkNotReservedName(cdef).asTypeName
-    val impl @ Template(constr0, parents, self, _) = cdef.rhs
+    val impl @ Template(_, _, self, _) = cdef.rhs
+    val parents = impl.parents
     val mods = cdef.mods
     val companionMods = mods
         .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
@@ -312,7 +313,7 @@ object desugar {
         meth
     }
 
-    val constr1 = decompose(defDef(constr0, isPrimaryConstructor = true))
+    val constr1 = decompose(defDef(impl.constr, isPrimaryConstructor = true))
 
     // The original type and value parameters in the constructor already have the flags
     // needed to be type members (i.e. param, and possibly also private and local unless
@@ -557,12 +558,16 @@ object desugar {
     }
     def eqInstances = if (isEnum) eqInstance :: Nil else Nil
 
+    // derived type classes of non-module classes go to their companions
+    val (clsDerived, companionDerived) =
+      if (mods.is(Module)) (impl.derived, Nil) else (Nil, impl.derived)
+
     // The thicket which is the desugared version of the companion object
-    //     synthetic object C extends parentTpt { defs }
+    //     synthetic object C extends parentTpt derives class-derived { defs }
     def companionDefs(parentTpt: Tree, defs: List[Tree]) =
       moduleDef(
         ModuleDef(
-          className.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
+          className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
       .withSpan(cdef.span).toList
 
@@ -613,10 +618,10 @@ object desugar {
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
       }
-      else if (companionMembers.nonEmpty)
+      else if (companionMembers.nonEmpty || companionDerived.nonEmpty)
         companionDefs(anyRef, companionMembers)
       else if (isValueClass) {
-        constr0.vparamss match {
+        impl.constr.vparamss match {
           case (_ :: Nil) :: _ => companionDefs(anyRef, Nil)
           case _ => Nil // error will be emitted in typer
         }
@@ -675,7 +680,7 @@ object desugar {
       }
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
-        rhs = cpy.Template(impl)(constr, parents1, self1,
+        rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
           tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)): TypeDef
     }
 
@@ -772,7 +777,7 @@ object desugar {
       val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
 
       val companions = moduleDef(ModuleDef(
-        moduleName, Template(emptyConstructor, Nil, EmptyValDef, localType :: Nil))
+        moduleName, Template(emptyConstructor, Nil, Nil, EmptyValDef, localType :: Nil))
           .withFlags(Synthetic | Opaque))
       Thicket(aliasType :: companions.toList)
     }
@@ -1335,7 +1340,7 @@ object desugar {
     val (classParents, self) =
       if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
-    val impl = Template(emptyConstructor, classParents, self, refinements)
+    val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 
