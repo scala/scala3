@@ -23,7 +23,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   def printNames(): Unit =
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
       val index = nameColor("%4d".format(idx))
-      sb.append(index + ": " + nameToString(name) + "\n")
+      sb.append(index).append(": ").append(nameToString(name)).append("\n")
     }
 
   def printContents(): String = {
@@ -60,7 +60,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         val length = treeColor("%5d".format(index(currentAddr) - index(startAddr)))
         sb.append(s"\n $length:" + " " * indent)
       }
-      def printNat() = sb.append(Yellow(" " + readNat()).show)
+      def printNat() = sb.append(treeColor(" " + readNat()))
       def printName() = {
         val idx = readNat()
         sb.append(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
@@ -68,7 +68,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
       def printTree(): Unit = {
         newLine()
         val tag = readByte()
-        sb.append(" ");sb.append(astTagToString(tag))
+        sb.append(" ").append(astTagToString(tag))
         indent += 2
         if (tag >= firstLengthTreeTag) {
           val len = readNat()
