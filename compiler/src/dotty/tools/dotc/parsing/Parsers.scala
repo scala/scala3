@@ -2341,7 +2341,7 @@ object Parsers {
         case CASEOBJECT =>
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
-          enumDef(start, mods, atPos(in.skipToken()) { Mod.Enum() })
+          enumDef(start, posMods(start, mods | Enum))
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -2387,12 +2387,12 @@ object Parsers {
 
     /**  EnumDef ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
      */
-    def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): TypeDef = atPos(start, nameStart) {
+    def enumDef(start: Offset, mods: Modifiers): TypeDef = atPos(start, nameStart) {
       val InvalidEnumClassModifiers = ModifierFlags &~ (Private | Protected)
       if (mods.is(InvalidEnumClassModifiers))
         syntaxError("Only access modifiers are allowed on enum definitions", mods.pos)
 
-      val mods1 = addMod(mods, enumMod) &~ InvalidEnumClassModifiers
+      val mods1 = mods &~ InvalidEnumClassModifiers
       val modName = ident()
       val clsName = modName.toTypeName
       val constr = classConstr(clsName)
@@ -2406,7 +2406,7 @@ object Parsers {
       if (mods.is(ModifierFlags))
         syntaxError("Modifiers are not allowed on enum cases", mods.pos)
 
-      val mods1 = addMod(mods, atPos(in.offset)(Mod.Enum())) &~ ModifierFlags | Case
+      val mods1 = mods &~ ModifierFlags | EnumCase
       accept(CASE)
 
       in.adjustSepRegions(ARROW)
