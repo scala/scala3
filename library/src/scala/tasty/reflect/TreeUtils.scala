@@ -99,7 +99,7 @@ trait TreeUtils
       case TypeTree.Applied(tpt, args) => foldTypeTrees(foldTypeTree(x, tpt), args)
       case TypeTree.ByName(result) => foldTypeTree(x, result)
       case TypeTree.Annotated(arg, annot) => foldTree(foldTypeTree(x, arg), annot)
-      case TypeTree.TypeLambdaTree(typedefs, arg) => foldTypeTree(foldTrees(x, typedefs), arg)
+      case TypeTree.LambdaTypeTree(typedefs, arg) => foldTypeTree(foldTrees(x, typedefs), arg)
       case TypeTree.Bind(_, tbt) => foldTypeTree(x, tbt)
       case TypeTree.Block(typedefs, tpt) => foldTypeTree(foldTrees(x, typedefs), tpt)
       case TypeTree.MatchType(boundopt, selector, cases) =>

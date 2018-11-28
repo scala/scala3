@@ -182,7 +182,7 @@ trait Printers
           this += "TypeTree.ByName(" += result += ")"
         case TypeTree.Annotated(arg, annot) =>
           this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
-        case TypeTree.TypeLambdaTree(tparams, body) =>
+        case TypeTree.LambdaTypeTree(tparams, body) =>
           this += "TypeTree.LambdaTypeTree(" ++= tparams += ", " += body += ")"
         case TypeTree.Bind(name, bounds) =>
           this += "TypeTree.Bind(" += name += ", " += bounds += ")"
@@ -998,7 +998,7 @@ trait Printers
           case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
           case rhs @ WildcardTypeTree() =>
             printTypeOrBound(rhs.tpe)
-          case rhs @ TypeTree.TypeLambdaTree(tparams, body) =>
+          case rhs @ TypeTree.LambdaTypeTree(tparams, body) =>
             def printParam(t: TypeOrBoundsTree): Unit = t match {
               case IsTypeBoundsTree(t) => printBoundsTree(t)
               case IsTypeTree(t) => printTypeTree(t)
@@ -1264,7 +1264,7 @@ trait Printers
           this += highlightTypeDef("=> ", color)
           printTypeTree(result)
 
-        case TypeTree.TypeLambdaTree(tparams, body) =>
+        case TypeTree.LambdaTypeTree(tparams, body) =>
           printTargsDefs(tparams)
           this += highlightTypeDef(" => ", color)
           printTypeOrBoundsTree(body)
