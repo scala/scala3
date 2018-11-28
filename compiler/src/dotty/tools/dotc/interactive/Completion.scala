@@ -149,24 +149,39 @@ object Completion {
       val groupedSymbols = {
         val symbols = completions.toListWithNames
         val nameToSymbols = symbols.groupBy(_._2.stripModuleClassSuffix.toSimpleName)
-        nameToSymbols.mapValues(_.map(_._1)).toList
+        nameToSymbols.mapValues { symbols =>
+          symbols
+            .map(_._1)
+            .distinct // Show symbols that have been renamed multiple times only once
+        }.toList
       }
       groupedSymbols.map { case (name, symbols) =>
-        val typesFirst = symbols.sortWith((s, _) => s.isType)
-        // Use distinct to remove duplicates with class, module class, etc.
-        val descriptions = typesFirst.map(description).distinct.mkString(", ")
-        Completion(name.toString, descriptions, typesFirst)
+        val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
+        val desc = description(typesFirst)
+        Completion(name.toString, desc, typesFirst)
       }
     }
 
     /**
-     * A description for `sym`.
+     * A description for completion result that represents `symbols`.
      *
-     * For types, show the symbol's full name, or its type for term symbols.
+     * If `symbols` contains a single symbol, show its full name in case it's a type, or its type if
+     * it's a term.
+     *
+     * When there are multiple symbols, show their kinds.
      */
-    private def description(sym: Symbol)(implicit ctx: Context): String = {
-      if (sym.isType) sym.showFullName
-      else sym.info.widenTermRefExpr.show
+    private def description(symbols: List[Symbol])(implicit ctx: Context): String = {
+      symbols match {
+        case sym :: Nil =>
+          if (sym.isType) sym.showFullName
+          else sym.info.widenTermRefExpr.show
+
+        case sym :: _ =>
+          symbols.map(ctx.printer.kindString).mkString("", " and ", s" ${sym.name.show}")
+
+        case Nil =>
+          ""
+      }
     }
 
     /**
