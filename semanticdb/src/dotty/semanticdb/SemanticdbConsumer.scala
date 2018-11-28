@@ -449,12 +449,15 @@ class SemanticdbConsumer extends TastyConsumer {
         })
       }
 
+      def extractTypeTree(tree: TypeOrBoundsTree) = tree match {
+        case IsTypeTree(t) => t
+      }
       override def traverseTypeTree(tree: TypeOrBoundsTree)(
           implicit ctx: Context): Unit = {
+        println("type:   ", tree)
         tree match {
-          case TypeTree.Ident(_) => {
-            tree match {
-              case IsTypeTree(typetree) => {
+              case TypeTree.Ident(_) => {
+                val typetree = extractTypeTree(tree)
                 addOccurenceTypeTree(typetree,
                                      s.SymbolOccurrence.Role.REFERENCE,
                                      s.Range(typetree.pos.startLine,
@@ -462,13 +465,16 @@ class SemanticdbConsumer extends TastyConsumer {
                                              typetree.pos.startLine,
                                              typetree.pos.endColumn))
               }
+              case TypeTree.Select(qualifier, _) => {
+                val typetree = extractTypeTree(tree)
+                val range = rangeExclude(typetree.pos, qualifier.pos)
+            addOccurenceTypeTree(typetree, s.SymbolOccurrence.Role.REFERENCE, range)
+            super.traverseTypeTree(typetree)
+              }
               case _ =>
                 super.traverseTypeTree(tree)
-            }
-          }
-          case _ =>
-            super.traverseTypeTree(tree)
         }
+
       }
 
       /*override def traversePattern(tree: Pattern)(implicit ctx: Context): Unit = {
