@@ -223,7 +223,7 @@ object DottyPlugin extends AutoPlugin {
     sources := {
       val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
       val prev = sources.value
-      val tastyFiles = (classDirectory.value ** "*tasty").get.map(_.getAbsoluteFile)
+      val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
       prev ++ tastyFiles
     },
     scalacOptions += "-from-tasty"

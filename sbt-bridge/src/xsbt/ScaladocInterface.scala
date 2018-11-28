@@ -6,6 +6,7 @@ package xsbt
 import xsbti.{ Logger, Severity }
 import java.net.URL
 import java.util.Optional
+import java.nio.file.{Files, Paths}
 
 import dotty.tools.dotc.core.Contexts.{ Context, ContextBase }
 import dotty.tools.dotc.reporting.Reporter
@@ -16,9 +17,21 @@ class ScaladocInterface {
   }
 }
 
-class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter) {
+class DottydocRunner(args0: Array[String], log: Logger, delegate: xsbti.Reporter) {
   def run(): Unit = {
-    log.debug(() => args.mkString("Calling Dottydoc with arguments  (ScaladocInterface):\n\t", "\n\t", ""))
+    log.debug(() => args0.mkString("Calling Dottydoc with arguments  (ScaladocInterface):\n\t", "\n\t", ""))
+
+    val args = {
+      // When running with `-from-tasty`, remove the source files from arg list.
+      if (args0.contains("-from-tasty")) {
+        val (excluded, retained) =
+          args0.partition { arg =>
+            (arg.endsWith(".scala") || arg.endsWith(".java")) && Files.exists(Paths.get(arg))
+          }
+        log.debug(() => excluded.mkString("Running `-from-tasty`, excluding source files:\n\t", "\n\t", ""))
+        retained
+      } else args0
+    }
 
     val ctx = (new ContextBase).initialCtx.fresh
       .setReporter(new DelegatingReporter(delegate))
