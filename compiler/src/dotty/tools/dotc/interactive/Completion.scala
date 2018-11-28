@@ -227,9 +227,10 @@ object Completion {
      *   1. start with given name prefix, and
      *   2. do not contain '$' except in prefix where it is explicitly written by user, and
      *   3. are not a primary constructor,
-     *   4. are the module class in case of packages,
-     *   5. are mutable accessors, to exclude setters for `var`,
-     *   6. have same term/type kind as name prefix given so far
+     *   4. have an existing source symbol,
+     *   5. are the module class in case of packages,
+     *   6. are mutable accessors, to exclude setters for `var`,
+     *   7. have same term/type kind as name prefix given so far
      *
      *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
      *  as completion results. However, if a user explicitly writes all '$' characters in an
@@ -239,6 +240,7 @@ object Completion {
       nameInScope.startsWith(prefix) &&
       !nameInScope.toString.drop(prefix.length).contains('$') &&
       !sym.isPrimaryConstructor &&
+      sym.sourceSymbol.exists &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
       !sym.is(allOf(Mutable, Accessor)) &&
       (
