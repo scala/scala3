@@ -9,7 +9,9 @@ import dotty.tools.dottydoc.model.references._
 import org.junit.Test
 import org.junit.Assert.{assertTrue, fail}
 
-class TypeRenderingTest extends DottyDocTest {
+class TypeRenderingTestFromTasty extends TypeRenderingTest with CheckFromTasty
+class TypeRenderingTestFromSource extends TypeRenderingTest with CheckFromSource
+abstract class TypeRenderingTest extends DottyDocTest {
   @Test def renderImplicitFunctionType = {
     val source = new SourceFile(
       "ImplicitFunctionType.scala",
@@ -31,7 +33,7 @@ class TypeRenderingTest extends DottyDocTest {
         fail("Unexpected: " + ref)
     }
 
-    checkSources(source :: Nil) { packages =>
+    checkFromSource(source :: Nil) { case (_, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(a: Def, b: Def, c: TypeAlias) = trt.members.sortBy(_.name)
