@@ -32,9 +32,6 @@ class SetRootTree extends Phase {
                 sym.rootTreeOrProvider = td
             }
           }
-          traverseChildren(td)
-        case tpl: tpd.Template =>
-          traverseChildren(tpl)
         case _ =>
           ()
       }
