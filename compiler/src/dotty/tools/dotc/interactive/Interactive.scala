@@ -8,6 +8,7 @@ import scala.collection._
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
+import transform.SymUtils.decorateSymbol
 import util.Positions._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
@@ -33,6 +34,7 @@ object Interactive {
       def isDefinitions: Boolean = (bits & definitions.bits) != 0
       def isLinkedClass: Boolean = (bits & linkedClass.bits) != 0
       def isImports: Boolean = (bits & imports.bits) != 0
+      def isLocal: Boolean = (bits & local.bits) != 0
     }
 
     /** The empty set */
@@ -58,6 +60,9 @@ object Interactive {
 
     /** Include imports in the results */
     val imports: Set = Set(1 << 5)
+
+    /** Include local symbols, inspect local trees */
+    val local: Set = Set(1 << 6)
 
     /** All the flags */
     val all: Set = Set(~0)
@@ -321,12 +326,25 @@ object Interactive {
    *
    *  @param includeReferences  If true, include references and not just definitions
    */
-  def namedTrees(trees: List[SourceTree], include: Include.Set, treePredicate: NameTree => Boolean)
-    (implicit ctx: Context): List[SourceTree] = safely {
+  def namedTrees(trees: List[SourceTree],
+                 include: Include.Set,
+                 treePredicate: NameTree => Boolean = util.common.alwaysTrue
+                )(implicit ctx: Context): List[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
     def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
+        private def handle(utree: untpd.NameTree): Unit = {
+          val tree = utree.asInstanceOf[tpd.NameTree]
+          if (tree.symbol.exists
+               && !tree.symbol.is(Synthetic)
+               && !tree.symbol.isPrimaryConstructor
+               && tree.pos.exists
+               && !tree.pos.isZeroExtent
+               && (include.isReferences || isDefinition(tree))
+               && treePredicate(tree))
+            buf += SourceTree(tree, source)
+        }
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
             case imp: untpd.Import if include.isImports && tree.hasType =>
@@ -334,16 +352,11 @@ object Interactive {
               val selections = tpd.importSelections(tree)
               traverse(imp.expr)
               selections.foreach(traverse)
+            case utree: untpd.ValOrDefDef if tree.hasType =>
+              handle(utree)
+              if (include.isLocal) traverseChildren(tree)
             case utree: untpd.NameTree if tree.hasType =>
-              val tree = utree.asInstanceOf[tpd.NameTree]
-              if (tree.symbol.exists
-                   && !tree.symbol.is(Synthetic)
-                   && !tree.symbol.isPrimaryConstructor
-                   && tree.pos.exists
-                   && !tree.pos.isZeroExtent
-                   && (include.isReferences || isDefinition(tree))
-                   && treePredicate(tree))
-                buf += SourceTree(tree, source)
+              handle(utree)
               traverseChildren(tree)
             case tree: untpd.Inlined =>
               traverse(tree.call)
@@ -474,6 +487,7 @@ object Interactive {
   def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
     enclosingSourceSymbols(path, pos).flatMap { sym =>
       val enclTree = enclosingTree(path)
+      val includeLocal = if (sym.exists && sym.isLocal) Include.local else Include.empty
 
       val (trees, include) =
         if (enclTree.isInstanceOf[MemberDef])
@@ -492,7 +506,7 @@ object Interactive {
             (Nil, Include.empty)
         }
 
-      findTreesMatching(trees, include, sym)
+      findTreesMatching(trees, include | includeLocal, sym)
     }
   }
 

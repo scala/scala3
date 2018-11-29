@@ -22,7 +22,6 @@ import core._, core.Decorators.{sourcePos => _, _}
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
-import transform.SymUtils.decorateSymbol
 import typer.Typer
 import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._
@@ -312,7 +311,7 @@ class DottyLanguageServer extends LanguageServer
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
-      Include.references | Include.overriding | Include.imports |
+      Include.references | Include.overriding | Include.imports | Include.local |
         (if (includeDeclaration) Include.definitions else Include.empty)
     }
 
@@ -457,9 +456,8 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val uriTrees = driver.openedTrees(uri)
-    val predicate = (tree: NameTree) => !tree.symbol.isLocal
 
-    val defs = Interactive.namedTrees(uriTrees, Include.empty, predicate)
+    val defs = Interactive.namedTrees(uriTrees, Include.empty)
     (for {
       d <- defs if !isWorksheetWrapper(d)
       info <- symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source))
@@ -468,16 +466,12 @@ class DottyLanguageServer extends LanguageServer
 
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
     val query = params.getQuery
-    def predicate(implicit ctx: Context): NameTree => Boolean = { tree =>
-      val sym = tree.symbol
-      !sym.isLocal && tree.name.toString.contains(query)
-    }
 
     drivers.values.toList.flatMap { driver =>
       implicit val ctx = driver.currentCtx
 
       val trees = driver.sourceTreesContaining(query)
-      val defs = Interactive.namedTrees(trees, Include.empty, predicate)
+      val defs = Interactive.namedTrees(trees, Include.empty, _.name.toString.contains(query))
       defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source)))
     }.asJava
   }
@@ -505,7 +499,7 @@ class DottyLanguageServer extends LanguageServer
           val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
           tree => predicates.exists(_(tree))
         }
-        val matches = Interactive.namedTrees(trees, Include.empty, predicate)(ctx)
+        val matches = Interactive.namedTrees(trees, Include.local, predicate)(ctx)
         matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
       }
     }.toList
