@@ -91,7 +91,7 @@ object Test extends AnyRef with App {
     def get = null
    }
 
-   var sekw : SekwencjaArray =
+   var sekw : SekwencjaArray|Null =
      try {
        null
      } catch {
@@ -99,7 +99,7 @@ object Test extends AnyRef with App {
      }
 
     new AnyRef {
-      def getValueAt(row:Int, col:Int) = sekw.get
+      def getValueAt(row:Int, col:Int) = sekw.nn.get
     }
   }
 
