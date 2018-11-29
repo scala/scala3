@@ -236,6 +236,19 @@ class RenameTest {
 
   }
 
+  @Test def renameImportFromTasty: Unit = {
+    // Note that everything here is in the empty package; this ensures that we will
+    // use the sourcefile loader to load `class Bar`.
+    def testRename(m: CodeMarker) = {
+      withSources(
+        code"""object O { class ${m1}Foo${m2} }""",
+        tasty"""import O.${m3}Foo${m4}
+                class Bar extends ${m5}Foo${m6}"""
+      ).rename(m, "NewName", Set(m1 to m2, m3 to m4, m5 to m6))
+    }
 
+    testRename(m1)
+    testRename(m2)
+  }
 
 }

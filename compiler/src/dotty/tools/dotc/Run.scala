@@ -200,7 +200,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   /** Enter top-level definitions of classes and objects contain in Scala source file `file`.
    *  The newly added symbols replace any previously entered symbols.
-   *  If `typeCheck = true`, also run typer on the compilation unit.
+   *  If `typeCheck = true`, also run typer on the compilation unit, and set
+   *  `rootTreeOrProvider`.
    */
   def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
@@ -211,9 +212,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
           if (unit.isJava) new JavaParser(unit.source).parse()
           else new Parser(unit.source).parse()
         ctx.typer.lateEnter(unit.untpdTree)
-        def typeCheckUnit() = unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
+        def processUnit() = {
+          unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
+          val phase = new transform.SetRootTree()
+          phase.run
+        }
         if (typeCheck)
-          if (compiling) finalizeActions += (() => typeCheckUnit()) else typeCheckUnit()
+          if (compiling) finalizeActions += (() => processUnit()) else processUnit()
       }
       process()(runContext.fresh.setCompilationUnit(unit))
     }
