@@ -122,27 +122,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self
   }
 
-  /** If this symbol is an enum value or a named class, register it as a child
-   *  in all direct parent classes which are sealed.
-   */
-  def registerIfChild()(implicit ctx: Context): Unit = {
-    def register(child: Symbol, parent: Type) = {
-      val cls = parent.classSymbol
-      if (cls.is(Sealed)) {
-        if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !self.hasAnonymousChild)
-          cls.addAnnotation(Annotation.Child(cls))
-        else cls.addAnnotation(Annotation.Child(child))
-      }
-    }
-    if (self.isClass && !self.isEnumAnonymClass)
-      self.asClass.classParents.foreach { parent =>
-        val child = if (self.is(Module)) self.sourceModule else self
-        register(child, parent)
-      }
-    else if (self.is(CaseVal, butNot = Method | Module))
-      register(self, self.info)
-  }
-
   /** Does this symbol refer to anonymous classes synthesized by enum desugaring? */
   def isEnumAnonymClass(implicit ctx: Context): Boolean =
     self.isAnonymousClass && (self.owner.name.eq(nme.DOLLAR_NEW) || self.owner.is(CaseVal))
@@ -155,10 +134,12 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
 
   /** If this is a sealed class, its known children */
-  def children(implicit ctx: Context): List[Symbol] =
+  def children(implicit ctx: Context): List[Symbol] = {
+    if (self.isType) self.setFlag(ChildrenQueried)
     self.annotations.collect {
       case Annotation.Child(child) => child
     }
+  }
 
   def hasAnonymousChild(implicit ctx: Context): Boolean =
     children.exists(_ `eq` self)

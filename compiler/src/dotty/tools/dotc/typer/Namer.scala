@@ -18,6 +18,8 @@ import config.Printers.typr
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
+import transform.TypeUtils._
+import transform.SymUtils._
 import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>
@@ -745,7 +747,10 @@ class Namer { typer: Typer =>
         assert(ctx.mode.is(Mode.Interactive), s"completing $denot in wrong run ${ctx.runId}, was created in ${creationContext.runId}")
         denot.info = UnspecifiedErrorType
       }
-      else completeInCreationContext(denot)
+      else {
+        completeInCreationContext(denot)
+        if (denot.isCompleted) registerIfChild(denot)
+      }
     }
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
@@ -791,6 +796,39 @@ class Namer { typer: Typer =>
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
         denot.info = NoType
       }
+    }
+
+    /** If completed symbol is an enum value or a named class, register it as a child
+     *  in all direct parent classes which are sealed.
+     */
+    def registerIfChild(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      val sym = denot.symbol
+
+      def register(child: Symbol, parent: Type) = {
+        val cls = parent.classSymbol
+        if (cls.is(Sealed)) {
+          if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild) {
+            cls.addAnnotation(Annotation.Child(cls))
+          }
+          else {
+            if (cls.is(ChildrenQueried))
+              ctx.error(em"""children of ${cls} were already queried before $sym was discovered.
+                            |As a remedy, you could move $sym on the same nesting level as $cls.""")
+            else {
+              //println(i"child $child of $cls")
+              cls.addAnnotation(Annotation.Child(child))
+            }
+          }
+        }
+      }
+
+      if (denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass)
+        denot.asClass.classParents.foreach { parent =>
+          val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
+          register(child, parent)
+        }
+      else if (denot.is(CaseVal, butNot = Method | Module))
+        register(denot.symbol, denot.info)
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need
