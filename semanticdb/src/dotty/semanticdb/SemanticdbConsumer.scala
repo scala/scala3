@@ -255,7 +255,7 @@ class SemanticdbConsumer extends TastyConsumer {
             super.traverseTree(body)
           }
 
-          case Term.Select(qualifier, _, _) => {
+          case Term.Select(qualifier, _) => {
             val range = rangeExclude(tree.pos, qualifier.pos)
             addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range)
             super.traverseTree(tree)

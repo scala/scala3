@@ -30,4 +30,4 @@ tree: Term.Ident("x")
 tree deref. vals: Term.Literal(Constant.Int(2))
 
 tree: Term.Ident("x")
-tree deref. vals: Term.Apply(Term.TypeApply(Term.Select(Term.Ident("Tuple2"), "apply", Some(Signature(List(java.lang.Object, java.lang.Object), scala.Tuple2))), List(TypeTree.Inferred(), TypeTree.Inferred())), List(Term.Literal(Constant.Int(1)), Term.Literal(Constant.Int(2))))
+tree deref. vals: Term.Apply(Term.TypeApply(Term.Select(Term.Ident("Tuple2"), "apply"), List(TypeTree.Inferred(), TypeTree.Inferred())), List(Term.Literal(Constant.Int(1)), Term.Literal(Constant.Int(2))))

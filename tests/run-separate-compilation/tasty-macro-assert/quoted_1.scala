@@ -33,7 +33,7 @@ object Asserts {
     }
 
     tree match {
-      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op), right :: Nil)) =>
         op match {
           case "===" => '(assertEquals(~left.seal[Any], ~right.seal[Any]))
           case "!==" => '(assertNotEquals(~left.seal[Any], ~right.seal[Any]))

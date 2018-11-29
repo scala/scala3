@@ -15,7 +15,7 @@ object scalatest {
     def exprStr: String = condition.show
 
     tree.underlyingArgument match {
-      case Term.Apply(Term.Select(lhs, op, _), rhs :: Nil) =>
+      case Term.Apply(Term.Select(lhs, op), rhs :: Nil) =>
         val left = lhs.seal[Any]
         val right = rhs.seal[Any]
         op match {
