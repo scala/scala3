@@ -77,11 +77,10 @@ class CheckRealizable(implicit ctx: Context) {
           else if (!isLateInitialized(sym)) Realizable
           else if (!sym.isEffectivelyFinal) new NotFinal(sym)
           else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
-        val r1 = if (r == Realizable) {
+        r andAlso {
           sym.setFlag(Stable)
           realizability(tp.prefix)
-        } else r
-        r1
+        }
       }
     case _: SingletonType | NoPrefix =>
       Realizable
