@@ -303,7 +303,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id: Trees.SearchFailureIdent[_] =>
         tree.typeOpt match {
           case reason: Implicits.SearchFailureType =>
-            toText(id.name) ~ "implicitly[" ~ toText(reason.expectedType) ~ "]"
+            toText(id.name) ~ "implicitly[" ~ toText(reason.clarify(reason.expectedType)) ~ "]"
           case _ =>
             toText(id.name)
         }

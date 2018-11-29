@@ -30,7 +30,7 @@ class TyperState(previous: TyperState /* | Null */) {
   def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
 
   private[this] var myConstraint: Constraint =
-    if (previous == null) new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
+    if (previous == null) OrderingConstraint.empty
     else previous.constraint
 
   def constraint: Constraint = myConstraint

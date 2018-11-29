@@ -102,6 +102,8 @@ object OrderingConstraint {
       newConstraint(c.boundsMap, c.lowerMap, c.upperMap.updated(poly, entries))
     def initial = Nil
   }
+
+  val empty = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
 }
 
 import OrderingConstraint._
