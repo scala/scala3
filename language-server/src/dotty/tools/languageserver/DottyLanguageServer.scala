@@ -457,10 +457,7 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val uriTrees = driver.openedTrees(uri)
-    val predicate = (tree: NameTree) => {
-      val sym = tree.symbol
-      !sym.isLocal && !sym.isPrimaryConstructor
-    }
+    val predicate = (tree: NameTree) => !tree.symbol.isLocal
 
     val defs = Interactive.namedTrees(uriTrees, Include.empty, predicate)
     (for {
@@ -473,7 +470,7 @@ class DottyLanguageServer extends LanguageServer
     val query = params.getQuery
     def predicate(implicit ctx: Context): NameTree => Boolean = { tree =>
       val sym = tree.symbol
-      !sym.isLocal && !sym.isPrimaryConstructor && tree.name.toString.contains(query)
+      !sym.isLocal && tree.name.toString.contains(query)
     }
 
     drivers.values.toList.flatMap { driver =>

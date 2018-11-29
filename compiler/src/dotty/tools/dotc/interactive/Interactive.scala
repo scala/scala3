@@ -338,6 +338,7 @@ object Interactive {
               val tree = utree.asInstanceOf[tpd.NameTree]
               if (tree.symbol.exists
                    && !tree.symbol.is(Synthetic)
+                   && !tree.symbol.isPrimaryConstructor
                    && tree.pos.exists
                    && !tree.pos.isZeroExtent
                    && (include.isReferences || isDefinition(tree))
@@ -373,8 +374,7 @@ object Interactive {
                        )(implicit ctx: Context): List[SourceTree] = {
     val linkedSym = symbol.linkedClass
     val fullPredicate: NameTree => Boolean = tree =>
-      (  !tree.symbol.isPrimaryConstructor
-      && (includes.isDefinitions || !Interactive.isDefinition(tree))
+      (  (includes.isDefinitions || !Interactive.isDefinition(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
          || ( includes.isLinkedClass
             && linkedSym.exists
