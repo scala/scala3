@@ -1,19 +1,19 @@
 class Foo(val x: String) {
 
   def this() = this({
-    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     bar()
   })
 
   def this(i: Int) = this({
-    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     bar()
   })
 }
 
 class Bar(val x: String) {
   def this() = this({
-    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def bar() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     bar()
   })
 }

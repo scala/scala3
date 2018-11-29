@@ -10,7 +10,7 @@ object Test {
       case e: NotImplementedError => println("???")
     }
 
-    assert(!classOf[Foo].getDeclaredFields.exists(_.getName.startsWith("foo")), "field foo not erased")
+    assert(!classOf[Foo].getDeclaredFields.exists(_.nn.getName.startsWith("foo")), "field foo not erased")
   }
 
 

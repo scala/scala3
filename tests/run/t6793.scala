@@ -5,5 +5,5 @@ object Test extends dotty.runtime.LegacyApp {
   new b.C2("x")
 
   val c2Fields = classOf[b.C2].getDeclaredFields
-  assert(c2Fields.size == 1, c2Fields.map(_.getName).toList)
+  assert(c2Fields.size == 1, c2Fields.map(_.nn.getName).toList)
 }

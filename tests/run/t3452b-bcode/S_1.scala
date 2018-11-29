@@ -1,14 +1,14 @@
 trait Search[M] {
   def search(input: M): C[Int] = {
     println("Search received: " + input)
-    null
+    new C[Int] {} 
   }
 }
 
 class SearchC[M] {
   def searchC(input: M): C[Int] = {
     println("SearchC received: " + input)
-    null
+    new C[Int] {}
   }
 }
 

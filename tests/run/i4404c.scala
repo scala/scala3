@@ -15,9 +15,9 @@ class C {
 object Test {
   def main(args: Array[String]) = {
     List((new T {}).getClass.getInterfaces.head, (new C).getClass)
-      .map(_.getDeclaredMethods)
+      .map(_.nn.getDeclaredMethods)
       .foreach { ms =>
-        println(ms.exists(m => Modifier.isFinal(m.getModifiers)))
+        println(ms.nn.exists(m => Modifier.isFinal(m.nn.getModifiers)))
       }
   }
 }

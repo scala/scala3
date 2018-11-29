@@ -7,6 +7,6 @@ class Bar extends Foo
 
 object Test extends dotty.runtime.LegacyApp {
   classOf[Bar].getDeclaredFields.foreach(f => {
-    assert(java.lang.reflect.Modifier.isVolatile(f.getModifiers), f.getName)
+    assert(java.lang.reflect.Modifier.isVolatile(f.nn.getModifiers), f.nn.getName)
   })
 }

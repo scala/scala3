@@ -3,17 +3,17 @@ object Test {
   class Bippy extends Immutable with Immortal
   class Boppy extends Immutable
 
-  def f[T](x: Traversable[T]) = x match {
+  def f[T](x: Traversable[T]|Null) = x match {
     case _: Map[_, _]   => 3
     case _: Seq[_]      => 2
     case _: Iterable[_] => 1
     case _              => 4
   }
-  def g(x: Bippy) = x match {
+  def g(x: Bippy|Null) = x match {
     case _: Immutable with Immortal => 1
     case _                          => 2
   }
-  def h(x: Immutable) = x match {
+  def h(x: Immutable|Null) = x match {
     case _: Immortal => 1
     case _           => 2
   }

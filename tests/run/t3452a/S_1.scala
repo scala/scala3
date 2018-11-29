@@ -3,7 +3,7 @@ abstract class BulkSearch {
        type Rel <: Relation [R]
        type Corr <: Correspondence[R]
 
-       def searchFor(input: Rel): Mapping[Corr] = { println("BulkSearch.searchFor called.") ; null }
+       def searchFor(input: Rel): Mapping[Corr] = { println("BulkSearch.searchFor called.") ; new Mapping[Corr] }
 }
 
 object BulkSearchInstance extends BulkSearch {

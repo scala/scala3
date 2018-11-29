@@ -71,17 +71,17 @@ trait Exists[T, K, V]
 object Exists {
   implicit def derive[T, H <: HList, K, V](implicit g: LabelledGeneric[T] { type Repr = H }, s: Selector[H, K, V]): Exists[T, K, V] = {
     println("Exists.derive")
-    null
+    new Exists[T, K, V] {}
   }
 
   implicit def caseFound[T <: HList, K <: String, V]: Selector[R[K, V] :: T, K, V] = {
     println("Selector.caseFound")
-    null
+    new Selector[R[K, V] :: T, K, V] {}
   }
 
   implicit def caseRecur[H, T <: HList, K <: String, V](implicit i: Selector[T, K, V]): Selector[H :: T, K, V] = {
     println("Selector.caseRecur")
-    null
+    new Selector[H :: T, K, V] {}
   }
 }
 
@@ -96,7 +96,7 @@ object X4 {
     type Repr = R["a", A] :: R["b", B] :: R["c", C] :: R["d", D] :: HNil
   } = {
     println("X4.x4Repr")
-    null
+    new LabelledGeneric[X4[A, B, C, D]] { type Repr = R["a", A] :: R["b", B] :: R["c", C] :: R["d", D] :: HNil }
   }
 }
 

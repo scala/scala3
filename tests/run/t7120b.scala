@@ -20,11 +20,11 @@ class CHK extends BaseHK[BaseHK.Id, String] {
 object Test extends dotty.runtime.LegacyApp {
   val c = new C
   val d = new c.D()
-  val meth = d.getClass.getMethods.find(_.getName == "foo").get
+  val meth = d.getClass.getMethods.find(_.nn.getName == "foo").get
   println(meth)
 
   val chk = new CHK
   val dhk = new chk.D()
-  val methhk = d.getClass.getMethods.find(_.getName == "foo").get
+  val methhk = d.getClass.getMethods.find(_.nn.getName == "foo").get
   println(methhk)
 }
