@@ -208,8 +208,8 @@ trait TreeOps extends Core {
     /** Scala term selection */
     val Select: SelectExtractor
     abstract class SelectExtractor {
-      /** Matches `<qual: Term>.<name: String>: <sig: Option[Signature]>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String, Option[Signature])]
+      /** Matches `<qual: Term>.<name: String>` */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)]
     }
 
     val IsLiteral: IsLiteralModule
