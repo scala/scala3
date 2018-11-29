@@ -459,7 +459,7 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
     val predicate = (tree: NameTree) => {
       val sym = tree.symbol
-      sym.exists && !sym.isLocal && !sym.isPrimaryConstructor && !sym.is(Synthetic)
+      !sym.isLocal && !sym.isPrimaryConstructor
     }
 
     val defs = Interactive.namedTrees(uriTrees, Include.empty, predicate)
@@ -471,8 +471,10 @@ class DottyLanguageServer extends LanguageServer
 
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
     val query = params.getQuery
-    def predicate(implicit ctx: Context): NameTree => Boolean =
-      tree => tree.symbol.exists && !tree.symbol.isLocal && tree.name.toString.contains(query)
+    def predicate(implicit ctx: Context): NameTree => Boolean = { tree =>
+      val sym = tree.symbol
+      !sym.isLocal && !sym.isPrimaryConstructor && tree.name.toString.contains(query)
+    }
 
     drivers.values.toList.flatMap { driver =>
       implicit val ctx = driver.currentCtx
