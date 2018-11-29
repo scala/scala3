@@ -19,7 +19,7 @@ echo "testing sbt dotc -decompile"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
 echo "testing sbt dotc -decompile from file"
-"$SBT" ";dotc -decompile -color:never -classpath $OUT $OUT/$TASTY" #> "$tmp"
+"$SBT" ";dotc -decompile -color:never -classpath $OUT $OUT/$TASTY" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
 echo "testing sbt dotr with no -classpath"
