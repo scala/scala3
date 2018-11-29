@@ -807,18 +807,13 @@ class Namer { typer: Typer =>
       def register(child: Symbol, parent: Type) = {
         val cls = parent.classSymbol
         if (cls.is(Sealed)) {
-          if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild) {
+          if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             cls.addAnnotation(Annotation.Child(cls))
-          }
-          else {
-            if (cls.is(ChildrenQueried))
-              ctx.error(em"""children of ${cls} were already queried before $sym was discovered.
-                            |As a remedy, you could move $sym on the same nesting level as $cls.""")
-            else {
-              //println(i"child $child of $cls")
-              cls.addAnnotation(Annotation.Child(child))
-            }
-          }
+          else if (!cls.is(ChildrenQueried))
+            cls.addAnnotation(Annotation.Child(child))
+          else
+            ctx.error(em"""children of ${cls} were already queried before $sym was discovered.
+                          |As a remedy, you could move $sym on the same nesting level as $cls.""")
         }
       }
 

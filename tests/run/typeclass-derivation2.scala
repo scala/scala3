@@ -166,6 +166,38 @@ object Pair extends Deriving {
   // two clauses that could be generated from a `derives` clause
   implicit def PairEq[T: Eq]: Eq[Pair[T]] = Eq.derived
   implicit def PairPickler[T: Pickler]: Pickler[Pair[T]] = Pickler.derived
+  implicit def PairShow[T: Show]: Show[Pair[T]] = Show.derived
+}
+
+sealed trait Either[+L, +R] extends Product derives Eq, Pickler
+case class Left[L](x: L) extends Either[L, Nothing]
+case class Right[R](x: R) extends Either[Nothing, R]
+
+object Either extends Deriving {
+  import Deriving._
+
+  type Shape[L, R] = Shape.Cases[(
+    Shape.Case[Left[L], L *: Unit],
+    Shape.Case[Right[R], R *: Unit]
+  )]
+
+  implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
+    def reflect(e: Either[L, R]): Mirror = e match {
+      case e: Left[L] => mirror(0, e)
+      case e: Right[R] => mirror(1, e)
+    }
+    def reify(c: Mirror): Either[L, R] = c.ordinal match {
+      case 0 => Left[L](c(0).asInstanceOf)
+      case 1 => Right[R](c(0).asInstanceOf)
+    }
+    def deriving = Either
+  }
+
+  protected val caseLabels = Array("Left\000x", "Right\000x")
+
+  implicit def EitherEq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
+  implicit def EitherPickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
+  implicit def EitherShow[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
 }
 
 // A typeclass
@@ -174,7 +206,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  import scala.typelevel._
+  import _root_.scala.typelevel._
   import Deriving._
 
   inline def tryEql[T](x: T, y: T) = implicit match {
@@ -423,4 +455,25 @@ object Test extends App {
     println(implicitly[Show[T]].show(x))
   showPrintln(xs)
   showPrintln(xss)
+
+  val zs = Lst.Cons(Left(1), Lst.Cons(Right(Pair(2, 3)), Lst.Nil))
+  showPrintln(zs)
+
+  def pickle[T: Pickler](buf: mutable.ListBuffer[Int], x: T): Unit =
+    implicitly[Pickler[T]].pickle(buf, x)
+
+  def unpickle[T: Pickler](buf: mutable.ListBuffer[Int]): T =
+    implicitly[Pickler[T]].unpickle(buf)
+
+  def copy[T: Pickler](x: T): T = {
+    val buf = new mutable.ListBuffer[Int]
+    pickle(buf, x)
+    unpickle[T](buf)
+  }
+
+  def eql[T: Eq](x: T, y: T) = implicitly[Eq[T]].eql(x, y)
+
+  val zs1 = copy(zs)
+  showPrintln(zs1)
+  assert(eql(zs, zs1))
 }
