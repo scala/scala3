@@ -417,6 +417,9 @@ object Flags {
   final val Scala2ExistentialCommon: FlagSet = commonFlag(55, "<existential>")
   final val Scala2Existential: FlagSet = Scala2ExistentialCommon.toTypeFlags
 
+  /** Children were queried on this class */
+  final val ChildrenQueried = typeFlag(56, "<children-queried>")
+
   /** A module variable (Scala 2.x only) */
   final val Scala2ModuleVar: FlagSet = termFlag(57, "<modulevar>")
 
@@ -476,7 +479,7 @@ object Flags {
 
   /** Flags that are not (re)set when completing the denotation */
   final val FromStartFlags: FlagSet =
-    Module | Package | Deferred | Method.toCommonFlags |
+    Module | Package | Deferred | Method.toCommonFlags | Case |
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
