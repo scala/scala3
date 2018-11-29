@@ -74,7 +74,7 @@ class CheckRealizable(implicit ctx: Context) {
       else {
         val r =
           if (!sym.isStable) NotStable
-          else if (!isLateInitialized(sym)) realizability(tp.prefix)
+          else if (!isLateInitialized(sym)) Realizable
           else if (!sym.isEffectivelyFinal) new NotFinal(sym)
           else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
         val r1 = if (r == Realizable) {
