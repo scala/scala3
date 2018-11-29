@@ -162,7 +162,7 @@ object Pair extends Deriving {
   protected val caseLabels = Array("Pair\000x\000y")
 }
 
-sealed trait Either[+L, +R] extends Product derives Eq, Pickler
+sealed trait Either[+L, +R] extends Product
 case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 
@@ -254,7 +254,7 @@ object Test extends App {
   showPrintln(zs)  // error
 /* This should print as follows:
 -- Error: typeclass-derivation2.scala:254:17 -----------------------------------
-254 |  showPrintln(zs)  // error
+254 |  showPrintln(zs)
     |                 ^
     |no implicit argument of type Show[Lst[Either[Int, Pair[Int]]]] was found for parameter evidence$5 of method showPrintln in object Test.
     |I found:

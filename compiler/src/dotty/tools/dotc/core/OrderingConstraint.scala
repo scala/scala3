@@ -10,6 +10,7 @@ import printing.Texts._
 import config.Config
 import reflect.ClassTag
 import annotation.tailrec
+import annotation.internal.sharable
 
 object OrderingConstraint {
 
@@ -103,6 +104,7 @@ object OrderingConstraint {
     def initial = Nil
   }
 
+  @sharable
   val empty = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
 }
 
