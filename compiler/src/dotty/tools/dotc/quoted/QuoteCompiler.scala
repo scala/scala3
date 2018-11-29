@@ -17,7 +17,7 @@ import dotty.tools.dotc.transform.Staging
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.io.{Path, PlainFile}
+import dotty.tools.io.{Path, VirtualFile}
 
 import scala.quoted.{Expr, Type}
 
@@ -67,7 +67,7 @@ class QuoteCompiler extends Compiler {
       */
     private def inClass(expr: Expr[_])(implicit ctx: Context): Tree = {
       val pos = Position(0)
-      val assocFile = new PlainFile(Path("<quote>"))
+      val assocFile = new VirtualFile("<quote>")
 
       val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
         defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass

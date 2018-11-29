@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import java.lang.System.{lineSeparator => EOL}
+
 import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
@@ -15,6 +17,7 @@ import scala.annotation.switch
 import scala.collection.mutable
 
 trait MessageRendering {
+
   /** Remove ANSI coloring from `str`, useful for getting real length of
     * strings
     *
@@ -101,7 +104,7 @@ trait MessageRendering {
 
     msg.linesIterator
       .map { line => " " * (offset - 1) + "|" + padding + line}
-      .mkString(sys.props("line.separator"))
+      .mkString(EOL)
   }
 
   /** The separator between errors containing the source file and error type
@@ -132,8 +135,8 @@ trait MessageRendering {
            |${Blue("Explanation")}
            |${Blue("===========")}"""
     )
-    sb.append('\n').append(m.explanation)
-    if (m.explanation.lastOption != Some('\n')) sb.append('\n')
+    sb.append(EOL).append(m.explanation)
+    if (m.explanation.lastOption != Some(EOL)) sb.append(EOL)
     sb.toString
   }
 
@@ -141,12 +144,12 @@ trait MessageRendering {
   def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
     val sb = mutable.StringBuilder.newBuilder
     val posString = posStr(pos, diagnosticLevel, msg)
-    if (posString.nonEmpty) sb.append(posString).append('\n')
+    if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
       val (srcBefore, srcAfter, offset) = sourceLines(pos)
       val marker = columnMarker(pos, offset)
       val err = errorMsg(pos, msg.msg, offset)
-      sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString("\n"))
+      sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
     } else sb.append(msg.msg)
     sb.toString
   }

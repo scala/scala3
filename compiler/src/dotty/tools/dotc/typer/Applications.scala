@@ -61,7 +61,7 @@ object Applications {
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     def tupleSelectors(n: Int, tp: Type): List[Type] = {
       val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
-      // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail 
+      // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail
       // such as `Int *: T` where `T <: Tuple`.
       if (sel.exists) sel :: tupleSelectors(n + 1, tp) else Nil
     }
@@ -769,7 +769,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
-            convertNewGenericArray(ConstFold(app.result))
+            convertNewGenericArray(app.result)
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
@@ -981,9 +981,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       if (qual1.isEmpty) notAnExtractor(sel)
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
-
-    if (unapplyFn.symbol.isInlineMethod)
-      checkInInlineContext("implementation restriction: call to inline unapply", tree.pos)
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {

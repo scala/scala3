@@ -9,6 +9,8 @@ sidebar:
           url: docs/usage/sbt-projects.html
         - title: IDE support for Dotty
           url: docs/usage/ide-support.html
+        - title: Worksheet mode in Dotty IDE
+          url: docs/usage/worksheet-mode.html
         - title: cbt-projects
           url: docs/usage/cbt-projects.html
         - title: Dottydoc
@@ -49,6 +51,8 @@ sidebar:
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html
+            - title: TASTy Reflect
+              url: docs/reference/tasty-reflect.html
             - title: Opaque Type Aliases
               url: docs/reference/opaques.html
             - title: By-Name Implicits

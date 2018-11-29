@@ -8,6 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
+import util.Property
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -17,6 +18,11 @@ import scala.annotation.internal.sharable
 object desugar {
   import untpd._
   import DesugarEnums._
+
+  /** If a Select node carries this attachment, suppress the check
+   *  that its type refers to an acessible symbol.
+   */
+  val SuppressAccessCheck = new Property.Key[Unit]
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -293,7 +299,7 @@ object desugar {
     val impl @ Template(constr0, parents, self, _) = cdef.rhs
     val mods = cdef.mods
     val companionMods = mods
-        .withFlags((mods.flags & AccessFlags).toCommonFlags)
+        .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
         .withMods(Nil)
 
     var defaultGetters: List[Tree] = Nil
@@ -430,6 +436,8 @@ object desugar {
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
 
+    val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
+
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def _1: T1 = this.p1
     //     ...
@@ -469,7 +477,7 @@ object desugar {
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
-            .withMods(synthetic) :: Nil
+            .withFlags(Synthetic | constr1.mods.flags & copiedAccessFlags) :: Nil
         }
       }
 
@@ -574,7 +582,7 @@ object desugar {
           if (mods is Abstract) Nil
           else
             DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
-              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
+              .withFlags(Synthetic | constr1.mods.flags & (DefaultParameterized | copiedAccessFlags)) :: widenDefs
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
@@ -658,8 +666,6 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
-  val AccessOrSynthetic: FlagSet = AccessFlags | Synthetic
-
   /** Expand
    *
    *    object name extends parents { self => body }
@@ -727,9 +733,11 @@ object desugar {
           fwd
       }
       val moduleName = tdef.name.toTermName
-      val aliasType = cpy.TypeDef(tdef)(
-        rhs = completeForwarder(Select(Ident(moduleName), tdef.name)))
-      val localType = tdef.withFlags(Synthetic | Opaque)
+      val localRef = Select(Ident(moduleName), tdef.name)
+      localRef.pushAttachment(SuppressAccessCheck, ())
+      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef))
+      val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
+
       val companions = moduleDef(ModuleDef(
         moduleName, Template(emptyConstructor, Nil, EmptyValDef, localType :: Nil))
           .withFlags(Synthetic | Opaque))

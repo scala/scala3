@@ -88,8 +88,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length expr_Term call_Term? ValOrDefDef*
                   LAMBDA         Length meth_Term target_Type?
-                  IF             Length cond_Term then_Term else_Term
-                  MATCH          Length sel_Term CaseDef*
+                  IF             Length [INLINE] cond_Term then_Term else_Term
+                  MATCH          Length (IMPLICIT | [INLINE] sel_Term) CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
                   WHILE          Length cond_Term body_Term
@@ -526,6 +526,7 @@ object TastyFormat {
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
+    case ENUM => "ENUM"
     case LOCAL => "LOCAL"
     case SYNTHETIC => "SYNTHETIC"
     case ARTIFACT => "ARTIFACT"
@@ -649,7 +650,8 @@ object TastyFormat {
     case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
-    case POLYtype | METHODtype | TYPELAMBDAtype => -1
+    case POLYtype | METHODtype | IMPLICITMETHODtype | ERASEDMETHODtype | ERASEDIMPLICITMETHODtype |
+         TYPELAMBDAtype => -1
     case _ => 0
   }
 }

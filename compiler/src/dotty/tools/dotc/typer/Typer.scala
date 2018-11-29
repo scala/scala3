@@ -564,7 +564,8 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper) constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -705,6 +706,7 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
+    if (tree.isInline) checkInInlineContext("inline if", tree.pos)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
@@ -728,13 +730,12 @@ class Typer extends Namer
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
     }
-    pt.stripTypeVar match {
-      case _ if defn.isNonDepFunctionType(pt) =>
+    pt.stripTypeVar.dealias.followSyntheticOpaque match {
+      case pt1 if defn.isNonDepFunctionType(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
-        val funType = pt.dealias
-        (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
+        (pt1.argTypesLo.init, typeTree(pt1.argTypesHi.last))
       case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
          if (sam.isResultDependent)
@@ -967,19 +968,32 @@ class Typer extends Namer
   def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context): Tree = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
-        val (protoFormals, _) = decomposeProtoFunction(pt, 1)
-        val unchecked = pt.isRef(defn.PartialFunctionClass)
-        typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+        if (tree.isInline) {
+          checkInInlineContext("implicit match", tree.pos)
+          val cases1 = tree.cases.mapconserve {
+            case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
+              // case _ : T  -->  case evidence$n : T
+              cpy.CaseDef(cdef)(pat = untpd.Bind(EvidenceParamName.fresh(), pat))
+            case cdef => cdef
+          }
+          typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
+        }
+        else {
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1)
+          val unchecked = pt.isRef(defn.PartialFunctionClass)
+          typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+        }
       case _ =>
+        if (tree.isInline) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-        typedMatchFinish(tree, sel1, selType, pt)
+        typedMatchFinish(tree, sel1, selType, tree.cases, pt)
     }
   }
 
   // Overridden in InlineTyper for inline matches
-  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(tree.cases, selType, pt.notApplied))
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, wideSelType, pt.notApplied))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
@@ -1275,7 +1289,6 @@ class Typer extends Namer
               case _ =>
             }
           if (desugaredArg.isType) {
-            var res = typed(desugaredArg, argPt)
             arg match {
               case TypeBoundsTree(EmptyTree, EmptyTree)
               if tparam.paramInfo.isLambdaSub &&
@@ -1287,10 +1300,10 @@ class Typer extends Namer
                 // type parameter in `C`.
                 // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                res = res.withType(tparamBounds)
+                TypeTree(tparamBounds).withPos(arg.pos)
               case _ =>
+                typed(desugaredArg, argPt)
             }
-            res
           }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
@@ -1378,6 +1391,7 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
+          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -2462,8 +2476,8 @@ class Typer extends Namer
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&
                !ctx.isAfterTyper &&
-               !ctx.reporter.hasErrors &&
-               tree.tpe <:< pt) {
+               !ctx.reporter.hasErrors) {
+        tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.tpe <:< pt) {

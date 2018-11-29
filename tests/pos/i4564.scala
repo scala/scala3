@@ -51,7 +51,7 @@ class BaseNCP[T] {
 }
 
 object NoClashPoly extends BaseNCP[Boolean]
-case class NoClashPoly private(x: Int)
+case class NoClashPoly (x: Int)
 
 
 class BaseCP[T] {

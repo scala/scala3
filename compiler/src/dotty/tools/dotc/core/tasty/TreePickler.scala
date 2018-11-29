@@ -17,6 +17,8 @@ import printing.Texts._
 
 object TreePickler {
 
+  val sectionName = "ASTs"
+
   case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
@@ -25,7 +27,7 @@ object TreePickler {
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
-  pickler.newSection("ASTs", buf)
+  pickler.newSection(TreePickler.sectionName, buf)
   import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
@@ -414,9 +416,14 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(BLOCK)
           stats.foreach(preRegister)
           withLength { pickleTree(expr); stats.foreach(pickleTree) }
-        case If(cond, thenp, elsep) =>
+        case tree @ If(cond, thenp, elsep) =>
           writeByte(IF)
-          withLength { pickleTree(cond); pickleTree(thenp); pickleTree(elsep) }
+          withLength {
+            if (tree.isInline) writeByte(INLINE)
+            pickleTree(cond)
+            pickleTree(thenp)
+            pickleTree(elsep)
+          }
         case Closure(env, meth, tpt) =>
           writeByte(LAMBDA)
           assert(env.isEmpty)
@@ -424,9 +431,16 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(meth)
             if (tpt.tpe.exists) pickleTpt(tpt)
           }
-        case Match(selector, cases) =>
+        case tree @ Match(selector, cases) =>
           writeByte(MATCH)
-          withLength { pickleTree(selector); cases.foreach(pickleTree) }
+          withLength {
+            if (tree.isInline) {
+              if (selector.isEmpty) writeByte(IMPLICIT)
+              else { writeByte(INLINE); pickleTree(selector) }
+            }
+            else pickleTree(selector)
+            tree.cases.foreach(pickleTree)
+          }
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }

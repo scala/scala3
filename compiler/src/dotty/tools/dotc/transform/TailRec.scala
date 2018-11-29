@@ -407,8 +407,11 @@ class TailRec extends MiniPhase {
           assert(false, "We should never have gotten inside a pattern")
           tree
 
-        case _: ValDef | _: DefDef | _: Super | _: This |
-             _: Literal | _: TypeTree | _: TypeDef | EmptyTree =>
+        case tree: ValOrDefDef =>
+          if (isMandatory) noTailTransform(tree.rhs)
+          tree
+
+        case _: Super | _: This | _: Literal | _: TypeTree | _: TypeDef | EmptyTree =>
           tree
 
         case Labeled(bind, expr) =>

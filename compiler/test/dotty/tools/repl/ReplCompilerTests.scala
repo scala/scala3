@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import java.lang.System.{lineSeparator => EOL}
+
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
 
@@ -51,7 +53,7 @@ class ReplCompilerTests extends ReplTest {
       "val res1: Int = 20"
     )
 
-    assertEquals(expected, storedOutput().split("\n").toList)
+    assertEquals(expected, storedOutput().split(EOL).toList)
   }
 
   @Test def testImportMutable =
@@ -122,6 +124,6 @@ class ReplCompilerTests extends ReplTest {
     )
 
     run(source)
-    assertEquals(expected, storedOutput().split("\n").toList)
+    assertEquals(expected, storedOutput().split(EOL).toList)
   }
 }

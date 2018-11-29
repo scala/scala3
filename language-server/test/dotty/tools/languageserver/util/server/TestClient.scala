@@ -23,6 +23,7 @@ class TestClient extends WorksheetClient {
   val diagnostics = new Log[PublishDiagnosticsParams]
   val telemetry = new Log[Any]
   val worksheetOutput = new Log[WorksheetRunOutput]
+  val requests = new Log[(ShowMessageRequestParams, CompletableFuture[MessageActionItem])]
 
   override def logMessage(message: MessageParams) = {
     log += message
@@ -37,8 +38,9 @@ class TestClient extends WorksheetClient {
   }
 
   override def showMessageRequest(requestParams: ShowMessageRequestParams) = {
-    log += requestParams
-    new CompletableFuture[MessageActionItem]
+    val reply = new CompletableFuture[MessageActionItem]
+    requests += ((requestParams, reply))
+    reply
   }
 
   override def publishDiagnostics(diagnosticsParams: PublishDiagnosticsParams) = {

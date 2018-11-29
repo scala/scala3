@@ -291,11 +291,10 @@ object messages {
     val kind: String = "Type Mismatch"
     val msg: String = {
       val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
+      val whereSuffix = if (where.isEmpty) where else s"\n\n$where"
       val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)
       s"""|found:    $fnd
-          |required: $exp
-          |
-          |$where""".stripMargin + whyNoMatch + implicitFailure
+          |required: $exp""".stripMargin + whereSuffix + whyNoMatch + implicitFailure
     }
 
     val explanation: String = ""

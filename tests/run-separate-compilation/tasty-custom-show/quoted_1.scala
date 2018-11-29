@@ -33,7 +33,7 @@ object Macros {
       }
     }
 
-    val tree = x.reflect
+    val tree = x.unseal
     output.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }

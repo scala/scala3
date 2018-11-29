@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.PrintStream
+import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
-import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
@@ -170,7 +170,7 @@ class ReplDriver(settings: Array[String],
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Position(cursor))
-        val (_, completions) = Interactive.completions(srcPos)
+        val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
       }
       .getOrElse(Nil)
@@ -324,9 +324,9 @@ class ReplDriver(settings: Array[String],
       state
 
     case Load(path) =>
-      val file = new java.io.File(path)
+      val file = new JFile(path)
       if (file.exists) {
-        val contents = scala.io.Source.fromFile(file).mkString
+        val contents = scala.io.Source.fromFile(file, "UTF-8").mkString
         run(contents)
       }
       else {

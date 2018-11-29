@@ -259,7 +259,8 @@ trait TypeAssigner {
       qualType = errorType(em"$qualType takes type parameters", qual1.pos)
     else if (!qualType.isInstanceOf[TermType]) qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.pos)
     val ownType = selectionType(qualType, tree.name, tree.pos)
-    ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
+    if (tree.getAttachment(desugar.SuppressAccessCheck).isDefined) ownType
+    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
   }
 
   /** Type assignment method. Each method takes as parameters
@@ -290,7 +291,7 @@ trait TypeAssigner {
 
       case _ => accessibleSelectionType(tree, qual)
     }
-    tree.withType(tp)
+    ConstFold(tree.withType(tp))
   }
 
   def assignType(tree: untpd.New, tpt: Tree)(implicit ctx: Context): New =
@@ -371,7 +372,7 @@ trait TypeAssigner {
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }
-    tree.withType(ownType)
+    ConstFold(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {

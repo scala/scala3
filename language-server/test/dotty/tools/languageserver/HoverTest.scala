@@ -153,11 +153,6 @@ class HoverTest {
                        |   myFoo.bar[Int, String](0, "hello, world")
                        |   ```
                        |
-                       |**Usecases**
-                       | - ```scala
-                       |   def bar(fizz: Int, buzz: String): Any
-                       |   ```
-                       |
                        |**Note**
                        | - A note
                        |
@@ -169,6 +164,14 @@ class HoverTest {
                        |
                        |**Version**
                        | - 1.0""".stripMargin))
+  }
 
+  @Test def i5482: Unit = {
+    code"""object Test {
+          |  def bar: Int = 2 / 1
+          |  /** hello */
+          |  def ${m1}baz${m2}: Int = ???
+          |}""".withSource
+      .hover(m1 to m2, hoverContent("Int", "hello"))
   }
 }

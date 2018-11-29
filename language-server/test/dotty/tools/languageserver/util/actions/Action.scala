@@ -25,4 +25,12 @@ trait Action {
   /** The client that executes this action. */
   def client: Exec[TestClient] = implicitly[TestClient]
 
+  /** An ordering for `Location` that compares string representations. */
+  implicit def locationOrdering: Ordering[org.eclipse.lsp4j.Location] =
+    Ordering.by(_.toString)
+
+  /** An ordering for `Range` that compares string representations. */
+  implicit def rangeOrdering: Ordering[org.eclipse.lsp4j.Range] =
+    Ordering.by(_.toString)
+
 }

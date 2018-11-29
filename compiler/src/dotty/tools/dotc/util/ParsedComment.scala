@@ -117,7 +117,6 @@ object ParsedComment {
     "@throws"  -> TagFormatter("Throws", toDescriptionList),
     "@see"     -> TagFormatter("See Also", toMarkdownList),
     "@example" -> TagFormatter("Examples", toCodeFences("scala")),
-    "@usecase" -> TagFormatter("Usecases", toCodeFences("scala")),
     "@note"    -> TagFormatter("Note", toMarkdownList),
     "@author"  -> TagFormatter("Authors", toMarkdownList),
     "@since"   -> TagFormatter("Since", toMarkdownList),
@@ -148,7 +147,7 @@ object ParsedComment {
    * @return The list of items, in markdown.
    */
   private def toMarkdownList(ctx: Context, items: List[String]): String = {
-    val formattedItems = items.map(_.lines.mkString(System.lineSeparator + "   "))
+    val formattedItems = items.map(_.linesIterator.mkString(System.lineSeparator + "   "))
     formattedItems.mkString(" - ", System.lineSeparator + " - ", "")
   }
 

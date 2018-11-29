@@ -28,8 +28,8 @@ class StoreReporter(outer: Reporter) extends Reporter {
     infos += m
   }
 
-  override def hasPendingErrors: Boolean =
-    infos != null && infos.exists(_.isInstanceOf[Error])
+  override def hasUnreportedErrors: Boolean =
+    outer != null && infos != null && infos.exists(_.isInstanceOf[Error])
 
   override def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] =
     if (infos != null) try infos.toList finally infos = null

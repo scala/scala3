@@ -5,9 +5,14 @@ import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 
+import dotty.tools.dotc.reporting.diagnostic.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
-import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
+import org.eclipse.lsp4j.{ CompletionItem, CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
+
+import org.junit.Assert.assertEquals
+
+import org.junit.Assert.assertEquals
 
 /**
  * Simulates an LSP client for test in a project defined by `sources`.
@@ -29,6 +34,31 @@ class CodeTester(projects: List[Project]) {
     }
 
   private val positions: PositionContext = getPositions(files)
+
+  /** Check that the last diagnostics that have been published so far by the server
+   *  for a given file match `expected`.
+   *
+   * @param marker   The marker defining the source file from which to query.
+   * @param expected The expected diagnostics to be found
+   */
+  def diagnostics(marker: CodeMarker,
+      expected: (CodeRange, String, DiagnosticSeverity, Option[ErrorMessageID])*): this.type = {
+    implicit val posCtx = positions
+
+    def toDiagnostic(range: CodeRange, message: String, severity: DiagnosticSeverity,
+        errorCode: Option[ErrorMessageID]): Diagnostic = {
+      new Diagnostic(range.toRange, message, severity, /*source =*/"",
+        errorCode.map(_.errorNumber.toString).orNull)
+    }
+
+    val expectedParams = marker.toPublishDiagnosticsParams(expected.toList.map(toDiagnostic))
+    // Find the latest published diagnostics for the current source file
+    val actualParams = testServer.client.diagnostics.get.reverse.find(_.getUri == marker.uri)
+      .getOrElse(throw new Exception(s"No published diagnostics for ${marker.uri}"))
+    assertEquals(expectedParams, actualParams)
+
+    this
+  }
 
   /**
    * Perform a hover over `range`, verifies that result matches `expected`.
@@ -86,20 +116,38 @@ class CodeTester(projects: List[Project]) {
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
   def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): this.type =
-    doAction(new CodeCompletion(marker, expected))
+    completion(marker, results => assertEquals(expected, CodeCompletion.simplifyResults(results)))
+
+  /**
+   * Requests completion at the position defined by `marker`, and pass the results to
+   * `checkResults`.
+   *
+   * @param marker       The position from which to ask for completions.
+   * @param checkResults A function that verifies that the results of completion are correct.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def completion(marker: CodeMarker, checkResults: Set[CompletionItem] => Unit): this.type =
+    doAction(new CodeCompletion(marker, checkResults))
 
   /**
    * Performs a workspace-wide renaming of the symbol under `marker`, verifies that the positions to
    * update match `expected`.
    *
-   * @param marker   The position from which to ask for renaming.
-   * @param newName  The new name to give to the symbol.
-   * @param expected The expected positions to change.
+   * @param marker         The position from which to ask for renaming.
+   * @param newName        The new name to give to the symbol.
+   * @param expected       The expected positions to change.
+   * @param withOverridden If `None`, do not expect the server to ask whether to include overridden
+   *                       symbol. Otherwise, wait for this question from the server and include
+   *                       overridden symbols if this is true.
    *
    * @see dotty.tools.languageserver.util.actions.CodeRename
    */
-  def rename(marker: CodeMarker, newName: String, expected: Set[CodeRange]): this.type =
-    doAction(new CodeRename(marker, newName, expected)) // TODO apply changes to the sources and positions
+  def rename(marker: CodeMarker,
+             newName: String,
+             expected: Set[CodeRange],
+             withOverridden: Option[Boolean] = None): this.type =
+    doAction(new CodeRename(marker, newName, expected, withOverridden)) // TODO apply changes to the sources and positions
 
   /**
    * Queries for all the symbols referenced in the source file in `marker`, verifies that they match

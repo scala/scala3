@@ -9,12 +9,12 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames._
-
+import dotty.tools.dotc.core.Annotations.Annotation
 
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
-  override protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] =
-    super.filterModTextAnnots(annots).filter(_.tpe != defn.SourceFileAnnotType)
+  override protected def dropAnnotForModText(sym: Symbol): Boolean =
+    super.dropAnnotForModText(sym) || sym == defn.SourceFileAnnot
 
   override protected def blockToText[T >: Untyped](block: Block[T]): Text =
     block match {

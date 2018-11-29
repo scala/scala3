@@ -1,12 +1,10 @@
 package dotty.runtime
 
-import scala.forceInline
-
 /**
  * Helper methods used in thread-safe lazy vals.
  */
 object LazyVals {
-  private val unsafe: sun.misc.Unsafe =
+  private[this] val unsafe: sun.misc.Unsafe =
       classOf[sun.misc.Unsafe].getDeclaredFields.find { field =>
         field.getType == classOf[sun.misc.Unsafe] && {
           field.setAccessible(true)
@@ -20,30 +18,51 @@ object LazyVals {
         }
       }
 
-  final val BITS_PER_LAZY_VAL = 2L
-  final val LAZY_VAL_MASK = 3L
-  final val debug = false
+  private[this] val base: Int = {
+    val processors = java.lang.Runtime.getRuntime.availableProcessors()
+    8 * processors * processors
+  }
+  private[this] val monitors: Array[Object] =
+    Array.tabulate(base)(_ => new Object)
 
-  @forceInline def STATE(cur: Long, ord: Int) = {
+  private def getMonitor(obj: Object, fieldId: Int = 0) = {
+    var id = (
+      /*java.lang.System.identityHashCode(obj) + */ // should be here, but #548
+      fieldId) % base
+
+    if (id < 0) id += base
+    monitors(id)
+  }
+
+  private final val LAZY_VAL_MASK = 3L
+  private final val debug = false
+
+  /* ------------- Start of public API ------------- */
+
+  final val BITS_PER_LAZY_VAL = 2L
+
+  def STATE(cur: Long, ord: Int): Long = {
     val r = (cur >> (ord * BITS_PER_LAZY_VAL)) & LAZY_VAL_MASK
     if (debug)
       println(s"STATE($cur, $ord) = $r")
     r
   }
-  @forceInline def CAS(t: Object, offset: Long, e: Long, v: Int, ord: Int) = {
+
+  def CAS(t: Object, offset: Long, e: Long, v: Int, ord: Int): Boolean = {
     if (debug)
       println(s"CAS($t, $offset, $e, $v, $ord)")
     val mask = ~(LAZY_VAL_MASK << ord * BITS_PER_LAZY_VAL)
     val n = (e & mask) | (v.toLong << (ord * BITS_PER_LAZY_VAL))
-    compareAndSet(t, offset, e, n)
+    unsafe.compareAndSwapLong(t, offset, e, n)
   }
-  @forceInline def setFlag(t: Object, offset: Long, v: Int, ord: Int) = {
+
+  def setFlag(t: Object, offset: Long, v: Int, ord: Int): Unit = {
     if (debug)
       println(s"setFlag($t, $offset, $v, $ord)")
     var retry = true
     while (retry) {
       val cur = get(t, offset)
-      if (STATE(cur, ord) == 1) retry = CAS(t, offset, cur, v, ord)
+      if (STATE(cur, ord) == 1) retry = !CAS(t, offset, cur, v, ord)
       else {
         // cur == 2, somebody is waiting on monitor
         if (CAS(t, offset, cur, v, ord)) {
@@ -56,7 +75,8 @@ object LazyVals {
       }
     }
   }
-  @forceInline def wait4Notification(t: Object, offset: Long, cur: Long, ord: Int) = {
+
+  def wait4Notification(t: Object, offset: Long, cur: Long, ord: Int): Unit = {
     if (debug)
       println(s"wait4Notification($t, $offset, $cur, $ord)")
     var retry = true
@@ -67,36 +87,21 @@ object LazyVals {
       else if (state == 2) {
         val monitor = getMonitor(t, ord)
         monitor.synchronized {
-          monitor.wait()
+          if (STATE(get(t, offset), ord) == 2) // make sure notification did not happen yet.
+            monitor.wait()
         }
       }
       else retry = false
     }
   }
 
-  @forceInline def compareAndSet(t: Object, off: Long, e: Long, v: Long) = unsafe.compareAndSwapLong(t, off, e, v)
-  @forceInline def get(t: Object, off: Long) = {
+  def get(t: Object, off: Long): Long = {
     if (debug)
       println(s"get($t, $off)")
     unsafe.getLongVolatile(t, off)
   }
 
-  val processors: Int = java.lang.Runtime.getRuntime.availableProcessors()
-  val base: Int = 8 * processors * processors
-  val monitors: Array[Object] = (0 to base).map {
-    x => new Object()
-  }.toArray
-
-  @forceInline def getMonitor(obj: Object, fieldId: Int = 0) = {
-    var id = (
-      /*java.lang.System.identityHashCode(obj) + */ // should be here, but #548
-      fieldId) % base
-
-    if (id < 0) id += base
-    monitors(id)
-  }
-
-  @forceInline def getOffset(clz: Class[_], name: String) = {
+  def getOffset(clz: Class[_], name: String): Long = {
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
     if (debug)
       println(s"getOffset($clz, $name) = $r")
@@ -108,7 +113,6 @@ object LazyVals {
     final val cas = "CAS"
     final val setFlag = "setFlag"
     final val wait4Notification = "wait4Notification"
-    final val compareAndSet = "compareAndSet"
     final val get = "get"
     final val getOffset = "getOffset"
   }

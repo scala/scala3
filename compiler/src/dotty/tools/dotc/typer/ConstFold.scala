@@ -17,10 +17,10 @@ object ConstFold {
   import tpd._
 
   /** If tree is a constant operation, replace with result. */
-  def apply(tree: Tree)(implicit ctx: Context): Tree = finish(tree) {
+  def apply[T <: Tree](tree: T)(implicit ctx: Context): T = finish(tree) {
     tree match {
       case Apply(Select(xt, op), yt :: Nil) =>
-        xt.tpe.widenTermRefExpr match {
+        xt.tpe.widenTermRefExpr.normalized match {
           case ConstantType(x) =>
             yt.tpe.widenTermRefExpr match {
               case ConstantType(y) => foldBinop(op, x, y)
@@ -40,18 +40,18 @@ object ConstFold {
   /** If tree is a constant value that can be converted to type `pt`, perform
    *  the conversion.
    */
-  def apply(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+  def apply[T <: Tree](tree: T, pt: Type)(implicit ctx: Context): T =
     finish(apply(tree)) {
-      tree.tpe.widenTermRefExpr match {
+      tree.tpe.widenTermRefExpr.normalized match {
         case ConstantType(x) => x convertTo pt
         case _ => null
       }
     }
 
-  private def finish(tree: Tree)(compX: => Constant)(implicit ctx: Context): Tree =
+  private def finish[T <: Tree](tree: T)(compX: => Constant)(implicit ctx: Context): T =
     try {
       val x = compX
-      if (x ne null) tree withType ConstantType(x)
+      if (x ne null) tree.withType(ConstantType(x)).asInstanceOf[T]
       else tree
     } catch {
       case _: ArithmeticException => tree   // the code will crash at runtime,

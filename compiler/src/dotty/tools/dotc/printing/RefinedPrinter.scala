@@ -10,6 +10,7 @@ import Symbols._
 import NameOps._
 import TypeErasure.ErasedValueType
 import Contexts.Context
+import Annotations.Annotation
 import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
@@ -361,15 +362,26 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
+        val isInline = tree.isInstanceOf[Trees.InlineIf[_]]
         changePrec(GlobalPrec) {
-          keywordStr("if ") ~ toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
+          keywordStr(if (isInline) "inline if " else "if ") ~
+          toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~
+          toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
         }
       case Closure(env, ref, target) =>
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
-        if (sel.isEmpty) blockText(cases)
-        else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
+        val isInline = tree.isInstanceOf[Trees.InlineMatch[_]]
+        if (sel.isEmpty && !isInline) blockText(cases)
+        else changePrec(GlobalPrec) {
+          val selTxt: Text =
+            if (isInline)
+              if (sel.isEmpty) keywordStr("implicit")
+              else keywordStr("inline ") ~ toText(sel)
+            else toText(sel)
+          selTxt ~ keywordStr(" match ") ~ blockText(cases)
+        }
       case CaseDef(pat, guard, body) =>
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
       case Labeled(bind, expr) =>
@@ -577,15 +589,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       // add type to term nodes; replace type nodes with their types unless -Yprint-pos is also set.
       def tp = tree.typeOpt match {
         case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
-        case tp: ConstantType if homogenizedView =>
-          // constant folded types are forgotten in Tasty, are reconstituted subsequently in FirstTransform.
-          // Therefore we have to gloss over this when comparing before/after pickling by widening to
-          // underlying type `T`, or, if expression is a unary primitive operation, to `=> T`.
-          tree match {
-            case Select(qual, _) if qual.typeOpt.widen.typeSymbol.isPrimitiveValueClass =>
-              ExprType(tp.widen)
-            case _ => tp.widen
-          }
         case tp => tp
       }
       if (!suppressTypes)
@@ -622,7 +625,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = untpd.Modifiers(
     sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
-    sym.annotations map (_.tree))
+    sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree))
+
+  protected def dropAnnotForModText(sym: Symbol): Boolean = sym == defn.BodyAnnot
 
   protected def optAscription[T >: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
@@ -746,13 +751,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
     val flags = (if (sym.exists) sym.flags else (mods.flags)) & flagMask
     val flagsText = if (flags.isEmpty) "" else keywordStr(flags.toString)
-    val annotations = filterModTextAnnots(
-      if (sym.exists) sym.annotations.filterNot(_.isInstanceOf[Annotations.BodyAnnotation]).map(_.tree)
-      else mods.annotations)
+    val annotations =
+      if (sym.exists) sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree)
+      else mods.annotations.filterNot(tree => dropAnnotForModText(tree.symbol))
     Text(annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
-
-  protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] = annots
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))

@@ -11,7 +11,7 @@ import util.NameTransformer.avoidIllegalChars
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
 
 object Scanners {
@@ -242,7 +242,7 @@ object Scanners {
 
 // Scala 2 compatibility
 
-    val isScala2Mode: Boolean = ctx.settings.language.value.contains(nme.Scala2.toString)
+    val isScala2Mode: Boolean = ctx.scala2Setting
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
     def testScala2Mode(msg: String, pos: Position = Position(offset)): Boolean = {
@@ -300,9 +300,6 @@ object Scanners {
           sepRegions = sepRegions.tail
       case _ =>
     }
-
-    /** A new Scanner that starts at the current token offset */
-    def lookaheadScanner: Scanner = new Scanner(source, offset)
 
     /** Produce next token, filling TokenData fields of Scanner.
      */
@@ -634,8 +631,34 @@ object Scanners {
       nextChar()
       if (ch == '/') { skipLine(); finishComment() }
       else if (ch == '*') { nextChar(); skipComment(); finishComment() }
-      else false
+      else {
+        // This was not a comment, remove the `/` from the buffer
+        commentBuf.clear()
+        false
+      }
     }
+
+// Lookahead ---------------------------------------------------------------
+
+  /** A new Scanner that starts at the current token offset */
+  def lookaheadScanner: Scanner = new Scanner(source, offset)
+
+  /** Is the token following the current one in `tokens`? */
+  def lookaheadIn(tokens: BitSet): Boolean = {
+    val lookahead = lookaheadScanner
+    do lookahead.nextToken()
+    while (lookahead.token == NEWLINE || lookahead.token == NEWLINES)
+    tokens.contains(lookahead.token)
+  }
+
+  /** Is the current token in a position where a modifier is allowed? */
+  def inModifierPosition(): Boolean = {
+    val lookahead = lookaheadScanner
+    do lookahead.nextToken()
+    while (lookahead.token == NEWLINE || lookahead.token == NEWLINES ||
+           lookahead.isSoftModifier)
+    modifierFollowers.contains(lookahead.token)
+  }
 
 // Identifiers ---------------------------------------------------------------
 
@@ -717,6 +740,14 @@ object Scanners {
       }
     }
 
+    def isSoftModifier: Boolean =
+      token == IDENTIFIER && softModifierNames.contains(name)
+
+    def isSoftModifierInModifierPosition: Boolean =
+      isSoftModifier && inModifierPosition()
+
+    def isSoftModifierInParamModifierPosition: Boolean =
+      isSoftModifier && !lookaheadIn(BitSet(COLON))
 
 // Literals -----------------------------------------------------------------
 

@@ -29,36 +29,34 @@ The Dotty compiler will generate code equivalent to:
 class Foo {
   import dotty.runtime.LazyVals
   var value_0: Int = _
-  var bitmap = 0
-  val bitmap_offset = LazyVals.getOffset(classOf[LazyCell], "bitmap")
+  var bitmap: Long = 0L
+  val bitmap_offset: Long = LazyVals.getOffset(classOf[LazyCell], "bitmap")
 
   def bar(): Int = {
-    var result: Int = 0
-    var retry: Boolean = true
-    var flag: Long = 0L
-    while (retry) {
-      flag = LazyVals.get(this, bitmap_offset)
-      LazyVals.STATE(flag, <field-id>) match {
-        case <state-0> =>
-          if (LazyVals.CAS(this, bitmap_offset, flag, <state-1>)) {
-            try result = <RHS>
-            catch {
-              case ex =>
-                LazyVals.setFlag(this, bitmap_offset, <state-0>, <field-id>)
-                throw ex
-            }
+    while (true) {
+      val flag = LazyVals.get(this, bitmap_offset)
+      val state = LazyVals.STATE(flag, <field-id>)
+
+      if (state == <state-3>) {
+        return value_0
+      } else if (state == <state-0>) {
+        if (LazyVals.CAS(this, bitmap_offset, flag, <state-1>, <field-id>)) {
+          try {
+            val result = <RHS>
             value_0 = result
             LazyVals.setFlag(this, bitmap_offset, <state-3>, <field-id>)
-            retry = false
+            return result
           }
-        case <state-1> | <state-2> =>
-          LazyVals.wait4Notification(this, bitmap_offset, flag, <field-id>)
-        case <state-3> =>
-          retry = false
-          result = $target
+          catch {
+            case ex =>
+              LazyVals.setFlag(this, bitmap_offset, <state-0>, <field-id>)
+              throw ex
+          }
         }
+      } else /* if (state == <state-1> || state == <state-2>) */ {
+        LazyVals.wait4Notification(this, bitmap_offset, flag, <field-id>)
       }
-    result
+    }
   }
 }
 ```

@@ -432,10 +432,7 @@ trait Inferencing { this: Typer =>
       //     found   : Int(1)
       //     required: String
       //     val y: List[List[String]] = List(List(1))
-      val hasUnreportedErrors = state.reporter match {
-        case r: StoreReporter if r.hasErrors => true
-        case _ => false
-      }
+      val hasUnreportedErrors = state.reporter.hasUnreportedErrors
       def constraint = state.constraint
       for (tvar <- qualifying)
         if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
