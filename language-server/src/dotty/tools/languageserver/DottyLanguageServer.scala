@@ -289,10 +289,9 @@ class DottyLanguageServer extends LanguageServer
       /*isIncomplete = */ false, items.map(completionItem).asJava))
   }
 
-  /** If cursor is on a reference, show its definition and all overriding definitions in
-   *  the same source as the primary definition.
+  /** If cursor is on a reference, show its definition and all overriding definitions.
    *  If cursor is on a definition, show this definition together with all overridden
-   *  and overriding definitions (in all sources).
+   *  and overriding definitions.
    */
   override def definition(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
@@ -312,7 +311,7 @@ class DottyLanguageServer extends LanguageServer
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
-      Include.references | Include.overriding | Include.imports |
+      Include.references | Include.overriding | Include.imports | Include.local |
         (if (includeDeclaration) Include.definitions else Include.empty)
     }
 
@@ -382,18 +381,24 @@ class DottyLanguageServer extends LanguageServer
                 List(
                   RENAME_OVERRIDDEN    -> (() => (Include.all, syms.flatMap(s => s :: s.allOverriddenSymbols.toList))),
                   RENAME_NO_OVERRIDDEN -> (() => (Include.all.except(Include.overridden), syms)))
-              ).get.getOrElse((Include.empty, List.empty[Symbol]))
+              ).get.getOrElse((Include.empty, Nil))
             } else {
               (Include.all, syms)
             }
 
           val names = allSymbols.map(_.name.sourceModuleName).toSet
-          val trees = names.flatMap(name => driver.allTreesContaining(name.toString)).toList
-          allSymbols.flatMap { sym =>
-            Interactive.findTreesMatching(trees,
-              include,
-              sym,
-              t => names.exists(Interactive.sameName(t.name, _)))
+          val definitions = Interactive.findDefinitions(allSymbols, driver, include.isOverridden, includeExternal = true)
+          val perProjectInfo = inProjectsSeeing(driver, definitions, allSymbols)
+
+          perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
+            definitions.flatMap { definition =>
+              val name = definition.name(ctx).sourceModuleName.toString
+              val trees = remoteDriver.sourceTreesContaining(name)(ctx)
+              Interactive.findTreesMatching(trees,
+                                            include,
+                                            definition,
+                                            t => names.exists(Interactive.sameName(t.name, _)))(ctx)
+            }
           }
       }
 
@@ -458,7 +463,7 @@ class DottyLanguageServer extends LanguageServer
 
     val uriTrees = driver.openedTrees(uri)
 
-    val defs = Interactive.namedTrees(uriTrees, Include.empty, _ => true)
+    val defs = Interactive.namedTrees(uriTrees, Include.empty)
     (for {
       d <- defs if !isWorksheetWrapper(d)
       info <- symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source))
@@ -471,8 +476,8 @@ class DottyLanguageServer extends LanguageServer
     drivers.values.toList.flatMap { driver =>
       implicit val ctx = driver.currentCtx
 
-      val trees = driver.allTrees
-      val defs = Interactive.namedTrees(trees, nameSubstring = query)
+      val trees = driver.sourceTreesContaining(query)
+      val defs = Interactive.namedTrees(trees, Include.empty, _.name.toString.contains(query))
       defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source)))
     }.asJava
   }
@@ -500,7 +505,7 @@ class DottyLanguageServer extends LanguageServer
           val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
           tree => predicates.exists(_(tree))
         }
-        val matches = Interactive.namedTrees(trees, Include.empty, predicate)(ctx)
+        val matches = Interactive.namedTrees(trees, Include.local, predicate)(ctx)
         matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
       }
     }.toList

@@ -61,7 +61,7 @@ class Driver {
   }
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
-  private def fromTastySetup(fileNames0: List[String], ctx0: Context) = {
+  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) = {
     if (ctx0.settings.fromTasty.value(ctx0)) {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.map { name =>

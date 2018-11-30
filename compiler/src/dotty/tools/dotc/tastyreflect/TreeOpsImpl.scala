@@ -236,12 +236,8 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     }
 
     object Select extends SelectExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Term, String, Option[Signature])] = x match {
-        case x: tpd.Select if x.isTerm =>
-          val sig =
-            if (x.symbol.signature == core.Signature.NotAMethod) None
-            else Some(x.symbol.signature)
-          Some((x.qualifier, x.name.toString, sig))
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, String)] = x match {
+        case x: tpd.Select if x.isTerm => Some((x.qualifier, x.name.toString))
         case _ => None
       }
     }

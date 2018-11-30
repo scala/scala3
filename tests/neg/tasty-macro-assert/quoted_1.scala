@@ -33,7 +33,7 @@ object Asserts {
     }
 
     tree match {
-      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op), right :: Nil)) =>
         '(assertTrue(~left.seal[Boolean])) // Buggy code. To generate the errors
       case _ =>
         '(assertTrue(~cond))

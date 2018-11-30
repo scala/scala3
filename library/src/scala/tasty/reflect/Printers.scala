@@ -101,8 +101,8 @@ trait Printers
       def visitTree(x: Tree): Buffer = x match {
         case Term.Ident(name) =>
           this += "Term.Ident(\"" += name += "\")"
-        case Term.Select(qualifier, name, signature) =>
-          this += "Term.Select(" += qualifier += ", \"" += name += "\", " += signature += ")"
+        case Term.Select(qualifier, name) =>
+          this += "Term.Select(" += qualifier += ", \"" += name += "\")"
         case Term.This(qual) =>
           this += "Term.This(" += qual += ")"
         case Term.Super(qual, mix) =>
@@ -522,8 +522,8 @@ trait Printers
           }
 
           val parents1 = parents.filter {
-            case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _, _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
-            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala", _), "Product")) => false
+            case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
+            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Product")) => false
             case _ => true
           }
           if (parents1.nonEmpty)
@@ -538,7 +538,7 @@ trait Printers
             case IsTerm(Term.Apply(fun, args)) =>
               printParent(fun)
               inParens(printTrees(args, ", "))
-            case IsTerm(Term.Select(Term.New(tpt), _, _)) =>
+            case IsTerm(Term.Select(Term.New(tpt), _)) =>
               printTypeTree(tpt)
             case IsTerm(parent) =>
               throw new MatchError(parent.show)
@@ -678,7 +678,7 @@ trait Printers
         case IsTerm(tree @ Term.Ident(_)) =>
           printType(tree.tpe)
 
-        case Term.Select(qual, name, sig) =>
+        case Term.Select(qual, name) =>
           printTree(qual)
           if (name != "<init>" && name != "package")
             this += "." += name
@@ -709,7 +709,7 @@ trait Printers
 
         case Term.Apply(fn, args) =>
           fn match {
-            case Term.Select(Term.This(_), "<init>", _) => this += "this" // call to constructor inside a constructor
+            case Term.Select(Term.This(_), "<init>") => this += "this" // call to constructor inside a constructor
             case _ => printTree(fn)
           }
           val args1 = args match {
@@ -722,7 +722,7 @@ trait Printers
         case Term.TypeApply(fn, args) =>
           printTree(fn)
           fn match {
-            case Term.Select(Term.New(TypeTree.Applied(_, _)), "<init>", _) =>
+            case Term.Select(Term.New(TypeTree.Applied(_, _)), "<init>") =>
               // type bounds already printed in `fn`
               this
             case _ =>
@@ -853,7 +853,7 @@ trait Printers
           next match {
             case Term.Block(_, _) => this += doubleLineBreak()
             case Term.Inlined(_, _, _) => this += doubleLineBreak()
-            case Term.Select(qual, _, _) => printSeparator(qual)
+            case Term.Select(qual, _) => printSeparator(qual)
             case Term.Apply(fn, _) => printSeparator(fn)
             case Term.TypeApply(fn, _) => printSeparator(fn)
             case _ => this += lineBreak()
@@ -1141,8 +1141,8 @@ trait Printers
 
         case Pattern.Unapply(fun, implicits, patterns) =>
           fun match {
-            case Term.Select(extractor, "unapply" | "unapplySeq", _) => printTree(extractor)
-            case Term.TypeApply(Term.Select(extractor, "unapply" | "unapplySeq", _), _) => printTree(extractor)
+            case Term.Select(extractor, "unapply" | "unapplySeq") => printTree(extractor)
+            case Term.TypeApply(Term.Select(extractor, "unapply" | "unapplySeq"), _) => printTree(extractor)
             case _ => throw new MatchError(fun.show)
           }
           inParens(printPatterns(patterns, ", "))
@@ -1611,8 +1611,8 @@ trait Printers
     private object Annotation {
       def unapply(arg: Tree)(implicit ctx: Context): Option[(TypeTree, List[Term])] = arg match {
         case Term.New(annot) => Some((annot, Nil))
-        case Term.Apply(Term.Select(Term.New(annot), "<init>", _), args) => Some((annot, args))
-        case Term.Apply(Term.TypeApply(Term.Select(Term.New(annot), "<init>", _), targs), args) => Some((annot, args))
+        case Term.Apply(Term.Select(Term.New(annot), "<init>"), args) => Some((annot, args))
+        case Term.Apply(Term.TypeApply(Term.Select(Term.New(annot), "<init>"), targs), args) => Some((annot, args))
         case _ => None
       }
     }

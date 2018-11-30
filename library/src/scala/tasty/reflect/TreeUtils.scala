@@ -31,7 +31,7 @@ trait TreeUtils
       tree match {
         case Term.Ident(_) =>
           x
-        case Term.Select(qualifier, _, _) =>
+        case Term.Select(qualifier, _) =>
           foldTree(x, qualifier)
         case Term.This(qual) =>
           x

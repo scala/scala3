@@ -186,7 +186,8 @@ class JavaConverterTest {
       case AndTypeReference(left, right) =>
         assertSerializedCorrectly(left, actual.get("left"))
         assertSerializedCorrectly(right, actual.get("right"))
-      case FunctionReference(args, returnValue) =>
+      case FunctionReference(args, returnValue, isImplicit) =>
+        assertEquals(isImplicit, actual.get("isImplicit"))
         assertEach(args, actual.get("args")) { (exp, act) =>
           assertSerializedCorrectly(exp, act)
         }
