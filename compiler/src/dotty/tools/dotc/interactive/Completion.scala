@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators.StringInterpolators
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Names.{Name, TermName}
+import dotty.tools.dotc.core.Names.{Name, SimpleName, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps.NameDecorator
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
@@ -146,12 +146,8 @@ object Completion {
      * the same `Completion`.
      */
     def getCompletions(implicit ctx: Context): List[Completion] = {
-      val groupedSymbols = {
-        val symbols = completions.toListWithNames
-        val nameToSymbols = symbols.groupBy(_._2.stripModuleClassSuffix.toSimpleName)
-        nameToSymbols.mapValues(_.map(_._1)).toList
-      }
-      groupedSymbols.map { case (name, symbols) =>
+      val nameToSymbols = completions.mappings.toList
+      nameToSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
         val desc = description(typesFirst)
         Completion(name.toString, desc, typesFirst)
@@ -357,12 +353,16 @@ object Completion {
        sym
      }
 
-     /** Lists the symbols in this scope along with the name associated with them. */
-     def toListWithNames(implicit ctx: Context): List[(Symbol, Name)] = {
-       for {
-         (name, syms) <- nameToSymbols.toList
-         sym <- syms
-       } yield (sym, name)
+     /** Get the names that are known in this scope, along with the list of symbols they refer to. */
+     def mappings(implicit ctx: Context): Map[SimpleName, List[Symbol]] = {
+       val symbols =
+         for {
+           (name, syms) <- nameToSymbols.toList
+           sym <- syms
+         } yield (sym, name)
+       symbols
+         .groupBy(_._2.stripModuleClassSuffix.toSimpleName)
+         .mapValues(_.map(_._1))
      }
    }
 
