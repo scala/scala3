@@ -24,6 +24,7 @@ set _TESTS_POS_DIR=%_ROOT_DIR%test\pos
 
 set _SOURCE=tests/pos/HelloWorld.scala
 set _MAIN=HelloWorld
+set _TASTY=HelloWorld.tasty
 set _EXPECTED_OUTPUT=hello world
 
 call :args %*
@@ -142,16 +143,16 @@ echo     -timer                 display total execution time
 echo     -verbose               display environment settings
 echo   Subcommands:
 echo     arch[ives]             generate gz/zip archives (after bootstrap)
-echo     boot[strap]            generate compiler bootstrap (after compile)
+echo     boot[strap]            generate+test bootstrapped compiler (after compile)
 echo     cleanall               clean project (sbt+git) and quit
 echo     clone                  update submodules
-echo     compile                generate compiler 1st stage (after clone)
+echo     compile                generate+test 1st stage compiler (after clone)
 echo     doc[umentation]        generate documentation (after bootstrap)
 echo     help                   display this help message
 echo   Advanced subcommands (no deps):
 echo     arch[ives]-only        generate ONLY gz/zip archives
-echo     boot[strap]-only       generate ONLY compiler bootstrap
-echo     compile-only           generate ONLY compiler 1st stage
+echo     boot[strap]-only       generate+test ONLY bootstrapped compiler
+echo     compile-only           generate+test ONLY 1st stage compiler
 echo     doc[umentation]-only]  generate ONLY documentation
 
 goto :eof
@@ -176,11 +177,17 @@ rem full path is required for sbt to run successfully
 for /f %%i in ('where sbt.bat') do set _SBT_CMD=%%i
 
 if %_VERBOSE%==1 (
-    for /f %%i in ('where git.exe') do set _GIT_CMD1=%%i
-    echo _GIT_CMD=!_GIT_CMD1!
-    echo _SBT_CMD=%_SBT_CMD%
-    echo JAVA_OPTS=%JAVA_OPTS%
-    echo SBT_OPTS=%SBT_OPTS%
+    for /f %%i in ('where git.exe') do set __GIT_CMD1=%%i
+    set __GIT_BRANCH=unknown
+    for /f "tokens=1-4,*" %%f in ('!__GIT_CMD1! branch -vv ^| findstr /b *') do set __GIT_BRANCH=%%g %%i
+    echo Tool paths
+	echo    GIT_CMD=!__GIT_CMD1!
+    echo    SBT_CMD=%_SBT_CMD%
+    echo Tool options
+	echo    JAVA_OPTS=%JAVA_OPTS%
+    echo    SBT_OPTS=%SBT_OPTS%
+	echo Current Git branch
+	echo    !__GIT_BRANCH!
     echo.
 )
 if %_TIMER%==1 (
@@ -259,6 +266,11 @@ if not %_EXITCODE%==0 goto :eof
 rem # check that `sbt dotc -decompile` runs
 echo testing sbt dotc -decompile
 call "%_SBT_CMD%" ";dotc -decompile -color:never -classpath %_OUT_DIR% %_MAIN%" > "%_TMP_FILE%"
+call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
+if not %_EXITCODE%==0 goto :eof
+
+echo testing sbt dotc -decompile from file
+call "%_SBT_CMD%" ";dotc -decompile -color:never %_OUT_DIR%\%_TASTY%" > "%_TMP_FILE%"
 call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto :eof
 
