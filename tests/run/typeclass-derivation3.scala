@@ -36,9 +36,9 @@ object datatypes {
     }
 
     // three clauses that could be generated from a `derives` clause
-    implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
-    implicit def LstPickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
-    implicit def LstShow[T: Show]: Show[Lst[T]] = Show.derived
+    //implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
+    //implicit def LstPickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
+    //implicit def LstShow[T: Show]: Show[Lst[T]] = Show.derived
   }
 
   // A simple product type
@@ -62,9 +62,9 @@ object datatypes {
     }
 
     // two clauses that could be generated from a `derives` clause
-    implicit def PairEq[T: Eq]: Eq[Pair[T]] = Eq.derived
-    implicit def PairPickler[T: Pickler]: Pickler[Pair[T]] = Pickler.derived
-    implicit def PairShow[T: Show]: Show[Pair[T]] = Show.derived
+    //implicit def PairEq[T: Eq]: Eq[Pair[T]] = Eq.derived
+    //implicit def PairPickler[T: Pickler]: Pickler[Pair[T]] = Pickler.derived
+    //implicit def PairShow[T: Show]: Show[Pair[T]] = Show.derived
   }
 
   sealed trait Either[+L, +R] extends Product derives Eq, Pickler, Show
@@ -95,9 +95,9 @@ object datatypes {
       def common = reflectedClass
     }
 
-    implicit def EitherEq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
-    implicit def EitherPickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
-    implicit def EitherShow[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
+    //implicit def EitherEq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
+    //implicit def EitherPickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
+    //implicit def EitherShow[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
   }
 }
 

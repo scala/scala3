@@ -117,13 +117,15 @@ trait Deriving { this: Typer =>
     /** Enter type class instance with given name and info in current scope, provided
       *  an instance woth the same name does not exist already.
       */
-    private def addDerivedInstance(clsName: Name, info: Type, reportErrors: Boolean) = {
+    private def addDerivedInstance(clsName: Name, info: Type, reportErrors: Boolean, implicitFlag: FlagSet = Implicit) = {
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists) {
         if (reportErrors) ctx.error(i"duplicate typeclass derivation for $clsName")
       }
-      else
-        add(ctx.newSymbol(ctx.owner, instanceName, Synthetic | Method, info, coord = cls.pos))
+      else {
+        val implFlag = if (reportErrors) Implicit else EmptyFlags  // for now
+        add(ctx.newSymbol(ctx.owner, instanceName, Synthetic | Method | implFlag, info, coord = cls.pos.startPos))
+      }
     }
 
     /* Check derived type tree `derived` for the following well-formedness conditions:
@@ -176,16 +178,31 @@ trait Deriving { this: Typer =>
     def implementedClass(instance: Symbol) =
       instance.info.stripPoly.finalResultType.classSymbol
 
-    def typeclassInstance(sym: Symbol)(tparamRefs: List[Type])(paramRefss: List[List[tpd.Tree]]): tpd.Tree = {
-      val tparams = tparamRefs.map(_.typeSymbol.asType)
-      val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
-      val typeCls = implementedClass(sym)
-      tpd.ref(defn.Predef_undefinedR) // TODO: flesh out
-    }
+    private def typeclassInstance(sym: Symbol)(implicit ctx: Context) =
+      (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) => {
+        val tparams = tparamRefs.map(_.typeSymbol.asType)
+        val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
+        tparams.foreach(ctx.enter)
+        params.foreach(ctx.enter)
+        def instantiated(info: Type): Type = info match {
+          case info: PolyType => instantiated(info.instantiate(tparamRefs))
+          case info: MethodType => info.instantiate(params.map(_.termRef))
+          case info => info
+        }
+        val resultType = instantiated(sym.info)
+        val typeCls = resultType.classSymbol
+        if (typeCls == defn.ShapedClass)
+          tpd.ref(defn.Predef_undefinedR) // TODO: flesh out
+        else {
+          val module = untpd.ref(typeCls.companionModule.termRef).withPos(sym.pos)
+          val rhs = untpd.Select(module, nme.derived)
+          typed(rhs, resultType)
+        }
+      }
 
     def syntheticDef(sym: Symbol): tpd.Tree =
       if (sym.isType) tpd.TypeDef(sym.asType)
-      else tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
+      else tpd.polyDefDef(sym.asTerm, typeclassInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))
 
     def finalize(stat: tpd.TypeDef): tpd.Tree = {
       val templ @ Template(_, _, _, _) = stat.rhs
