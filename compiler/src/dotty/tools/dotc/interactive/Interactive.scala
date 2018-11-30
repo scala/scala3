@@ -324,7 +324,10 @@ object Interactive {
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
    *
-   *  @param includeReferences  If true, include references and not just definitions
+   *  @param trees         The trees to inspect.
+   *  @param include       Whether to include references, definitions, etc.
+   *  @param treePredicate An additional predicate that the trees must match.
+   *  @return The trees with a non-empty position satisfying `treePredicate`.
    */
   def namedTrees(trees: List[SourceTree],
                  include: Include.Set,
