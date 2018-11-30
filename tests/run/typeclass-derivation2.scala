@@ -1,66 +1,81 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-trait Deriving {
-  import Deriving._
+object TypeLevel {
+  /** @param caseLabels The case and element labels of the described ADT as encoded strings.
+  */
+  class ReflectedClass(caseLabels: Array[String]) {
+    import ReflectedClass._
 
-  /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
-  def mirror(ordinal: Int, product: Product): Mirror =
-    new Mirror(this, ordinal, product)
+    /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
+    def mirror(ordinal: Int, product: Product): Mirror =
+      new Mirror(this, ordinal, product)
 
-  /** A mirror with elements given as an array */
-  def mirror(ordinal: Int, elems: Array[AnyRef]): Mirror =
-    mirror(ordinal, new ArrayProduct(elems))
+    /** A mirror with elements given as an array */
+    def mirror(ordinal: Int, elems: Array[AnyRef]): Mirror =
+      mirror(ordinal, new ArrayProduct(elems))
 
-  /** A mirror with an initial empty array of `numElems` elements, to be filled in. */
-  def mirror(ordinal: Int, numElems: Int): Mirror =
-    mirror(ordinal, new Array[AnyRef](numElems))
+    /** A mirror with an initial empty array of `numElems` elements, to be filled in. */
+    def mirror(ordinal: Int, numElems: Int): Mirror =
+      mirror(ordinal, new Array[AnyRef](numElems))
 
-  /** A mirror of a case with no elements */
-  def mirror(ordinal: Int): Mirror =
-    mirror(ordinal, EmptyProduct)
+    /** A mirror of a case with no elements */
+    def mirror(ordinal: Int): Mirror =
+      mirror(ordinal, EmptyProduct)
 
-  /** The case and element labels of the described ADT as encoded strings. */
-  protected def caseLabels: Array[String]
+    private final val separator = '\000'
 
-  private final val separator = '\000'
-
-  private def label(ordinal: Int, idx: Int): String = {
-    val labels = caseLabels(ordinal)
-    @tailrec def separatorPos(from: Int): Int =
-      if (from == labels.length || labels(from) == separator) from
-      else separatorPos(from + 1)
-    @tailrec def findLabel(count: Int, idx: Int): String =
-      if (idx == labels.length) ""
-      else if (count == 0) labels.substring(idx, separatorPos(idx))
-      else findLabel(if (labels(idx) == separator) count - 1 else count, idx + 1)
-    findLabel(idx, 0)
+    private[TypeLevel] def label(ordinal: Int, idx: Int): String = {
+      val labels = caseLabels(ordinal)
+      @tailrec def separatorPos(from: Int): Int =
+        if (from == labels.length || labels(from) == separator) from
+        else separatorPos(from + 1)
+      @tailrec def findLabel(count: Int, idx: Int): String =
+        if (idx == labels.length) ""
+        else if (count == 0) labels.substring(idx, separatorPos(idx))
+        else findLabel(if (labels(idx) == separator) count - 1 else count, idx + 1)
+      findLabel(idx, 0)
+    }
   }
-}
 
-// Generic deriving infrastructure
-object Deriving {
+  object ReflectedClass {
+    /** Helper class to turn arrays into products */
+    private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
+      def canEqual(that: Any): Boolean = true
+      def productElement(n: Int) = elems(n)
+      def productArity = elems.length
+      override def productIterator: Iterator[Any] = elems.iterator
+      def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
+    }
+
+    /** Helper object */
+    private object EmptyProduct extends Product {
+      def canEqual(that: Any): Boolean = true
+      def productElement(n: Int) = throw new IndexOutOfBoundsException
+      def productArity = 0
+    }
+  }
 
   /** A generic representation of a case in an ADT
-   *  @param  deriving  The companion object of the ADT
-   *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
-   *  @param  elems     The elements of the case
-   */
-  class Mirror(val deriving: Deriving, val ordinal: Int, val elems: Product) {
+  *  @param  deriving  The companion object of the ADT
+  *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
+  *  @param  elems     The elements of the case
+  */
+  class Mirror(val reflected: ReflectedClass, val ordinal: Int, val elems: Product) {
 
     /** The `n`'th element of this generic case */
     def apply(n: Int): Any = elems.productElement(n)
 
     /** The name of the constructor of the case reflected by this mirror */
-    def caseLabel: String = deriving.label(ordinal, 0)
+    def caseLabel: String = reflected.label(ordinal, 0)
 
     /** The label of the `n`'th element of the case reflected by this mirror */
-    def elementLabel(n: Int) = deriving.label(ordinal, n + 1)
+    def elementLabel(n: Int) = reflected.label(ordinal, n + 1)
   }
 
   /** A class for mapping between an ADT value and
-   *  the case mirror that represents the value.
-   */
+  *  the case mirror that represents the value.
+  */
   abstract class Reflected[T] {
 
     /** The case mirror corresponding to ADT instance `x` */
@@ -70,7 +85,7 @@ object Deriving {
     def reify(mirror: Mirror): T
 
     /** The companion object of the ADT */
-    def deriving: Deriving
+    def common: ReflectedClass
   }
 
   /** The shape of an ADT.
@@ -89,38 +104,25 @@ object Deriving {
    *  It informs that type `T` has shape `S` and also implements runtime reflection on `T`.
    */
   abstract class Shaped[T, S <: Shape] extends Reflected[T]
-
-  /** Helper class to turn arrays into products */
-  private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
-    def canEqual(that: Any): Boolean = true
-    def productElement(n: Int) = elems(n)
-    def productArity = elems.length
-    override def productIterator: Iterator[Any] = elems.iterator
-    def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
-  }
-
-  /** Helper object */
-  private object EmptyProduct extends Product {
-    def canEqual(that: Any): Boolean = true
-    def productElement(n: Int) = throw new IndexOutOfBoundsException
-    def productArity = 0
-  }
 }
 
 // An algebraic datatype
-enum Lst[+T] derives Eq, Pickler, Show {
+enum Lst[+T] { // derives Eq, Pickler, Show
   case Cons(hd: T, tl: Lst[T])
   case Nil
 }
 
-object Lst extends Deriving {
+object Lst {
   // common compiler-generated infrastructure
-  import Deriving._
+  import TypeLevel._
 
   type Shape[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
     Shape.Case[Nil.type, Unit]
   )]
+
+  val reflectedClass = new ReflectedClass(Array("Cons\000hd\000tl", "Nil"))
+  import reflectedClass.mirror
 
   val NilMirror = mirror(1)
 
@@ -133,7 +135,7 @@ object Lst extends Deriving {
       case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
       case 1 => Nil
     }
-    def deriving = Lst
+    def common = reflectedClass
   }
 
   protected val caseLabels = Array("Cons\000hd\000tl", "Nil")
@@ -145,23 +147,24 @@ object Lst extends Deriving {
 }
 
 // A simple product type
-case class Pair[T](x: T, y: T) derives Eq, Pickler
+case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
-object Pair extends Deriving {
+object Pair {
   // common compiler-generated infrastructure
-  import Deriving._
+  import TypeLevel._
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
+
+  val reflectedClass = new ReflectedClass(Array("Pair\000x\000y"))
+  import reflectedClass.mirror
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
     def reflect(xy: Pair[T]) =
       mirror(0, xy)
     def reify(c: Mirror): Pair[T] =
       Pair(c(0).asInstanceOf, c(1).asInstanceOf)
-    def deriving = Pair
+    def common = reflectedClass
   }
-
-  protected val caseLabels = Array("Pair\000x\000y")
 
   // two clauses that could be generated from a `derives` clause
   implicit def PairEq[T: Eq]: Eq[Pair[T]] = Eq.derived
@@ -169,17 +172,20 @@ object Pair extends Deriving {
   implicit def PairShow[T: Show]: Show[Pair[T]] = Show.derived
 }
 
-sealed trait Either[+L, +R] extends Product derives Eq, Pickler
+sealed trait Either[+L, +R] extends Product // derives Eq, Pickler, Show
 case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 
-object Either extends Deriving {
-  import Deriving._
+object Either {
+  import TypeLevel._
 
   type Shape[L, R] = Shape.Cases[(
     Shape.Case[Left[L], L *: Unit],
     Shape.Case[Right[R], R *: Unit]
   )]
+
+  val reflectedClass = new ReflectedClass(Array("Left\000x", "Right\000x"))
+  import reflectedClass.mirror
 
   implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
     def reflect(e: Either[L, R]): Mirror = e match {
@@ -190,10 +196,8 @@ object Either extends Deriving {
       case 0 => Left[L](c(0).asInstanceOf)
       case 1 => Right[R](c(0).asInstanceOf)
     }
-    def deriving = Either
+    def common = reflectedClass
   }
-
-  protected val caseLabels = Array("Left\000x", "Right\000x")
 
   implicit def EitherEq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
   implicit def EitherPickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
@@ -206,8 +210,8 @@ trait Eq[T] {
 }
 
 object Eq {
-  import _root_.scala.typelevel._
-  import Deriving._
+  import scala.typelevel.erasedValue
+  import TypeLevel._
 
   inline def tryEql[T](x: T, y: T) = implicit match {
     case eq: Eq[T] => eq.eql(x, y)
@@ -261,8 +265,8 @@ trait Pickler[T] {
 }
 
 object Pickler {
-  import scala.typelevel._
-  import Deriving._
+  import scala.typelevel.{erasedValue, constValue}
+  import TypeLevel._
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -309,11 +313,11 @@ object Pickler {
   inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      r.reify(r.deriving.mirror(ordinal))
+      r.reify(r.common.mirror(ordinal))
     else {
       val elems = new Array[Object](size)
       unpickleElems[Elems](buf, elems, 0)
-      r.reify(r.deriving.mirror(ordinal, elems))
+      r.reify(r.common.mirror(ordinal, elems))
     }
   }
 
@@ -352,8 +356,8 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.typelevel._
-  import Deriving._
+  import scala.typelevel.erasedValue
+  import TypeLevel._
 
   inline def tryShow[T](x: T): String = implicit match {
     case s: Show[T] => s.show(x)
@@ -402,7 +406,7 @@ object Show {
 
 // Tests
 object Test extends App {
-  import Deriving._
+  import TypeLevel._
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
   val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))

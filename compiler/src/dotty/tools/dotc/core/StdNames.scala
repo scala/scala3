@@ -347,6 +347,7 @@ object StdNames {
     val RootClass: N            = "RootClass"
     val Scala2: N               = "Scala2"
     val Select: N               = "Select"
+    val Shape: N                = "Shape"
     val StringContext: N        = "StringContext"
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
