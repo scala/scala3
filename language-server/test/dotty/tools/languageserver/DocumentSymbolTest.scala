@@ -38,4 +38,10 @@ class DocumentSymbolTest {
       .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Module),
                           (m3 to m4).symInfo("Foo", SymbolKind.Class))
   }
+
+  @Test def documentSymbolSynthetic: Unit = {
+    code"""case class ${m1}Foo${m2}(${m3}x${m4}: Int)""".withSource
+      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class),
+                          (m3 to m4).symInfo("x", SymbolKind.Field, "Foo"))
+  }
 }

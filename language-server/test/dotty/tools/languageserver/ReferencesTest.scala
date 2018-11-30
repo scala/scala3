@@ -346,4 +346,14 @@ class ReferencesTest {
      .references(m11 to m12, List(m9 to m10, m11 to m12), withDecl = false)
   }
 
+  @Test def referenceInsideLocalMember: Unit = {
+    withSources(
+      code"""object A {
+            |  val ${m1}foo${m2} = 0
+            |  def fizz = println(${m3}foo${m4})
+            |}"""
+    ).references(m1 to m2, List(m1 to m2, m3 to m4), withDecl = true)
+     .references(m1 to m2, List(m3 to m4), withDecl = false)
+  }
+
 }
