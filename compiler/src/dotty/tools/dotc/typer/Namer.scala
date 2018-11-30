@@ -196,6 +196,8 @@ class Namer { typer: Typer =>
   val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
   val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
   val SymOfTree: Property.Key[Symbol] = new Property.Key
+  val DerivingCompanion: Property.Key[Unit] = new Property.Key
+  val Deriver: Property.Key[typer.Deriver] = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -534,7 +536,7 @@ class Namer { typer: Typer =>
     }
 
     /** Merge the module class `modCls` in the expanded tree of `mdef` with the
-     *  body and derived clause of the syntehtic module class `fromCls`.
+     *  body and derived clause of the synthetic module class `fromCls`.
      */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
       var res: TypeDef = null
@@ -545,8 +547,13 @@ class Namer { typer: Typer =>
           val modTempl = modCls.rhs.asInstanceOf[Template]
           res = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
-              derived = fromTempl.derived ++ modTempl.derived,
+              derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
               body = fromTempl.body ++ modTempl.body))
+          if (fromTempl.derived.nonEmpty) {
+            if (modTempl.derived.nonEmpty)
+              ctx.error(em"a class and its companion cannot both have `derives' clauses", mdef.pos)
+            res.putAttachment(DerivingCompanion, ())
+          }
           res
         }
         else tree
@@ -813,7 +820,8 @@ class Namer { typer: Typer =>
             cls.addAnnotation(Annotation.Child(child))
           else
             ctx.error(em"""children of ${cls} were already queried before $sym was discovered.
-                          |As a remedy, you could move $sym on the same nesting level as $cls.""")
+                          |As a remedy, you could move $sym on the same nesting level as $cls.""",
+                      child.pos)
         }
       }
 
@@ -949,23 +957,6 @@ class Namer { typer: Typer =>
         }
       }
 
-      /* Check derived type tree `derived` for the following well-formedness conditions:
-       * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
-       * (2) It must have exactly one type parameter
-       * If it passes the checks, enter a typeclass instance for it in the class scope.
-       */
-      def addDerivedInstance(derived: untpd.Tree): Unit = {
-        val uncheckedType = typedAheadType(derived, AnyTypeConstructorProto).tpe.dealiasKeepAnnots
-        val derivedType = checkClassType(uncheckedType, derived.pos, traitReq = false, stablePrefixReq = true)
-        val nparams = derivedType.typeSymbol.typeParams.length
-        if (nparams == 1)
-        	println(i"todo: add derived instance $derived")
-        else
-          ctx.error(
-            i"derived class $derivedType should have one type paramater but has $nparams",
-            derived.pos)
-      }
-
       addAnnotations(denot.symbol)
 
       val selfInfo: TypeOrSymbol =
@@ -983,20 +974,29 @@ class Namer { typer: Typer =>
       val tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
       denot.info = tempInfo
 
+      val localCtx = ctx.inClassContext(selfInfo)
+
       // Ensure constructor is completed so that any parameter accessors
       // which have type trees deriving from its parameters can be
       // completed in turn. Note that parent types access such parameter
       // accessors, that's why the constructor needs to be completed before
       // the parent types are elaborated.
       index(constr)
-      index(rest)(ctx.inClassContext(selfInfo))
+      index(rest)(localCtx)
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
-      impl.derived.foreach(addDerivedInstance)
+      if (impl.derived.nonEmpty) {
+        val derivingClass =
+          if (original.removeAttachment(DerivingCompanion).isDefined) cls.companionClass.asClass
+          else cls
+        val deriver = new Deriver(derivingClass)(localCtx)
+        deriver.enterDerived(impl.derived)
+        original.putAttachment(Deriver, deriver)
+      }
 
       val finalSelfInfo: TypeOrSymbol =
         if (cls.isOpaqueCompanion) {

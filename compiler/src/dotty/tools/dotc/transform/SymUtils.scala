@@ -135,7 +135,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** If this is a sealed class, its known children */
   def children(implicit ctx: Context): List[Symbol] = {
-    if (self.isType) self.setFlag(ChildrenQueried)
+    if (self.isType)
+      self.setFlag(ChildrenQueried)
     self.annotations.collect {
       case Annotation.Child(child) => child
     }

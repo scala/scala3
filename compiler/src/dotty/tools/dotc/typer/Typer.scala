@@ -83,7 +83,8 @@ class Typer extends Namer
                with Implicits
                with Inferencing
                with Dynamic
-               with Checking {
+               with Checking
+               with Deriving {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1674,6 +1675,9 @@ class Typer extends Namer
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
         cls.rootTreeOrProvider = cdef1
 
+      for (deriver <- cdef.removeAttachment(Deriver))
+        cdef1.putAttachment(Deriver, deriver)
+
       cdef1
 
       // todo later: check that
@@ -2091,7 +2095,18 @@ class Typer extends Namer
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
       ctx.withProperty(ExprOwner, exprOwnerOpt)
     }
-    checkEnumCompanions(traverse(stats)(localCtx), enumContexts)
+    def finalize(stat: Tree)(implicit ctx: Context): Tree = stat match {
+      case stat: TypeDef if stat.symbol.is(Module) =>
+        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
+          checkEnumCaseRefsLegal(stat, enumContext)
+        stat.removeAttachment(Deriver) match {
+          case Some(deriver) => deriver.finalize(stat)
+          case None => stat
+        }
+      case _ =>
+        stat
+    }
+    traverse(stats)(localCtx).mapConserve(finalize)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body

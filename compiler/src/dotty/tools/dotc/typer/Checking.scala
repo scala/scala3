@@ -916,7 +916,7 @@ trait Checking {
    *  @param  cdef     the enum companion object class
    *  @param  enumCtx  the context immediately enclosing the corresponding enum
    */
-  private def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
+  def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
 
     def checkCaseOrDefault(stat: Tree, caseCtx: Context) = {
 
@@ -971,24 +971,13 @@ trait Checking {
       case _ =>
     }
   }
-
-  /** Check all enum cases in all enum companions in `stats` for legal accesses.
-   *  @param  enumContexts  a map from`enum` symbols to the contexts enclosing their definitions
-   */
-  def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = {
-    for (stat @ TypeDef(_, _) <- stats)
-      if (stat.symbol.is(Module))
-        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
-          checkEnumCaseRefsLegal(stat, enumContext)
-    stats
-  }
 }
 
 trait ReChecking extends Checking {
   import tpd._
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
-  override def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = stats
+  override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
