@@ -251,4 +251,85 @@ class RenameTest {
     testRename(m2)
   }
 
+  @Test def renameValMultiProject: Unit = {
+    def testRename(m: CodeMarker, expectations: Set[CodeRange]) = {
+      val p0 = Project.withSources(
+        code"""object A { val ${m1}foo${m2} = 0 }"""
+      )
+
+      val p1 = Project.dependingOn(p0).withSources(
+        code"""object B { val ${m3}bar${m4} = A.${m5}foo${m6} }"""
+      )
+
+      val p2 = Project.dependingOn(p1).withSources(
+        code"""object C { val ${m7}baz${m8} = A.${m9}foo${m10} + B.${m11}bar${m12} }"""
+      )
+
+      withProjects(p0, p1, p2).rename(m, "NewName", expectations)
+    }
+
+    testRename(m1, Set(m1 to m2, m5 to m6, m9 to m10))
+    testRename(m5, Set(m1 to m2, m5 to m6, m9 to m10))
+    testRename(m9, Set(m1 to m2, m5 to m6, m9 to m10))
+
+    testRename(m3, Set(m3 to m4, m11 to m12))
+    testRename(m11, Set(m3 to m4, m11 to m12))
+
+    testRename(m7, Set(m7 to m8))
+  }
+
+  @Test def renameClassMultiProject: Unit = {
+    val m21 = new CodeMarker("m21")
+    val m22 = new CodeMarker("m22")
+    val m23 = new CodeMarker("m23")
+    val m24 = new CodeMarker("m24")
+    val m25 = new CodeMarker("m25")
+    val m26 = new CodeMarker("m26")
+    val m27 = new CodeMarker("m27")
+    val m28 = new CodeMarker("m28")
+    def testRename(m: CodeMarker, expectations: Set[CodeRange]) = {
+      val p0 = Project.withSources(
+        code"""package a
+               object ${m1}A${m2} { class ${m3}B${m4} }"""
+      )
+
+      val p1 = Project.dependingOn(p0).withSources(
+        code"""package b
+               import a.${m5}A${m6}.{${m7}B${m8} => ${m9}AB${m10}}
+               object ${m11}B${m12} { class ${m13}C${m14} extends ${m15}AB${m16} }"""
+      )
+
+      val p2 = Project.dependingOn(p1).withSources(
+        code"""package c
+               import b.${m17}B${m18}.{${m19}C${m20} => ${m21}BC${m22}}
+               object ${m23}C${m24} { class ${m25}D${m26} extends ${m27}BC${m28} }"""
+      )
+
+      withProjects(p0, p1, p2).rename(m, "NewName", expectations)
+    }
+
+    testRename(m1, Set(m1 to m2, m5 to m6))
+    testRename(m5, Set(m1 to m2, m5 to m6))
+
+    testRename(m3, Set(m3 to m4, m7 to m8))
+    testRename(m7, Set(m3 to m4, m7 to m8))
+
+    testRename(m9, Set(m9 to m10, m15 to m16))
+    testRename(m15, Set(m9 to m10, m15 to m16))
+
+    testRename(m11, Set(m11 to m12, m17 to m18))
+    testRename(m17, Set(m11 to m12, m17 to m18))
+
+    testRename(m13, Set(m13 to m14, m19 to m20))
+    testRename(m19, Set(m13 to m14, m19 to m20))
+
+    testRename(m21, Set(m21 to m22, m27 to m28))
+    testRename(m27, Set(m21 to m22, m27 to m28))
+
+    testRename(m23, Set(m23 to m24))
+
+    testRename(m25, Set(m25 to m26))
+
+  }
+
 }
