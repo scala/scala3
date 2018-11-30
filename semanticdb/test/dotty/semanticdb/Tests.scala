@@ -191,8 +191,8 @@ class Tests {
   //@Test def testLocals(): Unit = checkFile("example/Locals.scala")
   //@Test def testMacroAnnotations(): Unit = checkFile("example/MacroAnnotations.scala")
   //WIP @Test def testMethods(): Unit = checkFile("example/Methods.scala")
-  //WIP @Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
-  @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
+  //@Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
+  //@Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
   //@Test def testObjects(): Unit = checkFile("example/Objects.scala")
   //@Test def testOverrides(): Unit = checkFile("example/Overrides.scala")
   //WIP @Test def testPrefixes(): Unit = checkFile("example/Prefixes.scala")
@@ -200,7 +200,8 @@ class Tests {
   //WIP @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //WIP @Test def testTraits(): Unit = checkFile("example/Traits.scala")
   //WIP @Test def testTypes(): Unit = checkFile("example/Types.scala")
-  //WIP @Test def testVals(): Unit = checkFile("example/Vals.scala")
+  //@Test def testVals(): Unit = checkFile("example/Vals.scala")
+  @Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
   //@Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
 
 
