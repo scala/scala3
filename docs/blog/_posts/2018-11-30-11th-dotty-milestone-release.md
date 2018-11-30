@@ -108,7 +108,7 @@ arguments of the method.
 
 #### Improved display of documentation in Dotty IDE
 
-In this release, we reworked how we show documentation inside the IDE. We now extract usefull
+In this release, we reworked how we show documentation inside the IDE. We now extract useful
 information from the Scaladoc comment, then format it before we display it in the IDE.
 
 ![]({{ site.baseurl }}/images/dotty-ide/documentation-hover.png "Documentation hover")
@@ -122,7 +122,7 @@ for more details!
 
 ### sbt
 
-You can setup a new sbt project with Dotty as the compiler by running:
+You can set up a new sbt project with Dotty as the compiler by running:
 
 ```shell
 sbt new lampepfl/dotty.g8
