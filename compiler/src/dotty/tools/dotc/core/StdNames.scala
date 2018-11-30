@@ -392,6 +392,7 @@ object StdNames {
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
     val clone_ : N              = "clone"
+    val common: N               = "common"
     val conforms_ : N           = "$conforms"
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"

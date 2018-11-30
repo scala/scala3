@@ -114,6 +114,9 @@ trait Deriving { this: Typer =>
       sym
     }
 
+    private def newMethod(name: TermName, info: Type, flags: FlagSet = EmptyFlags)(implicit ctx: Context) =
+      ctx.newSymbol(ctx.owner, name, flags | Method | Synthetic, info, coord = cls.pos.startPos)
+
     /** Enter type class instance with given name and info in current scope, provided
       *  an instance woth the same name does not exist already.
       */
@@ -124,7 +127,7 @@ trait Deriving { this: Typer =>
       }
       else {
         val implFlag = if (reportErrors) Implicit else EmptyFlags  // for now
-        add(ctx.newSymbol(ctx.owner, instanceName, Synthetic | Method | implFlag, info, coord = cls.pos.startPos))
+        add(newMethod(instanceName, info, implFlag))
       }
     }
 
@@ -175,8 +178,29 @@ trait Deriving { this: Typer =>
       addShape()
     }
 
-    def implementedClass(instance: Symbol) =
-      instance.info.stripPoly.finalResultType.classSymbol
+    private def shapedRHS(shapedType: Type, pos: Position)(implicit ctx: Context) = {
+      import tpd._
+      val AppliedType(_, clsArg :: shapeArg :: Nil) = shapedType
+      val shape = shapeArg.dealias
+
+      val implClassSym = ctx.newNormalizedClassSymbol(
+        ctx.owner, tpnme.ANON_CLASS, EmptyFlags, shapedType :: Nil, coord = cls.pos.startPos)
+      val implClassCtx = ctx.withOwner(implClassSym)
+      val implClassConstr = newMethod(nme.CONSTRUCTOR, MethodType(Nil, implClassSym.typeRef))(implClassCtx).entered
+
+      def implClassStats(implicit ctx: Context): List[Tree] = {
+        val reflectMeth = newMethod(nme.reflect, MethodType(clsArg :: Nil, defn.MirrorType)).entered
+        val reifyMeth = newMethod(nme.reify, MethodType(defn.MirrorType :: Nil, clsArg)).entered
+        val commonMeth = newMethod(nme.common, ExprType(defn.ReflectedClassType)).entered
+        List(
+          tpd.DefDef(reflectMeth, tpd.ref(defn.Predef_undefinedR)), // TODO: flesh out
+          tpd.DefDef(reifyMeth, tpd.ref(defn.Predef_undefinedR)),
+          tpd.DefDef(commonMeth, tpd.ref(defn.Predef_undefinedR)))
+      }
+
+      val implClassDef = ClassDef(implClassSym, DefDef(implClassConstr), implClassStats(implClassCtx))
+      Block(implClassDef :: Nil, New(implClassSym.typeRef, Nil))
+    }
 
     private def typeclassInstance(sym: Symbol)(implicit ctx: Context) =
       (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) => {
@@ -192,7 +216,7 @@ trait Deriving { this: Typer =>
         val resultType = instantiated(sym.info)
         val typeCls = resultType.classSymbol
         if (typeCls == defn.ShapedClass)
-          tpd.ref(defn.Predef_undefinedR) // TODO: flesh out
+          shapedRHS(resultType, sym.pos)
         else {
           val module = untpd.ref(typeCls.companionModule.termRef).withPos(sym.pos)
           val rhs = untpd.Select(module, nme.derived)

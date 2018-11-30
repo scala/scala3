@@ -657,6 +657,8 @@ class Definitions {
   def ShapeCaseClass(implicit ctx: Context): ClassSymbol = ShapeCaseType.symbol.asClass
   lazy val ShapeCasesType: TypeRef                    = ctx.requiredClassRef("scala.typelevel.Shape.Cases")
   def ShapeCasesClass(implicit ctx: Context): ClassSymbol = ShapeCasesType.symbol.asClass
+  lazy val MirrorType: TypeRef                        = ctx.requiredClassRef("scala.typelevel.Mirror")
+  lazy val ReflectedClassType: TypeRef                = ctx.requiredClassRef("scala.typelevel.ReflectedClass")
 
   lazy val LanguageModuleRef: TermSymbol = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context): ClassSymbol = LanguageModuleRef.moduleClass.asClass
