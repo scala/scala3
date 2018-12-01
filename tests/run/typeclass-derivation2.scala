@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */
-  class ReflectedClass(caseLabels: Array[String]) {
+  class ReflectedClass(labelsStr: String) {
     import ReflectedClass._
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
@@ -23,18 +23,25 @@ object TypeLevel {
     def mirror(ordinal: Int): Mirror =
       mirror(ordinal, EmptyProduct)
 
-    private final val separator = '\000'
+    val label: Array[Array[String]] =
+      initLabels(0, 0, new mutable.ArrayBuffer[String], new mutable.ArrayBuffer[Array[String]])
 
-    private[TypeLevel] def label(ordinal: Int, idx: Int): String = {
-      val labels = caseLabels(ordinal)
-      @tailrec def separatorPos(from: Int): Int =
-        if (from == labels.length || labels(from) == separator) from
-        else separatorPos(from + 1)
-      @tailrec def findLabel(count: Int, idx: Int): String =
-        if (idx == labels.length) ""
-        else if (count == 0) labels.substring(idx, separatorPos(idx))
-        else findLabel(if (labels(idx) == separator) count - 1 else count, idx + 1)
-      findLabel(idx, 0)
+    private final val elemSeparator = '\000'
+    private final val caseSeparator = '\001'
+
+    private def initLabels(start: Int, cur: Int,
+                           elems: mutable.ArrayBuffer[String],
+                           cases: mutable.ArrayBuffer[Array[String]]): Array[Array[String]] = {
+      def addElem = elems += labelsStr.substring(start, cur)
+      def addCase = cases += addElem.toArray
+      if (cur == labelsStr.length)
+        addCase.toArray
+      else if (labelsStr(cur) == caseSeparator)
+        initLabels(cur + 1, cur + 1, new mutable.ArrayBuffer, addCase)
+      else if (labelsStr(cur) == elemSeparator)
+        initLabels(cur + 1, cur + 1, addElem, cases)
+      else
+        initLabels(start, cur + 1, elems, cases)
     }
   }
 
@@ -67,10 +74,10 @@ object TypeLevel {
     def apply(n: Int): Any = elems.productElement(n)
 
     /** The name of the constructor of the case reflected by this mirror */
-    def caseLabel: String = reflected.label(ordinal, 0)
+    def caseLabel: String = reflected.label(ordinal)(0)
 
     /** The label of the `n`'th element of the case reflected by this mirror */
-    def elementLabel(n: Int) = reflected.label(ordinal, n + 1)
+    def elementLabel(n: Int) = reflected.label(ordinal)(n + 1)
   }
 
   /** A class for mapping between an ADT value and
@@ -121,7 +128,7 @@ object Lst {
     Shape.Case[Nil.type, Unit]
   )]
 
-  val reflectedClass = new ReflectedClass(Array("Cons\000hd\000tl", "Nil"))
+  val reflectedClass = new ReflectedClass("Cons\000hd\000tl\001Nil")
   import reflectedClass.mirror
 
   val NilMirror = mirror(1)
@@ -138,8 +145,6 @@ object Lst {
     def common = reflectedClass
   }
 
-  protected val caseLabels = Array("Cons\000hd\000tl", "Nil")
-
   // three clauses that could be generated from a `derives` clause
   implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
   implicit def LstPickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
@@ -155,7 +160,7 @@ object Pair {
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
-  val reflectedClass = new ReflectedClass(Array("Pair\000x\000y"))
+  val reflectedClass = new ReflectedClass("Pair\000x\000y")
   import reflectedClass.mirror
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
@@ -184,7 +189,7 @@ object Either {
     Shape.Case[Right[R], R *: Unit]
   )]
 
-  val reflectedClass = new ReflectedClass(Array("Left\000x", "Right\000x"))
+  val reflectedClass = new ReflectedClass("Left\000x\001Right\000x")
   import reflectedClass.mirror
 
   implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
