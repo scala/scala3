@@ -14,7 +14,7 @@ import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Scopes
 import dotty.tools.dotc.core.StdNames.{nme, tpnme}
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{NamedType, Type, takeAllFilter}
+import dotty.tools.dotc.core.Types.{NameFilter, NamedType, Type, NoType}
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 
@@ -220,7 +220,10 @@ object Completion {
      * inclusion filter, then add it to the completions.
      */
     private def add(sym: Symbol, nameInScope: Name)(implicit ctx: Context) =
-      if (sym.exists && !completions.lookup(nameInScope).exists && include(sym, nameInScope)) {
+      if (sym.exists &&
+          completionsFilter(NoType, nameInScope) &&
+          !completions.lookup(nameInScope).exists &&
+          include(sym, nameInScope)) {
         completions.enter(sym, nameInScope)
       }
 
@@ -232,20 +235,16 @@ object Completion {
 
     /** Include in completion sets only symbols that
      *   1. start with given name prefix, and
-     *   2. do not contain '$' except in prefix where it is explicitly written by user, and
+     *   2. is not absent (info is not NoType)
      *   3. are not a primary constructor,
      *   4. have an existing source symbol,
      *   5. are the module class in case of packages,
      *   6. are mutable accessors, to exclude setters for `var`,
      *   7. have same term/type kind as name prefix given so far
-     *
-     *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
-     *  as completion results. However, if a user explicitly writes all '$' characters in an
-     *  identifier, we should complete the rest.
      */
     private def include(sym: Symbol, nameInScope: Name)(implicit ctx: Context): Boolean =
       nameInScope.startsWith(prefix) &&
-      !nameInScope.toString.drop(prefix.length).contains('$') &&
+      !sym.isAbsent &&
       !sym.isPrimaryConstructor &&
       sym.sourceSymbol.exists &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
@@ -263,12 +262,13 @@ object Completion {
      */
     private def accessibleMembers(site: Type)(implicit ctx: Context): Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
-        site.decls.toList.filter(sym => include(sym, sym.name)) // Don't look inside package members -- it's too expensive.
+        // Don't look inside package members -- it's too expensive.
+        site.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
       case _ =>
         def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives
           catch { case ex: TypeError => }
-        site.memberDenots(takeAllFilter, appendMemberSyms).collect {
+        site.memberDenots(completionsFilter, appendMemberSyms).collect {
           case mbr if include(mbr.symbol, mbr.symbol.name) => mbr.accessibleFrom(site, superAccess = true).symbol
           case _ => NoSymbol
         }.filter(_.exists)
@@ -314,6 +314,12 @@ object Completion {
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
       targets
     }
+
+    /** Filter for names that should appear when looking for completions. */
+   private[this] object completionsFilter extends NameFilter {
+     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+       !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
+   }
 
   }
 
