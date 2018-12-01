@@ -63,6 +63,14 @@ class Worksheet implements Disposable {
    */
   private canceller?: CancellationTokenSource = undefined
 
+  /**
+   * The edits that should be applied to this worksheet.
+   *
+   * This is used to ensure that the blank lines added to fit the output of the worksheet
+   * are inserted in the same order as the output arrived.
+   */
+  private applyEdits: Promise<void> = Promise.resolve()
+
   constructor(readonly document: vscode.TextDocument, readonly client: BaseLanguageClient) {
   }
 
@@ -73,7 +81,7 @@ class Worksheet implements Disposable {
       this.canceller = undefined
     }
     this._onDidStateChange.dispose()
-	}
+  }
 
   /** Remove all decorations, and resets this worksheet. */
   private reset(): void {
@@ -83,6 +91,7 @@ class Worksheet implements Disposable {
     this.decoratedLines.clear()
     this.runVersion = -1
     this.margin = this.longestLine() + 5
+    this.applyEdits = Promise.resolve()
   }
 
   /**
@@ -109,6 +118,13 @@ class Worksheet implements Disposable {
   /** Is this worksheet currently being run ? */
   isRunning(): boolean {
     return this.canceller != undefined
+  }
+
+  /** Display the output in the worksheet's editor. */
+  handleMessage(output: WorksheetPublishOutputParams, editor: vscode.TextEditor) {
+    this.applyEdits = this.applyEdits.then(() => {
+      this.displayAndSaveResult(output.line - 1, output.content, editor)
+    })
   }
 
   /**
@@ -160,10 +176,10 @@ class Worksheet implements Disposable {
    * @param runResult  The result itself.
    * @param worksheet  The worksheet that receives the result.
    * @param editor     The editor where to display the result.
-   * @return A `Thenable` that will insert necessary lines to fit the output
+   * @return A `Promise` that will insert necessary lines to fit the output
    *         and display the decorations upon completion.
    */
-  public displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor) {
+  public async displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor): Promise<void> {
     const resultLines = runResult.trim().split(/\r\n|\r|\n/g)
 
     // The line where the next decoration should be put.
@@ -183,21 +199,18 @@ class Worksheet implements Disposable {
       this.runVersion += 1
     }
 
-    return vscode.workspace.applyEdit(addNewLinesEdit).then(_ => {
-      for (let line of resultLines) {
-        const decorationPosition = new vscode.Position(actualLine, 0)
-        const decorationMargin = this.margin - editor.document.lineAt(actualLine).text.length
-        const decorationType = this.createDecoration(decorationMargin, line)
-        const decorationOptions = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
-        const decoration = new Decoration(decorationType, decorationOptions)
-
-        this.decoratedLines.add(actualLine)
-        this.decorations.push(decoration)
-
-        editor.setDecorations(decorationType, [decorationOptions])
-        actualLine += 1
-      }
-    })
+    await vscode.workspace.applyEdit(addNewLinesEdit);
+    for (let line of resultLines) {
+      const decorationPosition = new vscode.Position(actualLine, 0);
+      const decorationMargin = this.margin - editor.document.lineAt(actualLine).text.length;
+      const decorationType = this.createDecoration(decorationMargin, line);
+      const decorationOptions = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line };
+      const decoration = new Decoration(decorationType, decorationOptions);
+      this.decoratedLines.add(actualLine);
+      this.decorations.push(decoration);
+      editor.setDecorations(decorationType, [decorationOptions]);
+      actualLine += 1;
+    }
   }
 
   /**
@@ -404,7 +417,7 @@ export class WorksheetProvider implements Disposable {
    * Handle the result of running part of a worksheet.
    * This is called when we receive a `worksheet/publishOutput`.
    *
-   * @param message The result of running part of a worksheet.
+   * @param output The result of running part of a worksheet.
    */
   private handleMessage(output: WorksheetPublishOutputParams) {
     const editor = vscode.window.visibleTextEditors.find(e => {
@@ -415,7 +428,7 @@ export class WorksheetProvider implements Disposable {
     if (editor) {
       const worksheet = this.worksheetFor(editor.document)
       if (worksheet) {
-        worksheet.displayAndSaveResult(output.line - 1, output.content, editor)
+        worksheet.handleMessage(output, editor)
       }
     }
   }
