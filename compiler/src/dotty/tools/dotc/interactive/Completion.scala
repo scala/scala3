@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators.StringInterpolators
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Names.{Name, SimpleName, TermName}
+import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps.NameDecorator
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
@@ -350,26 +350,18 @@ object Completion {
     *  in the REPL and the IDE.
     */
    private class RenameAwareScope extends Scopes.MutableScope {
-     private[this] val nameToSymbols: mutable.Map[Name, List[Symbol]] = mutable.Map.empty
+     private[this] val nameToSymbols: mutable.Map[TermName, List[Symbol]] = mutable.Map.empty
 
      /** Enter the symbol `sym` in this scope, recording a potential renaming. */
      def enter[T <: Symbol](sym: T, name: Name)(implicit ctx: Context): T = {
-       nameToSymbols += name -> (sym :: nameToSymbols.getOrElse(name, Nil))
+       val termName = name.stripModuleClassSuffix.toTermName
+       nameToSymbols += termName -> (sym :: nameToSymbols.getOrElse(termName, Nil))
        newScopeEntry(name, sym)
        sym
      }
 
      /** Get the names that are known in this scope, along with the list of symbols they refer to. */
-     def mappings(implicit ctx: Context): Map[SimpleName, List[Symbol]] = {
-       val symbols =
-         for {
-           (name, syms) <- nameToSymbols.toList
-           sym <- syms
-         } yield (sym, name)
-       symbols
-         .groupBy(_._2.stripModuleClassSuffix.toSimpleName)
-         .mapValues(_.map(_._1))
-     }
+     def mappings: Map[TermName, List[Symbol]] = nameToSymbols.toMap
    }
 
 }
