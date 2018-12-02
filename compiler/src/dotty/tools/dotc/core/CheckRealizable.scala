@@ -47,7 +47,7 @@ object CheckRealizable {
   def boundsRealizability(tp: Type)(implicit ctx: Context): Realizability =
     new CheckRealizable().boundsRealizability(tp)
 
-  private val LateInitialized = Lazy | Erased,
+  private val LateInitialized = Lazy | Erased
 }
 
 /** Compute realizability status */
