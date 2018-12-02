@@ -66,24 +66,53 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private def isLateInitialized(sym: Symbol) = sym.is(LateInitialized, butNot = Module)
 
-  /** The realizability status of given type `tp`*/
+  /** The realizability status of given type `tp`. Types can only project
+    * members from realizable types, that is, types having non-null values and
+    * not depending on mutable state.
+    * Beware that subtypes of realizable types might not be realizable; hence
+    * realizability checking restricts overriding. */
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
+      // Suppose tp is a.b.c.type, where c is declared with type T, then sym is c, tp.info is T and
+      // and tp.prefix is a.b.
       val sym = tp.symbol
-      val r =
-        if (sym.is(Stable)) realizability(tp.prefix)
+      // tp is realizable if it selects a stable member on a realizable prefix.
+
+      /** A member is always stable if tp.info is a realizable singleton type. We check this last
+          for performance, in all cases where some unrelated check might have failed. */
+      def patchRealizability(r: Realizability) =
+        r.mapError(if (tp.info.isStableRealizable) Realizable else _)
+
+      def computeStableMember(): Realizability = {
+        // Reject fields that are mutable, by-name, and similar.
+        if (!sym.isStable)
+          patchRealizability(NotStable)
+        // Accept non-lazy symbols "lazy"
+        else if (!isLateInitialized(sym))
+          patchRealizability(Realizable)
+        // Accept symbols that are lazy/erased, can't be overridden, and
+        // have a realizable type. We require finality because overrides
+        // of realizable fields might not be realizable.
+        else if (!sym.isEffectivelyFinal)
+          patchRealizability(new NotFinal(sym))
+        else
+          // Since patchRealizability checks realizability(tp.info) through
+          // isStableRealizable, using patchRealizability wouldn't make
+          // a difference. Calling it here again might introduce a slowdown
+          // exponential in the prefix length, so we avoid it at the cost of
+          // code complexity.
+          realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
+      }
+
+      val stableMember =
+        // 1. the symbol is flagged as stable.
+        if (sym.is(Stable)) Realizable
         else {
-          val r =
-            if (!sym.isStable) NotStable
-            else if (!isLateInitialized(sym)) Realizable
-            else if (!sym.isEffectivelyFinal) new NotFinal(sym)
-            else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
-          r andAlso {
-            sym.setFlag(Stable)
-            realizability(tp.prefix).mapError(r => new ProblemInUnderlying(tp.prefix, r))
-          }
+          val r = computeStableMember()
+          if (r == Realizable) sym.setFlag(Stable)
+          r
         }
-      if (r == Realizable || tp.info.isStableRealizable) Realizable else r
+      stableMember andAlso realizability(tp.prefix).mapError(r => new ProblemInUnderlying(tp.prefix, r))
     case _: SingletonType | NoPrefix =>
       Realizable
     case tp =>
