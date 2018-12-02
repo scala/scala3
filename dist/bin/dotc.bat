@@ -54,7 +54,7 @@ set _RESIDUAL_ARGS=
 
 :args_loop
 if "%~1"=="" goto args_done
-set __ARG=%~1
+set "__ARG=%~1"
 if "%__ARG%"=="--" (
     rem for arg; do addResidual "$arg"; done; set -- ;;
 ) else if /i "%__ARG%"=="-h" (

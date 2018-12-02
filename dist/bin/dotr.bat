@@ -30,7 +30,7 @@ rem if [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_ind
 if %_CASE_1%==1 (
     set _DOTC_ARGS=
     if defined _CLASS_PATH set _DOTC_ARGS=-classpath "%_CLASS_PATH%"
-    set _DOTC_ARGS=!_DOTC_ARGS! %_JAVA_OPTIONS% -repl %_RESIDUAL_ARGS%
+    set _DOTC_ARGS=!_DOTC_ARGS! %_JAVA_OPTS% -repl %_RESIDUAL_ARGS%
     echo Starting dotty REPL...
     %_PROG_HOME%\bin\dotc.bat !_DOTC_ARGS!
 rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
@@ -45,7 +45,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     if %_WITH_COMPILER%==1 (
         set _CP_ARG=!_CP_ARG!%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SCALA_ASM%
     )
-    set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_JVM_OPTIONS% %_RESIDUAL_ARGS%
+    set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_JVM_OPTS% %_RESIDUAL_ARGS%
     %_JAVACMD% !_JAVA_ARGS!
 ) else (
     echo Warning: Command option is not correct. 1>&2
@@ -64,12 +64,12 @@ set _WITH_COMPILER=0
 set _JAVA_DEBUG=
 set _CLASS_PATH_COUNT=0
 set _CLASS_PATH=
-set _JVM_OPTIONS=
-set _JAVA_OPTIONS=
+set _JVM_OPTS=
+set _JAVA_OPTS=
 
 :args_loop
-if "%1"=="" goto args_done
-set "__ARG=%1"
+if "%~1"=="" goto args_done
+set "__ARG=%~1"
 if /i "%__ARG%"=="-repl" (
     set _EXECUTE_REPL=1
 ) else if /i "%__ARG%"=="-run" (
@@ -83,8 +83,8 @@ if /i "%__ARG%"=="-repl" (
 ) else if /i "%__ARG%"=="-d" (
     set _JAVA_DEBUG=%_DEBUG_STR%
 ) else if /i "%__ARG:~0,2%"=="-J" (
-    set _JVM_OPTIONS=!_JVM_OPTIONS! %__ARG:~2%
-    set _JAVA_OPTIONS=!_JAVA_OPTIONS! %__ARG%
+    set _JVM_OPTS=!_JVM_OPTS! %__ARG:~2%
+    set _JAVA_OPTS=!_JAVA_OPTS! %__ARG%
 ) else (
     set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %__ARG%
 )
