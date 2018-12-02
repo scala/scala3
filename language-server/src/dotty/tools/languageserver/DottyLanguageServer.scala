@@ -780,8 +780,8 @@ object DottyLanguageServer {
       symbol.owner == ctx.definitions.EmptyPackageClass
   }
 
-  /** Create an lsp4j.CompletionItem from a Symbol */
-  def completionItem(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItem = {
+  /** Create an lsp4j.CompletionItem from a completion result */
+  def completionItem(completion: Completion)(implicit ctx: Context): lsp4j.CompletionItem = {
     def completionItemKind(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItemKind = {
       import lsp4j.{CompletionItemKind => CIK}
 
@@ -799,15 +799,20 @@ object DottyLanguageServer {
         CIK.Field
     }
 
-    val label = sym.name.show
-    val item = new lsp4j.CompletionItem(label)
-    val detail = if (sym.isType) sym.showFullName else sym.info.widenTermRefExpr.show
-    item.setDetail(detail)
-    ParsedComment.docOf(sym).foreach { doc =>
-      item.setDocumentation(markupContent(doc.renderAsMarkdown))
+    val item = new lsp4j.CompletionItem(completion.label)
+    item.setDetail(completion.description)
+
+    val documentation = for {
+      sym <- completion.symbols
+      doc <- ParsedComment.docOf(sym)
+    } yield doc
+
+    if (documentation.nonEmpty) {
+      item.setDocumentation(hoverContent(None, documentation))
     }
-    item.setDeprecated(sym.isDeprecated)
-    item.setKind(completionItemKind(sym))
+
+    item.setDeprecated(completion.symbols.forall(_.isDeprecated))
+    completion.symbols.headOption.foreach(s => item.setKind(completionItemKind(s)))
     item
   }
 

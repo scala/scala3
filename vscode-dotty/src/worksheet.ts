@@ -325,16 +325,11 @@ export class WorksheetProvider implements Disposable {
       codeLensProvider,
       vscode.languages.registerCodeLensProvider(documentSelector, codeLensProvider),
       vscode.workspace.onWillSaveTextDocument(event => {
+        const runWorksheetOnSave = vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave")
         const worksheet = this.worksheetFor(event.document)
         if (worksheet) {
           event.waitUntil(Promise.resolve(worksheet.prepareRun()))
-        }
-      }),
-      vscode.workspace.onDidSaveTextDocument(document => {
-        const runWorksheetOnSave = vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave")
-        const worksheet = this.worksheetFor(document)
-        if (runWorksheetOnSave && worksheet) {
-          worksheet.run()
+          if (runWorksheetOnSave) worksheet.run()
         }
       }),
       vscode.workspace.onDidCloseTextDocument(document => {
