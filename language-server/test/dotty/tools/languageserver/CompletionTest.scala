@@ -89,7 +89,7 @@ class CompletionTest {
              object Foo""",
       code"""package pgk1
              import pkg0.F${m1}"""
-    ).completion(m1, Set(("Foo", Class, "pkg0.Foo")))
+    ).completion(m1, Set(("Foo", Class, "class and object Foo")))
   }
 
   @Test def importCompleteIncludePackage: Unit = {
@@ -121,7 +121,7 @@ class CompletionTest {
 
   @Test def importJavaClass: Unit = {
     code"""import java.io.FileDesc${m1}""".withSource
-      .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor")))
+      .completion(m1, Set(("FileDescriptor", Class, "class and object FileDescriptor")))
   }
 
   @Test def importJavaStaticMethod: Unit = {
@@ -143,7 +143,7 @@ class CompletionTest {
 
   @Test def importRename: Unit = {
     code"""import java.io.{FileDesc${m1} => Foo}""".withSource
-      .completion(m1, Set(("FileDescriptor", Class, "java.io.FileDescriptor")))
+      .completion(m1, Set(("FileDescriptor", Class, "class and object FileDescriptor")))
   }
 
   @Test def markDeprecatedSymbols: Unit = {
@@ -198,5 +198,60 @@ class CompletionTest {
           |  val bizz: ba${m1}
           |}""".withSource
       .completion(m1, Set(("bar", Field, "Bar"), ("bat", Module, "Foo.bat")))
+  }
+
+  @Test def completionOnRenamedImport: Unit = {
+    code"""import java.io.{FileDescriptor => AwesomeStuff}
+           trait Foo { val x: Awesom$m1 }""".withSource
+      .completion(m1, Set(("AwesomeStuff", Class, "class and object FileDescriptor")))
+  }
+
+  @Test def completionOnRenamedImport2: Unit = {
+    code"""import java.util.{HashMap => MyImportedSymbol}
+           trait Foo {
+             import java.io.{FileDescriptor => MyImportedSymbol}
+             val x: MyImp$m1
+           }""".withSource
+      .completion(m1, Set(("MyImportedSymbol", Class, "class and object FileDescriptor")))
+  }
+
+  @Test def completionRenamedAndOriginalNames: Unit = {
+    code"""import java.util.HashMap
+          |trait Foo {
+          |  import java.util.{HashMap => HashMap2}
+          |  val x: Hash$m1
+          |}""".withSource
+      .completion(m1, Set(("HashMap", Class, "class and object HashMap"),
+                          ("HashMap2", Class, "class and object HashMap")))
+  }
+
+  @Test def completionRenamedThrice: Unit = {
+    code"""import java.util.{HashMap => MyHashMap}
+          |import java.util.{HashMap => MyHashMap2}
+          |trait Foo {
+          |  import java.util.{HashMap => MyHashMap3}
+          |  val x: MyHash$m1
+          |}""".withSource
+      .completion(m1, Set(("MyHashMap", Class, "class and object HashMap"),
+                          ("MyHashMap2", Class, "class and object HashMap"),
+                          ("MyHashMap3", Class, "class and object HashMap")))
+  }
+
+  @Test def completionClassAndMethod: Unit = {
+    code"""object Foo {
+          |  class bar
+          |  def bar = 0
+          |}
+          |import Foo.b$m1""".withSource
+      .completion(m1, Set(("bar", Class, "class and method bar")))
+  }
+
+  @Test def completionTypeAndLazyValue: Unit = {
+    code"""object Foo {
+          |  type bar = Int
+          |  lazy val bar = 3
+          |}
+          |import Foo.b$m1""".withSource
+      .completion(m1, Set(("bar", Field, "type and lazy value bar")))
   }
 }

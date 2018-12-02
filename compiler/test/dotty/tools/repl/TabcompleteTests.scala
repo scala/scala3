@@ -80,4 +80,14 @@ class TabcompleteTests extends ReplTest {
       val expected = List("FileDescriptor")
       assertEquals(expected, tabComplete("val foo: FileDesc"))
     }
+
+  @Test def tabCompleteRenamedImport =
+    fromInitialState { implicit state =>
+      val src = "import java.io.{FileDescriptor => Renamed}"
+      run(src)
+    }
+    .andThen { implicit state =>
+      val expected = List("Renamed")
+      assertEquals(expected, tabComplete("val foo: Rena"))
+    }
 }
