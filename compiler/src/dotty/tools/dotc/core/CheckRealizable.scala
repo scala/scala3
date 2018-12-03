@@ -114,7 +114,11 @@ class CheckRealizable(implicit ctx: Context) {
   /** `Realizable` if `tp` has good bounds, a `HasProblem...` instance
    *  pointing to a bad bounds member otherwise. "Has good bounds" means:
    *
-   *    - all type members have good bounds (except for opaque helpers)
+   *    - all non-synthetic type members have good bounds.
+   *      Synthetic members are unchecked, for two reasons:
+   *       - synthetic opaque aliases do have conflicting bounds, but this is OK
+   *       - we should not force synthesized Shape types because that might
+   *         query the `children` annotation too early.
    *    - all refinements of the underlying type have good bounds (except for opaque companions)
    *    - all base types are class types, and if their arguments are wildcards
    *      they have good bounds.
@@ -132,7 +136,8 @@ class CheckRealizable(implicit ctx: Context) {
     val memberProblems =
       for {
         mbr <- tp.nonClassTypeMembers
-        if !(mbr.info.loBound <:< mbr.info.hiBound) && !mbr.symbol.isOpaqueHelper
+        if !mbr.symbol.is(Synthetic)
+        if !(mbr.info.loBound <:< mbr.info.hiBound)
       }
       yield new HasProblemBounds(mbr.name, mbr.info)
 

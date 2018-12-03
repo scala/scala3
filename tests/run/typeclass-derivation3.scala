@@ -3,25 +3,24 @@ import scala.annotation.tailrec
 
 object datatypes {
   import typeclasses._
+
   // An algebraic datatype
   enum Lst[+T] derives Eq, Pickler, Show {
     case Cons(hd: T, tl: Lst[T])
     case Nil
   }
-
   object Lst {}
+
 
   // A simple product type
   case class Pair[T](x: T, y: T) derives Eq, Pickler, Show
-  object Pair
 
   // another ADT
   sealed trait Either[+L, +R] extends Product derives Eq, Pickler, Show
   case class Left[L](x: L) extends Either[L, Nothing]
   case class Right[R](x: R) extends Either[Nothing, R]
 
-  object Either {
-  }
+  //object Either {}
 }
 
 object typeclasses {

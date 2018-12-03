@@ -991,7 +991,8 @@ class Namer { typer: Typer =>
 
       if (impl.derived.nonEmpty) {
         val derivingClass =
-          if (original.removeAttachment(DerivingCompanion).isDefined) cls.companionClass.asClass
+          if (original.removeAttachment(DerivingCompanion).isDefined ||
+              original.mods.is(Synthetic)) cls.companionClass.asClass
           else cls
         val deriver = new Deriver(derivingClass, impl.pos.startPos)(localCtx)
         deriver.enterDerived(impl.derived)
