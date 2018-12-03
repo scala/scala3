@@ -7,3 +7,4 @@ tuples1.scala
 tuples1a.scala
 typeclass-derivation2.scala
 typeclass-derivation3.scala
+deriving-interesting-prefixes.scala

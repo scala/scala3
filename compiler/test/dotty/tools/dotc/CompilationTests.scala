@@ -97,7 +97,8 @@ class CompilationTests extends ParallelTesting {
       // succeeds despite -Xfatal-warnings because of -nowarn
       "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
       defaultOptions.and("-nowarn", "-Xfatal-warnings")
-    )
+    ) +
+    compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40"))
   }.checkCompile()
 
   @Test def posTwice: Unit = {
