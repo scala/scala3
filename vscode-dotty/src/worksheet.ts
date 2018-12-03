@@ -24,6 +24,13 @@ export const worksheetRunKey = "dotty.worksheet.run"
 export const worksheetCancelKey = "dotty.worksheet.cancel"
 
 /**
+ * If true, the setting for running the worksheet on save is enabled.
+ */
+function runWorksheetOnSave(): boolean {
+  return vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave") as boolean
+}
+
+/**
  * A wrapper around the information that VSCode needs to display text decorations.
  *
  * @param decorationType    The styling options of this decoration
@@ -338,11 +345,25 @@ export class WorksheetProvider implements Disposable {
       codeLensProvider,
       vscode.languages.registerCodeLensProvider(documentSelector, codeLensProvider),
       vscode.workspace.onWillSaveTextDocument(event => {
-        const runWorksheetOnSave = vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave")
-        const worksheet = this.worksheetFor(event.document)
+        const document = event.document
+        const worksheet = this.worksheetFor(document)
         if (worksheet) {
           event.waitUntil(Promise.resolve(worksheet.prepareRun()))
-          if (runWorksheetOnSave) worksheet.run()
+          // If the document is not dirty, then `onDidSaveTextDocument` will not
+          // be called so we need to run the worksheet now.
+          // On the other hand, if the document _is_ dirty, we should _not_ run
+          // the worksheet now because the server state will not be synchronized
+          // with the client state, instead we let `onDidSaveTextDocument`
+          // handle it.
+          if (runWorksheetOnSave() && !document.isDirty) {
+            worksheet.run()
+          }
+        }
+      }),
+      vscode.workspace.onDidSaveTextDocument(document => {
+        const worksheet = this.worksheetFor(document)
+        if (worksheet && runWorksheetOnSave()) {
+          worksheet.run()
         }
       }),
       vscode.workspace.onDidCloseTextDocument(document => {
