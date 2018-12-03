@@ -127,7 +127,9 @@ case class Site(
   }
 
   /** Copy static files to `outDir` */
-  def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  private[this] val defaultOutDir = new JFile(root.getAbsolutePath + JFile.separator + "_site")
+
+  def copyStaticFiles(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput (outDir) {
       // Copy user-defined static assets
       staticAssets.foreach { asset =>
@@ -188,7 +190,7 @@ case class Site(
   }
 
   /** Generate HTML for the API documentation */
-  def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateApiDocs(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput(outDir) {
       def genDoc(e: model.Entity): Unit = {
         ctx.docbase.echo(s"Generating doc page for: ${e.path.mkString(".")}")
@@ -198,7 +200,11 @@ case class Site(
           if (e.kind == "package") ("/index.html", -1)
           else (".html", 0)
 
-        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
+        val path = if (scala.util.Properties.isWin)
+          e.path.map(_.replace("<", "_").replace(">", "_"))
+        else 
+          e.path
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + path.mkString("/") + suffix))
         val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(Some(e)).toMap
         val page = new HtmlPage("_layouts/api-page.html", layouts("api-page").content, params, includes)
 
@@ -230,7 +236,7 @@ case class Site(
     }
 
   /** Generate HTML files from markdown and .html sources */
-  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateHtmlFiles(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput(outDir) {
       compilableFiles.foreach { asset =>
         val pathFromRoot = stripRoot(asset)
@@ -250,7 +256,7 @@ case class Site(
     }
 
   /** Generate blog from files in `blog/_posts` and output in `outDir` */
-  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateBlog(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput(outDir) {
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
