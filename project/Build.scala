@@ -623,13 +623,13 @@ object Build {
         val args: List[String] = spaceDelimited("<arg>").parsed.toList
         val attList = (dependencyClasspath in Runtime).value
         val jars = packageAll.value
+        import File.{  pathSeparator => sep }
 
         val scalaLib = findLib(attList, "scala-library")
         val dottyLib = jars("dotty-library")
 
         def run(args: List[String]): Unit = {
-          val sep = File.pathSeparator
-          val fullArgs = insertClasspathInArgs(args, s".$sep$dottyLib$sep$scalaLib")
+          val fullArgs = insertClasspathInArgs(args, List(".", dottyLib, scalaLib).mkString(sep))
           runProcess("java" :: fullArgs, wait = true)
         }
 
@@ -645,7 +645,7 @@ object Build {
           val asm = findLib(attList, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
           val dottyInterfaces = jars("dotty-interfaces")
-          run(insertClasspathInArgs(args1, s"$dottyCompiler:$dottyInterfaces:$asm"))
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm).mkString(sep)))
         } else run(args)
       },
 
@@ -1092,8 +1092,8 @@ object Build {
       Developer(
         id = "liufengyun",
         name = "Liu Fengyun",
-        email = "liufengyun@chaos-lab.com",
-        url = url("http://chaos-lab.com")
+        email = "liu@fengy.me",
+        url = url("https://fengy.me")
       ),
       Developer(
         id = "nicolasstucki",
