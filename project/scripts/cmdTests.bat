@@ -30,24 +30,31 @@ rem ## Main
 echo testing sbt dotc and dotr
 if %_DEBUG%==1 echo [%_BASENAME%] "%_SBT_CMD%" ";dotc %_SOURCE% -d %_OUT_DIR% ;dotr -classpath %_OUT_DIR% %_MAIN%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc %_SOURCE% -d %_OUT_DIR% ;dotr -classpath %_OUT_DIR% %_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
 rem # check that `sbt dotc` compiles and `sbt dotr` runs it
 echo testing sbt dotc -from-tasty and dotr -classpath
 call :clear_out "%_OUT_DIR%"
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotc %_SOURCE% -d %_OUT_DIR% ;dotc -from-tasty -classpath %_OUT_DIR% -d %_OUT1_DIR% %_MAIN% ;dotr -classpath %_OUT1_DIR% %_MAIN%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc %_SOURCE% -d %_OUT_DIR% ;dotc -from-tasty -classpath %_OUT_DIR% -d %_OUT1_DIR% %_MAIN% ;dotr -classpath %_OUT1_DIR% %_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
 rem # check that `sbt dotc -decompile` runs
 echo testing sbt dotc -decompile
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotc -decompile -color:never -classpath %_OUT_DIR% %_MAIN%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc -decompile -color:never -classpath %_OUT_DIR% %_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
 echo testing sbt dotc -decompile from file
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotc -decompile -color:never %_OUT_DIR%\%_TASTY%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc -decompile -color:never %_OUT_DIR%\%_TASTY%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
@@ -55,12 +62,15 @@ echo testing sbt dotr with no -classpath
 call :clear_out "%_OUT_DIR%"
 if %_DEBUG%==1 echo [%_BASENAME%] "%_SBT_CMD%" ";dotc %_SOURCE% ; dotr %_MAIN%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc %_SOURCE% ; dotr %_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
 echo testing loading tasty from .tasty file in jar
 call :clear_out "%_OUT_DIR%"
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotc -d %_OUT_DIR%\out.jar %_SOURCE%; dotc -decompile -classpath %_OUT_DIR%\out.jar -color:never %_MAIN%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc -d %_OUT_DIR%\out.jar %_SOURCE%; dotc -decompile -classpath %_OUT_DIR%\out.jar -color:never %_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 

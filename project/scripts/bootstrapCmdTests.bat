@@ -34,11 +34,17 @@ call "%_SBT_CMD%" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 rem # The above is here as it relies on the bootstrapped library.
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
 call "%_SBT_CMD%" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 call "%_SBT_CMD%" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 echo testing scala.quoted.Expr.run from sbt dotr
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotty-compiler-bootstrapped/dotc tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotty-compiler-bootstrapped/dotc tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "val a: scala.Int = 3" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
@@ -52,8 +58,10 @@ echo testing ./bin/dotc and ./bin/dotr
 call :clear_out "%_OUT_DIR%"
 if %_DEBUG%==1 echo [%_BASENAME%] call %_BIN_DIR%\dotc.bat "%_SOURCE%" -d "%_OUT_DIR%"
 call %_BIN_DIR%\dotc.bat "%_SOURCE%" -d "%_OUT_DIR%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 if %_DEBUG%==1 echo [%_BASENAME%] call %_BIN_DIR%\dotr.bat -classpath "%_OUT_DIR%" "%_MAIN%" ^> "%_TMP_FILE%"
 call %_BIN_DIR%\dotr.bat -classpath "%_OUT_DIR%" "%_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 if %_DEBUG%==1 echo [%_BASENAME%] call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
@@ -63,13 +71,13 @@ echo testing ./bin/dotc -from-tasty and dotr -classpath
 call :clear_out "%_OUT1_DIR%"
 if %_DEBUG%==1 echo [%_BASENAME%] call %_BIN_DIR%\dotc.bat -from-tasty -classpath "%_OUT_DIR%" -d "%_OUT1_DIR%" "%_MAIN%"
 call %_BIN_DIR%\dotc.bat -from-tasty -classpath "%_OUT_DIR%" -d "%_OUT1_DIR%" "%_MAIN%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 if %_DEBUG%==1 echo [%_BASENAME%] call %_BIN_DIR%\dotr.bat -classpath "%_OUT1_DIR%" "%_MAIN%" ^> "%_TMP_FILE%"
 call %_BIN_DIR%\dotr.bat -classpath "%_OUT1_DIR%" "%_MAIN%" > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 if %_DEBUG%==1 echo [%_BASENAME%] call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
-
-rem # echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
 
 echo testing ./bin/dotd
 call :clear_out "%_OUT_DIR%"
