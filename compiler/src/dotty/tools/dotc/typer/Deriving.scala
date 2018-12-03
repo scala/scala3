@@ -16,12 +16,6 @@ import Inferencing._
 import transform.TypeUtils._
 import transform.SymUtils._
 
-
-// TODOs:
-//  - handle case where there's no companion object
-//  - check that derived instances are stable
-//  - reference derived instances with correct prefix instead of just the symbol
-
 /** A typer mixin that implements typeclass derivation functionality */
 trait Deriving { this: Typer =>
 
@@ -131,6 +125,15 @@ trait Deriving { this: Typer =>
                           flags: FlagSet = EmptyFlags)(implicit ctx: Context): TermSymbol =
       newSymbol(name, info, pos, flags | Method).asTerm
 
+    /** A version of Type#underlyingClassRef that works also for higher-kinded types */
+    private def underlyingClassRef(tp: Type): Type = tp match {
+      case tp: TypeRef if tp.symbol.isClass => tp
+      case tp: TypeRef if tp.symbol.isAbstractType => NoType
+      case tp: TermRef => NoType
+      case tp: TypeProxy => underlyingClassRef(tp.underlying)
+      case _ => NoType
+    }
+
     /** Enter type class instance with given name and info in current scope, provided
      *  an instance with the same name does not exist already.
      *  @param  reportErrors  Report an error if an instance with the same name exists already
@@ -138,7 +141,7 @@ trait Deriving { this: Typer =>
     private def addDerivedInstance(clsName: Name, info: Type, pos: Position, reportErrors: Boolean) = {
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists) {
-        if (reportErrors) ctx.error(i"duplicate typeclass derivation for $clsName")
+        if (reportErrors) ctx.error(i"duplicate typeclass derivation for $clsName", pos)
       }
       else add(newMethod(instanceName, info, pos, Implicit))
     }
@@ -162,8 +165,9 @@ trait Deriving { this: Typer =>
       * that have the same name but different prefixes through selective aliasing.
       */
     private def processDerivedInstance(derived: untpd.Tree): Unit = {
-      val uncheckedType = typedAheadType(derived, AnyTypeConstructorProto).tpe.dealias
-      val derivedType = checkClassType(uncheckedType, derived.pos, traitReq = false, stablePrefixReq = true)
+      val originalType = typedAheadType(derived, AnyTypeConstructorProto).tpe
+      val underlyingType = underlyingClassRef(originalType)
+      val derivedType = checkClassType(underlyingType, derived.pos, traitReq = false, stablePrefixReq = true)
       val nparams = derivedType.classSymbol.typeParams.length
       if (nparams == 1) {
         val typeClass = derivedType.classSymbol
@@ -174,7 +178,7 @@ trait Deriving { this: Typer =>
         val instanceInfo =
           if (cls.typeParams.isEmpty) ExprType(resultType)
           else PolyType.fromParams(cls.typeParams, ImplicitMethodType(evidenceParamInfos, resultType))
-        addDerivedInstance(derivedType.typeSymbol.name, instanceInfo, derived.pos, reportErrors = true)
+        addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.pos, reportErrors = true)
       }
       else
         ctx.error(
@@ -377,14 +381,20 @@ trait Deriving { this: Typer =>
           def instantiated(info: Type): Type = info match {
             case info: PolyType => instantiated(info.instantiate(tparamRefs))
             case info: MethodType => info.instantiate(params.map(_.termRef))
-            case info => info
+            case info => info.widenExpr
+          }
+          def classAndCompanionRef(tp: Type): (ClassSymbol, TermRef) = tp match {
+            case tp @ TypeRef(prefix, _) if tp.symbol.isClass =>
+              (tp.symbol.asClass, prefix.select(tp.symbol.companionModule).asInstanceOf[TermRef])
+            case tp: TypeProxy =>
+              classAndCompanionRef(tp.underlying)
           }
           val resultType = instantiated(sym.info)
-          val typeCls = resultType.classSymbol
+          val (typeCls, companionRef) = classAndCompanionRef(resultType)
           if (typeCls == defn.ShapedClass)
             shapedRHS(resultType)
           else {
-            val module = untpd.ref(typeCls.companionModule.termRef).withPos(sym.pos)
+            val module = untpd.ref(companionRef).withPos(sym.pos)
             val rhs = untpd.Select(module, nme.derived)
             typed(rhs, resultType)
           }
