@@ -206,8 +206,9 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFile
   override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className) map ClassFileEntryImpl
 
   def findClassFile(className: String): Option[AbstractFile] = {
+    import JFile.{ separator => sep }
     val relativePath = FileUtils.dirPath(className)
-    val classFile = new JFile(s"$dir/$relativePath.class")
+    val classFile = new JFile(s"$dir$sep$relativePath.class")
     if (classFile.exists) {
       val wrappedClassFile = new dotty.tools.io.File(classFile.toPath)
       val abstractClassFile = new PlainFile(wrappedClassFile)
@@ -230,9 +231,10 @@ case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFi
   override def findClass(className: String): Option[ClassRepresentation] = findSourceFile(className) map SourceFileEntryImpl
 
   private def findSourceFile(className: String): Option[AbstractFile] = {
+    import JFile.{ separator => sep }
     val relativePath = FileUtils.dirPath(className)
     val sourceFile = Stream("scala", "java")
-      .map(ext => new JFile(s"$dir/$relativePath.$ext"))
+      .map(ext => new JFile(s"$dir$sep$relativePath.$ext"))
       .collectFirst { case file if file.exists() => file }
 
     sourceFile.map { file =>
