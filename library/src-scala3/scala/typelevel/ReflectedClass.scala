@@ -1,9 +1,17 @@
 package scala.typelevel
 import annotation.tailrec
+import collection.mutable.ArrayBuffer
 
-/** @param caseLabels The case and element labels of the described ADT as encoded strings.
-*/
-class ReflectedClass(caseLabels: Array[String]) {
+/** @param labelsStr: A string encoding all case and element labels according to the
+ *                    following grammar:
+ *
+ *                    labelString   ::= caseString { caseSeparator caseString }
+ *                    caseString    ::= elemString { elemSeparator elemString }
+ *                    caseSeparator ::= '\001'
+ *                    elemSeparator ::= '\000'
+ *                    elemString: "any sequence of characters not containing '\000` or `\001`"
+ */
+class ReflectedClass(labelsStr: String) {
   import ReflectedClass._
 
   /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
@@ -22,22 +30,28 @@ class ReflectedClass(caseLabels: Array[String]) {
   def mirror(ordinal: Int): Mirror =
     mirror(ordinal, EmptyProduct)
 
-  private[typelevel] def label(ordinal: Int, idx: Int): String = {
-    val labels = caseLabels(ordinal)
-    @tailrec def separatorPos(from: Int): Int =
-      if (from == labels.length || labels(from) == separator) from
-      else separatorPos(from + 1)
-    @tailrec def findLabel(count: Int, idx: Int): String =
-      if (idx == labels.length) ""
-      else if (count == 0) labels.substring(idx, separatorPos(idx))
-      else findLabel(if (labels(idx) == separator) count - 1 else count, idx + 1)
-    findLabel(idx, 0)
+  val label: Array[Array[String]] =
+    initLabels(0, 0, new ArrayBuffer[String], new ArrayBuffer[Array[String]])
+
+  private def initLabels(start: Int, cur: Int,
+                         elems: ArrayBuffer[String],
+                         cases: ArrayBuffer[Array[String]]): Array[Array[String]] = {
+    def addElem = elems += labelsStr.substring(start, cur)
+    def addCase = cases += addElem.toArray
+    if (cur == labelsStr.length)
+      addCase.toArray
+    else if (labelsStr(cur) == caseSeparator)
+      initLabels(cur + 1, cur + 1, new ArrayBuffer, addCase)
+    else if (labelsStr(cur) == elemSeparator)
+      initLabels(cur + 1, cur + 1, addElem, cases)
+    else
+      initLabels(start, cur + 1, elems, cases)
   }
 }
 
 object ReflectedClass {
-
-  private final val separator = '\000'
+  private final val elemSeparator = '\000'
+  private final val caseSeparator = '\001'
 
   /** Helper class to turn arrays into products */
   private class ArrayProduct(val elems: Array[AnyRef]) extends Product {

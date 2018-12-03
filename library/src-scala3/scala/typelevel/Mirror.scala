@@ -11,8 +11,8 @@ class Mirror(val reflected: ReflectedClass, val ordinal: Int, val elems: Product
   def apply(n: Int): Any = elems.productElement(n)
 
   /** The name of the constructor of the case reflected by this mirror */
-  def caseLabel: String = reflected.label(ordinal, 0)
+  def caseLabel: String = reflected.label(ordinal)(0)
 
   /** The label of the `n`'th element of the case reflected by this mirror */
-  def elementLabel(n: Int) = reflected.label(ordinal, n + 1)
+  def elementLabel(n: Int) = reflected.label(ordinal)(n + 1)
 }

@@ -993,7 +993,7 @@ class Namer { typer: Typer =>
         val derivingClass =
           if (original.removeAttachment(DerivingCompanion).isDefined) cls.companionClass.asClass
           else cls
-        val deriver = new Deriver(derivingClass)(localCtx)
+        val deriver = new Deriver(derivingClass, impl.pos.startPos)(localCtx)
         deriver.enterDerived(impl.derived)
         original.putAttachment(Deriver, deriver)
       }

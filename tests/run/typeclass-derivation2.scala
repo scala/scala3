@@ -133,7 +133,7 @@ object Lst {
 
   val NilMirror = mirror(1)
 
-  implicit def lstShape[T]: Shaped[Lst[T], Shape[T]] = new {
+  implicit def derived$Shape[T]: Shaped[Lst[T], Shape[T]] = new {
     def reflect(xs: Lst[T]): Mirror = xs match {
       case xs: Cons[T] => mirror(0, xs)
       case Nil => NilMirror
@@ -146,9 +146,9 @@ object Lst {
   }
 
   // three clauses that could be generated from a `derives` clause
-  implicit def LstEq[T: Eq]: Eq[Lst[T]] = Eq.derived
-  implicit def LstPickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
-  implicit def LstShow[T: Show]: Show[Lst[T]] = Show.derived
+  implicit def derived$Eq[T: Eq]: Eq[Lst[T]] = Eq.derived
+  implicit def derived$Pickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
+  implicit def derived$Show[T: Show]: Show[Lst[T]] = Show.derived
 }
 
 // A simple product type
@@ -163,7 +163,7 @@ object Pair {
   val reflectedClass = new ReflectedClass("Pair\000x\000y")
   import reflectedClass.mirror
 
-  implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
+  implicit def derived$Shape[T]: Shaped[Pair[T], Shape[T]] = new {
     def reflect(xy: Pair[T]) =
       mirror(0, xy)
     def reify(c: Mirror): Pair[T] =
@@ -172,9 +172,9 @@ object Pair {
   }
 
   // two clauses that could be generated from a `derives` clause
-  implicit def PairEq[T: Eq]: Eq[Pair[T]] = Eq.derived
-  implicit def PairPickler[T: Pickler]: Pickler[Pair[T]] = Pickler.derived
-  implicit def PairShow[T: Show]: Show[Pair[T]] = Show.derived
+  implicit def derived$Eq[T: Eq]: Eq[Pair[T]] = Eq.derived
+  implicit def derived$Pickler[T: Pickler]: Pickler[Pair[T]] = Pickler.derived
+  implicit def derived$Show[T: Show]: Show[Pair[T]] = Show.derived
 }
 
 sealed trait Either[+L, +R] extends Product // derives Eq, Pickler, Show
@@ -192,21 +192,21 @@ object Either {
   val reflectedClass = new ReflectedClass("Left\000x\001Right\000x")
   import reflectedClass.mirror
 
-  implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
+  implicit def derived$Shape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
     def reflect(e: Either[L, R]): Mirror = e match {
       case e: Left[L] => mirror(0, e)
       case e: Right[R] => mirror(1, e)
     }
     def reify(c: Mirror): Either[L, R] = c.ordinal match {
-      case 0 => Left[L](c(0).asInstanceOf)
-      case 1 => Right[R](c(0).asInstanceOf)
+      case 0 => Left(c(0).asInstanceOf)
+      case 1 => Right(c(0).asInstanceOf)
     }
     def common = reflectedClass
   }
 
-  implicit def EitherEq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
-  implicit def EitherPickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
-  implicit def EitherShow[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
+  implicit def derived$Eq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
+  implicit def derived$Pickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
+  implicit def derived$Show[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
 }
 
 // A typeclass
