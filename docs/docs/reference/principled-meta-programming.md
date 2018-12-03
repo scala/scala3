@@ -29,8 +29,13 @@ prints it again in an error message if it evaluates to `false`.
     inline def assert(expr: => Boolean): Unit =
       ~ assertImpl('(expr))
 
-    def assertImpl(expr: Expr[Boolean]) =
-      '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
+    def assertImpl(expr: Expr[Boolean]) = '{
+      if !(~expr) then
+        throw new AssertionError(s"failed assertion: ${~showExpr(expr)}")
+    }
+
+    def showExpr(expr: Expr[Boolean]): Expr[String] =
+      '("<some source code>") // Better implementation later in this document
 
 If `e` is an expression, then `'(e)` or `'{e}` represent the typed
 abstract syntax tree representing `e`. If `T` is a type, then `'[T]`
@@ -587,9 +592,12 @@ analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 
-    def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString
+    def showExpr[T](expr: Expr[T]): Expr[String] = {
+      val code = expr.show
+      code.toExpr
+    }
 
-That is, the `showExpr` method converts its `Expr` argument to a string, and lifts
+That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using the implicit `toExpr` conversion.
 
 ## Implementation
