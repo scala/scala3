@@ -29,11 +29,7 @@ sbt.bat "dist-bootstrapped/pack"
 popd
 
 :target
-set _TARGET=%~1
-rem # Mutates %* by deleting the first element (%1)
-shift
-
-call %_TARGET% %*
+call %*
 
 goto end
 

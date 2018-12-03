@@ -1,4 +1,5 @@
 @echo off
+setlocal
 
 for %%f in ("%~dp0..") do set _ROOT_DIR=%%~sf
 
