@@ -1166,7 +1166,7 @@ trait Implicits { self: Typer =>
  * search history (`root`) which in turn maintains a possibly empty dictionary of
  * recursive implicit terms constructed during this search.
  *
- * A search history provides operations to created a nested search history, check for
+ * A search history provides operations to create a nested search history, check for
  * divergence, enter by name references and definitions in the implicit dictionary, lookup
  * recursive references and emit a complete implicit dictionary when the outermost search
  * is complete.
@@ -1220,22 +1220,20 @@ abstract class SearchHistory { outer =>
     // as we ascend the chain of open implicits to the outermost search context.
 
     @tailrec
-    def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Boolean = {
+    def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Boolean =
       ois match {
         case Nil => false
         case (hd@(cand1, tp)) :: tl =>
-          (if (cand1.ref == cand.ref) {
+          if (cand1.ref == cand.ref) {
             val wideTp = tp.widenExpr
             lazy val wildTp = wildApprox(wideTp)
-            if (belowByname && (wildTp <:< wildPt)) Some(false)
-            else if ((wideTp.typeSize < ptSize && wideTp.coveringSet == ptCoveringSet) || (wildTp == wildPt)) Some(true)
-            else None
-          } else None) match {
-            case Some(res) => res
-            case None => loop(tl, isByname(tp) || belowByname)
+            if (belowByname && (wildTp <:< wildPt)) false
+            else if ((wideTp.typeSize < ptSize && wideTp.coveringSet == ptCoveringSet) || (wildTp == wildPt)) true
+            else loop(tl, isByname(tp) || belowByname)
           }
+          else loop(tl, isByname(tp) || belowByname)
       }
-    }
+
     loop(open, isByname(pt))
   }
 
@@ -1378,7 +1376,7 @@ final class SearchRoot extends SearchHistory {
     else {
       result match {
         case failure: SearchFailure => failure
-        case success@SearchSuccess(tree, _, _) =>
+        case success @ SearchSuccess(tree, _, _) =>
           import tpd._
 
           // We might have accumulated dictionary entries for by name implicit arguments
@@ -1438,7 +1436,7 @@ final class SearchRoot extends SearchHistory {
                 tpd.ref(vsymMap(id.symbol))
               case tree => tree
             })
-            val nrhss = rhss.map(rhs => rhsMap(rhs))
+            val nrhss = rhss.map(rhsMap(_))
 
             val vdefs = (nsyms zip nrhss) map {
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs)
