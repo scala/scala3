@@ -1,8 +1,8 @@
-package scala.typelevel
+package scala.compiletime
 
 /** The shape of an ADT.
-  *  This is either a product (`Case`) or a sum (`Cases`) of products.
-  */
+ *  This is either a product (`Case`) or a sum (`Cases`) of products.
+ */
 sealed abstract class Shape
 
 object Shape {

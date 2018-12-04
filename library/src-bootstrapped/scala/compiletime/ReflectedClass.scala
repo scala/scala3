@@ -1,4 +1,4 @@
-package scala.typelevel
+package scala.compiletime
 import annotation.tailrec
 import collection.mutable.ArrayBuffer
 

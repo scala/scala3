@@ -215,7 +215,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  import scala.typelevel.erasedValue
+  import scala.compiletime.erasedValue
   import TypeLevel._
 
   inline def tryEql[T](x: T, y: T) = implicit match {
@@ -270,7 +270,7 @@ trait Pickler[T] {
 }
 
 object Pickler {
-  import scala.typelevel.{erasedValue, constValue}
+  import scala.compiletime.{erasedValue, constValue}
   import TypeLevel._
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
@@ -361,7 +361,7 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.typelevel.erasedValue
+  import scala.compiletime.erasedValue
   import TypeLevel._
 
   inline def tryShow[T](x: T): String = implicit match {

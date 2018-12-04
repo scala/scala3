@@ -30,8 +30,8 @@ object typeclasses {
   }
 
   object Eq {
-    import scala.typelevel.erasedValue
-    import typelevel._
+    import scala.compiletime.erasedValue
+    import compiletime._
 
     inline def tryEql[T](x: T, y: T) = implicit match {
       case eq: Eq[T] => eq.eql(x, y)
@@ -85,8 +85,8 @@ object typeclasses {
   }
 
   object Pickler {
-    import scala.typelevel.{erasedValue, constValue}
-    import typelevel._
+    import scala.compiletime.{erasedValue, constValue}
+    import compiletime._
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -176,8 +176,8 @@ object typeclasses {
     def show(x: T): String
   }
   object Show {
-    import scala.typelevel.erasedValue
-    import typelevel._
+    import scala.compiletime.erasedValue
+    import compiletime._
 
     inline def tryShow[T](x: T): String = implicit match {
       case s: Show[T] => s.show(x)

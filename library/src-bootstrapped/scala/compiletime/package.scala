@@ -1,6 +1,6 @@
 package scala
 
-package object typelevel {
+package object compiletime {
 
   erased def erasedValue[T]: T = ???
 

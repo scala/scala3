@@ -1,4 +1,4 @@
-package scala.typelevel
+package scala.compiletime
 
 /** A class for mapping between an ADT value and
   *  the case mirror that represents the value.

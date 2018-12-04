@@ -1,4 +1,4 @@
-import typelevel._
+import compiletime._
 object Test {
   type T[X] = X match {
     case String => Int

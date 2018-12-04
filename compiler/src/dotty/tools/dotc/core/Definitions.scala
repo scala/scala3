@@ -214,7 +214,7 @@ class Definitions {
     lazy val Sys_errorR: TermRef = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context): Symbol = Sys_errorR.symbol
 
-  lazy val TypelevelPackageObjectRef: TermRef = ctx.requiredModuleRef("scala.typelevel.package")
+  lazy val TypelevelPackageObjectRef: TermRef = ctx.requiredModuleRef("scala.compiletime.package")
   lazy val TypelevelPackageObject: Symbol = TypelevelPackageObjectRef.symbol.moduleClass
     lazy val Typelevel_errorR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef(nme.error)
     def Typelevel_error(implicit ctx: Context): Symbol = Typelevel_errorR.symbol
@@ -649,16 +649,16 @@ class Definitions {
     lazy val Product_productPrefixR: TermRef = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context): Symbol = Product_productPrefixR.symbol
 
-  lazy val ShapedType: TypeRef                        = ctx.requiredClassRef("scala.typelevel.Shaped")
+  lazy val ShapedType: TypeRef                        = ctx.requiredClassRef("scala.compiletime.Shaped")
   def ShapedClass(implicit ctx: Context): ClassSymbol = ShapedType.symbol.asClass
-  lazy val ShapeType: TypeRef                         = ctx.requiredClassRef("scala.typelevel.Shape")
+  lazy val ShapeType: TypeRef                         = ctx.requiredClassRef("scala.compiletime.Shape")
   def ShapeClass(implicit ctx: Context): ClassSymbol  = ShapeType.symbol.asClass
-  lazy val ShapeCaseType: TypeRef                     = ctx.requiredClassRef("scala.typelevel.Shape.Case")
+  lazy val ShapeCaseType: TypeRef                     = ctx.requiredClassRef("scala.compiletime.Shape.Case")
   def ShapeCaseClass(implicit ctx: Context): ClassSymbol = ShapeCaseType.symbol.asClass
-  lazy val ShapeCasesType: TypeRef                    = ctx.requiredClassRef("scala.typelevel.Shape.Cases")
+  lazy val ShapeCasesType: TypeRef                    = ctx.requiredClassRef("scala.compiletime.Shape.Cases")
   def ShapeCasesClass(implicit ctx: Context): ClassSymbol = ShapeCasesType.symbol.asClass
-  lazy val MirrorType: TypeRef                        = ctx.requiredClassRef("scala.typelevel.Mirror")
-  lazy val ReflectedClassType: TypeRef                = ctx.requiredClassRef("scala.typelevel.ReflectedClass")
+  lazy val MirrorType: TypeRef                        = ctx.requiredClassRef("scala.compiletime.Mirror")
+  lazy val ReflectedClassType: TypeRef                = ctx.requiredClassRef("scala.compiletime.ReflectedClass")
 
   lazy val LanguageModuleRef: TermSymbol = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context): ClassSymbol = LanguageModuleRef.moduleClass.asClass

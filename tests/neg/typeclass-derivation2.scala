@@ -203,7 +203,7 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.typelevel.erasedValue
+  import scala.compiletime.erasedValue
   import TypeLevel._
 
   inline def tryShow[T](x: T): String = implicit match {
