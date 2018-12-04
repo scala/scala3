@@ -524,7 +524,7 @@ object Types {
     }
 
     /** The member with given `name` and required and/or excluded flags */
-    final def memberBasedOnFlags(name: Name, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+    final def memberBasedOnFlags(name: Name, required: FlagConjunction = EmptyFlagConjunction, excluded: FlagSet = EmptyFlags)(implicit ctx: Context): Denotation = {
       // We need a valid prefix for `asSeenFrom`
       val pre = this match {
         case tp: ClassInfo => tp.appliedRef

@@ -147,7 +147,7 @@ object Implicits {
                   tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
               val hasExtensions = resType match {
                 case SelectionProto(name, _, _, _) =>
-                  tpw.member(name).hasAltWith(_.symbol.is(ExtensionMethod))
+                  tpw.memberBasedOnFlags(name, required = allOf(ExtensionMethod)).exists
                 case _ => false
               }
               val conversionKind =

@@ -1139,7 +1139,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  result matching `resultType`?
    */
   def hasExtensionMethod(tp: Type, name: TermName, argType: Type, resultType: Type)(implicit ctx: Context) = {
-    val mbr = tp.member(name).suchThat(_.is(ExtensionMethod))
+    val mbr = tp.memberBasedOnFlags(name, required = allOf(ExtensionMethod))
     mbr.exists && isApplicable(tp.select(name, mbr), argType :: Nil, resultType)
   }
 
@@ -1645,7 +1645,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   /** The typed application
    *
-   *   <nethodRef>(<receiver>)    or
+   *   <methodRef>(<receiver>)    or
    *   <methodRef>[<type-args>](<receiver>)
    *
    *  where <type-args> comes from `pt` if it is a PolyProto.
