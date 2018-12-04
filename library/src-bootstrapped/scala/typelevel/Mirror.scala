@@ -1,9 +1,9 @@
 package scala.typelevel
 
 /** A generic representation of a case in an ADT
-  *  @param  deriving  The companion object of the ADT
-  *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
-  *  @param  elems     The elements of the case
+  *  @param  reflected  The common class-speficic part of this mirror
+  *  @param  ordinal    The ordinal value of the case in the list of the ADT's cases
+  *  @param  elems      The elements of the case
   */
 class Mirror(val reflected: ReflectedClass, val ordinal: Int, val elems: Product) {
 

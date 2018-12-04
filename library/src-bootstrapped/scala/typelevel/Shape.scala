@@ -1,7 +1,7 @@
 package scala.typelevel
 
 /** The shape of an ADT.
-  *  This is eithe a product (`Case`) or a sum (`Cases`) of products.
+  *  This is either a product (`Case`) or a sum (`Cases`) of products.
   */
 sealed abstract class Shape
 
