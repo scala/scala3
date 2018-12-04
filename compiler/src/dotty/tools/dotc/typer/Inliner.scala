@@ -47,7 +47,7 @@ object Inliner {
   /** Should call be inlined in this context? */
   def isInlineable(tree: Tree)(implicit ctx: Context): Boolean = tree match {
     case Block(_, expr) => isInlineable(expr)
-    case _ => isInlineable(tree.symbol)
+    case _ => isInlineable(tree.symbol) && !tree.tpe.isInstanceOf[MethodOrPoly]
   }
 
   /** Try to inline a call to an inline method. Fail with error if the maximal

@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 import scala.language.implicitConversions
 
@@ -8,7 +8,7 @@ case class Xml(parts: String, args: List[Any])
 object XmlQuote {
 
   implicit object SCOps {
-    inline def xml(this inline ctx: StringContext)(args: => Any*): Xml =
+    inline def (inline ctx: StringContext) xml (args: => Any*): Xml =
       ~XmlQuote.impl(ctx, '(args))
   }
 
