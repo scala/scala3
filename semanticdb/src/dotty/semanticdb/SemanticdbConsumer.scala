@@ -342,19 +342,6 @@ class SemanticdbConsumer extends TastyConsumer {
           } else {
             (iterateParent(symbol), true)
           }
-        /*println(symbol, symbol.isUselessOccurrence)
-
-          println(symbol, "isWildCard", symbol.isWildCard)
-          println(symbol, "isAnonymousCl", symbol.isAnonymousClass)
-          println(symbol, "isAnonymousFun", symbol.isAnonymousFunction)
-          println(symbol, "isSyntheticCon", symbol.isSyntheticConstructor)
-          println(symbol, "isStaticConstr", symbol.isStaticConstructor)
-          println(symbol, "isLocalChil", symbol.isLocalChild)
-          println(symbol, "isSyntheticVal", symbol.isSyntheticValueClassCompanion)
-          println(symbol, "isUselessFie", symbol.isUselessField)
-          println(symbol, "isSyntheticCas", symbol.isSyntheticCaseAccessor)
-          println(symbol, "isRefinementCl", symbol.isRefinementClass)
-          println(symbol, "isSyntheticJav", symbol.isSyntheticJavaModule)*/
 
         println(symbol_path, range)
         if (symbol_path == "" || symbol.isUselessOccurrence) return
@@ -378,8 +365,7 @@ class SemanticdbConsumer extends TastyConsumer {
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false): Unit = {
-
-        if (tree.isUserCreated || force_add) {
+        if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(tree.symbol) == "java/lang/Object#`<init>`()."))) {
           addOccurence(tree.symbol, type_symbol, range)
         }
       }
@@ -475,96 +461,8 @@ class SemanticdbConsumer extends TastyConsumer {
         case IsTypeTree(t) => t
       }
 
-      /*
-      def traverseType(tree: TypeOrBounds)(implicit ctx: Context): Unit = {
-        //println(tree)
-        tree match {
-          case IsType(t) => {
-            if(t.typeSymbol.pos.exists)
-            println(t.typeSymbol, t.typeSymbol.pos.startColumn, t.typeSymbol.pos.endColumn)
-          }
-          case _ => ()
-        }
-        tree match {
-          case Type.ConstantType(Constant.Symbol(symbol)) =>
-            println("TYPE", symbol)
-          case Type.ConstantType(_) => {println("CNST")}
-          case Type.SymRef(_, a) => {
-            traverseType(a)
-          }
-          case Type.TermRef(_, a) => {
-            traverseType(a)
-          }
-          case Type.TypeRef(_, a) => {
-            traverseType(a)
-          }
-          case Type.SuperType(a, b) => {
-            traverseType(a)
-            traverseType(b)
-          }
-          case Type.Refinement(a, _, b) => {
-            traverseType(a)
-            traverseType(b)
-          }
-          case Type.AppliedType(a, l) => {
-            traverseType(a)
-            l.foreach(traverseType)
-          }
-          case Type.AnnotatedType(a, b) => {
-            traverseType(a)
-            super.traverseTree(b)
-          }
-          case Type.AndType(a, b) => {
-            traverseType(a)
-            traverseType(b)
-          }
-          case Type.OrType(a, b) => {
-            traverseType(a)
-            traverseType(b)
-          }
-          case Type.MatchType(a, b, l) => {
-            traverseType(a)
-            traverseType(b)
-            l.foreach(traverseType)
-          }
-          case Type.ByNameType(a) => {
-            traverseType(a)
-          }
-          case Type.ParamRef(a, _) => {
-            traverseType(a)
-          }
-          case Type.ThisType(a) => {
-            traverseType(a)
-          }
-          case Type.RecursiveThis(a) => {
-            traverseType(a)
-          }
-          case Type.RecursiveType(a) => {
-            traverseType(a)
-          }
-          case Type.MethodType(_, l, a) => {
-            traverseType(a)
-            l.foreach(traverseType)
-          }
-          case Type.PolyType(_, l, a) => {
-            traverseType(a)
-            l.foreach(traverseType)
-          }
-          case Type.TypeLambda(_, l, a) => {
-            traverseType(a)
-            l.foreach(traverseType)
-          }
-          case NoPrefix() => ()
-          case TypeBounds(a, b) => {
-            traverseType(a)
-            traverseType(b)
-          }
-        }
-      }*/
-
       override def traverseTypeTree(tree: TypeOrBoundsTree)(
           implicit ctx: Context): Unit = {
-        //println("--->", tree)
         tree match {
           case TypeTree.Ident(_) => {
             val typetree = extractTypeTree(tree)
@@ -585,76 +483,13 @@ class SemanticdbConsumer extends TastyConsumer {
           }
           case _ =>
             super.traverseTypeTree(tree)
-          /*case TypeTree.Applied(_, _) => {
-            val typetree = extractTypeTree(tree)
-            println("APPLIED", typetree.pos.startColumn, typetree.pos.endColumn)
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Synthetic() => {
-            val typetree = extractTypeTree(tree)
-            println("Synthetic", typetree.pos.startColumn, typetree.pos.endColumn)
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Project(_, _) => {
-            println("Project")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Singleton(_) => {
-            println("Singleton")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Refined(_, _) => {
-            println("Refined")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Annotated(_, _) => {
-            println("Annotated")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.And(_, _) => {
-            println("And")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Or(_, _) => {
-            println("Or")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.MatchType(_, _, _) => {
-            println("MatchType")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.ByName(_, _, _) => {
-            println("ByName")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.TypeLambdaTree(_, _) => {
-            println("TypeLambdaTree")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Bind(_, _) => {
-            println("Bind")
-            super.traverseTypeTree(tree)
-          }
-          case TypeTree.Block(_, _) => {
-            println("Block")
-            super.traverseTypeTree(tree)
-          }
-          case SyntheticBounds() => {
-            println("synthetic bounds")
-            super.traverseTypeTree(tree)
-          }
-          case TypeBoundsTree(_, _) => {
-            //println("typetree")
-            super.traverseTypeTree(tree)
-          }*/
         }
-
       }
 
+      var fittedInitClassRange: Option[s.Range] = None
+      var forceAddBecauseParents: Boolean = false
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
-        /*println("\n")
-        println(tree)
-        println(tree.pos.startColumn, tree.symbol.name, tree.pos.endColumn)*/
         tree match {
           case Import(path, selectors) =>
             val key = (tree.symbol.name, tree.pos.start)
@@ -662,14 +497,48 @@ class SemanticdbConsumer extends TastyConsumer {
               package_definitions += key
               getImportSelectors(getImportPath(path), selectors)
             }
-          case Term.New(_) => {
+          case Term.New(ty) => {
             super.traverseTree(tree)
           }
           case Term.Apply(_, _) => {
-            println("---------------")
-            println(tree.symbol)
             super.traverseTree(tree)
 
+          }
+          case ClassDef(classname, constr, parents, selfopt, statements) => {
+            // we first add the class to the symbol list
+            addOccurenceTree(tree,
+                             s.SymbolOccurrence.Role.DEFINITION,
+                             range(tree, tree.symbol.pos, tree.symbol.name))
+            println("constr symbol pos: ", constr.symbol.pos.startColumn, constr.symbol.pos.endColumn)
+            println("constr pos: ", constr.pos.startColumn, constr.pos.endColumn)
+            // then the constructor
+            if (!constr.isUserCreated) {
+              fittedInitClassRange = Some(
+                s.Range(tree.symbol.pos.startLine,
+                        tree.symbol.pos.startColumn + classname.length + 1,
+                        tree.symbol.pos.startLine,
+                        tree.symbol.pos.startColumn + classname.length + 1))
+            } else {
+              fittedInitClassRange = Some(s.Range(constr.symbol.pos.startLine,
+                                            constr.symbol.pos.startColumn,
+                                            constr.symbol.pos.endLine,
+                                            constr.symbol.pos.endColumn))
+            }
+            traverseTree(constr)
+            fittedInitClassRange = None
+
+            // we add the parents to the symbol list
+            forceAddBecauseParents = true
+            parents.foreach(_ match {
+              case IsTypeTree(t) => traverseTypeTree(t)
+              case IsTerm(t)     => traverseTree(t)
+            })
+            forceAddBecauseParents = false
+
+            selfopt.foreach(traverseTree)
+
+
+            statements.foreach(traverseTree)
           }
           case IsDefinition(cdef) => {
 
@@ -706,22 +575,13 @@ class SemanticdbConsumer extends TastyConsumer {
             }
             if (tree.symbol.name != "<none>") {
               val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
-              println(tree.symbol.flags)
-              println(tree.symbol.pos.startColumn,
-                      tree.symbol.pos.endColumn,
-                      tree.pos.startColumn,
-                      tree.pos.endColumn)
-              if (tree.symbol.name == "<init>" && (!tree.isUserCreated || tree.symbol.pos.startColumn == tree.symbol.pos.endColumn) && !tree.symbol.owner.flags.is(Flags.Object)) {
-                println("yes")
-                val range_symbol2 = s.Range(tree.pos.startLine,
-                                            tree.pos.endColumn,
-                                            tree.pos.endLine,
-                                            tree.pos.endColumn)
+              if (tree.symbol.name == "<init>" && tree.symbol.flags.is(Flags.Object)) {
+
+              } else if (tree.symbol.name == "<init>" && fittedInitClassRange != None) {
                 addOccurenceTree(tree,
                                  s.SymbolOccurrence.Role.DEFINITION,
-                                 range_symbol2,
+                                 fittedInitClassRange.get,
                                  true)
-
               } else {
                 addOccurenceTree(tree,
                                  s.SymbolOccurrence.Role.DEFINITION,
@@ -732,7 +592,6 @@ class SemanticdbConsumer extends TastyConsumer {
           }
 
           case Term.Select(qualifier, _) => {
-            println("[Select] " + tree.symbol + " <-> " + qualifier)
             val range = {
               val r = rangeSelect(tree.symbol.name, tree.pos)
               if (tree.symbol.name == "<init>")
@@ -750,7 +609,6 @@ class SemanticdbConsumer extends TastyConsumer {
           }
 
           case Term.Ident(name) => {
-            println("[Ident] " + name)
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.REFERENCE,
                              range(tree, tree.pos, tree.symbol.name))
@@ -758,9 +616,6 @@ class SemanticdbConsumer extends TastyConsumer {
             super.traverseTree(tree)
           }
 
-          case Term.Literal(name) => {
-            println("Litteral: " + name)
-          }
           case PackageClause(_) =>
             val key = (tree.symbol.name, tree.pos.start)
             if (!package_definitions(key)) {

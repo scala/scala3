@@ -1,6 +1,6 @@
 package example
 
-class DepTemp() {
+class DepTemp {
 
 }
 

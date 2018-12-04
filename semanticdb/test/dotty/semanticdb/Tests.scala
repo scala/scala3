@@ -202,6 +202,7 @@ class Tests {
   //WIP @Test def testTypes(): Unit = checkFile("example/Types.scala")
   //@Test def testVals(): Unit = checkFile("example/Vals.scala")
   @Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
+  //@Test def testNew(): Unit = checkFile("example/New.scala")
   //@Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
 
 

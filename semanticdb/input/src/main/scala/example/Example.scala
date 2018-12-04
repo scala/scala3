@@ -16,6 +16,6 @@ class Example {
     )
 }
 
-class ExampleInit() {
+class ExampleInit {
 
 }
