@@ -939,16 +939,22 @@ trait Implicits { self: Typer =>
           adapt(generated, pt, locked)
         else {
           val untpdGenerated = untpd.TypedSplice(generated)
-          if (cand.isConversion)
+          def tryConversion(implicit ctx: Context) =
             typed(
               untpd.Apply(untpdGenerated, untpd.TypedSplice(argument) :: Nil),
               pt, locked)
-          else {
-            assert(cand.isExtension)
+          if (cand.isExtension) {
             val SelectionProto(name: TermName, mbrType, _, _) = pt
-            extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
+            val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
+            if (!ctx.reporter.hasErrors && cand.isConversion) {
+              val testCtx = ctx.fresh.setExploreTyperState()
+              tryConversion(testCtx)
+              if (testCtx.reporter.hasErrors)
+                ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+            }
+            result
           }
-          // TODO disambiguate if candidate can be an extension or a conversion
+          else tryConversion
         }
       lazy val shadowing =
         typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
