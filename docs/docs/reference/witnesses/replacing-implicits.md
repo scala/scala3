@@ -30,7 +30,7 @@ trait TastyImpl extends TastyAPI {
   witness symDeco: SymDeco = compilerSymOps
 }
 ```
-Note that the result type of an abstract or alias witness is introduced with a colon instead of a `for`. This seems more natural since it evokes the similarity to implicit parameters, whose type is also given following a `:`. It also avoids the syntactic ambiguity with a witness
+Note that the result type of an abstract or alias witness is introduced with a colon instead of an `of`. This seems more natural since it evokes the similarity to implicit parameters, whose type is also given following a `:`. It also avoids the syntactic ambiguity with a witness
 for a class that does not add any new definitions. I.e.
 ```scala
 witness a of C   // concrete witness for class C, no definitions added
