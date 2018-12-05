@@ -73,10 +73,16 @@ class CheckRealizable(implicit ctx: Context) {
       if (sym.is(Stable)) realizability(tp.prefix)
       else {
         val r =
-          if (!sym.isStable) NotStable
-          else if (!isLateInitialized(sym)) Realizable
-          else if (!sym.isEffectivelyFinal) new NotFinal(sym)
-          else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
+          if (sym.isStable && !isLateInitialized(sym))
+            // it's realizable because we know that a value of type `tp` has been created at run-time
+            Realizable
+          else if (!sym.isEffectivelyFinal)
+            // it's potentially not realizable since it might be overridden with a member of nonrealizable type
+            new NotFinal(sym)
+          else
+            // otherwise we need to look at the info to determine realizability
+            // roughly: it's realizable if the info does not have bad bounds
+            realizability(tp.info).mapError(r => new ProblemInUnderlying(tp, r))
         r andAlso {
           sym.setFlag(Stable)
           realizability(tp.prefix)
