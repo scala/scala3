@@ -1884,6 +1884,7 @@ class Typer extends Namer
           val sym = retrieveSym(xtree)
           tree match {
             case tree: untpd.Ident => typedIdent(tree, pt)
+            case tree: untpd.This => typedThis(tree)
             case tree: untpd.Select => typedSelect(tree, pt)
             case tree: untpd.Bind => typedBind(tree, pt)
             case tree: untpd.ValDef =>
@@ -1905,7 +1906,6 @@ class Typer extends Namer
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
             if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
-          case tree: untpd.This => typedThis(tree)
           case tree: untpd.Literal => typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)
           case tree: untpd.Typed => typedTyped(tree, pt)

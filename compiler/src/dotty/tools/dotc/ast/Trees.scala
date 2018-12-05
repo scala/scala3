@@ -413,8 +413,9 @@ object Trees {
 
   /** qual.this */
   case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)
-    extends DenotingTree[T] with TermTree[T] {
+    extends NameTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
+    override def name: TermName = nme.this_
     // Denotation of a This tree is always the underlying class; needs correction for modules.
     override def denot(implicit ctx: Context): Denotation = {
       typeOpt match {
