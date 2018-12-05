@@ -1,0 +1,22 @@
+version: '{build}'
+os: Windows Server 2012
+install:
+  - cmd: choco install sbt -ia "INSTALLDIR=""C:\sbt"""
+  - cmd: SET PATH=C:\MinGW\msys\1.0\bin;C:\sbt\bin;%JAVA_HOME%\bin;%PATH%
+clone_depth: 50
+build_script:
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - git submodule update --init --recursive --depth 50 --jobs 3
+  - git show
+  - pwd
+  - sbt "dotty-bootstrapped/compile"
+test_script:
+  - pwd
+  # - bash project/scripts/sbt test
+  # - bash project/scripts/sbt "dotty-bootstrapped/test"
+  # - bash project/scripts/sbt "dotty-bootstrapped/testCompilation"
+  # - cmd: project/scripts/cmdTests.bat
+  - cmd: project/scripts/bootstrapCmdTests.bat
+cache:
+  - C:\sbt\
+  - C:\Users\appveyor\.ivy2
