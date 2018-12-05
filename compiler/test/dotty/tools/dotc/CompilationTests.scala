@@ -90,10 +90,9 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/new", defaultOptions) +
     compileFilesInDir("tests/pos-scala2", scala2Mode) +
     compileFilesInDir("tests/pos", defaultOptions) +
-    compileFilesInDir("tests/pos-separate-compilation", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
-    compileDir("tests/pos-separate-compilation/i1137-1", defaultOptions) +
+    compileDir("tests/pos/i1137-1", defaultOptions) +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
@@ -173,7 +172,6 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees") +
     compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes) +
-    compileFilesInDir("tests/run-separate-compilation", defaultOptions) +
     compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes) +
     compileFilesInDir("tests/run", defaultOptions)
   }.checkRuns()
