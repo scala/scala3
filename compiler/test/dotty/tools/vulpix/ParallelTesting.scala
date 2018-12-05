@@ -1242,9 +1242,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     val (dirs, files) = compilationTargets(sourceDir, fileFilter)
 
+    val doSequentialSeparateCompilation = !flags.options.contains("-Ytest-pickler")
+    def compileDir(dir: JFile): Boolean = {
+      doSequentialSeparateCompilation || !dir.listFiles().exists(file => file.getName.endsWith(".java") || file.getName.endsWith("_2.scala"))
+    }
     val targets =
       files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
-      (if (flags.options.contains("-Ytest-pickler")) Nil else dirs.map(dir => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir))))
+      dirs.collect { case dir if compileDir(dir) => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)) }
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
