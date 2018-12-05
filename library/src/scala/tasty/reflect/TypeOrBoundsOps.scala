@@ -5,6 +5,8 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- Types ----------------------------------------------------
 
+  def typeOf[T: scala.quoted.Type]: Type
+
   trait TypeAPI {
     def =:=(other: Type)(implicit ctx: Context): Boolean
     def <:<(other: Type)(implicit ctx: Context): Boolean

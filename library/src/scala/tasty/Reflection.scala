@@ -20,7 +20,11 @@ abstract class Reflection
     with TreeOps
     with TreeUtils
     with TypeOrBoundsTreeOps
-    with TypeOrBoundsOps
+    with TypeOrBoundsOps {
+
+  def typeOf[T: scala.quoted.Type]: Type =
+    implicitly[scala.quoted.Type[T]].unseal.tpe
+}
 
 object Reflection {
   /** Compiler tasty context available in a top level ~ of an inline macro */
