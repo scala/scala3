@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Automatic Eta Expansion"
+title: "Automatic Eta Expansion - More Details"
 ---
 
 ### Motivation
@@ -46,25 +46,6 @@ This creates two function values:
 f1: (Boolean, String) => Int => List[Int]
 f2: Int => List[Int]
 ```
-
-## Automatic eta-expansion and nullary methods
-
-Automatic eta expansion does not apply to "nullary" methods that take an empty parameter list. Given
-
-```scala
-def next(): T
-```
-
-A simple reference to `next` does not auto-convert to a function.
-One has to write explicitly `() => next()` to achieve that
-Once again since the `_` is going to be deprecated it's better to write it this way
-rather than `next _`.
-
-The reason for excluding nullary methods from automatic eta expansion
-is that Scala implicitly inserts the `()` argument, which would
-conflict with eta expansion. Automatic `()` insertion is
-[limited](../dropped/auto-apply.md) in Dotty, but the fundamental ambiguity
-remains.
 
 ## Automatic eta-expansion and implicit parameter lists
 
