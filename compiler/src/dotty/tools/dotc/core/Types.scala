@@ -1779,6 +1779,13 @@ object Types {
     private[this] var checkedPeriod: Period = Nowhere
     private[this] var myStableHash: Byte = 0
 
+    // TODO(abeln): remove this hack.
+    // This is a hack to detect whether `this` is an instance of `NonNullTermRef`, and adjust
+    // the denotation accordingly. The "adjustment" happens in `computeDenot`, which is currently
+    // marked as private.
+    // Figure out a different code structure.
+    protected val isNonNull: Boolean = false
+
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
@@ -1884,14 +1891,21 @@ object Types {
     private def computeDenot(implicit ctx: Context): Denotation = {
 
       def finish(d: Denotation) = {
-        if (d.exists)
+        if (d.exists) {
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
-          setDenot(d)
-        d
+
+          // TODO(abeln): remove once `isNonNull` is gone.
+          // If the denotation is computed for the first time, or if it's ever updated, make sure
+          // that the `info` is non-null.
+          val d1 = if (isNonNull) d.mapInfo(_.stripNull) else d
+
+          setDenot(d1)
+          d1
+        } else d
       }
 
       def fromDesignator = designator match {
@@ -2291,7 +2305,7 @@ object Types {
                               private var myDesignator: Designator)
     extends NamedType with SingletonType with ImplicitRef {
 
-    type ThisType = TermRef
+    type ThisType >: this.type <: TermRef
     type ThisName = TermName
 
     override def designator: Designator = myDesignator
@@ -2342,8 +2356,35 @@ object Types {
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
+    type ThisType = CachedTermRef
+
     assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
     myHash = hc
+  }
+
+  /** A `TermRef` that, through flow-sensitive type inference, we know is non-null.
+   *  Accordingly, the `info` in its denotation won't be of the form `T|Null`.
+   *  Notice that this class isn't cached, unlike the regular `TermRef`.
+   */
+  final class NonNullTermRef(prefix: Type, designator: Designator) extends TermRef(prefix, designator) {
+    type ThisType = NonNullTermRef
+
+    // This allows `NamedType` to identify `NonNullTermRef` from all other named types.
+    override protected val isNonNull: Boolean = true
+  }
+
+  object NonNullTermRef {
+
+    /** Create a `TermRef` that's just like `tref`, but whose `info` is always non-null. */
+    def fromTermRef(tref: TermRef)(implicit ctx: Context): NonNullTermRef = {
+      val denot = tref.denot.mapInfo(_.stripNull)
+      val nn = new NonNullTermRef(tref.prefix, denot.symbol)
+      // We need to set the non-null denotation directly because normally the "non-nullable" denotations
+      // are created in `computeDenot`, but they _won't_ be computed if the original `tref` _already_ had
+      // a cached denotation.
+      // This is brittle, since `This`
+      nn.withDenot(denot)
+    }
   }
 
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
