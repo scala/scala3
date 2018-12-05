@@ -17,7 +17,7 @@ object ConsumeTasty {
     }
 
     val currentClasspath = QuoteDriver.currentClasspath
-    import java.io.File.{  pathSeparator => sep }
+    import java.io.File.{ pathSeparator => sep }
     val args = "-from-tasty" +: "-classpath" +: s"$classpath$sep$currentClasspath" +: classes
     (new Consume).process(args.toArray)
   }
