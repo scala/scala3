@@ -775,14 +775,14 @@ object Build {
   lazy val dottyLibrarySettings = Seq(
     libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
     // Add version-specific source directories:
-    // - files in src-scala3 will only be compiled by dotty
-    // - files in src-scala2 will only be compiled by scalac
+    // - files in src-non-bootstrapped will only be compiled by the reference compiler (scalac)
+    // - files in src-bootstrapped will only be compiled by the current dotty compiler (non-bootstrapped and bootstrapped)
     unmanagedSourceDirectories in Compile += {
       val baseDir = baseDirectory.value
       if (isDotty.value)
-        baseDir / "src-scala3"
+        baseDir / "src-bootstrapped"
       else
-        baseDir / "src-scala2"
+        baseDir / "src-non-bootstrapped"
     }
   )
 
