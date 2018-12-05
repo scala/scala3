@@ -402,10 +402,11 @@ EnumStat          ::=  TemplateStat
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
 
 TopStatSeq        ::=  TopStat {semi TopStat}
-TopStat           ::=  {Annotation [nl]} {Modifier} TmplDef
-                    |  Import
+TopStat           ::=  Import
+                    |  {Annotation [nl]} {Modifier} Def
                     |  Packaging
                     |  PackageObject
+                    |
 Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
