@@ -174,4 +174,12 @@ class HoverTest {
           |}""".withSource
       .hover(m1 to m2, hoverContent("Int", "hello"))
   }
+
+  @Test def hoverSelf: Unit = {
+    code"""class Foo { ${m1}self${m2} =>
+          |  val bizz = ${m3}self${m4}
+          |}""".withSource
+      .hover(m1 to m2, hoverContent("Foo"))
+      .hover(m3 to m4, hoverContent("(Foo & Foo)(Foo.this)"))
+  }
 }

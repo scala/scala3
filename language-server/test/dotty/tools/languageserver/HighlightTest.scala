@@ -126,4 +126,37 @@ class HighlightTest {
      .highlight(m11 to m12, (m3 to m4, Read), (m9 to m10, Read), (m11 to m12, Read))
   }
 
+  @Test def thisAndSelf: Unit = {
+    code"""class ${m1}A${m2} { ${m3}self${m4} =>
+          |  def foo = ${m5}this${m6}
+          |  def bar = ${m7}self${m8}
+          |}""".withSource
+      .highlight(m1 to m2, (m1 to m2, Read))
+      .highlight(m3 to m4, (m3 to m4, Read), (m5 to m6, Read), (m7 to m8, Read))
+      .highlight(m5 to m6, (m3 to m4, Read), (m5 to m6, Read), (m7 to m8, Read))
+      .highlight(m7 to m8, (m3 to m4, Read), (m5 to m6, Read), (m7 to m8, Read))
+  }
+
+  @Test def nestedSelf: Unit = {
+    code"""class A { ${m1}self${m2} =>
+             val bar = ${m3}self${m4}
+             class B { ${m5}self${m6} =>
+               val foo = ${m7}self${m8}
+             }
+           }""".withSource
+      .highlight(m1 to m2, (m1 to m2, Read), (m3 to m4, Read))
+      .highlight(m3 to m4, (m1 to m2, Read), (m3 to m4, Read))
+      .highlight(m5 to m6, (m5 to m6, Read), (m7 to m8, Read))
+      .highlight(m7 to m8, (m5 to m6, Read), (m7 to m8, Read))
+  }
+
+  @Test def highlightThis: Unit = {
+    code"""class A {
+          |  val foo = ${m1}this${m2}
+          |  val bar = ${m3}this${m4}
+          |}""".withSource
+      .highlight(m1 to m2, (m1 to m2, Read), (m3 to m4, Read))
+      .highlight(m3 to m4, (m1 to m2, Read), (m3 to m4, Read))
+  }
+
 }

@@ -344,4 +344,25 @@ class DefinitionTest {
      .definition(m15 to m16, List(m7 to m8))
   }
 
+  @Test def goToSelfDefinition: Unit = {
+    code"""class Foo { ${m1}self${m2} =>
+          |  def bar: Unit = {
+          |    ${m3}self${m4}.bar
+          |    println(${m5}self${m6})
+          |    ${m7}this${m8}.bar
+          |  }
+          |}""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+      .definition(m5 to m6, List(m1 to m2))
+      .definition(m7 to m8, List(m1 to m2))
+  }
+
+  @Test def goToDefinitionThis: Unit = {
+    code"""class Foo {
+          |  val foo = ${m1}this${m2}
+          |}""".withSource
+      .definition(m1 to m2, Nil)
+  }
+
 }

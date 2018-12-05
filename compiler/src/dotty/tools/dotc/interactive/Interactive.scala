@@ -8,7 +8,7 @@ import scala.collection._
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
-import transform.SymUtils.decorateSymbol
+import transform.SymUtils._
 import util.Positions._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
@@ -21,6 +21,15 @@ import StdNames.nme
  */
 object Interactive {
   import ast.tpd._
+
+  /**
+   * The type of a predicate function that tests a `NameTree` and its associated symbol.
+   *
+   * The symbol that will be tested along with a tree is not necessarily the same as `tree.symbol`:
+   * For `this` or self references, `tree.symbol` is the enclosing class whereas the associated
+   * symbol will be that of the self definition.
+   */
+  type TreePredicate = (NameTree, Symbol) => Boolean
 
   object Include {
     case class Set private[Include] (val bits: Int) extends AnyVal {
@@ -126,6 +135,9 @@ object Interactive {
       case (imp: Import) :: _ =>
         importedSymbols(imp, _.pos.contains(pos.pos))
 
+      case tree :: _ if isThisOrSelfReference(tree) =>
+        selfSym(tree.symbol) :: Nil
+
       case _ =>
         List(enclosingTree(path).symbol)
     }
@@ -133,22 +145,22 @@ object Interactive {
     syms.map(_.sourceSymbol).filter(_.exists)
   }
 
-  /** Check if `tree` matches `sym`.
-   *  This is the case if the symbol defined by `tree` equals `sym`,
-   *  or the source symbol of tree equals sym,
-   *  or `include` is `overridden`, and `tree` is overridden by `sym`,
-   *  or `include` is `overriding`, and `tree` overrides `sym`.
+  /** Check if `sym1` matches `sym2`.
+   *  This is the case if `sym1` equals `sym2`,
+   *  or the source symbol of `sym1` equals sym,
+   *  or `include` is `overridden`, and `sym1` is overridden by `sym2`,
+   *  or `include` is `overriding`, and `sym1` overrides `sym2`.
    */
-  def matchSymbol(tree: Tree, sym: Symbol, include: Include.Set)(implicit ctx: Context): Boolean = {
+  def matchSymbol(sym1: Symbol, sym2: Symbol, include: Include.Set)(implicit ctx: Context): Boolean = {
 
     def overrides(sym1: Symbol, sym2: Symbol) =
       sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
 
-    (  sym == tree.symbol
-    || sym.exists && sym == tree.symbol.sourceSymbol
-    || !include.isEmpty && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
-       && (  include.isOverridden && overrides(sym, tree.symbol)
-          || include.isOverriding && overrides(tree.symbol, sym)
+    (  sym2 == sym1
+    || sym2.exists && sym2 == sym1.sourceSymbol
+    || !include.isEmpty && sym2.name == sym1.name && sym2.maybeOwner != sym1.maybeOwner
+       && (  include.isOverridden && overrides(sym2, sym1)
+          || include.isOverriding && overrides(sym1, sym2)
           )
     )
   }
@@ -164,32 +176,32 @@ object Interactive {
     if (!sym.exists)
       Nil
     else
-      namedTrees(trees, include, matchSymbol(_, sym, include))
+      namedTrees(trees, include, (_, s) => matchSymbol(s, sym, include))
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
    *
    *  @param trees         The trees to inspect.
    *  @param include       Whether to include references, definitions, etc.
-   *  @param treePredicate An additional predicate that the trees must match.
+   *  @param treePredicate An additional predicate that the trees and their symbols must match.
    *  @return The trees with a non-empty position satisfying `treePredicate`.
    */
   def namedTrees(trees: List[SourceTree],
                  include: Include.Set,
-                 treePredicate: NameTree => Boolean = util.common.alwaysTrue
+                 treePredicate: TreePredicate = (_, _) => true
                 )(implicit ctx: Context): List[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
     def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
-        private def handle(utree: untpd.NameTree): Unit = {
+        private def handle(utree: untpd.NameTree, symbol: Symbol): Unit = {
           val tree = utree.asInstanceOf[tpd.NameTree]
-          if (tree.symbol.exists
-               && !tree.symbol.is(Synthetic)
-               && !tree.symbol.isPrimaryConstructor
+          if (symbol.exists
+               && !symbol.is(Synthetic)
+               && !symbol.isPrimaryConstructor
                && tree.pos.exists
                && !tree.pos.isZeroExtent
                && (include.isReferences || isDefinition(tree))
-               && treePredicate(tree))
+               && treePredicate(tree, symbol))
             buf += SourceTree(tree, source)
         }
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
@@ -200,10 +212,15 @@ object Interactive {
               traverse(imp.expr)
               selections.foreach(traverse)
             case utree: untpd.ValOrDefDef if tree.hasType =>
-              handle(utree)
+              handle(utree, utree.symbol)
               if (include.isLocal) traverseChildren(tree)
             case utree: untpd.NameTree if tree.hasType =>
-              handle(utree)
+              val tree = utree.asInstanceOf[tpd.Tree]
+              val symbol = {
+                val treeSym = tree.symbol
+                if (isThisOrSelfReference(tree)) selfSym(treeSym) else treeSym
+              }
+              handle(utree, symbol)
               traverseChildren(tree)
             case tree: untpd.Inlined =>
               traverse(tree.call)
@@ -230,18 +247,18 @@ object Interactive {
   def findTreesMatching(trees: List[SourceTree],
                         includes: Include.Set,
                         symbol: Symbol,
-                        predicate: NameTree => Boolean = util.common.alwaysTrue
+                        predicate: TreePredicate = (_, _) => true
                        )(implicit ctx: Context): List[SourceTree] = {
     val linkedSym = symbol.linkedClass
-    val fullPredicate: NameTree => Boolean = tree =>
+    val fullPredicate: TreePredicate = (tree, treeSym) =>
       (  (includes.isDefinitions || !Interactive.isDefinition(tree))
-      && (  Interactive.matchSymbol(tree, symbol, includes)
+      && (  Interactive.matchSymbol(treeSym, symbol, includes)
          || ( includes.isLinkedClass
             && linkedSym.exists
-            && Interactive.matchSymbol(tree, linkedSym, includes)
+            && Interactive.matchSymbol(treeSym, linkedSym, includes)
             )
          )
-      && predicate(tree)
+      && predicate(tree, treeSym)
       )
     namedTrees(trees, includes, fullPredicate)
   }
@@ -413,7 +430,7 @@ object Interactive {
         false
     } else {
       case md: MemberDef =>
-        matchSymbol(md, sym, Include.overriding) && !md.symbol.is(Deferred)
+        matchSymbol(md.symbol, sym, Include.overriding) && !md.symbol.is(Deferred)
       case _ =>
         false
     }
@@ -438,5 +455,21 @@ object Interactive {
 
   private[interactive] def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
+
+  /**
+   * The self symbol of `sym` if it exists and `sym` was obtained from source,
+   * NoSymbol otherwise.
+   */
+  private def selfSym(sym: Symbol)(implicit ctx: Context): Symbol = {
+    sym.info match {
+      case info: ClassInfo =>
+        info.selfInfo match {
+          case sym: Symbol => sym
+          case _ => NoSymbol
+        }
+      case _ =>
+        NoSymbol
+    }
+  }
 
 }

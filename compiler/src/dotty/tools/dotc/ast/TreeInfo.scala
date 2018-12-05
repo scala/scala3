@@ -282,6 +282,14 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Block(_, expr) => forallResults(expr, p)
     case _ => p(tree)
   }
+
+  /** Is `tree` a reference to `this` or a self type? */
+  def isThisOrSelfReference(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+    case This(_) => true
+    case Ident(nme) => nme.isTermName && tree.symbol.isType
+    case _ => false
+  }
+
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>

@@ -358,8 +358,9 @@ class DottyLanguageServer extends LanguageServer
 
     def findRenamedReferences(trees: List[SourceTree], syms: List[Symbol], withName: Name): List[SourceTree] = {
       val includes = Include.all
+      val predicate: Interactive.TreePredicate = (t, _) => Interactive.sameName(t.name, withName)
       syms.flatMap { sym =>
-        Interactive.findTreesMatching(trees, Include.all, sym, t => Interactive.sameName(t.name, withName))
+        Interactive.findTreesMatching(trees, Include.all, sym, predicate)
       }
     }
 
@@ -394,10 +395,12 @@ class DottyLanguageServer extends LanguageServer
             definitions.flatMap { definition =>
               val name = definition.name(ctx).sourceModuleName.toString
               val trees = remoteDriver.sourceTreesContaining(name)(ctx)
+              val predicate: Interactive.TreePredicate =
+                (t, _) => names.exists(Interactive.sameName(t.name, _))
               Interactive.findTreesMatching(trees,
                                             include,
                                             definition,
-                                            t => names.exists(Interactive.sameName(t.name, _)))(ctx)
+                                            predicate)(ctx)
             }
           }
       }
@@ -477,7 +480,8 @@ class DottyLanguageServer extends LanguageServer
       implicit val ctx = driver.currentCtx
 
       val trees = driver.sourceTreesContaining(query)
-      val defs = Interactive.namedTrees(trees, Include.empty, _.name.toString.contains(query))
+      val predicate: Interactive.TreePredicate = (t, _) => t.name.toString.contains(query)
+      val defs = Interactive.namedTrees(trees, Include.empty, predicate)
       defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source)))
     }.asJava
   }
@@ -501,9 +505,9 @@ class DottyLanguageServer extends LanguageServer
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         val trees = remoteDriver.sourceTrees(ctx)
-        val predicate: NameTree => Boolean = {
+        val predicate: Interactive.TreePredicate = {
           val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
-          tree => predicates.exists(_(tree))
+          (tree, _) => predicates.exists(_(tree))
         }
         val matches = Interactive.namedTrees(trees, Include.local, predicate)(ctx)
         matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))

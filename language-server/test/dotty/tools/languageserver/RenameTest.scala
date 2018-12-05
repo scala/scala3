@@ -332,4 +332,20 @@ class RenameTest {
 
   }
 
+  @Test def renameSelf: Unit = {
+    def testRenameFrom(marker: CodeMarker) =
+      code"""class Foo { ${m1}self${m2} =>
+            |  def bar: Unit = {
+            |    ${m3}self${m4}.bar
+            |    println(${m5}self${m6})
+            |    this.bar
+            |  }
+            |}""".withSource
+        .rename(marker, "newName", Set(m1 to m2, m3 to m4, m5 to m6))
+
+    testRenameFrom(m1)
+    testRenameFrom(m3)
+    testRenameFrom(m5)
+  }
+
 }

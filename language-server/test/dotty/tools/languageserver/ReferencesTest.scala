@@ -356,4 +356,19 @@ class ReferencesTest {
      .references(m1 to m2, List(m3 to m4), withDecl = false)
   }
 
+  @Test def referencesToSelf: Unit = {
+    code"""class Foo { ${m1}self${m2} =>
+          |  def bar: Unit = {
+          |    ${m3}self${m4}.bar
+          |    println(${m5}self${m6})
+          |  }
+          |}""".withSource
+      .references(m1 to m2, List(m1 to m2, m3 to m4, m5 to m6), withDecl = true)
+      .references(m1 to m2, List(m3 to m4, m5 to m6), withDecl = false)
+      .references(m3 to m4, List(m1 to m2, m3 to m4, m5 to m6), withDecl = true)
+      .references(m3 to m4, List(m3 to m4, m5 to m6), withDecl = false)
+      .references(m5 to m6, List(m1 to m2, m3 to m4, m5 to m6), withDecl = true)
+      .references(m5 to m6, List(m3 to m4, m5 to m6), withDecl = false)
+  }
+
 }

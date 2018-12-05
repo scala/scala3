@@ -44,4 +44,11 @@ class DocumentSymbolTest {
       .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class),
                           (m3 to m4).symInfo("x", SymbolKind.Field, "Foo"))
   }
+
+  @Test def documentSymbolSelf: Unit = {
+    code"""class ${m1}Foo${m2} { ${m3}self${m4} =>
+          |}""".withSource
+      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class),
+                          (m3 to m4).symInfo("self", SymbolKind.Field, "Foo"))
+  }
 }
