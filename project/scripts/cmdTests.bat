@@ -27,6 +27,7 @@ if not defined __COMMON__ (
 rem ##########################################################################
 rem ## Main
 
+rem # check that `sbt dotc` compiles and `sbt dotr` runs it
 echo testing sbt dotc and dotr
 if %_DEBUG%==1 echo [%_BASENAME%] "%_SBT_CMD%" ";dotc %_SOURCE% -d %_OUT_DIR% ;dotr -classpath %_OUT_DIR% %_MAIN%" ^> "%_TMP_FILE%"
 call "%_SBT_CMD%" ";dotc %_SOURCE% -d %_OUT_DIR% ;dotr -classpath %_OUT_DIR% %_MAIN%" > "%_TMP_FILE%"
@@ -52,8 +53,8 @@ call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%
 if not %_EXITCODE%==0 goto end
 
 echo testing sbt dotc -decompile from file
-if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotc -decompile -color:never %_OUT_DIR%\%_TASTY%" ^> "%_TMP_FILE%"
-call "%_SBT_CMD%" ";dotc -decompile -color:never %_OUT_DIR%\%_TASTY%" > "%_TMP_FILE%"
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotc -decompile -color:never -classpath %_OUT_DIR% %_OUT_DIR%\%_TASTY%" ^> "%_TMP_FILE%"
+call "%_SBT_CMD%" ";dotc -decompile -color:never -classpath %_OUT_DIR% %_OUT_DIR%\%_TASTY%" > "%_TMP_FILE%"
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 call :grep "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
