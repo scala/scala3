@@ -21,8 +21,6 @@ object CheckRealizable {
 
   object NotConcrete extends Realizability(" is not a concrete type")
 
-  object NotStable extends Realizability(" is not a stable reference")
-
   class NotFinal(sym: Symbol)(implicit ctx: Context)
   extends Realizability(i" refers to nonfinal $sym")
 
