@@ -416,6 +416,16 @@ object Parsers {
       case _ => false
     }
 
+    /** When the mode is `Interactive`, a synthetic self definition, otherwise the empty ValDef. */
+    def baseSelfDef(): ValDef = {
+      if (ctx.mode.is(Mode.Interactive)) {
+        val name = NameKinds.UniqueName.fresh()
+        makeSelfDef(name, TypeTree())
+      } else {
+        EmptyValDef
+      }
+    }
+
 /* -------------- XML ---------------------------------------------------- */
 
     /** the markup parser */
@@ -2474,14 +2484,21 @@ object Parsers {
       else {
         newLineOptWhenFollowedBy(LBRACE)
         if (in.token == LBRACE) template(constr, isEnum)._1
-        else Template(constr, Nil, EmptyValDef, Nil)
+        else {
+          val self = if (isEnum) EmptyValDef else baseSelfDef()
+          Template(constr, Nil, self, Nil)
+        }
       }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree], isEnum: Boolean): Template = {
       val (self, stats) =
-        if (in.token == LBRACE) withinEnum(isEnum)(templateBody()) else (EmptyValDef, Nil)
+        if (in.token == LBRACE) withinEnum(isEnum)(templateBody())
+        else {
+          val selfDef = if (isEnum) EmptyValDef else baseSelfDef()
+          (selfDef, Nil)
+        }
       Template(constr, parents, self, stats)
     }
 
@@ -2555,7 +2572,7 @@ object Parsers {
      *                     | Annotations Modifiers EnumCase
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
-      var self: ValDef = EmptyValDef
+      var self: ValDef = baseSelfDef()
       val stats = new ListBuffer[Tree]
       if (isExprIntro) {
         val first = expr1()
