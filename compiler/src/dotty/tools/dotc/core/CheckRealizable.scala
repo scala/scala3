@@ -82,7 +82,7 @@ class CheckRealizable(implicit ctx: Context) {
             // roughly: it's realizable if the info does not have bad bounds
             realizability(tp.info).mapError(r => new ProblemInUnderlying(tp, r))
         r andAlso {
-          sym.setFlag(Stable)
+          if (sym.isStable) sym.setFlag(Stable) // it's known to be stable and realizable
           realizability(tp.prefix)
         }
       }
