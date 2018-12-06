@@ -36,6 +36,7 @@ import util.Stats.{record, track}
 import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
+import dotty.tools.dotc.core.FlowFacts.{Inferred, NonNullSet}
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
@@ -731,17 +732,14 @@ class Typer extends Namer
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     if (tree.isInline) checkInInlineContext("inline if", tree.pos)
+    def withFacts(facts: NonNullSet): Context = if (facts.isEmpty) ctx else ctx.fresh.setNonNullFacts(ctx.nonNullFacts ++ facts)
     val cond1 = typed(tree.cond, defn.BooleanType)
-    val newFacts = FlowFacts.inferNonNull(cond1)
-    // TODO(abeln): generalize
-    val thenCtx = if (newFacts.isEmpty) {
-      ctx
-    } else {
-      ctx.fresh.setNonNullFacts(ctx.nonNullFacts ++ newFacts)
-    }
+    val Inferred(ifTrue, ifFalse) = FlowFacts.inferNonNull(cond1)
+    val thenCtx = withFacts(ifTrue)
+    val elseCtx = withFacts(ifFalse)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)(thenCtx)
-      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)(elseCtx)
       thenp1 :: elsep1 :: Nil
     }
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)

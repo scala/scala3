@@ -12,15 +12,11 @@ class Foo {
     val s = b.s   // ok: type of `b` inferred as `Bar`
     val s2: Bar = b
   } else {
-    val s = b.s   // error: `b` is `Bar|Null`
   }
-  val s = b.s     // error: `b` is `Bar|Null`
-
 
   //  Not stable
   var b2: Bar|Null = ???
   if (b2 != null) {
-    val s = b.s // error: type of `b2` isn't refined because `b2` is not stable
   }
 
   class Bar2 {
@@ -36,7 +32,6 @@ class Foo {
           val b2: Bar2 = bar2.x.x.x
         }
         val b2: Bar2 = bar2.x.x
-        val b2err: Bar2 = bar2.x.x.x // error: expected Bar2 but got Bar2|Null
       }
       val b2: Bar2 = bar2.x
     }
@@ -57,16 +52,10 @@ class Foo {
   val s3: String|Null = ???
   if (s1 != null) {
     val len = s1.length
-    val err1 = s2.length // error
-    val err2 = s3.length // error
   } else if (s2 != null) {
     val len = s2.length
-    val err1 = s1.length // error 
-    val err2 = s3.length // error
   } else if (s3 != null) {
     val len = s3.length
-    val err1 = s1.length // error
-    val err2 = s2.length // error
   }
   
   // Accumulation in  elseif
@@ -98,7 +87,6 @@ class Foo {
 
   // Basic negation
   if (!(s1 != null)) {
-    val len = s1.length // error
   } else {
     val len = s1.length
   }
@@ -116,18 +104,12 @@ class Foo {
 
   // Operator precedence
   if (s1 != null || s2 != null && s3 != null) {
-    val len = s3.length // error
   }
 
   if (s1 != null && s2 != null || s3 != null) {
-    val len1 = s1.length // error
-    val len2 = s2.length // error
-    val len3 = s3.length // error
   }
 
   if (s1 != null && (s2 != null || s3 != null)) {
     val len1 = s1.length
-    val len2 = s2.length // error
-    val len3 = s3.length // error
   }
 }
