@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd}
+import ast.{Trees, TreeTypeMap, untpd, tpd}
 import util.Positions._
 import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
@@ -33,17 +33,13 @@ import config.Config
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
+import annotation.tailrec
 
 import scala.annotation.internal.sharable
 
 /** Implicit resolution */
 object Implicits {
   import tpd._
-
-  /** A reference to an implicit value to be made visible on the next nested call to
-   *  inferImplicitArg with a by-name expected type.
-   */
-  val DelayedImplicit: Property.Key[TermRef] = new Property.Key
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
@@ -654,45 +650,13 @@ trait Implicits { self: Typer =>
       assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
 
-    /** The context to be used when resolving a by-name implicit argument.
-     *  This makes any implicit stored under `DelayedImplicit` visible and
-     *  stores in turn the given `lazyImplicit` as new `DelayedImplicit`.
-     */
-    def lazyImplicitCtx(lazyImplicit: Symbol): Context = {
-      val lctx = ctx.fresh
-      for (delayedRef <- ctx.property(DelayedImplicit))
-        lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits)(ctx))
-      lctx.setProperty(DelayedImplicit, lazyImplicit.termRef)
-    }
-
-    /** formalValue: The value type for which an implicit is searched
-     *  lazyImplicit: An implicit symbol to install for nested by-name resolutions
-     *  argCtx      : The context to be used for searching the implicit argument
-     */
-    val (formalValue, lazyImplicit, argCtx) = formal match {
-      case ExprType(fv) =>
-        val lazyImplicit = ctx.newLazyImplicit(fv, pos)
-        (fv, lazyImplicit, lazyImplicitCtx(lazyImplicit))
-      case _ => (formal, NoSymbol, ctx)
-    }
-
-    inferImplicit(formalValue, EmptyTree, pos)(argCtx) match {
-      case SearchSuccess(arg, _, _) =>
-        def refersToLazyImplicit = arg.existsSubTree {
-          case id: Ident => id.symbol == lazyImplicit
-          case _ => false
-        }
-        if (lazyImplicit.exists && refersToLazyImplicit)
-          Block(
-            ValDef(lazyImplicit.asTerm, arg.changeOwner(ctx.owner, lazyImplicit)).withPos(pos) :: Nil,
-            ref(lazyImplicit))
-        else
-          arg
+    inferImplicit(formal, EmptyTree, pos)(ctx) match {
+      case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
-          val base = formalValue.baseType(cls)
-          if (base <:< formalValue) {
-            // With the subtype test we enforce that the searched type `formalValue` is of the right form
+          val base = formal.baseType(cls)
+          if (base <:< formal) {
+            // With the subtype test we enforce that the searched type `formal` is of the right form
             handler(base).orElse(ifNot)
           }
           else ifNot
@@ -847,15 +811,13 @@ trait Implicits { self: Typer =>
    *  @param argument        If an implicit conversion is searched, the argument to which
    *                         it should be applied, EmptyTree otherwise.
    *  @param pos             The position where errors should be reported.
-   *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     assert(ctx.phase.allowsImplicitSearch,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
-      assert(!pt.isInstanceOf[ExprType])
-      val result =
+      val result0 =
         try {
           new ImplicitSearch(pt, argument, pos).bestImplicit(contextual = true)
         } catch {
@@ -864,30 +826,33 @@ trait Implicits { self: Typer =>
             throw ce
         }
 
-      result match {
-        case result: SearchSuccess =>
-          result.tstate.commit()
-          implicits.println(i"success: $result")
-          implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
-          result
-        case result: SearchFailure if result.isAmbiguous =>
-          val deepPt = pt.deepenProto
-          if (deepPt ne pt) inferImplicit(deepPt, argument, pos)
-          else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution)) {
-            inferImplicit(pt, argument, pos)(ctx.addMode(Mode.OldOverloadingResolution)) match {
-              case altResult: SearchSuccess =>
-                ctx.migrationWarning(
-                  s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
-                  pos)
-                altResult
-              case _ =>
-                result
+      val result =
+        result0 match {
+          case result: SearchSuccess =>
+            result.tstate.commit()
+            implicits.println(i"success: $result")
+            implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
+            result
+          case result: SearchFailure if result.isAmbiguous =>
+            val deepPt = pt.deepenProto
+            if (deepPt ne pt) inferImplicit(deepPt, argument, pos)
+            else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution)) {
+              inferImplicit(pt, argument, pos)(ctx.addMode(Mode.OldOverloadingResolution)) match {
+                case altResult: SearchSuccess =>
+                  ctx.migrationWarning(
+                    s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
+                    pos)
+                  altResult
+                case _ =>
+                  result
+              }
             }
-          }
-          else result
-        case _ =>
-          result
-      }
+            else result
+          case _ =>
+            result0
+        }
+      // If we are at the outermost implicit search then emit the implicit dictionary, if any.
+      ctx.searchHistory.emitDictionary(pos, result)
     }
   }
 
@@ -974,42 +939,31 @@ trait Implicits { self: Typer =>
     }}
 
     /** Try to type-check implicit reference, after checking that this is not
-      *  a diverging search
+      * a diverging search
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult = {
-      val history = ctx.searchHistory nest wildProto
-      if (history eq ctx.searchHistory)
-        SearchFailure(new DivergingImplicit(cand.ref, pt, argument))
-      else
-        typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setSearchHistory(history))
+      if (ctx.searchHistory.checkDivergence(cand, pt))
+        SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
+      else {
+        val history = ctx.searchHistory.nest(cand, pt)
+        val result = typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setSearchHistory(history))
+        result match {
+          case res: SearchSuccess =>
+            ctx.searchHistory.defineBynameImplicit(pt.widenExpr, res)
+          case _ =>
+            result
+        }
+      }
     }
 
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
-      val constr = ctx.typerState.constraint
-
       /** Compare previous success with reference and level to determine which one would be chosen, if
        *  an implicit starting with the reference was found.
        */
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else nestedContext().test(implicit ctx => compare(prev.ref, ref, prev.level, level))
-
-      /* Seems we don't need this anymore.
-      def numericValueTieBreak(alt1: SearchSuccess, alt2: SearchSuccess) = {
-        def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
-        def isProperSubType(tp1: Type, tp2: Type) =
-          tp1.isValueSubType(tp2) && !tp2.isValueSubType(tp1)
-          val rpt = pt.resultType
-          val rt1 = alt1.ref.widen.resultType
-          val rt2 = alt2.ref.widen.resultType
-        if (isNumeric(rpt) && isNumeric(rt1) && isNumeric(rt2))
-          if (isProperSubType(rt1, rt2)) alt2
-          else if (isProperSubType(rt2, rt1)) alt1
-          else NoMatchingImplicitsFailure
-        else NoMatchingImplicitsFailure
-      }
-      */
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
@@ -1098,7 +1052,7 @@ trait Implicits { self: Typer =>
             case _: SearchSuccess =>
               NoMatchingImplicitsFailure
           }
-      else result
+        else result
 
       def warnAmbiguousNegation(ambi: AmbiguousImplicits) =
         ctx.migrationWarning(
@@ -1154,26 +1108,39 @@ trait Implicits { self: Typer =>
 
     /** Find a unique best implicit reference */
     def bestImplicit(contextual: Boolean): SearchResult = {
-      val eligible =
-        if (contextual) ctx.implicits.eligible(wildProto)
-        else implicitScope(wildProto).eligible
-      searchImplicits(eligible, contextual) match {
-        case result: SearchSuccess =>
-          if (contextual && ctx.mode.is(Mode.InlineableBody))
-            PrepareInlineable.markContextualImplicit(result.tree)
-          result
-        case failure: SearchFailure =>
-          failure.reason match {
-            case _: AmbiguousImplicits => failure
-            case reason =>
-              if (contextual)
-                bestImplicit(contextual = false).recoverWith {
-                  failure2 => reason match {
-                    case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
-                    case _ => failure2
-                  }
-                }
-              else failure
+      // Before searching for contextual or implicit scope candidates we first check if
+      // there is an under construction or already constructed term with which we can tie
+      // the knot.
+      //
+      // Since any suitable term found is defined as part of this search it will always be
+      // effectively in a more inner context than any other definition provided by
+      // explicit definitions. Consequently these terms have the highest priority and no
+      // other candidates need to be considered.
+      ctx.searchHistory.recursiveRef(pt) match {
+        case ref: TermRef =>
+          SearchSuccess(tpd.ref(ref).withPos(pos.startPos), ref, 0)(ctx.typerState)
+        case _ =>
+          val eligible =
+            if (contextual) ctx.implicits.eligible(wildProto)
+            else implicitScope(wildProto).eligible
+          searchImplicits(eligible, contextual) match {
+            case result: SearchSuccess =>
+              if (contextual && ctx.mode.is(Mode.InlineableBody))
+                PrepareInlineable.markContextualImplicit(result.tree)
+              result
+            case failure: SearchFailure =>
+              failure.reason match {
+                case _: AmbiguousImplicits => failure
+                case reason =>
+                  if (contextual)
+                    bestImplicit(contextual = false).recoverWith {
+                      failure2 => reason match {
+                        case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
+                        case _ => failure2
+                      }
+                    }
+                  else failure
+              }
           }
       }
     }
@@ -1191,67 +1158,312 @@ trait Implicits { self: Typer =>
   }
 }
 
-/** Records the history of currently open implicit searches
- *  @param  searchDepth   The number of open searches.
- *  @param  seen          A map that records for each class symbol of a type
- *                        that's currently searched for the complexity of the
- *                        type that is searched for (wrt `typeSize`). The map
- *                        is populated only once `searchDepth` is greater than
- *                        the threshold given in the `XminImplicitSearchDepth` setting.
+/**
+ * Records the history of currently open implicit searches.
+ *
+ * A search history maintains a list of open implicit searches (`open`) a shortcut flag
+ * indicating whether any of these are by name (`byname`) and a reference to the root
+ * search history (`root`) which in turn maintains a possibly empty dictionary of
+ * recursive implicit terms constructed during this search.
+ *
+ * A search history provides operations to create a nested search history, check for
+ * divergence, enter by name references and definitions in the implicit dictionary, lookup
+ * recursive references and emit a complete implicit dictionary when the outermost search
+ * is complete.
  */
-class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
+abstract class SearchHistory { outer =>
+  val root: SearchRoot
+  val open: List[(Candidate, Type)]
+  /** Does this search history contain any by name implicit arguments. */
+  val byname: Boolean
 
-  /** The number of applications and refinements in this type, after all aliases are expanded */
-  private def typeSize(tp: Type)(implicit ctx: Context): Int = {
-    val accu = new TypeAccumulator[Int] {
-      def apply(n: Int, tp: Type): Int = tp match {
-        case tp: AppliedType =>
-          foldOver(n + 1, tp)
-        case tp: RefinedType =>
-          foldOver(n + 1, tp)
-        case tp: TypeRef if tp.info.isTypeAlias =>
-          apply(n, tp.superType)
-        case _ =>
-          foldOver(n, tp)
-      }
-    }
-    accu.apply(0, tp)
-  }
-
-  /** Check for possible divergence. If one is detected return the current search history
-   *  (this will be used as a criterion to abandon the implicit search in rankImplicits).
-   *  If no divergence is detected, produce a new search history nested in the current one
-   *  which records that we are now also looking for type `proto`.
-   *
-   *  As long as `searchDepth` is lower than the `XminImplicitSearchDepth` value
-   *  in settings, a new history is always produced, so the implicit search is always
-   *  undertaken. If `searchDepth` matches or exceeds the `XminImplicitSearchDepth` value,
-   *  we test that the new search is for a class that is either not yet in the set of
-   *  `seen` classes, or the complexity of the type `proto` being searched for is strictly
-   *  lower than the complexity of the type that was previously encountered and that had
-   *  the same class symbol as `proto`. A possible divergence is detected if that test fails.
+  /**
+   * Create the state for a nested implicit search.
+   * @param cand The candidate implicit to be explored.
+   * @param pt   The target type for the above candidate.
+   * @result     The nested history.
    */
-  def nest(proto: Type)(implicit ctx: Context): SearchHistory = {
-    if (searchDepth < ctx.settings.XminImplicitSearchDepth.value)
-      new SearchHistory(searchDepth + 1, seen)
-    else {
-      val size = typeSize(proto)
-      def updateMap(csyms: List[ClassSymbol], seen: Map[ClassSymbol, Int]): SearchHistory = csyms match {
-        case csym :: csyms1 =>
-          seen get csym match {
-            // proto complexity is >= than the last time it was seen → diverge
-            case Some(prevSize) if size >= prevSize => this
-            case _ => updateMap(csyms1, seen.updated(csym, size))
-          }
-        case _ =>
-          new SearchHistory(searchDepth + 1, seen)
-      }
-      if (proto.classSymbols.isEmpty) this
-      else updateMap(proto.classSymbols, seen)
+  def nest(cand: Candidate, pt: Type)(implicit ctx: Context): SearchHistory = {
+    new SearchHistory {
+      val root = outer.root
+      val open = (cand, pt) :: outer.open
+      val byname = outer.byname || isByname(pt)
     }
   }
 
-  override def toString: String = s"SearchHistory(depth = $searchDepth, seen = $seen)"
+  def isByname(tp: Type): Boolean = tp.isInstanceOf[ExprType]
+
+  /**
+   * Check if the supplied candidate implicit and target type indicate a diverging
+   * implicit search.
+   *
+   * @param cand The candidate implicit to be explored.
+   * @param pt   The target type for the above candidate.
+   * @result     True if this candidate/pt are divergent, false otherwise.
+   */
+  def checkDivergence(cand: Candidate, pt: Type)(implicit ctx: Context): Boolean = {
+    // For full details of the algorithm see the SIP:
+    //   https://docs.scala-lang.org/sips/byname-implicits.html
+
+    val widePt = pt.widenExpr
+    lazy val ptCoveringSet = widePt.coveringSet
+    lazy val ptSize = widePt.typeSize
+    lazy val wildPt = wildApprox(widePt)
+
+    // Unless we are able to tie a recursive knot, we report divergence if there is an
+    // open implicit using the same candidate implicit definition which has a type which
+    // is larger (see `typeSize`) and is constructed using the same set of types and type
+    // constructors (see `coveringSet`).
+    //
+    // We are able to tie a recursive knot if there is compatible term already under
+    // construction which is separated from this context by at least one by name argument
+    // as we ascend the chain of open implicits to the outermost search context.
+
+    @tailrec
+    def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Boolean =
+      ois match {
+        case Nil => false
+        case (hd@(cand1, tp)) :: tl =>
+          if (cand1.ref == cand.ref) {
+            val wideTp = tp.widenExpr
+            lazy val wildTp = wildApprox(wideTp)
+            if (belowByname && (wildTp <:< wildPt)) false
+            else if ((wideTp.typeSize < ptSize && wideTp.coveringSet == ptCoveringSet) || (wildTp == wildPt)) true
+            else loop(tl, isByname(tp) || belowByname)
+          }
+          else loop(tl, isByname(tp) || belowByname)
+      }
+
+    loop(open, isByname(pt))
+  }
+
+  /**
+   * Return the reference, if any, to a term under construction or already constructed in
+   * the current search history corresponding to the supplied target type.
+   *
+   * A term is eligible if its type is a subtype of the target type and either it has
+   * already been constructed and is present in the current implicit dictionary, or it is
+   * currently under construction and is separated from the current search context by at
+   * least one by name argument position.
+   *
+   * Note that because any suitable term found is defined as part of this search it will
+   * always be effectively in a more inner context than any other definition provided by
+   * explicit definitions. Consequently these terms have the highest priority and no other
+   * candidates need to be considered.
+   *
+   * @param pt  The target type being searched for.
+   * @result    The corresponding dictionary reference if any, NoType otherwise.
+   */
+  def recursiveRef(pt: Type)(implicit ctx: Context): Type = {
+    val widePt = pt.widenExpr
+
+    refBynameImplicit(widePt).orElse {
+      val bynamePt = isByname(pt)
+      if (!byname && !bynamePt) NoType // No recursion unless at least one open implicit is by name ...
+      else {
+        // We are able to tie a recursive knot if there is compatible term already under
+        // construction which is separated from this context by at least one by name
+        // argument as we ascend the chain of open implicits to the outermost search
+        // context.
+        @tailrec
+        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type = {
+          ois match {
+            case (hd@(cand, tp)) :: tl if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt => tp
+            case (_, tp) :: tl => loop(tl, belowByname || isByname(tp))
+            case _ => NoType
+          }
+        }
+
+        loop(open, bynamePt) match {
+          case NoType => NoType
+          case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
+        }
+      }
+    }
+  }
+
+  // The following are delegated to the root of this search history.
+  def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef = root.linkBynameImplicit(tpe)
+  def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type = root.refBynameImplicit(tpe)
+  def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = root.defineBynameImplicit(tpe, result)
+
+  // This is NOOP unless at the root of this search history.
+  def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = result
+
+  override def toString: String = s"SearchHistory(open = $open, byname = $byname)"
+}
+
+/**
+ * The the state corresponding to the outermost context of an implicit searcch.
+ */
+final class SearchRoot extends SearchHistory {
+  val root = this
+  val open = Nil
+  val byname = false
+
+  /** The dictionary of recursive implicit types and corresponding terms for this search. */
+  var implicitDictionary0: mutable.Map[Type, (TermRef, tpd.Tree)] = null
+  def implicitDictionary = {
+    if (implicitDictionary0 == null)
+      implicitDictionary0 = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
+    implicitDictionary0
+  }
+
+  /**
+   * Link a reference to an under-construction implicit for the provided type to its
+   * defining occurrence via the implicit dictionary, creating a dictionary entry for this
+   * type if one does not yet exist.
+   *
+   * @param tpe  The type to link.
+   * @result     The TermRef of the corresponding dictionary entry.
+   */
+  override def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef = {
+    implicitDictionary.get(tpe) match {
+      case Some((ref, _)) => ref
+      case None =>
+        val lazyImplicit = ctx.newLazyImplicit(tpe)
+        val ref = lazyImplicit.termRef
+        implicitDictionary.put(tpe, (ref, tpd.EmptyTree))
+        ref
+    }
+  }
+
+  /**
+   * Look up an implicit dictionary entry by type.
+   *
+   * If present yield the TermRef corresponding to the eventual dictionary entry,
+   * otherwise NoType.
+   *
+   * @param tpe The type to look up.
+   * @result    The corresponding TermRef, or NoType if none.
+   */
+  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type = {
+    implicitDictionary.get(tpe).map(_._1).getOrElse(NoType)
+  }
+
+  /**
+   * Define a pending dictionary entry if any.
+   *
+   * If the provided type corresponds to an under-construction by name implicit, then use
+   * the tree contained in the provided SearchSuccess as its definition, returning an
+   * updated result referring to dictionary entry. Otherwise return the SearchSuccess
+   * unchanged.
+   *
+   * @param  tpe    The type for which the entry is to be defined
+   * @param  result The SearchSuccess corresponding to tpe
+   * @result        A SearchResult referring to the newly created dictionary entry if tpe
+   *                is an under-construction by name implicit, the provided result otherwise.
+   */
+  override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = {
+    implicitDictionary.get(tpe) match {
+      case Some((ref, _)) =>
+        implicitDictionary.put(tpe, (ref, result.tree))
+        SearchSuccess(tpd.ref(ref).withPos(result.tree.pos), result.ref, result.level)(result.tstate)
+      case None => result
+    }
+  }
+
+  /**
+   * Emit the implicit dictionary at the completion of an implicit search.
+   *
+   * @param pos    The position at which the search is elaborated.
+   * @param result The result of the search prior to substitution of recursive references.
+   * @result       The elaborated result, comprising the implicit dictionary and a result tree
+   *               substituted with references into the dictionary.
+   */
+  override def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = {
+    if (implicitDictionary == null || implicitDictionary.isEmpty) result
+    else {
+      result match {
+        case failure: SearchFailure => failure
+        case success @ SearchSuccess(tree, _, _) =>
+          import tpd._
+
+          // We might have accumulated dictionary entries for by name implicit arguments
+          // which are not in fact used recursively either directly in the outermost result
+          // term, or indirectly via other dictionary entries. We prune these out, recursively
+          // eliminating entries until all remaining entries are at least transtively referred
+          // to in the outermost result term.
+          @tailrec
+          def prune(trees: List[Tree], pending: List[(TermRef, Tree)], acc: List[(TermRef, Tree)]): List[(TermRef, Tree)] = pending match {
+            case Nil => acc
+            case ps =>
+              val (in, out) = ps.partition {
+                case (vref, rhs) =>
+                  trees.exists(_.existsSubTree {
+                    case id: Ident => id.symbol == vref.symbol
+                    case _ => false
+                  })
+              }
+              if (in.isEmpty) acc
+              else prune(in.map(_._2) ++ trees, out, in ++ acc)
+          }
+
+          val pruned = prune(List(tree), implicitDictionary.map(_._2).toList, Nil)
+          implicitDictionary0 = null
+          if (pruned.isEmpty) result
+          else {
+            // If there are any dictionary entries remaining after pruning, construct a dictionary
+            // class of the form,
+            //
+            // class <dictionary> {
+            //   val $_lazy_implicit_$0 = ...
+            //   ...
+            //   val $_lazy_implicit_$n = ...
+            // }
+            //
+            // Where the RHSs of the $_lazy_implicit_$n are the terms used to populate the dictionary
+            // via defineByNameImplicit.
+            //
+            // The returned search result is then of the form,
+            //
+            // {
+            //   class <dictionary> { ... }
+            //   val $_lazy_implicit_$nn = new <dictionary>
+            //   result.tree // with dictionary references substituted in
+            // }
+
+            val parents = List(defn.ObjectType, defn.SerializableType)
+            val classSym = ctx.newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = pos)
+            val vsyms = pruned.map(_._1.symbol)
+            val nsyms = vsyms.map(vsym => ctx.newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = pos).entered)
+            val vsymMap = (vsyms zip nsyms).toMap
+
+            val rhss = pruned.map(_._2)
+            // Substitute dictionary references into dictionary entry RHSs
+            val rhsMap = new TreeTypeMap(treeMap = {
+              case id: Ident if vsymMap.contains(id.symbol) =>
+                tpd.ref(vsymMap(id.symbol))
+              case tree => tree
+            })
+            val nrhss = rhss.map(rhsMap(_))
+
+            val vdefs = (nsyms zip nrhss) map {
+              case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs)
+            }
+
+            val constr = ctx.newConstructor(classSym, Synthetic, Nil, Nil).entered
+            val classDef = ClassDef(classSym, DefDef(constr), vdefs)
+
+            val valSym = ctx.newLazyImplicit(classSym.typeRef, pos)
+            val inst = ValDef(valSym, New(classSym.typeRef, Nil))
+
+            // Substitute dictionary references into outermost result term.
+            val resMap = new TreeTypeMap(treeMap = {
+              case id: Ident if vsymMap.contains(id.symbol) =>
+                Select(tpd.ref(valSym), id.name)
+              case tree => tree
+            })
+
+            val res = resMap(tree)
+
+            val blk = Block(classDef :: inst :: Nil, res)
+
+            success.copy(tree = blk)(success.tstate)
+          }
+      }
+    }
+  }
 }
 
 /** A set of term references where equality is =:= */

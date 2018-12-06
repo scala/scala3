@@ -51,7 +51,7 @@ object ProtoTypes {
      */
     def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = {
       val savedConstraint = ctx.typerState.constraint
-      val res = pt match {
+      val res = pt.widenExpr match {
         case pt: FunProto =>
           mt match {
             case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)

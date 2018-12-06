@@ -1463,6 +1463,14 @@ object Types {
       case _ => this
     }
 
+    /** The set of distinct symbols referred to by this type, after all aliases are expanded */
+    def coveringSet(implicit ctx: Context): Set[Symbol] =
+      (new CoveringSetAccumulator).apply(Set.empty[Symbol], this)
+
+    /** The number of applications and refinements in this type, after all aliases are expanded */
+    def typeSize(implicit ctx: Context): Int =
+      (new TypeSizeAccumulator).apply(0, this)
+
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
 
@@ -4898,6 +4906,39 @@ object Types {
         case tp: TypeVar => apply(x, tp.underlying)
         case tp: AppliedType => tp.isGround(this)
         case _ => foldOver(x, tp)
+      }
+    }
+  }
+
+  class TypeSizeAccumulator(implicit ctx: Context) extends TypeAccumulator[Int] {
+    def apply(n: Int, tp: Type): Int = tp match {
+      case tp: AppliedType =>
+        foldOver(n + 1, tp)
+      case tp: RefinedType =>
+        foldOver(n + 1, tp)
+      case tp: TypeRef if tp.info.isTypeAlias =>
+        apply(n, tp.superType)
+      case _ =>
+        foldOver(n, tp)
+    }
+  }
+
+  class CoveringSetAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[Symbol]] {
+    def apply(cs: Set[Symbol], tp: Type): Set[Symbol] = {
+      val sym = tp.typeSymbol
+      tp match {
+        case tp if tp.isTopType || tp.isBottomType =>
+          cs
+        case tp: AppliedType =>
+          foldOver(cs + sym, tp)
+        case tp: RefinedType =>
+          foldOver(cs + sym, tp)
+        case tp: TypeRef if tp.info.isTypeAlias =>
+          apply(cs, tp.superType)
+        case tp: TypeBounds =>
+          foldOver(cs, tp)
+        case other =>
+          foldOver(cs + sym, tp)
       }
     }
   }

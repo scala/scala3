@@ -264,9 +264,8 @@ trait Symbols { this: Context =>
   def newDefaultConstructor(cls: ClassSymbol): TermSymbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
-  /** Create a synthetic lazy implicit value */
-  def newLazyImplicit(info: Type, coord: Coord): TermSymbol =
-    newSymbol(owner, LazyImplicitName.fresh(), Lazy, info, coord = coord)
+  def newLazyImplicit(info: Type, coord: Coord = NoCoord): TermSymbol =
+    newSymbol(owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
