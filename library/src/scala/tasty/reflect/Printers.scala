@@ -646,6 +646,17 @@ trait Printers
               printTree(body)
           }
 
+        case IsDefDef(ddef @ DefDef(name, targs, argss, _, rhsOpt)) if name.startsWith("$anonfun") =>
+          // Decompile lambda definition
+          assert(targs.isEmpty)
+          val args :: Nil = argss
+          val Some(rhs) = rhsOpt
+          inParens {
+            printArgsDefs(args)
+            this += " => "
+            printTree(rhs)
+          }
+
         case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
           printDefAnnotations(ddef)
 
@@ -777,34 +788,13 @@ trait Printers
             case IsValDef(tree) => !tree.symbol.flags.isObject
             case _ => true
           }
+          printFlatBlock(stats, expr)
 
-          expr match {
-            case Term.Lambda(_, _) =>
-              // Decompile lambda from { def annon$(...) = ...; closure(annon$, ...)}
-              assert(stats.size == 1)
-              val DefDef(_, _, args :: Nil, _, Some(rhs)) :: Nil = stats
-              inParens {
-                printArgsDefs(args)
-                this += " => "
-                printTree(rhs)
-              }
-            case _ =>
-              this += "{"
-              indented {
-                printStats(stats, expr)
-              }
-              this += lineBreak() += "}"
-          }
-
-        case Term.Inlined(call, bindings, expansion) => // FIXME: Don't print Inlined with empty calls?
-          this += "{ // inlined"
-          indented {
-            printStats(bindings, expansion)
-          }
-          this += lineBreak() += "}"
+        case Term.Inlined(_, bindings, expansion) =>
+          printFlatBlock(bindings, expansion)
 
         case Term.Lambda(meth, tpt) =>
-          // Printed in Term.Block branch
+          // Printed in by it's DefDef
           this
 
         case Term.If(cond, thenp, elsep) =>
@@ -847,15 +837,80 @@ trait Printers
 
       }
 
+      def flatBlock(stats: List[Statement], expr: Term): (List[Statement], Term) = {
+        val flatStats = List.newBuilder[Statement]
+        def extractFlatStats(stat: Statement): Unit = stat match {
+          case Term.Block(stats1, expr1) =>
+            val it = stats1.iterator
+            while (it.hasNext)
+              extractFlatStats(it.next())
+            extractFlatStats(expr1)
+          case Term.Inlined(_, bindings, expansion) =>
+            val it = bindings.iterator
+            while (it.hasNext)
+              extractFlatStats(it.next())
+            extractFlatStats(expansion)
+          case Term.Literal(Constant.Unit()) => // ignore
+          case stat => flatStats += stat
+        }
+        def extractFlatExpr(term: Term): Term = term match {
+          case Term.Block(stats1, expr1) =>
+            val it = stats1.iterator
+            while (it.hasNext)
+              extractFlatStats(it.next())
+            extractFlatExpr(expr1)
+          case Term.Inlined(_, bindings, expansion) =>
+            val it = bindings.iterator
+            while (it.hasNext)
+              extractFlatStats(it.next())
+            extractFlatExpr(expansion)
+          case term => term
+        }
+        val it = stats.iterator
+        while (it.hasNext)
+          extractFlatStats(it.next())
+        val flatExpr = extractFlatExpr(expr)
+        (flatStats.result(), flatExpr)
+      }
+
+      def printFlatBlock(stats: List[Statement], expr: Term): Buffer = {
+        val (stats1, expr1) = flatBlock(stats, expr)
+        // Remove Term.Lambda nodes, lambdas are printed by their definition
+        val stats2 = stats1.filter { case Term.Lambda(_, _) => false; case _ => true }
+        val (stats3, expr3) = expr1 match {
+          case Term.Lambda(_, _) =>
+            val init :+ last  = stats2
+            (init, last)
+          case _ => (stats2, expr1)
+        }
+        if (stats3.isEmpty) {
+          printTree(expr3)
+        } else {
+          this += "{"
+          indented {
+            printStats(stats3, expr3)
+          }
+          this += lineBreak() += "}"
+        }
+      }
+
       def printStats(stats: List[Tree], expr: Tree): Unit = {
         def printSeparator(next: Tree): Unit = {
           // Avoid accidental application of opening `{` on next line with a double break
+          def rec(next: Tree): Unit = next match {
+            case Term.Block(stats, _) if stats.nonEmpty => this += doubleLineBreak()
+            case Term.Inlined(_, bindings, _) if bindings.nonEmpty => this += doubleLineBreak()
+            case Term.Select(qual, _) => rec(qual)
+            case Term.Apply(fn, _) => rec(fn)
+            case Term.TypeApply(fn, _) => rec(fn)
+            case _ => this += lineBreak()
+          }
           next match {
-            case Term.Block(_, _) => this += doubleLineBreak()
-            case Term.Inlined(_, _, _) => this += doubleLineBreak()
-            case Term.Select(qual, _) => printSeparator(qual)
-            case Term.Apply(fn, _) => printSeparator(fn)
-            case Term.TypeApply(fn, _) => printSeparator(fn)
+            case IsTerm(term) =>
+              flatBlock(Nil, term) match {
+                case (next :: _, _) => rec(next)
+                case (Nil, next) => rec(next)
+              }
             case _ => this += lineBreak()
           }
         }
