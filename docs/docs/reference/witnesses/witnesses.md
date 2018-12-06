@@ -56,7 +56,7 @@ Why prefer witnesses over implicit definitions? Their definitions are shorter, m
 
 ## Witnesses of Extension Methods
 
-Witnesses can also be defined without a `for` clause. A typical application is to use a witness to define extension methods. Examples:
+Witnesses can also be defined without an `of` clause. A typical application is to use a witness to define extension methods. Examples:
 
 ```scala
 witness StringOps {
@@ -180,7 +180,7 @@ Here is the new syntax of witness definitions, seen as a delta from the [standar
 ```
 TmplDef         ::=  ...
                   |  ‘witness’ WitnessDef
-WitnessDef      ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
+WitnessDef      ::=  [id] WitnessParams [‘of’ ConstrApps] [TemplateBody]
 WitnessParams   ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
 ```
-The identifier `id` can be omitted only if either the `for` part or the template body is present. If the `for` part is missing, the template body must define at least one extension method.
+The identifier `id` can be omitted only if either the `of` part or the template body is present. If the `of` part is missing, the template body must define at least one extension method.
