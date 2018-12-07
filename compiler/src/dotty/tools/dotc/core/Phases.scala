@@ -364,9 +364,9 @@ object Phases {
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
-      myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
-      myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
-      myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
+      myErasedTypes  = prev.getClass == classOf[Erasure]   || prev.erasedTypes
+      myFlatClasses  = prev.getClass == classOf[Flatten]   || prev.flatClasses
+      myRefChecked   = prev.getClass == classOf[RefChecks] || prev.refChecked
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId

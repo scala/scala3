@@ -177,6 +177,9 @@ object SymDenotations {
         if (myInfo.isInstanceOf[SymbolLoader]) FromStartFlags
         else AfterLoadFlags)
 
+    final def relevantFlagsFor(fs: FlagSet)(implicit ctx: Context) =
+      if (isCurrent(fs)) myFlags else flags
+
     /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context): Boolean =
       (if (isCurrent(fs)) myFlags else flags) is fs
@@ -862,7 +865,7 @@ object SymDenotations {
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
-        def sourceOfSelf(tp: Any): Symbol = tp match {
+        def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
           case tp: TermRef => tp.symbol
           case tp: Symbol => sourceOfSelf(tp.info)
           case tp: RefinedType => sourceOfSelf(tp.parent)
@@ -1670,9 +1673,9 @@ object SymDenotations {
       else collect(ownDenots, classParents)
     }
 
-    override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+    override final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
     }
 
     /** Compute tp.baseType(this) */
@@ -1919,7 +1922,7 @@ object SymDenotations {
       if (packageObjRunId != ctx.runId) {
         packageObjRunId = ctx.runId
         packageObjCache = NoDenotation // break cycle in case we are looking for package object itself
-        packageObjCache = findMember(nme.PACKAGE, thisType, EmptyFlags).asSymDenotation
+        packageObjCache = findMember(nme.PACKAGE, thisType, EmptyFlagConjunction, EmptyFlags).asSymDenotation
       }
       packageObjCache
     }

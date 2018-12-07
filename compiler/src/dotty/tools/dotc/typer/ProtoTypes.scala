@@ -96,6 +96,7 @@ object ProtoTypes {
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   case class IgnoredProto(ignored: Type) extends UncachedGroundType with MatchAlways {
+    override def revealIgnored = ignored.revealIgnored
     override def deepenProto(implicit ctx: Context): Type = ignored
   }
 
@@ -202,7 +203,8 @@ object ProtoTypes {
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
-  trait ApplyingProto extends ProtoType
+  trait ApplyingProto extends ProtoType   // common trait of ViewProto and FunProto
+  trait FunOrPolyProto extends ProtoType  // common trait of PolyProto and FunProto
 
   class FunProtoState {
 
@@ -227,7 +229,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer, state: FunProtoState = new FunProtoState)(implicit ctx: Context)
-  extends UncachedGroundType with ApplyingProto {
+  extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(implicit ctx: Context): Type = resType
 
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
@@ -376,7 +378,15 @@ object ProtoTypes {
     override def resultType(implicit ctx: Context): Type = resType
 
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
-      ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+      ctx.typer.isApplicable(tp, argType :: Nil, resultType) || {
+        resType match {
+          case SelectionProto(name: TermName, mbrType, _, _) =>
+            ctx.typer.hasExtensionMethod(tp, name, argType, mbrType)
+              //.reporting(res => i"has ext $tp $name $argType $mbrType: $res")
+          case _ =>
+            false
+        }
+      }
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context): ViewProto =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
@@ -406,7 +416,7 @@ object ProtoTypes {
    *
    *    [] [targs] resultType
    */
-  case class PolyProto(targs: List[Type], resType: Type) extends UncachedGroundType with ProtoType {
+  case class PolyProto(targs: List[Tree], resType: Type) extends UncachedGroundType with FunOrPolyProto {
 
     override def resultType(implicit ctx: Context): Type = resType
 
@@ -418,17 +428,17 @@ object ProtoTypes {
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
     }
 
-    def derivedPolyProto(targs: List[Type], resultType: Type): PolyProto =
+    def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
     override def notApplied: Type = WildcardType
 
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
-      derivedPolyProto(targs mapConserve tm, tm(resultType))
+      derivedPolyProto(targs, tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
-      ta(ta.foldOver(x, targs), resultType)
+      ta(ta.foldOver(x, targs.tpes), resultType)
 
     override def deepenProto(implicit ctx: Context): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
   }

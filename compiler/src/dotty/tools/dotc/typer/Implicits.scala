@@ -41,6 +41,13 @@ import scala.annotation.internal.sharable
 object Implicits {
   import tpd._
 
+  /** A flag indicating that this an application of an extension method
+   *  with the given name
+   */
+  case class ExtMethodResult(app: Tree) extends tpd.Tree {
+    override def pos = app.pos
+  }
+
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
@@ -49,8 +56,18 @@ object Implicits {
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
-  case class Candidate(implicitRef: ImplicitRef, level: Int) {
+  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) {
     def ref: TermRef = implicitRef.underlyingRef
+
+    def isExtension = (kind & Candidate.Extension) != 0
+    def isConversion = (kind & Candidate.Conversion) != 0
+  }
+  object Candidate {
+    type Kind = Int
+    final val None = 0
+    final val Value = 1
+    final val Conversion = 2
+    final val Extension = 4
   }
 
   /** A common base class of contextual implicits and of-type implicits which
@@ -78,64 +95,76 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
 
-      def refMatches(ref: TermRef)(implicit ctx: Context) = /*trace(i"refMatches $ref $pt")*/ {
+      def candidateKind(ref: TermRef)(implicit ctx: Context): Candidate.Kind = /*trace(i"candidateKind $ref $pt")*/ {
 
-        def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
-          case mt: MethodType =>
-            mt.isImplicitMethod ||
-            mt.paramInfos.lengthCompare(1) != 0 ||
-            !ctx.test(implicit ctx =>
-              argType relaxed_<:< widenSingleton(mt.paramInfos.head))
-          case poly: PolyType =>
-            // We do not need to call ProtoTypes#constrained on `poly` because
-            // `refMatches` is always called with mode TypevarsMissContext enabled.
-            poly.resultType match {
-              case mt: MethodType =>
-                mt.isImplicitMethod ||
-                mt.paramInfos.length != 1 ||
-                !ctx.test(implicit ctx =>
-                  argType relaxed_<:< wildApprox(widenSingleton(mt.paramInfos.head)))
-              case rtp =>
-                discardForView(wildApprox(rtp), argType)
-            }
-          case tpw: TermRef =>
-            false // can't discard overloaded refs
-          case tpw =>
-            // Only direct instances of Function1 and direct or indirect instances of <:< are eligible as views.
-            // However, Predef.$conforms is not eligible, because it is a no-op.
-            //
-            // In principle, it would be cleanest if only implicit methods qualified
-            // as implicit conversions. We could achieve that by having standard conversions like
-            // this in Predef:
-            //
-            //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
-            //    implicit def convertIfConverter[A, B](x: A)(implicit ev: ImplicitConverter[A, B]): B = ev(a)
-            //
-            // (Once `<:<` inherits from `ImplicitConverter` we only need the 2nd one.)
-            // But clauses like this currently slow down implicit search a lot, because
-            // they are eligible for all pairs of types, and therefore are tried too often.
-            // We emulate instead these conversions directly in the search.
-            // The reason for leaving out `Predef_conforms` is that we know it adds
-            // nothing since it only relates subtype with supertype.
-            //
-            // We keep the old behavior under -language:Scala2.
-            val isFunctionInS2 =
-              ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
-            val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
-            val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
-                tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
-            !(isFunctionInS2 || isImplicitConverter || isConforms)
+        def viewCandidateKind(tpw: Type, argType: Type, resType: Type): Candidate.Kind = {
+
+          def methodCandidateKind(mt: MethodType, formal: => Type) =
+            if (!mt.isImplicitMethod &&
+                mt.paramInfos.lengthCompare(1) == 0 &&
+                ctx.test(implicit ctx => argType relaxed_<:< formal))
+              Candidate.Conversion
+            else
+              Candidate.None
+
+          tpw match {
+            case mt: MethodType =>
+              methodCandidateKind(mt, widenSingleton(mt.paramInfos.head))
+            case poly: PolyType =>
+              // We do not need to call ProtoTypes#constrained on `poly` because
+              // `candidateKind` is always called with mode TypevarsMissContext enabled.
+              poly.resultType match {
+                case mt: MethodType =>
+                  methodCandidateKind(mt, wildApprox(widenSingleton(mt.paramInfos.head)))
+                case rtp =>
+                  viewCandidateKind(wildApprox(rtp), argType, resType)
+              }
+            case tpw: TermRef =>
+              Candidate.Conversion | Candidate.Extension // can't discard overloaded refs
+            case tpw =>
+              // Only direct instances of Function1 and direct or indirect instances of <:< are eligible as views.
+              // However, Predef.$conforms is not eligible, because it is a no-op.
+              //
+              // In principle, it would be cleanest if only implicit methods qualified
+              // as implicit conversions. We could achieve that by having standard conversions like
+              // this in Predef:
+              //
+              //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
+              //    implicit def convertIfConverter[A, B](x: A)(implicit ev: ImplicitConverter[A, B]): B = ev(a)
+              //
+              // (Once `<:<` inherits from `ImplicitConverter` we only need the 2nd one.)
+              // But clauses like this currently slow down implicit search a lot, because
+              // they are eligible for all pairs of types, and therefore are tried too often.
+              // We emulate instead these conversions directly in the search.
+              // The reason for leaving out `Predef_conforms` is that we know it adds
+              // nothing since it only relates subtype with supertype.
+              //
+              // We keep the old behavior under -language:Scala2.
+              val isFunctionInS2 =
+                ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
+              val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
+              val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
+                  tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
+              val hasExtensions = resType match {
+                case SelectionProto(name, _, _, _) =>
+                  tpw.memberBasedOnFlags(name, required = allOf(ExtensionMethod)).exists
+                case _ => false
+              }
+              val conversionKind =
+                if (isFunctionInS2 || isImplicitConverter || isConforms) Candidate.Conversion
+                else Candidate.None
+              val extensionKind =
+                if (hasExtensions) Candidate.Extension
+                else Candidate.None
+              conversionKind | extensionKind
+          }
         }
 
-        def discardForValueType(tpw: Type): Boolean = tpw.stripPoly match {
-          case tpw: MethodType => !tpw.isImplicitMethod
-          case _ => false
-        }
-
-        def discard = pt match {
-          case pt: ViewProto => discardForView(ref.widen, pt.argType)
-          case _: ValueTypeOrProto => !defn.isFunctionType(pt) && discardForValueType(ref.widen)
-          case _ => false
+        def valueTypeCandidateKind(tpw: Type): Candidate.Kind = tpw.stripPoly match {
+          case tpw: MethodType =>
+          	if (tpw.isImplicitMethod) Candidate.Value else Candidate.None
+          case _ =>
+            Candidate.Value
         }
 
         /** Widen singleton arguments of implicit conversions to their underlying type.
@@ -143,7 +172,7 @@ object Implicits {
          *  Note that we always take the underlying type of a singleton type as the argument
          *  type, so that we get a reasonable implicit cache hit ratio.
          */
-        def adjustSingletonArg(tp: Type): Type = tp match {
+        def adjustSingletonArg(tp: Type): Type = tp.widenSingleton match {
           case tp: PolyType =>
             val res = adjustSingletonArg(tp.resType)
             if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
@@ -152,28 +181,44 @@ object Implicits {
           case _ => tp
         }
 
-        (ref.symbol isAccessibleFrom ref.prefix) && {
-          if (discard) {
-            record("discarded eligible")
-            false
+        var ckind =
+          if (!ref.symbol.isAccessibleFrom(ref.prefix)) Candidate.None
+          else pt match {
+            case pt: ViewProto =>
+              viewCandidateKind(ref.widen, pt.argType, pt.resType)
+            case _: ValueTypeOrProto =>
+              if (defn.isFunctionType(pt)) Candidate.Value
+              else valueTypeCandidateKind(ref.widen)
+            case _ =>
+              Candidate.Value
           }
-          else {
-            val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
-            val refAdjusted =
-              if (pt.isInstanceOf[ViewProto]) adjustSingletonArg(ref.widenSingleton)
-              else ref
-            val refNorm = normalize(refAdjusted, pt)
-            NoViewsAllowed.isCompatible(refNorm, ptNorm)
-          }
+
+        if (ckind == Candidate.None)
+          record("discarded eligible")
+        else {
+          val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
+          val refAdjusted =
+            if (pt.isInstanceOf[ViewProto]) adjustSingletonArg(ref)
+            else ref
+          val refNorm = normalize(refAdjusted, pt)
+          if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
+          	ckind = Candidate.None
         }
+        ckind
       }
+
 
       if (refs.isEmpty) Nil
       else {
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
-        refs
-          .filter(ref => nestedCtx.test(implicit ctx => refMatches(ref.underlyingRef)))
-          .map(Candidate(_, level))
+
+        def matchingCandidate(ref: ImplicitRef): Option[Candidate] =
+          nestedCtx.test(implicit ctx => candidateKind(ref.underlyingRef)) match {
+            case Candidate.None => None
+            case ckind => Some(new Candidate(ref, ckind, level))
+          }
+
+        refs.flatMap(matchingCandidate)
       }
     }
   }
@@ -480,7 +525,8 @@ trait ImplicitRunInfo { self: Run =>
               for (parent <- cls.classParents; ref <- iscopeRefs(tp.baseType(parent.classSymbol)))
                 addRef(ref)
             }
-            if (tp.widen.typeSymbol.isOpaqueAlias) addCompanionOf(tp.widen.typeSymbol)
+            val underlyingTypeSym = tp.widen.typeSymbol
+            if (underlyingTypeSym.isOpaqueAlias) addCompanionOf(underlyingTypeSym)
             else tp.classSymbols(liftingCtx).foreach(addClassScope)
           case _ =>
             for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
@@ -888,12 +934,28 @@ trait Implicits { self: Typer =>
       val ref = cand.ref
       var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
       val locked = ctx.typerState.ownedVars
-      if (!argument.isEmpty)
-        generated = typedUnadapted(
-          untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
-          pt, locked)
-      val generated1 = adapt(generated, pt, locked)
-
+      val generated1 =
+        if (argument.isEmpty)
+          adapt(generated, pt, locked)
+        else {
+          val untpdGenerated = untpd.TypedSplice(generated)
+          def tryConversion(implicit ctx: Context) =
+            typed(
+              untpd.Apply(untpdGenerated, untpd.TypedSplice(argument) :: Nil),
+              pt, locked)
+          if (cand.isExtension) {
+            val SelectionProto(name: TermName, mbrType, _, _) = pt
+            val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
+            if (!ctx.reporter.hasErrors && cand.isConversion) {
+              val testCtx = ctx.fresh.setExploreTyperState()
+              tryConversion(testCtx)
+              if (testCtx.reporter.hasErrors)
+                ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+            }
+            result
+          }
+          else tryConversion
+        }
       lazy val shadowing =
         typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
@@ -934,8 +996,12 @@ trait Implicits { self: Typer =>
         SearchFailure(generated1.withTypeUnchecked(
           new ShadowedImplicit(ref, methPart(shadowing).tpe, pt, argument)))
       }
-      else
-        SearchSuccess(generated1, ref, cand.level)(ctx.typerState)
+      else {
+        val generated2 =
+          if (cand.isExtension) Applications.ExtMethodApply(generated1).withType(generated1.tpe)
+          else generated1
+        SearchSuccess(generated2, ref, cand.level)(ctx.typerState)
+      }
     }}
 
     /** Try to type-check implicit reference, after checking that this is not

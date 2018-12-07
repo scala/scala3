@@ -345,9 +345,9 @@ object Trees {
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
 
-    def setComment(comment: Option[Comment]): ThisTree[Untyped] = {
+    def setComment(comment: Option[Comment]): this.type = {
       comment.map(putAttachment(DocComment, _))
-      asInstanceOf[ThisTree[Untyped]]
+      this
     }
 
     /** Destructively update modifiers. To be used with care. */
