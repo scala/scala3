@@ -1,4 +1,4 @@
-object Foo {
+object IntepretedMain {
   def main(args: Array[String]): Unit = {
     val x1 = 42
     println(x1)
@@ -37,5 +37,7 @@ object Foo {
 
     def methP(i: Int) = i
     println(methP(55))
+
+    println(Precompiled)
   }
 }
