@@ -71,29 +71,23 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
-    val formals =
-      ctx.atPhase(thisPhase) { implicit ctx =>
-        tree.fun.tpe.widen.asInstanceOf[MethodType].paramInfos
-      }
-    val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
-      arg match {
-        case arg: Typed if isWildcardStarArg(arg) =>
-          val isJavaDefined = tree.fun.symbol.is(JavaDefined)
-          val tpe = arg.expr.tpe
-          if (isJavaDefined && tpe.derivesFrom(defn.SeqClass))
-            seqToArray(arg.expr, formal.underlyingIfRepeated(isJava = true))
-          else if (!isJavaDefined && tpe.derivesFrom(defn.ArrayClass))
-            arrayToSeq(arg.expr)
-          else
-            arg.expr
-        case arg => arg
-      }
+    val args = tree.args.mapConserve {
+      case arg: Typed if isWildcardStarArg(arg) =>
+        val isJavaDefined = tree.fun.symbol.is(JavaDefined)
+        val tpe = arg.expr.tpe
+        if (isJavaDefined && tpe.derivesFrom(defn.SeqClass))
+          seqToArray(arg.expr)
+        else if (!isJavaDefined && tpe.derivesFrom(defn.ArrayClass))
+          arrayToSeq(arg.expr)
+        else
+          arg.expr
+      case arg => arg
     }
-    transformTypeOfTree(cpy.Apply(tree)(tree.fun, args1))
+    transformTypeOfTree(cpy.Apply(tree)(tree.fun, args))
   }
 
-  /** Convert sequence argument to Java array of type `pt` */
-  private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
+  /** Convert sequence argument to Java array */
+  private def seqToArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
     case _ =>
@@ -104,8 +98,6 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .select(nme.seqToArray)
         .appliedToType(elemType)
         .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
-        .ensureConforms(pt)
-          // Because of phantomclasses, the Java array's type might not conform to the return type
   }
 
   /** Convert Java array argument to Scala Seq */
