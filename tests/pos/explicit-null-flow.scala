@@ -148,6 +148,10 @@ class Foo {
     } else {
       val r6: Rec|Null = r.r.r.r.r.r
     }
+
+    if (!(r == null) && r.r != null) {
+      val r3: Rec|Null = r.r.r
+    }
   }
 
   def interactWithTypeInference() = {
