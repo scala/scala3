@@ -546,6 +546,7 @@ class Typer extends Namer
         }
       case _ => ifExpr
     }
+
     def ascription(tpt: Tree, isWildcard: Boolean) = {
       val underlyingTreeTpe =
         if (isRepeatedParamType(tpt)) TypeTree(defn.SeqType.appliedTo(pt :: Nil))
@@ -557,11 +558,26 @@ class Typer extends Namer
         else typed(tree.expr, tpt.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
     }
-    if (untpd.isWildcardStarArg(tree))
+
+    if (untpd.isWildcardStarArg(tree)) {
+      def typedWildcardStarArgExpr = {
+        val tpdExpr = typedExpr(tree.expr)
+        tpdExpr.tpe.widenDealias match {
+          case defn.ArrayOf(_) =>
+            val starType = defn.ArrayType.appliedTo(WildcardType)
+            val exprAdapted = adapt(tpdExpr, starType)
+            arrayToRepeated(exprAdapted)
+          case _ =>
+            val starType = defn.SeqType.appliedTo(defn.AnyType)
+            val exprAdapted = adapt(tpdExpr, starType)
+            seqToRepeated(exprAdapted)
+        }
+      }
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
-        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType.appliedTo(defn.AnyType))),
+        ifExpr = typedWildcardStarArgExpr,
         wildName = nme.WILDCARD_STAR)
+    }
     else {
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
