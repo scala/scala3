@@ -48,8 +48,6 @@ object FlowFacts {
 
     /** The inferred facts for the negation of this condition. */
     def negate: Inferred = Inferred(ifFalse, ifTrue)
-
-    val isEmpty: Boolean = ifTrue.isEmpty && ifFalse.isEmpty
   }
 
   object Inferred {
@@ -80,8 +78,10 @@ object FlowFacts {
 
     /** Combine two sets of facts according to `op`. */
     def combine(lhs: Inferred, op: Name, rhs: Inferred): Inferred = {
-      if (op == nme.ZAND) lhs.combineAnd(rhs)
-      else lhs.combineOr(rhs)
+      op match {
+        case _ if op == nme.ZAND => lhs.combineAnd(rhs)
+        case _ if op == nme.ZOR => lhs.combineOr(rhs)
+      }
     }
 
     /** Recurse over a conditional to extract flow facts. */
@@ -119,11 +119,35 @@ object FlowFacts {
         else None
 
       trefOpt match {
-        case Some(tref) => Inferred(tref, ifTrue = !isEq)
+        case Some(tref) =>
+          // If `isEq`, then the condition is of the form e.g. `lhs == null`,
+          // in which case we know `lhs` is non-null if the condition is false.
+          Inferred(tref, ifTrue = !isEq)
         case _ => emptyFacts
       }
     }
 
     recur(cond)
+  }
+
+  /** Propagate flow-sensitive type information inside a condition.
+   *  Specifically, if `cond` is of the form `lhs &&` or `lhs ||`, where the lhs has already been typed
+   *  (and the rhs hasn't been typed yet), compute the non-nullability info we get from lhs and
+   *  return a new context with it. The new context can then be used to type the rhs.
+   *
+   *  This is useful in e.g.
+   *  ```
+   *  val x: String|Null = ???
+   *  if (x != null && x.length > 0) ...
+   *  ```
+   */
+  def propagateWithinCond(cond: Tree)(implicit ctx: Context): Context = {
+    cond match {
+      case Select(lhs, op) if op == nme.ZAND || op == nme.ZOR =>
+        val Inferred(ifTrue, ifFalse) = FlowFacts.inferNonNull(lhs)
+        if (op == nme.ZAND) ctx.fresh.addNonNullFacts(ifTrue)
+        else ctx.fresh.addNonNullFacts(ifFalse)
+      case _ => ctx
+    }
   }
 }

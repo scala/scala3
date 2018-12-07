@@ -732,11 +732,10 @@ class Typer extends Namer
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     if (tree.isInline) checkInInlineContext("inline if", tree.pos)
-    def withFacts(facts: NonNullSet): Context = if (facts.isEmpty) ctx else ctx.fresh.setNonNullFacts(ctx.nonNullFacts ++ facts)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val Inferred(ifTrue, ifFalse) = FlowFacts.inferNonNull(cond1)
-    val thenCtx = withFacts(ifTrue)
-    val elseCtx = withFacts(ifFalse)
+    val thenCtx = ctx.fresh.addNonNullFacts(ifTrue)
+    val elseCtx = ctx.fresh.addNonNullFacts(ifFalse)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)(thenCtx)
       val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)(elseCtx)
