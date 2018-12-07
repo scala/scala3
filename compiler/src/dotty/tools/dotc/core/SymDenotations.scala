@@ -606,8 +606,10 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context): Boolean =
-      isType || is(StableOrErased) || !is(UnstableValue) && !info.isInstanceOf[ExprType]
+    final def isStable(implicit ctx: Context): Boolean = {
+      def isUnstableValue = is(UnstableValue) || info.isInstanceOf[ExprType]
+      isType || is(Stable) || !isUnstableValue
+    }
 
     /** Is this a denotation of a class that does not have - either direct or inherited -
      *  initaliazion code?

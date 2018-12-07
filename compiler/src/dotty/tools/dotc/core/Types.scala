@@ -149,7 +149,7 @@ object Types {
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
-      case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable || tp.info.isStable
+      case tp: TermRef => tp.symbol.isStable && tp.prefix.isStable || tp.info.isStable
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
@@ -4514,6 +4514,8 @@ object Types {
       else if (lo `eq` hi) lo
       else Range(lower(lo), upper(hi))
 
+    protected def emptyRange = range(defn.NothingType, defn.AnyType)
+
     protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type): Type = tp match {
@@ -4638,7 +4640,7 @@ object Types {
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
-      if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
+      if (isRange(thistp) || isRange(supertp)) emptyRange
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
