@@ -11,8 +11,8 @@ trait CaseDefOps extends Core {
   }
   implicit def CaseDefDeco(caseDef: CaseDef): CaseDefAPI
 
-  val CaseDef: CaseDefExtractor
-  abstract class CaseDefExtractor {
+  val CaseDef: CaseDefModule
+  abstract class CaseDefModule {
     def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)]
   }
 
@@ -23,8 +23,8 @@ trait CaseDefOps extends Core {
   }
   implicit def TypeCaseDefDeco(caseDef: TypeCaseDef): TypeCaseDefAPI
 
-  val TypeCaseDef: TypeCaseDefExtractor
-  abstract class TypeCaseDefExtractor {
+  val TypeCaseDef: TypeCaseDefModule
+  abstract class TypeCaseDefModule {
     def unapply(x: TypeCaseDef): Option[(TypeTree, TypeTree)]
   }
 }

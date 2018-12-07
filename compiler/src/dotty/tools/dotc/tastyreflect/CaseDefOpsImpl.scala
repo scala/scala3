@@ -9,7 +9,7 @@ trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with CoreImpl with H
     def rhs(implicit ctx: Context): Term = caseDef.body
   }
 
-  object CaseDef extends CaseDefExtractor {
+  object CaseDef extends CaseDefModule {
     def unapply(x: CaseDef): Some[(Pattern, Option[Term], Term)] = Some(x.pat, optional(x.guard), x.body)
   }
 
@@ -18,7 +18,7 @@ trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with CoreImpl with H
     def rhs(implicit ctx: Context): Term = caseDef.body
   }
 
-  object TypeCaseDef extends TypeCaseDefExtractor {
+  object TypeCaseDef extends TypeCaseDefModule {
     def unapply(x: TypeCaseDef): Some[(TypeTree, TypeTree)] = Some((x.pat, x.body))
   }
 }

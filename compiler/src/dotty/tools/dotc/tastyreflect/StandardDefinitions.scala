@@ -8,7 +8,7 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
 
   private implicit def ctx: Context = rootContext
 
-  val definitions: DefinitionsApi = new DefinitionsApi {
+  val definitions: DefinitionsAPI = new DefinitionsAPI {
 
     def RootPackage: Symbol = defn.RootPackage
     def RootClass: Symbol = defn.RootClass
