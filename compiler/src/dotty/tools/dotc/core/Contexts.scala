@@ -480,7 +480,7 @@ object Contexts {
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
-    def setFreshGADTBounds: this.type = setGadt(gadt.derived)
+    def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
@@ -714,7 +714,7 @@ object Contexts {
     def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds
     def contains(sym: Symbol)(implicit ctx: Context): Boolean
     def debugBoundsDescription(implicit ctx: Context): String
-    def derived: GADTMap
+    def fresh: GADTMap
   }
 
   final class SmartGADTMap private (
@@ -746,7 +746,7 @@ object Contexts {
       sb.result
     }
 
-    private[this] var checkInProgress = false
+    private[this] var boundAdditionInProgress = false
 
     implicit override def ctx(implicit ctx: Context): Context = ctx
 
@@ -783,7 +783,7 @@ object Contexts {
 
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
       dirtyFlag = true
-      checkInProgress = true
+      boundAdditionInProgress = true
       @annotation.tailrec def stripInst(tp: Type): Type = tp match {
         case tv: TypeVar =>
           val inst = instType(tv)
@@ -842,7 +842,7 @@ object Contexts {
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
       }
       res
-    } finally checkInProgress = false
+    } finally boundAdditionInProgress = false
 
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
@@ -853,7 +853,7 @@ object Contexts {
             removeTypeVars(tb).asInstanceOf[TypeBounds]
           }
           val res =
-            if (checkInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
+            if (boundAdditionInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
             else {
               if (dirtyFlag) {
                 dirtyFlag = false
@@ -875,7 +875,7 @@ object Contexts {
 
     override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 
-    override def derived: GADTMap = new SmartGADTMap(
+    override def fresh: GADTMap = new SmartGADTMap(
       myConstraint,
       mapping,
       reverseMapping,
@@ -919,6 +919,6 @@ object Contexts {
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
     override def contains(sym: Symbol)(implicit ctx: Context) = false
     override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGADTMap"
-    override def derived = new SmartGADTMap
+    override def fresh = new SmartGADTMap
   }
 }
