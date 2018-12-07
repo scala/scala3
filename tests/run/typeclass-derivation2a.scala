@@ -80,21 +80,6 @@ object TypeLevel {
     def elementLabel(n: Int) = reflected.label(ordinal)(n + 1)
   }
 
-  /** A class for mapping between an ADT value and
-  *  the case mirror that represents the value.
-  */
-  abstract class Reflected[T] {
-
-    /** The case mirror corresponding to ADT instance `x` */
-    def reflect(x: T): Mirror
-
-    /** The ADT instance corresponding to given `mirror` */
-    def reify(mirror: Mirror): T
-
-    /** The companion object of the ADT */
-    def common: ReflectedClass
-  }
-
   /** The shape of an ADT.
    *  This is eithe a product (`Case`) or a sum (`Cases`) of products.
    */
@@ -110,7 +95,20 @@ object TypeLevel {
   /** Every generic derivation starts with a typeclass instance of this type.
    *  It informs that type `T` has shape `S` and also implements runtime reflection on `T`.
    */
-  abstract class Shaped[T, S <: Shape] extends Reflected[T]
+  abstract class Generic[T] {
+
+    /** The shape of the `T` */
+    type Shape <: TypeLevel.Shape
+
+    /** The case mirror corresponding to ADT instance `x` */
+    def reflect(x: T): Mirror
+
+    /** The ADT instance corresponding to given `mirror` */
+    def reify(mirror: Mirror): T
+
+    /** The companion object of the ADT */
+    def common: ReflectedClass
+  }
 }
 
 // An algebraic datatype
@@ -123,17 +121,14 @@ object Lst {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  type Shape[T] = Shape.Cases[(
-    Shape.Case[Cons[T], (T, Lst[T])],
-    Shape.Case[Nil.type, Unit]
-  )]
-
   val reflectedClass = new ReflectedClass("Cons\000hd\000tl\001Nil")
   import reflectedClass.mirror
 
-  val NilMirror = mirror(1)
-
-  implicit def derived$Shaped[T]: Shaped[Lst[T], Shape[T]] = new {
+  class GenericLst[T] extends Generic[Lst[T]] {
+    type Shape = Shape.Cases[(
+      Shape.Case[Cons[T], (T, Lst[T])],
+      Shape.Case[Nil.type, Unit]
+    )]
     def reflect(xs: Lst[T]): Mirror = xs match {
       case xs: Cons[T] => mirror(0, xs)
       case Nil => mirror(1)
@@ -144,6 +139,7 @@ object Lst {
     }
     def common = reflectedClass
   }
+  implicit def GenericLst[T]: GenericLst[T] = new GenericLst[T]
 
   // three clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Lst[T]] = Eq.derived
@@ -158,18 +154,19 @@ object Pair {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  type Shape[T] = Shape.Case[Pair[T], (T, T)]
-
   val reflectedClass = new ReflectedClass("Pair\000x\000y")
   import reflectedClass.mirror
 
-  implicit def derived$Shape[T]: Shaped[Pair[T], Shape[T]] = new {
+  class GenericPair[T] extends Generic[Pair[T]] {
+    type Shape = Shape.Case[Pair[T], (T, T)]
+
     def reflect(xy: Pair[T]) =
       mirror(0, xy)
     def reify(c: Mirror): Pair[T] =
       Pair(c(0).asInstanceOf, c(1).asInstanceOf)
     def common = reflectedClass
   }
+  implicit def GenericPair[T]: GenericPair[T] = new GenericPair[T]
 
   // clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Pair[T]] = Eq.derived
@@ -184,15 +181,14 @@ case class Right[R](x: R) extends Either[Nothing, R]
 object Either {
   import TypeLevel._
 
-  type Shape[L, R] = Shape.Cases[(
-    Shape.Case[Left[L], L *: Unit],
-    Shape.Case[Right[R], R *: Unit]
-  )]
-
   val reflectedClass = new ReflectedClass("Left\000x\001Right\000x")
   import reflectedClass.mirror
 
-  implicit def derived$Shape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
+  class GenericEither[L, R] extends Generic[Either[L, R]] {
+    type Shape = Shape.Cases[(
+      Shape.Case[Left[L], L *: Unit],
+      Shape.Case[Right[R], R *: Unit]
+    )]
     def reflect(e: Either[L, R]): Mirror = e match {
       case e: Left[L] => mirror(0, e)
       case e: Right[R] => mirror(1, e)
@@ -203,6 +199,7 @@ object Either {
     }
     def common = reflectedClass
   }
+  implicit def GenericEither[L, R]: GenericEither[L, R] = new GenericEither[L, R]
 
   implicit def derived$Eq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
   implicit def derived$Pickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
@@ -240,11 +237,11 @@ object Eq {
         false
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Eq[T] = new {
+  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Eq[T] = new {
     def eql(x: T, y: T): Boolean = {
       val xm = ev.reflect(x)
       val ym = ev.reflect(y)
-      inline erasedValue[S] match {
+      inline erasedValue[ev.Shape] match {
         case _: Shape.Cases[alts] =>
           xm.ordinal == ym.ordinal &&
           eqlCases[alts](xm, ym, 0)
@@ -303,18 +300,18 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
+  inline def unpickleCase[T, Elems <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      r.reify(r.common.mirror(ordinal))
+      gen.reify(r.common.mirror(ordinal))
     else {
       val elems = new Array[Object](size)
       unpickleElems[Elems](buf, elems, 0)
-      r.reify(r.common.mirror(ordinal, elems))
+      gen.reify(r.common.mirror(ordinal, elems))
     }
   }
 
-  inline def unpickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+  inline def unpickleCases[T, Alts <: Tuple](r: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[_, elems] *: alts1) =>
         if (n == ordinal) unpickleCase[T, elems](r, buf, ordinal)
@@ -323,10 +320,10 @@ object Pickler {
         throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Pickler[T] = new {
+  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Pickler[T] = new {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = {
       val xm = ev.reflect(x)
-      inline erasedValue[S] match {
+      inline erasedValue[ev.Shape] match {
         case _: Shape.Cases[alts] =>
           buf += xm.ordinal
           pickleCases[alts](buf, xm, 0)
@@ -334,7 +331,7 @@ object Pickler {
           pickleElems[elems](buf, xm, 0)
       }
     }
-    def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
+    def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[ev.Shape] match {
       case _: Shape.Cases[alts] =>
         unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
       case _: Shape.Case[_, elems] =>
@@ -379,10 +376,10 @@ object Show {
         throw new MatchError(xm)
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Show[T] = new {
+  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Show[T] = new {
     def show(x: T): String = {
       val xm = ev.reflect(x)
-      val args = inline erasedValue[S] match {
+      val args = inline erasedValue[ev.Shape] match {
         case _: Shape.Cases[alts] =>
           showCases[alts](xm, 0)
         case _: Shape.Case[_, elems] =>
