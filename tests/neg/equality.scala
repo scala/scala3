@@ -58,6 +58,7 @@ object equality {
 
     1 == true  // error
 
+    // TODO(abeln): double-check that this is the behaviour we want
     /*
     null == true // OK by eqProxy or eqJBoolSBool
     true == null // OK by eqSBoolJBool
@@ -68,6 +69,11 @@ object equality {
     true == null // error
     null == 1    // error
     1 == null    // error
+    {
+      val x: AnyVal = ???
+      if (x == null) {} // error
+      def foo[T <: AnyVal](x: T) = if (x != null) {} // error
+    }
 
     class Fruit
 
