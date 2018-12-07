@@ -1246,7 +1246,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def ignoreDir(dir: JFile): Boolean = {
       // Pickler tests stop after pickler not producing class/tasty files. The second part of the compilation
       // will not be able to compile due to the missing artifacts from the first part.
-      isPicklerTest && dir.listFiles().exists(file => file.getName.endsWith(".java") || file.getName.endsWith("_2.scala"))
+      isPicklerTest && dir.listFiles().exists(file => file.getName.endsWith("_2.scala") || file.getName.endsWith("_2.java"))
     }
     val targets =
       files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
