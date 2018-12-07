@@ -39,5 +39,7 @@ object IntepretedMain {
     println(methP(55))
 
     println(Precompiled)
+    println(Precompiled.staticMeth)
+    println(Precompiled.staticVal)
   }
 }

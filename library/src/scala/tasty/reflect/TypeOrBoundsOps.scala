@@ -44,7 +44,7 @@ trait TypeOrBoundsOps extends Core {
   implicit def TypeLambdaDeco(x: TypeLambda): Type.TypeLambdaAPI
 
   implicit def TypeBoundsDeco(bounds: TypeBounds): TypeBoundsAPI
-  
+
   // ----- Types ----------------------------------------------------
 
   def typeOf[T: scala.quoted.Type]: Type
@@ -53,6 +53,7 @@ trait TypeOrBoundsOps extends Core {
     def =:=(other: Type)(implicit ctx: Context): Boolean
     def <:<(other: Type)(implicit ctx: Context): Boolean
     def widen(implicit ctx: Context): Type
+    def classSymbol(implicit ctx: Context): Option[ClassSymbol]
   }
 
   val IsType: IsTypeModule
