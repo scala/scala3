@@ -352,6 +352,9 @@ object desugar {
         if (isCaseClass && originalTparams.isEmpty)
           ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
         ListOfNil
+      } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
+          ctx.error("Case classes should have a non-implicit parameter list", cdef.namePos)
+        ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
