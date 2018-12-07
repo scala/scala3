@@ -8,6 +8,7 @@ puzzle.scala
 implicitMatch.scala
 typeclass-derivation1.scala
 typeclass-derivation2.scala
+typeclass-derivation2a.scala
 typeclass-derivation3.scala
 deriving-interesting-prefixes.scala
 

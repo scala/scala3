@@ -215,6 +215,7 @@ object typeclasses {
   object Eq {
     import scala.compiletime.erasedValue
     import compiletime._
+    import reflect._
 
     inline def tryEql[T](x: T, y: T) = implicit match {
       case eq: Eq[T] => eq.eql(x, y)
@@ -270,6 +271,7 @@ object typeclasses {
   object Pickler {
     import scala.compiletime.{erasedValue, constValue}
     import compiletime._
+    import reflect._
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 

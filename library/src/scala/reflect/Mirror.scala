@@ -1,4 +1,4 @@
-package scala.compiletime
+package scala.reflect
 
 /** A generic representation of a case in an ADT
   *  @param  reflected  The common class-speficic part of this mirror

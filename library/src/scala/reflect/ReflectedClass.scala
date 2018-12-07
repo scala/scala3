@@ -1,22 +1,27 @@
-package scala.compiletime
+package scala.reflect
 import annotation.tailrec
 import collection.mutable.ArrayBuffer
 
-/** @param labelsStr: A string encoding all case and element labels according to the
+/** The part of `Reflected` instances that is common for all instances of a class.
+ *  @param labelsStr: A string encoding all case and element labels according to the
  *                    following grammar:
  *
  *                    labelString   ::= caseString { caseSeparator caseString }
  *                    caseString    ::= elemString { elemSeparator elemString }
- *                    caseSeparator ::= '\001'
- *                    elemSeparator ::= '\000'
- *                    elemString: "any sequence of characters not containing '\000` or `\001`"
+ *                    caseSeparator ::= '\u0001'
+ *                    elemSeparator ::= '\u0000'
+ *                    elemString: "any sequence of characters not containing '\u0000` or `\u0001`"
  */
-class ReflectedClass(labelsStr: String) {
+class ReflectedClass(val runtimeClass: Class[_], labelsStr: String) {
   import ReflectedClass._
 
   /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
   def mirror(ordinal: Int, product: Product): Mirror =
     new Mirror(this, ordinal, product)
+
+  /** A mirror of a case with no elements */
+  def mirror(ordinal: Int): Mirror =
+    mirror(ordinal, EmptyProduct)
 
   /** A mirror with elements given as an array */
   def mirror(ordinal: Int, elems: Array[AnyRef]): Mirror =
@@ -26,10 +31,9 @@ class ReflectedClass(labelsStr: String) {
   def mirror(ordinal: Int, numElems: Int): Mirror =
     mirror(ordinal, new Array[AnyRef](numElems))
 
-  /** A mirror of a case with no elements */
-  def mirror(ordinal: Int): Mirror =
-    mirror(ordinal, EmptyProduct)
-
+  /** Case and element labels as a two-dimensional array.
+   *  Each row of the array contains a case label, followed by the labels of the elements of that case.
+   */
   val label: Array[Array[String]] =
     initLabels(0, 0, new ArrayBuffer[String], new ArrayBuffer[Array[String]])
 
@@ -50,8 +54,8 @@ class ReflectedClass(labelsStr: String) {
 }
 
 object ReflectedClass {
-  private final val elemSeparator = '\000'
-  private final val caseSeparator = '\001'
+  private final val elemSeparator = '\u0000'
+  private final val caseSeparator = '\u0001'
 
   /** Helper class to turn arrays into products */
   private class ArrayProduct(val elems: Array[AnyRef]) extends Product {

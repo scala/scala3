@@ -271,7 +271,9 @@ trait Deriving { this: Typer =>
 
       /** The RHS of the `reflectedClass` value definition */
       private def reflectedClassRHS =
-        New(defn.ReflectedClassType, Literal(Constant(labelString(shapeWithClassParams))) :: Nil)
+        New(defn.ReflectedClassType,
+          List(Literal(Constant(cls.typeRef)),
+               Literal(Constant(labelString(shapeWithClassParams)))))
 
       /** The RHS of the `derived$Shaped` typeclass instance.
        *  Example: For the class definition

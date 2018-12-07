@@ -32,6 +32,7 @@ object typeclasses {
   object Eq {
     import scala.compiletime.erasedValue
     import compiletime._
+    import reflect.Mirror
 
     inline def tryEql[T](x: T, y: T) = implicit match {
       case eq: Eq[T] => eq.eql(x, y)
@@ -46,30 +47,26 @@ object typeclasses {
           true
       }
 
-    inline def eqlCase[T, Elems <: Tuple](r: Reflected[T], x: T, y: T) =
-      eqlElems[Elems](r.reflect(x), r.reflect(y), 0)
-
-    inline def eqlCases[T, Alts <: Tuple](r: Reflected[T], x: T, y: T): Boolean =
+    inline def eqlCases[Alts <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
       inline erasedValue[Alts] match {
         case _: (Shape.Case[alt, elems] *: alts1) =>
-          x match {
-            case x: `alt` =>
-              y match {
-                case y: `alt` => eqlCase[T, elems](r, x, y)
-                case _ => false
-              }
-            case _ => eqlCases[T, alts1](r, x, y)
-        }
+          if (xm.ordinal == n) eqlElems[elems](xm, ym, 0)
+          else eqlCases[alts1](xm, ym, n + 1)
       case _: Unit =>
-        false
-    }
+          false
+      }
 
     inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Eq[T] = new {
-      def eql(x: T, y: T): Boolean = inline erasedValue[S] match {
-        case _: Shape.Cases[alts] =>
-          eqlCases[T, alts](ev, x, y)
-        case _: Shape.Case[_, elems] =>
-          eqlCase[T, elems](ev, x, y)
+      def eql(x: T, y: T): Boolean = {
+        val xm = ev.reflect(x)
+        val ym = ev.reflect(y)
+        inline erasedValue[S] match {
+          case _: Shape.Cases[alts] =>
+            xm.ordinal == ym.ordinal &&
+            eqlCases[alts](xm, ym, 0)
+          case _: Shape.Case[_, elems] =>
+            eqlElems[elems](xm, ym, 0)
+        }
       }
     }
 
@@ -87,6 +84,7 @@ object typeclasses {
   object Pickler {
     import scala.compiletime.{erasedValue, constValue}
     import compiletime._
+    import reflect.{Mirror, Reflected}
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -102,19 +100,11 @@ object typeclasses {
         case _: Unit =>
       }
 
-    inline def pickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T): Unit =
-      pickleElems[Elems](buf, r.reflect(x), 0)
-
-    inline def pickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
+    inline def pickleCases[Alts <: Tuple](buf: mutable.ListBuffer[Int], xm: Mirror, n: Int): Unit =
       inline erasedValue[Alts] match {
         case _: (Shape.Case[alt, elems] *: alts1) =>
-          x match {
-            case x: `alt` =>
-              buf += n
-              pickleCase[T, elems](r, buf, x)
-            case _ =>
-              pickleCases[T, alts1](r, buf, x, n + 1)
-          }
+          if (xm.ordinal == n) pickleElems[elems](buf, xm, 0)
+          else pickleCases[alts1](buf, xm, n + 1)
         case _: Unit =>
       }
 
@@ -151,11 +141,15 @@ object typeclasses {
       }
 
     inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Pickler[T] = new {
-      def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
-        case _: Shape.Cases[alts] =>
-          pickleCases[T, alts](ev, buf, x, 0)
-        case _: Shape.Case[_, elems] =>
-          pickleCase[T, elems](ev, buf, x)
+      def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = {
+        val xm = ev.reflect(x)
+        inline erasedValue[S] match {
+          case _: Shape.Cases[alts] =>
+            buf += xm.ordinal
+            pickleCases[alts](buf, xm, 0)
+          case _: Shape.Case[_, elems] =>
+            pickleElems[elems](buf, xm, 0)
+        }
       }
       def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
         case _: Shape.Cases[alts] =>
@@ -178,6 +172,7 @@ object typeclasses {
   object Show {
     import scala.compiletime.erasedValue
     import compiletime._
+    import reflect.Mirror
 
     inline def tryShow[T](x: T): String = implicit match {
       case s: Show[T] => s.show(x)
@@ -193,29 +188,25 @@ object typeclasses {
           Nil
       }
 
-    inline def showCase[T, Elems <: Tuple](r: Reflected[T], x: T): String = {
-      val mirror = r.reflect(x)
-      val args = showElems[Elems](mirror, 0).mkString(", ")
-      s"${mirror.caseLabel}($args)"
-    }
-
-    inline def showCases[T, Alts <: Tuple](r: Reflected[T], x: T): String =
+    inline def showCases[Alts <: Tuple](xm: Mirror, n: Int): String =
       inline erasedValue[Alts] match {
         case _: (Shape.Case[alt, elems] *: alts1) =>
-          x match {
-            case x: `alt` => showCase[T, elems](r, x)
-            case _ => showCases[T, alts1](r, x)
-          }
+          if (xm.ordinal == n) showElems[elems](xm, 0).mkString(", ")
+          else showCases[alts1](xm, n + 1)
         case _: Unit =>
-          throw new MatchError(x)
+          throw new MatchError(xm)
       }
 
     inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Show[T] = new {
-      def show(x: T): String = inline erasedValue[S] match {
-        case _: Shape.Cases[alts] =>
-          showCases[T, alts](ev, x)
-        case _: Shape.Case[_, elems] =>
-          showCase[T, elems](ev, x)
+      def show(x: T): String = {
+        val xm = ev.reflect(x)
+        val args = inline erasedValue[S] match {
+          case _: Shape.Cases[alts] =>
+            showCases[alts](xm, 0)
+          case _: Shape.Case[_, elems] =>
+            showElems[elems](xm, 0).mkString(", ")
+        }
+        s"${xm.caseLabel}($args)"
       }
     }
 
