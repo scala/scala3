@@ -31,7 +31,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     def resultTpe(implicit ctx: Context): Type = tpe.resType
   }
 
-  object IsType extends IsTypeExtractor {
+  object IsType extends IsTypeModule {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
       case x: TypeBounds => None
       case x if x == Types.NoPrefix => None
@@ -52,7 +52,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def value(implicit ctx: Context): Any = x.value
     }
 
-    object ConstantType extends ConstantTypeExtractor {
+    object ConstantType extends ConstantTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Constant] = x match {
         case Types.ConstantType(value) => Some(value)
         case _ => None
@@ -74,7 +74,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
-    object SymRef extends SymRefExtractor {
+    object SymRef extends SymRefModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] = x  match {
         case tp: Types.NamedType =>
           tp.designator match {
@@ -100,7 +100,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
-    object TermRef extends TermRefExtractor {
+    object TermRef extends TermRefModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
           tp.designator match {
@@ -127,7 +127,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
-    object TypeRef extends TypeRefExtractor {
+    object TypeRef extends TypeRefModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
           tp.designator match {
@@ -150,7 +150,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def supertpe(implicit ctx: Context): Type = x.supertpe
     }
 
-    object SuperType extends SuperTypeExtractor {
+    object SuperType extends SuperTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
         case _ => None
@@ -170,7 +170,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def info(implicit ctx: Context): TypeOrBounds = x.refinedInfo
     }
 
-    object Refinement extends RefinementExtractor {
+    object Refinement extends RefinementModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
         case Types.RefinedType(parent, name, info) => Some(parent, name.toString, info)
         case _ => None
@@ -189,7 +189,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def args(implicit ctx: Context): List[TypeOrBounds] = x.args
     }
 
-    object AppliedType extends AppliedTypeExtractor {
+    object AppliedType extends AppliedTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] = x match {
         case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
         case _ => None
@@ -208,7 +208,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def annot(implicit ctx: Context): Term = x.annot.tree
     }
 
-    object AnnotatedType extends AnnotatedTypeExtractor {
+    object AnnotatedType extends AnnotatedTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)] = x match {
         case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
         case _ => None
@@ -227,7 +227,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def right(implicit ctx: Context): Type = x.tp2.stripTypeVar
     }
 
-    object AndType extends AndTypeExtractor {
+    object AndType extends AndTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
         case _ => None
@@ -246,7 +246,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def right(implicit ctx: Context): Type = x.tp2
     }
 
-    object OrType extends OrTypeExtractor {
+    object OrType extends OrTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
         case _ => None
@@ -266,7 +266,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def cases(implicit ctx: Context): List[Type] = x.cases
     }
 
-    object MatchType extends MatchTypeExtractor {
+    object MatchType extends MatchTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])] = x match {
         case Types.MatchType(bound, scrutinee, cases) => Some((bound, scrutinee, cases))
         case _ => None
@@ -284,7 +284,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def underlying(implicit ctx: Context): Type = x.resType.stripTypeVar
     }
 
-    object ByNameType extends ByNameTypeExtractor {
+    object ByNameType extends ByNameTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ExprType(resType) => Some(resType.stripTypeVar)
         case _ => None
@@ -305,7 +305,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def paramNum(implicit ctx: Context): Int = x.paramNum
     }
 
-    object ParamRef extends ParamRefExtractor {
+    object ParamRef extends ParamRefModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] = x match {
         case Types.TypeParamRef(binder, idx) =>
           Some((
@@ -327,7 +327,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def underlying(implicit ctx: Context): Type = x.underlying
     }
 
-    object ThisType extends ThisTypeExtractor {
+    object ThisType extends ThisTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ThisType(tp) => Some(tp)
         case _ => None
@@ -345,7 +345,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def binder(implicit ctx: Context): RecursiveType = x.binder
     }
 
-    object RecursiveThis extends RecursiveThisExtractor {
+    object RecursiveThis extends RecursiveThisModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] = x match {
         case Types.RecThis(binder) => Some(binder)
         case _ => None
@@ -363,7 +363,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
     }
 
-    object RecursiveType extends RecursiveTypeExtractor {
+    object RecursiveType extends RecursiveTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case tp: Types.RecType => Some(tp.underlying.stripTypeVar)
         case _ => None
@@ -383,7 +383,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def resType(implicit ctx: Context): Type = x.resType
     }
 
-    object MethodType extends MethodTypeExtractor {
+    object MethodType extends MethodTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
         case x: MethodType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
@@ -403,7 +403,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def resType(implicit ctx: Contexts.Context): Type = x.resType
     }
 
-    object PolyType extends PolyTypeExtractor {
+    object PolyType extends PolyTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
         case x: PolyType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
@@ -423,7 +423,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       def resType(implicit ctx: Contexts.Context): Type = x.resType
     }
 
-    object TypeLambda extends TypeLambdaExtractor {
+    object TypeLambda extends TypeLambdaModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
         case x: TypeLambda => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
@@ -434,14 +434,14 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
 
   // ----- TypeBounds ------------------------------------------------
 
-  object IsTypeBounds extends IsTypeBoundsExtractor {
+  object IsTypeBounds extends IsTypeBoundsModule {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] = x match {
       case x: TypeBounds => Some(x)
       case _ => None
     }
   }
 
-  object TypeBounds extends TypeBoundsExtractor {
+  object TypeBounds extends TypeBoundsModule {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
       case x: TypeBounds => Some(x.lo, x.hi)
       case _ => None
@@ -455,7 +455,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
 
   // ----- NoPrefix --------------------------------------------------
 
-  object NoPrefix extends NoPrefixExtractor {
+  object NoPrefix extends NoPrefixModule {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Boolean = x == Types.NoPrefix
   }
 

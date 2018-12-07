@@ -3,15 +3,15 @@ package reflect
 
 trait StandardDefinitions extends Core {
 
-  /** A value containing all standard definitions in [[DefinitionsApi]]
+  /** A value containing all standard definitions in [[DefinitionsAPI]]
     *  @group Definitions
     */
-  val definitions: DefinitionsApi
+  val definitions: DefinitionsAPI
 
   /** Defines standard symbols (and types via its base trait).
     *  @group API
     */
-  trait DefinitionsApi extends StandardTypes {
+  trait DefinitionsAPI extends StandardTypes {
 
     /** The module symbol of root package `_root_`. */
     def RootPackage: Symbol

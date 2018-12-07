@@ -14,7 +14,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
 
   object Pattern extends PatternModule {
 
-    object Value extends ValueExtractor {
+    object Value extends ValueModule {
       def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
         case lit: tpd.Literal => Some(lit)
         case ref: tpd.RefTree if ref.isTerm => Some(ref)
@@ -23,14 +23,14 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
       }
     }
 
-    object Bind extends BindExtractor {
+    object Bind extends BindModule {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(String, Pattern)] = x match {
         case x: tpd.Bind if x.name.isTermName => Some(x.name.toString, x.body)
         case _ => None
       }
     }
 
-    object Unapply extends UnapplyExtractor {
+    object Unapply extends UnapplyModule {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
         case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, effectivePatterns(patterns)))
         case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, effectivePatterns(patterns)))
@@ -42,14 +42,14 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
       }
     }
 
-    object Alternative extends AlternativeExtractor {
+    object Alternative extends AlternativeModule {
       def unapply(x: Pattern)(implicit ctx: Context): Option[List[Pattern]] = x match {
         case x: tpd.Alternative => Some(x.trees)
         case _ => None
       }
     }
 
-    object TypeTest extends TypeTestExtractor {
+    object TypeTest extends TypeTestModule {
       def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree] = x match {
         case Trees.Typed(Trees.UnApply(_, _, _), _) => None
         case Trees.Typed(_, tpt) => Some(tpt)

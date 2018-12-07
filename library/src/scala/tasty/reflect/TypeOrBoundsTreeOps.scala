@@ -19,8 +19,8 @@ trait TypeOrBoundsTreeOps extends Core {
   }
   implicit def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI
 
-  val IsTypeTree: IsTypeTreeExtractor
-  abstract class IsTypeTreeExtractor {
+  val IsTypeTree: IsTypeTreeModule
+  abstract class IsTypeTreeModule {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
     def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree]
   }
@@ -39,8 +39,8 @@ trait TypeOrBoundsTreeOps extends Core {
     implicit def InferredDeco(x: Inferred): InferredAPI
 
     /** TypeTree containing an inferred type */
-    val Inferred: InferredExtractor
-    abstract class InferredExtractor {
+    val Inferred: InferredModule
+    abstract class InferredModule {
       /** Matches a TypeTree containing an inferred type */
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
     }
@@ -56,8 +56,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def IdentDeco(x: Ident): IdentAPI
 
-    val Ident: IdentExtractor
-    abstract class IdentExtractor {
+    val Ident: IdentModule
+    abstract class IdentModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String]
     }
 
@@ -73,8 +73,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def SelectDeco(x: Select): SelectAPI
 
-    val Select: SelectExtractor
-    abstract class SelectExtractor {
+    val Select: SelectModule
+    abstract class SelectModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)]
     }
 
@@ -90,8 +90,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def ProjectDeco(x: Project): ProjectAPI
 
-    val Project: ProjectExtractor
-    abstract class ProjectExtractor {
+    val Project: ProjectModule
+    abstract class ProjectModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)]
     }
 
@@ -106,8 +106,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def SingletonDeco(x: Singleton): SingletonAPI
 
-    val Singleton: SingletonExtractor
-    abstract class SingletonExtractor {
+    val Singleton: SingletonModule
+    abstract class SingletonModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[Term]
     }
 
@@ -123,8 +123,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def RefinedDeco(x: Refined): RefinedAPI
 
-    val Refined: RefinedExtractor
-    abstract class RefinedExtractor {
+    val Refined: RefinedModule
+    abstract class RefinedModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])]
     }
 
@@ -140,8 +140,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def AppliedDeco(x: Applied): AppliedAPI
 
-    val Applied: AppliedExtractor
-    abstract class AppliedExtractor {
+    val Applied: AppliedModule
+    abstract class AppliedModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])]
     }
 
@@ -157,8 +157,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def AnnotatedDeco(x: Annotated): AnnotatedAPI
 
-    val Annotated: AnnotatedExtractor
-    abstract class AnnotatedExtractor {
+    val Annotated: AnnotatedModule
+    abstract class AnnotatedModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, Term)]
     }
 
@@ -174,8 +174,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def AndDeco(x: And): OrAPI
 
-    val And: AndExtractor
-    abstract class AndExtractor {
+    val And: AndModule
+    abstract class AndModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 
@@ -191,8 +191,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def OrDeco(x: Or): OrAPI
 
-    val Or: OrExtractor
-    abstract class OrExtractor {
+    val Or: OrModule
+    abstract class OrModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 
@@ -209,8 +209,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def MatchTypeDeco(x: MatchType): MatchTypeAPI
 
-    val MatchType: MatchTypeExtractor
-    abstract class MatchTypeExtractor {
+    val MatchType: MatchTypeModule
+    abstract class MatchTypeModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
     }
 
@@ -225,8 +225,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def ByNameDeco(x: ByName): ByNameAPI
 
-    val ByName: ByNameExtractor
-    abstract class ByNameExtractor {
+    val ByName: ByNameModule
+    abstract class ByNameModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
     }
 
@@ -242,8 +242,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def LambdaTypeTreeDeco(x: LambdaTypeTree): LambdaTypeTreeAPI
 
-    val LambdaTypeTree: LambdaTypeTreeExtractor
-    abstract class LambdaTypeTreeExtractor {
+    val LambdaTypeTree: LambdaTypeTreeModule
+    abstract class LambdaTypeTreeModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)]
     }
 
@@ -259,8 +259,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def BindDeco(x: Bind): BindAPI
 
-    val Bind: BindExtractor
-    abstract class BindExtractor {
+    val Bind: BindModule
+    abstract class BindModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)]
     }
 
@@ -276,8 +276,8 @@ trait TypeOrBoundsTreeOps extends Core {
     }
     implicit def BlockDeco(x: Block): BlockAPI
 
-    val Block: BlockExtractor
-    abstract class BlockExtractor {
+    val Block: BlockModule
+    abstract class BlockModule {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)]
     }
   }
@@ -291,19 +291,19 @@ trait TypeOrBoundsTreeOps extends Core {
   }
   implicit def TypeBoundsTreeDeco(tpt: TypeBoundsTree): TypeBoundsTreeAPI
 
-  val IsTypeBoundsTree: IsTypeBoundsTreeExtractor
-  abstract class IsTypeBoundsTreeExtractor {
+  val IsTypeBoundsTree: IsTypeBoundsTreeModule
+  abstract class IsTypeBoundsTreeModule {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree]
   }
 
-  val TypeBoundsTree: TypeBoundsTreeExtractor
-  abstract class TypeBoundsTreeExtractor {
+  val TypeBoundsTree: TypeBoundsTreeModule
+  abstract class TypeBoundsTreeModule {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
   }
 
   /** TypeBoundsTree containing wildcard type bounds */
-  val WildcardTypeTree: WildcardTypeTreeExtractor
-  abstract class WildcardTypeTreeExtractor {
+  val WildcardTypeTree: WildcardTypeTreeModule
+  abstract class WildcardTypeTreeModule {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
   }

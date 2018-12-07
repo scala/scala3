@@ -56,8 +56,8 @@ trait SymbolOps extends Core {
 
   // PackageSymbol
 
-  val IsPackageSymbol: IsPackageSymbolExtractor
-  abstract class IsPackageSymbolExtractor {
+  val IsPackageSymbol: IsPackageSymbolModule
+  abstract class IsPackageSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
   }
 
@@ -68,8 +68,8 @@ trait SymbolOps extends Core {
 
   // ClassSymbol
 
-  val IsClassSymbol: IsClassSymbolExtractor
-  abstract class IsClassSymbolExtractor {
+  val IsClassSymbol: IsClassSymbolModule
+  abstract class IsClassSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
   }
 
@@ -115,8 +115,8 @@ trait SymbolOps extends Core {
 
   // TypeSymbol
 
-  val IsTypeSymbol: IsTypeSymbolExtractor
-  abstract class IsTypeSymbolExtractor {
+  val IsTypeSymbol: IsTypeSymbolModule
+  abstract class IsTypeSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
   }
 
@@ -128,8 +128,8 @@ trait SymbolOps extends Core {
 
   // DefSymbol
 
-  val IsDefSymbol: IsDefSymbolExtractor
-  abstract class IsDefSymbolExtractor {
+  val IsDefSymbol: IsDefSymbolModule
+  abstract class IsDefSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
   }
 
@@ -141,8 +141,8 @@ trait SymbolOps extends Core {
 
   // ValSymbol
 
-  val IsValSymbol: IsValSymbolExtractor
-  abstract class IsValSymbolExtractor {
+  val IsValSymbol: IsValSymbolModule
+  abstract class IsValSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
   }
 
@@ -158,8 +158,8 @@ trait SymbolOps extends Core {
 
   // BindSymbol
 
-  val IsBindSymbol: IsBindSymbolExtractor
-  abstract class IsBindSymbolExtractor {
+  val IsBindSymbol: IsBindSymbolModule
+  abstract class IsBindSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]
   }
 
@@ -171,8 +171,8 @@ trait SymbolOps extends Core {
 
   // NoSymbol
 
-  val NoSymbol: NoSymbolExtractor
-  abstract class NoSymbolExtractor {
+  val NoSymbol: NoSymbolModule
+  abstract class NoSymbolModule {
     def unapply(symbol: Symbol)(implicit ctx: Context): Boolean
   }
 }
