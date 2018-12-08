@@ -10,8 +10,8 @@ trait IdOps extends Core {
   }
   implicit def IdDeco(id: Id): IdAPI
 
-  val Id: IdExtractor
-  abstract class IdExtractor {
+  val Id: IdModule
+  abstract class IdModule {
     def unapply(id: Id): Option[String]
   }
 

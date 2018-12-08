@@ -16,8 +16,8 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause]
   }
 
-  val PackageClause: PackageClauseExtractor
-  abstract class PackageClauseExtractor {
+  val PackageClause: PackageClauseModule
+  abstract class PackageClauseModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Tree])]
   }
 
@@ -28,8 +28,8 @@ trait TreeOps extends Core {
 
   // ----- Statements -----------------------------------------------
 
-  val Import: ImportExtractor
-  abstract class ImportExtractor {
+  val Import: ImportModule
+  abstract class ImportModule {
     def unapply(imp: Tree)(implicit ctx: Context): Option[(Term, List[ImportSelector])]
   }
 
@@ -58,8 +58,8 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef]
   }
 
-  val ClassDef: ClassDefExtractor
-  abstract class ClassDefExtractor {
+  val ClassDef: ClassDefModule
+  abstract class ClassDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], Option[ValDef], List[Statement])]
   }
 
@@ -80,8 +80,8 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef]
   }
 
-  val DefDef: DefDefExtractor
-  abstract class DefDefExtractor {
+  val DefDef: DefDefModule
+  abstract class DefDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
 
@@ -102,8 +102,8 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef]
   }
 
-  val ValDef: ValDefExtractor
-  abstract class ValDefExtractor {
+  val ValDef: ValDefModule
+  abstract class ValDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
   }
 
@@ -122,8 +122,8 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef]
   }
 
-  val TypeDef: TypeDefExtractor
-  abstract class TypeDefExtractor {
+  val TypeDef: TypeDefModule
+  abstract class TypeDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
   }
 
@@ -147,8 +147,8 @@ trait TreeOps extends Core {
   }
   implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
 
-  val PackageDef: PackageDefExtractor
-  abstract class PackageDefExtractor {
+  val PackageDef: PackageDefModule
+  abstract class PackageDefModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)]
   }
 
@@ -186,8 +186,8 @@ trait TreeOps extends Core {
     implicit def IdentDeco(ident: Ident): IdentAPI
 
     /** Scala term identifier */
-    val Ident: IdentExtractor
-    abstract class IdentExtractor {
+    val Ident: IdentModule
+    abstract class IdentModule {
       /** Matches a term identifier and returns its name */
       def unapply(tree: Tree)(implicit ctx: Context): Option[String]
     }
@@ -206,8 +206,8 @@ trait TreeOps extends Core {
     implicit def SelectDeco(select: Select): SelectAPI
 
     /** Scala term selection */
-    val Select: SelectExtractor
-    abstract class SelectExtractor {
+    val Select: SelectModule
+    abstract class SelectModule {
       /** Matches `<qual: Term>.<name: String>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)]
     }
@@ -224,8 +224,8 @@ trait TreeOps extends Core {
     implicit def LiteralDeco(x: Literal): LiteralAPI
 
     /** Scala literal constant */
-    val Literal: LiteralExtractor
-    abstract class LiteralExtractor {
+    val Literal: LiteralModule
+    abstract class LiteralModule {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Constant]
     }
 
@@ -241,8 +241,8 @@ trait TreeOps extends Core {
     implicit def ThisDeco(x: This): ThisAPI
 
     /** Scala `this` or `this[id]` */
-    val This: ThisExtractor
-    abstract class ThisExtractor {
+    val This: ThisModule
+    abstract class ThisModule {
       /** Matches new `this[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]]
     }
@@ -259,8 +259,8 @@ trait TreeOps extends Core {
     implicit def NewDeco(x: New): NewAPI
 
     /** Scala `new` */
-    val New: NewExtractor
-    abstract class NewExtractor {
+    val New: NewModule
+    abstract class NewModule {
       /** Matches new `new <tpt: TypeTree>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree]
     }
@@ -278,8 +278,8 @@ trait TreeOps extends Core {
     implicit def NamedArgDeco(x: NamedArg): NamedArgAPI
 
     /** Scala named argument `x = y` in argument position */
-    val NamedArg: NamedArgExtractor
-    abstract class NamedArgExtractor {
+    val NamedArg: NamedArgModule
+    abstract class NamedArgModule {
       /** Matches `<name: String> = <value: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Term)]
     }
@@ -297,8 +297,8 @@ trait TreeOps extends Core {
     implicit def ApplyDeco(x: Apply): ApplyAPI
 
     /** Scala parameter application */
-    val Apply: ApplyExtractor
-    abstract class ApplyExtractor {
+    val Apply: ApplyModule
+    abstract class ApplyModule {
       /** Matches function application `<fun: Term>(<args: List[Term]>)` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Term])]
     }
@@ -316,8 +316,8 @@ trait TreeOps extends Core {
     implicit def TypeApplyDeco(x: TypeApply): TypeApplyAPI
 
     /** Scala type parameter application */
-    val TypeApply: TypeApplyExtractor
-    abstract class TypeApplyExtractor {
+    val TypeApply: TypeApplyModule
+    abstract class TypeApplyModule {
       /** Matches function type application `<fun: Term>[<args: List[TypeTree]>]` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[TypeTree])]
     }
@@ -335,8 +335,8 @@ trait TreeOps extends Core {
     implicit def SuperDeco(x: Super): SuperAPI
 
     /** Scala `x.super` or `x.super[id]` */
-    val Super: SuperExtractor
-    abstract class SuperExtractor {
+    val Super: SuperModule
+    abstract class SuperModule {
       /** Matches new `<qualifier: Term>.super[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])]
     }
@@ -354,8 +354,8 @@ trait TreeOps extends Core {
     implicit def TypedDeco(x: Typed): TypedAPI
 
     /** Scala ascription `x: T` */
-    val Typed: TypedExtractor
-    abstract class TypedExtractor {
+    val Typed: TypedModule
+    abstract class TypedModule {
       /** Matches `<expr: Term>: <tpt: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, TypeTree)]
     }
@@ -373,8 +373,8 @@ trait TreeOps extends Core {
     implicit def AssignDeco(x: Assign): AssignAPI
 
     /** Scala assign `x = y` */
-    val Assign: AssignExtractor
-    abstract class AssignExtractor {
+    val Assign: AssignModule
+    abstract class AssignModule {
       /** Matches `<lhs: Term> = <rhs: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
     }
@@ -392,8 +392,8 @@ trait TreeOps extends Core {
     implicit def BlockDeco(x: Block): BlockAPI
 
     /** Scala code block `{ stat0; ...; statN; expr }` term */
-    val Block: BlockExtractor
-    abstract class BlockExtractor {
+    val Block: BlockModule
+    abstract class BlockModule {
       /** Matches `{ <statements: List[Statement]>; <expr: Term> }` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Statement], Term)]
     }
@@ -410,8 +410,8 @@ trait TreeOps extends Core {
     }
     implicit def LambdaDeco(x: Lambda): LambdaAPI
 
-    val Lambda: LambdaExtractor
-    abstract class LambdaExtractor {
+    val Lambda: LambdaModule
+    abstract class LambdaModule {
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])]
     }
 
@@ -429,8 +429,8 @@ trait TreeOps extends Core {
     implicit def IfDeco(x: If): IfAPI
 
     /** Scala `if`/`else` term */
-    val If: IfExtractor
-    abstract class IfExtractor {
+    val If: IfModule
+    abstract class IfModule {
       /** Matches `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term, Term)]
     }
@@ -448,8 +448,8 @@ trait TreeOps extends Core {
     implicit def MatchDeco(x: Match): MatchAPI
 
     /** Scala `match` term */
-    val Match: MatchExtractor
-    abstract class MatchExtractor {
+    val Match: MatchModule
+    abstract class MatchModule {
       /** Matches `<scrutinee: Trem> match { <cases: List[CaseDef]> }` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef])]
     }
@@ -468,8 +468,8 @@ trait TreeOps extends Core {
     implicit def TryDeco(x: Try): TryAPI
 
     /** Scala `try`/`catch`/`finally` term */
-    val Try: TryExtractor
-    abstract class TryExtractor {
+    val Try: TryModule
+    abstract class TryModule {
       /** Matches `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])]
     }
@@ -486,8 +486,8 @@ trait TreeOps extends Core {
     implicit def ReturnDeco(x: Return): ReturnAPI
 
     /** Scala local `return` */
-    val Return: ReturnExtractor
-    abstract class ReturnExtractor {
+    val Return: ReturnModule
+    abstract class ReturnModule {
       /** Matches `return <expr: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Term]
     }
@@ -503,8 +503,8 @@ trait TreeOps extends Core {
     }
     implicit def RepeatedDeco(x: Repeated): RepeatedAPI
 
-    val Repeated: RepeatedExtractor
-    abstract class RepeatedExtractor {
+    val Repeated: RepeatedModule
+    abstract class RepeatedModule {
       def unapply(tree: Tree)(implicit ctx: Context): Option[List[Term]]
     }
 
@@ -521,8 +521,8 @@ trait TreeOps extends Core {
     }
     implicit def InlinedDeco(x: Inlined): InlinedAPI
 
-    val Inlined: InlinedExtractor
-    abstract class InlinedExtractor {
+    val Inlined: InlinedModule
+    abstract class InlinedModule {
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)]
     }
 
@@ -539,8 +539,8 @@ trait TreeOps extends Core {
     }
     implicit def SelectOuterDeco(x: SelectOuter): SelectOuterAPI
 
-    val SelectOuter: SelectOuterExtractor
-    abstract class SelectOuterExtractor {
+    val SelectOuter: SelectOuterModule
+    abstract class SelectOuterModule {
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)]
     }
 
@@ -556,8 +556,8 @@ trait TreeOps extends Core {
     }
     implicit def WhileDeco(x: While): WhileAPI
 
-    val While: WhileExtractor
-    abstract class WhileExtractor {
+    val While: WhileModule
+    abstract class WhileModule {
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
     }

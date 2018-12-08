@@ -9,7 +9,7 @@ trait IdOpsImpl extends scala.tasty.reflect.IdOps with CoreImpl {
     def name(implicit ctx: Context): String = id.name.toString
   }
 
-  object Id extends IdExtractor {
+  object Id extends IdModule {
     def unapply(id: Id): Option[String] = Some(id.name.toString)
   }
 

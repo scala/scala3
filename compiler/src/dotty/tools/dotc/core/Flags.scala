@@ -37,6 +37,9 @@ object Flags {
       else FlagSet(tbits | ((this.bits & ~that.bits) & ~KINDFLAGS))
     }
 
+    def ^ (that: FlagSet) =
+      FlagSet((bits | that.bits) & KINDFLAGS | (bits ^ that.bits) & ~KINDFLAGS)
+
     /** Does this flag set have a non-empty intersection with the given flag set?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
@@ -55,7 +58,7 @@ object Flags {
      */
     def is(flags: FlagConjunction): Boolean = {
       val fs = bits & flags.bits
-      (fs & KINDFLAGS) != 0 &&
+      ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
     }
 
@@ -119,6 +122,8 @@ object Flags {
     override def toString: String = flagStrings.mkString(" ")
   }
 
+  def termFlagSet(x: Long) = FlagSet(TERMS | x)
+
   /** A class representing flag sets that should be tested
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
@@ -126,6 +131,8 @@ object Flags {
   case class FlagConjunction(bits: Long) {
     override def toString: String = FlagSet(bits).toString
   }
+
+  def termFlagConjunction(x: Long) = FlagConjunction(TERMS | x)
 
   private final val TYPESHIFT = 2
   private final val TERMindex = 0
@@ -179,6 +186,8 @@ object Flags {
     flag
   }
 
+  def allOf(flags: FlagSet) = FlagConjunction(flags.bits)
+
   /** The conjunction of all flags in given flag set */
   def allOf(flags1: FlagSet, flags2: FlagSet): FlagConjunction = {
     assert(flags1.numFlags == 1 && flags2.numFlags == 1, "Flags.allOf doesn't support flag " + (if (flags1.numFlags != 1) flags1 else flags2))
@@ -196,6 +205,8 @@ object Flags {
 
   /** The empty flag set */
   final val EmptyFlags: FlagSet = FlagSet(0)
+
+  final val EmptyFlagConjunction = FlagConjunction(0)
 
   /** The undefined flag set */
   final val UndefinedFlags: FlagSet = FlagSet(~KINDFLAGS)
@@ -334,6 +345,9 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized: FlagSet = termFlag(27, "<defaultparam>")
 
+  /** An extension method */
+  final val Extension = termFlag(28, "<extension>")
+
   /** Symbol is defined by a Java class */
   final val JavaDefined: FlagSet = commonFlag(30, "<java>")
 
@@ -466,7 +480,7 @@ object Flags {
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    NonMember | ImplicitCommon | Permanent | Synthetic |
+    Extension.toCommonFlags | NonMember | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -587,6 +601,9 @@ object Flags {
 
   /** An inline parameter */
   final val InlineParam: FlagConjunction = allOf(Inline, Param)
+
+  /** An extension method */
+  final val ExtensionMethod = allOf(Method, Extension)
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)

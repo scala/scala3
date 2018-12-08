@@ -281,7 +281,7 @@ object TypeErasure {
 
           // From the spec, "Linearization also satisfies the property that a
           // linearization of a class always contains the linearization of its
-          // direct superclass as a suffix"; it's enought to consider every
+          // direct superclass as a suffix"; it's enough to consider every
           // candidate up to the first class.
           val candidates = takeUntil(tp2superclasses)(!_.is(Trait))
 

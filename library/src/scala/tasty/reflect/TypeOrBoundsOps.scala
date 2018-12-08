@@ -36,8 +36,8 @@ trait TypeOrBoundsOps extends Core {
   }
   implicit def TypeLambdaDeco(tpt: TypeLambda): TypeLambdaAPI
 
-  val IsType: IsTypeExtractor
-  abstract class IsTypeExtractor {
+  val IsType: IsTypeModule
+  abstract class IsTypeModule {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
   }
 
@@ -55,8 +55,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def ConstantTypeDeco(x: ConstantType): ConstantTypeAPI
 
-    val ConstantType: ConstantTypeExtractor
-    abstract class ConstantTypeExtractor {
+    val ConstantType: ConstantTypeModule
+    abstract class ConstantTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Constant]
     }
 
@@ -71,8 +71,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def SymRefDeco(x: SymRef): SymRefAPI
 
-    val SymRef: SymRefExtractor
-    abstract class SymRefExtractor {
+    val SymRef: SymRefModule
+    abstract class SymRefModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
     }
 
@@ -87,8 +87,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def TermRefDeco(x: TermRef): TermRefAPI
 
-    val TermRef: TermRefExtractor
-    abstract class TermRefExtractor {
+    val TermRef: TermRefModule
+    abstract class TermRefModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
     }
 
@@ -104,8 +104,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def TypeRefDeco(x: TypeRef): TypeRefAPI
 
-    val TypeRef: TypeRefExtractor
-    abstract class TypeRefExtractor {
+    val TypeRef: TypeRefModule
+    abstract class TypeRefModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
     }
 
@@ -121,8 +121,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def SuperTypeDeco(x: SuperType): SuperTypeAPI
 
-    val SuperType: SuperTypeExtractor
-    abstract class SuperTypeExtractor {
+    val SuperType: SuperTypeModule
+    abstract class SuperTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
     }
 
@@ -139,8 +139,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def RefinementDeco(x: Refinement): RefinementAPI
 
-    val Refinement: RefinementExtractor
-    abstract class RefinementExtractor {
+    val Refinement: RefinementModule
+    abstract class RefinementModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)]
     }
 
@@ -156,8 +156,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def AppliedTypeDeco(x: AppliedType): AppliedTypeAPI
 
-    val AppliedType: AppliedTypeExtractor
-    abstract class AppliedTypeExtractor {
+    val AppliedType: AppliedTypeModule
+    abstract class AppliedTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])]
     }
 
@@ -173,8 +173,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def AnnotatedTypeDeco(x: AnnotatedType): AnnotatedTypeAPI
 
-    val AnnotatedType: AnnotatedTypeExtractor
-    abstract class AnnotatedTypeExtractor {
+    val AnnotatedType: AnnotatedTypeModule
+    abstract class AnnotatedTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)]
     }
 
@@ -190,8 +190,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def AndTypeDeco(x: AndType): AndTypeAPI
 
-    val AndType: AndTypeExtractor
-    abstract class AndTypeExtractor {
+    val AndType: AndTypeModule
+    abstract class AndTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
     }
 
@@ -207,8 +207,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def OrTypeDeco(x: OrType): OrTypeAPI
 
-    val OrType: OrTypeExtractor
-    abstract class OrTypeExtractor {
+    val OrType: OrTypeModule
+    abstract class OrTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
     }
 
@@ -225,8 +225,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def MatchTypeDeco(x: MatchType): MatchTypeAPI
 
-    val MatchType: MatchTypeExtractor
-    abstract class MatchTypeExtractor {
+    val MatchType: MatchTypeModule
+    abstract class MatchTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])]
     }
 
@@ -241,8 +241,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def ByNameTypeDeco(x: ByNameType): ByNameTypeAPI
 
-    val ByNameType: ByNameTypeExtractor
-    abstract class ByNameTypeExtractor {
+    val ByNameType: ByNameTypeModule
+    abstract class ByNameTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
     }
 
@@ -258,8 +258,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def ParamRefDeco(x: ParamRef): ParamRefAPI
 
-    val ParamRef: ParamRefExtractor
-    abstract class ParamRefExtractor {
+    val ParamRef: ParamRefModule
+    abstract class ParamRefModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)]
     }
 
@@ -274,8 +274,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def ThisTypeDeco(x: ThisType): ThisTypeAPI
 
-    val ThisType: ThisTypeExtractor
-    abstract class ThisTypeExtractor {
+    val ThisType: ThisTypeModule
+    abstract class ThisTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
     }
 
@@ -290,8 +290,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def RecursiveThisDeco(x: RecursiveThis): RecursiveThisAPI
 
-    val RecursiveThis: RecursiveThisExtractor
-    abstract class RecursiveThisExtractor {
+    val RecursiveThis: RecursiveThisModule
+    abstract class RecursiveThisModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
     }
 
@@ -306,8 +306,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def RecursiveTypeDeco(x: RecursiveType): RecursiveTypeAPI
 
-    val RecursiveType: RecursiveTypeExtractor
-    abstract class RecursiveTypeExtractor {
+    val RecursiveType: RecursiveTypeModule
+    abstract class RecursiveTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
     }
 
@@ -324,8 +324,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def MethodTypeDeco(x: MethodType): MethodTypeAPI
 
-    val MethodType: MethodTypeExtractor
-    abstract class MethodTypeExtractor {
+    val MethodType: MethodTypeModule
+    abstract class MethodTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[Type], Type)]
     }
 
@@ -342,8 +342,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def PolyTypeDeco(x: PolyType): PolyTypeAPI
 
-    val PolyType: PolyTypeExtractor
-    abstract class PolyTypeExtractor {
+    val PolyType: PolyTypeModule
+    abstract class PolyTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
     }
 
@@ -360,8 +360,8 @@ trait TypeOrBoundsOps extends Core {
     }
     implicit def TypeLambdaDeco(x: TypeLambda): TypeLambdaAPI
 
-    val TypeLambda: TypeLambdaExtractor
-    abstract class TypeLambdaExtractor {
+    val TypeLambda: TypeLambdaModule
+    abstract class TypeLambdaModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
     }
 
@@ -369,13 +369,13 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- TypeBounds -----------------------------------------------
 
-  val IsTypeBounds: IsTypeBoundsExtractor
-  abstract class IsTypeBoundsExtractor {
+  val IsTypeBounds: IsTypeBoundsModule
+  abstract class IsTypeBoundsModule {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds]
   }
 
-  val TypeBounds: TypeBoundsExtractor
-  abstract class TypeBoundsExtractor {
+  val TypeBounds: TypeBoundsModule
+  abstract class TypeBoundsModule {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
   }
 
@@ -387,8 +387,8 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- NoPrefix -------------------------------------------------
 
-  val NoPrefix: NoPrefixExtractor
-  abstract class NoPrefixExtractor {
+  val NoPrefix: NoPrefixModule
+  abstract class NoPrefixModule {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Boolean
   }
 
