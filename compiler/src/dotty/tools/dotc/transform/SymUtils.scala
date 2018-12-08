@@ -133,13 +133,13 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context): Boolean =
     self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
 
-  /** If this is a sealed class, its known children */
+  /** If this is a sealed class, its known children in the order of textual occurrence */
   def children(implicit ctx: Context): List[Symbol] = {
     if (self.isType)
       self.setFlag(ChildrenQueried)
     self.annotations.collect {
       case Annotation.Child(child) => child
-    }
+    }.reverse
   }
 
   def hasAnonymousChild(implicit ctx: Context): Boolean =

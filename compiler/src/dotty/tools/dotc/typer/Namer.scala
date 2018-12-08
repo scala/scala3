@@ -500,12 +500,31 @@ class Namer { typer: Typer =>
     vd.mods.is(JavaEnumValue) // && ownerHasEnumFlag
   }
 
+  /** Add child annotation for `child` to annotations of `cls`. The annotation
+   *  is added at the correct insertion point, so that Child annotations appear
+   *  in reverse order of their start positions.
+   *  @pre `child` must have a position.
+   */
+  final def addChild(cls: Symbol, child: Symbol)(implicit ctx: Context): Unit = {
+    val childStart = child.pos.start
+    def insertInto(annots: List[Annotation]): List[Annotation] =
+      annots.find(_.symbol == defn.ChildAnnot) match {
+        case Some(Annotation.Child(other)) if childStart <= other.pos.start =>
+          assert(childStart != other.pos.start, "duplicate child annotation $child / $other")
+          val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
+          prefix ::: otherAnnot :: insertInto(rest)
+        case _ =>
+          Annotation.Child(child) :: annots
+      }
+    cls.annotations = insertInto(cls.annotations)
+  }
+
   /** Add java enum constants */
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
       if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-      enumClass.addAnnotation(Annotation.Child(sym))
+      addChild(enumClass, sym)
     case _ =>
   }
 
@@ -815,9 +834,9 @@ class Namer { typer: Typer =>
         val cls = parent.classSymbol
         if (cls.is(Sealed)) {
           if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
-            cls.addAnnotation(Annotation.Child(cls))
+            addChild(cls, cls)
           else if (!cls.is(ChildrenQueried))
-            cls.addAnnotation(Annotation.Child(child))
+            addChild(cls, child)
           else
             ctx.error(em"""children of ${cls} were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $cls.""",
