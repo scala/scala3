@@ -1,6 +1,8 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
+// A typeclass derivation encoding using Shape/Shaped scheme, now superseded by
+// typeclass-derivation2a
 object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */

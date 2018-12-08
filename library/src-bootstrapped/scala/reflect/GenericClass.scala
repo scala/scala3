@@ -2,18 +2,19 @@ package scala.reflect
 import annotation.tailrec
 import collection.mutable.ArrayBuffer
 
-/** The part of `Reflected` instances that is common for all instances of a class.
- *  @param labelsStr: A string encoding all case and element labels according to the
- *                    following grammar:
+/** The part of `Generic` instances that is common for all instances of a class.
+ *  @param runtimeClass The runtime class instance
+ *  @param labelsStr    A string encoding all case and element labels according to the
+ *                      following grammar:
  *
- *                    labelString   ::= caseString { caseSeparator caseString }
- *                    caseString    ::= elemString { elemSeparator elemString }
- *                    caseSeparator ::= '\u0001'
- *                    elemSeparator ::= '\u0000'
- *                    elemString: "any sequence of characters not containing '\u0000` or `\u0001`"
+ *                      labelString   ::= caseString { caseSeparator caseString }
+ *                      caseString    ::= elemString { elemSeparator elemString }
+ *                      caseSeparator ::= '\u0001'
+ *                      elemSeparator ::= '\u0000'
+ *                      elemString: "any sequence of characters not containing '\u0000` or `\u0001`"
  */
-class ReflectedClass(val runtimeClass: Class[_], labelsStr: String) {
-  import ReflectedClass._
+class GenericClass(val runtimeClass: Class[_], labelsStr: String) {
+  import GenericClass._
 
   /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
   def mirror(ordinal: Int, product: Product): Mirror =
@@ -53,7 +54,7 @@ class ReflectedClass(val runtimeClass: Class[_], labelsStr: String) {
   }
 }
 
-object ReflectedClass {
+object GenericClass {
   private final val elemSeparator = '\u0000'
   private final val caseSeparator = '\u0001'
 

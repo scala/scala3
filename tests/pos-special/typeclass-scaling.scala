@@ -5,9 +5,9 @@ import scala.annotation.tailrec
 //
 //     sc typeclass-scaling.scala -Xmax-inlines 100 -Xprint:front -color:never -Yshow-no-inline -pagewidth 1000 >& x
 //
-// produces an output file with `wc` measuures (lines/words/chars):
+// produces an output file with `wc` measures (lines/words/chars):
 //
-//     41030  100905 3862435
+//   39161   97323 3124249
 //
 // The command
 //
@@ -15,9 +15,9 @@ import scala.annotation.tailrec
 //
 // gives (best of three):
 //
-// real	0m14.322s
-// user	0m55.402s
-// sys	0m1.110s
+// real	0m13.095s
+// user	0m50.491s
+// sys	0m0.970s
 object datatypes {
   import typeclasses._
 
@@ -215,7 +215,7 @@ object typeclasses {
   object Eq {
     import scala.compiletime.erasedValue
     import compiletime._
-    import reflect._
+    import reflect.{Mirror, Generic}
 
     inline def tryEql[T](x: T, y: T) = implicit match {
       case eq: Eq[T] => eq.eql(x, y)
@@ -230,30 +230,26 @@ object typeclasses {
           true
       }
 
-    inline def eqlCase[T, Elems <: Tuple](r: Reflected[T], x: T, y: T) =
-      eqlElems[Elems](r.reflect(x), r.reflect(y), 0)
-
-    inline def eqlCases[T, Alts <: Tuple](r: Reflected[T], x: T, y: T): Boolean =
+    inline def eqlCases[Alts <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
       inline erasedValue[Alts] match {
         case _: (Shape.Case[alt, elems] *: alts1) =>
-          x match {
-            case x: `alt` =>
-              y match {
-                case y: `alt` => eqlCase[T, elems](r, x, y)
-                case _ => false
-              }
-            case _ => eqlCases[T, alts1](r, x, y)
-        }
+          if (xm.ordinal == n) eqlElems[elems](xm, ym, 0)
+          else eqlCases[alts1](xm, ym, n + 1)
       case _: Unit =>
-        false
-    }
+          false
+      }
 
-    inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Eq[T] = new {
-      def eql(x: T, y: T): Boolean = inline erasedValue[S] match {
-        case _: Shape.Cases[alts] =>
-          eqlCases[T, alts](ev, x, y)
-        case _: Shape.Case[_, elems] =>
-          eqlCase[T, elems](ev, x, y)
+    inline def derived[T](implicit ev: Generic[T]): Eq[T] = new {
+      def eql(x: T, y: T): Boolean = {
+        val xm = ev.reflect(x)
+        val ym = ev.reflect(y)
+        inline erasedValue[ev.Shape] match {
+          case _: Shape.Cases[alts] =>
+            xm.ordinal == ym.ordinal &&
+            eqlCases[alts](xm, ym, 0)
+          case _: Shape.Case[_, elems] =>
+            eqlElems[elems](xm, ym, 0)
+        }
       }
     }
 
@@ -271,7 +267,7 @@ object typeclasses {
   object Pickler {
     import scala.compiletime.{erasedValue, constValue}
     import compiletime._
-    import reflect._
+    import reflect.{Mirror, Generic}
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -287,19 +283,11 @@ object typeclasses {
         case _: Unit =>
       }
 
-    inline def pickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T): Unit =
-      pickleElems[Elems](buf, r.reflect(x), 0)
-
-    inline def pickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
+    inline def pickleCases[Alts <: Tuple](buf: mutable.ListBuffer[Int], xm: Mirror, n: Int): Unit =
       inline erasedValue[Alts] match {
         case _: (Shape.Case[alt, elems] *: alts1) =>
-          x match {
-            case x: `alt` =>
-              buf += n
-              pickleCase[T, elems](r, buf, x)
-            case _ =>
-              pickleCases[T, alts1](r, buf, x, n + 1)
-          }
+          if (xm.ordinal == n) pickleElems[elems](buf, xm, 0)
+          else pickleCases[alts1](buf, xm, n + 1)
         case _: Unit =>
       }
 
@@ -315,39 +303,44 @@ object typeclasses {
         case _: Unit =>
       }
 
-    inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
+    inline def unpickleCase[T, Elems <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
       inline val size = constValue[Tuple.Size[Elems]]
       inline if (size == 0)
-        r.reify(r.common.mirror(ordinal))
+        gen.reify(gen.common.mirror(ordinal))
       else {
         val elems = new Array[Object](size)
         unpickleElems[Elems](buf, elems, 0)
-        r.reify(r.common.mirror(ordinal, elems))
+        gen.reify(gen.common.mirror(ordinal, elems))
       }
     }
 
-    inline def unpickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
+    inline def unpickleCases[T, Alts <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
       inline erasedValue[Alts] match {
         case _: (Shape.Case[_, elems] *: alts1) =>
-          if (n == ordinal) unpickleCase[T, elems](r, buf, ordinal)
-          else unpickleCases[T, alts1](r, buf, ordinal, n + 1)
+          if (n == ordinal) unpickleCase[T, elems](gen, buf, ordinal)
+          else unpickleCases[T, alts1](gen, buf, ordinal, n + 1)
         case _ =>
           throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ordinal")
       }
 
-    inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Pickler[T] = new {
-      def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
-        case _: Shape.Cases[alts] =>
-          pickleCases[T, alts](ev, buf, x, 0)
-        case _: Shape.Case[_, elems] =>
-          pickleCase[T, elems](ev, buf, x)
+    inline def derived[T](implicit ev: Generic[T]): Pickler[T] = new {
+      def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = {
+        val xm = ev.reflect(x)
+        inline erasedValue[ev.Shape] match {
+          case _: Shape.Cases[alts] =>
+            buf += xm.ordinal
+            pickleCases[alts](buf, xm, 0)
+          case _: Shape.Case[_, elems] =>
+            pickleElems[elems](buf, xm, 0)
+        }
       }
-      def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
-        case _: Shape.Cases[alts] =>
-          unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
-        case _: Shape.Case[_, elems] =>
-          unpickleCase[T, elems](ev, buf, 0)
-      }
+      def unpickle(buf: mutable.ListBuffer[Int]): T =
+        inline erasedValue[ev.Shape] match {
+          case _: Shape.Cases[alts] =>
+            unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
+          case _: Shape.Case[_, elems] =>
+            unpickleCase[T, elems](ev, buf, 0)
+        }
     }
 
     implicit object IntPickler extends Pickler[Int] {

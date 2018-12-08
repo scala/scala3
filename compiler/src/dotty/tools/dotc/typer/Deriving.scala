@@ -83,32 +83,6 @@ trait Deriving { this: Typer =>
       else if (cls.is(Sealed)) sealedShape
       else NoType
 
-    /** A completer for the synthesized `Shape` type. */
-    class ShapeCompleter extends TypeParamsCompleter {
-
-      override def completerTypeParams(sym: Symbol)(implicit ctx: Context) = cls.typeParams
-
-      def completeInCreationContext(denot: SymDenotation) = {
-        val shape0 = shapeWithClassParams
-        val tparams = cls.typeParams
-        val abstractedShape =
-          if (!shape0.exists) {
-            ctx.error(em"Cannot derive for $cls; it is neither sealed nor a case class or object", templateStartPos)
-            UnspecifiedErrorType
-          }
-          else if (tparams.isEmpty)
-            shape0
-          else
-            HKTypeLambda(tparams.map(_.name.withVariance(0)))(
-              tl => tparams.map(tparam => tl.integrate(tparams, tparam.info).bounds),
-              tl => tl.integrate(tparams, shape0))
-        denot.info = TypeAlias(abstractedShape)
-      }
-
-      def complete(denot: SymDenotation)(implicit ctx: Context) =
-        completeInCreationContext(denot)
-    }
-
     private def add(sym: Symbol): sym.type = {
       ctx.enter(sym)
       synthetics += sym
@@ -116,7 +90,9 @@ trait Deriving { this: Typer =>
     }
 
     /** Create a synthetic symbol owned by current owner */
-    private def newSymbol(name: Name, info: Type, pos: Position, flags: FlagSet = EmptyFlags)(implicit ctx: Context) =
+    private def newSymbol(name: Name, info: Type,
+                          pos: Position = ctx.owner.pos,
+                          flags: FlagSet = EmptyFlags)(implicit ctx: Context) =
       ctx.newSymbol(ctx.owner, name, flags | Synthetic, info, coord = pos)
 
     /** Create a synthetic method owned by current owner */
@@ -186,28 +162,27 @@ trait Deriving { this: Typer =>
           derived.pos)
     }
 
-    /** Add value corresponding to `val reflectedClass = new ReflectedClass(...)`
-     *  to `synthetics`, unless a definition of `reflectedClass` exists already.
+    /** Add value corresponding to `val genericClass = new GenericClass(...)`
+     *  to `synthetics`, unless a definition of `genericClass` exists already.
      */
-    private def addReflectedClass(): Unit =
-      if (!ctx.denotNamed(nme.reflectedClass).exists) {
-        add(newSymbol(nme.reflectedClass, defn.ReflectedClassType, templateStartPos))
+    private def addGenericClass(): Unit =
+      if (!ctx.denotNamed(nme.genericClass).exists) {
+        add(newSymbol(nme.genericClass, defn.GenericClassType, templateStartPos))
       }
 
-    /** Add `type Shape = ... ` type to `synthetics`, unless a definition of type `Shape` exists already */
-    private def addShape(): Unit =
-      if (!ctx.denotNamed(tpnme.Shape).exists) {
-        val shapeSym = add(newSymbol(tpnme.Shape, new ShapeCompleter, templateStartPos))
-        val lazyShapedInfo = new LazyType {
-          def complete(denot: SymDenotation)(implicit ctx: Context) = {
-            val tparams = cls.typeParams
-            val appliedShape = shapeSym.typeRef.appliedTo(tparams.map(_.typeRef))
-            val shapedType = defn.ShapedType.appliedTo(cls.appliedRef, appliedShape)
-            denot.info = PolyType.fromParams(tparams, shapedType).ensureMethodic
-          }
+    private def addGeneric(): Unit = {
+      val genericCompleter = new LazyType {
+        def complete(denot: SymDenotation)(implicit ctx: Context) = {
+          val resultType =
+            RefinedType(
+              defn.GenericType.appliedTo(cls.appliedRef),
+              tpnme.Shape,
+              TypeAlias(shapeWithClassParams))
+          denot.info = PolyType.fromParams(cls.typeParams, resultType).ensureMethodic
         }
-        addDerivedInstance(defn.ShapedType.name, lazyShapedInfo, templateStartPos, reportErrors = false)
       }
+      addDerivedInstance(defn.GenericType.name, genericCompleter, templateStartPos, reportErrors = false)
+    }
 
     /** Create symbols for derived instances and infrastructure,
      *  append them to `synthetics` buffer,
@@ -215,8 +190,8 @@ trait Deriving { this: Typer =>
      */
     def enterDerived(derived: List[untpd.Tree]) = {
       derived.foreach(processDerivedInstance(_))
-      addShape()
-      addReflectedClass()
+      addGeneric()
+      addGenericClass()
     }
 
     private def tupleElems(tp: Type): List[Type] = tp match {
@@ -250,12 +225,12 @@ trait Deriving { this: Typer =>
     class Finalizer {
       import tpd._
 
-      /** The previously synthetsized `reflectedClass` symbol */
-      private def reflectedClass =
-        synthetics.find(sym => !sym.is(Method) && sym.name == nme.reflectedClass).get.asTerm
+      /** The previously synthetsized `genericClass` symbol */
+      private def genericClass =
+        synthetics.find(sym => !sym.is(Method) && sym.name == nme.genericClass).get.asTerm
 
-      /** The string to pass to `ReflectedClass` for initializing case and element labels.
-       *  See documentation of `ReflectedClass.label` for what needs to be passed.
+      /** The string to pass to `GenericClass` for initializing case and element labels.
+       *  See documentation of `GenericClass.label` for what needs to be passed.
        */
       private def labelString(sh: Type): String = sh match {
         case ShapeCases(cases) =>
@@ -269,53 +244,62 @@ trait Deriving { this: Typer =>
           (patLabel :: elemLabels).mkString("\u0000")
       }
 
-      /** The RHS of the `reflectedClass` value definition */
-      private def reflectedClassRHS =
-        New(defn.ReflectedClassType,
+      /** The RHS of the `genericClass` value definition */
+      private def genericClassRHS =
+        New(defn.GenericClassType,
           List(Literal(Constant(cls.typeRef)),
                Literal(Constant(labelString(shapeWithClassParams)))))
 
-      /** The RHS of the `derived$Shaped` typeclass instance.
+      /** The RHS of the `derived$Generic` typeclass instance.
        *  Example: For the class definition
        *
        *    enum Lst[+T] derives ... { case Cons(hd: T, tl: Lst[T]); case Nil }
        *
-       *  the following typeclass instance is generated:
+       *  the following typeclass instance is generated, where
+       *    <shape> = Cases[(Case[Cons[T], (T, Lst[T])], Case[Nil.type, Unit])]:
        *
-       *    implicit def derived$Shape[T]: Shaped[Lst[T], Shape[T]] = new {
-       *      def reflect(x$0: Lst[T]): Mirror = x$0 match {
-       *        case x$0: Cons[T]  => reflectedClass.mirror(0, x$0)
-       *        case x$0: Nil.type => reflectedClass.mirror(1)
+       *    implicit def derived$Generic[T]: Generic[Lst[T]] { type Shape = <shape> } =
+       *      new Generic[Lst[T]] {
+       *        type Shape = <shape>
+       *        def reflect(x$0: Lst[T]): Mirror = x$0 match {
+       *          case x$0: Cons[T]  => genericClass.mirror(0, x$0)
+       *          case x$0: Nil.type => genericClass.mirror(1)
+       *        }
+       *        def reify(c: Mirror): Lst[T] = c.ordinal match {
+       *          case 0 => Cons[T](c(0).asInstanceOf[T], c(1).asInstanceOf[Lst[T]])
+       *          case 1 => Nil
+       *        }
+       *        def common = genericClass
        *      }
-       *      def reify(c: Mirror): Lst[T] = c.ordinal match {
-       *        case 0 => Cons[T](c(0).asInstanceOf[T], c(1).asInstanceOf[Lst[T]])
-       *        case 1 => Nil
-       *      }
-       *      def common = reflectedClass
-       *    }
        */
-      private def shapedRHS(shapedType: Type)(implicit ctx: Context) = {
-        val AppliedType(_, clsArg :: shapeArg :: Nil) = shapedType
+      private def genericRHS(genericType: Type)(implicit ctx: Context) = {
+        val RefinedType(
+          genericInstance @ AppliedType(_, clsArg :: Nil),
+          tpnme.Shape,
+          TypeAlias(shapeArg)) = genericType
         val shape = shapeArg.dealias
 
         val implClassSym = ctx.newNormalizedClassSymbol(
-          ctx.owner, tpnme.ANON_CLASS, EmptyFlags, shapedType :: Nil, coord = templateStartPos)
+          ctx.owner, tpnme.ANON_CLASS, EmptyFlags, genericInstance :: Nil, coord = templateStartPos)
         val implClassCtx = ctx.withOwner(implClassSym)
         val implClassConstr =
           newMethod(nme.CONSTRUCTOR, MethodType(Nil, implClassSym.typeRef))(implClassCtx).entered
 
         def implClassStats(implicit ctx: Context): List[Tree] = {
-
+          val shapeType: TypeDef = {
+            val shapeAlias = newSymbol(tpnme.Shape, TypeAlias(shape)).entered.asType
+            TypeDef(shapeAlias)
+          }
           val reflectMethod: DefDef = {
             val meth = newMethod(nme.reflect, MethodType(clsArg :: Nil, defn.MirrorType)).entered
             def rhs(paramRef: Tree)(implicit ctx: Context): Tree = {
               def reflectCase(scrut: Tree, idx: Int, elems: List[Type]): Tree = {
                 val ordinal = Literal(Constant(idx))
                 val args = if (elems.isEmpty) List(ordinal) else List(ordinal, scrut)
-                val mirror = defn.ReflectedClassType
+                val mirror = defn.GenericClassType
                   .member(nme.mirror)
                   .suchThat(sym => args.tpes.corresponds(sym.info.firstParamTypes)(_ <:< _))
-                ref(reflectedClass).select(mirror.symbol).appliedToArgs(args)
+                ref(genericClass).select(mirror.symbol).appliedToArgs(args)
               }
               shape match {
                 case ShapeCases(cases) =>
@@ -362,11 +346,11 @@ trait Deriving { this: Typer =>
           }
 
           val commonMethod: DefDef = {
-            val meth = newMethod(nme.common, ExprType(defn.ReflectedClassType)).entered
-            tpd.DefDef(meth, ref(reflectedClass))
+            val meth = newMethod(nme.common, ExprType(defn.GenericClassType)).entered
+            tpd.DefDef(meth, ref(genericClass))
           }
 
-          List(reflectMethod, reifyMethod, commonMethod)
+          List(shapeType, reflectMethod, reifyMethod, commonMethod)
         }
 
         val implClassDef = ClassDef(implClassSym, DefDef(implClassConstr), implClassStats(implClassCtx))
@@ -393,8 +377,8 @@ trait Deriving { this: Typer =>
           }
           val resultType = instantiated(sym.info)
           val (typeCls, companionRef) = classAndCompanionRef(resultType)
-          if (typeCls == defn.ShapedClass)
-            shapedRHS(resultType)
+          if (typeCls == defn.GenericClass)
+            genericRHS(resultType)
           else {
             val module = untpd.ref(companionRef).withPos(sym.pos)
             val rhs = untpd.Select(module, nme.derived)
@@ -408,15 +392,17 @@ trait Deriving { this: Typer =>
         else if (sym.is(Method))
           tpd.polyDefDef(sym.asTerm, typeclassInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))
         else
-          tpd.ValDef(sym.asTerm, reflectedClassRHS)
+          tpd.ValDef(sym.asTerm, genericClassRHS)
 
       def syntheticDefs: List[Tree] = synthetics.map(syntheticDef).toList
     }
 
-    def finalize(stat: tpd.TypeDef): tpd.Tree = {
-      val templ @ Template(_, _, _, _) = stat.rhs
-      tpd.cpy.TypeDef(stat)(
-        rhs = tpd.cpy.Template(templ)(body = templ.body ++ new Finalizer().syntheticDefs))
-    }
+    def finalize(stat: tpd.TypeDef): tpd.Tree =
+      if (ctx.reporter.hasErrors) stat
+      else {
+        val templ @ Template(_, _, _, _) = stat.rhs
+        tpd.cpy.TypeDef(stat)(
+          rhs = tpd.cpy.Template(templ)(body = templ.body ++ new Finalizer().syntheticDefs))
+      }
   }
 }

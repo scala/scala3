@@ -3,7 +3,9 @@ package scala.reflect
 /** A class for mapping between an ADT value and
   *  the case mirror that represents the value.
   */
-abstract class Reflected[T] {
+abstract class Generic[T] {
+
+  type Shape <: scala.compiletime.Shape
 
   /** The case mirror corresponding to ADT instance `x` */
   def reflect(x: T): Mirror
@@ -12,5 +14,5 @@ abstract class Reflected[T] {
   def reify(mirror: Mirror): T
 
   /** The companion object of the ADT */
-  def common: ReflectedClass
+  def common: GenericClass
 }

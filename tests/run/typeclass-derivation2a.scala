@@ -1,11 +1,13 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
+// Simulation of typeclass derivation encoding that's currently implemented.
+// The real typeclass derivation is tested in typeclass-derivation3.scala.
 object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */
-  class ReflectedClass(labelsStr: String) {
-    import ReflectedClass._
+  class GenericClass(labelsStr: String) {
+    import GenericClass._
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
     def mirror(ordinal: Int, product: Product): Mirror =
@@ -45,7 +47,7 @@ object TypeLevel {
     }
   }
 
-  object ReflectedClass {
+  object GenericClass {
     /** Helper class to turn arrays into products */
     private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
       def canEqual(that: Any): Boolean = true
@@ -68,7 +70,7 @@ object TypeLevel {
   *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
   *  @param  elems     The elements of the case
   */
-  class Mirror(val reflected: ReflectedClass, val ordinal: Int, val elems: Product) {
+  class Mirror(val reflected: GenericClass, val ordinal: Int, val elems: Product) {
 
     /** The `n`'th element of this generic case */
     def apply(n: Int): Any = elems.productElement(n)
@@ -107,7 +109,7 @@ object TypeLevel {
     def reify(mirror: Mirror): T
 
     /** The companion object of the ADT */
-    def common: ReflectedClass
+    def common: GenericClass
   }
 }
 
@@ -121,25 +123,27 @@ object Lst {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  val reflectedClass = new ReflectedClass("Cons\000hd\000tl\001Nil")
-  import reflectedClass.mirror
+  val genericClass = new GenericClass("Cons\000hd\000tl\001Nil")
+  import genericClass.mirror
 
-  class GenericLst[T] extends Generic[Lst[T]] {
-    type Shape = Shape.Cases[(
-      Shape.Case[Cons[T], (T, Lst[T])],
-      Shape.Case[Nil.type, Unit]
-    )]
-    def reflect(xs: Lst[T]): Mirror = xs match {
-      case xs: Cons[T] => mirror(0, xs)
-      case Nil => mirror(1)
-     }
-    def reify(c: Mirror): Lst[T] = c.ordinal match {
-      case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
-      case 1 => Nil
+  private type ShapeOf[T] = Shape.Cases[(
+    Shape.Case[Cons[T], (T, Lst[T])],
+    Shape.Case[Nil.type, Unit]
+  )]
+
+  implicit def GenericLst[T]: Generic[Lst[T]] { type Shape = ShapeOf[T] } =
+    new Generic[Lst[T]] {
+      type Shape = ShapeOf[T]
+      def reflect(xs: Lst[T]): Mirror = xs match {
+        case xs: Cons[T] => mirror(0, xs)
+        case Nil => mirror(1)
+      }
+      def reify(c: Mirror): Lst[T] = c.ordinal match {
+        case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
+        case 1 => Nil
+      }
+      def common = genericClass
     }
-    def common = reflectedClass
-  }
-  implicit def GenericLst[T]: GenericLst[T] = new GenericLst[T]
 
   // three clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Lst[T]] = Eq.derived
@@ -154,19 +158,20 @@ object Pair {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  val reflectedClass = new ReflectedClass("Pair\000x\000y")
-  import reflectedClass.mirror
+  val genericClass = new GenericClass("Pair\000x\000y")
+  import genericClass.mirror
 
-  class GenericPair[T] extends Generic[Pair[T]] {
-    type Shape = Shape.Case[Pair[T], (T, T)]
+  private type ShapeOf[T] = Shape.Case[Pair[T], (T, T)]
 
-    def reflect(xy: Pair[T]) =
-      mirror(0, xy)
-    def reify(c: Mirror): Pair[T] =
-      Pair(c(0).asInstanceOf, c(1).asInstanceOf)
-    def common = reflectedClass
-  }
-  implicit def GenericPair[T]: GenericPair[T] = new GenericPair[T]
+  implicit def GenericPair[T]: Generic[Pair[T]] { type Shape = ShapeOf[T] } =
+    new Generic[Pair[T]] {
+      type Shape = ShapeOf[T]
+      def reflect(xy: Pair[T]) =
+        mirror(0, xy)
+      def reify(c: Mirror): Pair[T] =
+        Pair(c(0).asInstanceOf, c(1).asInstanceOf)
+      def common = genericClass
+    }
 
   // clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Pair[T]] = Eq.derived
@@ -181,25 +186,27 @@ case class Right[R](x: R) extends Either[Nothing, R]
 object Either {
   import TypeLevel._
 
-  val reflectedClass = new ReflectedClass("Left\000x\001Right\000x")
-  import reflectedClass.mirror
+  val genericClass = new GenericClass("Left\000x\001Right\000x")
+  import genericClass.mirror
 
-  class GenericEither[L, R] extends Generic[Either[L, R]] {
-    type Shape = Shape.Cases[(
-      Shape.Case[Left[L], L *: Unit],
-      Shape.Case[Right[R], R *: Unit]
-    )]
-    def reflect(e: Either[L, R]): Mirror = e match {
-      case e: Left[L] => mirror(0, e)
-      case e: Right[R] => mirror(1, e)
+  private type ShapeOf[L, R] = Shape.Cases[(
+    Shape.Case[Left[L], L *: Unit],
+    Shape.Case[Right[R], R *: Unit]
+  )]
+
+  implicit def GenericEither[L, R]: Generic[Either[L, R]] { type Shape = ShapeOf[L, R] } =
+    new Generic[Either[L, R]] {
+      type Shape = ShapeOf[L, R]
+      def reflect(e: Either[L, R]): Mirror = e match {
+        case e: Left[L] => mirror(0, e)
+        case e: Right[R] => mirror(1, e)
+      }
+      def reify(c: Mirror): Either[L, R] = c.ordinal match {
+        case 0 => Left(c(0).asInstanceOf)
+        case 1 => Right(c(0).asInstanceOf)
+      }
+      def common = genericClass
     }
-    def reify(c: Mirror): Either[L, R] = c.ordinal match {
-      case 0 => Left(c(0).asInstanceOf)
-      case 1 => Right(c(0).asInstanceOf)
-    }
-    def common = reflectedClass
-  }
-  implicit def GenericEither[L, R]: GenericEither[L, R] = new GenericEither[L, R]
 
   implicit def derived$Eq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
   implicit def derived$Pickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
@@ -303,11 +310,11 @@ object Pickler {
   inline def unpickleCase[T, Elems <: Tuple](gen: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      gen.reify(r.common.mirror(ordinal))
+      gen.reify(gen.common.mirror(ordinal))
     else {
       val elems = new Array[Object](size)
       unpickleElems[Elems](buf, elems, 0)
-      gen.reify(r.common.mirror(ordinal, elems))
+      gen.reify(gen.common.mirror(ordinal, elems))
     }
   }
 

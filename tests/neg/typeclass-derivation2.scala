@@ -4,8 +4,8 @@ import scala.annotation.tailrec
 object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */
-  class ReflectedClass(labelsStr: String) {
-    import ReflectedClass._
+  class GenericClass(labelsStr: String) {
+    import GenericClass._
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
     def mirror(ordinal: Int, product: Product): Mirror =
@@ -45,7 +45,7 @@ object TypeLevel {
     }
   }
 
-  object ReflectedClass {
+  object GenericClass {
     /** Helper class to turn arrays into products */
     private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
       def canEqual(that: Any): Boolean = true
@@ -68,7 +68,7 @@ object TypeLevel {
   *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
   *  @param  elems     The elements of the case
   */
-  class Mirror(val reflected: ReflectedClass, val ordinal: Int, val elems: Product) {
+  class Mirror(val reflected: GenericClass, val ordinal: Int, val elems: Product) {
 
     /** The `n`'th element of this generic case */
     def apply(n: Int): Any = elems.productElement(n)
@@ -92,7 +92,7 @@ object TypeLevel {
     def reify(mirror: Mirror): T
 
     /** The companion object of the ADT */
-    def common: ReflectedClass
+    def common: GenericClass
   }
 
   /** The shape of an ADT.
@@ -128,8 +128,8 @@ object Lst {
     Shape.Case[Nil.type, Unit]
   )]
 
-  val reflectedClass = new ReflectedClass("Cons\000hd\000tl\001Nil")
-  import reflectedClass.mirror
+  val genericClass = new GenericClass("Cons\000hd\000tl\001Nil")
+  import genericClass.mirror
 
   val NilMirror = mirror(1)
 
@@ -142,7 +142,7 @@ object Lst {
       case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
       case 1 => Nil
     }
-    def common = reflectedClass
+    def common = genericClass
   }
 
   // three clauses that could be generated from a `derives` clause
@@ -158,15 +158,15 @@ object Pair {
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
-  val reflectedClass = new ReflectedClass("Pair\000x\000y")
-  import reflectedClass.mirror
+  val genericClass = new GenericClass("Pair\000x\000y")
+  import genericClass.mirror
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
     def reflect(xy: Pair[T]) =
       mirror(0, xy)
     def reify(c: Mirror): Pair[T] =
       Pair(c(0).asInstanceOf, c(1).asInstanceOf)
-    def common = reflectedClass
+    def common = genericClass
   }
 }
 
@@ -182,8 +182,8 @@ object Either {
     Shape.Case[Right[R], R *: Unit]
   )]
 
-  val reflectedClass = new ReflectedClass("Left\000x\001Right\000x")
-  import reflectedClass.mirror
+  val genericClass = new GenericClass("Left\000x\001Right\000x")
+  import genericClass.mirror
 
   implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
     def reflect(e: Either[L, R]): Mirror = e match {
@@ -194,7 +194,7 @@ object Either {
       case 0 => Left[L](c(0).asInstanceOf)
       case 1 => Right[R](c(0).asInstanceOf)
     }
-    def common = reflectedClass
+    def common = genericClass
   }
   implicit def EitherShow[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
 }
