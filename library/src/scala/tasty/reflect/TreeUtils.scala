@@ -24,7 +24,7 @@ trait TreeUtils
     def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
     def foldTypeCaseDefs(x: X, trees: Iterable[TypeCaseDef])(implicit ctx: Context): X = (x /: trees)(foldTypeCaseDef)
     def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
-    private def foldParents(x: X, trees: Iterable[TermOrTypeTree])(implicit ctx: Context): X = (x /: trees)(foldOverTermOrTypeTree)
+    private def foldParents(x: X, trees: Iterable[TermOrTypeTree])(implicit ctx: Context): X = (x /: trees)(foldTermOrTypeTree)
 
     def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
@@ -124,9 +124,9 @@ trait TreeUtils
       case Pattern.TypeTest(tpt) => foldTypeTree(x, tpt)
     }
 
-    private def foldOverTermOrTypeTree(x: X, tree: TermOrTypeTree)(implicit ctx: Context): X = tree match {
-      case IsTerm(termOrTypeTree) => foldOverTree(x, termOrTypeTree)
-      case IsTypeTree(termOrTypeTree) => foldOverTypeTree(x, termOrTypeTree)
+    private def foldTermOrTypeTree(x: X, tree: TermOrTypeTree)(implicit ctx: Context): X = tree match {
+      case IsTerm(termOrTypeTree) => foldTree(x, termOrTypeTree)
+      case IsTypeTree(termOrTypeTree) => foldTypeTree(x, termOrTypeTree)
     }
 
   }
