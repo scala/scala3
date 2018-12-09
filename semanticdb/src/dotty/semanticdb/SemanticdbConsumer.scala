@@ -124,6 +124,8 @@ class SemanticdbConsumer extends TastyConsumer {
           symbol.name == "<init>"
 
         def isSyntheticConstructor(implicit ctx: Context): Boolean = {
+          val isObjectConstructor = symbol.isConstructor && symbol.owner != NoSymbol && symbol.owner.flags.is(Flags.Object)
+          //println("====>", symbol, symbol.owner, symbol.owner.flags, symbol.owner.flags.isObject, isObjectConstructor)
           val isModuleConstructor = symbol.isConstructor && symbol.owner.isClass
           val isTraitConstructor = symbol.isConstructor && symbol.owner.isTrait
           val isInterfaceConstructor = symbol.isConstructor && symbol.owner.flags.is(Flags.JavaDefined)  && symbol.owner.isTrait
@@ -131,7 +133,7 @@ class SemanticdbConsumer extends TastyConsumer {
           /*val isStaticConstructor = symbol.name == g.TermName("<clinit>")*/
           //val isClassfileAnnotationConstructor = symbol.owner.isClassfileAnnotation
           /*isModuleConstructor || */
-          isTraitConstructor || isInterfaceConstructor ||
+          isTraitConstructor || isInterfaceConstructor || isObjectConstructor ||
           isEnumConstructor /*|| isStaticConstructor || isClassfileAnnotationConstructor*/
         }
         def isLocalChild(implicit ctx: Context): Boolean =
@@ -289,9 +291,8 @@ class SemanticdbConsumer extends TastyConsumer {
                 /* When we consider snipper of the form: `abstract class DepAdvD[CC[X[C] <: B], X[Z], C] extends DepTemp`,
               The symbol for C will be something like example/DepAdvD#`<init>`().[CC].[X].[C].
               This is illogic: a init method can't have any child. Thus, when the current symbol is
-              a typeparameter (or anything, but here it is just implemented for type parameter), and the owner
-              is an init, we can just "jump" over the init. */
-                if (symbol.isTypeParameter && symbol.owner.name == "<init>")
+              a typeparameter (or anything), and the owner is an init, we can just "jump" over the init. */
+                if (symbol.owner.name == "<init>")
                   iterateParent(symbol.owner.owner)
                 else
                   iterateParent(symbol.owner)
@@ -343,8 +344,8 @@ class SemanticdbConsumer extends TastyConsumer {
             (iterateParent(symbol), true)
           }
 
-        println(symbol_path, range)
         if (symbol_path == "" || symbol.isUselessOccurrence) return
+        println(symbol_path, range, symbol.owner.flags)
 
         val key = (symbol_path, range)
         if (!is_global || !(symbolPathsMap.contains(key))) {
@@ -509,8 +510,8 @@ class SemanticdbConsumer extends TastyConsumer {
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.DEFINITION,
                              range(tree, tree.symbol.pos, tree.symbol.name))
-            println("constr symbol pos: ", constr.symbol.pos.startColumn, constr.symbol.pos.endColumn)
-            println("constr pos: ", constr.pos.startColumn, constr.pos.endColumn)
+            //println("constr symbol pos: ", constr.symbol.pos.startColumn, constr.symbol.pos.endColumn)
+            //println("constr pos: ", constr.pos.startColumn, constr.pos.endColumn)
             // then the constructor
             if (!constr.isUserCreated) {
               fittedInitClassRange = Some(
@@ -575,8 +576,9 @@ class SemanticdbConsumer extends TastyConsumer {
             }
             if (tree.symbol.name != "<none>") {
               val range_symbol = range(tree, tree.symbol.pos, tree.symbol.name)
-              if (tree.symbol.name == "<init>" && tree.symbol.flags.is(Flags.Object)) {
-
+              //println(tree, tree.symbol.name, tree.symbol.owner, tree.symbol.owner.flags)
+              if (tree.symbol.name == "<init>" && tree.symbol.owner != NoSymbol && tree.symbol.owner.flags.is(Flags.Object)) {
+                //println("omitting", tree.symbol.name)
               } else if (tree.symbol.name == "<init>" && fittedInitClassRange != None) {
                 addOccurenceTree(tree,
                                  s.SymbolOccurrence.Role.DEFINITION,
@@ -604,7 +606,7 @@ class SemanticdbConsumer extends TastyConsumer {
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.REFERENCE,
                              range,
-                             false)
+                             true)
             super.traverseTree(tree)
           }
 
