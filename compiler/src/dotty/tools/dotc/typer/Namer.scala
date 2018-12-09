@@ -510,9 +510,13 @@ class Namer { typer: Typer =>
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(_.symbol == defn.ChildAnnot) match {
         case Some(Annotation.Child(other)) if childStart <= other.pos.start =>
-          assert(childStart != other.pos.start, "duplicate child annotation $child / $other")
-          val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
-          prefix ::: otherAnnot :: insertInto(rest)
+          if (child == other)
+            annots // can happen if a class has several inaccessible children
+          else {
+            assert(childStart != other.pos.start, i"duplicate child annotation $child / $other")
+            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
+            prefix ::: otherAnnot :: insertInto(rest)
+          }
         case _ =>
           Annotation.Child(child) :: annots
       }
