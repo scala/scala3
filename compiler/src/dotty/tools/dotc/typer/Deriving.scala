@@ -34,6 +34,9 @@ trait Deriving { this: Typer =>
     /** the children of `cls` ordered by textual occurrence */
     lazy val children = cls.children
 
+    private def shapeError(explanation: => String): Unit =
+      ctx.error(i"cannot take shape of $cls\n$explanation", codePos)
+
     /** The shape (of type Shape.Case) of a case given by `sym`. `sym` is either `cls`
      *  itself, or a subclass of `cls`, or an instance of `cls`.
      */
@@ -41,7 +44,13 @@ trait Deriving { this: Typer =>
       val (constr, elems) =
         sym match {
           case caseClass: ClassSymbol =>
-            if (caseClass.is(Module))
+            if (!caseClass.is(Case)) {
+              shapeError(
+                if (caseClass == cls) "it has anonymous or inaccessible subclasses"
+                else i"its subclass $caseClass is not a case class")
+              return NoType
+            }
+            else if (caseClass.is(Module))
               (caseClass.sourceModule.termRef, Nil)
             else caseClass.primaryConstructor.info match {
               case info: PolyType =>
@@ -72,7 +81,7 @@ trait Deriving { this: Typer =>
 
     /** The shape of `cls` if `cls` is sealed */
     private def sealedShape: Type = {
-      val cases = children.map(caseShape)
+      val cases = children.map(caseShape).filter(_.exists)
       val casesShape = (cases :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
       defn.ShapeCasesType.appliedTo(casesShape)
     }
@@ -84,7 +93,10 @@ trait Deriving { this: Typer =>
     lazy val shapeWithClassParams: Type = {
       if (cls.is(Case)) caseShape(cls)
       else if (cls.is(Sealed)) sealedShape
-      else NoType
+      else {
+        shapeError(i"it is neither sealed nor a case class")
+        defn.ShapeCasesType.appliedTo(defn.UnitType)
+      }
     }.reporting(res => i"shape of $cls = $res", derive)
 
     private def shapeOfType(tp: Type) = {
@@ -410,13 +422,11 @@ trait Deriving { this: Typer =>
       def syntheticDefs: List[Tree] = synthetics.map(syntheticDef).toList
     }
 
-    def finalize(stat: tpd.TypeDef): tpd.Tree =
-      if (ctx.reporter.hasErrors) stat
-      else {
-        val templ @ Template(_, _, _, _) = stat.rhs
-        tpd.cpy.TypeDef(stat)(
-          rhs = tpd.cpy.Template(templ)(body = templ.body ++ new Finalizer().syntheticDefs))
-      }
+    def finalize(stat: tpd.TypeDef): tpd.Tree = {
+      val templ @ Template(_, _, _, _) = stat.rhs
+      tpd.cpy.TypeDef(stat)(
+        rhs = tpd.cpy.Template(templ)(body = templ.body ++ new Finalizer().syntheticDefs))
+    }
 
     /** Synthesized instance for `Generic[<clsType>]` */
     def genericInstance(clsType: Type): tpd.Tree = {
