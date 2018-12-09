@@ -11,7 +11,7 @@ import ProtoTypes._
 import util.Positions._
 import collection.mutable
 import Constants.Constant
-import config.Printers.typr
+import config.Printers.derive
 import Inferencing._
 import transform.TypeUtils._
 import transform.SymUtils._
@@ -59,9 +59,9 @@ trait Deriving { this: Typer =>
                 }
                 instantiate(ctx.fresh.setExploreTyperState().setOwner(caseClass))
               case info: MethodType =>
-                (cls.typeRef, info.paramInfos)
+                (caseClass.typeRef, info.paramInfos)
               case _ =>
-                (cls.typeRef, Nil)
+                (caseClass.typeRef, Nil)
             }
           case _ =>
             (sym.termRef, Nil)
@@ -81,10 +81,11 @@ trait Deriving { this: Typer =>
      *  of abstracting over them.
      *  Returns NoType if `cls` is neither sealed nor a case class or object.
      */
-    lazy val shapeWithClassParams: Type =
+    lazy val shapeWithClassParams: Type = {
       if (cls.is(Case)) caseShape(cls)
       else if (cls.is(Sealed)) sealedShape
       else NoType
+    }.reporting(res => i"shape of $cls = $res", derive)
 
     private def shapeOfType(tp: Type) = {
       val shape0 = shapeWithClassParams
@@ -155,7 +156,9 @@ trait Deriving { this: Typer =>
       val underlyingType = underlyingClassRef(originalType)
       val derivedType = checkClassType(underlyingType, derived.pos, traitReq = false, stablePrefixReq = true)
       val nparams = derivedType.classSymbol.typeParams.length
-      if (nparams == 1) {
+      if (derivedType.isRef(defn.GenericClass))
+        () // do nothing, a Generic instance will be created anyway by `addGeneric`
+      else if (nparams == 1) {
         val typeClass = derivedType.classSymbol
         val firstKindedParams = cls.typeParams.filterNot(_.info.isLambdaSub)
         val evidenceParamInfos =
