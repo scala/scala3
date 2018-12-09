@@ -15,23 +15,24 @@ import config.Printers.typr
 import Inferencing._
 import transform.TypeUtils._
 import transform.SymUtils._
+import ErrorReporting.errorTree
 
 /** A typer mixin that implements typeclass derivation functionality */
 trait Deriving { this: Typer =>
 
   /** A helper class to derive type class instances for one class or object
-   *  @param  cls              The class symbol of the class or object with a `derives` clause
-   *  @param  templateStartPos The default position that should be given to generic
-   *                           synthesized infrastructure code that is not connected with a
-   *                           `derives` instance.
+   *  @param  cls      The class symbol of the class or object with a `derives` clause
+   *  @param  codePos  The default position that should be given to generic
+   *                   synthesized infrastructure code that is not connected with a
+   *                   `derives` instance.
    */
-  class Deriver(cls: ClassSymbol, templateStartPos: Position)(implicit ctx: Context) {
+  class Deriver(cls: ClassSymbol, codePos: Position)(implicit ctx: Context) {
 
     /** A buffer for synthesized symbols */
     private var synthetics = new mutable.ListBuffer[Symbol]
 
     /** the children of `cls` ordered by textual occurrence */
-    lazy val children = cls.children.sortBy(_.pos.start)
+    lazy val children = cls.children
 
     /** The shape (of type Shape.Case) of a case given by `sym`. `sym` is either `cls`
      *  itself, or a subclass of `cls`, or an instance of `cls`.
@@ -40,7 +41,9 @@ trait Deriving { this: Typer =>
       val (constr, elems) =
         sym match {
           case caseClass: ClassSymbol =>
-            caseClass.primaryConstructor.info match {
+            if (caseClass.is(Module))
+              (caseClass.sourceModule.termRef, Nil)
+            else caseClass.primaryConstructor.info match {
               case info: PolyType =>
                 def instantiate(implicit ctx: Context) = {
                   val poly = constrained(info, untpd.EmptyTree)._1
@@ -82,6 +85,13 @@ trait Deriving { this: Typer =>
       if (cls.is(Case)) caseShape(cls)
       else if (cls.is(Sealed)) sealedShape
       else NoType
+
+    private def shapeOfType(tp: Type) = {
+      val shape0 = shapeWithClassParams
+      val clsType = tp.baseType(cls)
+      if (clsType.exists) shape0.subst(cls.typeParams, clsType.argInfos)
+      else clsType
+    }
 
     private def add(sym: Symbol): sym.type = {
       ctx.enter(sym)
@@ -167,7 +177,7 @@ trait Deriving { this: Typer =>
      */
     private def addGenericClass(): Unit =
       if (!ctx.denotNamed(nme.genericClass).exists) {
-        add(newSymbol(nme.genericClass, defn.GenericClassType, templateStartPos))
+        add(newSymbol(nme.genericClass, defn.GenericClassType, codePos))
       }
 
     private def addGeneric(): Unit = {
@@ -181,7 +191,7 @@ trait Deriving { this: Typer =>
           denot.info = PolyType.fromParams(cls.typeParams, resultType).ensureMethodic
         }
       }
-      addDerivedInstance(defn.GenericType.name, genericCompleter, templateStartPos, reportErrors = false)
+      addDerivedInstance(defn.GenericType.name, genericCompleter, codePos, reportErrors = false)
     }
 
     /** Create symbols for derived instances and infrastructure,
@@ -240,12 +250,12 @@ trait Deriving { this: Typer =>
         case ShapeCase(pat, elems) =>
           val patCls = pat.widen.classSymbol
           val patLabel = patCls.name.stripModuleClassSuffix.toString
-          val elemLabels = patCls.caseAccessors.map(_.name.toString)
+          val elemLabels = patCls.caseAccessors.filterNot(_.is(PrivateLocal)).map(_.name.toString)
           (patLabel :: elemLabels).mkString("\u0000")
       }
 
       /** The RHS of the `genericClass` value definition */
-      private def genericClassRHS =
+      def genericClassRHS =
         New(defn.GenericClassType,
           List(Literal(Constant(cls.typeRef)),
                Literal(Constant(labelString(shapeWithClassParams)))))
@@ -272,7 +282,7 @@ trait Deriving { this: Typer =>
        *        def common = genericClass
        *      }
        */
-      private def genericRHS(genericType: Type)(implicit ctx: Context) = {
+      def genericRHS(genericType: Type, genericClassRef: Tree)(implicit ctx: Context) = {
         val RefinedType(
           genericInstance @ AppliedType(_, clsArg :: Nil),
           tpnme.Shape,
@@ -280,7 +290,7 @@ trait Deriving { this: Typer =>
         val shape = shapeArg.dealias
 
         val implClassSym = ctx.newNormalizedClassSymbol(
-          ctx.owner, tpnme.ANON_CLASS, EmptyFlags, genericInstance :: Nil, coord = templateStartPos)
+          ctx.owner, tpnme.ANON_CLASS, EmptyFlags, genericInstance :: Nil, coord = codePos)
         val implClassCtx = ctx.withOwner(implClassSym)
         val implClassConstr =
           newMethod(nme.CONSTRUCTOR, MethodType(Nil, implClassSym.typeRef))(implClassCtx).entered
@@ -299,7 +309,7 @@ trait Deriving { this: Typer =>
                 val mirror = defn.GenericClassType
                   .member(nme.mirror)
                   .suchThat(sym => args.tpes.corresponds(sym.info.firstParamTypes)(_ <:< _))
-                ref(genericClass).select(mirror.symbol).appliedToArgs(args)
+                genericClassRef.select(mirror.symbol).appliedToArgs(args)
               }
               shape match {
                 case ShapeCases(cases) =>
@@ -347,7 +357,7 @@ trait Deriving { this: Typer =>
 
           val commonMethod: DefDef = {
             val meth = newMethod(nme.common, ExprType(defn.GenericClassType)).entered
-            tpd.DefDef(meth, ref(genericClass))
+            tpd.DefDef(meth, genericClassRef)
           }
 
           List(shapeType, reflectMethod, reifyMethod, commonMethod)
@@ -378,7 +388,7 @@ trait Deriving { this: Typer =>
           val resultType = instantiated(sym.info)
           val (typeCls, companionRef) = classAndCompanionRef(resultType)
           if (typeCls == defn.GenericClass)
-            genericRHS(resultType)
+            genericRHS(resultType, ref(genericClass))
           else {
             val module = untpd.ref(companionRef).withPos(sym.pos)
             val rhs = untpd.Select(module, nme.derived)
@@ -404,5 +414,17 @@ trait Deriving { this: Typer =>
         tpd.cpy.TypeDef(stat)(
           rhs = tpd.cpy.Template(templ)(body = templ.body ++ new Finalizer().syntheticDefs))
       }
+
+    /** Synthesized instance for `Generic[<clsType>]` */
+    def genericInstance(clsType: Type): tpd.Tree = {
+      val shape = shapeOfType(clsType)
+      if (shape.exists) {
+        val genericType = RefinedType(defn.GenericType.appliedTo(clsType), tpnme.Shape, TypeAlias(shape))
+        val finalizer = new Finalizer
+        finalizer.genericRHS(genericType, finalizer.genericClassRHS)
+      }
+      else errorTree(tpd.EmptyTree.withPos(codePos),
+        i"cannot take shape of type $clsType", codePos)
+    }
   }
 }

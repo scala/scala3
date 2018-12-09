@@ -739,7 +739,20 @@ trait Implicits { self: Typer =>
       assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
 
-    inferImplicit(formal, EmptyTree, span)(ctx) match {
+    /** If `formal` is of the form `scala.reflect.Generic[T]` for some class type `T`,
+     *  synthesize an instance for it.
+     */
+    def synthesizedGeneric(formal: Type): Tree =
+      formal.argTypes match {
+        case arg :: Nil =>
+          val arg1 = fullyDefinedType(arg, "ClassTag argument", pos)
+          val clsType = checkClassType(arg1, pos, traitReq = false, stablePrefixReq = true)
+          new Deriver(clsType.classSymbol.asClass, pos).genericInstance(clsType)
+        case _ =>
+          EmptyTree
+      }
+
+    inferImplicit(formal, EmptyTree, pos)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
@@ -754,9 +767,10 @@ trait Implicits { self: Typer =>
         else
           trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
-              trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
-                trySpecialCase(defn.EqClass, synthesizedEq,
-                  trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))
+              trySpecialCase(defn.GenericClass, synthesizedGeneric,
+                trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
+                  trySpecialCase(defn.EqClass, synthesizedEq,
+                    trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
     }
   }
 

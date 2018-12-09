@@ -294,4 +294,23 @@ object Test extends App {
   val zs1 = copy(zs)
   showPrintln(zs1)
   assert(eql(zs, zs1))
+
+  import scala.reflect.Generic
+
+  val listGen = implicitly[Generic[scala.collection.immutable.List[Int]]]
+  implicit def listEq[T: Eq]: Eq[List[T]] = Eq.derived
+  val leq = implicitly[Eq[List[Int]]]
+  println(leq.eql(List(1, 2, 3), List(1, 2, 3)))
+
+  implicit def listShow[T: Show]: Show[List[T]] = Show.derived
+  println(implicitly[Show[List[Int]]].show(List(1, 2, 3)))
+  println(implicitly[Show[List[List[Int]]]].show(List(List(1), List(2, 3))))
+
+  implicit def listPickler[T: Pickler]: Pickler[List[T]] = Pickler.derived
+  val pklList = implicitly[Pickler[List[List[Int]]]]
+  val zss = List(Nil, List(1), List(2, 3))
+  pklList.pickle(buf, zss)
+  val zss1 = pklList.unpickle(buf)
+  assert(eql(zss, zss1))
+  showPrintln(zss1)
 }
