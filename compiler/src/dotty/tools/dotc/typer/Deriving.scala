@@ -431,13 +431,9 @@ trait Deriving { this: Typer =>
     /** Synthesized instance for `Generic[<clsType>]` */
     def genericInstance(clsType: Type): tpd.Tree = {
       val shape = shapeOfType(clsType)
-      if (shape.exists) {
-        val genericType = RefinedType(defn.GenericType.appliedTo(clsType), tpnme.Shape, TypeAlias(shape))
-        val finalizer = new Finalizer
-        finalizer.genericRHS(genericType, finalizer.genericClassRHS)
-      }
-      else errorTree(tpd.EmptyTree.withPos(codePos),
-        i"cannot take shape of type $clsType", codePos)
+      val genericType = RefinedType(defn.GenericType.appliedTo(clsType), tpnme.Shape, TypeAlias(shape))
+      val finalizer = new Finalizer
+      finalizer.genericRHS(genericType, finalizer.genericClassRHS)
     }
   }
 }
