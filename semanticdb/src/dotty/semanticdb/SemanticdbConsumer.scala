@@ -21,12 +21,12 @@ class SemanticdbConsumer extends TastyConsumer {
     s.TextDocument(text = text, occurrences = occurrences)
   }
   val package_definitions: Set[Tuple2[String, Int]] = Set()
+  val symbolsCache: HashMap[(String, s.Range), String] = HashMap()
   var local_offset: Int = 0
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
-    val symbolsCache: HashMap[Symbol, String] = HashMap()
     val symbolPathsMap: Set[(String, s.Range)] = Set()
 
     object ChildTraverser extends TreeTraverser {
@@ -278,71 +278,86 @@ class SemanticdbConsumer extends TastyConsumer {
       }
 
       def iterateParent(symbol: Symbol): String = {
-        if (symbolsCache.contains(symbol)) {
-          return symbolsCache(symbol)
+        if (symbol.name == "<none>" || symbol.name == "<root>") then {
+          // TODO had a "NoDenotation" test to avoid
+          // relying on the name itself
+          ""
         } else {
-          val out_symbol_path =
-            if (symbol.name == "<none>" || symbol.name == "<root>") then {
-              // TODO had a "NoDenotation" test to avoid
-              // relying on the name itself
-              ""
-            } else {
-              val previous_symbol =
-                /* When we consider snipper of the form: `abstract class DepAdvD[CC[X[C] <: B], X[Z], C] extends DepTemp`,
+          val previous_symbol =
+            /* When we consider snipper of the form: `abstract class DepAdvD[CC[X[C] <: B], X[Z], C] extends DepTemp`,
               The symbol for C will be something like example/DepAdvD#`<init>`().[CC].[X].[C].
               This is illogic: a init method can't have any child. Thus, when the current symbol is
               a typeparameter (or anything), and the owner is an init, we can just "jump" over the init. */
-                if (symbol.owner.name == "<init>")
-                  iterateParent(symbol.owner.owner)
-                else
-                  iterateParent(symbol.owner)
+            if (symbol.owner.name == "<init>")
+              iterateParent(symbol.owner.owner)
+            else
+              iterateParent(symbol.owner)
 
-              val next_atom =
-                if (symbol.isPackage) {
-                  d.Package(symbol.name)
-                } else if (symbol.isObject) {
-                  symbol match {
-                    case IsClassSymbol(classsymbol) =>
-                      d.Term(resolveClass(classsymbol).name)
-                    case _ =>
-                      d.Term(symbol.name)
-                  }
-                } else if (symbol.isMethod) {
-                  d.Method(symbol.name,
-                           disimbiguate(previous_symbol + symbol.name, symbol))
-                } else if (symbol.isTypeParameter) {
-                  d.TypeParameter(symbol.name)
-                } else if (symbol.isValueParameter) {
-                  d.Parameter(symbol.name)
-                } else if (symbol.isType || symbol.isTrait) {
-                  d.Type(symbol.name)
-                } else {
+          val next_atom =
+            if (symbol.isPackage) {
+              d.Package(symbol.name)
+            } else if (symbol.isObject) {
+              symbol match {
+                case IsClassSymbol(classsymbol) =>
+                  d.Term(resolveClass(classsymbol).name)
+                case _ =>
                   d.Term(symbol.name)
-                }
-
-              Symbols.Global(previous_symbol, next_atom)
+              }
+            } else if (symbol.isMethod) {
+              d.Method(symbol.name,
+                       disimbiguate(previous_symbol + symbol.name, symbol))
+            } else if (symbol.isTypeParameter) {
+              d.TypeParameter(symbol.name)
+            } else if (symbol.isValueParameter) {
+              d.Parameter(symbol.name)
+            } else if (symbol.isType || symbol.isTrait) {
+              d.Type(symbol.name)
+            } else {
+              d.Term(symbol.name)
             }
-          symbolsCache += (symbol -> out_symbol_path)
-          out_symbol_path
+
+          Symbols.Global(previous_symbol, next_atom)
+        }
+      }
+
+      def addSelfDefinition(name: String, range: s.Range): Unit = {
+          var localsymbol = Symbols.Local(local_offset.toString)
+          local_offset += 1
+          symbolsCache += ((name, range) -> localsymbol)
+          occurrences =
+            occurrences :+
+              s.SymbolOccurrence(
+                Some(range),
+                localsymbol,
+                s.SymbolOccurrence.Role.DEFINITION
+              )
+      }
+
+      def symbolToSymbolString(symbol: Symbol): (String, Boolean) = {
+        if (symbol.isSemanticdbLocal) {
+          var localsymbol = Symbols.Local(local_offset.toString)
+          local_offset += 1
+          (localsymbol, false)
+        } else {
+          (iterateParent(symbol), true)
         }
       }
 
       def addOccurence(symbol: Symbol,
                        type_symbol: s.SymbolOccurrence.Role,
                        range: s.Range): Unit = {
-        val (symbol_path, is_global) =
-          if (symbol.isSemanticdbLocal) {
-            if (symbolsCache.contains(symbol)) {
-              (symbolsCache(symbol), false)
-            } else {
-              var localsymbol = Symbols.Local(local_offset.toString)
-              local_offset += 1
-              symbolsCache += (symbol -> localsymbol)
-              (localsymbol, false)
-            }
-          } else {
-            (iterateParent(symbol), true)
+        val (symbol_path, is_global) = posToRange(symbol.pos) match {
+          case Some(keyRange)
+              if symbolsCache.contains((symbol.name, keyRange)) =>
+            (symbolsCache((symbol.name, keyRange)), symbol.isSemanticdbLocal)
+          case Some(keyRange) => {
+            val (sp, ig) = symbolToSymbolString(symbol)
+            symbolsCache += ((symbol.name, keyRange) -> sp)
+            (sp, ig)
           }
+          case _ =>
+            symbolToSymbolString(symbol)
+        }
 
         if (symbol_path == "" || symbol.isUselessOccurrence) return
         println(symbol_path, range, symbol.owner.flags)
@@ -366,7 +381,8 @@ class SemanticdbConsumer extends TastyConsumer {
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false): Unit = {
-        if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(tree.symbol) == "java/lang/Object#`<init>`()."))) {
+        if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(
+              tree.symbol) == "java/lang/Object#`<init>`()."))) {
           addOccurence(tree.symbol, type_symbol, range)
         }
       }
@@ -390,6 +406,18 @@ class SemanticdbConsumer extends TastyConsumer {
               symbol_path,
               s.SymbolOccurrence.Role.REFERENCE
             )
+      }
+
+      def posToRange(pos: Position): Option[s.Range] = {
+        if (pos.exists) {
+          Some(
+            s.Range(pos.startLine,
+                    pos.startColumn,
+                    pos.startLine,
+                    pos.endColumn))
+        } else {
+          None
+        }
       }
 
       def range(tree: Tree, pos: Position, name: String): s.Range = {
@@ -520,10 +548,11 @@ class SemanticdbConsumer extends TastyConsumer {
                         tree.symbol.pos.startLine,
                         tree.symbol.pos.startColumn + classname.length + 1))
             } else {
-              fittedInitClassRange = Some(s.Range(constr.symbol.pos.startLine,
-                                            constr.symbol.pos.startColumn,
-                                            constr.symbol.pos.endLine,
-                                            constr.symbol.pos.endColumn))
+              fittedInitClassRange = Some(
+                s.Range(constr.symbol.pos.startLine,
+                        constr.symbol.pos.startColumn,
+                        constr.symbol.pos.endLine,
+                        constr.symbol.pos.endColumn))
             }
             traverseTree(constr)
             fittedInitClassRange = None
@@ -532,12 +561,29 @@ class SemanticdbConsumer extends TastyConsumer {
             forceAddBecauseParents = true
             parents.foreach(_ match {
               case IsTypeTree(t) => traverseTypeTree(t)
-              case IsTerm(t)     => traverseTree(t)
+              case IsTerm(t)     => {println(t.pos.startColumn, t.pos.endColumn)
+              traverseTree(t)}
             })
             forceAddBecauseParents = false
 
-            selfopt.foreach(traverseTree)
 
+
+            selfopt match {
+              case Some(vdef @ ValDef(name, _, _)) => {
+                val posColumn : Int  = parents.foldLeft(vdef.pos.startColumn)((old : Int, ct : TermOrTypeTree) =>
+                ct match {
+                  case IsTerm(t) => if (t.pos.endColumn + 3 < old) {t.pos.endColumn+3} else {old}
+                  case _ => old
+                })
+                println(posColumn)
+                println(vdef)
+                println(vdef.pos.startColumn, tree.pos.startColumn, tree.pos.endColumn)
+                addSelfDefinition(name, s.Range(vdef.pos.startLine, posColumn, vdef.pos.endLine, posColumn + name.length))
+                println(name)
+              }
+              case _                               =>
+            }
+            selfopt.foreach(traverseTree)
 
             statements.foreach(traverseTree)
           }
@@ -593,7 +639,10 @@ class SemanticdbConsumer extends TastyConsumer {
             super.traverseTree(cdef)
           }
 
-          case Term.Select(qualifier, _) => {
+          case Term.This(what) =>
+          addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, posToRange(tree.pos).get)
+
+          case Term.Select(qualifier, _, _) => {
             val range = {
               val r = rangeSelect(tree.symbol.name, tree.pos)
               if (tree.symbol.name == "<init>")
