@@ -3,15 +3,14 @@ layout: doc-page
 title: Typeclass Derivation
 ---
 
-Implicit instances for some typeclass traits can be derived automatically. Example:
+Typeclass derivation is a way to generate instances of certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eq`, `Ordering`, `Show`, or `Pickling`. Example:
 ```scala
 enum Tree[T] derives Eq, Ordering, Pickling {
   case Branch(left: Tree[T], right: Tree[T])
   case Leaf(elem: T)
 }
 ```
-The derives clause automatically generates typeclass instances for
-`Eq`, `Ordering`, and `Pickling` in the companion object `Tree`:
+The `derives` clause generates implicit instances of the `Eq`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
 impl [T: Eq] of Eq[Tree[T]] = Eq.derived
 impl [T: Ordering] of Ordering[Tree[T]] = Ordering.derived
@@ -39,21 +38,22 @@ case object None extends Option[Nothing]
 
 The generated typeclass instances are placed in the companion objects `Labelled` and `Option`, respectively.
 
-### Derivable Traits
+### Derivable Types
 
-A trait can appear in a `derives` clause as long as
+A trait or class can appear in a `derives` clause if
 
- - it has a single type parameter,
+ - it has a single type parameter, and
  - its companion object defines a method named `derived`.
 
 These two conditions ensure that the synthesized derived instances for the trait are well-formed. The type and implementation of a `derived` method are arbitrary, but typically it has a definition like this:
-```
+```scala
   def derived[T] with (ev: Generic[T]) = ...
 ```
-That is, the `derived` method takes an implicit parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. Implicit `Generic` instances are generated automatically for all types that have a `derives` clause.
-
-This is all a user of typeclass derivation has to know. The rest of this page contains information needed to be able to write a typeclass that can be used in a `derives` clause. In particular, it details the means provided for the implementation of data generic `derived` methods.
-
+That is, the `derived` method takes an implicit parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. Implicit `Generic` instances are generated automatically for all types that have a `derives` clause. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
+```scala
+sealed trait ParseResult[T] derives Generic
+```
+This is all a user of typeclass derivation has to know. The rest of this page contains information needed to be able to write a typeclass that can appear in a `derives` clause. In particular, it details the means provided for the implementation of data generic `derived` methods.
 
 ### The Shape Type
 
