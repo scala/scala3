@@ -1,4 +1,4 @@
 13: Pattern Match Exhaustivity: IntLit(_)
 22: Pattern Match Exhaustivity: Or(_, _)
-45: Pattern Match Exhaustivity: BooleanLit(_), IntLit(_)
+45: Pattern Match Exhaustivity: IntLit(_), BooleanLit(_)
 55: Pattern Match Exhaustivity: Sum(_, _)
