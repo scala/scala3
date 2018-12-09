@@ -991,7 +991,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
                 em"""cannot reduce inline match with
-                    | scrutinee:  $sel : ${selType} : ${selType.underlyingIfProxy}
+                    | scrutinee:  $sel : ${selType}
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
             errorTree(tree, msg)
         }

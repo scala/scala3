@@ -745,7 +745,7 @@ trait Implicits { self: Typer =>
     def synthesizedGeneric(formal: Type): Tree =
       formal.argTypes match {
         case arg :: Nil =>
-          val arg1 = fullyDefinedType(arg, "ClassTag argument", pos)
+          val arg1 = fullyDefinedType(arg, "Generic argument", pos)
           val clsType = checkClassType(arg1, pos, traitReq = false, stablePrefixReq = true)
           new Deriver(clsType.classSymbol.asClass, pos).genericInstance(clsType)
         case _ =>
