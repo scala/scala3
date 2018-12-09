@@ -42,7 +42,7 @@ if not %ERRORLEVEL%==0 (
     goto :eof
 )
 rem full path is required for sbt to run successfully
-for /f %%i in ('where sbt.bat') do set _SBT_CMD=%%i
+for /f "tokens=*" %%i in ('where sbt.bat') do set _SBT_CMD=%%i
 
 rem see file project/scripts/sbt
 rem SBT uses the value of the JAVA_OPTS environment variable if defined, rather than the config.
