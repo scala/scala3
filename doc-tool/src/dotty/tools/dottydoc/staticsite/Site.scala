@@ -167,9 +167,9 @@ case class Site(
   private def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): DefaultParams = {
     val pathFromRoot = stripRoot(pageLocation)
     val baseUrl: String = {
-      val rootLen = root.getAbsolutePath.split(sep).length
-      val assetLen = pageLocation.getAbsolutePath.split(sep).length
-      "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
+      val rootLen = root.toPath.normalize.getNameCount
+      val assetLen = pageLocation.toPath.normalize.getNameCount
+      "../" * (assetLen - rootLen + additionalDepth) + "."
     }
 
     DefaultParams(
@@ -203,7 +203,7 @@ case class Site(
 
         val path = if (scala.util.Properties.isWin)
           e.path.map(_.replace("<", "_").replace(">", "_"))
-        else 
+        else
           e.path
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  sep + "api" + sep + path.mkString(sep) + suffix))
         val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(Some(e)).toMap
