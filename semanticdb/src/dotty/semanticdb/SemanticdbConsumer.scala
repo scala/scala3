@@ -321,16 +321,16 @@ class SemanticdbConsumer extends TastyConsumer {
       }
 
       def addSelfDefinition(name: String, range: s.Range): Unit = {
-          var localsymbol = Symbols.Local(local_offset.toString)
-          local_offset += 1
-          symbolsCache += ((name, range) -> localsymbol)
-          occurrences =
-            occurrences :+
-              s.SymbolOccurrence(
-                Some(range),
-                localsymbol,
-                s.SymbolOccurrence.Role.DEFINITION
-              )
+        var localsymbol = Symbols.Local(local_offset.toString)
+        local_offset += 1
+        symbolsCache += ((name, range) -> localsymbol)
+        occurrences =
+          occurrences :+
+            s.SymbolOccurrence(
+              Some(range),
+              localsymbol,
+              s.SymbolOccurrence.Role.DEFINITION
+            )
       }
 
       def symbolToSymbolString(symbol: Symbol): (String, Boolean) = {
@@ -377,10 +377,14 @@ class SemanticdbConsumer extends TastyConsumer {
         }
       }
 
+      val reserverdFunctions: List[String] = "apply" :: "unapply" :: Nil
       def addOccurenceTree(tree: Tree,
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false): Unit = {
+        if (type_symbol != s.SymbolOccurrence.Role.DEFINITION && reserverdFunctions
+              .contains(tree.symbol.name))
+          return
         if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(
               tree.symbol) == "java/lang/Object#`<init>`()."))) {
           addOccurence(tree.symbol, type_symbol, range)
@@ -515,6 +519,30 @@ class SemanticdbConsumer extends TastyConsumer {
         }
       }
 
+      override def traversePattern(tree: Pattern)(implicit ctx: Context): Unit = {
+        tree match {
+          case Pattern.Bind(name, _) => {
+            println("[bind]",
+                    tree.pos.startColumn,
+                    tree.pos.endColumn,
+                    tree.symbol,
+                    tree.symbol.pos.startColumn,
+                    tree.symbol.pos.endColumn)
+            addOccurence(
+              tree.symbol,
+              s.SymbolOccurrence.Role.REFERENCE,
+              s.Range(tree.symbol.pos.startLine,
+                      tree.symbol.pos.startColumn,
+                      tree.symbol.pos.endLine,
+                      tree.symbol.pos.startColumn + name.length)
+            )
+            super.traversePattern(tree)
+          }
+          case _ =>
+            super.traversePattern(tree)
+        }
+      }
+
       var fittedInitClassRange: Option[s.Range] = None
       var forceAddBecauseParents: Boolean = false
 
@@ -531,7 +559,6 @@ class SemanticdbConsumer extends TastyConsumer {
           }
           case Term.Apply(_, _) => {
             super.traverseTree(tree)
-
           }
           case ClassDef(classname, constr, parents, selfopt, statements) => {
             // we first add the class to the symbol list
@@ -561,27 +588,37 @@ class SemanticdbConsumer extends TastyConsumer {
             forceAddBecauseParents = true
             parents.foreach(_ match {
               case IsTypeTree(t) => traverseTypeTree(t)
-              case IsTerm(t)     => {println(t.pos.startColumn, t.pos.endColumn)
-              traverseTree(t)}
+              case IsTerm(t) => {
+                println(t.pos.startColumn, t.pos.endColumn)
+                traverseTree(t)
+              }
             })
             forceAddBecauseParents = false
 
-
-
             selfopt match {
               case Some(vdef @ ValDef(name, _, _)) => {
-                val posColumn : Int  = parents.foldLeft(vdef.pos.startColumn)((old : Int, ct : TermOrTypeTree) =>
-                ct match {
-                  case IsTerm(t) => if (t.pos.endColumn + 3 < old) {t.pos.endColumn+3} else {old}
-                  case _ => old
-                })
+                val posColumn: Int = parents.foldLeft(vdef.pos.startColumn)(
+                  (old: Int, ct: TermOrTypeTree) =>
+                    ct match {
+                      case IsTerm(t) =>
+                        if (t.pos.endColumn + 3 < old) { t.pos.endColumn + 3 } else {
+                          old
+                        }
+                      case _ => old
+                  })
                 println(posColumn)
                 println(vdef)
-                println(vdef.pos.startColumn, tree.pos.startColumn, tree.pos.endColumn)
-                addSelfDefinition(name, s.Range(vdef.pos.startLine, posColumn, vdef.pos.endLine, posColumn + name.length))
+                println(vdef.pos.startColumn,
+                        tree.pos.startColumn,
+                        tree.pos.endColumn)
+                addSelfDefinition(name,
+                                  s.Range(vdef.pos.startLine,
+                                          posColumn,
+                                          vdef.pos.endLine,
+                                          posColumn + name.length))
                 println(name)
               }
-              case _                               =>
+              case _ =>
             }
             selfopt.foreach(traverseTree)
 
@@ -640,7 +677,9 @@ class SemanticdbConsumer extends TastyConsumer {
           }
 
           case Term.This(what) =>
-          addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, posToRange(tree.pos).get)
+            addOccurenceTree(tree,
+                             s.SymbolOccurrence.Role.REFERENCE,
+                             posToRange(tree.pos).get)
 
           case Term.Select(qualifier, _, _) => {
             val range = {
