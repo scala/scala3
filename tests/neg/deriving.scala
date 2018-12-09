@@ -1,6 +1,6 @@
 import reflect.Generic
 
-sealed trait A derives Generic  // error: cannot take shape, it has anonymous or inaccessible subclasses
+sealed trait A derives Generic // error: cannot take shape, it has anonymous or inaccessible subclasses
 
 object A {
   def f() = {

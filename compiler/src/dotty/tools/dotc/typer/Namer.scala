@@ -196,7 +196,6 @@ class Namer { typer: Typer =>
   val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
   val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
   val SymOfTree: Property.Key[Symbol] = new Property.Key
-  val DerivingCompanion: Property.Key[Unit] = new Property.Key
   val Deriver: Property.Key[typer.Deriver] = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
@@ -509,7 +508,7 @@ class Namer { typer: Typer =>
     val childStart = child.pos.start
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(_.symbol == defn.ChildAnnot) match {
-        case Some(Annotation.Child(other)) if childStart <= other.pos.start =>
+        case Some(Annotation.Child(other)) if other.pos.exists && childStart <= other.pos.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
@@ -575,7 +574,7 @@ class Namer { typer: Typer =>
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               ctx.error(em"a class and its companion cannot both have `derives' clauses", mdef.pos)
-            res.putAttachment(DerivingCompanion, ())
+            res.putAttachment(desugar.DerivingCompanion, fromTempl.pos.startPos)
           }
           res
         }
@@ -1013,11 +1012,11 @@ class Namer { typer: Typer =>
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
       if (impl.derived.nonEmpty) {
-        val derivingClass =
-          if (original.removeAttachment(DerivingCompanion).isDefined ||
-              original.mods.is(Synthetic)) cls.companionClass.asClass
-          else cls
-        val deriver = new Deriver(derivingClass, impl.pos.startPos)(localCtx)
+        val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
+          case Some(pos) => (cls.companionClass.asClass, pos)
+          case None => (cls, impl.pos.startPos)
+        }
+        val deriver = new Deriver(derivingClass, derivePos)(localCtx)
         deriver.enterDerived(impl.derived)
         original.putAttachment(Deriver, deriver)
       }

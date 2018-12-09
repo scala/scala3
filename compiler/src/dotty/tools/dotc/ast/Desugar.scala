@@ -23,7 +23,13 @@ object desugar {
   /** If a Select node carries this attachment, suppress the check
    *  that its type refers to an acessible symbol.
    */
-  val SuppressAccessCheck = new Property.Key[Unit]
+  val SuppressAccessCheck: Property.Key[Unit] = new Property.Key
+
+  /** An attachment for companion modules of classes that have a `derives` clause.
+   *  The position value indicates the start position of the template of the
+   *  deriving class.
+   */
+  val DerivingCompanion: Property.Key[Position] = new Property.Key
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -564,12 +570,17 @@ object desugar {
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt derives class-derived { defs }
-    def companionDefs(parentTpt: Tree, defs: List[Tree]) =
-      moduleDef(
+    def companionDefs(parentTpt: Tree, defs: List[Tree]) = {
+      val mdefs = moduleDef(
         ModuleDef(
           className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
-      .withSpan(cdef.span).toList
+        .withSpan(cdef.span).toList
+      if (companionDerived.nonEmpty)
+        for (modClsDef @ TypeDef(_, _) <- mdefs)
+          modClsDef.putAttachment(DerivingCompanion, impl.pos.startPos)
+      mdefs
+    }
 
     val companionMembers = defaultGetters ::: eqInstances ::: enumCases
 
