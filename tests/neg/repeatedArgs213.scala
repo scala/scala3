@@ -33,11 +33,11 @@ class repeatedArgs {
     bar("a", "b", "c")
     bar(xs: _*)
     bar(ys: _*) // error: immutable.Seq expected, found Seq
-    bar(zs: _*) // error: immutable.Seq expected, found Array
+    bar(zs: _*) // old-error: Remove (compiler generated) Array to Seq convertion in 2.13?
 
     Paths.get("Hello", "World")
     Paths.get("Hello", xs: _*)
     Paths.get("Hello", ys: _*) // error: immutable.Seq expected, found Seq
-    Paths.get("Hello", zs: _*) // error: immutable.Seq expected, found Array
+    Paths.get("Hello", zs: _*)
   }
 }
