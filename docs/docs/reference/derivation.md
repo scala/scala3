@@ -91,7 +91,7 @@ Case[Labelled[T], (T, String)]
 And here is the one for `Option[T]`:
 ```scala
 Cases[
-  Case[Some[T], T * Unit],
+  Case[Some[T], T *: Unit],
   Case[None.type, Unit]
 ]
 ```

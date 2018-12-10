@@ -19,8 +19,6 @@ object datatypes {
   sealed trait Either[+L, +R] extends Product derives Eq, Pickler, Show
   case class Left[L](x: L) extends Either[L, Nothing]
   case class Right[R](x: R) extends Either[Nothing, R]
-
-  //object Either {}
 }
 
 object typeclasses {
