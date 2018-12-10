@@ -131,7 +131,7 @@ object Decorators {
     }
 
     /** Union on lists seen as sets */
-    def | (ys: List[T]): List[T] = xs ++ (ys filterNot (xs contains _))
+    def | (ys: List[T]): List[T] = xs ::: (ys filterNot (xs contains _))
 
     /** Intersection on lists seen as sets */
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
