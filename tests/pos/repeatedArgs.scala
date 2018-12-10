@@ -1,5 +1,6 @@
 import scala.collection.{immutable, mutable}
 import java.nio.file.Paths
+import java.util.concurrent.ForkJoinTask
 
 class repeatedArgs {
   def bar(xs: String*): Int = xs.length
@@ -19,4 +20,7 @@ class repeatedArgs {
     val x: collection.Seq[String] = others
     // val y: immutable.Seq[String] = others // ok in 2.13
   }
+
+  def invokeAll[T](tasks: ForkJoinTask[T]*): Unit = ForkJoinTask.invokeAll(tasks: _*)
+  def invokeAll2(tasks: ForkJoinTask[_]*): Unit = ForkJoinTask.invokeAll(tasks: _*)
 }

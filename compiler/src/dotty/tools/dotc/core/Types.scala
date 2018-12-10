@@ -441,7 +441,7 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.classSymbols
       case AndType(l, r) =>
-        l.classSymbols union r.classSymbols
+        l.classSymbols | r.classSymbols
       case OrType(l, r) =>
         l.classSymbols intersect r.classSymbols // TODO does not conform to spec
       case _ =>
