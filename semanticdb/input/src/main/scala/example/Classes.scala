@@ -2,8 +2,8 @@ package example
 
 class C1(val x1: Int) extends AnyVal
 
-//class C2(val x2: Int) extends AnyVal
-/*object C2
+class C2(val x2: Int) extends AnyVal
+object C2
 
 case class C3(x: Int)
 
@@ -31,4 +31,3 @@ object N {
     local + 2
   }
 }
-*/

@@ -70,6 +70,12 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         }
       }
 
+      implicit class PatternExtender(tree: Pattern) {
+        def isUserCreated: Boolean = {
+          return !(tree.pos.exists && tree.pos.start == tree.pos.end)
+        }
+      }
+
       implicit class SymbolExtender(symbol: Symbol) {
         def isClass: Boolean = symbol match {
           case IsClassSymbol(_) => true
@@ -251,9 +257,9 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
       def resolveClass(symbol: ClassSymbol): Symbol =
         (symbol.companionClass, symbol.companionModule) match {
+          case (Some(c), _)                               => c
           case (_, Some(module)) if symbol.flags.is(Flags.Object) => module
-          case (Some(c), _) => c
-          case _ => symbol
+          case _                                          => symbol
         }
 
       def disimbiguate(symbol_path: String, symbol: Symbol): String = {
@@ -379,7 +385,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         if (is_global) {
           symbolPathsMap += key
         }
-        println(symbol_path, range, symbol.owner.flags, is_global)
+        println(symbol_path, range, symbol.owner.flags, is_global, iterateParent(symbol))
         occurrences =
           occurrences :+
             s.SymbolOccurrence(
@@ -389,7 +395,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             )
       }
 
-      val reservedFunctions: List[String] = "apply" :: "unapply" :: Nil
+      val reservedFunctions: List[String] =  Nil
       def addOccurenceTree(tree: Tree,
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
@@ -397,6 +403,16 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         if (type_symbol != s.SymbolOccurrence.Role.DEFINITION && reservedFunctions
               .contains(tree.symbol.name))
           return
+        /*println(tree.isUserCreated, iterateParent(tree.symbol), force_add)
+
+          val children: List[Position] =
+            ChildTraverser.getChildren(tree)(reflect.rootContext).map(_.pos)
+            println("#####", tree.pos.start, tree.pos.end)
+            if (tree.symbol.pos.exists) {
+            println("#####",  tree.symbol.pos.start, tree.symbol.pos.end, tree, tree.symbol.name)
+
+            }
+            children.foreach(p => println(p.start, p.end))*/
         if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(
               tree.symbol) == "java/lang/Object#`<init>`()."))) {
           addOccurence(tree.symbol, type_symbol, range)
@@ -405,8 +421,16 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       def addOccurenceTypeTree(typetree: TypeTree,
                                type_symbol: s.SymbolOccurrence.Role,
                                range: s.Range): Unit = {
+        println(typetree)
         if (typetree.isUserCreated) {
           addOccurence(typetree.symbol, type_symbol, range)
+        }
+      }
+      def addOccurencePatternTree(tree: Pattern,
+                               type_symbol: s.SymbolOccurrence.Role,
+                               range: s.Range): Unit = {
+        if (tree.isUserCreated) {
+          addOccurence(tree.symbol, type_symbol, range)
         }
       }
       def addOccurenceId(parent_path: String, id: Id): Unit = {
@@ -490,15 +514,16 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                              selectors: List[ImportSelector]): Unit = {
         selectors.foreach(selector =>
           selector match {
-            case SimpleSelector(id) => {
+            case SimpleSelector(id) if id.name != "_" => {
               addOccurenceId(parent_path, id)
             }
-            case RenameSelector(id, _) => {
+            case RenameSelector(id, _) if id.name != "_" => {
               addOccurenceId(parent_path, id)
             }
-            case OmitSelector(id) => {
+            case OmitSelector(id) if id.name != "_" => {
               addOccurenceId(parent_path, id)
             }
+            case _ =>
         })
       }
 
@@ -526,6 +551,10 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                                  range)
             super.traverseTypeTree(typetree)
           }
+          case TypeTree.Inferred() => {
+            val typetree = extractTypeTree(tree)
+          addOccurenceTypeTree(typetree, s.SymbolOccurrence.Role.REFERENCE, posToRange(typetree.pos).get)
+          }
           case _ =>
             super.traverseTypeTree(tree)
         }
@@ -534,8 +563,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       override def traversePattern(tree: Pattern)(implicit ctx: Context): Unit = {
         tree match {
           case Pattern.Bind(name, _) => {
-            addOccurence(
-              tree.symbol,
+            addOccurencePatternTree(tree,
               s.SymbolOccurrence.Role.REFERENCE,
               s.Range(tree.symbol.pos.startLine,
                       tree.symbol.pos.startColumn,
@@ -567,47 +595,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             super.traverseTree(tree)
           }
           case ClassDef(classname, constr, parents, selfopt, statements) => {
-            println("\n")
-            val resolvedClassSymbol = tree.symbol.asClass.companionClass
-            val resolvedObjectSymbol = tree.symbol.asClass.companionModule
-            println(tree.symbol.flags)
-            if (resolvedClassSymbol != None && resolvedClassSymbol.get.flags.isCase) {
-              // case class
-              if (resolvedClassSymbol.get == tree.symbol) {
-                println("YES")
-              // we first add the class to the symbol list
-              addOccurenceTree(tree,
-                               s.SymbolOccurrence.Role.DEFINITION,
-                               range(tree, tree.symbol.pos, tree.symbol.name))
 
-                fittedInitClassRange = Some(
-                  s.Range(constr.symbol.pos.startLine,
-                          constr.symbol.pos.startColumn,
-                          constr.symbol.pos.endLine,
-                          constr.symbol.pos.endColumn))
-
-              traverseTree(constr)
-              fittedInitClassRange = None
-              } else {
-                println("NO")
-              }
-            } else if (tree.symbol.flags.isObject && tree.symbol.flags.isCase) {
-                println("YES object")
-              // we first add the class to the symbol list
-              addOccurenceTree(tree,
-                               s.SymbolOccurrence.Role.DEFINITION,
-                               range(tree, tree.symbol.pos, tree.symbol.name))
-
-                fittedInitClassRange = Some(
-                  s.Range(constr.symbol.pos.startLine,
-                          constr.symbol.pos.startColumn,
-                          constr.symbol.pos.endLine,
-                          constr.symbol.pos.endColumn))
-
-              traverseTree(constr)
-              fittedInitClassRange = None
-                println("NO object")
-            } else {
               // we first add the class to the symbol list
               addOccurenceTree(tree,
                                s.SymbolOccurrence.Role.DEFINITION,
@@ -669,7 +657,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
               }
 
               statements.foreach(traverseTree)
-            }
+
           }
           case IsDefinition(cdef) => {
 
@@ -740,8 +728,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             }
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.REFERENCE,
-                             range,
-                             true)
+                             range)
             super.traverseTree(tree)
           }
 
