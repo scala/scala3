@@ -66,7 +66,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
   }
 
   private def findDirEntry(pkg: String): Option[archive.DirEntry] = {
-    val dirName = s"${FileUtils.dirPath(pkg)}/"
+    val dirName = pkg.replace('.', '/') + "/"
     archive.allDirs.get(dirName)
   }
 

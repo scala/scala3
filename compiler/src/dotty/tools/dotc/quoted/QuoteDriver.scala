@@ -96,7 +96,8 @@ object QuoteDriver {
       case cl: URLClassLoader =>
         // Loads the classes loaded by this class loader
         // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
-        val newClasspath = cl.getURLs.map(_.getFile())
+        import java.nio.file.Paths
+        val newClasspath = cl.getURLs.map(url => Paths.get(url.toURI).toString)
         newClasspath.mkString("", java.io.File.pathSeparator, if (classpath0 == "") "" else java.io.File.pathSeparator + classpath0)
       case _ => classpath0
     }
