@@ -191,7 +191,7 @@ class Tests {
   //@Test def testLocals(): Unit = checkFile("example/Locals.scala")
   //@Test def testMacroAnnotations(): Unit = checkFile("example/MacroAnnotations.scala")
   //WIP(assert) @Test def testMethods(): Unit = checkFile("example/Methods.scala")
-  //@Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
+  @Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
   //@Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
   //def testObjects(): Unit = checkFile("example/Objects.scala")
   //@Test def testOverrides(): Unit = checkFile("example/Overrides.scala")
@@ -205,7 +205,7 @@ class Tests {
   //@Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
   //@Test def testNew(): Unit = checkFile("example/New.scala")
   //@Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
-  @Test def testCase(): Unit = checkFile("example/Case.scala")
+  //@Test def testCase(): Unit = checkFile("example/Case.scala")
 
 
   def testOutput(className: String, expected: String): Unit = {
