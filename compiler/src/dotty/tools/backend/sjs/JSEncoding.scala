@@ -12,9 +12,10 @@ import Types._
 import Symbols._
 import Denotations._
 import NameOps._
+import Names._
 import StdNames._
 
-import org.scalajs.core.ir
+import org.scalajs.ir
 import ir.{Trees => js, Types => jstpe}
 
 import ScopedVar.withScopedVars
@@ -54,6 +55,7 @@ object JSEncoding {
 
     private val usedLocalNames = mutable.Set.empty[String]
     private val localSymbolNames = mutable.Map.empty[Symbol, String]
+    private var returnLabelName: Option[String] = None
 
     def localSymbolName(sym: Symbol)(implicit ctx: Context): String =
       localSymbolNames.getOrElseUpdate(sym, freshName(sym.name.toString))
@@ -73,6 +75,15 @@ object JSEncoding {
       }
       usedLocalNames += longName
       mangleJSName(longName)
+    }
+
+    def getEnclosingReturnLabel()(implicit pos: ir.Position): js.Ident = {
+      /*val box = returnLabelName.get
+      if (box == null)
+        throw new IllegalStateException(s"No enclosing returnable scope at $pos")*/
+      if (returnLabelName.isEmpty)
+        returnLabelName = Some(freshName("_return"))
+      js.Ident(returnLabelName.get)
     }
   }
 
@@ -134,40 +145,6 @@ object JSEncoding {
     encodedName + paramsString
   }
 
-  /** Encodes a method symbol of java.lang.String for use in RuntimeString.
-   *
-   *  This basically means adding an initial parameter of type
-   *  java.lang.String, which is the `this` parameter.
-   */
-  def encodeRTStringMethodSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position): js.Ident = {
-    require(sym.owner == defn.StringClass)
-    require(!sym.isClassConstructor && !sym.is(Flags.Private))
-
-    val (encodedName, paramsString) =
-      encodeMethodNameInternal(sym, inRTClass = true)
-    js.Ident(encodedName + paramsString,
-        Some(sym.unexpandedName.decoded + paramsString))
-  }
-
-  /** Encodes a constructor symbol of java.lang.String for use in RuntimeString.
-   *
-   *  - The name is rerouted to `newString`
-   *  - The result type is set to `java.lang.String`
-   */
-  def encodeRTStringCtorSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position): js.Ident = {
-    require(sym.owner == defn.StringClass)
-    require(sym.isClassConstructor && !sym.is(Flags.Private))
-
-    val paramTypeNames = sym.info.firstParamTypes.map(internalName(_))
-    val paramAndResultTypeNames = paramTypeNames :+ ir.Definitions.StringClass
-    val paramsString = makeParamsString(paramAndResultTypeNames)
-
-    js.Ident("newString" + paramsString,
-        Some(sym.unexpandedName.decoded + paramsString))
-  }
-
   private def encodeMethodNameInternal(sym: Symbol,
       reflProxy: Boolean = false, inRTClass: Boolean = false)(
       implicit ctx: Context): (String, String) = {
@@ -209,7 +186,7 @@ object JSEncoding {
   }
 
   def foreignIsImplClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name.isImplClassName
+    sym.name.endsWith(nme.IMPL_CLASS_SUFFIX.toString)
 
   def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
@@ -226,11 +203,8 @@ object JSEncoding {
     js.Ident(encodeClassFullName(sym), Some(sym.fullName.toString))
   }
 
-  def encodeClassFullName(sym: Symbol)(implicit ctx: Context): String = {
-    if (sym == defn.NothingClass) ir.Definitions.RuntimeNothingClass
-    else if (sym == defn.NullClass) ir.Definitions.RuntimeNullClass
-    else ir.Definitions.encodeClassName(sym.fullName.toString)
-  }
+  def encodeClassFullName(sym: Symbol)(implicit ctx: Context): String =
+    ir.Definitions.encodeClassName(sym.fullName.toString)
 
   private def encodeMemberNameInternal(sym: Symbol)(
       implicit ctx: Context): String = {
@@ -238,10 +212,10 @@ object JSEncoding {
   }
 
   def toIRType(tp: Type)(implicit ctx: Context): jstpe.Type = {
-    val refType = toReferenceTypeInternal(tp)
-    refType._1 match {
-      case tpe: jstpe.ClassType =>
-        val sym = refType._2
+    val typeRefInternal = toTypeRefInternal(tp)
+    typeRefInternal._1 match {
+      case typeRef: jstpe.ClassRef =>
+        val sym = typeRefInternal._2
         if (sym.asClass.isPrimitiveValueClass) {
           if (sym == defn.BooleanClass)
             jstpe.BooleanType
@@ -263,57 +237,66 @@ object JSEncoding {
           else if (sym == defn.NullClass)
             jstpe.NullType
           else
-            tpe
+            jstpe.ClassType(typeRef.className)
         }
 
-      case tpe: jstpe.ArrayType =>
-        tpe
+      case typeRef: jstpe.ArrayTypeRef =>
+        jstpe.ArrayType(typeRef)
     }
   }
 
-  def toReferenceType(tp: Type)(implicit ctx: Context): jstpe.ReferenceType =
-    toReferenceTypeInternal(tp)._1
+  def toTypeRef(tp: Type)(implicit ctx: Context): jstpe.TypeRef =
+    toTypeRefInternal(tp)._1
 
-  private def toReferenceTypeInternal(tp: Type)(
-      implicit ctx: Context): (jstpe.ReferenceType, Symbol) = {
-
+  private def toTypeRefInternal(tp: Type)(implicit ctx: Context): (jstpe.TypeRef, Symbol) = {
     /**
      * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
      * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
      */
-    def primitiveOrClassToRefType(sym: Symbol): (jstpe.ReferenceType, Symbol) = {
+    def primitiveOrClassToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
       assert(sym.isClass, sym)
       //assert(sym != defn.ArrayClass || isCompilingArray, sym)
-      (jstpe.ClassType(encodeClassFullName(sym)), sym)
+      val className = if (sym.isPrimitiveValueClass) {
+        if (sym == defn.UnitClass) ir.Definitions.VoidClass
+        else if (sym == defn.BooleanClass) ir.Definitions.BooleanClass
+        else if (sym == defn.CharClass) ir.Definitions.CharClass
+        else if (sym == defn.ByteClass) ir.Definitions.ByteClass
+        else if (sym == defn.ShortClass) ir.Definitions.ShortClass
+        else if (sym == defn.IntClass) ir.Definitions.IntClass
+        else if (sym == defn.LongClass) ir.Definitions.LongClass
+        else if (sym == defn.FloatClass) ir.Definitions.FloatClass
+        else if (sym == defn.DoubleClass) ir.Definitions.DoubleClass
+        else throw new Exception(s"unknown primitive value class $sym")
+      } else {
+        encodeClassFullName(sym)
+      }
+      (jstpe.ClassRef(className), sym)
     }
 
     /**
      * When compiling Array.scala, the type parameter T is not erased and shows up in method
      * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
      */
-    def nonClassTypeRefToRefType(sym: Symbol): (jstpe.ReferenceType, Symbol) = {
+    def nonClassTypeRefToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
       //assert(sym.isType && isCompilingArray, sym)
-      (jstpe.ClassType(ir.Definitions.ObjectClass), defn.ObjectClass)
+      (jstpe.ClassRef(ir.Definitions.ObjectClass), defn.ObjectClass)
     }
 
     tp.widenDealias match {
       // Array type such as Array[Int] (kept by erasure)
       case JavaArrayType(el) =>
-        val elRefType = toReferenceTypeInternal(el)
-        (jstpe.ArrayType(elRefType._1), elRefType._2)
+        val elTypeRef = toTypeRefInternal(el)
+        (jstpe.ArrayTypeRef.of(elTypeRef._1), elTypeRef._2)
 
       case t: TypeRef =>
-        if (!t.symbol.isClass) nonClassTypeRefToRefType(t.symbol)  // See comment on nonClassTypeRefToBType
-        else primitiveOrClassToRefType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
+        if (!t.symbol.isClass) nonClassTypeRefToTypeRef(t.symbol)  // See comment on nonClassTypeRefToBType
+        else primitiveOrClassToTypeRef(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
 
       case Types.ClassInfo(_, sym, _, _, _) =>
         /* We get here, for example, for genLoadModule, which invokes
          * toTypeKind(moduleClassSymbol.info)
          */
-        primitiveOrClassToRefType(sym)
-
-      case t: MethodType => // triggers for LabelDefs
-        toReferenceTypeInternal(t.resultType)
+        primitiveOrClassToTypeRef(sym)
 
       /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
        * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
@@ -321,7 +304,7 @@ object JSEncoding {
        */
       case a @ AnnotatedType(t, _) =>
         //debuglog(s"typeKind of annotated type $a")
-        toReferenceTypeInternal(t)
+        toTypeRefInternal(t)
     }
   }
 
@@ -369,14 +352,14 @@ object JSEncoding {
 
   /** Computes the internal name for a type. */
   private def internalName(tpe: Type)(implicit ctx: Context): String =
-    encodeReferenceType(toReferenceType(tpe))
+    encodeTypeRef(toTypeRef(tpe))
 
-  /** Encodes a [[Types.ReferenceType]], such as in an encoded method signature.
+  /** Encodes a [[Types.TypeRef]], such as in an encoded method signature.
    */
-  private def encodeReferenceType(refType: jstpe.ReferenceType): String = {
-    refType match {
-      case jstpe.ClassType(encodedName) => encodedName
-      case jstpe.ArrayType(base, depth) => "A" * depth + base
+  private def encodeTypeRef(typeRef: jstpe.TypeRef): String = {
+    typeRef match {
+      case jstpe.ClassRef(className) => className
+      case jstpe.ArrayTypeRef(base, depth) => "A" * depth + base
     }
   }
 

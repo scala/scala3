@@ -30,8 +30,6 @@ final class JSDefinitions()(implicit ctx: Context) {
     def JSPackage_typeOf(implicit ctx: Context) = JSPackage_typeOfR.symbol
     lazy val JSPackage_constructorOfR = ScalaJSJSPackageClass.requiredMethodRef("constructorOf")
     def JSPackage_constructorOf(implicit ctx: Context) = JSPackage_constructorOfR.symbol
-    lazy val JSPackage_debuggerR = ScalaJSJSPackageClass.requiredMethodRef("debugger")
-    def JSPackage_debugger(implicit ctx: Context) = JSPackage_debuggerR.symbol
     lazy val JSPackage_nativeR = ScalaJSJSPackageClass.requiredMethodRef("native")
     def JSPackage_native(implicit ctx: Context) = JSPackage_nativeR.symbol
 
@@ -44,14 +42,6 @@ final class JSDefinitions()(implicit ctx: Context) {
   def JSObjectClass(implicit ctx: Context) = JSObjectType.symbol.asClass
   lazy val JSBaseThisFunctionType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.ThisFunction")
   def JSBaseThisFunctionClass(implicit ctx: Context) = JSBaseThisFunctionType.symbol.asClass
-
-  lazy val JSDictionaryType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.Dictionary")
-  def JSDictionaryClass(implicit ctx: Context) = JSDictionaryType.symbol.asClass
-    lazy val JSDictionary_deleteR = JSDictionaryClass.requiredMethodRef("delete")
-    def JSDictionary_delete(implicit ctx: Context) = JSDictionary_deleteR.symbol
-
-  lazy val JSGlobalScopeType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.GlobalScope")
-  def JSGlobalScopeClass(implicit ctx: Context) = JSGlobalScopeType.symbol.asClass
 
   lazy val JSArrayType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.Array")
   def JSArrayClass(implicit ctx: Context) = JSArrayType.symbol.asClass
@@ -108,10 +98,6 @@ final class JSDefinitions()(implicit ctx: Context) {
 
   lazy val JSObjectModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Object")
   def JSObjectModule(implicit ctx: Context) = JSObjectModuleRef.symbol
-    lazy val JSObject_hasPropertyR = JSObjectModule.requiredMethodRef("hasProperty")
-    def JSObject_hasProperty(implicit ctx: Context) = JSObject_hasPropertyR.symbol
-    lazy val JSObject_propertiesR = JSObjectModule.requiredMethodRef("properties")
-    def JSObject_properties(implicit ctx: Context) = JSObject_propertiesR.symbol
 
   lazy val JSArrayModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Array")
   def JSArrayModule(implicit ctx: Context) = JSArrayModuleRef.symbol
@@ -128,39 +114,35 @@ final class JSDefinitions()(implicit ctx: Context) {
     lazy val JSConstructorTag_materializeR = JSConstructorTagModule.requiredMethodRef("materialize")
     def JSConstructorTag_materialize(implicit ctx: Context) = JSConstructorTag_materializeR.symbol
 
-  lazy val RuntimeStringModuleRef = ctx.requiredModuleRef("scala.scalajs.runtime.RuntimeString")
-  def RuntimeStringModule(implicit ctx: Context) = RuntimeStringModuleRef.symbol
-  def RuntimeStringModuleClass(implicit ctx: Context) = RuntimeStringModule.moduleClass.asClass
-
-  lazy val BooleanReflectiveCallType: TypeRef = ctx.requiredClassRef("scala.scalajs.runtime.BooleanReflectiveCall")
-  def BooleanReflectiveCallClass(implicit ctx: Context) = BooleanReflectiveCallType.symbol.asClass
-  lazy val NumberReflectiveCallType: TypeRef = ctx.requiredClassRef("scala.scalajs.runtime.NumberReflectiveCall")
-  def NumberReflectiveCallClass(implicit ctx: Context) = NumberReflectiveCallType.symbol.asClass
-  lazy val IntegerReflectiveCallType: TypeRef = ctx.requiredClassRef("scala.scalajs.runtime.IntegerReflectiveCall")
-  def IntegerReflectiveCallClass(implicit ctx: Context) = IntegerReflectiveCallType.symbol.asClass
-  lazy val LongReflectiveCallType: TypeRef = ctx.requiredClassRef("scala.scalajs.runtime.LongReflectiveCall")
-  def LongReflectiveCallClass(implicit ctx: Context) = LongReflectiveCallType.symbol.asClass
-
   lazy val RuntimePackageVal = ctx.requiredPackage("scala.scalajs.runtime")
   lazy val RuntimePackageClass = RuntimePackageVal.moduleClass.asClass
     lazy val RuntimePackage_wrapJavaScriptExceptionR = RuntimePackageClass.requiredMethodRef("wrapJavaScriptException")
-    def RuntimePackage_typeOf(implicit ctx: Context) = RuntimePackage_wrapJavaScriptExceptionR.symbol
-    lazy val RuntimePackage_unwrapJavaScriptExceptionR = RuntimePackageClass.requiredMethodRef("unwrapJavaScriptException")
-    def RuntimePackage_unwrapJavaScriptException(implicit ctx: Context) = RuntimePackage_unwrapJavaScriptExceptionR.symbol
-    lazy val RuntimePackage_genTraversableOnce2jsArrayR = RuntimePackageClass.requiredMethodRef("genTraversableOnce2jsArray")
-    def RuntimePackage_genTraversableOnce2jsArray(implicit ctx: Context) = RuntimePackage_genTraversableOnce2jsArrayR.symbol
-    lazy val RuntimePackage_jsTupleArray2jsObjectR = RuntimePackageClass.requiredMethodRef("jsTupleArray2jsObject")
-    def RuntimePackage_jsTupleArray2jsObject(implicit ctx: Context) = RuntimePackage_jsTupleArray2jsObjectR.symbol
-    lazy val RuntimePackage_constructorOfR = RuntimePackageClass.requiredMethodRef("constructorOf")
-    def RuntimePackage_constructorOf(implicit ctx: Context) = RuntimePackage_constructorOfR.symbol
-    lazy val RuntimePackage_newConstructorTagR = RuntimePackageClass.requiredMethodRef("newConstructorTag")
-    def RuntimePackage_newConstructorTag(implicit ctx: Context) = RuntimePackage_newConstructorTagR.symbol
-    lazy val RuntimePackage_propertiesOfR = RuntimePackageClass.requiredMethodRef("propertiesOf")
-    def RuntimePackage_propertiesOf(implicit ctx: Context) = RuntimePackage_propertiesOfR.symbol
-    lazy val RuntimePackage_environmentInfoR = RuntimePackageClass.requiredMethodRef("environmentInfo")
-    def RuntimePackage_environmentInfo(implicit ctx: Context) = RuntimePackage_environmentInfoR.symbol
-    lazy val RuntimePackage_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
-    def RuntimePackage_linkingInfo(implicit ctx: Context) = RuntimePackage_linkingInfoR.symbol
+    def Runtime_wrapJavaScriptException(implicit ctx: Context) = RuntimePackage_wrapJavaScriptExceptionR.symbol
+    lazy val Runtime_unwrapJavaScriptExceptionR = RuntimePackageClass.requiredMethodRef("unwrapJavaScriptException")
+    def Runtime_unwrapJavaScriptException(implicit ctx: Context) = Runtime_unwrapJavaScriptExceptionR.symbol
+    lazy val Runtime_toScalaVarArgsR = RuntimePackageClass.requiredMethodRef("toScalaVarArgs")
+    def Runtime_toScalaVarArgs(implicit ctx: Context) = Runtime_toScalaVarArgsR.symbol
+    lazy val Runtime_toJSVarArgsR = RuntimePackageClass.requiredMethodRef("toJSVarArgs")
+    def Runtime_toJSVarArgs(implicit ctx: Context) = Runtime_toJSVarArgsR.symbol
+    lazy val Runtime_constructorOfR = RuntimePackageClass.requiredMethodRef("constructorOf")
+    def Runtime_constructorOf(implicit ctx: Context) = Runtime_constructorOfR.symbol
+    lazy val Runtime_newConstructorTagR = RuntimePackageClass.requiredMethodRef("newConstructorTag")
+    def Runtime_newConstructorTag(implicit ctx: Context) = Runtime_newConstructorTagR.symbol
+    lazy val Runtime_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
+    def Runtime_linkingInfo(implicit ctx: Context) = Runtime_linkingInfoR.symbol
+
+  lazy val SpecialPackageVal = ctx.requiredPackage("scala.scalajs.js.special")
+  lazy val SpecialPackageClass = SpecialPackageVal.moduleClass.asClass
+    lazy val Special_debuggerR = SpecialPackageClass.requiredMethodRef("debugger")
+    def Special_debugger(implicit ctx: Context) = Special_debuggerR.symbol
+    lazy val Special_deleteR = SpecialPackageClass.requiredMethodRef("delete")
+    def Special_delete(implicit ctx: Context) = Special_deleteR.symbol
+    lazy val Special_forinR = SpecialPackageClass.requiredMethodRef("forin")
+    def Special_forin(implicit ctx: Context) = Special_forinR.symbol
+    lazy val Special_inR = SpecialPackageClass.requiredMethodRef("in")
+    def Special_in(implicit ctx: Context) = Special_inR.symbol
+    lazy val Special_instanceofR = SpecialPackageClass.requiredMethodRef("instanceof")
+    def Special_instanceof(implicit ctx: Context) = Special_instanceofR.symbol
 
   lazy val WrappedArrayType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(implicit ctx: Context) = WrappedArrayType.symbol.asClass
@@ -183,17 +165,15 @@ final class JSDefinitions()(implicit ctx: Context) {
    *
    *  This is similar to `isVarArityClass` in `Definitions.scala`.
    */
-  private def isScalaJSVarArityClass(cls: Symbol, prefix: Name): Boolean = {
+  private def isScalaJSVarArityClass(cls: Symbol, prefix: String): Boolean = {
     val name = scalajsClassName(cls)
-    name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
+    name.startsWith(prefix) && name.toString.drop(prefix.length).forall(_.isDigit)
   }
 
   def isJSFunctionClass(cls: Symbol): Boolean =
-    isScalaJSVarArityClass(cls, nme.Function)
-
-  private val ThisFunctionName = termName("ThisFunction")
+    isScalaJSVarArityClass(cls, str.Function)
 
   def isJSThisFunctionClass(cls: Symbol): Boolean =
-    isScalaJSVarArityClass(cls, ThisFunctionName)
+    isScalaJSVarArityClass(cls, "ThisFunction")
 
 }

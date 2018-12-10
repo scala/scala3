@@ -34,7 +34,7 @@ pipeline:
     image: lampepfl/dotty:2018-10-01
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
+      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;sjsSandbox/run"
       - ./project/scripts/bootstrapCmdTests
 
   test_sbt:

@@ -9,6 +9,7 @@ class GenSJSIR extends Phase {
   def phaseName: String = "genSJSIR"
 
   def run(implicit ctx: Context): Unit = {
-    new JSCodeGen().run()
+    if (ctx.settings.scalajs.value)
+      new JSCodeGen().run()
   }
 }
