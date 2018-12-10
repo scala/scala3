@@ -175,6 +175,10 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def DefSymbolDeco(symbol: DefSymbol): DefSymbolAPI = new DefSymbolAPI {
     def tree(implicit ctx: Context): DefDef = FromSymbol.defDefFromSym(symbol)
+
+    def signature(implicit ctx: Context): Signature = {
+      symbol.signature
+    }
   }
 
   object IsValSymbol extends IsValSymbolModule {
