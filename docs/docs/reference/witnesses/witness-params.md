@@ -21,7 +21,7 @@ def maximum[T](xs: List[T]) with (cmp: Ord[T]): T =
   xs.reduceLeft((x, y) => if (x < y) y else x)
 
 def descending[T] with (asc: Ord[T]): Ord[T] = new Ord[T] {
-  def compareTo(this x: T)(y: T) = asc.compareTo(y)(x)
+  def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
 }
 
 def minimum[T](xs: List[T]) with (cmp: Ord[T]) =
@@ -86,13 +86,13 @@ object PostConditions {
 
   private witness WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
-    def unwrap[T](this x: WrappedResult[T]): T = x
+    def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] with (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
   witness {
-    def ensuring[T](this x: T)(condition: WrappedResult[T] |=> Boolean): T = {
+    def (x: T) ensuring[T] (condition: WrappedResult[T] |=> Boolean): T = {
       assert(condition with WrappedResult(x))
       x
     }

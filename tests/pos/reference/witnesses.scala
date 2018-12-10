@@ -7,7 +7,7 @@ class Common {
   }
 
   trait Convertible[From, To] {
-    def (x: From) convert : To
+    def (x: From) convert: To
   }
 
   trait SemiGroup[T] {
@@ -49,14 +49,14 @@ object Witnesses extends Common {
   }
 
   witness StringOps {
-    def (xs: Seq[String]) longestStrings : Seq[String] = {
+    def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
   witness ListOps {
-    def (xs: List[T]) second[T]  = xs.tail.head
+    def (xs: List[T]) second[T] = xs.tail.head
   }
 
   witness ListMonad for Monad[List] {
@@ -102,14 +102,14 @@ object Witnesses extends Common {
   trait TastyAPI {
     type Symbol
     trait SymDeco {
-      def name(this sym: Symbol): String
+      def (sym: Symbol) name: String
     }
     witness symDeco: SymDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
     witness symDeco: SymDeco = new SymDeco {
-      def name(this sym: Symbol) = sym
+      def (sym: Symbol) name = sym
     }
   }
 
@@ -189,18 +189,18 @@ object AnonymousWitnesses extends Common {
   }
 
   witness {
-    def (xs: Seq[String]) longestStrings : Seq[String] = {
+    def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
   witness {
-    def (xs: List[T]) second[T]  = xs.tail.head
+    def (xs: List[T]) second[T] = xs.tail.head
   }
 
   witness [From, To] with (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
-    def (x: List[From]) convert : List[To] = x.map(c.convert)
+    def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
   witness for Monoid[String] {
@@ -232,7 +232,7 @@ object Implicits extends Common {
 
   class Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]] {
-    def (x: List[From]) convert : List[To] = x.map(c.convert)
+    def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
   implicit def Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =

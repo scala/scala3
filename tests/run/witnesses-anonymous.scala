@@ -26,13 +26,13 @@ object Test extends App {
   assert(names.longestStrings == List("hello", "world"))
 
   witness {
-    def (xs: Seq[T]) second[T]  = xs.tail.head
+    def (xs: Seq[T]) second[T] = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
   witness {
-    def (xs: List[List[T]]) flattened[T]  = xs.foldLeft[List[T]](Nil)(_ ++ _)
+    def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
   assert(List(names, List("!")).flattened == names :+ "!")

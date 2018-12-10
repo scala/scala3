@@ -15,8 +15,8 @@ As an example for an abstract witness consider the following fragment that's der
 trait TastyAPI {
   type Symbol
   trait SymDeco {
-    def name(this sym: Symbol): Name
-    def tpe(this sym: Symbol): Type
+    def (sym: Symbol) name: Name
+    def (sym: Symbol) tpe: Type
   }
   witness symDeco: SymDeco
 }
