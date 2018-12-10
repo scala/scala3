@@ -2133,7 +2133,7 @@ object Parsers {
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
-                     ofWitness: Boolean = false): List[List[ValDef]] = {
+                     ofInstance: Boolean = false): List[List[ValDef]] = {
       def recur(firstClause: Boolean): List[List[ValDef]] = {
         val initialMods =
           if (in.token == WITH) {
@@ -2142,7 +2142,7 @@ object Parsers {
           }
           else EmptyModifiers
         newLineOptWhenFollowedBy(LPAREN)
-        if (initialMods.is(Contextual) || in.token == LPAREN && !ofWitness) {
+        if (initialMods.is(Contextual) || in.token == LPAREN && !ofInstance) {
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
@@ -2427,7 +2427,7 @@ object Parsers {
     /** TmplDef ::=  ([`case'] ‘class’ | trait’) ClassDef
      *            |  [`case'] `object' ObjectDef
      *            |  ‘enum’ EnumDef
-     *            |  ‘witness’ WitnessDef
+     *            |  ‘instance’ InstanceDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
       in.token match {
@@ -2443,8 +2443,8 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           enumDef(start, mods, atSpan(in.skipToken()) { Mod.Enum() })
-        case WITNESS =>
-          witnessDef(start, mods, atSpan(in.skipToken()) { Mod.Witness() })
+        case INSTANCE =>
+          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Instance() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -2540,16 +2540,16 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** WitnessDef    ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
-     *                  |  id WitnessParams ‘:’ Type ‘=’ Expr
-     *                  |  id ‘:’ ‘=>’ Type ‘=’ Expr
-     *                  |  id ‘=’ Expr
-     *  WitnessParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
+    /** InstanceDef    ::=  [id] InstanceParams [‘for’ ConstrApps] [TemplateBody]
+     *                   |  id InstanceParams ‘:’ Type ‘=’ Expr
+     *                   |  id ‘:’ ‘=>’ Type ‘=’ Expr
+     *                   |  id ‘=’ Expr
+     *  InstanceParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
      */
-    def witnessDef(start: Offset, mods: Modifiers, witnessMod: Mod) = atPos(start, nameStart) {
+    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atPos(start, nameStart) {
       val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val vparamss = paramClauses(ofWitness = true)
+      val vparamss = paramClauses(ofInstance = true)
       val parents =
         if (isIdent(nme.of)) {
           in.nextToken()
@@ -2559,7 +2559,7 @@ object Parsers {
       newLineOptWhenFollowedBy(LBRACE)
       if (name.isEmpty && in.token != LBRACE)
         syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
-      var mods1 = addMod(mods, witnessMod)
+      var mods1 = addMod(mods, instanceMod)
       val wdef =
         if (in.token == LBRACE) {
           val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, isEnum = false)

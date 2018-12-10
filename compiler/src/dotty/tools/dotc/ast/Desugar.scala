@@ -341,7 +341,7 @@ object desugar {
     val isCaseClass  = mods.is(Case) && !mods.is(Module)
     val isCaseObject = mods.is(Case) && mods.is(Module)
     val isImplicit = mods.is(Implicit)
-    val isWitness = isImplicit && mods.mods.exists(_.isInstanceOf[Mod.Witness])
+    val isInstance = isImplicit && mods.mods.exists(_.isInstanceOf[Mod.Instance])
     val isEnum = mods.isEnumClass && !mods.is(Module)
     def isEnumCase = mods.isEnumCase
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
@@ -669,7 +669,7 @@ object desugar {
         ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
         Nil
       }
-      else if (arity != 1 && !isWitness) {
+      else if (arity != 1 && !isInstance) {
         ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
         Nil
       }
@@ -805,11 +805,11 @@ object desugar {
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
-   *   2. If the name is missing (this can be the case for witnesses), invent one instead.
+   *   2. If the name is missing (this can be the case for instance definitions), invent one instead.
    */
   def normalizeClassName(mdef: MemberDef, impl: Template)(implicit ctx: Context): TypeName = {
     var name = mdef.name.toTypeName
-    if (name.isEmpty) name = s"${inventName(impl)}_witness".toTypeName
+    if (name.isEmpty) name = s"${inventName(impl)}_instance".toTypeName
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
@@ -818,7 +818,7 @@ object desugar {
     name
   }
 
-  /** Invent a name for an anonymous witness with template `impl`.
+  /** Invent a name for an anonymous instance with template `impl`.
    */
   private def inventName(impl: Template)(implicit ctx: Context): String =
     if (impl.parents.isEmpty)
@@ -829,7 +829,7 @@ object desugar {
         case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
           s"${name}_of_${inventTypeName(vparam.tpt)}"
         case _ =>
-          ctx.error(i"anonymous witness must have `for` part or must define at least one extension method", impl.pos)
+          ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.pos)
           nme.ERROR.toString
       }
     else

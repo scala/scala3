@@ -132,11 +132,11 @@ trait NamerContextOps { this: Context =>
 
   /** The method type corresponding to given parameters and result type */
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type,
-                 isJava: Boolean = false, isWitness: Boolean = false)(implicit ctx: Context): Type = {
+                 isJava: Boolean = false, isInstance: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
         val (isImplicit, isErased, isContextual) =
-          if (params.isEmpty) (isWitness, false, false)
+          if (params.isEmpty) (isInstance, false, false)
           else (params.head is Implicit, params.head is Erased, params.head.is(Contextual))
         val make = MethodType.maker(isJava = isJava, isImplicit = isImplicit, isErased = isErased, isContextual = isContextual)
         if (isJava)
@@ -1302,7 +1302,7 @@ class Namer { typer: Typer =>
     def wrapMethType(restpe: Type): Type = {
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe,
-        isJava = ddef.mods is JavaDefined, isWitness = ddef.mods.hasMod(classOf[Mod.Witness]))
+        isJava = ddef.mods is JavaDefined, isInstance = ddef.mods.hasMod(classOf[Mod.Instance]))
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol

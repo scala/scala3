@@ -368,11 +368,11 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-WitnessDef        ::=  [id] WitnessParams [‘for’ ConstrApps] [TemplateBody]
-                    |  id WitnessParams ‘:’ Type ‘=’ Expr
+InstanceDef       ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
+                    |  id InstanceParams ‘:’ Type ‘=’ Expr
                     |  id ‘:’ ‘=>’ Type ‘=’ Expr
                     |  id ‘=’ Expr
-WitnessParams     ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)'}
+InstanceParams    ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)'}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

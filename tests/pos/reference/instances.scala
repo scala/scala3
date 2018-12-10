@@ -30,14 +30,14 @@ class Common {
   }
 }
 
-object Witnesses extends Common {
+object Instances extends Common {
 
-  witness IntOrd of Ord[Int] {
+  instance IntOrd of Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  witness ListOrd[T] with (ord: Ord[T]) of Ord[List[T]] {
+  instance ListOrd[T] with (ord: Ord[T]) of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,25 +48,25 @@ object Witnesses extends Common {
     }
   }
 
-  witness StringOps {
+  instance StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  witness ListOps {
+  instance ListOps {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  witness ListMonad of Monad[List] {
+  instance ListMonad of Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  witness ReaderMonad[Ctx] of Monad[[X] => Ctx => X] {
+  instance ReaderMonad[Ctx] of Monad[[X] => Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -104,11 +104,11 @@ object Witnesses extends Common {
     trait SymDeco {
       def (sym: Symbol) name: String
     }
-    witness symDeco: SymDeco
+    instance symDeco: SymDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
-    witness symDeco: SymDeco = new SymDeco {
+    instance symDeco: SymDeco = new SymDeco {
       def (sym: Symbol) name = sym
     }
   }
@@ -118,27 +118,27 @@ object Witnesses extends Common {
   class C with (ctx: Context) {
     def f() = {
       locally {
-        witness ctx = this.ctx
+        instance ctx = this.ctx
         println(summon[Context].value)
       }
       locally {
-        lazy witness ctx = this.ctx
+        lazy instance ctx = this.ctx
         println(summon[Context].value)
       }
       locally {
-        witness ctx: Context = this.ctx
+        instance ctx: Context = this.ctx
         println(summon[Context].value)
       }
       locally {
-        witness ctx with (): Context = this.ctx
+        instance ctx with (): Context = this.ctx
         println(summon[Context].value)
       }
       locally {
-        witness f[T]: D[T] = new D[T]
+        instance f[T]: D[T] = new D[T]
         println(summon[D[Int]])
       }
       locally {
-        witness g with (ctx: Context): D[Int] = new D[Int]
+        instance g with (ctx: Context): D[Int] = new D[Int]
         println(summon[D[Int]])
       }
     }
@@ -146,7 +146,7 @@ object Witnesses extends Common {
 
   class Token(str: String)
 
-  witness StringToToken of ImplicitConverter[String, Token] {
+  instance StringToToken of ImplicitConverter[String, Token] {
     def apply(str: String): Token = new Token(str)
   }
 
@@ -156,14 +156,14 @@ object Witnesses extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private witness WrappedResult {
+  private instance WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] with (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  witness {
+  instance {
     def (x: T) ensuring[T] (condition: WrappedResult[T] |=> Boolean): T = {
       assert(condition with WrappedResult(x))
       x
@@ -171,13 +171,13 @@ object PostConditions {
   }
 }
 
-object AnonymousWitnesses extends Common {
-  witness of Ord[Int] {
+object AnonymousInstances extends Common {
+  instance of Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  witness [T: Ord] of Ord[List[T]] {
+  instance [T: Ord] of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -188,22 +188,22 @@ object AnonymousWitnesses extends Common {
     }
   }
 
-  witness {
+  instance {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  witness {
+  instance {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  witness [From, To] with (c: Convertible[From, To]) of Convertible[List[From], List[To]] {
+  instance [From, To] with (c: Convertible[From, To]) of Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  witness of Monoid[String] {
+  instance of Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -230,13 +230,13 @@ object Implicits extends Common {
   }
   implicit def ListOrd[T: Ord]: Ord[List[T]] = new ListOrd[T]
 
-  class Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
+  class Convertible_List_List_instance[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
-  implicit def Convertible_List_List_witness[From, To](implicit c: Convertible[From, To])
+  implicit def Convertible_List_List_instance[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =
-    new Convertible_List_List_witness[From, To]
+    new Convertible_List_List_instance[From, To]
 
   def maximum[T](xs: List[T])
                 (implicit cmp: Ord[T]): T =
@@ -251,7 +251,7 @@ object Implicits extends Common {
 }
 
 object Test extends App {
-  Witnesses.test()
+  Instances.test()
   import PostConditions._
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)

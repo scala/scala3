@@ -84,14 +84,14 @@ Implementing postconditions via `ensuring`:
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private witness WrappedResult {
+  private instance WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] with (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  witness {
+  instance {
     def (x: T) ensuring[T] (condition: WrappedResult[T] |=> Boolean): T = {
       assert(condition with WrappedResult(x))
       x

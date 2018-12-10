@@ -8,15 +8,15 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  witness {
+  instance CircleOps {
     def (c: Circle) circumference: Double = c.radius * math.Pi * 2
   }
 
   val circle = new Circle(1, 1, 2.0)
 
-  println(circle.circumference)
+  assert(circle.circumference == CircleOps.circumference(circle))
 
-  witness {
+  instance StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -25,15 +25,23 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  witness {
+  instance SeqOps {
     def (xs: Seq[T]) second[T] = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  witness {
+  instance ListListOps {
     def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
+
+  // A right associative op
+  instance Prepend {
+    def (x: T) ::[T] (xs: Seq[T]) = x +: xs
+  }
+  val ss: Seq[Int] = List(1, 2, 3)
+  val ss1 = 0 :: ss
+  assert(ss1 == List(0, 1, 2, 3))
 
   assert(List(names, List("!")).flattened == names :+ "!")
   assert(Nil.flattened == Nil)
@@ -46,7 +54,7 @@ object Test extends App {
   }
 
   // An instance declaration:
-  witness of Monoid[String] {
+  instance StringMonoid of Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -64,13 +72,13 @@ object Test extends App {
     val minimum: T
   }
 
-  witness of Ord[Int] {
+  instance of Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  witness [T: Ord] of Ord[List[T]] {
+  instance ListOrd[T: Ord] of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -102,14 +110,14 @@ object Test extends App {
     def pure[A](x: A): F[A]
   }
 
-  witness of Monad[List] {
+  instance ListMonad of Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  witness [Ctx] of Monad[[X] => Ctx => X] {
+  instance ReaderMonad[Ctx] of Monad[[X] => Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

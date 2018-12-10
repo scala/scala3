@@ -41,17 +41,6 @@ sidebar:
               url: docs/reference/enums/adts.html
             - title: Translation
               url: docs/reference/enums/desugarEnums.html
-        - title: Witnesses
-            - title: Motivation
-              url: docs/reference/witnesses/motivation.html
-            - title: Witness Definitions
-              url: docs/reference/witnesses/witnesses.html
-            - title: Witness Parameters
-              url: docs/reference/witnesses/witness-params.html
-            - title: Replacing Implicits
-              url: docs/reference/witnesses/replacing-implicits.html
-            - title: Discussion
-              url: docs/reference/witnesses/discussion.html
         - title: Other New Features
           subsection:
             - title: Typeclass Derivation
@@ -80,7 +69,18 @@ sidebar:
               url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
-        - title: Changed Features
+        - title: Changes to Implicits
+            - title: Motivation
+              url: docs/reference/instances/motivation.html
+            - title: Instance Definitions
+              url: docs/reference/instances/instance-defs.html
+            - title: Context Parameters
+              url: docs/reference/instances/context-params.html
+            - title: Replacing Implicits
+              url: docs/reference/instances/replacing-implicits.html
+            - title: Discussion
+              url: docs/reference/instances/discussion.html
+        - title: Other Changed Features
           subsection:
             - title: Volatile Lazy Vals
               url: docs/reference/changed-features/lazy-vals.html
