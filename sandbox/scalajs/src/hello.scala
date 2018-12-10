@@ -7,8 +7,8 @@ trait MyTrait {
   def foo(y: Int) = x
 }
 
-object world extends js.JSApp with MyTrait {
-  def main(): Unit = {
+object HelloWorld extends MyTrait {
+  def main(args: Array[String]): Unit = {
     println("hello dotty.js!")
     println(foo(4))
   }

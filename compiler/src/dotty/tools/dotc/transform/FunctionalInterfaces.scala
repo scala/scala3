@@ -33,7 +33,8 @@ class FunctionalInterfaces extends MiniPhase {
     val List(implParamTypes) = implType.paramInfoss
     val implResultType = implType.resultType
 
-    if (defn.isSpecializableFunction(cls, implParamTypes, implResultType)) {
+    if (defn.isSpecializableFunction(cls, implParamTypes, implResultType) &&
+        !ctx.settings.scalajs.value) { // never do anything for Scala.js, but do this test as late as possible not to slow down Scala/JVM
       val names = ctx.atPhase(ctx.erasurePhase) {
         implicit ctx => cls.typeParams.map(_.name)
       }

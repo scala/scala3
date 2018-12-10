@@ -19,6 +19,9 @@ import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
+import org.scalajs.sbtplugin.ScalaJSPlugin
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
@@ -113,6 +116,8 @@ object Build {
   lazy val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   lazy val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
   lazy val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+
+  lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
@@ -650,40 +655,40 @@ object Build {
 
       run := dotc.evaluated,
       dotc := runCompilerMain().evaluated,
-      repl := runCompilerMain(repl = true).evaluated
+      repl := runCompilerMain(repl = true).evaluated,
 
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its
        * sources instead of depending on the binaries.
        */
-      //TODO: disabling until moved to separate project
-      //ivyConfigurations += config("sourcedeps").hide,
-      //libraryDependencies +=
-      //  "org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps",
-      //sourceGenerators in Compile += Def.task {
-      //  val s = streams.value
-      //  val cacheDir = s.cacheDirectory
-      //  val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
+      sourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
 
-      //  val report = updateClassifiers.value
-      //  val scalaJSIRSourcesJar = report.select(
-      //      configuration = Set("sourcedeps"),
-      //      module = (_: ModuleID).name.startsWith("scalajs-ir_"),
-      //      artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
-      //    sys.error(s"Could not fetch scalajs-ir sources")
-      //  }
+        val report = updateClassifiers.value
+        val scalaJSIRSourcesJar = report.select(
+            configuration = configurationFilter("sourcedeps"),
+            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+          sys.error(s"Could not fetch scalajs-ir sources")
+        }
 
-      //  FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
-      //      FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-      //    s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
-      //    if (trgDir.exists)
-      //      IO.delete(trgDir)
-      //    IO.createDirectory(trgDir)
-      //    IO.unzip(scalaJSIRSourcesJar, trgDir)
-      //    (trgDir ** "*.scala").get.toSet
-      //  } (Set(scalaJSIRSourcesJar)).toSeq
-      //}.taskValue
+        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+          if (trgDir.exists)
+            IO.delete(trgDir)
+          IO.createDirectory(trgDir)
+          IO.unzip(scalaJSIRSourcesJar, trgDir)
+          (trgDir ** "*.scala").get.toSet
+        } (Set(scalaJSIRSourcesJar)).toSeq
+      }.taskValue,
   )
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
@@ -913,6 +918,42 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Test),
       BuildInfoPlugin.buildInfoDefaultSettings
     )
+
+  /** A sandbox to play with the Scala.js back-end of dotty.
+   *
+   *  This sandbox is compiled with dotty with support for Scala.js. It can be
+   *  used like any regular Scala.js project. In particular, `fastOptJS` will
+   *  produce a .js file, and `run` will run the JavaScript code with a JS VM.
+   *
+   *  Simply running `dotty/run -scalajs` without this sandbox is not very
+   *  useful, as that would not provide the linker and JS runners.
+   */
+  lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
+    enablePlugins(ScalaJSPlugin).
+    settings(commonBootstrappedSettings).
+    settings(
+      /* Remove the Scala.js compiler plugin for scalac, and enable the
+       * Scala.js back-end of dotty instead.
+       */
+      libraryDependencies := {
+        val deps = libraryDependencies.value
+        deps.filterNot(_.name.startsWith("scalajs-compiler")).map(_.withDottyCompat(scalaVersion.value))
+      },
+      scalacOptions += "-scalajs",
+
+      // The main class cannot be found automatically due to the empty inc.Analysis
+      mainClass in Compile := Some("hello.HelloWorld"),
+
+      scalaJSUseMainModuleInitializer := true,
+
+      /* Debug-friendly Scala.js optimizer options.
+       * In particular, typecheck the Scala.js IR found on the classpath.
+       */
+      scalaJSLinkerConfig ~= {
+        _.withCheckIR(true).withParallel(false)
+      }
+    ).
+    settings(compileWithDottySettings)
 
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
@@ -1239,48 +1280,6 @@ object Build {
     .settings(
       packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
     )
-
-  // /** A sandbox to play with the Scala.js back-end of dotty.
-  //  *
-  //  *  This sandbox is compiled with dotty with support for Scala.js. It can be
-  //  *  used like any regular Scala.js project. In particular, `fastOptJS` will
-  //  *  produce a .js file, and `run` will run the JavaScript code with a JS VM.
-  //  *
-  //  *  Simply running `dotty/run -scalajs` without this sandbox is not very
-  //  *  useful, as that would not provide the linker and JS runners.
-  //  */
-  // lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
-  //   enablePlugins(ScalaJSPlugin).
-  //   settings(commonNonBootstrappedSettings).
-  //   settings(
-  //     /* Remove the Scala.js compiler plugin for scalac, and enable the
-  //      * Scala.js back-end of dotty instead.
-  //      */
-  //     libraryDependencies ~= { deps =>
-  //       deps.filterNot(_.name.startsWith("scalajs-compiler"))
-  //     },
-  //     scalacOptions += "-scalajs",
-
-  //     // The main class cannot be found automatically due to the empty inc.Analysis
-  //     mainClass in Compile := Some("hello.world"),
-
-  //     // While developing the Scala.js back-end, it is very useful to see the trees dotc gives us
-  //     scalacOptions += "-Xprint:collectSuperCalls",
-
-  //     /* Debug-friendly Scala.js optimizer options.
-  //      * In particular, typecheck the Scala.js IR found on the classpath.
-  //      */
-  //     scalaJSOptimizerOptions ~= {
-  //       _.withCheckScalaJSIR(true).withParallel(false)
-  //     }
-  //   ).
-  //   settings(compileWithDottySettings).
-  //   settings(inConfig(Compile)(Seq(
-  //     /* Make sure jsDependencyManifest runs after compile, otherwise compile
-  //      * might remove the entire directory afterwards.
-  //      */
-  //     jsDependencyManifest := jsDependencyManifest.dependsOn(compile).value
-  //   )))
 
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 

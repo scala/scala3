@@ -79,10 +79,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   // Like in `ZipArchiveFileLookup` we assume that zips are immutable
   private val zipClassPathClasses: Seq[TypeName] = {
     val names = new mutable.ListBuffer[TypeName]
-    zipClassPaths.foreach { zipCp =>
-      val zipFile = new ZipFile(zipCp.zipFile)
-      classesFromZip(zipFile, names)
-    }
+    for (cp <- zipClassPaths)
+      classesFromZip(cp.zipFile, names)
     names
   }
 
@@ -110,8 +108,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       if (output.isDirectory) {
         classesFromDir(output.jpath, classNames)
       } else {
-        val zipFile = new ZipFile(output.file)
-        classesFromZip(zipFile, classNames)
+        classesFromZip(output.file, classNames)
       }
       classNames.flatMap { cls =>
         treesFromClassName(cls, id)
@@ -212,16 +209,22 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     names
   }
 
-  /** Adds the names of the classes that are defined in `zipFile` to `buffer`. */
-  private def classesFromZip(zipFile: ZipFile, buffer: mutable.ListBuffer[TypeName]): Unit = {
+  /** Adds the names of the classes that are defined in `file` to `buffer`. */
+  private def classesFromZip(file: File, buffer: mutable.ListBuffer[TypeName]): Unit = {
+    val zipFile = new ZipFile(file)
     try {
-      for {
-        entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
-        name = entry.getName
-        tastySuffix <- tastySuffixes.find(name.endsWith)
-      } buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
+      val entries = zipFile.entries()
+      while (entries.hasMoreElements) {
+        val entry = entries.nextElement()
+        val name = entry.getName
+        tastySuffixes.find(name.endsWith) match {
+          case Some(tastySuffix) =>
+            buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
+          case _ =>
+        }
+      }
     }
-  finally zipFile.close()
+    finally zipFile.close()
   }
 
   /** Adds the names of the classes that are defined in `dir` to `buffer`. */
