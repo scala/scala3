@@ -4,32 +4,108 @@ import dotty.tools.dotc.core.{Contexts, Names, Types}
 
 trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreImpl {
 
-  // ===== Types ====================================================
-
   def TypeDeco(tpe: Type): TypeAPI = new TypeAPI {
     def =:=(other: Type)(implicit ctx: Context): Boolean = tpe =:= other
     def <:<(other: Type)(implicit ctx: Context): Boolean = tpe <:< other
   }
 
-  def MethodTypeDeco(tpe: MethodType): MethodTypeAPI = new MethodTypeAPI {
-    def isErased: Boolean = tpe.isErasedMethod
-    def isImplicit: Boolean = tpe.isImplicitMethod
-    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
-    def paramTypes(implicit ctx: Context): List[Type] = tpe.paramInfos
-    def resultTpe(implicit ctx: Context): Type = tpe.resType
+  def ConstantTypeDeco(x: ConstantType): Type.ConstantTypeAPI = new Type.ConstantTypeAPI {
+    def value(implicit ctx: Context): Any = x.value
   }
 
-  def PolyTypeDeco(tpe: Types.PolyType): PolyTypeAPI = new PolyTypeAPI {
-    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
-    def paramTypes(implicit ctx: Context): List[TypeBounds] = tpe.paramInfos
-    def resultTpe(implicit ctx: Context): Type = tpe.resType
+  def SymRefDeco(x: SymRef): Type.SymRefAPI = new Type.SymRefAPI {
+    def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
   }
 
-  def TypeLambdaDeco(tpe: TypeLambda): TypeLambdaAPI = new TypeLambdaAPI {
-    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
-    def paramTypes(implicit ctx: Context): List[TypeBounds] = tpe.paramInfos
-    def resultTpe(implicit ctx: Context): Type = tpe.resType
+  def TermRefDeco(x: TermRef): Type.TermRefAPI = new Type.TermRefAPI {
+    def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
   }
+
+  def TypeRefDeco(x: TypeRef): Type.TypeRefAPI = new Type.TypeRefAPI {
+    def name(implicit ctx: Context): String = x.name.toString
+    def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
+  }
+
+  def SuperTypeDeco(x: SuperType): Type.SuperTypeAPI = new Type.SuperTypeAPI {
+    def thistpe(implicit ctx: Context): Type = x.thistpe
+    def supertpe(implicit ctx: Context): Type = x.supertpe
+  }
+
+  def RefinementDeco(x: Refinement): Type.RefinementAPI = new Type.RefinementAPI {
+    def parent(implicit ctx: Context): Type = x.parent
+    def name(implicit ctx: Context): String = x.refinedName.toString
+    def info(implicit ctx: Context): TypeOrBounds = x.refinedInfo
+  }
+
+  def AppliedTypeDeco(x: AppliedType): Type.AppliedTypeAPI = new Type.AppliedTypeAPI {
+    def tycon(implicit ctx: Context): Type = x.tycon
+    def args(implicit ctx: Context): List[TypeOrBounds] = x.args
+  }
+
+  def AnnotatedTypeDeco(x: AnnotatedType): Type.AnnotatedTypeAPI = new Type.AnnotatedTypeAPI {
+    def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
+    def annot(implicit ctx: Context): Term = x.annot.tree
+  }
+
+  def AndTypeDeco(x: AndType): Type.AndTypeAPI = new Type.AndTypeAPI {
+    def left(implicit ctx: Context): Type = x.tp1.stripTypeVar
+    def right(implicit ctx: Context): Type = x.tp2.stripTypeVar
+  }
+
+  def OrTypeDeco(x: OrType): Type.OrTypeAPI = new Type.OrTypeAPI {
+    def left(implicit ctx: Context): Type = x.tp1
+    def right(implicit ctx: Context): Type = x.tp2
+  }
+
+  def MatchTypeDeco(x: MatchType): Type.MatchTypeAPI = new Type.MatchTypeAPI {
+    def bound(implicit ctx: Context): Type = x.bound
+    def scrutinee(implicit ctx: Context): Type = x.scrutinee
+    def cases(implicit ctx: Context): List[Type] = x.cases
+  }
+
+  def ByNameTypeDeco(x: ByNameType): Type.ByNameTypeAPI = new Type.ByNameTypeAPI {
+    def underlying(implicit ctx: Context): Type = x.resType.stripTypeVar
+  }
+
+  def ParamRefDeco(x: ParamRef): Type.ParamRefAPI = new Type.ParamRefAPI {
+    def binder(implicit ctx: Context): LambdaType[TypeOrBounds] =
+      x.binder.asInstanceOf[LambdaType[TypeOrBounds]] // Cast to tpd
+    def paramNum(implicit ctx: Context): Int = x.paramNum
+  }
+
+  def ThisTypeDeco(x: ThisType): Type.ThisTypeAPI = new Type.ThisTypeAPI {
+    def underlying(implicit ctx: Context): Type = x.underlying
+  }
+
+  def RecursiveThisDeco(x: RecursiveThis): Type.RecursiveThisAPI = new Type.RecursiveThisAPI {
+    def binder(implicit ctx: Context): RecursiveType = x.binder
+  }
+
+  def RecursiveTypeDeco(x: RecursiveType): Type.RecursiveTypeAPI = new Type.RecursiveTypeAPI {
+    def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
+  }
+
+  def MethodTypeDeco(x: MethodType): Type.MethodTypeAPI = new Type.MethodTypeAPI {
+    def isErased: Boolean = x.isErasedMethod
+    def isImplicit: Boolean = x.isImplicitMethod
+    def paramNames(implicit ctx: Context): List[String] = x.paramNames.map(_.toString)
+    def paramTypes(implicit ctx: Context): List[Type] = x.paramInfos
+    def resType(implicit ctx: Context): Type = x.resType
+  }
+
+  def PolyTypeDeco(x: PolyType): Type.PolyTypeAPI = new Type.PolyTypeAPI {
+    def paramNames(implicit ctx: Contexts.Context): List[String] = x.paramNames.map(_.toString)
+    def paramBounds(implicit ctx: Contexts.Context): List[TypeBounds] = x.paramInfos
+    def resType(implicit ctx: Contexts.Context): Type = x.resType
+  }
+
+  def TypeLambdaDeco(x: TypeLambda): Type.TypeLambdaAPI = new Type.TypeLambdaAPI {
+    def paramNames(implicit ctx: Contexts.Context): List[String] = x.paramNames.map(_.toString)
+    def paramBounds(implicit ctx: Contexts.Context): List[TypeBounds] = x.paramInfos
+    def resType(implicit ctx: Contexts.Context): Type = x.resType
+  }
+
+  // ===== Types ====================================================
 
   object IsType extends IsTypeModule {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
@@ -48,10 +124,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def ConstantTypeDeco(x: ConstantType): ConstantTypeAPI = new ConstantTypeAPI {
-      def value(implicit ctx: Context): Any = x.value
-    }
-
     object ConstantType extends ConstantTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Constant] = x match {
         case Types.ConstantType(value) => Some(value)
@@ -68,10 +140,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
           }
         case _ => None
       }
-    }
-
-    def SymRefDeco(x: SymRef): SymRefAPI = new SymRefAPI {
-      def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
     }
 
     object SymRef extends SymRefModule {
@@ -96,10 +164,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def TermRefDeco(x: TermRef): TermRefAPI = new TermRefAPI {
-      def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
-    }
-
     object TermRef extends TermRefModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
@@ -122,11 +186,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def TypeRefDeco(x: TypeRef): TypeRefAPI = new TypeRefAPI {
-      def name(implicit ctx: Context): String = x.name.toString
-      def qualifier(implicit ctx: Context): TypeOrBounds = x.prefix
-    }
-
     object TypeRef extends TypeRefModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
@@ -145,11 +204,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def SuperTypeDeco(x: SuperType): SuperTypeAPI = new SuperTypeAPI {
-      def thistpe(implicit ctx: Context): Type = x.thistpe
-      def supertpe(implicit ctx: Context): Type = x.supertpe
-    }
-
     object SuperType extends SuperTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
@@ -164,11 +218,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def RefinementDeco(x: Refinement): RefinementAPI = new RefinementAPI {
-      def parent(implicit ctx: Context): Type = x.parent
-      def name(implicit ctx: Context): String = x.refinedName.toString
-      def info(implicit ctx: Context): TypeOrBounds = x.refinedInfo
-    }
 
     object Refinement extends RefinementModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
@@ -182,11 +231,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.AppliedType => Some(tpe)
         case _ => None
       }
-    }
-
-    def AppliedTypeDeco(x: AppliedType): AppliedTypeAPI = new AppliedTypeAPI {
-      def tycon(implicit ctx: Context): Type = x.tycon
-      def args(implicit ctx: Context): List[TypeOrBounds] = x.args
     }
 
     object AppliedType extends AppliedTypeModule {
@@ -203,11 +247,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def AnnotatedTypeDeco(x: AnnotatedType): AnnotatedTypeAPI = new AnnotatedTypeAPI {
-      def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
-      def annot(implicit ctx: Context): Term = x.annot.tree
-    }
-
     object AnnotatedType extends AnnotatedTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)] = x match {
         case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
@@ -220,11 +259,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.AndType => Some(tpe)
         case _ => None
       }
-    }
-
-    def AndTypeDeco(x: AndType): AndTypeAPI = new AndTypeAPI {
-      def left(implicit ctx: Context): Type = x.tp1.stripTypeVar
-      def right(implicit ctx: Context): Type = x.tp2.stripTypeVar
     }
 
     object AndType extends AndTypeModule {
@@ -241,11 +275,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def OrTypeDeco(x: OrType): OrTypeAPI = new OrTypeAPI {
-      def left(implicit ctx: Context): Type = x.tp1
-      def right(implicit ctx: Context): Type = x.tp2
-    }
-
     object OrType extends OrTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
@@ -258,12 +287,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.MatchType => Some(tpe)
         case _ => None
       }
-    }
-
-    def MatchTypeDeco(x: MatchType): MatchTypeAPI = new MatchTypeAPI {
-      def bound(implicit ctx: Context): Type = x.bound
-      def scrutinee(implicit ctx: Context): Type = x.scrutinee
-      def cases(implicit ctx: Context): List[Type] = x.cases
     }
 
     object MatchType extends MatchTypeModule {
@@ -280,10 +303,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def ByNameTypeDeco(x: ByNameType): ByNameTypeAPI = new ByNameTypeAPI {
-      def underlying(implicit ctx: Context): Type = x.resType.stripTypeVar
-    }
-
     object ByNameType extends ByNameTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ExprType(resType) => Some(resType.stripTypeVar)
@@ -297,12 +316,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.TermParamRef => Some(tpe)
         case _ => None
       }
-    }
-
-    def ParamRefDeco(x: ParamRef): ParamRefAPI = new ParamRefAPI {
-      def binder(implicit ctx: Context): LambdaType[TypeOrBounds] =
-        x.binder.asInstanceOf[LambdaType[TypeOrBounds]] // Cast to tpd
-      def paramNum(implicit ctx: Context): Int = x.paramNum
     }
 
     object ParamRef extends ParamRefModule {
@@ -323,10 +336,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def ThisTypeDeco(x: ThisType): ThisTypeAPI = new ThisTypeAPI {
-      def underlying(implicit ctx: Context): Type = x.underlying
-    }
-
     object ThisType extends ThisTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ThisType(tp) => Some(tp)
@@ -339,10 +348,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.RecThis => Some(tpe)
         case _ => None
       }
-    }
-
-    def RecursiveThisDeco(x: RecursiveThis): RecursiveThisAPI = new RecursiveThisAPI {
-      def binder(implicit ctx: Context): RecursiveType = x.binder
     }
 
     object RecursiveThis extends RecursiveThisModule {
@@ -359,10 +364,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def RecursiveTypeDeco(x: RecursiveType): RecursiveTypeAPI = new RecursiveTypeAPI {
-      def underlying(implicit ctx: Context): Type = x.underlying.stripTypeVar
-    }
-
     object RecursiveType extends RecursiveTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case tp: Types.RecType => Some(tp.underlying.stripTypeVar)
@@ -375,12 +376,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.MethodType => Some(tpe)
         case _ => None
       }
-    }
-
-    def MethodTypeDeco(x: MethodType): MethodTypeAPI = new MethodTypeAPI {
-      def paramNames(implicit ctx: Context): List[String] = x.paramNames.map(_.toString)
-      def paramTypes(implicit ctx: Context): List[Type] = x.paramInfos
-      def resType(implicit ctx: Context): Type = x.resType
     }
 
     object MethodType extends MethodTypeModule {
@@ -397,12 +392,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       }
     }
 
-    def PolyTypeDeco(x: PolyType): PolyTypeAPI = new PolyTypeAPI {
-      def paramNames(implicit ctx: Contexts.Context): List[String] = x.paramNames.map(_.toString)
-      def paramBounds(implicit ctx: Contexts.Context): List[TypeBounds] = x.paramInfos
-      def resType(implicit ctx: Contexts.Context): Type = x.resType
-    }
-
     object PolyType extends PolyTypeModule {
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
         case x: PolyType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
@@ -415,12 +404,6 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
         case tpe: Types.TypeLambda => Some(tpe)
         case _ => None
       }
-    }
-
-    def TypeLambdaDeco(x: TypeLambda): TypeLambdaAPI = new TypeLambdaAPI {
-      def paramNames(implicit ctx: Contexts.Context): List[String] = x.paramNames.map(_.toString)
-      def paramBounds(implicit ctx: Contexts.Context): List[TypeBounds] = x.paramInfos
-      def resType(implicit ctx: Contexts.Context): Type = x.resType
     }
 
     object TypeLambda extends TypeLambdaModule {

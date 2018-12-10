@@ -3,13 +3,50 @@ package reflect
 
 trait TreeOps extends Core {
 
+  // Decorators
+
+  implicit def TreeDeco(tree: Tree): TreeAPI
+  implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
+  implicit def ImportDeco(imp: Import): ImportAPI
+  implicit def DefinitionDeco(definition: Definition): DefinitionAPI
+  implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
+  implicit def DefDefDeco(ddef: DefDef): DefDefAPI
+  implicit def ValDefDeco(vdef: ValDef): ValDefAPI
+  implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
+  implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
+  implicit def TermDeco(term: Term): TermAPI
+  implicit def IdentDeco(ident: Term.Ident): Term.IdentAPI
+  implicit def SelectDeco(select: Term.Select): Term.SelectAPI
+  implicit def LiteralDeco(x: Term.Literal): Term.LiteralAPI
+  implicit def ThisDeco(x: Term.This): Term.ThisAPI
+  implicit def NewDeco(x: Term.New): Term.NewAPI
+  implicit def NamedArgDeco(x: Term.NamedArg): Term.NamedArgAPI
+  implicit def ApplyDeco(x: Term.Apply): Term.ApplyAPI
+  implicit def TypeApplyDeco(x: Term.TypeApply): Term.TypeApplyAPI
+  implicit def SuperDeco(x: Term.Super): Term.SuperAPI
+  implicit def TypedDeco(x: Term.Typed): Term.TypedAPI
+  implicit def AssignDeco(x: Term.Assign): Term.AssignAPI
+  implicit def BlockDeco(x: Term.Block): Term.BlockAPI
+  implicit def LambdaDeco(x: Term.Lambda): Term.LambdaAPI
+  implicit def IfDeco(x: Term.If): Term.IfAPI
+  implicit def MatchDeco(x: Term.Match): Term.MatchAPI
+  implicit def TryDeco(x: Term.Try): Term.TryAPI
+  implicit def ReturnDeco(x: Term.Return): Term.ReturnAPI
+  implicit def RepeatedDeco(x: Term.Repeated): Term.RepeatedAPI
+  implicit def InlinedDeco(x: Term.Inlined): Term.InlinedAPI
+  implicit def SelectOuterDeco(x: Term.SelectOuter): Term.SelectOuterAPI
+  implicit def WhileDeco(x: Term.While): Term.WhileAPI
+
+  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree
+
+  // ----- Tree -----------------------------------------------------
+
   trait TreeAPI {
     /** Position in the source code */
     def pos(implicit ctx: Context): Position
 
     def symbol(implicit ctx: Context): Symbol
   }
-  implicit def TreeDeco(tree: Tree): TreeAPI
 
   val IsPackageClause: IsPackageClauseModule
   abstract class IsPackageClauseModule {
@@ -22,9 +59,7 @@ trait TreeOps extends Core {
   }
 
   trait PackageClauseAPI {
-
   }
-  implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
 
   // ----- Statements -----------------------------------------------
 
@@ -37,7 +72,6 @@ trait TreeOps extends Core {
     def expr(implicit ctx: Context): Term
     def selector(implicit ctx: Context): List[ImportSelector]
   }
-  implicit def ImportDeco(imp: Import): ImportAPI
 
   // ----- Definitions ----------------------------------------------
 
@@ -49,7 +83,6 @@ trait TreeOps extends Core {
   trait DefinitionAPI {
     def name(implicit ctx: Context): String
   }
-  implicit def DefinitionDeco(definition: Definition): DefinitionAPI
 
   // ClassDef
 
@@ -71,7 +104,6 @@ trait TreeOps extends Core {
 
     def symbol(implicit ctx: Context): ClassSymbol
   }
-  implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
 
   // DefDef
 
@@ -93,7 +125,6 @@ trait TreeOps extends Core {
 
     def symbol(implicit ctx: Context): DefSymbol
   }
-  implicit def DefDefDeco(ddef: DefDef): DefDefAPI
 
   // ValDef
 
@@ -113,7 +144,6 @@ trait TreeOps extends Core {
 
     def symbol(implicit ctx: Context): ValSymbol
   }
-  implicit def ValDefDeco(vdef: ValDef): ValDefAPI
 
   // TypeDef
 
@@ -131,7 +161,6 @@ trait TreeOps extends Core {
     def rhs(implicit ctx: Context): TypeOrBoundsTree
     def symbol(implicit ctx: Context): TypeSymbol
   }
-  implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
 
   // PackageDef
 
@@ -145,7 +174,6 @@ trait TreeOps extends Core {
     def members(implicit ctx: Context): List[Statement]
     def symbol(implicit ctx: Context): PackageSymbol
   }
-  implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
 
   val PackageDef: PackageDefModule
   abstract class PackageDefModule {
@@ -160,7 +188,6 @@ trait TreeOps extends Core {
     def underlyingArgument(implicit ctx: Context): Term
     def underlying(implicit ctx: Context): Term
   }
-  implicit def TermDeco(term: Term): TermAPI
 
   val IsTerm: IsTermModule
   abstract class IsTermModule {
@@ -183,7 +210,6 @@ trait TreeOps extends Core {
     trait IdentAPI {
       def name(implicit ctx: Context): String
     }
-    implicit def IdentDeco(ident: Ident): IdentAPI
 
     /** Scala term identifier */
     val Ident: IdentModule
@@ -203,7 +229,6 @@ trait TreeOps extends Core {
       def name(implicit ctx: Context): String
       def signature(implicit ctx: Context): Option[Signature]
     }
-    implicit def SelectDeco(select: Select): SelectAPI
 
     /** Scala term selection */
     val Select: SelectModule
@@ -221,7 +246,6 @@ trait TreeOps extends Core {
     trait LiteralAPI {
       def constant(implicit ctx: Context): Constant
     }
-    implicit def LiteralDeco(x: Literal): LiteralAPI
 
     /** Scala literal constant */
     val Literal: LiteralModule
@@ -238,7 +262,6 @@ trait TreeOps extends Core {
     trait ThisAPI {
       def id(implicit ctx: Context): Option[Id]
     }
-    implicit def ThisDeco(x: This): ThisAPI
 
     /** Scala `this` or `this[id]` */
     val This: ThisModule
@@ -256,7 +279,6 @@ trait TreeOps extends Core {
     trait NewAPI {
       def tpt(implicit ctx: Context): TypeTree
     }
-    implicit def NewDeco(x: New): NewAPI
 
     /** Scala `new` */
     val New: NewModule
@@ -275,7 +297,6 @@ trait TreeOps extends Core {
       def name(implicit ctx: Context): String
       def value(implicit ctx: Context): Term
     }
-    implicit def NamedArgDeco(x: NamedArg): NamedArgAPI
 
     /** Scala named argument `x = y` in argument position */
     val NamedArg: NamedArgModule
@@ -294,7 +315,6 @@ trait TreeOps extends Core {
       def fun(implicit ctx: Context): Term
       def args(implicit ctx: Context): List[Term]
     }
-    implicit def ApplyDeco(x: Apply): ApplyAPI
 
     /** Scala parameter application */
     val Apply: ApplyModule
@@ -313,7 +333,6 @@ trait TreeOps extends Core {
       def fun(implicit ctx: Context): Term
       def args(implicit ctx: Context): List[TypeTree]
     }
-    implicit def TypeApplyDeco(x: TypeApply): TypeApplyAPI
 
     /** Scala type parameter application */
     val TypeApply: TypeApplyModule
@@ -332,7 +351,6 @@ trait TreeOps extends Core {
       def qualifier(implicit ctx: Context): Term
       def id(implicit ctx: Context): Option[Id]
     }
-    implicit def SuperDeco(x: Super): SuperAPI
 
     /** Scala `x.super` or `x.super[id]` */
     val Super: SuperModule
@@ -351,7 +369,6 @@ trait TreeOps extends Core {
       def expr(implicit ctx: Context): Term
       def tpt(implicit ctx: Context): Term
     }
-    implicit def TypedDeco(x: Typed): TypedAPI
 
     /** Scala ascription `x: T` */
     val Typed: TypedModule
@@ -370,7 +387,6 @@ trait TreeOps extends Core {
       def lhs(implicit ctx: Context): Term
       def rhs(implicit ctx: Context): Term
     }
-    implicit def AssignDeco(x: Assign): AssignAPI
 
     /** Scala assign `x = y` */
     val Assign: AssignModule
@@ -389,7 +405,6 @@ trait TreeOps extends Core {
       def statements(implicit ctx: Context): List[Statement]
       def expr(implicit ctx: Context): Term
     }
-    implicit def BlockDeco(x: Block): BlockAPI
 
     /** Scala code block `{ stat0; ...; statN; expr }` term */
     val Block: BlockModule
@@ -408,7 +423,6 @@ trait TreeOps extends Core {
       def meth(implicit ctx: Context): Term
       def tptOpt(implicit ctx: Context): Option[TypeTree]
     }
-    implicit def LambdaDeco(x: Lambda): LambdaAPI
 
     val Lambda: LambdaModule
     abstract class LambdaModule {
@@ -426,7 +440,6 @@ trait TreeOps extends Core {
       def thenp(implicit ctx: Context): Term
       def elsep(implicit ctx: Context): Term
     }
-    implicit def IfDeco(x: If): IfAPI
 
     /** Scala `if`/`else` term */
     val If: IfModule
@@ -445,7 +458,6 @@ trait TreeOps extends Core {
       def scrutinee(implicit ctx: Context): Term
       def cases(implicit ctx: Context): List[CaseDef]
     }
-    implicit def MatchDeco(x: Match): MatchAPI
 
     /** Scala `match` term */
     val Match: MatchModule
@@ -465,7 +477,6 @@ trait TreeOps extends Core {
       def cases(implicit ctx: Context): List[CaseDef]
       def finalizer(implicit ctx: Context): Option[Term]
     }
-    implicit def TryDeco(x: Try): TryAPI
 
     /** Scala `try`/`catch`/`finally` term */
     val Try: TryModule
@@ -483,7 +494,6 @@ trait TreeOps extends Core {
     trait ReturnAPI {
       def expr(implicit ctx: Context): Term
     }
-    implicit def ReturnDeco(x: Return): ReturnAPI
 
     /** Scala local `return` */
     val Return: ReturnModule
@@ -501,7 +511,6 @@ trait TreeOps extends Core {
     trait RepeatedAPI {
       def elems(implicit ctx: Context): List[Term]
     }
-    implicit def RepeatedDeco(x: Repeated): RepeatedAPI
 
     val Repeated: RepeatedModule
     abstract class RepeatedModule {
@@ -519,7 +528,6 @@ trait TreeOps extends Core {
       def bindings(implicit ctx: Context): List[Definition]
       def body(implicit ctx: Context): Term
     }
-    implicit def InlinedDeco(x: Inlined): InlinedAPI
 
     val Inlined: InlinedModule
     abstract class InlinedModule {
@@ -537,7 +545,6 @@ trait TreeOps extends Core {
       def level(implicit ctx: Context): Int
       def tpe(implicit ctx: Context): Type
     }
-    implicit def SelectOuterDeco(x: SelectOuter): SelectOuterAPI
 
     val SelectOuter: SelectOuterModule
     abstract class SelectOuterModule {
@@ -554,7 +561,6 @@ trait TreeOps extends Core {
       def cond(implicit ctx: Context): Term
       def body(implicit ctx: Context): Term
     }
-    implicit def WhileDeco(x: While): WhileAPI
 
     val While: WhileModule
     abstract class WhileModule {
@@ -563,5 +569,4 @@ trait TreeOps extends Core {
     }
   }
 
-  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree
 }
