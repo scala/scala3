@@ -4,7 +4,7 @@ package object groups {
   }
 
   object Semigroup {
-    def instance[A](f: (A, A) => A): Semigroup[A] =
+    def inst[A](f: (A, A) => A): Semigroup[A] =
       new Semigroup[A] {
         def combine(x: A, y: A): A = f(x, y)
       }
@@ -37,7 +37,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[First[A]] = ga // error: overriding
     def unwrap[G[_], A](gfa: G[First[A]]): G[A] = gfa
     implicit def firstSemigroup[A]: Semigroup[First[A]] =
-      Semigroup.instance((x, y) => x)
+      Semigroup.inst((x, y) => x)
   }
 
   opaque type Last[A] = A
@@ -45,6 +45,6 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[Last[A]] = ga // error: overriding
     def unwrap[G[_], A](gfa: G[Last[A]]): G[A] = gfa
     implicit def lastSemigroup[A]: Semigroup[Last[A]] =
-      Semigroup.instance((x, y) => y)
+      Semigroup.inst((x, y) => y)
   }
 }

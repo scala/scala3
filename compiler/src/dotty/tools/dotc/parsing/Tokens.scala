@@ -179,7 +179,8 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val WITNESS = 64;          enter(WITNESS, "witness")
+  final val INSTANCE = 64;         enter(INSTANCE, "instance")
+  final val WITNESS = 65;          enter(WITNESS, "witness")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
