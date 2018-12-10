@@ -263,7 +263,12 @@ object Types {
     }
 
     /** Is this type exactly `JavaNull` (no vars, aliases, refinements etc allowed)? */
-    def isJavaNullType(implicit ctx: Context): Boolean = this == defn.JavaNullType
+    def isJavaNullType(implicit ctx: Context): Boolean = {
+      // We can't do `this == defn.JavaNull` because when trees are unpickled new references
+      // to `JavaNull` could be created that are different from `defn.JavaNull`.
+      // Instead, we compare the symbol.
+      this.isDirectRef(defn.JavaNull)
+    }
 
     /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
     def isJavaNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
