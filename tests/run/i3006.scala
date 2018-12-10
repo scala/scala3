@@ -1,25 +1,25 @@
 class Foo {
   def foo() = {
-    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     f()
   }
   def bar() = {
-    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     f()
   }
   def baz() = {
-    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     f()
   }
 }
 
 class Bar {
   def foo() = {
-    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     f()
   }
   def bar() = {
-    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName
+    def f() = Thread.currentThread.getStackTrace.apply(1).getMethodName.nn
     f()
   }
 }

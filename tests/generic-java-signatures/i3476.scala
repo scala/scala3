@@ -1,9 +1,9 @@
 object Test {
 
   def hasGenericSignature(cls: Class[_], methName: String): Boolean = {
-    cls.getDeclaredMethods().find(_.getName.contains(methName)) match {
+    cls.getDeclaredMethods().find(_.nn.getName.contains(methName)) match {
       case None => throw new NoSuchMethodError(s"No $methName in ${cls.getName}")
-      case Some(meth) => meth.getTypeParameters.nonEmpty
+      case Some(meth) => meth.nn.getTypeParameters.nonEmpty
     }
   }
 
