@@ -167,8 +167,8 @@ case class Site(
   private def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): DefaultParams = {
     val pathFromRoot = stripRoot(pageLocation)
     val baseUrl: String = {
-      val rootLen = root.toPath.normalize.getNameCount
-      val assetLen = pageLocation.toPath.normalize.getNameCount
+      val rootLen = root.toPath.toAbsolutePath.normalize.getNameCount
+      val assetLen = pageLocation.toPath.toAbsolutePath.normalize.getNameCount
       "../" * (assetLen - rootLen + additionalDepth) + "."
     }
 
