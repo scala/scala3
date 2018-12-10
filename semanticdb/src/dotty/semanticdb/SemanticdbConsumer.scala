@@ -95,7 +95,8 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           case _                  => false
         }
 
-        def isDefaultGetter: Boolean = symbol.name.contains(tpnme.DEFAULT_GETTER.toString)
+        def isDefaultGetter: Boolean =
+          symbol.name.contains(tpnme.DEFAULT_GETTER.toString)
 
         def isParameter: Boolean = symbol.flags.is(Flags.Param)
 
@@ -388,12 +389,12 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             )
       }
 
-      val reserverdFunctions: List[String] = "apply" :: "unapply" :: Nil
+      val reservedFunctions: List[String] = "apply" :: "unapply" :: Nil
       def addOccurenceTree(tree: Tree,
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false): Unit = {
-        if (type_symbol != s.SymbolOccurrence.Role.DEFINITION && reserverdFunctions
+        if (type_symbol != s.SymbolOccurrence.Role.DEFINITION && reservedFunctions
               .contains(tree.symbol.name))
           return
         if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(
@@ -566,68 +567,109 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             super.traverseTree(tree)
           }
           case ClassDef(classname, constr, parents, selfopt, statements) => {
-            // we first add the class to the symbol list
-            addOccurenceTree(tree,
-                             s.SymbolOccurrence.Role.DEFINITION,
-                             range(tree, tree.symbol.pos, tree.symbol.name))
-            //println("constr symbol pos: ", constr.symbol.pos.startColumn, constr.symbol.pos.endColumn)
-            //println("constr pos: ", constr.pos.startColumn, constr.pos.endColumn)
-            // then the constructor
-            if (!constr.isUserCreated) {
-              fittedInitClassRange = Some(
-                s.Range(tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn + classname.length + 1,
-                        tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn + classname.length + 1))
-            } else {
-              fittedInitClassRange = Some(
-                s.Range(constr.symbol.pos.startLine,
-                        constr.symbol.pos.startColumn,
-                        constr.symbol.pos.endLine,
-                        constr.symbol.pos.endColumn))
-            }
-            traverseTree(constr)
-            fittedInitClassRange = None
+            println("\n")
+            val resolvedClassSymbol = tree.symbol.asClass.companionClass
+            val resolvedObjectSymbol = tree.symbol.asClass.companionModule
+            println(tree.symbol.flags)
+            if (resolvedClassSymbol != None && resolvedClassSymbol.get.flags.isCase) {
+              // case class
+              if (resolvedClassSymbol.get == tree.symbol) {
+                println("YES")
+              // we first add the class to the symbol list
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.DEFINITION,
+                               range(tree, tree.symbol.pos, tree.symbol.name))
 
-            // we add the parents to the symbol list
-            forceAddBecauseParents = true
-            parents.foreach(_ match {
-              case IsTypeTree(t) => traverseTypeTree(t)
-              case IsTerm(t) => {
-                traverseTree(t)
+                fittedInitClassRange = Some(
+                  s.Range(constr.symbol.pos.startLine,
+                          constr.symbol.pos.startColumn,
+                          constr.symbol.pos.endLine,
+                          constr.symbol.pos.endColumn))
+
+              traverseTree(constr)
+              fittedInitClassRange = None
+              } else {
+                println("NO")
               }
-            })
-            forceAddBecauseParents = false
+            } else if (tree.symbol.flags.isObject && tree.symbol.flags.isCase) {
+                println("YES object")
+              // we first add the class to the symbol list
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.DEFINITION,
+                               range(tree, tree.symbol.pos, tree.symbol.name))
 
-            selfopt match {
-              case Some(vdef @ ValDef(name, _, _)) if name != "_" => {
-                // To find the current position, we will heuristically
-                // reparse the source code.
-                // The process is done in three steps:
-                // 1) Find a position before the '{' of the self but after any
-                //  non related '{'. Here, it will be the largest end pos of a parent
-                // 2) Find the first '{'
-                // 3) Iterate until the character we are seeing is a letter
-                val startPosSearch: Int = parents.foldLeft(tree.pos.endColumn)(
-                  (old: Int, ct: TermOrTypeTree) =>
+                fittedInitClassRange = Some(
+                  s.Range(constr.symbol.pos.startLine,
+                          constr.symbol.pos.startColumn,
+                          constr.symbol.pos.endLine,
+                          constr.symbol.pos.endColumn))
+
+              traverseTree(constr)
+              fittedInitClassRange = None
+                println("NO object")
+            } else {
+              // we first add the class to the symbol list
+              addOccurenceTree(tree,
+                               s.SymbolOccurrence.Role.DEFINITION,
+                               range(tree, tree.symbol.pos, tree.symbol.name))
+              //println("constr symbol pos: ", constr.symbol.pos.startColumn, constr.symbol.pos.endColumn)
+              //println("constr pos: ", constr.pos.startColumn, constr.pos.endColumn)
+              // then the constructor
+              if (!constr.isUserCreated) {
+                fittedInitClassRange = Some(
+                  s.Range(tree.symbol.pos.startLine,
+                          tree.symbol.pos.startColumn + classname.length + 1,
+                          tree.symbol.pos.startLine,
+                          tree.symbol.pos.startColumn + classname.length + 1))
+              } else {
+                fittedInitClassRange = Some(
+                  s.Range(constr.symbol.pos.startLine,
+                          constr.symbol.pos.startColumn,
+                          constr.symbol.pos.endLine,
+                          constr.symbol.pos.endColumn))
+              }
+              traverseTree(constr)
+              fittedInitClassRange = None
+
+              // we add the parents to the symbol list
+              forceAddBecauseParents = true
+              parents.foreach(_ match {
+                case IsTypeTree(t) => traverseTypeTree(t)
+                case IsTerm(t) => {
+                  traverseTree(t)
+                }
+              })
+              forceAddBecauseParents = false
+
+              selfopt match {
+                case Some(vdef @ ValDef(name, _, _)) if name != "_" => {
+                  // To find the current position, we will heuristically
+                  // reparse the source code.
+                  // The process is done in three steps:
+                  // 1) Find a position before the '{' of the self but after any
+                  //  non related '{'. Here, it will be the largest end pos of a parent
+                  // 2) Find the first '{'
+                  // 3) Iterate until the character we are seeing is a letter
+                  val startPosSearch: Int = parents.foldLeft(
+                    tree.pos.endColumn)((old: Int, ct: TermOrTypeTree) =>
                     ct match {
                       case IsTerm(t) if t.pos.endColumn < old => t.pos.endColumn
-                      case _ => old
+                      case _                                  => old
                   })
-                var posColumn = sourceCode.indexOf("{", startPosSearch)
-                while (!sourceCode(posColumn).isLetter && posColumn < sourceCode.length) posColumn += 1
+                  var posColumn = sourceCode.indexOf("{", startPosSearch)
+                  while (!sourceCode(posColumn).isLetter && posColumn < sourceCode.length) posColumn += 1
 
-                addSelfDefinition(name,
-                                  s.Range(vdef.pos.startLine,
-                                          posColumn,
-                                          vdef.pos.endLine,
-                                          posColumn + name.length))
+                  addSelfDefinition(name,
+                                    s.Range(vdef.pos.startLine,
+                                            posColumn,
+                                            vdef.pos.endLine,
+                                            posColumn + name.length))
+                }
+                case _ =>
               }
-              case _ =>
-            }
-            selfopt.foreach(traverseTree)
 
-            statements.foreach(traverseTree)
+              statements.foreach(traverseTree)
+            }
           }
           case IsDefinition(cdef) => {
 

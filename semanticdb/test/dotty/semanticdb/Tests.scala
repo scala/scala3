@@ -196,7 +196,7 @@ class Tests {
   //def testObjects(): Unit = checkFile("example/Objects.scala")
   //@Test def testOverrides(): Unit = checkFile("example/Overrides.scala")
   //WIP @Test def testPrefixes(): Unit = checkFile("example/Prefixes.scala")
-  @Test def testSelfs(): Unit = checkFile("example/Selfs.scala")
+  //@Test def testSelfs(): Unit = checkFile("example/Selfs.scala")
   //@Test def testSelfUse(): Unit = checkFile("example/SelfUse.scala")
   //WIP @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //WIP @Test def testTraits(): Unit = checkFile("example/Traits.scala")
@@ -205,5 +205,6 @@ class Tests {
   //@Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
   //@Test def testNew(): Unit = checkFile("example/New.scala")
   //@Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
-  //@Test def testCase(): Unit = checkFile("example/Case.scala")
+  @Test def testCase(): Unit = checkFile("example/Case.scala")
+  //@Test def testApply(): Unit = checkFile("example/Apply.scala")
 }

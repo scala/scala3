@@ -7,3 +7,6 @@ class CaseTest {
     case None => 0
   }
 }
+
+case class CaseClass(x: Int)
+case object CaseObject
