@@ -11,7 +11,9 @@ import scala.meta.internal.{semanticdb => s}
 import dotty.semanticdb.Scala.{Descriptor => d}
 import dotty.semanticdb.Scala._
 
-class SemanticdbConsumer extends TastyConsumer {
+import scala.io.Source
+
+class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
   var stack: List[String] = Nil
 
   val semantic: s.TextDocument = s.TextDocument()
@@ -23,6 +25,8 @@ class SemanticdbConsumer extends TastyConsumer {
   val package_definitions: Set[Tuple2[String, Int]] = Set()
   val symbolsCache: HashMap[(String, s.Range), String] = HashMap()
   var local_offset: Int = 0
+
+  val sourceCode = Source.fromFile(sourceFile.toFile).mkString
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -373,7 +377,6 @@ class SemanticdbConsumer extends TastyConsumer {
         if (symbolPathsMap.contains(key)) return
         if (is_global) {
           symbolPathsMap += key
-          println("duplicates", key)
         }
         println(symbol_path, range, symbol.owner.flags, is_global)
         occurrences =
@@ -591,34 +594,34 @@ class SemanticdbConsumer extends TastyConsumer {
             parents.foreach(_ match {
               case IsTypeTree(t) => traverseTypeTree(t)
               case IsTerm(t) => {
-                println(t.pos.startColumn, t.pos.endColumn)
                 traverseTree(t)
               }
             })
             forceAddBecauseParents = false
 
             selfopt match {
-              case Some(vdef @ ValDef(name, _, _)) => {
-                val posColumn: Int = parents.foldLeft(vdef.pos.startColumn)(
+              case Some(vdef @ ValDef(name, _, _)) if name != "_" => {
+                // To find the current position, we will heuristically
+                // reparse the source code.
+                // The process is done in three steps:
+                // 1) Find a position before the '{' of the self but after any
+                //  non related '{'. Here, it will be the largest end pos of a parent
+                // 2) Find the first '{'
+                // 3) Iterate until the character we are seeing is a letter
+                val startPosSearch: Int = parents.foldLeft(tree.pos.endColumn)(
                   (old: Int, ct: TermOrTypeTree) =>
                     ct match {
-                      case IsTerm(t) =>
-                        if (t.pos.endColumn + 3 < old) { t.pos.endColumn + 3 } else {
-                          old
-                        }
+                      case IsTerm(t) if t.pos.endColumn < old => t.pos.endColumn
                       case _ => old
                   })
-                println(posColumn)
-                println(vdef)
-                println(vdef.pos.startColumn,
-                        tree.pos.startColumn,
-                        tree.pos.endColumn)
+                var posColumn = sourceCode.indexOf("{", startPosSearch)
+                while (!sourceCode(posColumn).isLetter && posColumn < sourceCode.length) posColumn += 1
+
                 addSelfDefinition(name,
                                   s.Range(vdef.pos.startLine,
                                           posColumn,
                                           vdef.pos.endLine,
                                           posColumn + name.length))
-                println(name)
               }
               case _ =>
             }

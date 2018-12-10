@@ -129,7 +129,7 @@ class Tests {
       scalac
     } else {
       val (classpaths, classnames) = tasty_classes.unzip
-      val sdbconsumer = new SemanticdbConsumer
+      val sdbconsumer = new SemanticdbConsumer(scalaFile)
 
       val _ = ConsumeTasty(classpaths.head, classnames, sdbconsumer)
       sdbconsumer.toSemanticdb(scalac.text)
@@ -191,12 +191,12 @@ class Tests {
   //@Test def testLocals(): Unit = checkFile("example/Locals.scala")
   //@Test def testMacroAnnotations(): Unit = checkFile("example/MacroAnnotations.scala")
   //WIP(assert) @Test def testMethods(): Unit = checkFile("example/Methods.scala")
-  @Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
+  //@Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
   //@Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
   //def testObjects(): Unit = checkFile("example/Objects.scala")
   //@Test def testOverrides(): Unit = checkFile("example/Overrides.scala")
   //WIP @Test def testPrefixes(): Unit = checkFile("example/Prefixes.scala")
-  //@Test def testSelfs(): Unit = checkFile("example/Selfs.scala")
+  @Test def testSelfs(): Unit = checkFile("example/Selfs.scala")
   //@Test def testSelfUse(): Unit = checkFile("example/SelfUse.scala")
   //WIP @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //WIP @Test def testTraits(): Unit = checkFile("example/Traits.scala")
@@ -206,13 +206,4 @@ class Tests {
   //@Test def testNew(): Unit = checkFile("example/New.scala")
   //@Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
   //@Test def testCase(): Unit = checkFile("example/Case.scala")
-
-
-  def testOutput(className: String, expected: String): Unit = {
-    val out = new StringBuilder
-    ConsumeTasty(tastyClassDirectory, List(className), new SemanticdbConsumer {
-      override def println(x: Any): Unit = out.append(x).append(";")
-    })
-    assertEquals(expected, out.result())
-  }
 }
