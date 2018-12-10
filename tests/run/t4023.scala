@@ -15,9 +15,9 @@ object Test {
   // sortBy(_.getName) introduces additional classes which we don't want to see in C,
   // so we call sortBy outside of C.
   object TestHelper {
-    val valuesTry1 = C.classes1.sortBy(_.getName)
-    val valuesTry2 = C.classes2.sortBy(_.getName)
-    val valuesTry3 = C.classes3.sortBy(_.getName)
+    val valuesTry1 = C.classes1.sortBy(_.nn.getName.nn)
+    val valuesTry2 = C.classes2.sortBy(_.nn.getName.nn)
+    val valuesTry3 = C.classes3.sortBy(_.nn.getName.nn)
   }
 
   def main(args: Array[String]): Unit = {

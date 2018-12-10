@@ -23,7 +23,7 @@ object Test {
     List(
       // FIXME: breaks ycheck, broken type inferencing. Gets a large union type
       // instead of list of Number
-      List(BigDecimal(x, java.math.MathContext.UNLIMITED): Number),
+      List(BigDecimal(x, java.math.MathContext.UNLIMITED.nn): Number),
       List(x),
       if (x.isValidDouble) List(new java.lang.Double(x.toDouble)) else Nil,
       if (x.isValidFloat) List(new java.lang.Float(x.toFloat)) else Nil,

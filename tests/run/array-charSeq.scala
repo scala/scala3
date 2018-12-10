@@ -12,17 +12,17 @@ object Test {
     }
 
     0 until chars.length foreach { i =>
-      println("sub(%s, %s) == '%s'".format(i, chars.length, chars.subSequence(i, chars.length)))
-      println("sub(%s, %s) == '%s'".format(0, i, chars.subSequence(0, i)))
+      println("sub(%s, %s) == '%s'".format(i, chars.length, chars.subSequence(i, chars.length).nn))
+      println("sub(%s, %s) == '%s'".format(0, i, chars.subSequence(0, i).nn))
     }
     if (chars.length >= 2)
-      check(chars.subSequence(1, chars.length - 1))
+      check(chars.subSequence(1, chars.length - 1).nn)
   }
 
   def main(args: Array[String]): Unit = {
     while (xs.length > 0) {
       check(xs)
-      xs = xs.subSequence(0, xs.length - 1)
+      xs = xs.subSequence(0, xs.length - 1).nn
     }
   }
 }
