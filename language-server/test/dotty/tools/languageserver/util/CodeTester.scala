@@ -150,6 +150,21 @@ class CodeTester(projects: List[Project]) {
     doAction(new CodeRename(marker, newName, expected, withOverridden)) // TODO apply changes to the sources and positions
 
   /**
+   * Asks the language server whether a rename operation can be performed at `range`. If `success`
+   * is set, expect the language server to indicate that the operation can be performed.
+   *
+   * Each of the individual positions of `range` will be tried. When `result` is true, we expect
+   * that the language server will return a range that is equal to `range`.
+   *
+   * @param range   The range of position to tests
+   * @param success Whether the language server should accept the operation.
+   *
+   * @see dotty.tools.languageserver.util.actions.PrepareRename
+   */
+  def prepareRename(range: CodeRange, success: Boolean): this.type =
+    doAction(new PrepareRename(range, success))
+
+  /**
    * Queries for all the symbols referenced in the source file in `marker`, verifies that they match
    * `expected`.
    *

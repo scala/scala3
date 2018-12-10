@@ -17,7 +17,7 @@ import scala.util.control.NonFatal
 import scala.io.Codec
 
 import dotc._
-import ast.{Trees, tpd}
+import ast.{Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
@@ -191,7 +191,6 @@ class DottyLanguageServer extends LanguageServer
     c.setDocumentHighlightProvider(true)
     c.setDocumentSymbolProvider(true)
     c.setDefinitionProvider(true)
-    c.setRenameProvider(true)
     c.setHoverProvider(true)
     c.setWorkspaceSymbolProvider(true)
     c.setReferencesProvider(true)
@@ -201,6 +200,18 @@ class DottyLanguageServer extends LanguageServer
       /* triggerCharacters = */ List(".").asJava))
     c.setSignatureHelpProvider(new SignatureHelpOptions(
       /* triggerCharacters = */ List("(").asJava))
+
+    // Some old clients that don't know about `prepareRename` may not set these options
+    val supportsPrepareRename: Boolean =
+      try params.getCapabilities.getTextDocument.getRename.getPrepareSupport
+      catch { case _: NullPointerException => false }
+    if (supportsPrepareRename) {
+      val options = new RenameOptions()
+      options.setPrepareProvider(true)
+      c.setRenameProvider(options)
+    } else {
+      c.setRenameProvider(true)
+    }
 
     // Do most of the initialization asynchronously so that we can return early
     // from this method and thus let the client know our capabilities.
@@ -351,9 +362,11 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val uriTrees = driver.openedTrees(uri)
+    val source = driver.openedFiles(uri)
     val pos = sourcePosition(driver, uri, params.getPosition)
     val path = Interactive.pathTo(uriTrees, pos)
-    val syms = Interactive.enclosingSourceSymbols(path, pos)
+    val enclosing = SourceTree(Interactive.enclosingTree(uriTrees, pos), source)
+    val syms = if (renameTree(enclosing, pos).isDefined) Interactive.enclosingSourceSymbols(path, pos) else Nil
     val newName = params.getNewName
 
     def findRenamedReferences(trees: List[SourceTree], syms: List[Symbol], withName: Name): List[SourceTree] = {
@@ -533,6 +546,25 @@ class DottyLanguageServer extends LanguageServer
     new SignatureHelp(signatureInfos.map(signatureToSignatureInformation).asJava, callableN, paramN)
   }
 
+  override def prepareRename(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+    val uri = new URI(params.getTextDocument.getUri)
+    val driver = driverFor(uri)
+    implicit val ctx = driver.currentCtx
+
+    val pos = sourcePosition(driver, uri, params.getPosition)
+    val trees = driver.openedTrees(uri)
+    val source = driver.openedFiles(uri)
+    val enclosing = Interactive.enclosingTree(trees, pos)
+    val sourceTree = SourceTree(enclosing, source)
+
+    val result = for {
+      tree <- renameTree(sourceTree, pos)
+      nameRange <- range(tree.namePos)
+    } yield JEither.forLeft[Range, PrepareRenameResult](nameRange)
+
+    result.orNull
+  }
+
   override def getTextDocumentService: TextDocumentService = this
   override def getWorkspaceService: WorkspaceService = this
 
@@ -611,6 +643,51 @@ class DottyLanguageServer extends LanguageServer
       } yield action()
     }
   }
+
+  /**
+   * The tree that would be renamed by a rename operation at `pos`
+   *
+   * Verifies that this tree can actually be renamed, that the user really selected the name of the
+   * tree, that its symbol is not synthetic, and that this is not a special name (such as `apply` or
+   * `unapply`), because we don;t know how to rename these yet.
+   *
+   * @param sourceTree The tree to rename
+   * @param pos        The position that the user has selected
+   * @return The tree that will be renamed if it exists, `None` otherwise.
+   */
+  private def renameTree(sourceTree: SourceTree, pos: SourcePosition)(implicit ctx: Context): Option[SourceTree] = {
+    def toSourceTree(tree: NameTree): SourceTree = sourceTree.copy(tree = tree)
+    def matchesPos(tree: untpd.Tree): Boolean = tree.pos.contains(pos.pos)
+
+    sourceTree.tree match {
+      case tree: NameTree if !tree.isInstanceOf[This] =>
+        if (sourceTree.namePos.contains(pos) &&
+            tree.symbol.exists &&
+            !tree.symbol.is(Synthetic) &&
+            !renameExcludedNames.contains(tree.name)) {
+          Some(toSourceTree(tree))
+        } else {
+          None
+        }
+
+      case imp: Import =>
+        val symbols = importedSymbols(imp, matchesPos)
+        val canRename = symbols.forall(s => !s.is(Synthetic) && !renameExcludedNames.contains(s.name))
+
+        if (canRename) {
+          imp.selectors.collectFirst {
+            case tree: NameTree if matchesPos(tree) => toSourceTree(tree)
+            case Thicket((name: NameTree) :: _) if matchesPos(name) => toSourceTree(name)
+            case Thicket(_ :: (rename : NameTree) :: _) if matchesPos(rename) => toSourceTree(rename)
+          }
+        } else {
+          None
+        }
+
+      case _ =>
+        None
+    }
+  }
 }
 
 object DottyLanguageServer {
@@ -620,6 +697,10 @@ object DottyLanguageServer {
   final val RENAME_OVERRIDDEN_QUESTION = "Do you want to rename the base member, or only this member?"
   final val RENAME_OVERRIDDEN= "Rename the base member"
   final val RENAME_NO_OVERRIDDEN = "Rename only this member"
+
+  /** Special names for which we cannot do rename */
+  val renameExcludedNames: Set[Name] =
+    Set(StdNames.nme.apply, StdNames.nme.unapply, StdNames.nme.unapplySeq)
 
   /** Convert an lsp4j.Position to a SourcePosition */
   def sourcePosition(driver: InteractiveDriver, uri: URI, pos: lsp4j.Position): SourcePosition = {

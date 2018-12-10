@@ -11,7 +11,7 @@ import dotty.tools.dotc.reporting.{Reporter, ThrowingReporter}
 import dotty.tools.io.Directory
 import dotty.tools.languageserver.DottyLanguageServer
 import dotty.tools.languageserver.util.Code.{TastyWithPositions, Project}
-import org.eclipse.lsp4j.{ DidOpenTextDocumentParams, InitializeParams, InitializeResult, TextDocumentItem}
+import org.eclipse.lsp4j._
 
 class TestServer(testFolder: Path, projects: List[Project]) {
 
@@ -78,6 +78,13 @@ class TestServer(testFolder: Path, projects: List[Project]) {
     server.connect(client)
 
     val initParams = new InitializeParams()
+    val capabilities = new ClientCapabilities()
+    val textDocumentCapabilities = new TextDocumentClientCapabilities()
+    val renameCapabilities = new RenameCapabilities()
+    renameCapabilities.setPrepareSupport(true)
+    textDocumentCapabilities.setRename(renameCapabilities)
+    capabilities.setTextDocument(textDocumentCapabilities)
+    initParams.setCapabilities(capabilities)
     initParams.setRootUri(testFolder.toAbsolutePath.toUri.toString)
     server.initialize(initParams).get()
   }
