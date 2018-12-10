@@ -79,19 +79,19 @@ lazy implicit val intOrd2: Ord[Int] = new IntOrd
 
 ## Implicit Conversions and Classes
 
-The only use cases that are not yet covered by the proposal are implicit conversions and implicit classes. We do not propose to use `instance` in place of `implicit` for these, since that would bring back the uncomfortable similarity between implicit conversions and parameterized implicit aliases. However, there is a way to drop implicit conversions entirely. Scala 3 already [defines](https://github.com/lampepfl/dotty/pull/2065) a class `ImplicitConverter` whose instances are available as implicit conversions.
+The only use cases that are not yet covered by the proposal are implicit conversions and implicit classes. We do not propose to use `instance` in place of `implicit` for these, since that would bring back the uncomfortable similarity between implicit conversions and parameterized implicit aliases. However, there is a way to drop implicit conversions entirely. Scala 3 already [defines](https://github.com/lampepfl/dotty/pull/2065) a class `ImplicitConversion` whose instances are available as implicit conversions.
 ```scala
-  abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+  abstract class ImplicitConversion[-T, +U] extends Function1[T, U]
 ```
 One can define all implicit conversions as instances of this class. E.g.
 ```scala
-instance StringToToken of ImplicitConverter[String, Token] {
+instance StringToToken of ImplicitConversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
 The fact that this syntax is more verbose than simple implicit defs could be a welcome side effect since it might dampen any over-enthusiasm for defining implicit conversions.
 
-That leaves implicit classes. Most use cases of implicit classes are probably already covered by extension methods. For the others, one could always fall back to a pair of a regular class and an `ImplicitConverter` instance. It would be good to do a survey to find out how many classes would be affected.
+That leaves implicit classes. Most use cases of implicit classes are probably already covered by extension methods. For the others, one could always fall back to a pair of a regular class and an `ImplicitConversion` instance. It would be good to do a survey to find out how many classes would be affected.
 
 ## Summoning an Instance
 

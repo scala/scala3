@@ -389,8 +389,8 @@ class Definitions {
 
   def DottyPredefModule(implicit ctx: Context): Symbol = DottyPredefModuleRef.symbol
 
-    lazy val Predef_ImplicitConverterR: TypeRef = DottyPredefModule.requiredClass("ImplicitConverter").typeRef
-    def Predef_ImplicitConverter(implicit ctx: Context): Symbol = Predef_ImplicitConverterR.symbol
+    lazy val Predef_ImplicitConversionR: TypeRef = DottyPredefModule.requiredClass("ImplicitConversion").typeRef
+    def Predef_ImplicitConversion(implicit ctx: Context): Symbol = Predef_ImplicitConversionR.symbol
 
   lazy val DottyArraysModuleRef: TermRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context): Symbol = DottyArraysModuleRef.symbol

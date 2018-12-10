@@ -8,7 +8,7 @@ object DottyPredef {
    *  The implicit resolution algorithm will act as if there existed
    *  the additional implicit definition:
    *
-   *    def $implicitConversion[T, U](x: T)(c: ImplicitConverter[T, U]): U = c(x)
+   *    def $implicitConversion[T, U](x: T)(c: ImplicitConversion[T, U]): U = c(x)
    *
    *  However, the presence of this definition would slow down implicit search since
    *  its outermost type matches any pair of types. Therefore, implicit search
@@ -16,13 +16,13 @@ object DottyPredef {
    *  conversion in a more efficient way.
    *
    *  Note that this is a SAM class - function literals are automatically converted
-   *  to `ImplicitConverter` values.
+   *  to `ImplicitConversion` values.
    *
    *  Also note that in bootstrapped dotty, `Predef.<:<` should inherit from
-   *  `ImplicitConverter`. This would cut the number of special cases in
+   *  `ImplicitConversion`. This would cut the number of special cases in
    *  `discardForView` from two to one.
    */
-  abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+  abstract class ImplicitConversion[-T, +U] extends Function1[T, U]
 
   @forceInline final def assert(assertion: => Boolean, message: => Any): Unit = {
     if (!assertion)
