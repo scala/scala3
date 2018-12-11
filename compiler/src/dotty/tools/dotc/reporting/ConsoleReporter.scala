@@ -13,7 +13,7 @@ import diagnostic.messages.{ Error, ConditionalWarning }
 class ConsoleReporter(
   reader: BufferedReader = Console.in,
   writer: PrintWriter = new PrintWriter(Console.err, true)
-) extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
+) extends AbstractReporter {
 
   import MessageContainer._
 
