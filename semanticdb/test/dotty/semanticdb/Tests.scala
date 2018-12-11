@@ -206,8 +206,11 @@ class Tests {
   @Test def testCase(): Unit = checkFile("example/Case.scala")
   @Test def testApply(): Unit = checkFile("example/Apply.scala")
   @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
+  @Test def testSuper(): Unit = checkFile("example/Super.scala")
   @Test def testTypeBug(): Unit = checkFile("example/TypeBug.scala")*/
   //@Test def testTraits(): Unit = checkFile("example/Traits.scala")
   //@Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //@Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
-}
+  //@Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
+  @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
+ }

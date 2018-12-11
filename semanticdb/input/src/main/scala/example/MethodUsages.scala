@@ -2,7 +2,7 @@ package example
 
 class MethodUsages {
   val m = new Methods[Int]
-  /*m.m1
+  m.m1
   m.m2()
   m.m3(0)
   m.m4(0)(0)
@@ -13,7 +13,7 @@ class MethodUsages {
   m.m6(Nil)
   m.m7a(m, new m.List[Int])
   m.m7b(new m.List[Int])
-  */m.`m8().`()/*
+  m.`m8().`()
   m.m9(null)
   m.m10(null)
   m.m11(Predef)
@@ -29,5 +29,5 @@ class MethodUsages {
   m.m17("")
   m.m18.m()
   m.m18(1)
-  m.m18("")*/
+  m.m18("")
 }
