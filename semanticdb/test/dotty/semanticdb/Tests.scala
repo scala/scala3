@@ -207,7 +207,7 @@ class Tests {
   @Test def testApply(): Unit = checkFile("example/Apply.scala")
   @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
   @Test def testTypeBug(): Unit = checkFile("example/TypeBug.scala")*/
-  @Test def testTraits(): Unit = checkFile("example/Traits.scala")
+  //@Test def testTraits(): Unit = checkFile("example/Traits.scala")
   //@Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //@Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
 }

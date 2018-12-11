@@ -2,6 +2,7 @@ package dotty.semanticdb
 
 import scala.tasty.Reflection
 import scala.tasty.file._
+import scala.NotImplementedError
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -11,7 +12,7 @@ object Main {
       println("Dotty Semantic DB: No classes where passed as argument")
     } else {
       println("Running Dotty Semantic DB on: " + args.mkString(" "))
-      ConsumeTasty(extraClasspath, classes, new SemanticdbConsumer)
+      //ConsumeTasty(extraClasspath, classes, new SemanticdbConsumer())
     }
   }
 }

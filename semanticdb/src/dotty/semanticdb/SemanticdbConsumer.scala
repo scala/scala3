@@ -76,10 +76,8 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           val children: List[Position] =
             ChildTraverser.getChildrenType(tree)(reflect.rootContext).collect(_ match {
             case IsTypeTree(tt) => tt.pos})
-          println(children)
           return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
             .exists(_ == tree.pos))
-          return !(tree.pos.exists && tree.pos.start == tree.pos.end)
         }
       }
 
@@ -160,7 +158,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
         def isSyntheticConstructor(implicit ctx: Context): Boolean = {
           val isObjectConstructor = symbol.isConstructor && symbol.owner != NoSymbol && symbol.owner.flags.is(Flags.Object)
-          //println("====>", symbol, symbol.owner, symbol.owner.flags, symbol.owner.flags.isObject, isObjectConstructor)
           val isModuleConstructor = symbol.isConstructor && symbol.owner.isClass
           val isTraitConstructor = symbol.isConstructor && symbol.owner.isTrait
           val isInterfaceConstructor = symbol.isConstructor && symbol.owner.flags.is(Flags.JavaDefined)  && symbol.owner.isTrait
@@ -431,16 +428,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         if (type_symbol != s.SymbolOccurrence.Role.DEFINITION && reservedFunctions
               .contains(tree.symbol.trueName))
           return
-        /*println(tree.isUserCreated, iterateParent(tree.symbol), force_add)
-
-          val children: List[Position] =
-            ChildTraverser.getChildren(tree)(reflect.rootContext).map(_.pos)
-            println("#####", tree.pos.start, tree.pos.end)
-            if (tree.symbol.pos.exists) {
-            println("#####",  tree.symbol.pos.start, tree.symbol.pos.end, tree, tree.symbol.name)
-
-            }
-            children.foreach(p => println(p.start, p.end))*/
         if (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(
               tree.symbol) == "java/lang/Object#`<init>`()."))) {
           addOccurence(tree.symbol, type_symbol, range)
@@ -449,7 +436,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       def addOccurenceTypeTree(typetree: TypeTree,
                                type_symbol: s.SymbolOccurrence.Role,
                                range: s.Range): Unit = {
-        println(typetree.symbol, typetree.isUserCreated)
         if (typetree.isUserCreated) {
           addOccurence(typetree.symbol, type_symbol, range)
         }
@@ -631,8 +617,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.DEFINITION,
                              range(tree, tree.symbol.pos, tree.symbol.trueName))
-            //println("constr symbol pos: ", constr.symbol.pos.startColumn, constr.symbol.pos.endColumn)
-            //println("constr pos: ", constr.pos.startColumn, constr.pos.endColumn)
             // then the constructor
             if (!constr.isUserCreated) {
               fittedInitClassRange = Some(
@@ -726,9 +710,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             }
             if (tree.symbol.trueName != "<none>") {
               val range_symbol = range(tree, tree.symbol.pos, tree.symbol.trueName)
-              //println(tree, tree.symbol.trueName, tree.symbol.owner, tree.symbol.owner.flags)
               if (tree.symbol.trueName == "<init>" && tree.symbol.owner != NoSymbol && tree.symbol.owner.flags.is(Flags.Object)) {
-                //println("omitting", tree.symbol.trueName)
               } else if (tree.symbol.trueName == "<init>" && fittedInitClassRange != None) {
                 addOccurenceTree(tree,
                                  s.SymbolOccurrence.Role.DEFINITION,
@@ -750,11 +732,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
           case Term.Select(qualifier, _) => {
             val range = {
-              println("")
-
-
-println(tree.symbol.trueName)
-              println("")
               val r = rangeSelect(tree.symbol.trueName, tree.pos)
               if (tree.symbol.trueName == "<init>")
                 s.Range(r.startLine,
