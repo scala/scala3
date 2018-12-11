@@ -441,6 +441,8 @@ trait ImplicitRunInfo { self: Run =>
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
+  private val EmptyTermRefSet = new TermRefSet()(NoContext)
+
   /** The implicit scope of a type `tp`
    *  @param liftingCtx   A context to be used when computing the class symbols of
    *                      a type. Types may contain type variables with their instances
@@ -1533,28 +1535,32 @@ final class SearchRoot extends SearchHistory {
 }
 
 /** A set of term references where equality is =:= */
-class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
-  import collection.JavaConverters._
-  private val elems = (new java.util.LinkedHashMap[TermSymbol, List[Type]]).asScala
+final class TermRefSet(implicit ctx: Context) {
+  private[this] val elems = new java.util.LinkedHashMap[TermSymbol, List[Type]]
 
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix
     val sym = ref.symbol.asTerm
-    elems get sym match {
-      case Some(prefixes) =>
-        if (!(prefixes exists (_ =:= pre))) elems(sym) = pre :: prefixes
-      case None =>
-        elems(sym) = pre :: Nil
+    elems.get(sym) match {
+      case null =>
+        elems.put(sym, pre :: Nil)
+      case prefixes =>
+        if (!prefixes.exists(_ =:= pre))
+          elems.put(sym, pre :: prefixes)
     }
   }
 
-  def ++= (refs: TraversableOnce[TermRef]): Unit =
-    refs foreach +=
+  def ++= (that: TermRefSet): Unit =
+    that.foreach(+=)
 
-  override def foreach[U](f: TermRef => U): Unit =
-    for (sym <- elems.keysIterator)
-      for (pre <- elems(sym))
-        f(TermRef(pre, sym))
+  def foreach[U](f: TermRef => U): Unit =
+    elems.forEach((sym: TermSymbol, prefixes: List[Type]) =>
+      prefixes.foreach(pre => f(TermRef(pre, sym))))
+
+  // used only for debugging
+  def toList: List[TermRef] = {
+    val buffer = new mutable.ListBuffer[TermRef]
+    foreach(tr => buffer += tr)
+    buffer.toList
+  }
 }
-
-@sharable object EmptyTermRefSet extends TermRefSet()(NoContext)
