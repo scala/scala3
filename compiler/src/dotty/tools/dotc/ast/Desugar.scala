@@ -8,6 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
+import util.Property
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -17,6 +18,11 @@ import scala.annotation.internal.sharable
 object desugar {
   import untpd._
   import DesugarEnums._
+
+  /** If a Select node carries this attachment, suppress the check
+   *  that its type refers to an acessible symbol.
+   */
+  val SuppressAccessCheck = new Property.Key[Unit]
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -157,19 +163,31 @@ object desugar {
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
 
-  /** Expand context bounds to evidence params. E.g.,
+  /** 1. Expand context bounds to evidence params. E.g.,
    *
    *      def f[T >: L <: H : B](params)
    *  ==>
    *      def f[T >: L <: H](params)(implicit evidence$0: B[T])
    *
-   *  Expand default arguments to default getters. E.g,
+   *  2. Expand default arguments to default getters. E.g,
    *
    *      def f[T: B](x: Int = 1)(y: String = x + "m") = ...
    *  ==>
    *      def f[T](x: Int)(y: String)(implicit evidence$0: B[T]) = ...
    *      def f$default$1[T] = 1
    *      def f$default$2[T](x: Int) = x + "m"
+   *
+   *  3. Convert <: T to : T in specializing inline methods. E.g.
+   *
+   *      inline def f(x: Boolean) <: Any = if (x) 1 else ""
+   *  ==>
+   *      inline def f(x: Boolean): Any = if (x) 1 else ""
+   *
+   *  4. Upcast non-specializing inline methods. E.g.
+   *
+   *      inline def f(x: Boolean): Any = if (x) 1 else ""
+   *  ==>
+   *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
    */
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
@@ -188,7 +206,16 @@ object desugar {
       cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
 
-    val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+    var meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+
+    if (meth1.mods.is(Inline))
+      meth1.tpt match {
+        case TypeBoundsTree(_, tpt1) =>
+          meth1 = cpy.DefDef(meth1)(tpt = tpt1)
+        case tpt if !tpt.isEmpty && !meth1.rhs.isEmpty =>
+          meth1 = cpy.DefDef(meth1)(rhs = Typed(meth1.rhs, tpt))
+        case _ =>
+      }
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
@@ -272,7 +299,7 @@ object desugar {
     val impl @ Template(constr0, parents, self, _) = cdef.rhs
     val mods = cdef.mods
     val companionMods = mods
-        .withFlags((mods.flags & AccessFlags).toCommonFlags)
+        .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
         .withMods(Nil)
 
     var defaultGetters: List[Tree] = Nil
@@ -324,6 +351,9 @@ object desugar {
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
           ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
+        ListOfNil
+      } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
+          ctx.error("Case classes should have a non-implicit parameter list", cdef.namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
@@ -409,10 +439,12 @@ object desugar {
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
 
+    val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
+
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
-    //     def _1 = this.p1
+    //     def _1: T1 = this.p1
     //     ...
-    //     def _N = this.pN
+    //     def _N: TN = this.pN
     //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
     //              pN: TN = pN: @uncheckedVariance)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
@@ -421,12 +453,13 @@ object desugar {
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths = {
-      def syntheticProperty(name: TermName, rhs: Tree) =
-        DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
+      def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
+        DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
       def productElemMeths = {
-        val caseParams = constrVparamss.head.toArray
+        val caseParams = derivedVparamss.head.toArray
         for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
-        yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
+        yield syntheticProperty(nme.selectorName(i), caseParams(i).tpt,
+          Select(This(EmptyTypeIdent), caseParams(i).name))
       }
       def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
       def copyMeths = {
@@ -447,7 +480,7 @@ object desugar {
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
-            .withMods(synthetic) :: Nil
+            .withFlags(Synthetic | constr1.mods.flags & copiedAccessFlags) :: Nil
         }
       }
 
@@ -552,7 +585,7 @@ object desugar {
           if (mods is Abstract) Nil
           else
             DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
-              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
+              .withFlags(Synthetic | constr1.mods.flags & (DefaultParameterized | copiedAccessFlags)) :: widenDefs
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
@@ -636,8 +669,6 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
-  val AccessOrSynthetic: FlagSet = AccessFlags | Synthetic
-
   /** Expand
    *
    *    object name extends parents { self => body }
@@ -673,6 +704,48 @@ object desugar {
       Thicket(modul, classDef(cls).withPos(mdef.pos))
     }
   }
+
+  /** Expand
+   *
+   *    <mods> opaque type T = [Xs] => R
+   *
+   *  to
+   *
+   *    <mods> opaque type T = T.T
+   *    synthetic object T {
+   *      synthetic opaque type T >: [Xs] => R
+   *    }
+   *
+   *  The generated companion object will later (in Namer) be merged with the user-defined
+   *  companion object, and the synthetic opaque type member will go into the self type.
+   */
+  def opaqueAlias(tdef: TypeDef)(implicit ctx: Context): Tree =
+    if (tdef.rhs.isInstanceOf[TypeBoundsTree]) {
+      ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.pos)
+      tdef.withFlags(tdef.mods.flags &~ Opaque)
+    }
+    else {
+      def completeForwarder(fwd: Tree) = tdef.rhs match {
+        case LambdaTypeTree(tparams, tpt) =>
+          val tparams1 =
+            for (tparam <- tparams)
+            yield tparam.withMods(tparam.mods | Synthetic)
+          lambdaAbstract(tparams1,
+            AppliedTypeTree(fwd, tparams.map(tparam => Ident(tparam.name))))
+        case _ =>
+          fwd
+      }
+      val moduleName = tdef.name.toTermName
+      val localRef = Select(Ident(moduleName), tdef.name)
+      localRef.pushAttachment(SuppressAccessCheck, ())
+      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef))
+      val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
+
+      val companions = moduleDef(ModuleDef(
+        moduleName, Template(emptyConstructor, Nil, EmptyValDef, localType :: Nil))
+          .withFlags(Synthetic | Opaque))
+      Thicket(aliasType :: companions.toList)
+    }
 
   /** The name of `mdef`, after checking that it does not redefine a Scala core class.
    *  If it does redefine, issue an error and return a mangled name instead of the original one.
@@ -769,7 +842,10 @@ object desugar {
 
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
-    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else tree
+    case tree: TypeDef =>
+      if (tree.isClassDef) classDef(tree)
+      else if (tree.mods.is(Opaque, butNot = Synthetic)) opaqueAlias(tree)
+      else tree
     case tree: DefDef =>
       if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
       else defDef(tree)

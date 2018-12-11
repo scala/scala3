@@ -269,14 +269,21 @@ object DottyIDEPlugin extends AutoPlugin {
     Command.process("runCode", state1)
   }
 
+  private def makeId(name: String, config: String): String = s"$name/$config"
+
   private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
     val depClasspath = Attributed.data((dependencyClasspath in config).value)
+    val projectName = name.value
 
     // Try to detect if this is a real Scala project or not. This is pretty
     // fragile because sbt simply does not keep track of this information. We
     // could check if at least one source file ends with ".scala" but that
     // doesn't work for empty projects.
-    val isScalaProject = depClasspath.exists(_.getAbsolutePath.contains("dotty-library")) && depClasspath.exists(_.getAbsolutePath.contains("scala-library"))
+    val isScalaProject = (
+          // Our `dotty-library` project is a Scala project
+          (projectName.startsWith("dotty-library") || depClasspath.exists(_.getAbsolutePath.contains("dotty-library")))
+       && depClasspath.exists(_.getAbsolutePath.contains("scala-library"))
+    )
 
     if (!isScalaProject) Def.task { None }
     else Def.task {
@@ -285,11 +292,34 @@ object DottyIDEPlugin extends AutoPlugin {
       // step.
       val _ = (compile in config).value
 
-      val id = s"${thisProject.value.id}/${config.name}"
+      val project = thisProject.value
+      val id = makeId(project.id, config.name)
       val compilerVersion = (scalaVersion in config).value
       val compilerArguments = (scalacOptions in config).value
       val sourceDirectories = (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
       val classDir = (classDirectory in config).value
+      val extracted = Project.extract(state.value)
+      val settings = extracted.structure.data
+
+      val dependencies = {
+        val logger = streams.value.log
+        // Project dependencies come from classpath deps and also inter-project config deps
+        // We filter out dependencies that do not compile using Dotty
+        val classpathProjectDependencies =
+          project.dependencies.filter { d =>
+            val version = scalaVersion.in(d.project).get(settings).get
+            isDottyVersion(version)
+          }.map(d => projectDependencyName(d, config, project, logger))
+        val configDependencies =
+          eligibleDepsFromConfig(config).value.map(c => makeId(project.id, c.name))
+
+       // The distinct here is important to make sure that there are no repeated project deps
+       (classpathProjectDependencies ++ configDependencies).distinct.toList
+      }
+
+      // For projects without sources, we need to create it. Otherwise `InteractiveDriver`
+      // complains that the target directory doesn't exist.
+      if (!classDir.exists) IO.createDirectory(classDir)
 
       Some(new ProjectConfig(
         id,
@@ -297,7 +327,8 @@ object DottyIDEPlugin extends AutoPlugin {
         compilerArguments.toArray,
         sourceDirectories.toArray,
         depClasspath.toArray,
-        classDir
+        classDir,
+        dependencies.toArray
       ))
     }
   }
@@ -338,4 +369,106 @@ object DottyIDEPlugin extends AutoPlugin {
     }
 
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
+
+  // Ported from Bloop
+  /**
+   * Detect the eligible configuration dependencies from a given configuration.
+   *
+   * A configuration is eligible if the project defines it and `compile`
+   * exists for it. Otherwise, the configuration dependency is ignored.
+   *
+   * This is required to prevent transitive configurations like `Runtime` from
+   * generating useless IDE configuration files and possibly incorrect project
+   * dependencies. For example, if we didn't do this then the dependencies of
+   * `IntegrationTest` would be `projectName/runtime` and `projectName/compile`,
+   * whereas the following logic will return only the configuration `Compile`
+   * so that the use site of this function can create the project dep
+   * `projectName/compile`.
+   */
+  private def eligibleDepsFromConfig(config: Configuration): Def.Initialize[Task[List[Configuration]]] = {
+    Def.task {
+      def depsFromConfig(configuration: Configuration): List[Configuration] = {
+        configuration.extendsConfigs.toList match {
+          case config :: Nil if config.extendsConfigs.isEmpty => config :: Nil
+          case config :: Nil => config :: depsFromConfig(config)
+          case Nil => Nil
+        }
+      }
+
+      val configs = depsFromConfig(config)
+      val activeProjectConfigs = thisProject.value.configurations.toSet
+
+      val data = settingsData.value
+      val thisProjectRef = Keys.thisProjectRef.value
+
+      val eligibleConfigs = activeProjectConfigs.filter { c =>
+        val configKey = ConfigKey.configurationToKey(c)
+        // Consider only configurations where the `compile` key is defined
+        val eligibleKey = compile in (thisProjectRef, configKey)
+        eligibleKey.get(data) match {
+          case Some(t) =>
+            // Sbt seems to return tasks for the extended configurations (looks like a big bug)
+            t.info.get(taskDefinitionKey) match {
+              // So we now make sure that the returned config key matches the original one
+              case Some(taskDef) => taskDef.scope.config.toOption.toList.contains(configKey)
+              case None => true
+            }
+          case None => false
+        }
+      }
+
+      configs.filter(c => eligibleConfigs.contains(c))
+    }
+  }
+
+  /**
+   * Creates a project name from a classpath dependency and its configuration.
+   *
+   * This function uses internal sbt utils (`sbt.Classpaths`) to parse configuration
+   * dependencies like sbt does and extract them. This parsing only supports compile
+   * and test, any kind of other dependency will be assumed to be test and will be
+   * reported to the user.
+   *
+   * Ref https://www.scala-sbt.org/1.x/docs/Library-Management.html#Configurations.
+   */
+  private def projectDependencyName(
+      dep: ClasspathDep[ProjectRef],
+      configuration: Configuration,
+      project: ResolvedProject,
+      logger: Logger
+  ): String = {
+    val ref = dep.project
+    dep.configuration match {
+      case Some(_) =>
+        val mapping = sbt.Classpaths.mapped(
+          dep.configuration,
+          List("compile", "test"),
+          List("compile", "test"),
+          "compile",
+          "*->compile"
+        )
+
+        mapping(configuration.name) match {
+          case Nil =>
+            makeId(ref.project, configuration.name)
+          case List(conf) if Compile.name == conf =>
+            makeId(ref.project, Compile.name)
+          case List(conf) if Test.name == conf =>
+            makeId(ref.project, Test.name)
+          case List(conf1, conf2) if Test.name == conf1 && Compile.name == conf2 =>
+            makeId(ref.project, Test.name)
+          case List(conf1, conf2) if Compile.name == conf1 && Test.name == conf2 =>
+            makeId(ref.project, Test.name)
+          case unknown =>
+            val msg =
+              s"Unsupported dependency '${project.id}' -> '${ref.project}:${unknown.mkString(", ")}' is understood as '${ref.project}:test'."
+            logger.warn(msg)
+            makeId(ref.project, Test.name)
+        }
+      case None =>
+        // If no configuration, default is `Compile` dependency (see scripted tests `cross-compile-test-configuration`)
+        makeId(ref.project, Compile.name)
+    }
+  }
+
 }

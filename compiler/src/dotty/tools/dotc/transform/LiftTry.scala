@@ -43,8 +43,7 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if (needLift == p) ctx else ctx.fresh.updateStore(NeedLift, p)
 
   override def prepareForApply(tree: Apply)(implicit ctx: Context): Context =
-    if (tree.fun.symbol.is(Label)) ctx
-    else liftingCtx(true)
+    liftingCtx(true)
 
   override def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context =
     if (!tree.symbol.exists  ||

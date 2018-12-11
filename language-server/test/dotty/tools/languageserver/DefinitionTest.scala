@@ -219,4 +219,129 @@ class DefinitionTest {
     ).definition(m3 to m4, List(m1 to m2))
   }
 
+  @Test def definitionAnonClassTrait: Unit = {
+    code"""trait ${m1}Foo${m2} { val x = 0 }
+           class C {
+             def foo = new ${m3}Foo${m4} {}
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+  }
+
+  @Test def definitionAnonClassClass: Unit = {
+    code"""abstract class ${m1}Foo${m2} { val x = 0 }
+           class C {
+             def foo = new ${m3}Foo${m4} {}
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+  }
+
+  @Test def definitionAnonClassClassTrait: Unit = {
+    code"""abstract class ${m1}Foo${m2}
+           trait ${m3}Bar${m4}
+           class C {
+             def foo = new ${m5}Foo${m6} with ${m7}Bar${m8} {}
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m3 to m4))
+      .definition(m5 to m6, List(m1 to m2))
+      .definition(m7 to m8, List(m3 to m4))
+  }
+
+  @Test def goToDefinitionImport: Unit = {
+    withSources(
+      code"""package a
+             class ${m1}Foo${m2}""",
+      code"""package b
+             import a.${m3}Foo${m4}
+             class C extends ${m5}Foo${m6}"""
+    ).definition(m1 to m2, List(m1 to m2))
+     .definition(m3 to m4, List(m1 to m2))
+     .definition(m5 to m6, List(m1 to m2))
+  }
+
+  @Test def goToDefinitionRenamedImport: Unit = {
+    withSources(
+      code"""package a
+             class ${m1}Foo${m2}""",
+      code"""package b
+             import a.{${m3}Foo${m4} => ${m5}Bar${m6}}
+             class C extends ${m7}Bar${m8}"""
+    ).definition(m1 to m2, List(m1 to m2))
+     .definition(m3 to m4, List(m1 to m2))
+     .definition(m5 to m6, List(m1 to m2))
+     .definition(m7 to m8, List(m1 to m2))
+  }
+
+  @Test def goToDefinitionImportAlternatives: Unit = {
+    withSources(
+      code"""package a
+             class ${m1}Foo${m2}
+             object ${m3}Foo${m4}""",
+      code"""package b
+             import a.${m5}Foo${m6}
+             class C extends ${m7}Foo${m8} {
+               val bar = ${m9}Foo${m10}
+             }"""
+    ).definition(m1 to m2, List(m1 to m2))
+     .definition(m3 to m4, List(m3 to m4))
+     .definition(m5 to m6, List(m1 to m2, m3 to m4))
+     .definition(m7 to m8, List(m1 to m2))
+     .definition(m9 to m10, List(m3 to m4))
+  }
+
+  @Test def goToDefinitionImportAlternativesWithRename: Unit = {
+    withSources(
+      code"""package a
+             class ${m1}Foo${m2}
+             object ${m3}Foo${m4}""",
+      code"""package b
+             import a.{${m5}Foo${m6} => ${m7}Bar${m8}}
+             class C extends ${m9}Bar${m10} {
+               val buzz = ${m11}Bar${m12}
+             }"""
+    ).definition(m1 to m2, List(m1 to m2))
+     .definition(m3 to m4, List(m3 to m4))
+     .definition(m5 to m6, List(m1 to m2, m3 to m4))
+     .definition(m7 to m8, List(m1 to m2, m3 to m4))
+     .definition(m9 to m10, List(m1 to m2))
+     .definition(m11 to m12, List(m3 to m4))
+  }
+
+  @Test def multipleImportsPerLineWithRename: Unit = {
+    withSources(
+      code"""object A { class ${m1}B${m2}; class ${m3}C${m4} }""",
+      code"""import A.{${m5}B${m6} => ${m7}B2${m8}, ${m9}C${m10} => ${m11}C2${m12}}
+             class E"""
+    ).definition(m1 to m2, List(m1 to m2))
+     .definition(m3 to m4, List(m3 to m4))
+     .definition(m5 to m6, List(m1 to m2))
+     .definition(m7 to m8, List(m1 to m2))
+     .definition(m9 to m10, List(m3 to m4))
+     .definition(m11 to m12, List(m3 to m4))
+  }
+
+  @Test def definitionShowOverrides: Unit = {
+    withSources(
+      code"""class A { def ${m1}foo${m2}: Int = 0 }""",
+      code"""class B extends A { def ${m3}foo${m4}: Int = 1 }""",
+      code"""class C extends A { def ${m5}foo${m6}: Int = 2 }""",
+      code"""class D extends C { def ${m7}foo${m8}: Int = 3 }""",
+      code"""object O {
+               val a = new A().${m9}foo${m10}
+               val b = new B().${m11}foo${m12}
+               val c = new C().${m13}foo${m14}
+               val d = new D().${m15}foo${m16}
+             }"""
+    ).definition(m1 to m2, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+     .definition(m3 to m4, List(m1 to m2, m3 to m4))
+     .definition(m5 to m6, List(m1 to m2, m5 to m6, m7 to m8))
+     .definition(m7 to m8, List(m1 to m2, m5 to m6, m7 to m8))
+     .definition(m9 to m10, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+     .definition(m11 to m12, List(m3 to m4))
+     .definition(m13 to m14, List(m5 to m6, m7 to m8))
+     .definition(m15 to m16, List(m7 to m8))
+  }
+
 }

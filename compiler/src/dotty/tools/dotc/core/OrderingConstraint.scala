@@ -221,7 +221,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match {
     case param: TypeParamRef if contains(param) =>
       param :: (if (isUpper) upper(param) else lower(param))
-    case tp: AndType => dependentParams(tp.tp1, isUpper).union    (dependentParams(tp.tp2, isUpper))
+    case tp: AndType => dependentParams(tp.tp1, isUpper) | (dependentParams(tp.tp2, isUpper))
     case tp: OrType  => dependentParams(tp.tp1, isUpper).intersect(dependentParams(tp.tp2, isUpper))
     case _ =>
       Nil

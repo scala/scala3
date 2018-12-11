@@ -40,7 +40,7 @@ object ErrorReporting {
 
     def expectedTypeStr(tp: Type): String = tp match {
       case tp: PolyProto =>
-        em"type arguments [${tp.targs}%, %] and ${expectedTypeStr(tp.resultType)}"
+        em"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(tp.resultType)}"
       case tp: FunProto =>
         val result = tp.resultType match {
           case _: WildcardType | _: IgnoredProto => ""

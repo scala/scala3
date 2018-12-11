@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.PrintStream
+import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
-import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
@@ -149,8 +149,8 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Symbol)(implicit ctx: Context) = {
-      val displ = completion.name.toString
+    def makeCandidate(completion: Completion)(implicit ctx: Context) = {
+      val displ = completion.label
       new Candidate(
         /* value    = */ displ,
         /* displ    = */ displ, // displayed value
@@ -170,7 +170,7 @@ class ReplDriver(settings: Array[String],
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Position(cursor))
-        val (_, completions) = Interactive.completions(srcPos)
+        val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
       }
       .getOrElse(Nil)
@@ -248,7 +248,7 @@ class ReplDriver(settings: Array[String],
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
-          .membersBasedOnFlags(Method, Accessor | ParamAccessor | Synthetic | Private)
+          .membersBasedOnFlags(required = allOf(Method), excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             denot.symbol.owner == defn.AnyClass ||
             denot.symbol.owner == defn.ObjectClass ||
@@ -282,14 +282,7 @@ class ReplDriver(settings: Array[String],
           x.symbol
       }
       .foreach { sym =>
-        // FIXME syntax highlighting on comment is currently not working
-        // out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
-        val message = "// defined " + sym.showUser
-        if (ctx.settings.color.value != "never") {
-          println(SyntaxHighlighting.CommentColor + message + SyntaxHighlighting.NoColor)
-        } else {
-          println(message)
-        }
+        out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
       }
 
 
@@ -331,9 +324,9 @@ class ReplDriver(settings: Array[String],
       state
 
     case Load(path) =>
-      val file = new java.io.File(path)
+      val file = new JFile(path)
       if (file.exists) {
-        val contents = scala.io.Source.fromFile(file).mkString
+        val contents = scala.io.Source.fromFile(file, "UTF-8").mkString
         run(contents)
       }
       else {
@@ -351,7 +344,7 @@ class ReplDriver(settings: Array[String],
     case DocOf(expr) =>
       compiler.docOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
+        res => out.println(res)
       )
       state
 

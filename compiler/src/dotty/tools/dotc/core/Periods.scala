@@ -43,8 +43,8 @@ abstract class Periods { self: Context =>
     val period = this.period
     period == p ||
     period.runId == p.runId &&
-      this.phases(period.phaseId).sameParentsStartId ==
-      this.phases(p.phaseId).sameParentsStartId
+      this.phases(period.phaseId).sameBaseTypesStartId ==
+      this.phases(p.phaseId).sameBaseTypesStartId
   }
 }
 

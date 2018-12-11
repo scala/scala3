@@ -4,7 +4,7 @@ package core
 
 import Periods._
 import Contexts._
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers._
 import Denotations._
 import Decorators._
@@ -320,6 +320,9 @@ object Phases {
     /** Can this transform change the parents of a class? */
     def changesParents: Boolean = false
 
+    /** Can this transform change the base types of a type? */
+    def changesBaseTypes: Boolean = changesParents
+
     def exists: Boolean = true
 
     def initContext(ctx: FreshContext): Unit = ()
@@ -329,10 +332,10 @@ object Phases {
     private[this] var myErasedTypes = false
     private[this] var myFlatClasses = false
     private[this] var myRefChecked = false
-    private[this] var myLabelsReordered = false
 
     private[this] var mySameMembersStartId = NoPhaseId
     private[this] var mySameParentsStartId = NoPhaseId
+    private[this] var mySameBaseTypesStartId = NoPhaseId
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
@@ -347,12 +350,13 @@ object Phases {
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
     final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
-    final def labelsReordered: Boolean = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
 
     final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
     final def sameParentsStartId: Int = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
+    final def sameBaseTypesStartId: Int = mySameBaseTypesStartId
+      // id of first phase where all symbols are guaranteed to have the same base tpyes as in this phase
 
     protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
       if (start >= FirstPhaseId)
@@ -360,12 +364,12 @@ object Phases {
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
-      myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
-      myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
-      myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
-      myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
+      myErasedTypes  = prev.getClass == classOf[Erasure]   || prev.erasedTypes
+      myFlatClasses  = prev.getClass == classOf[Flatten]   || prev.flatClasses
+      myRefChecked   = prev.getClass == classOf[RefChecks] || prev.refChecked
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
+      mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)

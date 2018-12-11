@@ -13,6 +13,7 @@ import Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
+import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -85,6 +86,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     ta.assignType(untpd.If(cond, thenp, elsep), thenp, elsep)
 
+  def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
+    ta.assignType(untpd.InlineIf(cond, thenp, elsep), thenp, elsep)
+
   def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
     ta.assignType(untpd.Closure(env, meth, tpt), meth, tpt)
 
@@ -121,6 +125,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
     ta.assignType(untpd.Match(selector, cases), selector, cases)
 
+  def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
+    ta.assignType(untpd.InlineMatch(selector, cases), selector, cases)
+
   def Labeled(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
     ta.assignType(untpd.Labeled(bind, expr))
 
@@ -129,6 +136,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
     ta.assignType(untpd.Return(expr, from))
+
+  def Return(expr: Tree, from: Symbol)(implicit ctx: Context): Return =
+    Return(expr, Ident(from.termRef))
 
   def WhileDo(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
     ta.assignType(untpd.WhileDo(cond, body))
@@ -314,16 +324,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val forwarders = (fns, methNames).zipped.map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders)
     Block(cdef :: Nil, New(cls.typeRef, Nil))
-  }
-
-  // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
-  def WhileDo(owner: Symbol, cond: Tree, body: List[Tree])(implicit ctx: Context): Tree = {
-    val sym = ctx.newSymbol(owner, nme.WHILE_PREFIX, Flags.Label | Flags.Synthetic,
-      MethodType(Nil, defn.UnitType), coord = cond.pos)
-
-    val call = Apply(ref(sym), Nil)
-    val rhs = If(cond, Block(body, call), unitLiteral)
-    Block(List(DefDef(sym, rhs)), call)
   }
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
@@ -526,10 +526,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree match {
         case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
           tree1.withTypeUnchecked(tree.tpe)
-        case _ => tree.tpe match {
-          case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
-          case _ => tree1.withTypeUnchecked(tree.tpe)
-        }
+        case _ =>
+          val tree2 = tree.tpe match {
+            case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
+            case _ => tree1.withTypeUnchecked(tree.tpe)
+          }
+          ConstFold(tree2)
       }
     }
 
@@ -1109,9 +1111,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private val InlinedCalls = new Property.Key[List[Tree]]
 
   /** Record an enclosing inlined call.
-    * EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
-    * We assume parameters are never nested inside parameters.
-    */
+   *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
+   *  We assume parameters are never nested inside parameters.
+   */
   override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
@@ -1125,7 +1127,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
-    */
+   */
   def enclosingInlineds(implicit ctx: Context): List[Tree] =
     ctx.property(InlinedCalls).getOrElse(Nil)
 
@@ -1153,6 +1155,92 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       This(prefix.cls)
     case _ =>
       EmptyTree
+  }
+
+  /**
+   * The symbols that are imported with `expr.name`
+   *
+   * @param expr The base of the import statement
+   * @param name The name that is being imported.
+   * @return All the symbols that would be imported with `expr.name`.
+   */
+  def importedSymbols(expr: Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
+    def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
+    val symbols =
+      List(lookup(name.toTermName),
+           lookup(name.toTypeName),
+           lookup(name.moduleClassName),
+           lookup(name.sourceModuleName))
+
+    symbols.map(_.sourceSymbol).filter(_.exists).distinct
+  }
+
+  /**
+   * All the symbols that are imported by the first selector of `imp` that matches
+   * `selectorPredicate`.
+   *
+   * @param imp The import statement to analyze
+   * @param selectorPredicate A test to find the selector to use.
+   * @return The symbols imported.
+   */
+  def importedSymbols(imp: Import,
+                      selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
+                     (implicit ctx: Context): List[Symbol] = {
+    imp.selectors.find(selectorPredicate) match {
+      case Some(id: untpd.Ident) =>
+        importedSymbols(imp.expr, id.name)
+      case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
+        importedSymbols(imp.expr, id.name)
+      case _ =>
+        Nil
+    }
+  }
+
+  /**
+   * The list of select trees that resolve to the same symbols as the ones that are imported
+   * by `imp`.
+   */
+  def importSelections(imp: Import)(implicit ctx: Context): List[Select] = {
+    def imported(sym: Symbol, id: untpd.Ident, rename: Option[untpd.Ident]): List[Select] = {
+      // Give a zero-extent position to the qualifier to prevent it from being included several
+      // times in results in the language server.
+      val noPosExpr = focusPositions(imp.expr)
+      val selectTree = Select(noPosExpr, sym.name).withPos(id.pos)
+      rename match {
+        case None =>
+          selectTree :: Nil
+        case Some(rename) =>
+          // Get the type of the symbol that is actually selected, and construct a select
+          // node with the new name and the type of the real symbol.
+          val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
+          val actual = Select(noPosExpr, sym.name)
+          val renameTree = Select(noPosExpr, name).withPos(rename.pos).withType(actual.tpe)
+          selectTree :: renameTree :: Nil
+      }
+    }
+
+    imp.selectors.flatMap {
+      case Ident(nme.WILDCARD) =>
+        Nil
+      case id: untpd.Ident =>
+        importedSymbols(imp.expr, id.name).flatMap { sym =>
+          imported(sym, id, None)
+        }
+      case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
+        importedSymbols(imp.expr, id.name).flatMap { sym =>
+          imported(sym, id, Some(newName))
+        }
+    }
+  }
+
+  /** Replaces all positions in `tree` with zero-extent positions */
+  private def focusPositions(tree: Tree)(implicit ctx: Context): Tree = {
+    val transformer = new tpd.TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+        super.transform(tree).withPos(tree.pos.focus)
+      }
+    }
+    transformer.transform(tree)
   }
 }
 

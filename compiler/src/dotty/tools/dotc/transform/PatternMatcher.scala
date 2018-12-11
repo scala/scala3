@@ -28,16 +28,18 @@ class PatternMatcher extends MiniPhase {
   override def phaseName: String = PatternMatcher.name
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
-  override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
-    val translated = new Translator(tree.tpe, this).translateMatch(tree)
+  override def transformMatch(tree: Match)(implicit ctx: Context): Tree =
+    if (tree.isInstanceOf[InlineMatch]) tree
+    else {
+      val translated = new Translator(tree.tpe, this).translateMatch(tree)
 
-    // check exhaustivity and unreachability
-    val engine = new patmat.SpaceEngine
-    engine.checkExhaustivity(tree)
-    engine.checkRedundancy(tree)
+      // check exhaustivity and unreachability
+      val engine = new patmat.SpaceEngine
+      engine.checkExhaustivity(tree)
+      engine.checkRedundancy(tree)
 
-    translated.ensureConforms(tree.tpe)
-  }
+      translated.ensureConforms(tree.tpe)
+    }
 }
 
 object PatternMatcher {
@@ -227,8 +229,8 @@ object PatternMatcher {
          * val x3: Int = x1._2
          * if (x2 == 1) {
          *   if (x3 == 2) someCode
-         *   else label$1()
-         * } else label$1()
+         *   else ()
+         * } else ()
          * ```
          */
         def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
@@ -799,15 +801,15 @@ object PatternMatcher {
            *  val x2: Int = ...
            *  if (x1 == y1) {
            *    if (x2 == y2) someCode
-           *    else label$1()
-           *  } else label$1()
+           *    else ()
+           *  } else ()
            *  ```
            *  is emitted as
            *  ```
            *  val x1: Int = ...
            *  val x2: Int = ...
            *  if (x1 == y1 && x2 == y2) someCode
-           *  else label$1()
+           *  else ()
            *  ```
            */
           def emitWithMashedConditions(plans: List[TestPlan]): Tree = {

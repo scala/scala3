@@ -7,4 +7,3 @@ scala> val x: Foo[String] = res0
   |                      ^^^^
   |                      Found:    Foo[Int](res0)
   |                      Required: Foo[String]
-  |

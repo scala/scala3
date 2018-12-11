@@ -85,13 +85,14 @@ object tags {
       case AndTypeReference(left, right) =>
         s"""${renderReference(left)}<span class="and-or-separator"> &amp; </span>${renderReference(right)}"""
 
-      case FunctionReference(args, returnValue) => {
+      case FunctionReference(args, returnValue, isImplicit) => {
+        val implicitPrefix = if (isImplicit) "implicit " else ""
         val params =
           if (args.isEmpty) "<span>() =&gt; </span>"
           else if (args.tail.isEmpty) renderReference(args.head) + """<span class="right-arrow"> =&gt; </span>"""
           else args.map(renderReference).mkString("<span>(</span>", "<span>, </span>", "<span>) =&gt; </span>")
 
-        params + renderReference(returnValue)
+        implicitPrefix + params + renderReference(returnValue)
       }
 
       case TupleReference(args) =>

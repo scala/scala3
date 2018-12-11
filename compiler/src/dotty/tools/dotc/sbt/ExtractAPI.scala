@@ -262,8 +262,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     // Synthetic methods that are always present do not affect the API
     // and can therefore be ignored.
-    def alwaysPresent(s: Symbol) =
-      s.isCompanionMethod || (csym.is(ModuleClass) && s.isConstructor)
+    def alwaysPresent(s: Symbol) = csym.is(ModuleClass) && s.isConstructor
     val decls = cinfo.decls.filter(!alwaysPresent(_))
     val apiDecls = apiDefinitions(decls)
 

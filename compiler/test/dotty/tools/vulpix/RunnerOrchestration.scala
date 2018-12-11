@@ -3,6 +3,7 @@ package tools
 package vulpix
 
 import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeoutException
 
@@ -157,9 +158,8 @@ trait RunnerOrchestration {
      */
     private def createProcess: Process = {
       val sep = JFile.separator
-      val cp =
-        classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation.getFile + JFile.pathSeparator +
-        Properties.scalaLibrary
+      val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
+      val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = sys.props("java.home") + sep + "bin" + sep + "java"
       new ProcessBuilder(javaBin, "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)

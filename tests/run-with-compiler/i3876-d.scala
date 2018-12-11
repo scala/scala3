@@ -13,5 +13,5 @@ object Test {
     println(f4(x).show)
   }
 
-  inline def inlineLambda: Int => Int = x => x + x
+  inline def inlineLambda <: Int => Int = x => x + x
 }

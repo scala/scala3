@@ -319,7 +319,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         thirdTry
       case tp1: TypeParamRef =>
         def flagNothingBound = {
-          if (!frozenConstraint && tp2.isRef(defn.NothingClass) && state.isGlobalCommittable) {
+          if (!frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
             else ctx.log(msg)
@@ -404,11 +404,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         if (cls2.isClass) {
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
-            if (tp1.isRef(defn.NothingClass)) return true
+            if (tp1.isRef(NothingClass)) return true
             if (tp1.isLambdaSub) return false
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
+            if (cls2 eq AnyClass) return true
             if (cls2 == defn.SingletonClass && tp1.isStable) return true
             return tryBaseType(cls2)
           }
@@ -417,7 +418,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
             val base = tp1.baseType(cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if (tp1.isLambdaSub && !tp1.isRef(defn.AnyKindClass))
+          else if (tp1.isLambdaSub && !tp1.isRef(AnyKindClass))
             return recur(tp1, EtaExpansion(cls2.typeRef))
         }
         fourthTry
@@ -830,9 +831,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
       *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
       */
-      def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
+      def compareLower(tycon2bounds: TypeBounds, followSuperType: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
-          if (tyconIsTypeRef) recur(tp1, tp2.superType)
+          if (followSuperType) recur(tp1, tp2.superType)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
@@ -841,13 +842,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
           canConstrain(param2) && canInstantiate(param2) ||
-          compareLower(bounds(param2), tyconIsTypeRef = false)
+          compareLower(bounds(param2), followSuperType = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
           defn.isTypelevel_S(tycon2.symbol) && compareS(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
-                compareLower(info2, tyconIsTypeRef = true)
+                val gbounds2 = ctx.gadt.bounds(tycon2.symbol)
+                if (gbounds2 == null) compareLower(info2, followSuperType = true)
+                else compareLower(gbounds2 & info2, followSuperType = false)
               case info2: ClassInfo =>
                 tycon2.name.toString.startsWith("Tuple") &&
                   defn.isTupleType(tp2) && isSubType(tp1, tp2.toNestedPairs) ||
@@ -883,8 +886,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
           !sym.isClass && (
-            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
-            recur(tp1.superType, tp2))
+            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) || {
+              val gbounds1 = ctx.gadt.bounds(tycon1.symbol)
+              if (gbounds1 == null) recur(tp1.superType, tp2)
+              else recur((gbounds1.hi & tycon1.info.bounds.hi).applyIfParameterized(args1), tp2)
+            })
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
@@ -1377,7 +1383,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
                       // at run time. It would not work to replace that with `Nothing`.
                       // However, maybe we can still apply the replacement to
                       // types which are not explicitly written.
-                      defn.NothingType
+                      NothingType
                     case _ => andType(tp1, tp2)
                   }
                 case _ => andType(tp1, tp2)
@@ -1388,8 +1394,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   }
 
   /** The greatest lower bound of a list types */
-  final def glb(tps: List[Type]): Type =
-    ((defn.AnyType: Type) /: tps)(glb)
+  final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -1419,7 +1424,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
+    ((NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
    *  the following strategies:

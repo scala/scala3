@@ -2,8 +2,6 @@
 class Foo() {
   def foo: scala.Unit = {
     var i: scala.Int = 1
-    do {
-      i = 0
-    } while (i.!=(0))
+    do i = 0 while (i.!=(0))
   }
 }

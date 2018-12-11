@@ -38,7 +38,6 @@ CoderTrait
 collectGenericCC
 collections_1
 comp-rec-test
-companions
 compile1
 conforms
 conformsWild
@@ -317,7 +316,6 @@ i831
 i864
 i877
 i878
-i880
 i903
 i938
 i939
@@ -376,7 +374,6 @@ lookupswitch
 macro-deprecate-dont-touch-backquotedidents
 Map
 match
-matchtype
 matthias3
 matthias4
 matthias5
@@ -439,7 +436,6 @@ propagate
 quote-1
 quote-lift-inline-params-b
 quote-non-static-macro
-quote-this
 range
 rangepos
 rangepos-anonapply
@@ -884,7 +880,6 @@ t613
 t6145
 t6146
 t615
-t6157
 t616
 t6184
 t6201
@@ -985,6 +980,7 @@ t8132
 t8177d
 t8177e
 t8177h
+t8207
 t8219
 t8230a
 t8237

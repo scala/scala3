@@ -21,8 +21,6 @@ object CheckRealizable {
 
   object NotConcrete extends Realizability(" is not a concrete type")
 
-  object NotStable extends Realizability(" is not a stable reference")
-
   class NotFinal(sym: Symbol)(implicit ctx: Context)
   extends Realizability(i" refers to nonfinal $sym")
 
@@ -73,12 +71,20 @@ class CheckRealizable(implicit ctx: Context) {
       if (sym.is(Stable)) realizability(tp.prefix)
       else {
         val r =
-          if (!sym.isStable) NotStable
-          else if (!isLateInitialized(sym)) realizability(tp.prefix)
-          else if (!sym.isEffectivelyFinal) new NotFinal(sym)
-          else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
-        if (r == Realizable) sym.setFlag(Stable)
-        r
+          if (sym.isStable && !isLateInitialized(sym))
+            // it's realizable because we know that a value of type `tp` has been created at run-time
+            Realizable
+          else if (!sym.isEffectivelyFinal)
+            // it's potentially not realizable since it might be overridden with a member of nonrealizable type
+            new NotFinal(sym)
+          else
+            // otherwise we need to look at the info to determine realizability
+            // roughly: it's realizable if the info does not have bad bounds
+            realizability(tp.info).mapError(r => new ProblemInUnderlying(tp, r))
+        r andAlso {
+          if (sym.isStable) sym.setFlag(Stable) // it's known to be stable and realizable
+          realizability(tp.prefix)
+        }
       }
     case _: SingletonType | NoPrefix =>
       Realizable
@@ -105,7 +111,8 @@ class CheckRealizable(implicit ctx: Context) {
   /** `Realizable` if `tp` has good bounds, a `HasProblem...` instance
    *  pointing to a bad bounds member otherwise. "Has good bounds" means:
    *
-   *    - all type members have good bounds
+   *    - all type members have good bounds (except for opaque helpers)
+   *    - all refinements of the underlying type have good bounds (except for opaque companions)
    *    - all base types are class types, and if their arguments are wildcards
    *      they have good bounds.
    *    - base types do not appear in multiple instances with different arguments.
@@ -114,10 +121,15 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private def boundsRealizability(tp: Type) = {
 
+    def isOpaqueCompanionThis = tp match {
+      case tp: ThisType => tp.cls.isOpaqueCompanion
+      case _ => false
+    }
+
     val memberProblems =
       for {
         mbr <- tp.nonClassTypeMembers
-        if !(mbr.info.loBound <:< mbr.info.hiBound)
+        if !(mbr.info.loBound <:< mbr.info.hiBound) && !mbr.symbol.isOpaqueHelper
       }
       yield new HasProblemBounds(mbr.name, mbr.info)
 
@@ -126,7 +138,7 @@ class CheckRealizable(implicit ctx: Context) {
         name <- refinedNames(tp)
         if (name.isTypeName)
         mbr <- tp.member(name).alternatives
-        if !(mbr.info.loBound <:< mbr.info.hiBound)
+        if !(mbr.info.loBound <:< mbr.info.hiBound) && !isOpaqueCompanionThis
       }
       yield new HasProblemBounds(name, mbr.info)
 

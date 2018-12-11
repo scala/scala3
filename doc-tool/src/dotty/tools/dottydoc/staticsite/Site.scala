@@ -8,6 +8,7 @@ import java.io.{ File => JFile, OutputStreamWriter, BufferedWriter, ByteArrayInp
 import java.util.{ List => JList, Arrays }
 import java.nio.file.Path
 import java.nio.charset.StandardCharsets
+import java.io.File.{ separator => sep }
 
 import com.vladsch.flexmark.parser.ParserEmulationProfile
 import com.vladsch.flexmark.parser.Parser
@@ -127,7 +128,9 @@ case class Site(
   }
 
   /** Copy static files to `outDir` */
-  def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  private[this] val defaultOutDir = new JFile(root.getAbsolutePath + JFile.separator + "_site")
+
+  def copyStaticFiles(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput (outDir) {
       // Copy user-defined static assets
       staticAssets.foreach { asset =>
@@ -164,9 +167,9 @@ case class Site(
   private def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): DefaultParams = {
     val pathFromRoot = stripRoot(pageLocation)
     val baseUrl: String = {
-      val rootLen = root.getAbsolutePath.split('/').length
-      val assetLen = pageLocation.getAbsolutePath.split('/').length
-      "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
+      val rootLen = root.toPath.toAbsolutePath.normalize.getNameCount
+      val assetLen = pageLocation.toPath.toAbsolutePath.normalize.getNameCount
+      "../" * (assetLen - rootLen + additionalDepth) + "."
     }
 
     DefaultParams(
@@ -188,19 +191,23 @@ case class Site(
   }
 
   /** Generate HTML for the API documentation */
-  def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateApiDocs(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput(outDir) {
       def genDoc(e: model.Entity): Unit = {
         ctx.docbase.echo(s"Generating doc page for: ${e.path.mkString(".")}")
         // Suffix is index.html for packages and therefore the additional depth
         // is increased by 1
         val (suffix, offset) =
-          if (e.kind == "package") ("/index.html", -1)
+          if (e.kind == "package") (sep + "index.html", -1)
           else (".html", 0)
 
-        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
+        val path = if (scala.util.Properties.isWin)
+          e.path.map(_.replace("<", "_").replace(">", "_"))
+        else
+          e.path
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  sep + "api" + sep + path.mkString(sep) + suffix))
         val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(Some(e)).toMap
-        val page = new HtmlPage("_layouts/api-page.html", layouts("api-page").content, params, includes)
+        val page = new HtmlPage("_layouts" + sep + "api-page.html", layouts("api-page").content, params, includes)
 
         render(page).foreach { rendered =>
           val source = new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8))
@@ -217,9 +224,9 @@ case class Site(
       }
 
       // generate search page:
-      val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/search.html"))
+      val target = mkdirs(fs.getPath(outDir.getAbsolutePath + sep + "api" + sep + "search.html"))
       val searchPageParams = defaultParams(target.toFile, -1).withPosts(blogInfo).toMap
-      val searchPage = new HtmlPage("_layouts/search.html", layouts("search").content, searchPageParams, includes)
+      val searchPage = new HtmlPage("_layouts" + sep + "search.html", layouts("search").content, searchPageParams, includes)
       render(searchPage).foreach { rendered =>
         Files.copy(
           new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8)),
@@ -230,7 +237,7 @@ case class Site(
     }
 
   /** Generate HTML files from markdown and .html sources */
-  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateHtmlFiles(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput(outDir) {
       compilableFiles.foreach { asset =>
         val pathFromRoot = stripRoot(asset)
@@ -250,7 +257,7 @@ case class Site(
     }
 
   /** Generate blog from files in `blog/_posts` and output in `outDir` */
-  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+  def generateBlog(outDir: JFile = defaultOutDir)(implicit ctx: Context): this.type =
     createOutput(outDir) {
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
@@ -408,7 +415,7 @@ case class Site(
   }
 
   private def toSourceFile(f: JFile): SourceFile =
-    SourceFile(AbstractFile.getFile(new File(f.toPath)), Source.fromFile(f).toArray)
+    SourceFile(AbstractFile.getFile(new File(f.toPath)), Source.fromFile(f, "UTF-8").toArray)
 
   private def collectFiles(dir: JFile, includes: String => Boolean): Array[JFile] =
     dir

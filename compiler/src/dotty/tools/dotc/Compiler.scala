@@ -6,7 +6,8 @@ import Contexts._
 import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
-import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
+import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
+import dotty.tools.backend.sjs
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -39,12 +40,13 @@ class Compiler {
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
+    List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new Staging) ::            // Inline calls, expand macros and turn quoted trees into explicit run-time data structures
+    List(new Staging) ::            // Expand macros and turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -64,7 +66,8 @@ class Compiler {
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new TryCatchPatterns,       // Compile cases in try/catch
+    List(new ElimOpaque,             // Turn opaque into normal aliases
+         new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
@@ -108,12 +111,12 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new CollectEntryPoints,     // Find classes with main methods
-         new CollectSuperCalls,      // Find classes that are called with super
-         new LabelDefs) ::           // Converts calls to labels to jumps
+         new CollectSuperCalls) ::   // Find classes that are called with super
     Nil
 
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
+    List(new sjs.GenSJSIR) ::        // Generate .sjsir files for Scala.js (not enabled by default)
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 

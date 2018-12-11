@@ -47,18 +47,17 @@ class Winners {
 
 object Failures {
   @tailrec
-  def facfail(n: Int): Int =                          // error
+  def facfail(n: Int): Int =
     if (n == 0) 1
-    else n * facfail(n - 1)                           // error
+    else n * facfail(n - 1) // error: not in tail pos
 }
 
 class Failures {
-  // not private, not final
-  @tailrec def fail1(x: Int): Int = fail1(x)          // error
+  @tailrec def fail1(x: Int): Int = fail1(x) // error: not private, not final
 
   // a typical between-chair-and-keyboard error
-  @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {   // error
+  @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {
     case Nil      => Nil
-    case x :: xs  => x :: fail2[T](xs)                // error
+    case x :: xs  => x :: fail2[T](xs) // error: not in tail pos
   }
 }

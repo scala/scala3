@@ -24,6 +24,13 @@ export const worksheetRunKey = "dotty.worksheet.run"
 export const worksheetCancelKey = "dotty.worksheet.cancel"
 
 /**
+ * If true, the setting for running the worksheet on save is enabled.
+ */
+function runWorksheetOnSave(): boolean {
+  return vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave") as boolean
+}
+
+/**
  * A wrapper around the information that VSCode needs to display text decorations.
  *
  * @param decorationType    The styling options of this decoration
@@ -44,12 +51,6 @@ class Worksheet implements Disposable {
   /** All decorations that have been added so far */
   private decorations: Decoration[] = []
 
-  /** The number of blank lines that have been inserted to fit the output so far. */
-  private insertedLines: number = 0
-
-  /** The lines that contain decorations */
-  private decoratedLines: Set<number> = new Set<number>()
-
   /** The minimum margin to add so that the decoration is shown after all text. */
   private margin: number = 0
 
@@ -68,32 +69,17 @@ class Worksheet implements Disposable {
 
 	dispose() {
     this.reset()
-    if (this.canceller) {
-      this.canceller.dispose()
-      this.canceller = undefined
-    }
     this._onDidStateChange.dispose()
-	}
-
-  /** Remove all decorations, and resets this worksheet. */
-  private reset(): void {
-    this.decorations.forEach(decoration => decoration.decorationType.dispose())
-    this.decorations = []
-    this.insertedLines = 0
-    this.decoratedLines.clear()
-    this.runVersion = -1
-    this.margin = this.longestLine() + 5
   }
 
-  /**
-   * Reset the "worksheet state" (margin and number of inserted lines), and
-   * return an array of TextEdit that remove the redundant blank lines that have
-   * been inserted by a previous run.
-   */
-  prepareRun(): TextEdit[] {
-    const edits = this.removeRedundantBlankLinesEdits()
-    this.reset()
-    return edits
+  /** Cancel any current run, remove all decorations, and resets this worksheet. */
+  private reset(): void {
+    this.cancel()
+
+    this.decorations.forEach(decoration => decoration.decorationType.dispose())
+    this.decorations = []
+    this.runVersion = -1
+    this.margin = this.longestLine() + 5
   }
 
   /** If this worksheet is currently being run, cancel the run. */
@@ -111,35 +97,33 @@ class Worksheet implements Disposable {
     return this.canceller != undefined
   }
 
+  /** Display the output in the worksheet's editor. */
+  handleMessage(output: WorksheetPublishOutputParams, editor: vscode.TextEditor) {
+    this.displayAndSaveResult(output.line - 1, output.content, editor)
+  }
+
   /**
    * Run the worksheet in `document`, if a previous run is in progress, it is
    * cancelled first.
    */
   run(): Promise<WorksheetRunResult> {
     this.cancel()
+    this.reset()
     const canceller = new CancellationTokenSource()
     const token = canceller.token
-    // This ensures that isRunning() returns true.
-    this.canceller = canceller
+    this.canceller = canceller  // This ensures that isRunning() returns true.
 
     this._onDidStateChange.fire()
 
     return new Promise<WorksheetRunResult>(resolve => {
-      const textEdits = this.prepareRun()
-      const edit = new vscode.WorkspaceEdit()
-      edit.set(this.document.uri, textEdits)
-      vscode.workspace.applyEdit(edit).then(editSucceeded => {
-        this.runVersion = this.document.version
-        if (editSucceeded && !token.isCancellationRequested)
-          resolve(vscode.window.withProgress({
-            location: ProgressLocation.Window,
-            title: "Running worksheet"
-          }, () => this.client.sendRequest(
-            WorksheetRunRequest.type, asWorksheetRunParams(this.document), token
-          )))
-        else
-          resolve({ success: false })
-      })
+      this.runVersion = this.document.version
+      resolve(
+        vscode.window.withProgress({
+          location: ProgressLocation.Window,
+          title: "Running worksheet"
+        }, () => this.client.sendRequest(
+          WorksheetRunRequest.type, asWorksheetRunParams(this.document), token
+        )))
     }).then(result => {
       canceller.dispose()
       if (this.canceller === canceller) { // If false, a new run has already started
@@ -158,46 +142,25 @@ class Worksheet implements Disposable {
    *
    * @param lineNumber The number of the line in the source that produced the result.
    * @param runResult  The result itself.
-   * @param worksheet  The worksheet that receives the result.
    * @param editor     The editor where to display the result.
-   * @return A `Thenable` that will insert necessary lines to fit the output
-   *         and display the decorations upon completion.
    */
-  public displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor) {
-    const resultLines = runResult.trim().split(/\r\n|\r|\n/g)
+  private displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor): void {
+    const resultLines = runResult.split(/\r\n|\r|\n/g)
 
-    // The line where the next decoration should be put.
-    // It's the number of the line that produced the output, plus the number
-    // of lines that we've inserted so far.
-    let actualLine = lineNumber + this.insertedLines
+    if (resultLines.length == 0)
+      return
 
-    // If the output has more than one line, we need to insert blank lines
-    // below the line that produced the output to fit the output.
-    const addNewLinesEdit = new vscode.WorkspaceEdit()
-    if (resultLines.length > 1) {
-      const linesToInsert = resultLines.length - 1
-      const editPos = new vscode.Position(actualLine + 1, 0) // add after the line
-      addNewLinesEdit.insert(editor.document.uri, editPos, "\n".repeat(linesToInsert))
-      this.insertedLines += linesToInsert
-      // Increase the `runVersion`, because the text edit will increase the document's version
-      this.runVersion += 1
+    const line = editor.document.lineAt(lineNumber)
+    const decorationOptions = {
+      range: line.range,
+      hoverMessage: new vscode.MarkdownString().appendCodeblock(runResult)
     }
-
-    return vscode.workspace.applyEdit(addNewLinesEdit).then(_ => {
-      for (let line of resultLines) {
-        const decorationPosition = new vscode.Position(actualLine, 0)
-        const decorationMargin = this.margin - editor.document.lineAt(actualLine).text.length
-        const decorationType = this.createDecoration(decorationMargin, line)
-        const decorationOptions = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
-        const decoration = new Decoration(decorationType, decorationOptions)
-
-        this.decoratedLines.add(actualLine)
-        this.decorations.push(decoration)
-
-        editor.setDecorations(decorationType, [decorationOptions])
-        actualLine += 1
-      }
-    })
+    const decorationMargin = this.margin - line.text.length
+    const decorationText = resultLines[0] + (resultLines.length > 1 ? `<${resultLines.length - 1} lines hidden>` : "")
+    const decorationType = this.createDecoration(decorationMargin, decorationText)
+    const decoration = new Decoration(decorationType, decorationOptions)
+    this.decorations.push(decoration)
+    editor.setDecorations(decorationType, [decorationOptions])
   }
 
   /**
@@ -206,7 +169,7 @@ class Worksheet implements Disposable {
    *
    * @param editor The editor where to display the decorations.
    */
-  public restoreDecorations(editor: vscode.TextEditor) {
+  restoreDecorations(editor: vscode.TextEditor) {
     if (editor.document.version == this.runVersion) {
       this.decorations.forEach(decoration => {
         editor.setDecorations(decoration.decorationType, [decoration.decorationOptions])
@@ -254,59 +217,6 @@ class Worksheet implements Disposable {
 
     return maxLength
   }
-
-  /**
-   * TextEdits to remove the repeated blank lines in the source.
-   *
-   * Running a worksheet can insert new lines in the worksheet so that the
-   * output of a line fits below the line. Before a run, we remove blank
-   * lines in the worksheet to keep its length under control.
-   *
-   * @param worksheet The worksheet where blank lines must be removed.
-   * @return An array of `TextEdit` that remove the blank lines.
-   */
-  private removeRedundantBlankLinesEdits(): TextEdit[] {
-
-    const document = this.document
-    const lineCount = document.lineCount
-    let rangesToRemove: vscode.Range[] = []
-    let rangeStart = 0
-    let rangeEnd = 0
-    let inRange = true
-
-    function addRange() {
-      inRange = false
-      if (rangeStart < rangeEnd) {
-        rangesToRemove.push(new vscode.Range(rangeStart, 0, rangeEnd, 0))
-      }
-      return
-    }
-
-    for (let i = 0; i < lineCount; ++i) {
-      const isEmpty = document.lineAt(i).isEmptyOrWhitespace && this.hasDecoration(i)
-      if (inRange) {
-        if (isEmpty) rangeEnd += 1
-        else addRange()
-      } else {
-        if (isEmpty) {
-          rangeStart = i
-          rangeEnd = i + 1
-          inRange = true
-        }
-      }
-    }
-
-    if (inRange) {
-      rangeEnd = lineCount
-      addRange()
-    }
-
-    return rangesToRemove.reverse().map(range => vscode.TextEdit.delete(range))
-  }
-
-  private hasDecoration(line: number): boolean {
-    return this.decoratedLines.has(line)
-  }
 }
 
 export class WorksheetProvider implements Disposable {
@@ -325,15 +235,21 @@ export class WorksheetProvider implements Disposable {
       codeLensProvider,
       vscode.languages.registerCodeLensProvider(documentSelector, codeLensProvider),
       vscode.workspace.onWillSaveTextDocument(event => {
-        const worksheet = this.worksheetFor(event.document)
-        if (worksheet) {
-          event.waitUntil(Promise.resolve(worksheet.prepareRun()))
+        const document = event.document
+        const worksheet = this.worksheetFor(document)
+        // If the document is not dirty, then `onDidSaveTextDocument` will not
+        // be called so we need to run the worksheet now.
+        // On the other hand, if the document _is_ dirty, we should _not_ run
+        // the worksheet now because the server state will not be synchronized
+        // with the client state, instead we let `onDidSaveTextDocument`
+        // handle it.
+        if (worksheet && runWorksheetOnSave() && !document.isDirty) {
+          worksheet.run()
         }
       }),
       vscode.workspace.onDidSaveTextDocument(document => {
-        const runWorksheetOnSave = vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave")
         const worksheet = this.worksheetFor(document)
-        if (runWorksheetOnSave && worksheet) {
+        if (worksheet && runWorksheetOnSave()) {
           worksheet.run()
         }
       }),
@@ -409,7 +325,7 @@ export class WorksheetProvider implements Disposable {
    * Handle the result of running part of a worksheet.
    * This is called when we receive a `worksheet/publishOutput`.
    *
-   * @param message The result of running part of a worksheet.
+   * @param output The result of running part of a worksheet.
    */
   private handleMessage(output: WorksheetPublishOutputParams) {
     const editor = vscode.window.visibleTextEditors.find(e => {
@@ -420,7 +336,7 @@ export class WorksheetProvider implements Disposable {
     if (editor) {
       const worksheet = this.worksheetFor(editor.document)
       if (worksheet) {
-        worksheet.displayAndSaveResult(output.line - 1, output.content, editor)
+        worksheet.handleMessage(output, editor)
       }
     }
   }

@@ -49,7 +49,8 @@ trait TypeAssigner {
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
-        parentType.findMember(decl.name, cls.thisType, excluded = Private)
+        parentType.findMember(decl.name, cls.thisType,
+          required = EmptyFlagConjunction, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
@@ -105,7 +106,7 @@ trait TypeAssigner {
             case info: ClassInfo =>
               range(defn.NothingType, apply(classBound(info)))
             case _ =>
-              range(defn.NothingType, defn.AnyType) // should happen only in error cases
+              emptyRange // should happen only in error cases
           }
         case tp: ThisType if toAvoid(tp.cls) =>
           range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
@@ -152,8 +153,12 @@ trait TypeAssigner {
     if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) checkNoPrivateLeaks(sym, pos)
     else sym.info
 
-  def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
-    Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
+  private def toRepeated(tree: Tree, from: ClassSymbol)(implicit ctx: Context): Tree =
+    Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(from, defn.RepeatedParamClass)))
+
+   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.SeqClass)
+
+   def arrayToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.ArrayClass)
 
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
@@ -232,21 +237,21 @@ trait TypeAssigner {
    */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val mbr = site.member(name)
-    if (reallyExists(mbr)) site.select(name, mbr)
-    else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
+    if (reallyExists(mbr))
+      site.select(name, mbr)
+    else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name))
       TryDynamicCallType
-    } else {
-      if (site.isErroneous || name.toTermName == nme.ERROR) UnspecifiedErrorType
-      else {
-        def kind = if (name.isTypeName) "type" else "value"
-        def addendum =
-          if (site.derivesFrom(defn.DynamicClass)) "\npossible cause: maybe a wrong Dynamic method signature?"
-          else ""
-        errorType(
-          if (name == nme.CONSTRUCTOR) ex"$site does not have a constructor"
-          else NotAMember(site, name, kind),
-          pos)
-      }
+    else if (site.isErroneous || name.toTermName == nme.ERROR)
+      UnspecifiedErrorType
+    else {
+      def kind = if (name.isTypeName) "type" else "value"
+      def addendum =
+        if (site.derivesFrom(defn.DynamicClass)) "\npossible cause: maybe a wrong Dynamic method signature?"
+        else ""
+      errorType(
+        if (name == nme.CONSTRUCTOR) ex"$site does not have a constructor"
+        else NotAMember(site, name, kind),
+        pos)
     }
   }
 
@@ -259,7 +264,8 @@ trait TypeAssigner {
       qualType = errorType(em"$qualType takes type parameters", qual1.pos)
     else if (!qualType.isInstanceOf[TermType]) qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.pos)
     val ownType = selectionType(qualType, tree.name, tree.pos)
-    ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
+    if (tree.getAttachment(desugar.SuppressAccessCheck).isDefined) ownType
+    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
   }
 
   /** Type assignment method. Each method takes as parameters
@@ -290,7 +296,7 @@ trait TypeAssigner {
 
       case _ => accessibleSelectionType(tree, qual)
     }
-    tree.withType(tp)
+    ConstFold(tree.withType(tp))
   }
 
   def assignType(tree: untpd.New, tpt: Tree)(implicit ctx: Context): New =
@@ -371,7 +377,7 @@ trait TypeAssigner {
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
     }
-    tree.withType(ownType)
+    ConstFold(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
@@ -486,7 +492,7 @@ trait TypeAssigner {
     tree.withType(defn.NothingType)
 
   def assignType(tree: untpd.WhileDo)(implicit ctx: Context): WhileDo =
-    tree.withType(defn.UnitType)
+    tree.withType(if (tree.cond eq EmptyTree) defn.NothingType else defn.UnitType)
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(implicit ctx: Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)

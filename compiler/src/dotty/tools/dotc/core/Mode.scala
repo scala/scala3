@@ -100,4 +100,7 @@ object Mode {
 
   /** Read comments from definitions when unpickling from TASTY */
   val ReadComments: Mode = newMode(22, "ReadComments")
+
+  /** Suppress insertion of apply or implicit conversion on qualifier */
+  val FixedQualifier: Mode = newMode(23, "FixedQualifier")
 }

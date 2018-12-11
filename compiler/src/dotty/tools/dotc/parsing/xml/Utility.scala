@@ -12,7 +12,7 @@ import scala.collection.mutable
  * @author Burak Emir
  */
 object Utility {
-  import util.Chars.SU
+  import scala.tasty.util.Chars.SU
 
   private val unescMap = Map(
     "lt"    -> '<',

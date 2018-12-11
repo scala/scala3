@@ -14,7 +14,7 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
-import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
+import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -22,7 +22,7 @@ import reporting._
 import reporting.diagnostic.Message
 import collection.mutable
 import printing._
-import config.{JavaPlatform, Platform, ScalaSettings}
+import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 
 import scala.annotation.internal.sharable
 
@@ -555,7 +555,7 @@ object Contexts {
     moreProperties = Map.empty
     store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
     typeComparer = new TypeComparer(this)
-    searchHistory = new SearchHistory(0, Map())
+    searchHistory = new SearchRoot
     gadt = EmptyGADTMap
   }
 
@@ -590,7 +590,8 @@ object Contexts {
     }
 
     protected def newPlatform(implicit ctx: Context): Platform =
-      new JavaPlatform
+      if (settings.scalajs.value) new SJSPlatform
+      else new JavaPlatform
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)

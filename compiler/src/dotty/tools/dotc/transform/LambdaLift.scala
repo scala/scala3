@@ -201,10 +201,7 @@ object LambdaLift {
         tree match {
           case tree: Ident =>
             if (isLocal(sym)) {
-              if (sym is Label)
-                assert(enclosure == sym.enclosure,
-                  i"attempt to refer to label $sym from nested $enclosure")
-              else if (sym is Method) markCalled(sym, enclosure)
+              if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
             }
             def captureImplicitThis(x: Type): Unit = {
@@ -220,7 +217,7 @@ object LambdaLift {
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
-            if (sym.owner.isTerm && !sym.is(Label))
+            if (sym.owner.isTerm)
               liftedOwner(sym) = sym.enclosingPackageClass
                 // this will make methods in supercall constructors of top-level classes owned
                 // by the enclosing package, which means they will be static.
@@ -288,7 +285,7 @@ object LambdaLift {
       } while (changedLiftedOwner)
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
-      if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
+      if (sym.isAnonymousFunction && sym.owner.is(Method))
         sym.name.replace {
           case name: SimpleName => ExpandPrefixName(sym.owner.name.asTermName, name)
         }.freshened

@@ -979,7 +979,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkAllOverrides(cls)
     tree
   } catch {
-    case ex: MergeError =>
+    case ex: TypeError =>
       ctx.error(ex.getMessage, tree.pos)
       tree
   }

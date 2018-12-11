@@ -8,7 +8,7 @@ object Macros {
 
   inline def testMacro: Unit = ~impl
 
-  def impl(implicit tasty: Tasty): Expr[Unit] = {
+  def impl(implicit reflect: Reflection): Expr[Unit] = {
     // 2 is a lifted constant
     val show1 = power(2.toExpr, 3.0.toExpr).show
     val run1  = power(2.toExpr, 3.0.toExpr).run
@@ -43,10 +43,10 @@ object Macros {
     }
   }
 
-  def power(n: Expr[Int], x: Expr[Double])(implicit tasty: Tasty): Expr[Double] = {
-    import tasty._
+  def power(n: Expr[Int], x: Expr[Double])(implicit reflect: Reflection): Expr[Double] = {
+    import reflect._
 
-    val Constant = new ConstantExtractor(tasty)
+    val Constant = new ConstantExtractor(reflect)
     n match {
       case Constant(n1) => powerCode(n1, x)
       case _ => '{ dynamicPower(~n, ~x) }

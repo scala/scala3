@@ -20,9 +20,9 @@ class CodeDocumentHighlight(override val range: CodeRange,
                             expected: Seq[(CodeRange, DocumentHighlightKind)]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val expectedPairs = expected.map { case (codeRange, kind) => (codeRange.toRange, kind) }
+    val expectedPairs = expected.map { case (codeRange, kind) => (codeRange.toRange, kind) }.sorted
     val results = server.documentHighlight(marker.toTextDocumentPositionParams).get()
-    val resultPairs = results.asScala.map { result => (result.getRange, result.getKind) }
+    val resultPairs = results.asScala.map { result => (result.getRange, result.getKind) }.sorted
 
     assertEquals(expectedPairs, resultPairs)
   }

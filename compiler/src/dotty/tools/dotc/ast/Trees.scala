@@ -345,12 +345,13 @@ object Trees {
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
 
-    def setComment(comment: Option[Comment]): ThisTree[Untyped] = {
+    def setComment(comment: Option[Comment]): this.type = {
       comment.map(putAttachment(DocComment, _))
-      asInstanceOf[ThisTree[Untyped]]
+      this
     }
 
-    protected def setMods(mods: untpd.Modifiers): Unit = myMods = mods
+    /** Destructively update modifiers. To be used with care. */
+    def setMods(mods: untpd.Modifiers): Unit = myMods = mods
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position
@@ -494,6 +495,12 @@ object Trees {
   case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = If[T]
+    def isInline = false
+  }
+  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
+    extends If(cond, thenp, elsep) {
+    override def isInline = true
+    override def toString = s"InlineIf($cond, $thenp, $elsep)"
   }
 
   /** A closure with an environment and a reference to a method.
@@ -514,6 +521,12 @@ object Trees {
   case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Match[T]
+    def isInline = false
+  }
+  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
+    extends Match(selector, cases) {
+    override def isInline = true
+    override def toString = s"InlineMatch($selector, $cases)"
   }
 
   /** case pat if guard => body; only appears as child of a Match */
@@ -585,8 +598,9 @@ object Trees {
 
   /** A tree representing inlined code.
    *
-   *  @param  call      Info about the original call that was inlined.
-   *                    Only a reference to the toplevel class from which the call was inlined.
+   *  @param  call      Info about the original call that was inlined
+   *                    Until PostTyper, this is the full call, afterwards only
+   *                    a reference to the toplevel class from which the call was inlined.
    *  @param  bindings  Bindings for proxies to be used in the inlined code
    *  @param  expansion The inlined tree, minus bindings.
    *
@@ -899,8 +913,10 @@ object Trees {
     type Assign = Trees.Assign[T]
     type Block = Trees.Block[T]
     type If = Trees.If[T]
+    type InlineIf = Trees.InlineIf[T]
     type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
+    type InlineMatch = Trees.InlineMatch[T]
     type CaseDef = Trees.CaseDef[T]
     type Labeled = Trees.Labeled[T]
     type Return = Trees.Return[T]
@@ -1028,6 +1044,7 @@ object Trees {
       }
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = tree match {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
+        case tree: InlineIf => finalize(tree, untpd.InlineIf(cond, thenp, elsep))
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
       def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = tree match {
@@ -1036,6 +1053,7 @@ object Trees {
       }
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = tree match {
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
+        case tree: InlineMatch => finalize(tree, untpd.InlineMatch(selector, cases))
         case _ => finalize(tree, untpd.Match(selector, cases))
       }
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = tree match {

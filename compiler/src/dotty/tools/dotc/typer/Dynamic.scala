@@ -35,7 +35,7 @@ object Dynamic {
  *  The first matching rule of is applied.
  *
  * 2. Translates member selections on structural types to calls of `selectDynamic`
- *    or `selectDynamicMethod` on a `Selectable` instance. @See handleStructural.
+ *    or `applyDynamic` on a `Selectable` instance. @See handleStructural.
  *
  */
 trait Dynamic { self: Typer with Applications =>
@@ -113,53 +113,77 @@ trait Dynamic { self: Typer with Applications =>
   }
 
   /** Handle reflection-based dispatch for members of structural types.
-   *  Given `x.a`, where `x` is of (widened) type `T` and `x.a` is of type `U`:
    *
-   *  If `U` is a value type, map `x.a` to the equivalent of:
+   *  Given `x.a`, where `x` is of (widened) type `T` (a value type or a nullary method type),
+   *  and `x.a` is of type `U`, map `x.a` to the equivalent of:
    *
-   *     (x: Selectable).selectDynamic("a").asInstanceOf[U]
+   *  ```scala
+   *  (x: Selectable).selectDynamic("a").asInstanceOf[U]
+   *  ```
    *
-   *  If `U` is a method type (T1,...,Tn)R, map `x.a` to the equivalent of:
+   *  Given `x.a(a11, ..., a1n)...(aN1, ..., aNn)`, where `x.a` is of (widened) type
+   *  `(T11, ..., T1n)...(TN1, ..., TNn) => R`, it is desugared to:
    *
-   *     (x: Selectable).selectDynamicMethod("a", CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
+   *  ```scala
+   *  (x:selectable).applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)
+   *                             (a11, ..., a1n, ..., aN1, ..., aNn)
+   *                .asInstanceOf[R]
+   *  ```
    *
-   *  where CT1,...,CTn are the class tags representing the erasure of T1,...,Tn.
+   *  where CT11, ..., CTNn are the class tags representing the erasure of T11, ..., TNn.
    *
    *  It's an error if U is neither a value nor a method type, or a dependent method
-   *  type, or of too large arity (limit is Definitions.MaxStructuralMethodArity).
+   *  type.
    */
   def handleStructural(tree: Tree)(implicit ctx: Context): Tree = {
-    val Select(qual, name) = tree
+    val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
 
-    def structuralCall(selectorName: TermName, formals: List[Tree]) = {
+    def structuralCall(selectorName: TermName, ctags: List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableType)
-      val scall = untpd.Apply(
-        untpd.TypedSplice(selectable.select(selectorName)).withPos(tree.pos),
-        (Literal(Constant(name.toString)) :: formals).map(untpd.TypedSplice(_)))
+
+      // ($qual: Selectable).$selectorName("$name", ..$ctags)
+      val base =
+        untpd.Apply(
+          untpd.TypedSplice(selectable.select(selectorName)).withPos(fun.pos),
+          (Literal(Constant(name.toString)) :: ctags).map(untpd.TypedSplice(_)))
+
+      val scall =
+        if (vargss.isEmpty) base
+        else untpd.Apply(base, vargss.flatten)
+
       typed(scall)
     }
 
-    def fail(reason: String) =
+    def fail(name: Name, reason: String) =
       errorTree(tree, em"Structural access not allowed on method $name because it $reason")
 
-    tree.tpe.widen match {
-      case tpe: MethodType =>
-        if (tpe.isParamDependent)
-          fail(i"has a method type with inter-parameter dependencies")
-        else if (tpe.paramNames.length > Definitions.MaxStructuralMethodArity)
-          fail(i"""takes too many parameters.
-                  |Structural types only support methods taking up to ${Definitions.MaxStructuralMethodArity} arguments""")
-        else {
-          val ctags = tpe.paramInfos.map(pt =>
-            implicitArgTree(defn.ClassTagType.appliedTo(pt :: Nil), tree.pos.endPos))
-          structuralCall(nme.selectDynamicMethod, ctags).asInstance(tpe.toFunctionType())
-        }
+    fun.tpe.widen match {
       case tpe: ValueType =>
         structuralCall(nme.selectDynamic, Nil).asInstance(tpe)
-      case tpe: PolyType =>
-        fail("is polymorphic")
+
+      case tpe: MethodType =>
+        def isDependentMethod(tpe: Type): Boolean = tpe match {
+          case tpe: MethodType =>
+            tpe.isParamDependent ||
+            tpe.isResultDependent ||
+            isDependentMethod(tpe.resultType)
+          case _ =>
+            false
+        }
+
+        if (isDependentMethod(tpe))
+          fail(name, i"has a method type with inter-parameter dependencies")
+        else {
+          val ctags = tpe.paramInfoss.flatten.map(pt =>
+            implicitArgTree(defn.ClassTagType.appliedTo(pt.widenDealias :: Nil), fun.pos.endPos))
+          structuralCall(nme.applyDynamic, ctags).asInstance(tpe.finalResultType)
+        }
+
+      // (@allanrenucci) I think everything below is dead code
+      case _: PolyType =>
+        fail(name, "is polymorphic")
       case tpe =>
-        fail(i"has an unsupported type: $tpe")
+        fail(name, i"has an unsupported type: $tpe")
     }
   }
 }

@@ -177,7 +177,8 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
-                    |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’                  Match(expr, cases) -- point on match
+                    |  [‘inline’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’       Match(expr, cases) -- point on match
+                    |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ Expr
@@ -226,6 +227,8 @@ Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }                                Match(EmptyTree, cases)
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
+ImplicitCaseClauses ::=  ImplicitCaseClause { ImplicitCaseClause }
+ImplicitCaseClause  ::=  ‘case’ PatVar [‘:’ RefinedType] [Guard] ‘=>’ Block
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
@@ -275,7 +278,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
-DefParam          ::=  {Annotation} [‘transparent’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ```
 
 ### Bindings and Imports
@@ -291,7 +294,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
-                    |  ‘transparent’
+                    |  ‘opaque’
                     |  ‘inline’
                     |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
@@ -316,7 +319,8 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-DefSig            ::=  id [DefTypeParamClause] DefParamClauses
+DefSig            ::=  ‘(’ DefParam ‘)’ [nl] id
+                       [DefTypeParamClause] DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] (TypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
                     |  id [TypeParamClause] <: Type = MatchType
 
@@ -329,7 +333,7 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr              PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
-DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
+DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  DefSig [nl] ‘{’ Block ‘}’                                DefDef(_, name, tparams, vparamss, tpe, Block)
                     |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)

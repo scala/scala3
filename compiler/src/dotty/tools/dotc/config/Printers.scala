@@ -17,6 +17,7 @@ object Printers {
   val checks: Printer = noPrinter
   val config: Printer = noPrinter
   val cyclicErrors: Printer = noPrinter
+  val debug = noPrinter
   val dottydoc: Printer = noPrinter
   val exhaustivity: Printer = noPrinter
   val gadts: Printer = noPrinter
@@ -32,6 +33,7 @@ object Printers {
   val plugins: Printer = noPrinter
   val simplify: Printer = noPrinter
   val subtyping: Printer = noPrinter
+  val tailrec: Printer = noPrinter
   val transforms: Printer = noPrinter
   val typr: Printer = noPrinter
   val unapp: Printer = noPrinter

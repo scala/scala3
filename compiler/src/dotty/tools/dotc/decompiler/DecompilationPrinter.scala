@@ -3,10 +3,12 @@ package decompiler
 
 import java.io.{OutputStream, PrintStream}
 
+import scala.io.Codec
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import dotty.tools.dotc.tastyreflect.TastyImpl
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.File
 
 /** Phase that prints the trees in all loaded compilation units.
@@ -24,8 +26,8 @@ class DecompilationPrinter extends Phase {
       var os: OutputStream = null
       var ps: PrintStream = null
       try {
-        os = File(outputDir.fileNamed("decompiled.scala").path).outputStream(append = true)
-        ps = new PrintStream(os)
+        os = File(outputDir.fileNamed("decompiled.scala").path)(Codec.UTF8).outputStream(append = true)
+        ps = new PrintStream(os, /* autoFlush = */ false, "UTF-8")
         printToOutput(ps)
       } finally {
         if (os ne null) os.close()
@@ -39,8 +41,9 @@ class DecompilationPrinter extends Phase {
     if (ctx.settings.printTasty.value) {
       new TastyPrinter(unit.pickled.head._2).printContents()
     } else {
-      out.println(s"/** Decompiled from $unit */")
-      out.println(new TastyImpl(ctx).showSourceCode.showTree(unit.tpdTree)(ctx))
+      val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
+      out.println(s"/** Decompiled from $unitFile */")
+      out.println(new ReflectionImpl(ctx).showSourceCode.showTree(unit.tpdTree)(ctx))
     }
   }
 }

@@ -3,6 +3,8 @@ package dotty.tools.languageserver.util.embedded
 import dotty.tools.languageserver.util.server.TestFile
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
+import scala.collection.JavaConverters._
+
 import org.eclipse.lsp4j._
 
 import PositionContext.PosCtx
@@ -15,6 +17,9 @@ class CodeMarker(val name: String) extends Embedded {
 
   /** The file containing this marker. */
   def file: PosCtx[TestFile] = posCtx.positionOf(this)._1
+
+  /** The uri of the file containing this marker. */
+  def uri: PosCtx[String] = file.uri
 
   /** The line containing this marker. */
   def line: PosCtx[Int] = posCtx.positionOf(this)._2
@@ -33,6 +38,9 @@ class CodeMarker(val name: String) extends Embedded {
 
   def toCompletionParams: PosCtx[CompletionParams] =
     new CompletionParams(toTextDocumentIdentifier, toPosition)
+
+  def toPublishDiagnosticsParams(diagnostics: List[Diagnostic]): PosCtx[PublishDiagnosticsParams] =
+    new PublishDiagnosticsParams(file.uri, diagnostics.asJava)
 
   def toRenameParams(newName: String): PosCtx[RenameParams] =
     new RenameParams(toTextDocumentIdentifier, toPosition, newName)

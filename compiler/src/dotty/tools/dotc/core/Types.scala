@@ -149,7 +149,7 @@ object Types {
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
-      case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable || tp.info.isStable
+      case tp: TermRef => tp.symbol.isStable && tp.prefix.isStable || tp.info.isStable
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
@@ -280,7 +280,7 @@ object Types {
     final def isError(implicit ctx: Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
     /** Is some part of this type produced as a repair for an error? */
-    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
+    def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -441,7 +441,7 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.classSymbols
       case AndType(l, r) =>
-        l.classSymbols union r.classSymbols
+        l.classSymbols | r.classSymbols
       case OrType(l, r) =>
         l.classSymbols intersect r.classSymbols // TODO does not conform to spec
       case _ =>
@@ -504,7 +504,7 @@ object Types {
      */
     @tailrec final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot(NoPrefix)
+        tp.decls.denotsNamed(name).filterWithFlags(EmptyFlagConjunction, excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
       case err: ErrorType =>
@@ -515,29 +515,29 @@ object Types {
 
     /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ track("member") /*<|<*/ {
-      memberExcluding(name, EmptyFlags)
+      memberBasedOnFlags(name, required = EmptyFlagConjunction, excluded = EmptyFlags)
     }
 
     /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateMember") {
-      memberExcluding(name, Flags.Private)
+      memberBasedOnFlags(name, required = EmptyFlagConjunction, excluded = Flags.Private)
     }
 
-    final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation = {
+    /** The member with given `name` and required and/or excluded flags */
+    final def memberBasedOnFlags(name: Name, required: FlagConjunction = EmptyFlagConjunction, excluded: FlagSet = EmptyFlags)(implicit ctx: Context): Denotation = {
       // We need a valid prefix for `asSeenFrom`
       val pre = this match {
         case tp: ClassInfo => tp.appliedRef
         case _ => widenIfUnstable
       }
-      findMember(name, pre, excluding)
+      findMember(name, pre, required, excluded)
     }
 
-    /** Find member of this type with given name and
-     *  produce a denotation that contains the type of the member
-     *  as seen from given prefix `pre`. Exclude all members that have
-     *  flags in `excluded` from consideration.
+    /** Find member of this type with given `name`, all `required`
+     *  flags and no `excluded` flag and produce a denotation that contains
+     *  the type of the member as seen from given prefix `pre`.
      */
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+    final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: TermRef =>
           go (tp.underlying match {
@@ -547,7 +547,7 @@ object Types {
           })
         case tp: TypeRef =>
           tp.denot match {
-            case d: ClassDenotation => d.findMember(name, pre, excluded)
+            case d: ClassDenotation => d.findMember(name, pre, required, excluded)
             case d => go(d.info)
           }
         case tp: AppliedType =>
@@ -563,7 +563,7 @@ object Types {
             case _ =>
               go(tp.superType)
           }
-        case tp: ThisType => // ??? inline
+        case tp: ThisType =>
           goThis(tp)
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -579,7 +579,7 @@ object Types {
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
-          tp.cls.findMember(name, pre, excluded)
+          tp.cls.findMember(name, pre, required, excluded)
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
@@ -589,7 +589,7 @@ object Types {
           // supertype of `pre`.
           go(tp.join)
         case tp: JavaArrayType =>
-          defn.ObjectType.findMember(name, pre, excluded)
+          defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
@@ -796,10 +796,10 @@ object Types {
         (name, buf) => buf ++= member(name).altsWith(x => !x.is(Method)))
     }
 
-    /** The set of members of this type having at least one of `requiredFlags` but none of `excludedFlags` set */
-    final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
+    /** The set of members of this type that have all of `required` flags but none of `excluded` flags set. */
+    final def membersBasedOnFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
       memberDenots(takeAllFilter,
-        (name, buf) => buf ++= memberExcluding(name, excludedFlags).altsWith(x => x.is(requiredFlags)))
+        (name, buf) => buf ++= memberBasedOnFlags(name, required, excluded).alternatives)
     }
 
     /** All members of this type. Warning: this can be expensive to compute! */
@@ -868,7 +868,7 @@ object Types {
         matchLoosely && {
           val this1 = widenNullary(this)
           val that1 = widenNullary(that)
-          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(this1, matchLoosely = false)
+          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, matchLoosely = false)
         }
       )
     }
@@ -1082,6 +1082,18 @@ object Types {
 
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(implicit ctx: Context): Type = dealias1(keepIfRefining)
+
+    /** If this is a synthetic opaque type seen from inside the opaque companion object,
+     *  its opaque alias, otherwise the type itself.
+     */
+    final def followSyntheticOpaque(implicit ctx: Context): Type = this match {
+      case tp: TypeProxy if tp.typeSymbol.is(SyntheticOpaque) =>
+        tp.superType match {
+          case AndType(alias, _) => alias   // in this case we are inside the companion object
+          case _ => this
+        }
+      case _ => this
+    }
 
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
@@ -1367,6 +1379,9 @@ object Types {
      */
     def deepenProto(implicit ctx: Context): Type = this
 
+    /** If this is an ignored proto type, its underlying type, otherwise the type itself */
+    def revealIgnored: Type = this
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -1451,6 +1466,14 @@ object Types {
       case _ => this
     }
 
+    /** The set of distinct symbols referred to by this type, after all aliases are expanded */
+    def coveringSet(implicit ctx: Context): Set[Symbol] =
+      (new CoveringSetAccumulator).apply(Set.empty[Symbol], this)
+
+    /** The number of applications and refinements in this type, after all aliases are expanded */
+    def typeSize(implicit ctx: Context): Int =
+      (new TypeSizeAccumulator).apply(0, this)
+
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
 
@@ -1526,6 +1549,9 @@ object Types {
       case TypeBounds(_, hi) => hi
       case st => st
     }
+
+    /** Same as superType, except that opaque types are treated as transparent aliases */
+    def translucentSuperType(implicit ctx: Context): Type = superType
   }
 
   // Every type has to inherit one of the following four abstract type classes.,
@@ -2214,6 +2240,14 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = info
 
+    override def translucentSuperType(implicit ctx: Context) = info match {
+      case TypeAlias(aliased) => aliased
+      case TypeBounds(_, hi) =>
+        if (symbol.isOpaqueHelper) symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner)
+        else hi
+      case _ => underlying
+    }
+
     /** Hook that can be called from creation methods in TermRef and TypeRef */
     def validated(implicit ctx: Context): this.type = {
       this
@@ -2588,6 +2622,11 @@ object Types {
     def isAnd: Boolean
     def tp1: Type
     def tp2: Type
+
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else if (isAnd) AndType.make(tp1, tp2, checkValid = true)
+      else OrType.make(tp1, tp2)
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
@@ -3351,6 +3390,13 @@ object Types {
       cachedSuper
     }
 
+    override def translucentSuperType(implicit ctx: Context): Type = tycon match {
+      case tycon: TypeRef if tycon.symbol.isOpaqueHelper =>
+        tycon.translucentSuperType.applyIfParameterized(args)
+      case _ =>
+        superType
+    }
+
     override def tryNormalize(implicit ctx: Context): Type = tycon match {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
@@ -3870,7 +3916,7 @@ object Types {
   extends CachedClassInfo(prefix, cls, Nil, decls, selfInfo) {
 
     /** Install classinfo with known parents in `denot` s */
-    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context): Unit =
+    def finalize(denot: SymDenotation, parents: List[Type], selfInfo: TypeOrSymbol)(implicit ctx: Context): Unit =
       denot.info = ClassInfo(prefix, cls, parents, decls, selfInfo)
 
     override def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
@@ -4471,6 +4517,8 @@ object Types {
       else if (lo `eq` hi) lo
       else Range(lower(lo), upper(hi))
 
+    protected def emptyRange = range(defn.NothingType, defn.AnyType)
+
     protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type): Type = tp match {
@@ -4595,7 +4643,7 @@ object Types {
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
-      if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
+      if (isRange(thistp) || isRange(supertp)) emptyRange
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
@@ -4863,6 +4911,39 @@ object Types {
         case tp: TypeVar => apply(x, tp.underlying)
         case tp: AppliedType => tp.isGround(this)
         case _ => foldOver(x, tp)
+      }
+    }
+  }
+
+  class TypeSizeAccumulator(implicit ctx: Context) extends TypeAccumulator[Int] {
+    def apply(n: Int, tp: Type): Int = tp match {
+      case tp: AppliedType =>
+        foldOver(n + 1, tp)
+      case tp: RefinedType =>
+        foldOver(n + 1, tp)
+      case tp: TypeRef if tp.info.isTypeAlias =>
+        apply(n, tp.superType)
+      case _ =>
+        foldOver(n, tp)
+    }
+  }
+
+  class CoveringSetAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[Symbol]] {
+    def apply(cs: Set[Symbol], tp: Type): Set[Symbol] = {
+      val sym = tp.typeSymbol
+      tp match {
+        case tp if tp.isTopType || tp.isBottomType =>
+          cs
+        case tp: AppliedType =>
+          foldOver(cs + sym, tp)
+        case tp: RefinedType =>
+          foldOver(cs + sym, tp)
+        case tp: TypeRef if tp.info.isTypeAlias =>
+          apply(cs, tp.superType)
+        case tp: TypeBounds =>
+          foldOver(cs, tp)
+        case other =>
+          foldOver(cs + sym, tp)
       }
     }
   }

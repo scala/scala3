@@ -4,13 +4,12 @@ i1812.scala
 i1867.scala
 i3067.scala
 i3149.scala
-i3542-1.scala
-i3585.scala
 i3692.scala
-i3976.scala
 i4125.scala
 implicit-dep.scala
 inline-access-levels
+inline-rewrite.scala
+inline-caseclass.scala
 macro-with-array
 macro-with-type
 matchtype.scala
@@ -28,8 +27,10 @@ t2712-5.scala
 t2726
 t2741
 t284-pos.scala
+t3249
 t3419
 t3452f.scala
+t3486
 t3612.scala
 t3864
 t3999
@@ -42,4 +43,6 @@ t6976
 t7264
 t7532b
 t8062
+typelevel0.scala
 typeclass-encoding2.scala
+typeclass-encoding3.scala

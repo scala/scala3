@@ -412,6 +412,7 @@ object Checking {
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
+    if (sym.is(Opaque, butNot = (Synthetic | Module))) checkApplicable(Opaque, sym.isAliasType)
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
@@ -890,8 +891,14 @@ trait Checking {
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context): Unit =
-    if (!ctx.inInlineMethod && !ctx.isInlineContext)
-      ctx.error(em"$what can only be used in an inline method", pos)
+    if (!ctx.inInlineMethod && !ctx.isInlineContext) {
+      val inInlineUnapply = ctx.owner.ownersIterator.exists(owner =>
+        owner.name == nme.unapply && owner.is(Inline) && owner.is(Method))
+      val msg =
+        if (inInlineUnapply) "cannot be used in an inline unapply"
+        else "can only be used in an inline method"
+      ctx.error(em"$what $msg", pos)
+    }
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = {

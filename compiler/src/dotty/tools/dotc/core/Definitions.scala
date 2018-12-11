@@ -24,9 +24,6 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = 22
-
-  /** The maximal arity of a function that can be accessed as member of a structural type */
-  val MaxStructuralMethodArity: Int = 7
 }
 
 /** A class defining symbols and types of standard definitions
@@ -288,6 +285,7 @@ class Definitions {
     // technique to do that. Here we need to set it before completing
     // attempt to load Object's classfile, which causes issue #1648.
     val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
+    companion.moduleClass.info = NoType // to indicate that it does not really exist
     companion.info = NoType // to indicate that it does not really exist
 
     completeClass(cls)
@@ -340,6 +338,11 @@ class Definitions {
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
   def NullType: TypeRef = NullClass.typeRef
   lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
+
+  lazy val ImplicitScrutineeTypeSym =
+    newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
+  def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
+
 
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
@@ -694,11 +697,11 @@ class Definitions {
   def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
-  lazy val TastyTastyType: TypeRef = ctx.requiredClassRef("scala.tasty.Tasty")
-  def TastyTastyClass(implicit ctx: Context): ClassSymbol = TastyTastyType.symbol.asClass
+  lazy val TastyReflectionType: TypeRef = ctx.requiredClassRef("scala.tasty.Reflection")
+  def TastyReflectionClass(implicit ctx: Context): ClassSymbol = TastyReflectionType.symbol.asClass
 
-  lazy val TastyTastyModule: TermSymbol = ctx.requiredModule("scala.tasty.Tasty")
-    lazy val TastyTasty_macroContext: TermSymbol = TastyTastyModule.requiredMethod("macroContext")
+  lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
+    lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
 
   lazy val EqType: TypeRef = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context): ClassSymbol = EqType.symbol.asClass
@@ -900,10 +903,25 @@ class Definitions {
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
-  val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun[Array[Symbol]](implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
+  val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(implicit ctx: Context): Symbol = AbstractFunctionClassPerRun()(ctx)(n)
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
-  def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
+  def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
+
+  val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({ implicit ctx =>
+    def holderImpl(holderType: String) = ctx.requiredClass("scala.runtime." + holderType)
+    Map[Symbol, Symbol](
+      IntClass     -> holderImpl("LazyInt"),
+      LongClass    -> holderImpl("LazyLong"),
+      BooleanClass -> holderImpl("LazyBoolean"),
+      FloatClass   -> holderImpl("LazyFloat"),
+      DoubleClass  -> holderImpl("LazyDouble"),
+      ByteClass    -> holderImpl("LazyByte"),
+      CharClass    -> holderImpl("LazyChar"),
+      ShortClass   -> holderImpl("LazyShort")
+    )
+    .withDefaultValue(holderImpl("LazyRef"))
+  })
 
   lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
@@ -1062,7 +1080,7 @@ class Definitions {
   lazy val NoInitClasses: Set[Symbol] = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
-     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
+     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq Object_synchronized)
 
   def isTupleType(tp: Type)(implicit ctx: Context): Boolean = {
     val arity = tp.dealias.argInfos.length
@@ -1284,5 +1302,4 @@ class Definitions {
       isInitialized = true
     }
   }
-
 }

@@ -107,31 +107,15 @@ class Typer extends Namer
 
   def newLikeThis: Typer = new Typer
 
-  /** Attribute an identifier consisting of a simple name or wildcard
-   *
-   *  @param tree      The tree representing the identifier.
-   *  Transformations: (1) Prefix class members with this.
-   *                   (2) Change imported symbols to selections.
-   *                   (3) Change pattern Idents id (but not wildcards) to id @ _
+  /** Find the type of an identifier with given `name` in given context `ctx`.
+   *   @param name       the name of the identifier
+   *   @param pt         the expected type
+   *   @param required   flags the result's symbol must have
+   *   @param pos        position to use for error reporting
    */
-  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
+  def findRef(name: Name, pt: Type, required: FlagConjunction, pos: Position)(implicit ctx: Context): Type = {
     val refctx = ctx
-    val name = tree.name
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
-
-    /** Method is necessary because error messages need to bind to
-     *  to typedIdent's context which is lost in nested calls to findRef
-     */
-    def error(msg: => Message, pos: Position) = ctx.error(msg, pos)
-
-    /** Does this identifier appear as a constructor of a pattern? */
-    def isPatternConstr =
-      if (ctx.mode.isExpr && (ctx.outer.mode is Mode.Pattern))
-        ctx.outer.tree match {
-          case Apply(`tree`, _) => true
-          case _ => false
-        }
-      else false
 
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
@@ -156,7 +140,7 @@ class Typer extends Namer
      *  @param prevCtx     The context of the previous denotation,
      *                     or else `NoContext` if nothing was found yet.
      */
-    def findRef(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
+    def findRefRecur(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
       import BindingPrec._
 
       /** Check that any previously found result from an inner context
@@ -179,20 +163,20 @@ class Typer extends Namer
         }
         else {
           if (!scala2pkg && !previous.isError && !found.isError) {
-            error(AmbiguousImport(name, newPrec, prevPrec, prevCtx), tree.pos)
+            refctx.error(AmbiguousImport(name, newPrec, prevPrec, prevCtx), pos)
           }
           previous
         }
 
       def selection(imp: ImportInfo, name: Name) =
         if (imp.sym.isCompleting) {
-          ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
+          ctx.warning(i"cyclic ${imp.sym}, ignored", pos)
           NoType
         } else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
           NoType
         else {
           val pre = imp.site
-          val denot = pre.member(name).accessibleFrom(pre)(refctx)
+          val denot = pre.memberBasedOnFlags(name, required, EmptyFlags).accessibleFrom(pre)(refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
           if (reallyExists(denot)) pre.select(name, denot) else NoType
@@ -208,8 +192,7 @@ class Typer extends Namer
             def checkUnambiguous(found: Type) = {
               val other = recur(selectors.tail)
               if (other.exists && found.exists && (found != other))
-                error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
-                      tree.pos)
+                refctx.error(em"reference to `$name` is ambiguous; it is imported twice", pos)
               found
             }
 
@@ -283,7 +266,7 @@ class Typer extends Namer
             else (ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)
 
           if (isNewDefScope) {
-            val defDenot = ctx.denotNamed(name)
+            val defDenot = ctx.denotNamed(name, required)
             if (qualifies(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
@@ -309,7 +292,7 @@ class Typer extends Namer
                 if (defDenot.symbol is Package)
                   result = checkNewOrShadowed(previous orElse found, packageClause)
                 else if (prevPrec < packageClause)
-                  result = findRef(found, packageClause, ctx)(ctx.outer)
+                  result = findRefRecur(found, packageClause, ctx)(ctx.outer)
               }
             }
           }
@@ -325,11 +308,11 @@ class Typer extends Namer
             else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
-                findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
+                findRefRecur(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
               else if (isPossibleImport(wildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
-                  findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
+                  findRefRecur(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
                 else {
                   updateUnimported()
                   loop(ctx)(outer)
@@ -345,9 +328,22 @@ class Typer extends Namer
         }
       }
 
-      // begin findRef
+      // begin findRefRecur
       loop(NoContext)(ctx)
     }
+
+    findRefRecur(NoType, BindingPrec.nothingBound, NoContext)
+  }
+
+  /** Attribute an identifier consisting of a simple name or wildcard
+   *
+   *  @param tree      The tree representing the identifier.
+   *  Transformations: (1) Prefix class members with this.
+   *                   (2) Change imported symbols to selections.
+   *                   (3) Change pattern Idents id (but not wildcards) to id @ _
+   */
+  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
+    val name = tree.name
 
     // begin typedIdent
     def kind = if (name.isTermName) "" else "type "
@@ -365,7 +361,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try {
-        var found = findRef(NoType, BindingPrec.nothingBound, NoContext)
+        var found = findRef(name, pt, EmptyFlagConjunction, tree.pos)
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.
@@ -428,14 +424,20 @@ class Typer extends Namer
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
-    def typeSelectOnTerm(implicit ctx: Context): Tree = {
-      val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
-      if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-      val select = typedSelect(tree, pt, qual1)
-      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-      else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
-      else typedDynamicSelect(tree, Nil, pt)
-    }
+    def typeSelectOnTerm(implicit ctx: Context): Tree =
+      typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
+        case qual1 @ Applications.ExtMethodApply(app) =>
+          pt.revealIgnored match {
+            case _: PolyProto => qual1 // keep the ExtMethodApply to strip at next typedTypeApply
+            case _ => app
+          }
+        case qual1 =>
+          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
+          val select = typedSelect(tree, pt, qual1)
+          if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
+          else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
+          else typedDynamicSelect(tree, Nil, pt)
+      }
 
     def typeSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
       typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
@@ -544,6 +546,7 @@ class Typer extends Namer
         }
       case _ => ifExpr
     }
+
     def ascription(tpt: Tree, isWildcard: Boolean) = {
       val underlyingTreeTpe =
         if (isRepeatedParamType(tpt)) TypeTree(defn.SeqType.appliedTo(pt :: Nil))
@@ -555,16 +558,32 @@ class Typer extends Namer
         else typed(tree.expr, tpt.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
     }
-    if (untpd.isWildcardStarArg(tree))
+
+    if (untpd.isWildcardStarArg(tree)) {
+      def typedWildcardStarArgExpr = {
+        val tpdExpr = typedExpr(tree.expr)
+        tpdExpr.tpe.widenDealias match {
+          case defn.ArrayOf(_) =>
+            val starType = defn.ArrayType.appliedTo(WildcardType)
+            val exprAdapted = adapt(tpdExpr, starType)
+            arrayToRepeated(exprAdapted)
+          case _ =>
+            val starType = defn.SeqType.appliedTo(defn.AnyType)
+            val exprAdapted = adapt(tpdExpr, starType)
+            seqToRepeated(exprAdapted)
+        }
+      }
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
-        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType.appliedTo(defn.AnyType))),
+        ifExpr = typedWildcardStarArgExpr,
         wildName = nme.WILDCARD_STAR)
+    }
     else {
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper) constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -705,8 +724,9 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
+    if (tree.isInline) checkInInlineContext("inline if", tree.pos)
     val cond1 = typed(tree.cond, defn.BooleanType)
-    val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
+    val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
       val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
       thenp1 :: elsep1 :: Nil
@@ -728,13 +748,12 @@ class Typer extends Namer
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
     }
-    pt.stripTypeVar match {
-      case _ if defn.isNonDepFunctionType(pt) =>
+    pt.stripTypeVar.dealias.followSyntheticOpaque match {
+      case pt1 if defn.isNonDepFunctionType(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
-        val funType = pt.dealias
-        (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
+        (pt1.argTypesLo.init, typeTree(pt1.argTypesHi.last))
       case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
          if (sam.isResultDependent)
@@ -967,19 +986,32 @@ class Typer extends Namer
   def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context): Tree = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
-        val (protoFormals, _) = decomposeProtoFunction(pt, 1)
-        val unchecked = pt.isRef(defn.PartialFunctionClass)
-        typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+        if (tree.isInline) {
+          checkInInlineContext("implicit match", tree.pos)
+          val cases1 = tree.cases.mapconserve {
+            case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
+              // case _ : T  -->  case evidence$n : T
+              cpy.CaseDef(cdef)(pat = untpd.Bind(EvidenceParamName.fresh(), pat))
+            case cdef => cdef
+          }
+          typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
+        }
+        else {
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1)
+          val unchecked = pt.isRef(defn.PartialFunctionClass)
+          typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+        }
       case _ =>
+        if (tree.isInline) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-        typedMatchFinish(tree, sel1, selType, pt)
+        typedMatchFinish(tree, sel1, selType, tree.cases, pt)
     }
   }
 
   // Overridden in InlineTyper for inline matches
-  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, wideSelType, pt.notApplied))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
@@ -1127,13 +1159,15 @@ class Typer extends Namer
   }
 
   def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = track("typedWhileDo") {
-    val cond1 = typed(tree.cond, defn.BooleanType)
+    val cond1 =
+      if (tree.cond eq EmptyTree) EmptyTree
+      else typed(tree.cond, defn.BooleanType)
     val body1 = typed(tree.body, defn.UnitType)
     assignType(cpy.WhileDo(tree)(cond1, body1))
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
-    val expr2 :: cases2x = harmonic(harmonize) {
+    val expr2 :: cases2x = harmonic(harmonize, pt) {
       val expr1 = typed(tree.expr, pt.notApplied)
       val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
       expr1 :: cases1
@@ -1273,7 +1307,6 @@ class Typer extends Namer
               case _ =>
             }
           if (desugaredArg.isType) {
-            var res = typed(desugaredArg, argPt)
             arg match {
               case TypeBoundsTree(EmptyTree, EmptyTree)
               if tparam.paramInfo.isLambdaSub &&
@@ -1285,10 +1318,10 @@ class Typer extends Namer
                 // type parameter in `C`.
                 // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                res = res.withType(tparamBounds)
+                TypeTree(tparamBounds).withPos(arg.pos)
               case _ =>
+                typed(desugaredArg, argPt)
             }
-            res
           }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
@@ -1376,6 +1409,7 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
+          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1585,7 +1619,11 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
-    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    if (cls.isOpaqueCompanion) {
+      // this is necessary to ensure selftype is correctly pickled
+      self1 = tpd.cpy.ValDef(self1)(tpt = TypeTree(cls.classInfo.selfType))
+    }
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
@@ -1622,7 +1660,11 @@ class Typer extends Namer
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
-      if (ctx.settings.YretainTrees.value) cls.rootTreeOrProvider = cdef1
+
+      // Temporarily set the typed class def as root tree so that we have at least some
+      // information in the IDE in case we never reach `SetRootTree`.
+      if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
+        cls.rootTreeOrProvider = cdef1
 
       cdef1
 
@@ -1673,7 +1715,7 @@ class Typer extends Namer
   /** Ensure that first parent tree refers to a real class. */
   def ensureFirstTreeIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos) :: parents
+    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos.focus) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a
@@ -2069,10 +2111,9 @@ class Typer extends Namer
     }
 
   /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
-  def isApplyProto(pt: Type)(implicit ctx: Context): Boolean = pt match {
+  def isApplyProto(pt: Type)(implicit ctx: Context): Boolean = pt.revealIgnored match {
     case pt: SelectionProto => pt.name == nme.apply
     case pt: FunProto       => pt.args.isEmpty && isApplyProto(pt.resultType)
-    case pt: IgnoredProto   => isApplyProto(pt.ignored)
     case _                  => false
   }
 
@@ -2121,7 +2162,8 @@ class Typer extends Namer
     def tryImplicit(fallBack: => Tree) =
       tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
-    pt match {
+    if (ctx.mode.is(Mode.FixedQualifier)) tree
+    else pt match {
       case pt @ FunProto(Nil, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
          tree.getAttachment(DroppedEmptyArgs).isEmpty =>
@@ -2228,9 +2270,7 @@ class Typer extends Namer
             readaptSimplified(tree.withType(alt))
           case Nil =>
             def noMatches =
-              errorTree(tree,
-                em"""none of the ${err.overloadedAltsStr(altDenots)}
-                    |match ${err.expectedTypeStr(pt)}""")
+              errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
             def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
             pt match {
               case pt: FunProto =>
@@ -2242,8 +2282,11 @@ class Typer extends Namer
                   noMatches
             }
           case alts =>
-            val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
+            else {
+              val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
+              errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            }
         }
       }
 
@@ -2452,6 +2495,13 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
+      else if (Inliner.isInlineable(tree) &&
+               !ctx.settings.YnoInline.value &&
+               !ctx.isAfterTyper &&
+               !ctx.reporter.hasErrors) {
+        tree.tpe <:< wildApprox(pt)
+        readaptSimplified(Inliner.inlineCall(tree, pt))
+      }
       else if (tree.tpe <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
           checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
@@ -2488,6 +2538,11 @@ class Typer extends Namer
       val ptNorm = underlyingApplied(pt)
       lazy val functionExpected = defn.isFunctionType(ptNorm)
       lazy val resultMatch = constrainResult(tree.symbol, wtp, followAlias(pt))
+      def needsEta = pt match {
+        case _: SingletonType => false
+        case IgnoredProto(_: FunOrPolyProto) => false
+        case _ => true
+      }
       wtp match {
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))
@@ -2499,7 +2554,7 @@ class Typer extends Namer
             // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
             err.typeMismatch(tree, pt)
           }
-        case wtp: MethodType if !pt.isSingleton =>
+        case wtp: MethodType if needsEta =>
           val arity =
             if (functionExpected)
               if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
@@ -2560,6 +2615,28 @@ class Typer extends Namer
           }
         case _ =>
       }
+      // try an extension method in scope
+      pt match {
+        case SelectionProto(name, mbrType, _, _) =>
+          def tryExtension(implicit ctx: Context): Tree =
+            try {
+              findRef(name, WildcardType, ExtensionMethod, tree.pos) match {
+                case ref: TermRef =>
+                  extMethodApply(untpd.ref(ref).withPos(tree.pos), tree, mbrType)
+                case _ => EmptyTree
+              }
+            }
+            catch {
+              case ex: TypeError => errorTree(tree, ex.toMessage, tree.pos)
+            }
+          val nestedCtx = ctx.fresh.setNewTyperState()
+          val app = tryExtension(nestedCtx)
+          if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
+            nestedCtx.typerState.commit()
+            return Applications.ExtMethodApply(app).withType(app.tpe)
+          }
+        case _ =>
+      }
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
       def recover(failure: SearchFailureType) =
@@ -2568,6 +2645,8 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
+          case SearchSuccess(inferred: Applications.ExtMethodApply, _, _) =>
+            inferred // nothing to check or adapt for extension method applications
           case SearchSuccess(inferred, _, _) =>
             checkImplicitConversionUseOK(inferred.symbol, tree.pos)
             readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
@@ -2638,12 +2717,17 @@ class Typer extends Namer
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
           }
         case wtp =>
-          if (isStructuralTermSelect(tree)) readaptSimplified(handleStructural(tree))
+          val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
+          if (isStructuralCall)
+            readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
+              tree match {
+                case _: Applications.ExtMethodApply => tree
+                case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
+              }
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)

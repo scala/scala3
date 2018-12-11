@@ -21,11 +21,11 @@ class SymbolTest {
       code"class $Bar",
       code"""package foo
             |class $fooFoo {
-            |  class Bar
+            |  class ${m7}Bar$m8
             |}
           """
     ) .symbol("Foo", Foo.range.symInfo("Foo", SymbolKind.Class), fooFoo.range.symInfo("Foo", SymbolKind.Class, "foo"))
-      .symbol("Bar", Bar.range.symInfo("Bar", SymbolKind.Class))
+      .symbol("Bar", Bar.range.symInfo("Bar", SymbolKind.Class), (m7 to m8).symInfo("Bar", SymbolKind.Class, "Foo"))
   }
 
   @Test def symbolShowModule: Unit = {
@@ -38,5 +38,27 @@ class SymbolTest {
            class ${m3}Foo${m4}""".withSource
       .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Module),
                      (m3 to m4).symInfo("Foo", SymbolKind.Class))
+  }
+
+  @Test def multipleProjects0: Unit = {
+    val p0 = Project.withSources(
+      code"""class ${m1}Foo${m2}"""
+    )
+
+    val p1 = Project.dependingOn(p0).withSources(
+      code"""class ${m3}Bar${m4} extends Foo"""
+    )
+
+    withProjects(p0, p1)
+      .symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class))
+  }
+
+  @Test def noLocalSymbols: Unit = {
+    code"""object O {
+             def foo = {
+               val hello = 0
+             }
+           }""".withSource
+      .symbol("hello")
   }
 }

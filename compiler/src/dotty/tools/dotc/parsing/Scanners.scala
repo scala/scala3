@@ -6,12 +6,12 @@ import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
 import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
-import util.Chars._
+import scala.tasty.util.Chars._
 import util.NameTransformer.avoidIllegalChars
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
 
 object Scanners {
@@ -177,6 +177,12 @@ object Scanners {
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
+    /* A Buffer for comment positions */
+    private[this] val commentPosBuf = new mutable.ListBuffer[Position]
+
+    /** Return a list of all the comment positions */
+    def commentPositions: List[Position] = commentPosBuf.toList
+
     private[this] def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
@@ -236,7 +242,7 @@ object Scanners {
 
 // Scala 2 compatibility
 
-    val isScala2Mode: Boolean = ctx.settings.language.value.contains(nme.Scala2.toString)
+    val isScala2Mode: Boolean = ctx.scala2Setting
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
     def testScala2Mode(msg: String, pos: Position = Position(offset)): Boolean = {
@@ -294,9 +300,6 @@ object Scanners {
           sepRegions = sepRegions.tail
       case _ =>
     }
-
-    /** A new Scanner that starts at the current token offset */
-    def lookaheadScanner: Scanner = new Scanner(source, offset)
 
     /** Produce next token, filling TokenData fields of Scanner.
      */
@@ -616,6 +619,7 @@ object Scanners {
         if (keepComments) {
           val pos = Position(start, charOffset - 1, start)
           val comment = Comment(pos, flushBuf(commentBuf))
+          commentPosBuf += pos
 
           if (comment.isDocComment) {
             addComment(comment)
@@ -627,8 +631,34 @@ object Scanners {
       nextChar()
       if (ch == '/') { skipLine(); finishComment() }
       else if (ch == '*') { nextChar(); skipComment(); finishComment() }
-      else false
+      else {
+        // This was not a comment, remove the `/` from the buffer
+        commentBuf.clear()
+        false
+      }
     }
+
+// Lookahead ---------------------------------------------------------------
+
+  /** A new Scanner that starts at the current token offset */
+  def lookaheadScanner: Scanner = new Scanner(source, offset)
+
+  /** Is the token following the current one in `tokens`? */
+  def lookaheadIn(tokens: BitSet): Boolean = {
+    val lookahead = lookaheadScanner
+    do lookahead.nextToken()
+    while (lookahead.token == NEWLINE || lookahead.token == NEWLINES)
+    tokens.contains(lookahead.token)
+  }
+
+  /** Is the current token in a position where a modifier is allowed? */
+  def inModifierPosition(): Boolean = {
+    val lookahead = lookaheadScanner
+    do lookahead.nextToken()
+    while (lookahead.token == NEWLINE || lookahead.token == NEWLINES ||
+           lookahead.isSoftModifier)
+    modifierFollowers.contains(lookahead.token)
+  }
 
 // Identifiers ---------------------------------------------------------------
 
@@ -710,6 +740,14 @@ object Scanners {
       }
     }
 
+    def isSoftModifier: Boolean =
+      token == IDENTIFIER && softModifierNames.contains(name)
+
+    def isSoftModifierInModifierPosition: Boolean =
+      isSoftModifier && inModifierPosition()
+
+    def isSoftModifierInParamModifierPosition: Boolean =
+      isSoftModifier && !lookaheadIn(BitSet(COLON))
 
 // Literals -----------------------------------------------------------------
 

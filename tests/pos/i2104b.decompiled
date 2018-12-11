@@ -34,10 +34,8 @@ case class Pair[A, B](_1: A, _2: B) {
 object Pair extends scala.AnyRef()
 /** Decompiled from out/posTestFromTasty/pos/i2104b/Test.class */
 object Test {
-  def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
-    Cons.apply[scala.Option[scala.Int], scala.None.type](scala.Option.apply[scala.Int](1), scala.None) match {
-      case Cons(scala.Some(i), scala.None) =>
-        ()
-    }
+  def main(args: scala.Array[scala.Predef.String]): scala.Unit = Cons.apply[scala.Option[scala.Int], scala.None.type](scala.Option.apply[scala.Int](1), scala.None) match {
+    case Cons(scala.Some(i), scala.None) =>
+      ()
   }
 }

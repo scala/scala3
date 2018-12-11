@@ -1,15 +1,14 @@
 import scala.quoted._
 
 import scala.tasty._
-import scala.tasty.util.TreeTraverser
 
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
     ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
     val buff = new StringBuilder
 
@@ -22,7 +21,7 @@ object Macros {
       }
     }
 
-    val output = new TreeTraverser(tasty) {
+    val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
@@ -41,7 +40,7 @@ object Macros {
       }
     }
 
-    val tree = x.toTasty
+    val tree = x.unseal
     output.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }

@@ -16,8 +16,7 @@ repeatedArgs213.scala
 # Error printing parent constructors that are blocks
 default-super.scala
 
-# Need to implement printing of match types
-matchtype.scala
-
-# Fails on CI (not locally)
-inline-named-typeargs.scala
+# Did not survive addition of type ascriptions in decompiled tests
+i3050.scala
+i4006b.scala
+i4006c.scala

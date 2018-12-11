@@ -71,39 +71,38 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
-    val formals =
-      ctx.atPhase(thisPhase) { implicit ctx =>
-        tree.fun.tpe.widen.asInstanceOf[MethodType].paramInfos
-      }
-    val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
-      arg match {
-        case arg: Typed if isWildcardStarArg(arg) =>
-          if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass))
-            seqToArray(arg.expr, formal.underlyingIfRepeated(isJava = true))
-          else arg.expr
-        case arg => arg
-      }
+    val args = tree.args.mapConserve {
+      case arg: Typed if isWildcardStarArg(arg) =>
+        val isJavaDefined = tree.fun.symbol.is(JavaDefined)
+        val tpe = arg.expr.tpe
+        if (isJavaDefined && tpe.derivesFrom(defn.SeqClass))
+          seqToArray(arg.expr)
+        else if (!isJavaDefined && tpe.derivesFrom(defn.ArrayClass))
+          arrayToSeq(arg.expr)
+        else
+          arg.expr
+      case arg => arg
     }
-    transformTypeOfTree(cpy.Apply(tree)(tree.fun, args1))
+    transformTypeOfTree(cpy.Apply(tree)(tree.fun, args))
   }
 
-  /** Convert sequence argument to Java array of type `pt` */
-  private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
+  /** Convert sequence argument to Java array */
+  private def seqToArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
-    case app@Apply(fun, args) if defn.WrapArrayMethods().contains(fun.symbol) => // rewrite a call to `wrapXArray(arr)` to `arr`
-      args.head
     case _ =>
       val elemType = tree.tpe.elemType
       var elemClass = elemType.classSymbol
-      if (defn.NotRuntimeClasses contains elemClass) elemClass = defn.ObjectClass
+      if (defn.NotRuntimeClasses.contains(elemClass)) elemClass = defn.ObjectClass
       ref(defn.DottyArraysModule)
         .select(nme.seqToArray)
         .appliedToType(elemType)
         .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
-        .ensureConforms(pt)
-          // Because of phantomclasses, the Java array's type might not conform to the return type
   }
+
+  /** Convert Java array argument to Scala Seq */
+  private def arrayToSeq(tree: Tree)(implicit ctx: Context): Tree =
+    tpd.wrapArray(tree, tree.tpe.elemType)
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
@@ -125,6 +124,13 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  @return  a thicket consisting of `ddef` and a varargs bridge method
    *           which overrides the Java varargs method JM from this phase on
    *           and forwards to `ddef`.
+   *
+   *  A bridge is necessary because the following hold
+   *    - the varargs in `ddef` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
+   *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[_ <: T]`, since it overrides
+   *      a Java varargs
+   *  The solution is to add a "bridge" method that converts its argument from `Array[_ <: T]` to `Seq[T]` and
+   *  forwards it to `ddef`.
    */
   private def addVarArgsBridge(ddef: DefDef)(implicit ctx: Context): Tree = {
     val original = ddef.symbol.asTerm
@@ -133,7 +139,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       info = toJavaVarArgs(ddef.symbol.info)).enteredAfter(thisPhase).asTerm
     val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
       val (vrefs :+ varArgRef) :: vrefss1 = vrefss
-      val elemtp = varArgRef.tpe.widen.argTypes.head
+      // Can't call `.argTypes` here because the underlying array type is of the
+      // form `Array[_ <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
+      val elemtp = varArgRef.tpe.widen.argInfos.head
       ref(original.termRef)
         .appliedToTypes(trefs)
         .appliedToArgs(vrefs :+ tpd.wrapArray(varArgRef, elemtp))

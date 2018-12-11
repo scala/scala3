@@ -43,7 +43,7 @@ object FileUtils {
     else throw new FatalError("Unexpected source file ending: " + fileName)
   }
 
-  def dirPath(forPackage: String): String = forPackage.replace('.', '/')
+  def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
 
   def endsClass(fileName: String): Boolean =
     fileName.length > 6 && fileName.substring(fileName.length - 6) == ".class"

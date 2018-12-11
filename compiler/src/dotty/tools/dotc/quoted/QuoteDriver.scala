@@ -3,7 +3,7 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
-import dotty.tools.dotc.tastyreflect.TastyImpl
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 
@@ -47,7 +47,7 @@ class QuoteDriver extends Driver {
       val tree1 =
         if (ctx.settings.YshowRawQuoteTrees.value) tree
         else (new TreeCleaner).transform(tree)
-      new TastyImpl(ctx).showSourceCode.showTree(tree1)
+      new ReflectionImpl(ctx).showSourceCode.showTree(tree1)
     }
     withTree(expr, show, settings)
   }
@@ -96,7 +96,8 @@ object QuoteDriver {
       case cl: URLClassLoader =>
         // Loads the classes loaded by this class loader
         // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
-        val newClasspath = cl.getURLs.map(_.getFile())
+        import java.nio.file.Paths
+        val newClasspath = cl.getURLs.map(url => Paths.get(url.toURI).toString)
         newClasspath.mkString("", java.io.File.pathSeparator, if (classpath0 == "") "" else java.io.File.pathSeparator + classpath0)
       case _ => classpath0
     }

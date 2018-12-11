@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
-import dotty.tools.dotc.core.Flags.FlagSet
+import dotty.tools.dotc.core.Flags.{termFlagSet, termFlagConjunction}
 import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
@@ -73,7 +73,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type ArrayValue      = tpd.JavaSeqLiteral
   type ApplyDynamic    = Null
   type ModuleDef       = Null
-  type LabelDef        = tpd.DefDef
+  type LabelDef        = Null
   type Closure         = tpd.Closure
 
   val NoSymbol: Symbol = Symbols.NoSymbol
@@ -116,6 +116,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Throwable_Type: Type = defn.ThrowableType
   val Object_isInstanceOf: Symbol = defn.Any_isInstanceOf
   val Object_asInstanceOf: Symbol = defn.Any_asInstanceOf
+  val Object_synchronized: Symbol = defn.Object_synchronized
   val Object_equals: Symbol = defn.Any_equals
   val ArrayClass: Symbol = defn.ArrayClass
   val UnitClass: Symbol = defn.UnitClass
@@ -392,7 +393,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def emitAsmp: Option[String] = None
 
-  def shouldEmitJumpAfterLabels: Boolean = true
+  def hasLabelDefs: Boolean = false
 
   def dumpClasses: Option[String] =
     if (ctx.settings.Ydumpclasses.isDefault) None
@@ -449,26 +450,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     if (found == null) None else Some(found)
   }
 
-  def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = {
-    // for each rhs of a defdef returns LabelDefs inside this DefDef
-    val res = new collection.mutable.HashMap[Tree, List[LabelDef]]()
-
-    val t = new TreeTraverser {
-      var outerRhs: Tree = tree
-
-      def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
-        case t: DefDef =>
-          if (t.symbol is Flags.Label)
-            res.put(outerRhs, t :: res.getOrElse(outerRhs, Nil))
-          else outerRhs = t
-          traverseChildren(t)
-        case _ => traverseChildren(tree)
-      }
-    }
-
-    t.traverse(tree)
-    res.toMap
-  }
+  def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = Map.empty
 
   // todo: remove
   def isMaybeBoxed(sym: Symbol): Boolean = {
@@ -819,7 +801,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos)
+      ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
     }
 
     def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
@@ -899,7 +881,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def =:=(other: Type): Boolean = tp =:= other
 
     def membersBasedOnFlags(excludedFlags: Flags, requiredFlags: Flags): List[Symbol] =
-      tp.membersBasedOnFlags(FlagSet(requiredFlags), FlagSet(excludedFlags)).map(_.symbol).toList
+      tp.membersBasedOnFlags(termFlagConjunction(requiredFlags), termFlagSet(excludedFlags)).map(_.symbol).toList
 
     def resultType: Type = tp.resultType
 
@@ -938,9 +920,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
               else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
           }
         case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
-
-        case t: MethodType => // triggers for LabelDefs
-          t.resultType.toTypeKind(ct)(storage)
 
         /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
          * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
@@ -1109,15 +1088,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object LabelDef extends LabelDeconstructor {
-    def _1: Name = field.name
-    def _2: List[Symbol] = field.vparamss.flatMap(_.map(_.symbol))
-    def _3: Tree = field.rhs
-
-    override def unapply(s: LabelDef): LabelDef.type = {
-      if (s.symbol is Flags.Label) this.field = s
-      else this.field = null
-      this
-    }
+    def _1: Name = ???
+    def _2: List[Symbol] = ???
+    def _3: Tree = ???
   }
 
   object Typed extends TypedDeconstrutor {

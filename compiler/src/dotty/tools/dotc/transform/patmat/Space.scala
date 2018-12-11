@@ -243,7 +243,7 @@ trait SpaceLogic {
         else a
       case (Typ(tp1, _), Prod(tp2, fun, sym, ss, true)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if (isSubType(tp1, tp2)) minus(Prod(tp2, fun, sym, signature(fun, sym, ss.length).map(Typ(_, false)), true), b)
+        if (isSubType(tp1, tp2)) minus(Prod(tp1, fun, sym, signature(fun, sym, ss.length).map(Typ(_, false)), true), b)
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else a
       case (_, Or(ss)) =>
@@ -730,6 +730,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val res =
       (tp.classSymbol.is(Sealed) &&
         tp.classSymbol.is(AbstractOrTrait) &&
+        !tp.classSymbol.hasAnonymousChild &&
         tp.classSymbol.children.nonEmpty ) ||
       dealiasedTp.isInstanceOf[OrType] ||
       (dealiasedTp.isInstanceOf[AndType] && {
@@ -832,8 +833,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {
       val companion = sym.companionModule
-      companion.findMember(nme.unapply, NoPrefix, excluded = Synthetic).exists ||
-        companion.findMember(nme.unapplySeq, NoPrefix, excluded = Synthetic).exists
+      companion.findMember(nme.unapply, NoPrefix, required = EmptyFlagConjunction, excluded = Synthetic).exists ||
+        companion.findMember(nme.unapplySeq, NoPrefix, required = EmptyFlagConjunction, excluded = Synthetic).exists
     }
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
@@ -849,6 +850,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (mergeList) "_: _*" else "_: List"
         else if (scalaConsType.isRef(sym))
           if (mergeList) "_, _: _*"  else "List(_, _: _*)"
+        else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
+          "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class
           showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")

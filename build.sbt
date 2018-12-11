@@ -13,12 +13,15 @@ val `dotty-language-server` = Build.`dotty-language-server`
 val `dotty-bench` = Build.`dotty-bench`
 val `dotty-bench-bootstrapped` = Build.`dotty-bench-bootstrapped`
 val `dotty-semanticdb` = Build.`dotty-semanticdb`
+val `dotty-semanticdb-input` = Build.`dotty-semanticdb-input`
 val `scala-library` = Build.`scala-library`
 val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
+
+val sjsSandbox = Build.sjsSandbox
 
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`

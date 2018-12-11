@@ -186,15 +186,6 @@ trait Symbols { this: Context =>
 
   val companionMethodFlags: FlagSet = Flags.Synthetic | Flags.Private | Flags.Method
 
-  def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context): Symbol =
-    if (owner.exists && target.exists && !owner.unforcedIsAbsent && !target.unforcedIsAbsent) {
-      val existing = owner.unforcedDecls.lookup(name)
-
-      existing.orElse{
-        ctx.newSymbol(owner.symbol, name, companionMethodFlags , ExprType(target.typeRef))
-      }
-    } else NoSymbol
-
   /** Create a package symbol with associated package class
    *  from its non-info fields and a lazy type for loading the package's members.
    */
@@ -273,9 +264,8 @@ trait Symbols { this: Context =>
   def newDefaultConstructor(cls: ClassSymbol): TermSymbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
-  /** Create a synthetic lazy implicit value */
-  def newLazyImplicit(info: Type): TermSymbol =
-    newSymbol(owner, LazyImplicitName.fresh(), Lazy, info)
+  def newLazyImplicit(info: Type, coord: Coord = NoCoord): TermSymbol =
+    newSymbol(owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
@@ -632,6 +622,26 @@ object Symbols {
         }
       }
     }
+
+    /** A symbol related to `sym` that is defined in source code.
+     *
+     *  @see enclosingSourceSymbols
+     */
+    @annotation.tailrec final def sourceSymbol(implicit ctx: Context): Symbol =
+      if (!denot.exists)
+        this
+      else if (denot.is(ModuleVal))
+        this.moduleClass.sourceSymbol // The module val always has a zero-extent position
+      else if (denot.is(Synthetic)) {
+        val linked = denot.linkedClass
+        if (linked.exists && !linked.is(Synthetic))
+          linked
+        else
+          denot.owner.sourceSymbol
+      }
+      else if (denot.isPrimaryConstructor)
+        denot.owner.sourceSymbol
+      else this
 
     /** The position of this symbol, or NoPosition if the symbol was not loaded
      *  from source or from TASTY. This is always a zero-extent position.

@@ -1,12 +1,13 @@
 package scala.tasty.reflect
 
-trait SettingsOps extends TastyCore {
+trait SettingsOps extends Core {
 
   /** Compiler settings */
-  def settings(implicit ctx: Context): Settings
+  def settings: Settings
 
   trait SettingsAPI {
-    def color(implicit ctx: Context): Boolean
+    /** Can print output using colors? */
+    def color: Boolean
   }
   implicit def SettingsDeco(settings: Settings): SettingsAPI
 

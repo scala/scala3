@@ -41,20 +41,22 @@ trait NamerContextOps { this: Context =>
     sym
   }
 
-  /** The denotation with the given name in current context */
-  def denotNamed(name: Name): Denotation =
+  /** The denotation with the given `name` and all `required` flags in current context
+   */
+  def denotNamed(name: Name, required: FlagConjunction = EmptyFlagConjunction): Denotation =
     if (owner.isClass)
       if (outer.owner == owner) { // inner class scope; check whether we are referring to self
         if (scope.size == 1) {
           val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
-        owner.thisType.member(name)
+        val pre = owner.thisType
+        pre.findMember(name, pre, required, EmptyFlags)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-        owner.findMember(name, owner.thisType, EmptyFlags)
+        owner.findMember(name, owner.thisType, required, EmptyFlags)
     else
-      scope.denotsNamed(name).toDenot(NoPrefix)
+      scope.denotsNamed(name).filterWithFlags(required, EmptyFlags).toDenot(NoPrefix)
 
   /** Either the current scope, or, if the current context owner is a class,
    *  the declarations of the current class.
@@ -502,7 +504,6 @@ class Namer { typer: Typer =>
     case _ =>
   }
 
-
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context): Unit = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
       ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
@@ -558,6 +559,7 @@ class Namer { typer: Typer =>
       if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic)) {
         removeInExpanded(fromStat, fromCls)
         val mcls = mergeModuleClass(toStat, toCls, fromCls.rhs.asInstanceOf[Template].body)
+        mcls.setMods(toCls.mods | (fromCls.mods.flags & RetainedSyntheticCompanionFlags))
         moduleClsDef(fromCls.name) = (toStat, mcls)
       }
 
@@ -609,22 +611,19 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      if (claz.isClass && modl.isClass) {
-        ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
-        ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
-      }
+      modl.registerCompanion(claz)
+      claz.registerCompanion(modl)
     }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
       val classDef  = mutable.Map[TypeName, TypeDef]()
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
-      def updateCache(cdef: TypeDef): Unit = {
-        if (!cdef.isClassDef || cdef.mods.is(Package)) return
-
-        if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
-        else classDef(cdef.name) = cdef
-      }
+      def updateCache(cdef: TypeDef): Unit =
+        if (cdef.isClassDef && !cdef.mods.is(Package) || cdef.mods.is(Opaque, butNot = Synthetic)) {
+          if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
+          else classDef(cdef.name) = cdef
+        }
 
       for (stat <- stats)
         expanded(stat) match {
@@ -911,7 +910,7 @@ class Namer { typer: Typer =>
 
       addAnnotations(denot.symbol)
 
-      val selfInfo =
+      val selfInfo: TypeOrSymbol =
         if (self.isEmpty) NoType
         else if (cls.is(Module)) {
           val moduleType = cls.owner.thisType select sourceModule
@@ -939,7 +938,35 @@ class Namer { typer: Typer =>
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
-      tempInfo.finalize(denot, parentTypes)
+      val finalSelfInfo: TypeOrSymbol =
+        if (cls.isOpaqueCompanion) {
+          // The self type of an opaque companion is refined with the type-alias of the original opaque type
+          def refineOpaqueCompanionSelfType(mt: Type, stats: List[Tree]): RefinedType = (stats: @unchecked) match {
+            case (td @ TypeDef(localName, rhs)) :: _
+            if td.mods.is(SyntheticOpaque) && localName == name.stripModuleClassSuffix =>
+              // create a context owned by the current opaque helper symbol,
+              // but otherwise corresponding to the context enclosing the opaque
+              // companion object, since that's where the rhs was defined.
+              val aliasCtx = ctx.outer.fresh.setOwner(symbolOfTree(td))
+              val alias = typedAheadType(rhs)(aliasCtx).tpe
+              val original = cls.companionOpaqueType.typeRef
+              val cmp = ctx.typeComparer
+              val bounds = TypeBounds(cmp.orType(alias, original), cmp.andType(alias, original))
+              RefinedType(mt, localName, bounds)
+            case _ :: stats1 =>
+              refineOpaqueCompanionSelfType(mt, stats1)
+          }
+          selfInfo match {
+            case self: Type =>
+              refineOpaqueCompanionSelfType(self, rest)
+            case self: Symbol =>
+              self.info = refineOpaqueCompanionSelfType(self.info, rest)
+              self
+          }
+        }
+        else selfInfo
+
+      tempInfo.finalize(denot, parentTypes, finalSelfInfo)
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
@@ -1238,6 +1265,7 @@ class Namer { typer: Typer =>
         tref.recomputeDenot()
       case _ =>
     }
+    sym.normalizeOpaque()
     ensureUpToDate(sym.typeRef, dummyInfo)
     ensureUpToDate(sym.typeRef.appliedTo(tparamSyms.map(_.typeRef)), TypeBounds.empty)
     sym.info

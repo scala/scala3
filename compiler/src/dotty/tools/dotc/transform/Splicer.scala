@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.tastyreflect.TastyImpl
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SourcePosition
@@ -107,13 +107,13 @@ object Splicer {
       args.toSeq
 
     protected def interpretTastyContext()(implicit env: Env): Object = {
-      new TastyImpl(ctx) {
+      new ReflectionImpl(ctx) {
         override def rootPosition: SourcePosition = pos
       }
     }
 
-    protected def interpretStaticMethodCall(fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
-      val instance = loadModule(fn.owner)
+    protected def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
+      val instance = loadModule(moduleClass)
       def getDirectName(tp: Type, name: TermName): TermName = tp.widenDealias match {
         case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
           getDirectName(tp.args.last, NameKinds.DirectMethodName(name))
@@ -270,7 +270,7 @@ object Splicer {
     protected def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     protected def interpretTastyContext()(implicit env: Env): Boolean = true
     protected def interpretQuoteContext()(implicit env: Env): Boolean = true
-    protected def interpretStaticMethodCall(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Boolean = true
     protected def interpretNew(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
@@ -292,7 +292,7 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
-    protected def interpretStaticMethodCall(fn: Symbol, args: => List[Result])(implicit env: Env): Result
+    protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Result
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
@@ -307,15 +307,20 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.TastyTasty_macroContext =>
+      case _ if tree.symbol == defn.TastyReflection_macroContext =>
         interpretTastyContext()
 
       case Call(fn, args) =>
         if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
           interpretNew(fn.symbol, args.map(interpretTree))
+        } else if (fn.symbol.is(Module)) {
+          interpretModuleAccess(fn.symbol)
         } else if (fn.symbol.isStatic) {
-          if (fn.symbol.is(Module)) interpretModuleAccess(fn.symbol)
-          else interpretStaticMethodCall(fn.symbol, args.map(arg => interpretTree(arg)))
+          val module = fn.symbol.owner
+          interpretStaticMethodCall(module, fn.symbol, args.map(arg => interpretTree(arg)))
+        } else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) {
+          val module = fn.qualifier.symbol.moduleClass
+          interpretStaticMethodCall(module, fn.symbol, args.map(arg => interpretTree(arg)))
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else {

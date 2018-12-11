@@ -69,11 +69,9 @@ differences.
   how to define reflective access operations. By contrast
   `Selectable` is a trait which declares the access operations.
 
-- One access operation, `selectDynamic` is shared between both
-  approaches, but the other access operations are
-  different. `Selectable` defines a `selectDynamicMethod`, which
-  takes class tags indicating the method's formal parameter types as
-  additional argument. `Dynamic` comes with `applyDynamic` and
-  `updateDynamic` methods, which take actual argument values.
+- Two access operations, `selectDynamic` and `applyDynamic` are shared
+  between both approches. In `Selectable`, `applyDynamic` also takes
+  `ClassTag` indicating the method's formal parameter types. `Dynamic`
+  comes with `updateDynamic`.
 
 [More details](structural-types-spec.html)

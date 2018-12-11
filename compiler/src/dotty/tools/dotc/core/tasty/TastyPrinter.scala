@@ -34,7 +34,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     unpickle(new CommentSectionUnpickler)
   }
 
-  class TreeSectionUnpickler extends SectionUnpickler[Unit]("ASTs") {
+  class TreeSectionUnpickler extends SectionUnpickler[Unit](TreePickler.sectionName) {
     import TastyFormat._
     def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader._

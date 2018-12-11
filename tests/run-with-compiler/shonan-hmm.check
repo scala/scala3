@@ -93,7 +93,6 @@ List(25, 30, 20, 43, 44)
     })
     array
   }
-
   ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
     if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
     if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
@@ -157,7 +156,6 @@ List(25, 30, 20, 43, 44)
     })
     array
   }
-
   ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
     if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
     if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
@@ -221,7 +219,6 @@ List(25, 30, 20, 43, 44)
     })
     array
   }
-
   ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
     if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
     if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
@@ -281,7 +278,6 @@ List(25, 30, 20, 43, 44)
     array.update(4, 5)
     array
   }
-
   ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
     if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
     if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()

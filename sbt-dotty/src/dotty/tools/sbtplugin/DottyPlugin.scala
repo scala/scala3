@@ -216,8 +216,18 @@ object DottyPlugin extends AutoPlugin {
           old.withCircularDependencyLevel(sbt.librarymanagement.ivy.CircularDependencyLevel.Ignore)
         } else old
       }
-    )
+    ) ++ inConfig(Compile)(docSettings) ++ inConfig(Test)(docSettings)
   }
+
+  private val docSettings = inTask(doc)(Seq(
+    sources := {
+      val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
+      val prev = sources.value
+      val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
+      prev ++ tastyFiles
+    },
+    scalacOptions += "-from-tasty"
+  ))
 
   /** Fetch artefacts for scalaOrganization.value %% moduleName % scalaVersion.value */
   private def fetchArtifactsOf(moduleName: String) = Def.task {

@@ -18,7 +18,7 @@ import typer.ErrorReporting._
 import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
-import util.Chars._
+import scala.tasty.util.Chars._
 import collection.mutable
 import ProtoTypes._
 
@@ -179,10 +179,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context): Unit =
-      if (
-        tree.symbol.maybeOwner.isTerm &&
-        !(tree.symbol.is(Label | Method) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
-      )
+      if (tree.symbol.maybeOwner.isTerm)
         assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.pos.line)
 
     /** assert Java classes are not used as objects */
@@ -356,8 +353,7 @@ class TreeChecker extends Phase with SymTransformer {
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
-        ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner) ||
-        ctx.phase.labelsReordered && symOwner.isWeakOwner && ownerMatches(symOwner.owner, ctxOwner)
+        ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
@@ -374,7 +370,6 @@ class TreeChecker extends Phase with SymTransformer {
 
       def isNonMagicalMethod(x: Symbol) =
         x.is(Method) &&
-          !x.isCompanionMethod &&
           !x.isValueClassConvertMethod &&
           !(x.is(Macro) && ctx.phase.refChecked) &&
           !x.name.is(DocArtifactName)
@@ -445,11 +440,14 @@ class TreeChecker extends Phase with SymTransformer {
       val tree1 = super.typedReturn(tree)
       val from = tree1.from
       val fromSym = from.symbol
-      if (fromSym.is(Label)) {
-        assert(!fromSym.is(Method), i"return from a label-def $fromSym at $tree")
+      if (fromSym.is(Label))
         assertDefined(from)
-      }
       tree1
+    }
+
+    override def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = {
+      assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
+      super.typedWhileDo(tree)
     }
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
@@ -461,8 +459,7 @@ class TreeChecker extends Phase with SymTransformer {
       if (ctx.mode.isExpr &&
           !tree.isEmpty &&
           !isPrimaryConstructorReturn &&
-          !pt.isInstanceOf[FunProto] &&
-          !pt.isInstanceOf[PolyProto])
+          !pt.isInstanceOf[FunOrPolyProto])
         assert(tree.tpe <:< pt, {
           val mismatch = err.typeMismatchMsg(tree.tpe, pt)
           i"""|${mismatch.msg}

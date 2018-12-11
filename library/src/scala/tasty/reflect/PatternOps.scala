@@ -1,39 +1,41 @@
 package scala.tasty
 package reflect
 
-trait PatternOps extends TastyCore {
+trait PatternOps extends Core {
 
   trait PatternAPI {
-    def tpe(implicit ctx: Context): Type
+    /** Position in the source code */
     def pos(implicit ctx: Context): Position
+
+    def tpe(implicit ctx: Context): Type
   }
   implicit def PatternDeco(pattern: Pattern): PatternAPI
 
   val Pattern: PatternModule
   abstract class PatternModule {
 
-    val Value: ValueExtractor
-    abstract class ValueExtractor {
+    val Value: ValueModule
+    abstract class ValueModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Term]
     }
 
-    val Bind: BindExtractor
-    abstract class BindExtractor {
+    val Bind: BindModule
+    abstract class BindModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(String, Pattern)]
     }
 
-    val Unapply: UnapplyExtractor
-    abstract class UnapplyExtractor {
+    val Unapply: UnapplyModule
+    abstract class UnapplyModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])]
     }
 
-    val Alternative: AlternativeExtractor
-    abstract class AlternativeExtractor {
+    val Alternative: AlternativeModule
+    abstract class AlternativeModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[List[Pattern]]
     }
 
-    val TypeTest: TypeTestExtractor
-    abstract class TypeTestExtractor {
+    val TypeTest: TypeTestModule
+    abstract class TypeTestModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTree]
     }
   }

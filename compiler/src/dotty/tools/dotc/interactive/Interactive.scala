@@ -8,7 +8,8 @@ import scala.collection._
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
-import util.Positions._, util.SourcePosition
+import transform.SymUtils.decorateSymbol
+import util.Positions._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
@@ -21,13 +22,47 @@ import StdNames.nme
 object Interactive {
   import ast.tpd._
 
-  object Include { // should be an enum, really.
-    type Set = Int
-    val overridden: Int = 1 // include trees whose symbol is overridden by `sym`
-    val overriding: Int = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
-    val references: Int = 4 // include references
-    val definitions: Int = 8 // include definitions
-    val linkedClass: Int = 16 // include `symbol.linkedClass`
+  object Include {
+    case class Set private[Include] (val bits: Int) extends AnyVal {
+      def | (that: Set): Set = Set(bits | that.bits)
+      def except(that: Set): Set = Set(bits & ~that.bits)
+
+      def isEmpty: Boolean = bits == 0
+      def isOverridden: Boolean = (bits & overridden.bits) != 0
+      def isOverriding: Boolean = (bits & overriding.bits) != 0
+      def isReferences: Boolean = (bits & references.bits) != 0
+      def isDefinitions: Boolean = (bits & definitions.bits) != 0
+      def isLinkedClass: Boolean = (bits & linkedClass.bits) != 0
+      def isImports: Boolean = (bits & imports.bits) != 0
+      def isLocal: Boolean = (bits & local.bits) != 0
+    }
+
+    /** The empty set */
+    val empty: Set = Set(0)
+
+    /** Include trees whose symbol is overridden by `sym` */
+    val overridden: Set = Set(1 << 0)
+
+    /** Include trees whose symbol overrides `sym` */
+    val overriding: Set = Set(1 << 1)
+
+    /** Include references */
+    val references: Set = Set(1 << 2)
+
+    /** Include definitions */
+    val definitions: Set = Set(1 << 3)
+
+    /** Include `sym.linkedClass */
+    val linkedClass: Set = Set(1 << 4)
+
+    /** Include imports in the results */
+    val imports: Set = Set(1 << 5)
+
+    /** Include local symbols, inspect local trees */
+    val local: Set = Set(1 << 6)
+
+    /** All the flags */
+    val all: Set = Set(~0)
   }
 
   /** Does this tree define a symbol ? */
@@ -52,75 +87,51 @@ object Interactive {
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /**
-   * The source symbol that is the closest to `path`.
+   * The source symbols that are the closest to `path`.
    *
-   * @param path The path to the tree whose symbol to extract.
-   * @return The source symbol that is the closest to `path`.
+   * If this path ends in an import, then this returns all the symbols that are imported by this
+   * import statement.
+   *
+   * @param path The path to the tree whose symbols to extract.
+   * @return The source symbols that are the closest to `path`.
    *
    * @see sourceSymbol
    */
-  def enclosingSourceSymbol(path: List[Tree])(implicit ctx: Context): Symbol = {
-    val sym = path match {
+  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
+    val syms = path match {
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
         if (funSym.name == StdNames.nme.copy
           && funSym.is(Synthetic)
           && funSym.owner.is(CaseClass)) {
-            funSym.owner.info.member(name).symbol
+            List(funSym.owner.info.member(name).symbol)
         } else {
           val classTree = funSym.topLevelClass.asClass.rootTree
-          tpd.defPath(funSym, classTree).lastOption.flatMap {
-            case DefDef(_, _, paramss, _, _) =>
-              paramss.flatten.find(_.name == name).map(_.symbol)
-          }.getOrElse(fn.symbol)
+          val paramSymbol =
+            for {
+              DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              param <- paramss.flatten.find(_.name == name)
+            } yield param.symbol
+          List(paramSymbol.getOrElse(fn.symbol))
         }
 
       // For constructor calls, return the `<init>` that was selected
       case _ :: (_:  New) :: (select: Select) :: _ =>
-        select.symbol
+        List(select.symbol)
+
+      case (_: Thicket) :: (imp: Import) :: _ =>
+        importedSymbols(imp, _.pos.contains(pos.pos))
+
+      case (imp: Import) :: _ =>
+        importedSymbols(imp, _.pos.contains(pos.pos))
 
       case _ =>
-        enclosingTree(path).symbol
+        List(enclosingTree(path).symbol)
     }
-    Interactive.sourceSymbol(sym)
-  }
 
-  /**
-   * The source symbol that is the closest to the path to `pos` in `trees`.
-   *
-   * Computes the path from the tree with position `pos` in `trees`, and extract it source
-   * symbol.
-   *
-   * @param trees The trees in which to look for a path to `pos`.
-   * @param pos   That target position of the path.
-   * @return The source symbol that is the closest to the computed path.
-   *
-   * @see sourceSymbol
-   */
-  def enclosingSourceSymbol(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Symbol = {
-    enclosingSourceSymbol(pathTo(trees, pos))
+    syms.map(_.sourceSymbol).filter(_.exists)
   }
-
-  /** A symbol related to `sym` that is defined in source code.
-   *
-   *  @see enclosingSourceSymbol
-   */
-  @tailrec def sourceSymbol(sym: Symbol)(implicit ctx: Context): Symbol =
-    if (!sym.exists)
-      sym
-    else if (sym.is(ModuleVal))
-      sourceSymbol(sym.moduleClass) // The module val always has a zero-extent position
-    else if (sym.is(Synthetic)) {
-      val linked = sym.linkedClass
-      if (linked.exists && !linked.is(Synthetic))
-        linked
-      else
-        sourceSymbol(sym.owner)
-    }
-    else if (sym.isPrimaryConstructor)
-      sourceSymbol(sym.owner)
-    else sym
 
   /** Check if `tree` matches `sym`.
    *  This is the case if the symbol defined by `tree` equals `sym`,
@@ -134,165 +145,12 @@ object Interactive {
       sym1.owner.derivesFrom(sym2.owner) && sym1.overriddenSymbol(sym2.owner.asClass) == sym2
 
     (  sym == tree.symbol
-    || sym.exists && sym == sourceSymbol(tree.symbol)
-    || include != 0 && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
-       && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
-          || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
+    || sym.exists && sym == tree.symbol.sourceSymbol
+    || !include.isEmpty && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
+       && (  include.isOverridden && overrides(sym, tree.symbol)
+          || include.isOverriding && overrides(tree.symbol, sym)
           )
     )
-  }
-
-  private def safely[T](op: => List[T]): List[T] =
-    try op catch { case ex: TypeError => Nil }
-
-  /** Get possible completions from tree at `pos`
-   *
-   *  @return offset and list of symbols for possible completions
-   */
-  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
-    val path = pathTo(ctx.compilationUnit.tpdTree, pos.pos)
-    computeCompletions(pos, path)(contextOfPath(path))
-  }
-
-  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
-    val completions = Scopes.newScope.openForMutations
-
-    val (completionPos, prefix, termOnly, typeOnly) = path match {
-      case (ref: RefTree) :: _ =>
-        if (ref.name == nme.ERROR)
-          (ref.pos.point, "", false, false)
-        else
-          (ref.pos.point,
-           ref.name.toString.take(pos.pos.point - ref.pos.point),
-           ref.name.isTermName,
-           ref.name.isTypeName)
-      case _ =>
-        (0, "", false, false)
-    }
-
-    /** Include in completion sets only symbols that
-     *   1. start with given name prefix, and
-     *   2. do not contain '$' except in prefix where it is explicitly written by user, and
-     *   3. have same term/type kind as name prefix given so far
-     *
-     *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
-     *  as completion results. However, if a user explicitly writes all '$' characters in an
-     *  identifier, we should complete the rest.
-     */
-    def include(sym: Symbol) =
-      sym.name.startsWith(prefix) &&
-      !sym.name.toString.drop(prefix.length).contains('$') &&
-      (!termOnly || sym.isTerm) &&
-      (!typeOnly || sym.isType)
-
-    def enter(sym: Symbol) =
-      if (include(sym)) completions.enter(sym)
-
-    def add(sym: Symbol) =
-      if (sym.exists && !completions.lookup(sym.name).exists) enter(sym)
-
-    def addMember(site: Type, name: Name) =
-      if (!completions.lookup(name).exists)
-        for (alt <- site.member(name).alternatives) enter(alt.symbol)
-
-    def accessibleMembers(site: Type, superAccess: Boolean = true): Seq[Symbol] = site match {
-      case site: NamedType if site.symbol.is(Package) =>
-        site.decls.toList.filter(include) // Don't look inside package members -- it's too expensive.
-      case _ =>
-        def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
-          try buf ++= site.member(name).alternatives
-          catch { case ex: TypeError => }
-        site.memberDenots(takeAllFilter, appendMemberSyms).collect {
-          case mbr if include(mbr.symbol) => mbr.accessibleFrom(site, superAccess).symbol
-          case _ => NoSymbol
-        }.filter(_.exists)
-    }
-
-    def addAccessibleMembers(site: Type, superAccess: Boolean = true): Unit =
-      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name)
-
-    def getImportCompletions(ictx: Context): Unit = {
-      implicit val ctx = ictx
-      val imp = ctx.importInfo
-      if (imp != null) {
-        def addImport(name: TermName) = {
-          addMember(imp.site, name)
-          addMember(imp.site, name.toTypeName)
-        }
-        // FIXME: We need to also take renamed items into account for completions,
-        // That means we have to return list of a pairs (Name, Symbol) instead of a list
-        // of symbols from `completions`.!=
-        for (imported <- imp.originals if !imp.excluded.contains(imported)) addImport(imported)
-        if (imp.isWildcardImport)
-          for (mbr <- accessibleMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
-            addMember(imp.site, mbr.name)
-      }
-    }
-
-    def getScopeCompletions(ictx: Context): Unit = {
-      implicit val ctx = ictx
-
-      if (ctx.owner.isClass) {
-        addAccessibleMembers(ctx.owner.thisType)
-        ctx.owner.asClass.classInfo.selfInfo match {
-          case selfSym: Symbol => add(selfSym)
-          case _ =>
-        }
-      }
-      else if (ctx.scope != null) ctx.scope.foreach(add)
-
-      getImportCompletions(ctx)
-
-      var outer = ctx.outer
-      while ((outer.owner `eq` ctx.owner) && (outer.scope `eq` ctx.scope)) {
-        getImportCompletions(outer)
-        outer = outer.outer
-      }
-      if (outer `ne` NoContext) getScopeCompletions(outer)
-    }
-
-    def implicitConversionTargets(qual: Tree)(implicit ctx: Context): Set[Type] = {
-      val typer = ctx.typer
-      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.pos).allImplicits
-      val targets = conversions.map(_.widen.finalResultType)
-      interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
-      targets
-    }
-
-    def getMemberCompletions(qual: Tree): Unit = {
-      addAccessibleMembers(qual.tpe)
-      implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
-        .foreach(addAccessibleMembers(_))
-    }
-
-    path match {
-      case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
-      case _  => getScopeCompletions(ctx)
-    }
-
-    val completionList = completions.toList
-    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $completionList%, %")
-    (completionPos, completionList)
-  }
-
-  /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
-  def completions(prefix: Type, boundary: Symbol)(implicit ctx: Context): List[Symbol] =
-    safely {
-      if (boundary != NoSymbol) {
-        val boundaryCtx = ctx.withOwner(boundary)
-        def exclude(sym: Symbol) = sym.isAbsent || sym.is(Synthetic) || sym.is(Artifact)
-        def addMember(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
-          buf ++= prefix.member(name).altsWith(sym =>
-            !exclude(sym) && sym.isAccessibleFrom(prefix)(boundaryCtx))
-          prefix.memberDenots(completionsFilter, addMember).map(_.symbol).toList
-      }
-      else Nil
-    }
-
-  /** Filter for names that should appear when looking for completions. */
-  private[this] object completionsFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
   }
 
   /** Find named trees with a non-empty position whose symbol match `sym` in `trees`.
@@ -306,37 +164,46 @@ object Interactive {
     if (!sym.exists)
       Nil
     else
-      namedTrees(trees, (include & Include.references) != 0, matchSymbol(_, sym, include))
-
-  /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
-   */
-  def namedTrees(trees: List[SourceTree], nameSubstring: String)
-   (implicit ctx: Context): List[SourceTree] = {
-    val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
-    namedTrees(trees, includeReferences = false, predicate)
-  }
+      namedTrees(trees, include, matchSymbol(_, sym, include))
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
    *
-   *  @param includeReferences  If true, include references and not just definitions
+   *  @param trees         The trees to inspect.
+   *  @param include       Whether to include references, definitions, etc.
+   *  @param treePredicate An additional predicate that the trees must match.
+   *  @return The trees with a non-empty position satisfying `treePredicate`.
    */
-  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, treePredicate: NameTree => Boolean)
-    (implicit ctx: Context): List[SourceTree] = safely {
+  def namedTrees(trees: List[SourceTree],
+                 include: Include.Set,
+                 treePredicate: NameTree => Boolean = util.common.alwaysTrue
+                )(implicit ctx: Context): List[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
-    trees foreach { case SourceTree(topTree, source) =>
+    def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
+        private def handle(utree: untpd.NameTree): Unit = {
+          val tree = utree.asInstanceOf[tpd.NameTree]
+          if (tree.symbol.exists
+               && !tree.symbol.is(Synthetic)
+               && !tree.symbol.isPrimaryConstructor
+               && tree.pos.exists
+               && !tree.pos.isZeroExtent
+               && (include.isReferences || isDefinition(tree))
+               && treePredicate(tree))
+            buf += SourceTree(tree, source)
+        }
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
+            case imp: untpd.Import if include.isImports && tree.hasType =>
+              val tree = imp.asInstanceOf[tpd.Import]
+              val selections = tpd.importSelections(tree)
+              traverse(imp.expr)
+              selections.foreach(traverse)
+            case utree: untpd.ValOrDefDef if tree.hasType =>
+              handle(utree)
+              if (include.isLocal) traverseChildren(tree)
             case utree: untpd.NameTree if tree.hasType =>
-              val tree = utree.asInstanceOf[tpd.NameTree]
-              if (tree.symbol.exists
-                   && !tree.symbol.is(Synthetic)
-                   && tree.pos.exists
-                   && !tree.pos.isZeroExtent
-                   && (includeReferences || isDefinition(tree))
-                   && treePredicate(tree))
-                buf += SourceTree(tree, source)
+              handle(utree)
               traverseChildren(tree)
             case tree: untpd.Inlined =>
               traverse(tree.call)
@@ -344,8 +211,10 @@ object Interactive {
               traverseChildren(tree)
           }
         }
-      }.traverse(topTree)
+      }
     }
+
+    trees.foreach(t => traverser(t.source).traverse(t.tree))
 
     buf.toList
   }
@@ -353,29 +222,28 @@ object Interactive {
   /**
    * Find trees that match `symbol` in `trees`.
    *
-   * @param trees    The trees to inspect.
-   * @param includes Whether to include references, definitions, etc.
-   * @param symbol   The symbol for which we want to find references.
+   * @param trees     The trees to inspect.
+   * @param includes  Whether to include references, definitions, etc.
+   * @param symbol    The symbol for which we want to find references.
+   * @param predicate An additional predicate that the trees must match.
    */
   def findTreesMatching(trees: List[SourceTree],
                         includes: Include.Set,
-                        symbol: Symbol)(implicit ctx: Context): List[SourceTree] = {
+                        symbol: Symbol,
+                        predicate: NameTree => Boolean = util.common.alwaysTrue
+                       )(implicit ctx: Context): List[SourceTree] = {
     val linkedSym = symbol.linkedClass
-    val includeReferences  = (includes & Include.references) != 0
-    val includeDeclaration = (includes & Include.definitions) != 0
-    val includeLinkedClass = (includes & Include.linkedClass) != 0
-    val predicate: NameTree => Boolean = tree =>
-      (  !tree.symbol.isPrimaryConstructor
-      && (includeDeclaration || !Interactive.isDefinition(tree))
+    val fullPredicate: NameTree => Boolean = tree =>
+      (  (includes.isDefinitions || !Interactive.isDefinition(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
-         || (  includeDeclaration
-            && includeLinkedClass
+         || ( includes.isLinkedClass
             && linkedSym.exists
             && Interactive.matchSymbol(tree, linkedSym, includes)
             )
          )
+      && predicate(tree)
       )
-    namedTrees(trees, includeReferences, predicate)
+    namedTrees(trees, includes, fullPredicate)
   }
 
   /** The reverse path to the node that closest encloses position `pos`,
@@ -457,37 +325,118 @@ object Interactive {
     path.find(_.isInstanceOf[DefTree]).getOrElse(EmptyTree)
 
   /**
-   * Find the definitions of the symbol at the end of `path`.
+   * Find the definitions of the symbol at the end of `path`. In the case of an import node,
+   * all imported symbols will be considered.
    *
    * @param path   The path to the symbol for which we want the definitions.
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
-    val sym = enclosingSourceSymbol(path)
-    if (sym == NoSymbol) Nil
-    else {
-      val enclTree = enclosingTree(path)
+  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver): List[SourceTree] = {
+    implicit val ctx = driver.currentCtx
+    val enclTree = enclosingTree(path)
+    val includeOverridden = enclTree.isInstanceOf[MemberDef]
+    val symbols = enclosingSourceSymbols(path, pos)
+    val includeExternal = symbols.exists(!_.isLocal)
+    findDefinitions(symbols, driver, includeOverridden, includeExternal)
+  }
 
-      val (trees, include) =
-        if (enclTree.isInstanceOf[MemberDef])
-          (driver.allTreesContaining(sym.name.sourceModuleName.toString),
-            Include.definitions | Include.overriding | Include.overridden)
-        else sym.topLevelClass match {
-          case cls: ClassSymbol =>
-            val trees = Option(cls.sourceFile).map(InteractiveDriver.toUri) match {
-              case Some(uri) if driver.openedTrees.contains(uri) =>
-                driver.openedTrees(uri)
-              case _ => // Symbol comes from the classpath
-                SourceTree.fromSymbol(cls).toList
-            }
-            (trees, Include.definitions | Include.overriding)
-          case _ =>
-            (Nil, 0)
-        }
-
-      findTreesMatching(trees, include, sym)
+  /**
+   * Find the definitions of `symbols`.
+   *
+   * @param symbols           The list of symbols for which to find a definition.
+   * @param driver            The driver responsible for the given symbols.
+   * @param includeOverridden If true, also include the symbols overridden by any of `symbols`.
+   * @param includeExternal   If true, also look for definitions on the classpath.
+   * @return The definitions for the symbols in `symbols`, and if `includeOverridden` is set, the
+   *         definitions for the symbols that they override.
+   */
+  def findDefinitions(symbols: List[Symbol],
+                      driver: InteractiveDriver,
+                      includeOverridden: Boolean,
+                      includeExternal: Boolean): List[SourceTree] = {
+    implicit val ctx = driver.currentCtx
+    val include = Include.definitions | Include.overriding |
+      (if (includeOverridden) Include.overridden else Include.empty)
+    symbols.flatMap { sym =>
+      val name = sym.name.sourceModuleName.toString
+      val includeLocal = if (sym.exists && sym.isLocal) Include.local else Include.empty
+      val trees =
+        if (includeExternal) driver.allTreesContaining(name)
+        else driver.sourceTreesContaining(name)
+      findTreesMatching(trees, include | includeLocal, sym)
     }
   }
+
+  /**
+   * Given `sym`, originating from `sourceDriver`, find its representation in
+   * `targetDriver`.
+   *
+   * @param symbol The symbol to expression in the new driver.
+   * @param sourceDriver The driver from which `symbol` originates.
+   * @param targetDriver The driver in which we want to get a representation of `symbol`.
+   * @return A representation of `symbol` in `targetDriver`.
+   */
+  def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
+
+    def in[T](driver: InteractiveDriver)(fn: Context => T): T =
+      fn(driver.currentCtx)
+
+    if (sourceDriver == targetDriver) symbol
+    else {
+      val owners = in(sourceDriver) { implicit ctx =>
+        symbol.ownersIterator.toList.reverse.map(_.name)
+      }
+      in(targetDriver) { implicit ctx =>
+        val base: Symbol = ctx.definitions.RootClass
+        owners.tail.foldLeft(base) { (prefix, symbolName) =>
+          if (prefix.exists) prefix.info.member(symbolName).symbol
+          else NoSymbol
+        }
+      }
+    }
+  }
+
+  /**
+   * Return a predicate function that determines whether a given `NameTree` is an implementation of
+   * `sym`.
+   *
+   * @param sym The symbol whose implementations to find.
+   * @return A function that determines whether a `NameTree` is an implementation of `sym`.
+   */
+  def implementationFilter(sym: Symbol)(implicit ctx: Context): NameTree => Boolean = {
+    if (sym.isClass) {
+      case td: TypeDef =>
+        val treeSym = td.symbol
+        (treeSym != sym || !treeSym.is(AbstractOrTrait)) && treeSym.derivesFrom(sym)
+      case _ =>
+        false
+    } else {
+      case md: MemberDef =>
+        matchSymbol(md, sym, Include.overriding) && !md.symbol.is(Deferred)
+      case _ =>
+        false
+    }
+  }
+
+  /**
+   * Is this tree using a renaming introduced by an import statement or an alias for `this`?
+   *
+   * @param tree The tree to inspect
+   * @return True, if this tree's name is different than its symbol's name, indicating that
+   *         it uses a renaming introduced by an import statement or an alias for `this`.
+   */
+  def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
+    val symbol = tree.symbol
+    symbol.exists && !sameName(tree.name, symbol.name)
+  }
+
+  /** Are the two names the same? */
+  def sameName(n0: Name, n1: Name): Boolean = {
+    n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
+  }
+
+  private[interactive] def safely[T](op: => List[T]): List[T] =
+    try op catch { case ex: TypeError => Nil }
 
 }

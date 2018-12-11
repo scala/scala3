@@ -174,7 +174,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
     if (inPackage == "") Nil
     else {
       packageToModuleBases.getOrElse(inPackage, Nil).flatMap(x =>
-        Files.list(x.resolve(inPackage.replace('.', '/'))).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
+        Files.list(x.resolve(FileUtils.dirPath(inPackage))).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
         ClassFileEntryImpl(new PlainFile(new dotty.tools.io.File(x)))).toVector
     }
   }
@@ -193,7 +193,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
     else {
       val inPackage = packageOf(className)
       packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{x =>
-        val file = x.resolve(className.replace('.', '/') + ".class")
+        val file = x.resolve(FileUtils.dirPath(className) + ".class")
         if (Files.exists(file)) new PlainFile(new dotty.tools.io.File(file)) :: Nil else Nil
       }.take(1).toList.headOption
     }
@@ -207,7 +207,7 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFile
 
   def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
-    val classFile = new JFile(s"$dir/$relativePath.class")
+    val classFile = new JFile(dir, relativePath + ".class")
     if (classFile.exists) {
       val wrappedClassFile = new dotty.tools.io.File(classFile.toPath)
       val abstractClassFile = new PlainFile(wrappedClassFile)
@@ -232,7 +232,7 @@ case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFi
   private def findSourceFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
     val sourceFile = Stream("scala", "java")
-      .map(ext => new JFile(s"$dir/$relativePath.$ext"))
+      .map(ext => new JFile(dir, relativePath + "." + ext))
       .collectFirst { case file if file.exists() => file }
 
     sourceFile.map { file =>

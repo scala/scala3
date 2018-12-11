@@ -19,6 +19,9 @@ import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
+import org.scalajs.sbtplugin.ScalaJSPlugin
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
@@ -36,14 +39,14 @@ object ExposedValues extends AutoPlugin {
 object Build {
   val scalacVersion = "2.12.7"
 
-  val baseVersion = "0.11.0"
+  val baseVersion = "0.12.0"
   val baseSbtDottyVersion = "0.2.7"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
-  val publishedDottyVersion = "0.11.0-bin-20181101-714ce80-NIGHTLY" // Using a nightly for now to get worksheet support
+  val publishedDottyVersion = "0.11.0-RC1"
   val publishedSbtDottyVersion = "0.2.6"
 
 
@@ -113,6 +116,8 @@ object Build {
   lazy val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   lazy val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
   lazy val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+
+  lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
@@ -393,9 +398,9 @@ object Build {
     baseDirectory in Test := baseDirectory.value / "..",
     unmanagedSourceDirectories in Test += baseDirectory.value / "input" / "src" / "main" / "scala",
     libraryDependencies ++= List(
-      ("org.scalameta" %% "semanticdb" % "4.0.0" % Test).withDottyCompat(scalaVersion.value),
-      "com.novocode" % "junit-interface" % "0.11" % Test,
-      "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0" % Test
+      ("org.scalameta" %% "semanticdb" % "4.0.0").withDottyCompat(scalaVersion.value),
+      "com.novocode" % "junit-interface" % "0.11",
+      "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0"
     )
   )
 
@@ -628,8 +633,7 @@ object Build {
         val dottyLib = jars("dotty-library")
 
         def run(args: List[String]): Unit = {
-          val sep = File.pathSeparator
-          val fullArgs = insertClasspathInArgs(args, s".$sep$dottyLib$sep$scalaLib")
+          val fullArgs = insertClasspathInArgs(args, List(".", dottyLib, scalaLib).mkString(File.pathSeparator))
           runProcess("java" :: fullArgs, wait = true)
         }
 
@@ -645,46 +649,46 @@ object Build {
           val asm = findLib(attList, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
           val dottyInterfaces = jars("dotty-interfaces")
-          run(insertClasspathInArgs(args1, s"$dottyCompiler:$dottyInterfaces:$asm"))
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm).mkString(File.pathSeparator)))
         } else run(args)
       },
 
       run := dotc.evaluated,
       dotc := runCompilerMain().evaluated,
-      repl := runCompilerMain(repl = true).evaluated
+      repl := runCompilerMain(repl = true).evaluated,
 
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its
        * sources instead of depending on the binaries.
        */
-      //TODO: disabling until moved to separate project
-      //ivyConfigurations += config("sourcedeps").hide,
-      //libraryDependencies +=
-      //  "org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps",
-      //sourceGenerators in Compile += Def.task {
-      //  val s = streams.value
-      //  val cacheDir = s.cacheDirectory
-      //  val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
+      sourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
 
-      //  val report = updateClassifiers.value
-      //  val scalaJSIRSourcesJar = report.select(
-      //      configuration = Set("sourcedeps"),
-      //      module = (_: ModuleID).name.startsWith("scalajs-ir_"),
-      //      artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
-      //    sys.error(s"Could not fetch scalajs-ir sources")
-      //  }
+        val report = updateClassifiers.value
+        val scalaJSIRSourcesJar = report.select(
+            configuration = configurationFilter("sourcedeps"),
+            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+          sys.error(s"Could not fetch scalajs-ir sources")
+        }
 
-      //  FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
-      //      FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-      //    s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
-      //    if (trgDir.exists)
-      //      IO.delete(trgDir)
-      //    IO.createDirectory(trgDir)
-      //    IO.unzip(scalaJSIRSourcesJar, trgDir)
-      //    (trgDir ** "*.scala").get.toSet
-      //  } (Set(scalaJSIRSourcesJar)).toSeq
-      //}.taskValue
+        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+          if (trgDir.exists)
+            IO.delete(trgDir)
+          IO.createDirectory(trgDir)
+          IO.unzip(scalaJSIRSourcesJar, trgDir)
+          (trgDir ** "*.scala").get.toSet
+        } (Set(scalaJSIRSourcesJar)).toSeq
+      }.taskValue,
   )
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
@@ -775,14 +779,14 @@ object Build {
   lazy val dottyLibrarySettings = Seq(
     libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
     // Add version-specific source directories:
-    // - files in src-scala3 will only be compiled by dotty
-    // - files in src-scala2 will only be compiled by scalac
+    // - files in src-non-bootstrapped will only be compiled by the reference compiler (scalac)
+    // - files in src-bootstrapped will only be compiled by the current dotty compiler (non-bootstrapped and bootstrapped)
     unmanagedSourceDirectories in Compile += {
       val baseDir = baseDirectory.value
       if (isDotty.value)
-        baseDir / "src-scala3"
+        baseDir / "src-bootstrapped"
       else
-        baseDir / "src-scala2"
+        baseDir / "src-non-bootstrapped"
     }
   )
 
@@ -870,7 +874,7 @@ object Build {
       fork in run := true,
       fork in Test := true,
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.5.0.M1",
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.5.0",
         Dependencies.`jackson-databind`
       ),
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value,
@@ -894,7 +898,7 @@ object Build {
     ).
     settings(
       ideTestsCompilerVersion := (version in `dotty-compiler`).value,
-      ideTestsCompilerArguments := (scalacOptions in `dotty-compiler`).value,
+      ideTestsCompilerArguments := Seq(),
       ideTestsDependencyClasspath := {
         val dottyLib = (classDirectory in `dotty-library-bootstrapped` in Compile).value
         val scalaLib =
@@ -915,10 +919,51 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
     )
 
+  /** A sandbox to play with the Scala.js back-end of dotty.
+   *
+   *  This sandbox is compiled with dotty with support for Scala.js. It can be
+   *  used like any regular Scala.js project. In particular, `fastOptJS` will
+   *  produce a .js file, and `run` will run the JavaScript code with a JS VM.
+   *
+   *  Simply running `dotty/run -scalajs` without this sandbox is not very
+   *  useful, as that would not provide the linker and JS runners.
+   */
+  lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
+    enablePlugins(ScalaJSPlugin).
+    settings(commonBootstrappedSettings).
+    settings(
+      /* Remove the Scala.js compiler plugin for scalac, and enable the
+       * Scala.js back-end of dotty instead.
+       */
+      libraryDependencies := {
+        val deps = libraryDependencies.value
+        deps.filterNot(_.name.startsWith("scalajs-compiler")).map(_.withDottyCompat(scalaVersion.value))
+      },
+      scalacOptions += "-scalajs",
+
+      // The main class cannot be found automatically due to the empty inc.Analysis
+      mainClass in Compile := Some("hello.HelloWorld"),
+
+      scalaJSUseMainModuleInitializer := true,
+
+      /* Debug-friendly Scala.js optimizer options.
+       * In particular, typecheck the Scala.js IR found on the classpath.
+       */
+      scalaJSLinkerConfig ~= {
+        _.withCheckIR(true).withParallel(false)
+      }
+    ).
+    settings(compileWithDottySettings)
+
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
 
   lazy val `dotty-semanticdb` = project.in(file("semanticdb")).asDottySemanticdb(Bootstrapped)
+  lazy val `dotty-semanticdb-input` = project.in(file("semanticdb/input")).settings(
+    scalaVersion := "2.12.7",
+    scalacOptions += "-Yrangepos",
+    addCompilerPlugin("org.scalameta" % "semanticdb-scalac" % "4.0.0" cross CrossVersion.full)
+  )
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
@@ -987,7 +1032,7 @@ object Build {
     settings(commonSettings).
     settings(
       EclipseKeys.skipProject := true,
-      version := "0.1.10-snapshot", // Keep in sync with package.json
+      version := "0.1.12-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
@@ -1087,8 +1132,8 @@ object Build {
       Developer(
         id = "liufengyun",
         name = "Liu Fengyun",
-        email = "liufengyun@chaos-lab.com",
-        url = url("http://chaos-lab.com")
+        email = "liu@fengy.me",
+        url = url("https://fengy.me")
       ),
       Developer(
         id = "nicolasstucki",
@@ -1236,48 +1281,6 @@ object Build {
       packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
     )
 
-  // /** A sandbox to play with the Scala.js back-end of dotty.
-  //  *
-  //  *  This sandbox is compiled with dotty with support for Scala.js. It can be
-  //  *  used like any regular Scala.js project. In particular, `fastOptJS` will
-  //  *  produce a .js file, and `run` will run the JavaScript code with a JS VM.
-  //  *
-  //  *  Simply running `dotty/run -scalajs` without this sandbox is not very
-  //  *  useful, as that would not provide the linker and JS runners.
-  //  */
-  // lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
-  //   enablePlugins(ScalaJSPlugin).
-  //   settings(commonNonBootstrappedSettings).
-  //   settings(
-  //     /* Remove the Scala.js compiler plugin for scalac, and enable the
-  //      * Scala.js back-end of dotty instead.
-  //      */
-  //     libraryDependencies ~= { deps =>
-  //       deps.filterNot(_.name.startsWith("scalajs-compiler"))
-  //     },
-  //     scalacOptions += "-scalajs",
-
-  //     // The main class cannot be found automatically due to the empty inc.Analysis
-  //     mainClass in Compile := Some("hello.world"),
-
-  //     // While developing the Scala.js back-end, it is very useful to see the trees dotc gives us
-  //     scalacOptions += "-Xprint:labelDef",
-
-  //     /* Debug-friendly Scala.js optimizer options.
-  //      * In particular, typecheck the Scala.js IR found on the classpath.
-  //      */
-  //     scalaJSOptimizerOptions ~= {
-  //       _.withCheckScalaJSIR(true).withParallel(false)
-  //     }
-  //   ).
-  //   settings(compileWithDottySettings).
-  //   settings(inConfig(Compile)(Seq(
-  //     /* Make sure jsDependencyManifest runs after compile, otherwise compile
-  //      * might remove the entire directory afterwards.
-  //      */
-  //     jsDependencyManifest := jsDependencyManifest.dependsOn(compile).value
-  //   )))
-
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
@@ -1317,6 +1320,7 @@ object Build {
       enablePlugins(JmhPlugin)
 
     def asDottySemanticdb(implicit mode: Mode): Project = project.withCommonSettings.
+      aggregate(`dotty-semanticdb-input`).
       dependsOn(dottyCompiler).
       settings(semanticdbSettings)
 
