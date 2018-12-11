@@ -87,7 +87,6 @@ object Semanticdbs {
     occurrences.foreach { occ =>
       val range = occ.range.get
       val end = sourceFile.lineToOffset(range.endLine) + range.endCharacter
-      //println(occ)
       sb.append(doc.text.substring(offset, end))
       sb.append(" /* ")
         .append(occ.symbol)
@@ -118,7 +117,14 @@ object Semanticdbs {
               a.startCharacter,
               b.startCharacter
             )
-            byCharacter
+            if (byCharacter == 0) {
+              Integer.compare(
+                a.endCharacter,
+                b.endCharacter
+              )
+            } else {
+              byCharacter
+            }
           }
         }
       }
