@@ -397,9 +397,9 @@ object Erasure {
 
       def mapOwner(sym: Symbol): Symbol = {
         def recur(owner: Symbol): Symbol =
-          if (defn.erasedToObject.contains(owner)) {
+          if (defn.specialErasure.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.ObjectClass
+            defn.specialErasure(owner)
           } else if (defn.isSyntheticFunctionClass(owner))
             defn.erasedFunctionClass(owner)
           else

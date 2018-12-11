@@ -307,7 +307,7 @@ object Tuple {
   }
 }
 
-abstract sealed class NonEmptyTuple extends Tuple {
+abstract trait NonEmptyTuple extends Tuple {
   import Tuple._
   import NonEmptyTuple._
 
@@ -473,7 +473,7 @@ object NonEmptyTuple {
 }
 
 @showAsInfix
-sealed class *:[+H, +T <: Tuple] extends NonEmptyTuple
+sealed class *:[+H, +T <: Tuple] extends Object with NonEmptyTuple
 
 object *: {
   inline def unapply[H, T <: Tuple](x: H *: T) = (x.head, x.tail)

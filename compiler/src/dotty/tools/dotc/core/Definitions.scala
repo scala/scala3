@@ -8,6 +8,7 @@ import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
+import util.SimpleIdentityMap
 
 object Definitions {
 
@@ -1273,7 +1274,13 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  lazy val erasedToObject: Set[Symbol] = Set(AnyClass, AnyValClass, TupleClass, NonEmptyTupleClass, SingletonClass)
+  lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
+    SimpleIdentityMap.Empty[Symbol]
+      .updated(AnyClass, ObjectClass)
+      .updated(AnyValClass, ObjectClass)
+      .updated(SingletonClass, ObjectClass)
+      .updated(TupleClass, ObjectClass)
+      .updated(NonEmptyTupleClass, ProductClass)
 
   // ----- Initialization ---------------------------------------------------
 
