@@ -175,7 +175,7 @@ class Tests {
   }
 
 
- /*@Test def testAccess(): Unit = checkFile("example/Access.scala")
+  /*@Test def testAccess(): Unit = checkFile("example/Access.scala")
   @Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
   @Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
   @Test def testClasses(): Unit = checkFile("example/Classes.scala")
@@ -205,8 +205,9 @@ class Tests {
   @Test def testIgnoredSymbol(): Unit = checkFile("example/IgnoredSymbol.scala")
   @Test def testCase(): Unit = checkFile("example/Case.scala")
   @Test def testApply(): Unit = checkFile("example/Apply.scala")
+  @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
   @Test def testTypeBug(): Unit = checkFile("example/TypeBug.scala")*/
+  @Test def testTraits(): Unit = checkFile("example/Traits.scala")
   //@Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //@Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
-  @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
 }

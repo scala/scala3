@@ -35,12 +35,14 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
     object ChildTraverser extends TreeTraverser {
       var children: List[Tree] = Nil
+      var childrenType: List[TypeOrBoundsTree] = Nil
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit =
         children = tree :: children
       override def traversePattern(pattern: Pattern)(
           implicit ctx: Context): Unit = ()
       override def traverseTypeTree(tree: TypeOrBoundsTree)(
-          implicit ctx: Context): Unit = ()
+          implicit ctx: Context): Unit =
+          childrenType = tree :: childrenType
       override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit =
         ()
       override def traverseTypeCaseDef(tree: TypeCaseDef)(
@@ -51,6 +53,11 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         children = Nil
         traverseTreeChildren(tree)(ctx)
         return children
+      }
+      def getChildrenType(tree: TypeOrBoundsTree)(implicit ctx: Context): List[TypeOrBoundsTree] = {
+        childrenType = Nil
+        traverseTypeTreeChildren(tree)(ctx)
+        return childrenType
       }
     }
 
@@ -66,6 +73,12 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
       implicit class TypeTreeExtender(tree: TypeTree) {
         def isUserCreated: Boolean = {
+          val children: List[Position] =
+            ChildTraverser.getChildrenType(tree)(reflect.rootContext).collect(_ match {
+            case IsTypeTree(tt) => tt.pos})
+          println(children)
+          return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
+            .exists(_ == tree.pos))
           return !(tree.pos.exists && tree.pos.start == tree.pos.end)
         }
       }
@@ -436,7 +449,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       def addOccurenceTypeTree(typetree: TypeTree,
                                type_symbol: s.SymbolOccurrence.Role,
                                range: s.Range): Unit = {
-        println(typetree)
+        println(typetree.symbol, typetree.isUserCreated)
         if (typetree.isUserCreated) {
           addOccurence(typetree.symbol, type_symbol, range)
         }
