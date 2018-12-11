@@ -1,27 +1,18 @@
 package dotty.tools
 
 import java.io.File
+import java.nio.file._
 
-import scala.io.Source
+import scala.collection.JavaConverters._
 
 object TestSources {
 
   // Std Lib
-
-  private final val stdLibPath = "tests/scala2-library/src/library/"
-
-  private def blacklistFile: String = "compiler/test/dotc/scala-collections.blacklist"
-
-  def stdLibWhitelisted: List[String] = all.diff(stdLibBlacklisted)
-  def stdLibBlacklisted: List[String] = loadList(blacklistFile).map(stdLibPath + _)
-
-  private def all: List[String] = {
-    def collectAllFilesInDir(dir: File, acc: List[String]): List[String] = {
-      val files = dir.listFiles()
-      val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
-      files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
-    }
-    collectAllFilesInDir(new File(stdLibPath), Nil).sorted
+  def stdLibSources: List[String] = {
+    val blacklisted = List(
+      "StructuralCallSite.java" // See #4739
+    )
+    sources(Paths.get("tests/scala2-library/src/library/"), excludedFiles = blacklisted)
   }
 
   // pos tests lists
@@ -50,11 +41,41 @@ object TestSources {
 
   // load lists
 
-  private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
-    .map(_.trim) // allow identation
-    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-    .filter(_.nonEmpty)
-    .toList
+  private def loadList(path: String): List[String] = {
+    val list = Files.readAllLines(Paths.get(path))
+      .iterator()
+      .asScala
+      .map(_.trim)                     // allow identation
+      .filterNot(_.startsWith("#"))    // allow comment lines prefixed by #
+      .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
+      .filter(_.nonEmpty)
+      .toList
 
+    assert(list.nonEmpty)
+    list
+  }
+
+  /** Retrieve sources from a directory */
+  def sources(path: Path, excludedFiles: List[String] = Nil, shallow: Boolean = false): List[String] = {
+    def fileFilter(path: Path) = {
+      val fileName = path.getFileName.toString
+      (fileName.endsWith(".scala") || fileName.endsWith(".java")) && !excludedFiles.contains(fileName)
+    }
+
+    assert(Files.isDirectory(path))
+    val files = if (shallow) Files.list(path) else Files.walk(path)
+    try {
+      val sources = files
+        .filter(fileFilter)
+        .sorted // make compilation order deterministic
+        .iterator()
+        .asScala
+        .map(_.toString)
+        .toList
+
+      assert(sources.nonEmpty)
+      sources
+    }
+    finally files.close()
+  }
 }
