@@ -28,7 +28,7 @@ scala> val b: Inv[String] = new Inv(1)
 1 | val b: Inv[String] = new Inv(1)
   |                              ^
   |                              Found:    Int(1)
-  |                              Required: Stri
+  |                              Required: String
 scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                  ^
