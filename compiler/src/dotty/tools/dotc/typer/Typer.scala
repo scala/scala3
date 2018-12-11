@@ -2348,7 +2348,7 @@ class Typer extends Namer
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
       def addImplicitArgs(implicit ctx: Context) = {
-        def implicitArgs(formals: List[Type]): List[Tree] = formals match {
+        def implicitArgs(formals: List[Type], argIndex: Int): List[Tree] = formals match {
           case Nil => Nil
           case formal :: formals1 =>
             val arg = inferImplicitArg(formal, tree.pos.endPos)
@@ -2361,10 +2361,17 @@ class Typer extends Namer
                 // If there are none, we have to propagate the ambiguity to the caller.
                 arg :: formals1.map(dummyArg)
               case _ =>
-                arg :: implicitArgs(formals1)
+                // If the implicit parameter list is dependent we must propagate inferred
+                // types through the remainder of the parameter list similarly to how it's
+                // done for non-implicit parameter lists in Applications#matchArgs#addTyped.
+                val formals2 =
+                  if (wtp.isParamDependent && arg.tpe.exists)
+                    formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), arg.tpe))
+                  else formals1
+                arg :: implicitArgs(formals2, argIndex + 1)
             }
         }
-        val args = implicitArgs(wtp.paramInfos)
+        val args = implicitArgs(wtp.paramInfos, 0)
 
         def propagatedFailure(args: List[Tree]): Type = args match {
           case arg :: args1 =>
