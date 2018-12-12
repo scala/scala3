@@ -7,21 +7,6 @@ object Test {
   }
 }
 
-trait Ref {
-  def get: Any
-}
-class Eager(val get: Any) extends Ref
-class Lazy(thunk: => Any) extends Ref {
-  lazy val get: Any = thunk
-}
-class Var(private var value: Any) extends Ref {
-  def get = value
-
-  def update(rhs: Any): Unit = {
-    value = rhs
-  }
-}
-
 class TastyInterpreter extends TastyConsumer {
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {

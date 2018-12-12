@@ -57,7 +57,6 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   private def paramsSig(sym: Symbol): List[Class[_]] = {
-
     sym.asDef.signature.paramSigs.map { param =>
       println(param)
       ???
