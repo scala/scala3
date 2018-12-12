@@ -441,6 +441,8 @@ class Staging extends MacroTransformWithImplicits {
         val hole = makeHole(body1, quotes, tpe).withPos(splice.pos)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
+        // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions. 
+        // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
         if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
         else Inlined(EmptyTree, Nil, hole)
       }
