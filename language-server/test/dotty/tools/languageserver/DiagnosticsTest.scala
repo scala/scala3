@@ -12,8 +12,8 @@ class DiagnosticsTest {
           |  val x: Int = $m1"foo"$m2
           |}""".withSource
       .diagnostics(m1,
-        (m1 to m2, """found:    String("foo")
-                     |required: Int""".stripMargin, Error, Some(TypeMismatchID))
+        (m1 to m2, """Found:    String("foo")
+                     |Required: Int""".stripMargin, Error, Some(TypeMismatchID))
       )
 
   @Test def diagnosticMissingLambdaBody: Unit =
@@ -21,9 +21,9 @@ class DiagnosticsTest {
           |  Nil.map(x => x).filter(x$m1 =>$m2)
           |$m3}""".withSource
       .diagnostics(m1,
-        (m2 to m3, "illegal start of simple expression", Error, Some(IllegalStartSimpleExprID)),
-        (m1 to m1, """found:    Null
-                     |required: Boolean""".stripMargin, Error, Some(TypeMismatchID))
+        (m2 to m3, "Illegal start of simple expression", Error, Some(IllegalStartSimpleExprID)),
+        (m1 to m1, """Found:    Null
+                     |Required: Boolean""".stripMargin, Error, Some(TypeMismatchID))
       )
 
   @Test def diagnosticPureExpression: Unit =
@@ -32,7 +32,7 @@ class DiagnosticsTest {
           |}""".withSource
      .diagnostics(m1,
        (m1 to m2,
-        "a pure expression does nothing in statement position; you may be omitting necessary parentheses",
+        "A pure expression does nothing in statement position; you may be omitting necessary parentheses",
         Warning, Some(PureExpressionInStatementPositionID)))
 
   @Test def diagnosticWorksheetPureExpression: Unit =
