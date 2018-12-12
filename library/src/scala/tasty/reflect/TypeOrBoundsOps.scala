@@ -52,6 +52,7 @@ trait TypeOrBoundsOps extends Core {
   trait TypeAPI {
     def =:=(other: Type)(implicit ctx: Context): Boolean
     def <:<(other: Type)(implicit ctx: Context): Boolean
+    def widen(implicit ctx: Context): Type
   }
 
   val IsType: IsTypeModule
