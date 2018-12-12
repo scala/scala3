@@ -131,6 +131,9 @@ object PickledQuotes {
     val x1 = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), x)
     def x1Ref() = ref(x1.symbol)
     def rec(f: Tree): Tree = f match {
+      case Inlined(call, bindings, expansion) =>
+        // this case must go before closureDef to avoid dropping the inline node
+        cpy.Inlined(f)(call, bindings, rec(expansion))
       case closureDef(ddef) =>
         val paramSym = ddef.vparamss.head.head.symbol
         new TreeTypeMap(
@@ -140,8 +143,6 @@ object PickledQuotes {
         ).transform(ddef.rhs)
       case Block(stats, expr) =>
         seq(stats, rec(expr))
-      case Inlined(call, bindings, expansion) =>
-        Inlined(call, bindings, rec(expansion))
       case _ =>
         f.select(nme.apply).appliedTo(x1Ref())
     }
