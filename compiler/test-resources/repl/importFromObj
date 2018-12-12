@@ -7,15 +7,15 @@ scala> import o._
 scala> buf += xs
 1 | buf += xs
   |        ^^
-  |        found:    List[Int](o.xs)
-  |        required: Int
+  |        Found:    List[Int](o.xs)
+  |        Required: Int
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foo
 1 | import util.foo
   |             ^^^
-  |           value `foo` is not a member of util - did you mean `util.Left`?
+  |             value foo is not a member of util - did you mean util.Left?
 scala> import util.foo.bar
 1 | import util.foo.bar
   |        ^^^^^^^^
-  |        value `foo` is not a member of util - did you mean `util.Left`?
+  |        value foo is not a member of util - did you mean util.Left?
