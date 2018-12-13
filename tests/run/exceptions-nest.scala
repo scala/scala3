@@ -83,7 +83,7 @@ object Test extends dotty.runtime.LegacyApp {
     var x = 1
     try {
       x = 2
-      (null: String).toString
+      (null: String|Null).nn.toString
     } catch {
       case e: NullPointerException =>
         throw e

@@ -3,7 +3,7 @@ import java.util.concurrent.TimeoutException
 
 object IAE {
   def unapply(e: Exception): Option[String] =
-    if (e.isInstanceOf[IllegalArgumentException] && e.getMessage != null) Some(e.getMessage)
+    if (e.isInstanceOf[IllegalArgumentException] && e.getMessage != null) Some(e.getMessage.nn)
     else None
 }
 

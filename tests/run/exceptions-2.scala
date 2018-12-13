@@ -91,8 +91,8 @@ object Test {
     }
 
     try {
-      val a: Leaf = null;
-      println(a.x);
+      val a: Leaf|Null = null;
+      println(a.nn.x);
     } catch {
       case Leaf(a) => Console.println(a);
       case _: NullPointerException => Console.println("Exception occurred");
@@ -101,8 +101,8 @@ object Test {
 
   def method3: Unit = try {
     try {
-      val a: Leaf = null;
-      println(a.x);
+      val a: Leaf|Null = null;
+      println(a.nn.x);
     } catch {
       case Leaf(a) => Console.println(a);
     }
