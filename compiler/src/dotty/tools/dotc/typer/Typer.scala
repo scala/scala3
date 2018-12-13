@@ -414,7 +414,7 @@ class Typer extends Namer
         !pt.isInstanceOf[ApplyingProto] &&
         !tree.tpe.isStable &&
         !isWildcardArg(tree))
-      ctx.error(s"stable identifier required, but ${tree.show} found", tree.pos)
+      ctx.error(StableIdentPattern(tree, pt), tree.pos)
 
     tree
   }
