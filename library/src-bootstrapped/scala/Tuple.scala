@@ -307,7 +307,7 @@ object Tuple {
   }
 }
 
-abstract trait NonEmptyTuple extends Tuple {
+sealed trait NonEmptyTuple extends Tuple {
   import Tuple._
   import NonEmptyTuple._
 
