@@ -25,82 +25,72 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
 
   type Env = Map[Symbol, Ref]
 
-  enum CallMode {
-    case Interpret, EvalOp, ReflectPrecompiled, Predef, Default
+  object Call {
+    def unapply(arg: Tree): Option[(Tree, List[List[Term]])] = arg match {
+      case fn@ Term.Select(_, _) => Some((fn, Nil))
+      case fn@ Term.Ident(_) => Some((fn, Nil))
+      case Term.Apply(Call(fn, args1), args2) => Some((fn, args1 :+ args2))
+      case Term.TypeApply(Call(fn, args), _) => Some((fn, args))
+      case _ => None
+    }
   }
 
-  object Call {
-    /*
-      fn
-      args
-      mode
-    */
-    def unapply(arg: Tree): Option[(AnyRef, Tree, List[List[Term]], CallMode)] = arg match {
-      case fn@ Term.Apply(Term.Ident("println"), arg) => Some((AnyRef, fn, List(arg), CallMode.Predef))
-      case Term.Apply(fn@ Term.Select(a, op), args) =>
-        op match {
-          case "+" | "-" | ">" | "==" => Some((a, fn, List(args), CallMode.EvalOp))
-        }
-      case fn@ Term.Select(_, _) => Some((AnyRef, fn, Nil, CallMode.Default))
-      case fn@ Term.Ident(_) => Some((AnyRef, fn, Nil, CallMode.Default))
-      case Term.Apply(Call(_, fn, args1, _), args2) => Some((AnyRef, fn, args1 :+ args2, CallMode.Default))
-      case Term.TypeApply(Call(_, fn, args, _), _) => Some((AnyRef, fn, args, CallMode.Default))
+  def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
+    (fn, argss) match {
+      case (Term.Ident("println"), List(List(arg))) => println(eval(arg))
+      case (Term.Ident("println"), List(List())) => println()
+      case (_, Nil) | (_, List(List())) => fn.symbol match {
+        case IsDefSymbol(sym) => eval(sym.tree.rhs.get)
+        case _ => env(fn.symbol).get
+      }
+      case (_, x :: Nil) =>
+        fn.symbol match {
+          // TODO: obviously
+          case IsDefSymbol(sym) =>
+            val evaluatedArgs = x.map(arg => new Eager(eval(arg)))
+            val env1 = env ++ sym.tree.paramss.head.map(_.symbol).zip(evaluatedArgs)
+            eval(sym.tree.rhs.get)(env1)
 
-      case _ => None
+        }
+    }
+  }
+
+  def reflectCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
+    (fn, argss) match {
+      case (_, Nil) | (_, List(List())) => fn.symbol match {
+        case IsDefSymbol(sym) => jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, Nil)
+        case _ =>
+          if (fn.symbol.flags.isObject) {
+            jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
+          }
+          // call to a static val
+          else {
+            jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
+          }
+      }
+      case (_, x :: Nil) =>
+        import Term._
+        fn.symbol match {
+          // TODO: obviously
+          case IsDefSymbol(sym) =>
+            if(sym.name == "==") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] == eval(x.head).asInstanceOf[Int]
+            else if(sym.name == ">") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] > eval(x.head).asInstanceOf[Int]
+            else if(sym.name == "-") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] - eval(x.head).asInstanceOf[Int]
+            else if(sym.name == "+") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] + eval(x.head).asInstanceOf[Int]
+            else {
+              def args: List[Object] = argss.flatMap((a: List[Term]) => a.map(b => eval(b).asInstanceOf[Object]))
+              jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, args)
+            }
+        }
     }
   }
 
   def eval(tree: Statement)(implicit env: Env): Any = {
     tree match {
-      case Call(prefix, fn, argss, mode) =>
-        mode match {
-          case CallMode.Predef => fn match {
-            case Term.Apply(Term.Ident("println"), List(arg)) => println(eval(arg))
-            case Term.Apply(Term.Ident("println"), List()) => println()
-          }
-          case CallMode.EvalOp => prefix match {
-            case Term.Apply(Term.Select(a, op), List(b)) =>
-              val b = argss.head.head
-              op match {
-                case "+" => eval(a).asInstanceOf[Int] + eval(b).asInstanceOf[Int]
-                case "-" => eval(a).asInstanceOf[Int] - eval(b).asInstanceOf[Int]
-                case ">" => eval(a).asInstanceOf[Int] > eval(b).asInstanceOf[Int]
-                case "==" => eval(a).asInstanceOf[Int] == eval(b).asInstanceOf[Int]
-              }
-            case _ => println("Blah: " + prefix)
-          }
-          case CallMode.Default => argss match {
-            case Nil | List(List()) =>
-              fn.symbol match {
-                case IsDefSymbol(sym) =>
-                  if (fn.symbol.isDefinedInCurrentRun) {
-                    eval(sym.tree.rhs.get)
-                  }
-                  // call to a static def, no parameters
-                  else {
-                    jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, Nil)
-                  }
-                case _ =>
-                  if (fn.symbol.isDefinedInCurrentRun) {
-                    env(tree.symbol).get
-                  }
-                  // call to a module
-                  else if (fn.symbol.flags.isObject) {
-                    jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
-                  }
-                  // call to a static val
-                  else {
-                    jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
-                  }
-              }
-            case x :: Nil =>
-              fn.symbol match {
-                case IsDefSymbol(sym) =>
-                  val evaluatedArgs = x.map(arg => new Eager(eval(arg)))
-                  val env1 = env ++ sym.tree.paramss.head.map(_.symbol).zip(evaluatedArgs)
-                  eval(sym.tree.rhs.get)(env1)
-              }
-          }
+      case Call(fn, argss) =>
+        fn match {
+          case Term.Ident("println") => interpretCall(fn, argss)
+          case _ => if (fn.symbol.isDefinedInCurrentRun) interpretCall(fn, argss) else reflectCall(fn, argss)
         }
 
       case Term.Assign(lhs, rhs) =>
@@ -124,7 +114,8 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
           case ValDef(name, tpt, Some(rhs)) =>
             val evalRef: Ref =
               if (stat.symbol.flags.isLazy)
-                new Lazy(eval(rhs)(accEnv)) // do not factor out rhs from here (laziness)
+                // do not factor out rhs from here (laziness)
+                new Lazy(eval(rhs)(accEnv))
               else if (stat.symbol.flags.isMutable)
                 new Var(eval(rhs)(accEnv))
               else
