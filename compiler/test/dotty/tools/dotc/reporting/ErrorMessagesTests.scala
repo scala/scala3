@@ -1621,7 +1621,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         val message = message.head
         assertTrue(message.isInstanceOf[StableIdentPattern])
         assertEquals(
-          "Stable identifier required, but `x` found"
+          "Stable identifier required, but `x` found",
+          message.msg
         )
       }
 }
