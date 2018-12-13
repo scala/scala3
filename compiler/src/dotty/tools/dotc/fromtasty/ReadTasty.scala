@@ -12,9 +12,11 @@ import ast.Trees.Tree
 import CompilationUnit.mkCompilationUnit
 import Phases.Phase
 
-class ReadTastyTreesFromClasses extends Phase {
 
-  def phaseName: String = "tastyFrontend"
+/** Load trees from TASTY files */
+class ReadTasty extends Phase {
+
+  def phaseName: String = "readTasty"
 
   override def isRunnable(implicit ctx: Context): Boolean =
     ctx.settings.fromTasty.value

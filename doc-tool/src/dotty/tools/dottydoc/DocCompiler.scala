@@ -9,7 +9,7 @@ import dotc.core.Mode
 import dotc.{Compiler, CompilationUnit, Run}
 import dotc.typer.FrontEnd
 
-import dotty.tools.dotc.fromtasty.{ReadTastyTreesFromClasses, TASTYRun}
+import dotty.tools.dotc.fromtasty.{ReadTasty, TASTYRun}
 import dotty.tools.dotc.transform.CookComments
 
 /** Custom Compiler with phases for the documentation tool
@@ -54,7 +54,7 @@ class DocCompiler extends Compiler {
 
   override def phases: List[List[Phase]] = List(
     List(new DocFrontEnd),
-    List(new ReadTastyTreesFromClasses),
+    List(new ReadTasty),
     List(new CookComments),
     List(new DocImplicitsPhase),
     List(new DocASTPhase),

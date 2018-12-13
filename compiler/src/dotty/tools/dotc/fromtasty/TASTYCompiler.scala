@@ -10,7 +10,7 @@ import dotty.tools.dotc.transform._
 class TASTYCompiler extends Compiler {
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(new ReadTastyTreesFromClasses) :: Nil
+    List(new ReadTasty) :: Nil
 
   override def newRun(implicit ctx: Context): Run = {
     reset()
