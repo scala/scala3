@@ -25,8 +25,8 @@ class C_ico() {
   o_ico.v_ico = this;
   import o_ico.v_ico;
   override def toString(): String = "C_ico";
-  def method: C_ico = v_ico;
-  val field: C_ico = v_ico;
+  def method: C_ico|Null = v_ico;
+  val field: C_ico|Null = v_ico;
 
   check("C_ico", "v_ico ", v_ico);
   check("C_ico", "field ", field);
@@ -35,14 +35,14 @@ class C_ico() {
 }
 
 object o_ico {
-  var v_ico: C_ico = null;
+  var v_ico: C_ico|Null = null;
   new C_ico();
 }
 
 //############################################################################
 
 object o_ioc {
-  var v_ioc: C_ioc = null;
+  var v_ioc: C_ioc|Null = null;
   new C_ioc();
 }
 
@@ -52,8 +52,8 @@ import o_ioc.v_ioc;
 class C_ioc() {
   o_ioc.v_ioc = this;
   override def toString(): String = "C_ioc";
-  def method: C_ioc = v_ioc;
-  val field: C_ioc = v_ioc;
+  def method: C_ioc|Null = v_ioc;
+  val field: C_ioc|Null = v_ioc;
 
   check("C_ioc", "v_ioc ", v_ioc);
   check("C_ioc", "field ", field);
@@ -64,7 +64,7 @@ class C_ioc() {
 //############################################################################
 
 object o_oic {
-  var v_oic: C_oic = null;
+  var v_oic: C_oic|Null = null;
   new C_oic();
 }
 
@@ -73,8 +73,8 @@ import o_oic.v_oic;
 class C_oic() {
   o_oic.v_oic = this;
   override def toString(): String = "C_oic";
-  def method: C_oic = v_oic;
-  val field: C_oic = v_oic;
+  def method: C_oic|Null = v_oic;
+  val field: C_oic|Null = v_oic;
 
   check("C_oic", "v_oic ", v_oic);
   check("C_oic", "field ", field);

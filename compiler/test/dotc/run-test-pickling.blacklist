@@ -6,3 +6,6 @@ t7374
 tuples1.scala
 tuples1a.scala
 typeclass-derivation2.scala
+
+# need support for flow-sensitive type inference
+constant-optimization.scala
