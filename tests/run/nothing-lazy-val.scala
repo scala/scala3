@@ -14,7 +14,7 @@ object Test {
 
     // TODO: Erase
     // Currently not erasing fields for lazy vals
-    assert(classOf[Foo].getDeclaredFields.exists(_.getName.startsWith("foo")), "Field foo erased. Optimized accidentally?")
+    assert(classOf[Foo].getDeclaredFields.exists(_.nn.getName.startsWith("foo")), "Field foo erased. Optimized accidentally?")
   }
 
 
