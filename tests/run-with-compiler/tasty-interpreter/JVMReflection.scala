@@ -44,6 +44,12 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
     method.invoke(instance, args: _*)
   }
 
+  def interpretNew(fn: Symbol, args: List[Object]): Object = {
+    val clazz = loadClass(fn.owner.fullName)
+    val constr = clazz.getConstructor(paramsSig(fn): _*)
+    constr.newInstance(args: _*).asInstanceOf[Object]
+  }
+
   def getMethod(clazz: Class[_], name: String, paramClasses: List[Class[_]]): Method = {
     try clazz.getMethod(name, paramClasses: _*)
     catch {

@@ -43,5 +43,7 @@ object IntepretedMain {
     println(Precompiled.staticVal)
     println(Precompiled.staticMeth1())
     println(Precompiled.staticMeth2(58))
+    println(Precompiled.staticMeth3(new Object))
+    // println(Precompiled.staticMeth5(new Bar))
   }
 }
