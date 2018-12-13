@@ -1442,9 +1442,13 @@ object Types {
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isImplicit = mt.isImplicitMethod && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
+        val result1 = mt.nonDependentResultApprox match {
+          case res: MethodType => res.toFunctionType()
+          case res => res
+        }
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
-          mt.nonDependentResultApprox, isImplicit, isErased)
+          result1, isImplicit, isErased)
         if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
