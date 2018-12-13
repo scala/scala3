@@ -682,11 +682,15 @@ object SymDenotations {
 
     /** Is this symbol a class with nullable values? */
     final def isNullableClass(implicit ctx: Context): Boolean = {
-      // After erasure, reference types become nullable again.
       if (!ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyRefAlias || symbol == defn.AnyClass
-      else isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      else isNullableClassAfterErasure
     }
 
+    /** Is this symbol a class with nullable values after erasure? */
+    final def isNullableClassAfterErasure(implicit ctx: Context): Boolean = {
+      // After erasure, reference types become nullable again.
+      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+    }
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
