@@ -156,7 +156,7 @@ class Worksheet implements Disposable {
       hoverMessage: new vscode.MarkdownString().appendCodeblock(runResult)
     }
     const decorationMargin = this.margin - line.text.length
-    const decorationText = resultLines[0] + (resultLines.length > 1 ? `<${resultLines.length - 1} lines hidden>` : "")
+    const decorationText = resultLines[0] + (resultLines.length > 1 ? `<${resultLines.length - 1} lines hidden, hover to see full output>` : "")
     const decorationType = this.createDecoration(decorationMargin, decorationText)
     const decoration = new Decoration(decorationType, decorationOptions)
     this.decorations.push(decoration)
