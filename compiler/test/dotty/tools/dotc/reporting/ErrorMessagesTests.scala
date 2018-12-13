@@ -1618,7 +1618,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         """.stripMargin
       }.expect { (_, messages) =>
         assertMessageCount(1, messages)
-        val message = message.head
+        val message = messages.head
         assertTrue(message.isInstanceOf[StableIdentPattern])
         assertEquals(
           "Stable identifier required, but `x` found",

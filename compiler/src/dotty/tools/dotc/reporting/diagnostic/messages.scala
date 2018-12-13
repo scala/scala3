@@ -2194,9 +2194,8 @@ object messages {
   case class StableIdentPattern(tree: untpd.Tree, pt: Type)(implicit val ctx: Context)
     extends Message(StableIdentPatternID) {
     override def kind: String = "Syntax"
-    override def msg: String = {
-      hl"""|Stable identifier required, but ${tree.show} found"""
-    }
+    override def msg: String =
+      hl"""Stable identifier required, but ${tree.show} found"""
     override def explanation: String = ""
   }
 }
