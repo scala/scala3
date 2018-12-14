@@ -346,7 +346,7 @@ object Implicits {
    *  @param level  The level where the reference was found
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState) extends SearchResult with Showable
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GADTMap) extends SearchResult with Showable
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
@@ -880,6 +880,7 @@ trait Implicits { self: Typer =>
         result0 match {
           case result: SearchSuccess =>
             result.tstate.commit()
+            ctx.gadt.restore(result.gstate)
             implicits.println(i"success: $result")
             implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
             result
@@ -1004,7 +1005,7 @@ trait Implicits { self: Typer =>
         val generated2 =
           if (cand.isExtension) Applications.ExtMethodApply(generated1).withType(generated1.tpe)
           else generated1
-        SearchSuccess(generated2, ref, cand.level)(ctx.typerState)
+        SearchSuccess(generated2, ref, cand.level)(ctx.typerState, ctx.gadt)
       }
     }}
 
@@ -1016,7 +1017,8 @@ trait Implicits { self: Typer =>
         SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
       else {
         val history = ctx.searchHistory.nest(cand, pt)
-        val result = typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setSearchHistory(history))
+        val result =
+          typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
         result match {
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(pt.widenExpr, res)
@@ -1118,7 +1120,9 @@ trait Implicits { self: Typer =>
           result match {
             case _: SearchFailure =>
               SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
-                ctx.typerState.fresh().setCommittable(true))
+                ctx.typerState.fresh().setCommittable(true),
+                ctx.gadt
+              )
             case _: SearchSuccess =>
               NoMatchingImplicitsFailure
           }
@@ -1188,7 +1192,7 @@ trait Implicits { self: Typer =>
       // other candidates need to be considered.
       ctx.searchHistory.recursiveRef(pt) match {
         case ref: TermRef =>
-          SearchSuccess(tpd.ref(ref).withPos(pos.startPos), ref, 0)(ctx.typerState)
+          SearchSuccess(tpd.ref(ref).withPos(pos.startPos), ref, 0)(ctx.typerState, ctx.gadt)
         case _ =>
           val eligible =
             if (contextual) ctx.implicits.eligible(wildProto)
@@ -1428,7 +1432,7 @@ final class SearchRoot extends SearchHistory {
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
         implicitDictionary.put(tpe, (ref, result.tree))
-        SearchSuccess(tpd.ref(ref).withPos(result.tree.pos), result.ref, result.level)(result.tstate)
+        SearchSuccess(tpd.ref(ref).withPos(result.tree.pos), result.ref, result.level)(result.tstate, result.gstate)
       case None => result
     }
   }
@@ -1529,7 +1533,7 @@ final class SearchRoot extends SearchHistory {
 
             val blk = Block(classDef :: inst :: Nil, res)
 
-            success.copy(tree = blk)(success.tstate)
+            success.copy(tree = blk)(success.tstate, success.gstate)
           }
       }
     }
