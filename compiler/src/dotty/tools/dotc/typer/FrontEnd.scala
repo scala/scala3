@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package typer
 
 import core._
@@ -90,11 +91,7 @@ class FrontEnd extends Phase {
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }
 
-  override def run(implicit ctx: Context): Unit = {
-    parse
-    enterSyms
-    typeCheck
-  }
+  def run(implicit ctx: Context): Unit = unsupported("run")
 }
 
 object FrontEnd {

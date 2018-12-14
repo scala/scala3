@@ -44,7 +44,7 @@ object transform {
    * -------------------------
    * To delete a node in the AST, simply return an empty list from transforming method
    */
-  trait DocMiniTransformations extends Phase {
+  abstract class DocMiniTransformations extends Phase {
     def transformations: List[DocMiniPhase]
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {

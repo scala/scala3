@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Phases.Phase
 class TASTYDecompiler extends TASTYCompiler {
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(new ReadTastyTreesFromClasses) :: // Load classes from tasty
+    List(new ReadTasty) :: // Load trees from TASTY files
     Nil
 
   override protected def picklerPhases: List[List[Phase]] = Nil

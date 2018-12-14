@@ -49,6 +49,11 @@ class ExtractDependencies extends Phase {
 
   override def phaseName: String = "sbt-deps"
 
+  override def isRunnable(implicit ctx: Context): Boolean = {
+    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
+    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+  }
+
   // This phase should be run directly after `Frontend`, if it is run after
   // `PostTyper`, some dependencies will be lost because trees get simplified.
   // See the scripted test `constants` for an example where this matters.
@@ -56,45 +61,39 @@ class ExtractDependencies extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    val dumpInc = ctx.settings.YdumpSbtInc.value
-    val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
-    val shouldRun = !unit.isJava && (ctx.sbtCallback != null || forceRun)
+    val collector = new ExtractDependenciesCollector
+    collector.traverse(unit.tpdTree)
 
-    if (shouldRun) {
-      val collector = new ExtractDependenciesCollector
-      collector.traverse(unit.tpdTree)
+    if (ctx.settings.YdumpSbtInc.value) {
+      val deps = collector.dependencies.map(_.toString).toArray[Object]
+      val names = collector.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
+      Arrays.sort(deps)
+      Arrays.sort(names)
 
-      if (dumpInc) {
-        val deps = collector.dependencies.map(_.toString).toArray[Object]
-        val names = collector.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
-        Arrays.sort(deps)
-        Arrays.sort(names)
+      val pw = io.File(unit.source.file.jpath).changeExtension("inc").toFile.printWriter()
+      // val pw = Console.out
+      try {
+        pw.println("Used Names:")
+        pw.println("===========")
+        names.foreach(pw.println)
+        pw.println()
+        pw.println("Dependencies:")
+        pw.println("=============")
+        deps.foreach(pw.println)
+      } finally pw.close()
+    }
 
-        val pw = io.File(unit.source.file.jpath).changeExtension("inc").toFile.printWriter()
-        // val pw = Console.out
-        try {
-          pw.println("Used Names:")
-          pw.println("===========")
-          names.foreach(pw.println)
-          pw.println()
-          pw.println("Dependencies:")
-          pw.println("=============")
-          deps.foreach(pw.println)
-        } finally pw.close()
+    if (ctx.sbtCallback != null) {
+      collector.usedNames.foreach {
+        case (clazz, usedNames) =>
+          val className = classNameAsString(clazz)
+          usedNames.names.foreach {
+            case (usedName, scopes) =>
+              ctx.sbtCallback.usedName(className, usedName.toString, scopes)
+          }
       }
 
-      if (ctx.sbtCallback != null) {
-        collector.usedNames.foreach {
-          case (clazz, usedNames) =>
-            val className = classNameAsString(clazz)
-            usedNames.names.foreach {
-              case (usedName, scopes) =>
-                ctx.sbtCallback.usedName(className, usedName.toString, scopes)
-            }
-        }
-
-        collector.dependencies.foreach(recordDependency)
-      }
+      collector.dependencies.foreach(recordDependency)
     }
   }
 
