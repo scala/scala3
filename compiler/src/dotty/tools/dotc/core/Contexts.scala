@@ -722,7 +722,7 @@ object Contexts {
     private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar],
     private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
     private[this] var boundCache: SimpleIdentityMap[Symbol, TypeBounds]
-  ) extends GADTMap with ConstraintHandling {
+  ) extends GADTMap with ConstraintHandling[Context] {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
     def this() = this(
@@ -732,25 +732,17 @@ object Contexts {
       boundCache = SimpleIdentityMap.Empty
     )
 
-    // TODO: clean up this dirty kludge
-    private[this] var myCtx: Context = null
-    implicit override def ctx = myCtx
-    @forceInline private[this] final def inCtx[T](_ctx: Context)(op: => T) = {
-      val savedCtx = myCtx
-      myCtx = _ctx
-      try op finally myCtx = savedCtx
-    }
+    implicit override def ctx(implicit ctx: Context): Context = ctx
 
     override protected def constraint = myConstraint
     override protected def constraint_=(c: Constraint) = myConstraint = c
 
-    override def isSubType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
-    override def isSameType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
-
+    override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
+    override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
 
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
-    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try { inCtx(ctx) {
+    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
       boundCache = SimpleIdentityMap.Empty
       boundAdditionInProgress = true
       @annotation.tailrec def stripInst(tp: Type): Type = tp match {
@@ -811,9 +803,9 @@ object Contexts {
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
       }
       res
-    }} finally boundAdditionInProgress = false
+    } finally boundAdditionInProgress = false
 
-    override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = inCtx(ctx) {
+    override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
         case null => null
         case tv =>
