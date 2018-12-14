@@ -141,7 +141,8 @@ public enum ErrorMessageID {
     LazyStaticFieldID,
     StaticOverridingNonStaticMembersID,
     OverloadInRefinementID,
-    NoMatchingOverloadID
+    NoMatchingOverloadID,
+    StableIdentPatternID
     ;
 
     public int errorNumber() {

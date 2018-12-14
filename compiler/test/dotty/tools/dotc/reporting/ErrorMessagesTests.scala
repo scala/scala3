@@ -1605,4 +1605,24 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         message.msg
       )
     }
+
+    @Test def StableIdentifiers() =
+      checkMessagesAfter(FrontEnd.name) {
+        """
+          | object Test {
+          |   var x = 2
+          |   def test = 2 match {
+          |     case `x` => x + 1
+          |   }
+          | }
+        """.stripMargin
+      }.expect { (_, messages) =>
+        assertMessageCount(1, messages)
+        val message = messages.head
+        assertTrue(message.isInstanceOf[StableIdentPattern])
+        assertEquals(
+          "Stable identifier required, but `x` found",
+          message.msg
+        )
+      }
 }

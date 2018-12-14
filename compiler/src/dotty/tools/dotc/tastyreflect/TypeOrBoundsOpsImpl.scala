@@ -7,6 +7,18 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
   def TypeDeco(tpe: Type): TypeAPI = new TypeAPI {
     def =:=(other: Type)(implicit ctx: Context): Boolean = tpe =:= other
     def <:<(other: Type)(implicit ctx: Context): Boolean = tpe <:< other
+
+    /** Widen from singleton type to its underlying non-singleton
+      *  base type by applying one or more `underlying` dereferences,
+      *  Also go from => T to T.
+      *  Identity for all other types. Example:
+      *
+      *  class Outer { class C ; val x: C }
+      *  def o: Outer
+      *  <o.x.type>.widen = o.C
+      */
+    def widen(implicit ctx: Context): Type = tpe.widen
+
   }
 
   def ConstantTypeDeco(x: ConstantType): Type.ConstantTypeAPI = new Type.ConstantTypeAPI {
