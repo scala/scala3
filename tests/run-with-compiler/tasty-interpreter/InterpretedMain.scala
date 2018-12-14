@@ -44,6 +44,14 @@ object IntepretedMain {
     println(Precompiled.staticMeth1())
     println(Precompiled.staticMeth2(58))
     println(Precompiled.staticMeth3(new Object))
-    // println(Precompiled.staticMeth5(new Bar))
+    println(Precompiled.staticMeth4(new Bar))
+    println(Precompiled.staticMeth5(new Bar, 61))
+    println(Precompiled.staticMeth4(new InterpretedBar))
+    println(Precompiled.staticMeth5(new InterpretedBar, 61))
   }
+}
+
+class InterpretedBar extends IFace {
+  def meth(): Int = 70
+  def methA(x: Int): Int = x + 1
 }

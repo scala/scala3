@@ -3,7 +3,7 @@ import scala.tasty.file._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    ConsumeTasty("", List("IntepretedMain"), new TastyInterpreter)
+    ConsumeTasty("", List("IntepretedMain", "InterpretedBar"), new TastyInterpreter)
   }
 }
 
