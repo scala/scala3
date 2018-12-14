@@ -305,7 +305,7 @@ object Implicits {
    *  @param level  The level where the reference was found
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState) extends SearchResult with Showable
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GADTMap) extends SearchResult with Showable
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
@@ -867,6 +867,7 @@ trait Implicits { self: Typer =>
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()
+          ctx.gadt.restore(result.gstate)
           implicits.println(i"success: $result")
           implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
           result
@@ -970,7 +971,7 @@ trait Implicits { self: Typer =>
           new ShadowedImplicit(ref, methPart(shadowing).tpe, pt, argument)))
       }
       else
-        SearchSuccess(generated1, ref, cand.level)(ctx.typerState)
+        SearchSuccess(generated1, ref, cand.level)(ctx.typerState, ctx.gadt)
     }}
 
     /** Try to type-check implicit reference, after checking that this is not
@@ -981,7 +982,7 @@ trait Implicits { self: Typer =>
       if (history eq ctx.searchHistory)
         SearchFailure(new DivergingImplicit(cand.ref, pt, argument))
       else
-        typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setSearchHistory(history))
+        typedImplicit(cand, contextual)(nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
     }
 
     /** Search a list of eligible implicit references */
@@ -1094,7 +1095,9 @@ trait Implicits { self: Typer =>
           result match {
             case _: SearchFailure =>
               SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
-                ctx.typerState.fresh().setCommittable(true))
+                ctx.typerState.fresh().setCommittable(true),
+                ctx.gadt
+              )
             case _: SearchSuccess =>
               NoMatchingImplicitsFailure
           }
@@ -1157,6 +1160,7 @@ trait Implicits { self: Typer =>
       val eligible =
         if (contextual) ctx.implicits.eligible(wildProto)
         else implicitScope(wildProto).eligible
+//      println(i"eligible: ${eligible.map(_.ref.show)}")
       searchImplicits(eligible, contextual) match {
         case result: SearchSuccess =>
           if (contextual && ctx.mode.is(Mode.InlineableBody))

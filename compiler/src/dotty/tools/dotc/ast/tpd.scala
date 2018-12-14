@@ -851,6 +851,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** tree.asInstanceOf[`tp`] */
     def asInstance(tp: Type)(implicit ctx: Context): Tree = {
       assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
+      // println(i"asInstance : $tp")
+      // val ex = new RuntimeException
+      // ex.printStackTrace(java.lang.System.out)
+      // java.lang.System.out.flush()
       tree.select(defn.Any_asInstanceOf).appliedToType(tp)
     }
 

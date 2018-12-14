@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.{Trees, untpd, tpd, TreeTypeMap}
+import ast._
 import Trees._
 import core._
 import Flags._
@@ -14,16 +14,16 @@ import StdNames._
 import transform.SymUtils._
 import Contexts.Context
 import Names.{Name, TermName}
-import NameKinds.{InlineAccessorName, InlineScrutineeName, InlineBinderName}
+import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
+
 import collection.mutable
 import reporting.trace
 import util.Positions.Position
-import ast.TreeInfo
 
 object Inliner {
   import tpd._
@@ -692,7 +692,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           bindingsBuf += ValDef(sym, constToLiteral(rhs))
         }
 
-        def searchImplicit(sym: TermSymbol, tpt: Tree) = {
+        def searchImplicit(sym: TermSymbol, tpt: Tree)(implicit ctx: Context) = {
           val evTyper = new Typer
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.pos)(ctx.fresh.setTyper(evTyper))
           evidence.tpe match {
@@ -707,48 +707,70 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
         }
 
+        import java.{lang => jl}
+        def getBoundVarsMap(pat: Tree, tpt: Tree) = {
+          // UnApply nodes with pattern bound variables translate to something like this
+          //   UnApply[t @ t](pats)(implicits): T[t]
+          // Need to traverse any binds in type arguments of the UnAppyl to get the set of
+          // all instantiable type variables. Test case is pos/inline-caseclass.scala.
+          val allTpts = tpt :: (pat match {
+            case UnApply(TypeApply(_, tpts), _, _) => tpts
+            case _ => Nil
+          })
+
+          val getBinds = new TreeAccumulator[Set[TypeSymbol]] {
+            def apply(syms: Set[TypeSymbol], t: tpd.Tree)(implicit ctx: Context): Set[TypeSymbol] = {
+              val syms1 = t match {
+                case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
+                  syms + t.symbol.asType
+                case _ => syms
+              }
+              foldOver(syms1, t)
+            }
+          }
+          val binds = allTpts.foldLeft[Set[TypeSymbol]](Set.empty)(getBinds.apply(_, _))
+          val getBoundVars = new TypeAccumulator[util.SimpleIdentityMap[TypeSymbol, jl.Boolean]] {
+            def apply(syms: util.SimpleIdentityMap[TypeSymbol, jl.Boolean], t: Type) = {
+              val syms1 = t match {
+                 case tr: TypeRef if tr.symbol.is(Case) && binds.contains(tr.symbol.asType) =>
+                  syms.updated[jl.Boolean](tr.typeSymbol.asType, variance >= 0)
+                case _ =>
+                  syms
+              }
+              foldOver(syms1, t)
+            }
+          }
+          getBoundVars(util.SimpleIdentityMap.Empty, tpt.tpe)
+        }
+
+        def registerAsGadtSyms(map: util.SimpleIdentityMap[TypeSymbol, jl.Boolean])(implicit ctx: Context): Unit =
+          map.foreachBinding { case (sym, _) =>
+            val TypeBounds(lo, hi) = sym.info.bounds
+            ctx.gadt.addBound(sym, lo, isUpper = false)
+            ctx.gadt.addBound(sym, hi, isUpper = true)
+          }
+
+        def addTypeBindings(map: util.SimpleIdentityMap[TypeSymbol, jl.Boolean])(implicit ctx: Context): Unit =
+          map.foreachBinding { case (sym, fromBelow) =>
+            sym.info = TypeAlias(ctx.gadt.approximation(sym, fromBelow = fromBelow))
+            bindingsBuf += TypeDef(sym)
+          }
+
         pat match {
           case Typed(pat1, tpt) =>
-            val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
-              def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
-                val syms1 = t match {
-                  case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
-                    t.symbol.asType :: syms
-                  case _ =>
-                    syms
-                }
-                foldOver(syms1, t)
-              }
-            }
-            var boundVars = getBoundVars(Nil, tpt)
-            // UnApply nodes with pattern bound variables translate to something like this
-            //   UnApply[t @ t](pats)(implicits): T[t]
-            // Need to traverse any binds in type arguments of the UnAppyl to get the set of
-            // all instantiable type variables. Test case is pos/inline-caseclass.scala.
-            pat1 match {
-              case UnApply(TypeApply(_, tpts), _, _) =>
-                for (tpt <- tpts) boundVars = getBoundVars(boundVars, tpt)
-              case _ =>
-            }
-            for (bv <- boundVars) {
-              val TypeBounds(lo, hi) = bv.info.bounds
-              ctx.gadt.addBound(bv, lo, isUpper = false)
-              ctx.gadt.addBound(bv, hi, isUpper = true)
-            }
+            val boundVarsMap = getBoundVarsMap(pat1, tpt)
+            registerAsGadtSyms(boundVarsMap)
             scrut <:< tpt.tpe && {
-              for (bv <- boundVars) {
-                bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)
-                  // FIXME: This is very crude. We should approximate with lower or higher bound depending
-                  // on variance, and we should also take care of recursive bounds. Basically what
-                  // ConstraintHandler#approximation does. However, this only works for constrained paramrefs
-                  // not GADT-bound variables. Hopefully we will get some way to improve this when we
-                  // re-implement GADTs in terms of constraints.
-                bindingsBuf += TypeDef(bv)
-              }
+              addTypeBindings(boundVarsMap)
               reducePattern(bindingsBuf, scrut, pat1)
             }
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
-            searchImplicit(pat.symbol.asTerm, tpt)
+            val boundVarsMap = getBoundVarsMap(tpt, tpt)
+            registerAsGadtSyms(boundVarsMap)
+            searchImplicit(pat.symbol.asTerm, tpt) && {
+              addTypeBindings(boundVarsMap)
+              true
+            }
           case pat @ Bind(name: TermName, body) =>
             reducePattern(bindingsBuf, scrut, body) && {
               if (name != nme.WILDCARD) newBinding(pat.symbol.asTerm, ref(scrut))
@@ -906,7 +928,23 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               matchBindingsBuf += binding
               rhsCtx.enter(binding.symbol)
             }
-            typedExpr(rhs, pt)(rhsCtx)
+            val rrhs = rhs match {
+              case Block(stats, t) if t.pos.isSynthetic =>
+                t match {
+                  case Typed(expr, _) =>
+                    untpd.Block(stats, expr)
+                  case TypeApply(Select(expr, n), _) if n == defn.Any_asInstanceOf.name =>
+                    untpd.Block(stats, expr)
+                  case _ =>
+                    rhs
+                }
+              case _ => rhs
+            }
+//            println(i"""pre=$rhs
+//                       |post=$rrhs""".stripMargin)
+            // put caseBindings in a block to let typedExpr see them
+            val Block(_, res) = typedExpr(untpd.Block(caseBindings, rrhs), pt)(rhsCtx)
+            res
           case None =>
             def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
