@@ -720,14 +720,16 @@ object Contexts {
   final class SmartGADTMap private (
     private[this] var myConstraint: Constraint,
     private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar],
-    private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol]
+    private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+    private[this] var boundCache: SimpleIdentityMap[Symbol, TypeBounds]
   ) extends GADTMap with ConstraintHandling {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
     def this() = this(
       myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
       mapping = SimpleIdentityMap.Empty,
-      reverseMapping = SimpleIdentityMap.Empty
+      reverseMapping = SimpleIdentityMap.Empty,
+      boundCache = SimpleIdentityMap.Empty
     )
 
     // TODO: clean up this dirty kludge
@@ -748,7 +750,9 @@ object Contexts {
 
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
-    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = inCtx(ctx) {
+    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try { inCtx(ctx) {
+      boundCache = SimpleIdentityMap.Empty
+      boundAdditionInProgress = true
       @annotation.tailrec def stripInst(tp: Type): Type = tp match {
         case tv: TypeVar =>
           val inst = instType(tv)
@@ -807,14 +811,25 @@ object Contexts {
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
       }
       res
-    }
+    }} finally boundAdditionInProgress = false
 
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = inCtx(ctx) {
       mapping(sym) match {
         case null => null
         case tv =>
-          val tb = constraint.fullBounds(tv.origin)
-          val res = removeTypeVars(tb).asInstanceOf[TypeBounds]
+          def retrieveBounds: TypeBounds = {
+            val tb = constraint.fullBounds(tv.origin)
+            removeTypeVars(tb).asInstanceOf[TypeBounds]
+          }
+          val res =
+            if (boundAdditionInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
+            else boundCache(sym) match {
+              case tb: TypeBounds => tb
+              case null =>
+                val bounds = retrieveBounds
+                boundCache = boundCache.updated(sym, bounds)
+                bounds
+            }
           // gadts.println(i"gadt bounds $sym: $res")
           res
       }
@@ -825,7 +840,8 @@ object Contexts {
     override def fresh: GADTMap = new SmartGADTMap(
       myConstraint,
       mapping,
-      reverseMapping
+      reverseMapping,
+      boundCache
     )
 
     // ---- Private ----------------------------------------------------------
@@ -881,6 +897,8 @@ object Contexts {
     private final class TypeVarRemovingMap(implicit ctx: Context) extends TypeMap {
       override def apply(tp: Type): Type = removeTypeVars(tp, this)
     }
+
+    private[this] var boundAdditionInProgress = false
 
     // ---- Debug ------------------------------------------------------------
 
