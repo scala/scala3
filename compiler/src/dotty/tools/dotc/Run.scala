@@ -155,7 +155,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
             val profileBefore = profiler.beforePhase(phase)
-            units = phase.runOn(units)
+            units = phase.runOn(units)(ctx.fresh.setPhase(phase.start))
             profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase)) {
               for (unit <- units) {
@@ -217,7 +217,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.base.squashed(prevPhase)
-    val treeString = unit.tpdTree.show(ctx.withProperty(XprintMode, Some(())))
+    val tree =
+      if (ctx.isAfterTyper) unit.tpdTree
+      else unit.untpdTree
+    val treeString = tree.show(ctx.withProperty(XprintMode, Some(())))
 
     ctx.echo(s"result of $unit after $squashedPhase:")
 

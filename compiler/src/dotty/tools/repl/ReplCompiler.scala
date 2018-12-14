@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.transform.{PostTyper, Staging}
-import dotty.tools.dotc.typer.ImportInfo
+import dotty.tools.dotc.typer.{FrontEnd, ImportInfo}
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
@@ -32,7 +32,7 @@ import scala.collection.mutable
 class ReplCompiler extends Compiler {
 
   override protected def frontendPhases: List[List[Phase]] = List(
-    List(new REPLFrontEnd),
+    List(new FrontEnd),
     List(new CollectTopLevelImports),
     List(new Staging),
     List(new PostTyper)

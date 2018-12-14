@@ -9,6 +9,7 @@ import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
 import dotty.tools.backend.sjs
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
+import dotty.tools.dotc.parsing.Parsing
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -36,6 +37,7 @@ class Compiler {
 
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
+    List(new Parsing) ::
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
     List(new YCheckPositions) ::    // YCheck positions
     List(new Staging) ::            // Check PCP, heal quoted types and expand macros
