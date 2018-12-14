@@ -79,19 +79,6 @@ class TyperState(previous: TyperState /* | Null */) {
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
-  /** Gives for each instantiated type var that does not yet have its `inst` field
-   *  set, the instance value stored in the constraint. Storing instances in constraints
-   *  is done only in a temporary way for contexts that may be retracted
-   *  without also retracting the type var as a whole.
-   */
-  def instType(tvar: TypeVar)(implicit ctx: Context): Type = constraint.entry(tvar.origin) match {
-    case _: TypeBounds => NoType
-    case tp: TypeParamRef =>
-      var tvar1 = constraint.typeVarOfParam(tp)
-      if (tvar1.exists) tvar1 else tp
-    case tp => tp
-  }
-
   /** The closest ancestor of this typer state (including possibly this typer state itself)
    *  which is not yet committed, or which does not have a parent.
    */
@@ -173,7 +160,7 @@ class TyperState(previous: TyperState /* | Null */) {
     val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
-        val inst = instType(tvar)
+        val inst = ctx.typeComparer.instType(tvar)
         if (inst.exists && (tvar.owningState.get eq this)) {
           tvar.inst = inst
           val lam = tvar.origin.binder
