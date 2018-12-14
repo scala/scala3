@@ -55,28 +55,26 @@ class ExtractAPI extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    if (!unit.isJava) {
-      val sourceFile = unit.source.file
-      if (ctx.sbtCallback != null)
-        ctx.sbtCallback.startSource(sourceFile.file)
+    val sourceFile = unit.source.file
+    if (ctx.sbtCallback != null)
+      ctx.sbtCallback.startSource(sourceFile.file)
 
-      val apiTraverser = new ExtractAPICollector
-      val classes = apiTraverser.apiSource(unit.tpdTree)
-      val mainClasses = apiTraverser.mainClasses
+    val apiTraverser = new ExtractAPICollector
+    val classes = apiTraverser.apiSource(unit.tpdTree)
+    val mainClasses = apiTraverser.mainClasses
 
-      if (ctx.settings.YdumpSbtInc.value) {
-        // Append to existing file that should have been created by ExtractDependencies
-        val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
-          .bufferedWriter(append = true), true)
-        try {
-          classes.foreach(source => pw.println(DefaultShowAPI(source)))
-        } finally pw.close()
-      }
+    if (ctx.settings.YdumpSbtInc.value) {
+      // Append to existing file that should have been created by ExtractDependencies
+      val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
+        .bufferedWriter(append = true), true)
+      try {
+        classes.foreach(source => pw.println(DefaultShowAPI(source)))
+      } finally pw.close()
+    }
 
-      if (ctx.sbtCallback != null) {
-        classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
-        mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
-      }
+    if (ctx.sbtCallback != null) {
+      classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
+      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
     }
   }
 }
