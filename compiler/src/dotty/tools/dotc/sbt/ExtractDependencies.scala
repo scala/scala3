@@ -49,6 +49,11 @@ class ExtractDependencies extends Phase {
 
   override def phaseName: String = "sbt-deps"
 
+  override def isRunnable(implicit ctx: Context): Boolean = {
+    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
+    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+  }
+
   // This phase should be run directly after `Frontend`, if it is run after
   // `PostTyper`, some dependencies will be lost because trees get simplified.
   // See the scripted test `constants` for an example where this matters.
@@ -56,15 +61,11 @@ class ExtractDependencies extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    val dumpInc = ctx.settings.YdumpSbtInc.value
-    val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
-    val shouldRun = !unit.isJava && (ctx.sbtCallback != null || forceRun)
-
-    if (shouldRun) {
+    if (!unit.isJava) {
       val collector = new ExtractDependenciesCollector
       collector.traverse(unit.tpdTree)
 
-      if (dumpInc) {
+      if (ctx.settings.YdumpSbtInc.value) {
         val deps = collector.dependencies.map(_.toString).toArray[Object]
         val names = collector.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
         Arrays.sort(deps)
