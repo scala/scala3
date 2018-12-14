@@ -23,13 +23,13 @@ trait ConstraintHandling {
   def constr_println(msg: => String): Unit = constr.println(msg)
   def typr_println(msg: => String): Unit = typr.println(msg)
 
-  implicit val ctx: Context
+  implicit def ctx: Context
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean
   protected def isSameType(tp1: Type, tp2: Type): Boolean
 
-  val state: TyperState
-  import state.constraint
+  protected def constraint: Constraint
+  protected def constraint_=(c: Constraint): Unit
 
   private[this] var addConstraintInvocations = 0
 

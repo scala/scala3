@@ -20,6 +20,7 @@ object Printers {
   val dottydoc: Printer = noPrinter
   val exhaustivity: Printer = noPrinter
   val gadts: Printer = noPrinter
+  val gadtsConstr: Printer = noPrinter
   val hk: Printer = noPrinter
   val implicits: Printer = noPrinter
   val implicitsDetailed: Printer = noPrinter
