@@ -10,7 +10,8 @@ object TestSources {
   // Std Lib
   def stdLibSources: List[String] = {
     val blacklisted = List(
-      "StructuralCallSite.java" // See #4739
+      "StructuralCallSite.java", // see #4739
+      "volatile.scala",          // see #5610
     )
     sources(Paths.get("tests/scala2-library/src/library/"), excludedFiles = blacklisted)
   }
