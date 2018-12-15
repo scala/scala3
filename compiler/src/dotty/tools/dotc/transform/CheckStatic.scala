@@ -37,7 +37,7 @@ class CheckStatic extends MiniPhase {
         }
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField) {
-          ctx.error("@static fields should precede non-static ones", defn.pos)
+          ctx.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.pos)
         }
 
         val companion = ctx.owner.companionClass

@@ -1936,6 +1936,28 @@ object messages {
       hl"${"@static"} members are only allowed inside objects."
   }
 
+  case class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(implicit ctx: Context) extends Message(StaticFieldsShouldPrecedeNonStaticID) {
+    val msg: String = hl"${"@static"} $member in ${member.owner} must be defined before non-static fields."
+    val kind: String = "Syntax"
+
+    val explanation: String = {
+      val nonStatics = defns.takeWhile(_.symbol != member).take(3).filter(_.isInstanceOf[tpd.ValDef])
+      val codeExample = s"""object ${member.owner.name.firstPart} {
+                        |  @static ${member} = ...
+                        |  ${nonStatics.map(m => s"${m.symbol} = ...").mkString("\n  ")}
+                        |  ...
+                        |}"""
+      hl"""The fields annotated with @static should precede any non @static fields.
+        |This ensures that we do not introduce surprises for users in initialization order of this class.
+        |Static field are initialized when class loading the code of Foo.
+        |Non static fields are only initialized the first  time that Foo is accessed.
+        |
+        |The definition of ${member.name} should have been before the non ${"@static val"}s:
+        |$codeExample
+        |"""
+    }
+  }
+
   case class CyclicInheritance(symbol: Symbol, addendum: String)(implicit ctx: Context) extends Message(CyclicInheritanceID) {
     val kind: String = "Syntax"
     val msg: String = hl"Cyclic inheritance: $symbol extends itself$addendum"
