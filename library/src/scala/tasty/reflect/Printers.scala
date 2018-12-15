@@ -564,7 +564,8 @@ trait Printers
                 case DefDef(n, _, _, _, _) if d.symbol.owner.flags.isCase =>
                   n == "copy" ||
                   n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
-                  n.matches("_[1-9][0-9]*") // Getters from Product
+                  n.matches("_[1-9][0-9]*") || // Getters from Product
+                  n == "productElementName"
                 case _ => false
               })
             }
