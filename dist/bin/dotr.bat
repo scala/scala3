@@ -47,6 +47,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     )
     set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_JVM_OPTS% %_RESIDUAL_ARGS%
     %_JAVACMD% !_JAVA_ARGS!
+    if not !ERRORLEVEL!==0 ( set _EXITCODE=1& goto end )
 ) else (
     echo Warning: Command option is not correct. 1>&2
 )
@@ -75,7 +76,7 @@ if /i "%__ARG%"=="-repl" (
 ) else if /i "%__ARG%"=="-run" (
     set _EXECUTE_RUN=1
 ) else if /i "%__ARG%"=="-classpath" (
-    set _CLASS_PATH=%2
+    set _CLASS_PATH=%~2
     set /a _CLASS_PATH_COUNT+=1
     shift
 ) else if /i "%__ARG%"=="-with-compiler" (
