@@ -457,7 +457,7 @@ object desugar {
         DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
       def productElemMeths = {
         val caseParams = derivedVparamss.head.toArray
-        for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
+        for (i <- List.range(0, arity) if nme.selectorName(i) `ne` caseParams(i).name)
         yield syntheticProperty(nme.selectorName(i), caseParams(i).tpt,
           Select(This(EmptyTypeIdent), caseParams(i).name))
       }
@@ -484,8 +484,26 @@ object desugar {
         }
       }
 
+      // TODO When the Scala library is updated to 2.13.x add the override keyword to this generated method.
+      // (because Product.scala was updated)
+      def productElemNameMethod = {
+        val methodParam = makeSyntheticParameter(tpt = scalaDot(tpnme.Int))
+        val paramRef = Ident(methodParam.name)
+
+        val indexAsString = Apply(Select(javaDotLangDot(nme.String), nme.valueOf), paramRef)
+        val throwOutOfBound = Throw(New(javaDotLangDot(tpnme.IOOBException), List(List(indexAsString))))
+        val defaultCase = CaseDef(Ident(nme.WILDCARD), EmptyTree, throwOutOfBound)
+
+        val patternMatchCases = derivedVparamss.head.zipWithIndex.map { case (param, idx) =>
+            CaseDef(Literal(Constant(idx)), EmptyTree, Literal(Constant(param.name.decode.toString)))
+        } :+ defaultCase
+        val body = Match(paramRef, patternMatchCases)
+        DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
+          .withFlags(Synthetic)
+      }
+
       if (isCaseClass)
-        copyMeths ::: enumTagMeths ::: productElemMeths.toList
+        productElemNameMethod :: copyMeths ::: enumTagMeths ::: productElemMeths
       else Nil
     }
 
