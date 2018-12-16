@@ -10,10 +10,7 @@ import dotty.tools.dotc.transform._
 class TASTYCompiler extends Compiler {
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(new ReadTastyTreesFromClasses) :: Nil
-
-  override protected def picklerPhases: List[List[Phase]] =
-    super.picklerPhases.map(_.filterNot(_.isInstanceOf[Pickler])) // No need to repickle
+    List(new ReadTasty) :: Nil
 
   override def newRun(implicit ctx: Context): Run = {
     reset()

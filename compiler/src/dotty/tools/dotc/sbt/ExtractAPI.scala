@@ -41,6 +41,11 @@ import scala.collection.mutable
 class ExtractAPI extends Phase {
   override def phaseName: String = "sbt-api"
 
+  override def isRunnable(implicit ctx: Context): Boolean = {
+    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
+    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+  }
+
   // SuperAccessors need to be part of the API (see the scripted test
   // `trait-super` for an example where this matters), this is only the case
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
@@ -50,30 +55,26 @@ class ExtractAPI extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    val dumpInc = ctx.settings.YdumpSbtInc.value
-    val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
-    if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
-      val sourceFile = unit.source.file
-      if (ctx.sbtCallback != null)
-        ctx.sbtCallback.startSource(sourceFile.file)
+    val sourceFile = unit.source.file
+    if (ctx.sbtCallback != null)
+      ctx.sbtCallback.startSource(sourceFile.file)
 
-      val apiTraverser = new ExtractAPICollector
-      val classes = apiTraverser.apiSource(unit.tpdTree)
-      val mainClasses = apiTraverser.mainClasses
+    val apiTraverser = new ExtractAPICollector
+    val classes = apiTraverser.apiSource(unit.tpdTree)
+    val mainClasses = apiTraverser.mainClasses
 
-      if (dumpInc) {
-        // Append to existing file that should have been created by ExtractDependencies
-        val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
-          .bufferedWriter(append = true), true)
-        try {
-          classes.foreach(source => pw.println(DefaultShowAPI(source)))
-        } finally pw.close()
-      }
+    if (ctx.settings.YdumpSbtInc.value) {
+      // Append to existing file that should have been created by ExtractDependencies
+      val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
+        .bufferedWriter(append = true), true)
+      try {
+        classes.foreach(source => pw.println(DefaultShowAPI(source)))
+      } finally pw.close()
+    }
 
-      if (ctx.sbtCallback != null) {
-        classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
-        mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
-      }
+    if (ctx.sbtCallback != null) {
+      classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
+      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
     }
   }
 }

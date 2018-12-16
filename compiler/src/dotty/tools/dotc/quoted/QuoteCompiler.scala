@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package quoted
 
 import dotty.tools.dotc.ast.tpd
@@ -14,7 +15,6 @@ import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.transform.Staging
-import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
@@ -40,10 +40,10 @@ class QuoteCompiler extends Compiler {
   def outputClassName: TypeName = "Quoted".toTypeName
 
   /** Frontend that receives a scala.quoted.Expr or scala.quoted.Type as input */
-  class QuotedFrontend(putInClass: Boolean) extends FrontEnd {
+  class QuotedFrontend(putInClass: Boolean) extends Phase {
     import tpd._
 
-    override def isTyper: Boolean = false
+    def phaseName: String = "quotedFrontend"
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       units.map {
@@ -80,6 +80,8 @@ class QuoteCompiler extends Compiler {
       val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
       PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withPos(pos)
     }
+
+    def run(implicit ctx: Context): Unit = unsupported("run")
   }
 
   class ExprRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
@@ -92,5 +94,4 @@ class QuoteCompiler extends Compiler {
       compileUnits(units)
     }
   }
-
 }

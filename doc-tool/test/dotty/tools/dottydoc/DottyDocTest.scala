@@ -45,10 +45,10 @@ trait DottyDocTest extends MessageRendering {
   implicit val ctx: FreshContext = freshCtx(Nil)
 
   private def compilerWithChecker(assertion: (Context, Map[String, Package]) => Unit) = new DocCompiler {
-    private[this] val assertionPhase: List[List[Phase]] =
-      List(new Phase {
+    override def phases = {
+      val assertionPhase = new Phase {
         def phaseName = "assertionPhase"
-        override def run(implicit ctx: Context): Unit =
+        override def run(implicit ctx: Context): Unit = {
           assertion(ctx, ctx.docbase.packages)
           if (ctx.reporter.hasErrors) {
             System.err.println("reporter had errors:")
@@ -58,10 +58,10 @@ trait DottyDocTest extends MessageRendering {
               }
             }
           }
-      }) :: Nil
-
-    override protected def backendPhases: List[List[Phase]] =
-      super.backendPhases ++ assertionPhase
+        }
+      }
+      super.phases :+ List(assertionPhase)
+    }
   }
 
   private def callingMethod: String =

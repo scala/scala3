@@ -203,6 +203,7 @@ object StdNames {
     final val Serializable: N        = "Serializable"
     final val Singleton: N           = "Singleton"
     final val Throwable: N           = "Throwable"
+    final val IOOBException: N       = "IndexOutOfBoundsException"
 
     final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
@@ -483,6 +484,7 @@ object StdNames {
     val prefix : N              = "prefix"
     val productArity: N         = "productArity"
     val productElement: N       = "productElement"
+    val productElementName: N   = "productElementName"
     val productIterator: N      = "productIterator"
     val productPrefix: N        = "productPrefix"
     val raw_ : N                = "raw"

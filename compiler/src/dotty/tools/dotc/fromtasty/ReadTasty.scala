@@ -7,14 +7,19 @@ import Decorators._
 import Contexts.Context
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
-import typer.FrontEnd
 import NameOps._
 import ast.Trees.Tree
 import CompilationUnit.mkCompilationUnit
+import Phases.Phase
 
-class ReadTastyTreesFromClasses extends FrontEnd {
 
-  override def isTyper: Boolean = false
+/** Load trees from TASTY files */
+class ReadTasty extends Phase {
+
+  def phaseName: String = "readTasty"
+
+  override def isRunnable(implicit ctx: Context): Boolean =
+    ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
     units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))
@@ -71,4 +76,6 @@ class ReadTastyTreesFromClasses extends FrontEnd {
     case unit =>
      Some(unit)
   }
+
+  def run(implicit ctx: Context): Unit = unsupported("run")
 }

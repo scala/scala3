@@ -1393,6 +1393,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(field.show, "method bar")
     }
 
+  @Test def staticShouldPrecedeNonStatic =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        |class Foo
+        |object Foo {
+        |  val foo = 1
+        |  @annotation.static val bar = 2
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val StaticFieldsShouldPrecedeNonStatic(field, _) = messages.head
+      assertEquals(field.show, "value bar")
+    }
+
   @Test def cyclicInheritance =
     checkMessagesAfter(FrontEnd.name) {
       "class A extends A"
