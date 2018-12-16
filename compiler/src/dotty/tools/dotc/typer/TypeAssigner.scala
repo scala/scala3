@@ -381,65 +381,70 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-    val ownType = fn.tpe.widen match {
+    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.pos))
+    fn.tpe.widen match {
       case pt: TypeLambda =>
-        val paramNames = pt.paramNames
-        if (hasNamedArg(args)) {
-          val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
+        tree.withType {
+          val paramNames = pt.paramNames
+          if (hasNamedArg(args)) {
+            val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
 
-          // Type arguments which are specified by name (immutable after this first loop)
-          val namedArgMap = new mutable.HashMap[Name, Type]
-          for (NamedArg(name, arg) <- args)
-            if (namedArgMap.contains(name))
-              ctx.error(DuplicateNamedTypeParameter(name), arg.pos)
-            else if (!paramNames.contains(name))
-              ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.pos)
-            else
-              namedArgMap(name) = arg.tpe
+            // Type arguments which are specified by name (immutable after this first loop)
+            val namedArgMap = new mutable.HashMap[Name, Type]
+            for (NamedArg(name, arg) <- args)
+              if (namedArgMap.contains(name))
+                ctx.error(DuplicateNamedTypeParameter(name), arg.pos)
+              else if (!paramNames.contains(name))
+                ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.pos)
+              else
+                namedArgMap(name) = arg.tpe
 
-          // Holds indexes of non-named typed arguments in paramNames
-          val gapBuf = new mutable.ListBuffer[Int]
-          def nextPoly(idx: Int) = {
-            val newIndex = gapBuf.length
-            gapBuf += idx
-            // Re-index unassigned type arguments that remain after transformation
-            pt.paramRefs(newIndex)
-          }
+            // Holds indexes of non-named typed arguments in paramNames
+            val gapBuf = new mutable.ListBuffer[Int]
+            def nextPoly(idx: Int) = {
+              val newIndex = gapBuf.length
+              gapBuf += idx
+              // Re-index unassigned type arguments that remain after transformation
+              pt.paramRefs(newIndex)
+            }
 
-          // Type parameters after naming assignment, conserving paramNames order
-          val normArgs: List[Type] = paramNames.zipWithIndex.map { case (pname, idx) =>
-            namedArgMap.getOrElse(pname, nextPoly(idx))
-          }
+            // Type parameters after naming assignment, conserving paramNames order
+            val normArgs: List[Type] = paramNames.zipWithIndex.map { case (pname, idx) =>
+              namedArgMap.getOrElse(pname, nextPoly(idx))
+            }
 
-          val transform = new TypeMap {
-            def apply(t: Type) = t match {
-              case TypeParamRef(`pt`, idx) => normArgs(idx)
-              case _ => mapOver(t)
+            val transform = new TypeMap {
+              def apply(t: Type) = t match {
+                case TypeParamRef(`pt`, idx) => normArgs(idx)
+                case _ => mapOver(t)
+              }
+            }
+            val resultType1 = transform(pt.resultType)
+            if (gapBuf.isEmpty) resultType1
+            else {
+              val gaps = gapBuf.toList
+              pt.derivedLambdaType(
+                gaps.map(paramNames),
+                gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
+                resultType1)
             }
           }
-          val resultType1 = transform(pt.resultType)
-          if (gapBuf.isEmpty) resultType1
           else {
-            val gaps = gapBuf.toList
-            pt.derivedLambdaType(
-              gaps.map(paramNames),
-              gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
-              resultType1)
+            val argTypes = args.tpes
+            if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
+            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
           }
         }
-        else {
-          val argTypes = args.tpes
-          if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
-          else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
-        }
       case err: ErrorType =>
-        err
+        tree.withType(err)
+      case ref: TermRef if ref.isOverloaded =>
+        val disambiguated = ref.denot.suchThat(_.info.isInstanceOf[PolyType])
+        if (disambiguated.exists) assignType(tree, fn.withType(ref.withDenot(disambiguated)), args)
+        else fail
       case _ =>
         //println(i"bad type: $fn: ${fn.symbol} / ${fn.symbol.isType} / ${fn.symbol.info}") // DEBUG
-        errorType(err.takesNoParamsStr(fn, "type "), tree.pos)
+        fail
     }
-
-    tree.withType(ownType)
   }
 
   def assignType(tree: untpd.Typed, tpt: Tree)(implicit ctx: Context): Typed =

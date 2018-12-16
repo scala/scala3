@@ -1073,9 +1073,9 @@ object Denotations {
       val d = signature.matchDegree(other.signature)
       (// fast path: signatures are the same and neither denotation is a PolyType
        // For polytypes, signatures alone do not tell us enough to be sure about matching.
-       d == Signature.FullMatch && !info.isInstanceOf[PolyType] && !other.info.isInstanceOf[PolyType]
+       d == Signature.FullMatch &&
+       !infoOrCompleter.isInstanceOf[PolyType] && !other.infoOrCompleter.isInstanceOf[PolyType]
        ||
-       // slow path
        d >= Signature.ParamMatch && info.matches(other.info))
     }
 
