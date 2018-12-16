@@ -439,7 +439,11 @@ trait TypeAssigner {
         tree.withType(err)
       case ref: TermRef if ref.isOverloaded =>
         val disambiguated = ref.denot.suchThat(_.info.isInstanceOf[PolyType])
-        if (disambiguated.exists) assignType(tree, fn.withType(ref.withDenot(disambiguated)), args)
+        if (disambiguated.exists) {
+          val fn1 = fn.withType(ref.withDenot(disambiguated))
+          val tree1 = untpd.cpy.TypeApply(tree)(fn1, args)
+          assignType(tree1, fn1, args)
+        }
         else fail
       case _ =>
         //println(i"bad type: $fn: ${fn.symbol} / ${fn.symbol.isType} / ${fn.symbol.info}") // DEBUG
