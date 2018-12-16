@@ -745,64 +745,55 @@ object Contexts {
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
       boundCache = SimpleIdentityMap.Empty
       boundAdditionInProgress = true
-      @annotation.tailrec def stripInst(tp: Type): Type = tp match {
+      @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
         case tv: TypeVar =>
           val inst = instType(tv)
-          if (inst.exists) stripInst(inst) else tv
+          if (inst.exists) stripInternalTypeVar(inst) else tv
         case _ => tp
       }
 
-      def cautiousSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
+      def externalizedSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
         val externalizedTp1 = removeTypeVars(tp1)
         val externalizedTp2 = removeTypeVars(tp2)
 
-        def descr = {
-          def op = s"frozen_${if (isSubtype) "<:<" else ">:>"}"
-          i"$tp1 $op $tp2\n\t$externalizedTp1 $op $externalizedTp2"
-        }
-        // gadts.println(descr)
-
-        val res =
-          // TypeComparer.explain[Boolean](gadts.println) { implicit ctx =>
+        (
           if (isSubtype) externalizedTp1 frozen_<:< externalizedTp2
           else externalizedTp2 frozen_<:< externalizedTp1
-          // }
-
-        gadts.println(i"$descr = $res")
-        res
+        ).reporting({ res =>
+          val descr = i"$externalizedTp1 frozen_${if (isSubtype) "<:<" else ">:>"} $externalizedTp2"
+          i"$descr = $res"
+        }, gadts)
       }
 
-      def unify(tv: TypeVar, tp: Type): Unit = {
-        gadts.println(i"manually unifying $tv with $tp")
-        constraint = constraint.updateEntry(tv.origin, tp)
-      }
-
-      val symTvar: TypeVar = stripInst(tvar(sym)) match {
+      val symTvar: TypeVar = stripInternalTypeVar(tvar(sym)) match {
         case tv: TypeVar => tv
         case inst =>
-          gadts.println(i"instantiated: $sym -> $inst")
-          // this is wrong in general, but "correct" due to a subtype check in TypeComparer#narrowGadtBounds
-          return true
+          val externalizedInst = removeTypeVars(inst)
+          gadts.println(i"instantiated: $sym -> $externalizedInst")
+          return if (isUpper) isSubType(externalizedInst , bound) else isSubType(bound, externalizedInst)
       }
 
       val internalizedBound = insertTypeVars(bound)
-      val res = stripInst(internalizedBound) match {
-        case boundTvar: TypeVar =>
-          if (boundTvar eq symTvar) true
-          else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
-          else addLess(boundTvar.origin, symTvar.origin)
-        case bound =>
-          if (cautiousSubtype(symTvar, bound, isSubtype = !isUpper)) { unify(symTvar, bound); true }
-          else if (isUpper) addUpperBound(symTvar.origin, bound)
-          else addLowerBound(symTvar.origin, bound)
-      }
-
-      gadts.println {
+      (
+        stripInternalTypeVar(internalizedBound) match {
+          case boundTvar: TypeVar =>
+            if (boundTvar eq symTvar) true
+            else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
+            else addLess(boundTvar.origin, symTvar.origin)
+          case bound =>
+            if (externalizedSubtype(symTvar, bound, isSubtype = !isUpper)) {
+              gadts.println(i"manually unifying $symTvar with $bound")
+              constraint = constraint.updateEntry(symTvar.origin, bound)
+              true
+            }
+            else if (isUpper) addUpperBound(symTvar.origin, bound)
+            else addLowerBound(symTvar.origin, bound)
+        }
+      ).reporting({ res =>
         val descr = if (isUpper) "upper" else "lower"
         val op = if (isUpper) "<:" else ">:"
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
-      }
-      res
+      }, gadts)
     } finally boundAdditionInProgress = false
 
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
@@ -813,7 +804,7 @@ object Contexts {
             val tb = constraint.fullBounds(tv.origin)
             removeTypeVars(tb).asInstanceOf[TypeBounds]
           }
-          val res =
+          (
             if (boundAdditionInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
             else boundCache(sym) match {
               case tb: TypeBounds => tb
@@ -822,8 +813,10 @@ object Contexts {
                 boundCache = boundCache.updated(sym, bounds)
                 bounds
             }
-          // gadts.println(i"gadt bounds $sym: $res")
-          res
+          ).reporting({ res =>
+            // i"gadt bounds $sym: $res"
+            ""
+          }, gadts)
       }
     }
 

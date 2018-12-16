@@ -1237,14 +1237,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
-      else {
-        val oldBounds = gadtBounds(tparam)
-        val newBounds =
-          if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
-          else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
-        isSubType(newBounds.lo, newBounds.hi) &&
-          (if (isUpper) gadtAddUpperBound(tparam, bound) else gadtAddLowerBound(tparam, bound))
-      }
+      else if (isUpper) gadtAddUpperBound(tparam, bound)
+      else gadtAddLowerBound(tparam, bound)
     }
   }
 
@@ -1826,13 +1820,14 @@ object TypeComparer {
 
   val NoApprox: ApproxState = new ApproxState(0)
 
-  def explain[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
+  /** Show trace of comparison operations when performing `op` as result string */
+  def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
     val (res, explanation) = underlyingExplained(op)
     say(explanation)
     res
   }
 
-  /** Show trace of comparison operations when performing `op` as result string */
+  /** Like [[explaining]], but returns the trace instead */
   def explained[T](op: Context => T)(implicit ctx: Context): String = {
     underlyingExplained(op)._2
   }
