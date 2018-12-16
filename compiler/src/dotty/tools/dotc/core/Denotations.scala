@@ -1071,8 +1071,12 @@ object Denotations {
 
     final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
       val d = signature.matchDegree(other.signature)
-      d == Signature.FullMatch ||
-      d >= Signature.ParamMatch && info.matches(other.info)
+      (// fast path: signatures are the same and neither denotation is a PolyType
+       // For polytypes, signatures alone do not tell us enough to be sure about matching.
+       d == Signature.FullMatch && !info.isInstanceOf[PolyType] && !other.info.isInstanceOf[PolyType]
+       ||
+       // slow path
+       d >= Signature.ParamMatch && info.matches(other.info))
     }
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
