@@ -831,11 +831,13 @@ trait Implicits { self: Typer =>
       (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
     }
 
+    // Map all non-opaque abstract types to their upper bound.
+    // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
       def apply(t: Type): Type = t match {
         case t: TypeRef =>
           t.info match {
-            case TypeBounds(lo, hi) if lo ne hi => apply(hi)
+            case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)
             case _ => t
           }
         case t: RefinedType =>
