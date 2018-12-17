@@ -1822,20 +1822,17 @@ object TypeComparer {
 
   /** Show trace of comparison operations when performing `op` as result string */
   def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
-    val (res, explanation) = underlyingExplained(op)
-    say(explanation)
+    val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
+    val res = op(nestedCtx)
+    say(nestedCtx.typeComparer.lastTrace())
     res
   }
 
   /** Like [[explaining]], but returns the trace instead */
   def explained[T](op: Context => T)(implicit ctx: Context): String = {
-    underlyingExplained(op)._2
-  }
-
-  private def underlyingExplained[T](op: Context => T)(implicit ctx: Context): (T, String) = {
-    val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
-    val res = op(nestedCtx)
-    (res, nestedCtx.typeComparer.lastTrace())
+    var trace: String = null
+    explaining(trace = _)(op)
+    trace
   }
 }
 
