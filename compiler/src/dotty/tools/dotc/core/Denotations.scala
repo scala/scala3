@@ -663,7 +663,7 @@ object Denotations {
             tp1.derivedLambdaType(
               mergeParamNames(tp1, tp2),
               tp1.paramInfos,
-              tp1.resultType | tp2.resultType.subst(tp2, tp1))
+              infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
           case _ =>
             mergeConflict(sym1, sym2, tp1, tp2)
         }
@@ -676,7 +676,7 @@ object Denotations {
               tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
                 (p1 | p2.subst(tp2, tp1)).bounds
               },
-              tp1.resultType | tp2.resultType.subst(tp2, tp1))
+              infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
           case _ =>
             mergeConflict(sym1, sym2, tp1, tp2)
         }
