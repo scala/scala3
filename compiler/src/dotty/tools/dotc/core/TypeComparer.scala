@@ -1648,7 +1648,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
             tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName, jointInfo)
           }
           catch {
-            case ex: MergeError => tp1.parent & tp2.parent
+            case ex: MergeError => NoType
           }
         case _ =>
           NoType

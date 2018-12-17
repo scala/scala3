@@ -622,7 +622,7 @@ object Denotations {
               tp1.derivedLambdaType(
                 mergeParamNames(tp1, tp2),
                 tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                  infoMeet(p1,  p2.subst(tp2, tp1), sym1, sym2, safeIntersection).bounds
+                  infoMeet(p1, p2.subst(tp2, tp1), sym1, sym2, safeIntersection).bounds
                 },
                 infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
             case _ =>
@@ -674,7 +674,7 @@ object Denotations {
             tp1.derivedLambdaType(
               mergeParamNames(tp1, tp2),
               tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                (p1 | p2.subst(tp2, tp1)).bounds
+                infoJoin(p1, p2.subst(tp2, tp1), sym1, sym2).bounds
               },
               infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
           case _ =>
