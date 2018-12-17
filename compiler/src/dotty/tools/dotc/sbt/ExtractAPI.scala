@@ -46,6 +46,9 @@ class ExtractAPI extends Phase {
     super.isRunnable && (ctx.sbtCallback != null || forceRun)
   }
 
+  // Check no needed. Does not transform trees
+  override def isCheckable: Boolean = false
+
   // SuperAccessors need to be part of the API (see the scripted test
   // `trait-super` for an example where this matters), this is only the case
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
