@@ -9,8 +9,8 @@ class A {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    classOf[A].getMethods.toList.filter(_.getName.startsWith("foo")).foreach { m =>
-      assert(m.getGenericReturnType == Void.TYPE, s"Method does not return void: `${m}`")
+    classOf[A].getMethods.toList.filter(_.nn.getName.startsWith("foo")).foreach { m =>
+      assert(m.nn.getGenericReturnType == Void.TYPE, s"Method does not return void: `${m}`")
     }
   }
 }

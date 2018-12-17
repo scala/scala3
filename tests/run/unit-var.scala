@@ -8,7 +8,7 @@ object Test {
       println("foo3")
     }
     f.foo
-    assert(!f.getClass.getDeclaredFields.exists(_.getName.startsWith("foo")), "field foo not erased")
+    assert(!f.getClass.getDeclaredFields.exists(_.nn.getName.startsWith("foo")), "field foo not erased")
   }
 }
 
