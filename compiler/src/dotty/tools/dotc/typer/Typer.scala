@@ -801,10 +801,10 @@ class Typer extends Namer
       val typeArgs = params1.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
       val core = assignType(cpy.AppliedTypeTree(tree)(tycon, typeArgs), tycon, typeArgs)
-      val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Deferred, mt)
+      val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Method | Deferred, mt, coord = body.pos)
       val appDef = assignType(
         untpd.DefDef(appMeth.name, Nil, List(params1), resultTpt, EmptyTree),
-        appMeth)
+        appMeth).withPos(body.pos)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     }
 
@@ -1233,7 +1233,9 @@ class Typer extends Namer
         }
       case _ =>
         tree.withType(
-          if (isFullyDefined(pt, ForceDegree.none)) pt else UnspecifiedErrorType)
+          if (isFullyDefined(pt, ForceDegree.noBottom)) pt
+          else if (ctx.reporter.errorsReported) UnspecifiedErrorType
+          else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.pos))
     }
   }
 
