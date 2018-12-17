@@ -881,6 +881,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case ExtMethodApply(app) =>
         app
+      case _: TypeApply if !ctx.isAfterTyper =>
+        errorTree(tree, "illegal repeated type application")
       case typedFn =>
         typedFn.tpe.widen match {
           case pt: PolyType =>
