@@ -13,6 +13,7 @@ import Constants._
 import Decorators._
 import Denotations._, SymDenotations._
 import dotty.tools.dotc.ast.tpd
+import TypeErasure.erasure
 import DenotTransformers._
 
 object ElimRepeated {
@@ -92,7 +93,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       JavaSeqLiteral(elems, elemtpt)
     case _ =>
       val elemType = tree.tpe.elemType
-      var elemClass = elemType.classSymbol
+      var elemClass = erasure(elemType).classSymbol
       if (defn.NotRuntimeClasses.contains(elemClass)) elemClass = defn.ObjectClass
       ref(defn.DottyArraysModule)
         .select(nme.seqToArray)
