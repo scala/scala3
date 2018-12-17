@@ -1,5 +1,8 @@
 class C
-class A { class C }
+class A { 
+  type C = C1|Null
+  class C1
+}
 
 object Test {
   def main(args: Array[String]): Unit = {

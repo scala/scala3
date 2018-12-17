@@ -43,7 +43,7 @@ object ValueOpt {
   //       69: astore        5
   //       71: aload         5
   //       73: areturn
-  def unapply(x: Any): Opt[String] = x match {
+  def unapply(x: Any): Opt[String|Null] = x match {
     case _: String  => Opt("String")
     case _: List[_] => Opt("List")
     case _: Int     => Opt("Int")
