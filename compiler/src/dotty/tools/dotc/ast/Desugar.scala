@@ -499,7 +499,7 @@ object desugar {
         } :+ defaultCase
         val body = Match(paramRef, patternMatchCases)
         DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
-          .withFlags(if (ctx.settings.YnewLibrary.value) Override | Synthetic else Synthetic)
+          .withFlags(if (defn.isNewCollections) Override | Synthetic else Synthetic)
       }
 
       if (isCaseClass)

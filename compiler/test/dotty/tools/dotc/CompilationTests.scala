@@ -48,7 +48,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
     compileFile("tests/pos-special/completeFromSource/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
-    compileFile("tests/pos-special/repeatedArgs213.scala", defaultOptions.and("-Ynew-library")) +
+    compileFile("tests/pos-special/repeatedArgs213.scala", defaultOptions.and("-Ynew-collections")) +
     compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-feature")) +
     compileList(
       "compileMixed",
@@ -164,7 +164,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/matchtype-loop.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/completeFromSource/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args", "-scansource")) +
-    compileFile("tests/neg-custom-args/repeatedArgs213.scala", defaultOptions.and("-Ynew-library"))
+    compileFile("tests/neg-custom-args/repeatedArgs213.scala", defaultOptions.and("-Ynew-collections"))
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------

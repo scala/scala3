@@ -396,7 +396,8 @@ class Definitions {
     def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   // TODO: Remove once we drop support for 2.12 standard library
-  private def isNewCollections = ctx.settings.YnewLibrary.value
+  lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value ||
+    ctx.base.staticRef("scala.collection.IterableOnce".toTypeName).exists
 
   def getWrapVarargsArrayModule: Symbol = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
 
