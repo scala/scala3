@@ -1658,8 +1658,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName,
-            tp1.refinedInfo & tp2.refinedInfo)
+          try {
+            val jointInfo = Denotations.infoMeet(tp1.refinedInfo, tp2.refinedInfo, NoSymbol, NoSymbol, safeIntersection = false)
+            tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName, jointInfo)
+          }
+          catch {
+            case ex: MergeError => NoType
+          }
         case _ =>
           NoType
       }
