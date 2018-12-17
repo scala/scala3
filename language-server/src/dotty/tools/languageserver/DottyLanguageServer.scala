@@ -366,7 +366,7 @@ class DottyLanguageServer extends LanguageServer
     val pos = sourcePosition(driver, uri, params.getPosition)
     val path = Interactive.pathTo(uriTrees, pos)
     val enclosing = SourceTree(Interactive.enclosingTree(uriTrees, pos), source)
-    val syms = if (renameTree(enclosing, pos).isDefined) Interactive.enclosingSourceSymbols(path, pos) else Nil
+    val syms = if (renameTree(enclosing, pos, driver).isDefined) Interactive.enclosingSourceSymbols(path, pos) else Nil
     val newName = params.getNewName
 
     def findRenamedReferences(trees: List[SourceTree], syms: List[Symbol], withName: Name): List[SourceTree] = {
@@ -558,7 +558,7 @@ class DottyLanguageServer extends LanguageServer
     val sourceTree = SourceTree(enclosing, source)
 
     val result = for {
-      tree <- renameTree(sourceTree, pos)
+      tree <- renameTree(sourceTree, pos, driver)
       nameRange <- range(tree.namePos)
     } yield JEither.forLeft[Range, PrepareRenameResult](nameRange)
 
@@ -647,32 +647,44 @@ class DottyLanguageServer extends LanguageServer
   /**
    * The tree that would be renamed by a rename operation at `pos`
    *
-   * Verifies that this tree can actually be renamed, that the user really selected the name of the
-   * tree, that its symbol is not synthetic, and that this is not a special name (such as `apply` or
-   * `unapply`), because we don;t know how to rename these yet.
-   *
-   * @param sourceTree The tree to rename
-   * @param pos        The position that the user has selected
-   * @return The tree that will be renamed if it exists, `None` otherwise.
+   * At the moment, we reject the renaming if any of the following is true:
+   *  - The symbol of the tree is synthetic
+   *  - The user didn't select the name of the tree
+   *  - The tree has a special name (such as this, unapply, etc.)
+   *  - The tree is a package
+   *  - The tree is not defined in a project managed by the language server
    */
-  private def renameTree(sourceTree: SourceTree, pos: SourcePosition)(implicit ctx: Context): Option[SourceTree] = {
+  private def renameTree(sourceTree: SourceTree,
+                         pos: SourcePosition,
+                         driver: InteractiveDriver
+                        )(implicit ctx: Context): Option[SourceTree] = {
     def toSourceTree(tree: NameTree): SourceTree = sourceTree.copy(tree = tree)
     def matchesPos(tree: untpd.Tree): Boolean = tree.pos.contains(pos.pos)
+    /** Does the definition of `sym` belong to a project managed by this language server? */
+    def isManagedDef(sym: Symbol): Boolean = {
+      val definitions = Interactive.findDefinitions(sym.sourceSymbol :: Nil, driver, includeOverridden = false, includeExternal = true)
+      val sourceDirs = drivers.keySet.flatMap(p => p.sourceDirectories.map(_.getAbsolutePath))
+      definitions.nonEmpty && definitions.forall { d =>
+        val path = d.source.file.path
+        sourceDirs.exists(s => path.startsWith(s))
+      }
+    }
+    def include(sym: Symbol, name: Name): Boolean = {
+      sym.exists &&
+      !sym.is(Synthetic) &&
+      !sym.is(Package) &&
+      !renameExcludedNames.contains(name) &&
+      isManagedDef(sym)
+    }
 
     sourceTree.tree match {
-      case tree: NameTree if !tree.isInstanceOf[This] =>
-        if (sourceTree.namePos.contains(pos) &&
-            tree.symbol.exists &&
-            !tree.symbol.is(Synthetic) &&
-            !renameExcludedNames.contains(tree.name)) {
+      case tree: NameTree
+        if sourceTree.namePos.contains(pos) && include(tree.symbol, tree.name) =>
           Some(toSourceTree(tree))
-        } else {
-          None
-        }
 
       case imp: Import =>
         val symbols = importedSymbols(imp, matchesPos)
-        val canRename = symbols.forall(s => !s.is(Synthetic) && !renameExcludedNames.contains(s.name))
+        val canRename = symbols.forall(s => include(s, s.name))
 
         if (canRename) {
           imp.selectors.collectFirst {
@@ -700,7 +712,7 @@ object DottyLanguageServer {
 
   /** Special names for which we cannot do rename */
   val renameExcludedNames: Set[Name] =
-    Set(StdNames.nme.apply, StdNames.nme.unapply, StdNames.nme.unapplySeq)
+    Set(StdNames.nme.this_, StdNames.nme.apply, StdNames.nme.unapply, StdNames.nme.unapplySeq)
 
   /** Convert an lsp4j.Position to a SourcePosition */
   def sourcePosition(driver: InteractiveDriver, uri: URI, pos: lsp4j.Position): SourcePosition = {

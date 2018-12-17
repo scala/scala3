@@ -72,4 +72,42 @@ class PrepareRenameTest {
           |}""".withSource
       .prepareRename(m1 to m2, success = false)
   }
+
+  @Test def cannotRenamePackage: Unit = {
+    code"""package ${m1}foo${m2}
+          |import ${m3}foo${m4}.Foo
+          |class Foo""".withSource
+      .prepareRename(m1 to m2, success = false)
+      .prepareRename(m3 to m4, success = false)
+  }
+
+  @Test def cannotRenameExternalSymbols: Unit = {
+    code"""import ${m1}java${m2}.${m3}io${m4}.${m5}FileDescriptor${m6}
+          |object Foo {
+          |  def foo(x: ${m7}FileDescriptor${m8}) = ???
+          |}""".withSource
+      .prepareRename(m1 to m2, success = false)
+      .prepareRename(m3 to m4, success = false)
+      .prepareRename(m5 to m6, success = false)
+      .prepareRename(m7 to m8, success = false)
+  }
+
+  @Test def canRenameSymbolInExternalProject: Unit = {
+    val p0 = Project.withSources(
+      code"""package a
+             object ${m1}A${m2}"""
+    )
+
+    val p1 = Project.dependingOn(p0).withSources(
+      code"""package b
+             import a.${m3}A${m4}
+             object B { val a = ${m5}A${m6} }"""
+    )
+
+    withProjects(p0, p1)
+      .prepareRename(m1 to m2, success = true)
+      .prepareRename(m3 to m4, success = true)
+      .prepareRename(m5 to m6, success = true)
+
+  }
 }

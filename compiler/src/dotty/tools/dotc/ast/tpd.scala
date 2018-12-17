@@ -1172,7 +1172,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
            lookup(name.moduleClassName),
            lookup(name.sourceModuleName))
 
-    symbols.map(_.sourceSymbol).filter(_.exists).distinct
+    symbols.map(_.sourceSymbol).filterNot(_.isAbsent).distinct
   }
 
   /**
