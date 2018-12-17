@@ -268,6 +268,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)
+        case tree: Closure if !tree.tpt.isEmpty =>
+          Checking.checkRealizable(tree.tpt.tpe, tree.pos, "SAM type")
+          super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>

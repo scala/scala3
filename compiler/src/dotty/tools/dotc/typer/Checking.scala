@@ -136,10 +136,10 @@ object Checking {
     }
 
   /** Check that type `tp` is realizable. */
-  def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+  def checkRealizable(tp: Type, pos: Position, what: String = "path")(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
-      ctx.errorOrMigrationWarning(em"$tp is not a legal path\nsince it${rstatus.msg}", pos)
+      ctx.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", pos)
   }
 
   /** A type map which checks that the only cycles in a type are F-bounds
