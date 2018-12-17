@@ -1040,8 +1040,7 @@ class Typer extends Namer
   def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context): Context = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
-      if (!gadtCtx.gadt.bounds.contains(sym))
-        gadtCtx.gadt.setBounds(sym, TypeBounds.empty)
+      if (!gadtCtx.gadt.contains(sym)) gadtCtx.gadt.addEmptyBounds(sym)
     gadtCtx
   }
 
@@ -1520,8 +1519,11 @@ class Typer extends Namer
       // that their type parameters are aliases of the class type parameters.
       // See pos/i941.scala
       rhsCtx = ctx.fresh.setFreshGADTBounds
-      (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
-        rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
+      (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
+        val tr = tparam.typeRef
+        rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
+        rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
+      }
     }
     if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)

@@ -735,7 +735,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 for (tpt <- tpts) boundVars = getBoundVars(boundVars, tpt)
               case _ =>
             }
-            for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
+            for (bv <- boundVars) {
+              val TypeBounds(lo, hi) = bv.info.bounds
+              ctx.gadt.addBound(bv, lo, isUpper = false)
+              ctx.gadt.addBound(bv, hi, isUpper = true)
+            }
             scrut <:< tpt.tpe && {
               for (bv <- boundVars) {
                 bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)

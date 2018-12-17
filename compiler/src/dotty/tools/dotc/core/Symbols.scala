@@ -214,7 +214,11 @@ trait Symbols { this: Context =>
    */
   def newPatternBoundSymbol(name: Name, info: Type, pos: Position): Symbol = {
     val sym = newSymbol(owner, name, Case, info, coord = pos)
-    if (name.isTypeName) gadt.setBounds(sym, info.bounds)
+    if (name.isTypeName) {
+      val bounds = info.bounds
+      gadt.addBound(sym, bounds.lo, isUpper = false)
+      gadt.addBound(sym, bounds.hi, isUpper = true)
+    }
     sym
   }
 

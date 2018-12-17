@@ -168,7 +168,7 @@ object Formatting {
         s"is a reference to a value parameter"
       case sym: Symbol =>
         val info =
-          if (ctx.gadt.bounds.contains(sym))
+          if (ctx.gadt.contains(sym))
             sym.info & ctx.gadt.bounds(sym)
           else
             sym.info
@@ -189,7 +189,7 @@ object Formatting {
       case param: TermParamRef => false
       case skolem: SkolemType => true
       case sym: Symbol =>
-        ctx.gadt.bounds.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
+        ctx.gadt.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
       case _ =>
         assert(false, "unreachable")
         false
