@@ -36,8 +36,8 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
   }
 
   def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
-    println(fn)
-    env.foreach(println)
+    // println(fn)
+    // env.foreach(println)
     fn.symbol match {
       case IsDefSymbol(sym) =>
         val evaluatedArgs = argss.flatten.map(arg => new Eager(eval(arg)))
@@ -68,7 +68,7 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
                   val evaluatedArgs = args1.map(arg => new Eager(arg))
 
                   val env1 = env ++ symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
-                  println(symbol.tree)
+                  // println(symbol.tree)
                   eval(symbol.tree.rhs.get)(env1).asInstanceOf[Object]
               }
             }
@@ -85,7 +85,7 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
 
   def reflectCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
     import Term._
-    println(fn.show)
+    // println(fn.show)
     fn.symbol match {
       // TODO: obviously
       case IsDefSymbol(sym) =>
@@ -96,7 +96,7 @@ class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: ref
         else if(sym.name == "+") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] + eval(argss.head.head).asInstanceOf[Int]
         else {
           val argss2 = evaluatedArgss(argss)
-          argss2.foreach(println)
+          // argss2.foreach(println)
           jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
         }
       case _ =>
