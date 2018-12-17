@@ -13,8 +13,8 @@ object Test {
     // (new O: M[Null]).m(null) // Okay
 
     ((a: A) => {
-      class N extends M[a.C] { def m(x: a.C) = true }
+      class N extends M[a.C|Null] { def m(x: a.C|Null) = true }
       new N: M[Null]
-    }).apply(a).m(null) // NPE, missing bridge
+    }).apply(a).m(null) // This used to be incorrectly marked as throwing an NPE.
   }
 }
