@@ -12,5 +12,11 @@ object Test {
   def f[X, Y](x: X, y: Y): Int = ???
 
   f[X = Int, String](1, "") // error // error
-  f[X = Int][X = Int][Y = String](1, "") // error
+  f[X = Int][X = Int][Y = String](1, "") // error: illegal repeated type application
+
+  f[X = Int][Y = String](1, "") // error: illegal repeated type application
+  f[X = Int][String](1, "") // error: illegal repeated type application
+
+  f[Y = String][X = Int](1, "") // error: illegal repeated type application
+  f[Y = String][Int](1, "") // error: illegal repeated type application
 }
