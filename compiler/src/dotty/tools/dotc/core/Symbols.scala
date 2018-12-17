@@ -359,32 +359,43 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName, isPackage = true).requiredSymbol(_ is Package).asTerm
+  def requiredPackage(path: PreName): TermSymbol = {
+    val name = path.toTermName
+    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_ is Package).asTerm
+  }
 
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
 
-  def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass) match {
+  def requiredClass(path: PreName): ClassSymbol = {
+    val name = path.toTypeName
+    base.staticRef(name).requiredSymbol("class", name)(_.isClass) match {
       case cls: ClassSymbol => cls
       case sym => defn.AnyClass
     }
+  }
 
   def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
    *  or present on classpath.
    *  Returns NoSymbol otherwise. */
-  def getClassIfDefined(path: PreName): Symbol =
-    base.staticRef(path.toTypeName, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
+  def getClassIfDefined(path: PreName): Symbol = {
+    val name = path.toTypeName
+    base.staticRef(name, generateStubs = false)
+      .requiredSymbol("class", name, generateStubs = false)(_.isClass)
+  }
 
-  def requiredModule(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
+  def requiredModule(path: PreName): TermSymbol = {
+    val name = path.toTermName
+    base.staticRef(name).requiredSymbol("object", name)(_ is Module).asTerm
+  }
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
 
-  def requiredMethod(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredMethod(path: PreName): TermSymbol = {
+    val name = path.toTermName
+    base.staticRef(name).requiredSymbol("method", name)(_ is Method).asTerm
+  }
 
   def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
 }

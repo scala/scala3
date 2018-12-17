@@ -496,10 +496,10 @@ class Definitions {
     def Int_<= : Symbol = Int_leR.symbol
   lazy val LongType: TypeRef = valueTypeRef("scala.Long", BoxedLongType, java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass(implicit ctx: Context): ClassSymbol = LongType.symbol.asClass
-    lazy val Long_XOR_Long: Symbol = LongType.member(nme.XOR).requiredSymbol(
+    lazy val Long_XOR_Long: Symbol = LongType.member(nme.XOR).requiredSymbol("method", nme.XOR, LongType.denot)(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
     )
-    lazy val Long_LSR_Int: Symbol = LongType.member(nme.LSR).requiredSymbol(
+    lazy val Long_LSR_Int: Symbol = LongType.member(nme.LSR).requiredSymbol("method", nme.LSR, LongType.denot)(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.IntClass)
     )
     lazy val Long_plusR: TermRef   = LongClass.requiredMethodRef(nme.PLUS, List(LongType))
@@ -729,7 +729,7 @@ class Definitions {
   def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
 
     def TupleXXL_apply(implicit ctx: Context): Symbol =
-      TupleXXLModule.info.member(nme.apply).requiredSymbol(_.info.isVarArgsMethod)
+      TupleXXLModule.info.member(nme.apply).requiredSymbol("method", nme.apply, TupleXXLModule)(_.info.isVarArgsMethod)
 
   // Annotation base classes
   lazy val AnnotationType: TypeRef              = ctx.requiredClassRef("scala.annotation.Annotation")
