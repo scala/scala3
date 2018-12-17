@@ -991,10 +991,15 @@ object SymDenotations {
      */
     final def companionModule(implicit ctx: Context): Symbol =
       if (is(Module)) sourceModule
-      else if (isOpaqueAlias)
-        info match {
-          case TypeAlias(TypeRef(prefix: TermRef, _)) => prefix.termSymbol
+      else if (isOpaqueAlias) {
+        def reference(tp: Type): TermRef = tp match {
+          case TypeRef(prefix: TermRef, _) => prefix
+          case tp: HKTypeLambda => reference(tp.resType)
+          case tp: AppliedType => reference(tp.tycon)
         }
+        val TypeAlias(alias) = info
+        reference(alias).termSymbol
+      }
       else registeredCompanion.sourceModule
 
     private def companionType(implicit ctx: Context): Symbol =
