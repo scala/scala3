@@ -130,9 +130,11 @@ class Compiler {
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 
-  var runId: Int = 1
-  def nextRunId: Int = {
-    runId += 1; runId
+  private[this] var runId: Int = Periods.InitialRunId
+  def nextRunId(): Int = {
+    val next = runId
+    runId += 1
+    next
   }
 
   def reset()(implicit ctx: Context): Unit = {
