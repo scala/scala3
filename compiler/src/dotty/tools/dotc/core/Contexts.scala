@@ -20,6 +20,8 @@ import config.Settings._
 import config.Config
 import reporting._
 import reporting.diagnostic.Message
+import io.AbstractFile
+import scala.io.Codec
 import collection.mutable
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
@@ -223,6 +225,10 @@ object Contexts {
         }
       implicitsCache
     }
+
+    /** Sourcefile corresponding to given abstract file, memoized */
+    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) =
+      base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
 
     /** Those fields are used to cache phases created in withPhase.
       * phasedCtx is first phase with altered phase ever requested.
@@ -624,6 +630,9 @@ object Contexts {
 
     def nextId: Int = { _nextId += 1; _nextId }
 
+    /** Sources that were loaded */
+    val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
+
     // Types state
     /** A table for hash consing unique types */
     private[core] val uniques: util.HashSet[Type] = new util.HashSet[Type](Config.initialUniquesCapacity) {
@@ -696,6 +705,7 @@ object Contexts {
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
+      sources.clear()
     }
 
     // Test that access is single threaded
