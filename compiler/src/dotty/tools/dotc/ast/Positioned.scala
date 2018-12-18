@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package ast
 
 import util.Positions._
-import core.Contexts.Context
+import core.Contexts.{Context, TreeIds}
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
@@ -27,24 +27,26 @@ abstract class Positioned extends Product {
     if (pos.exists) setChildPositions(pos.toSynthetic)
   }
 
+  def cloned(implicit ids: TreeIds): Positioned
+
   /** A positioned item like this one with the position set to `pos`.
    *  if the positioned item is source-derived, a clone is returned.
    *  If the positioned item is synthetic, the position is updated
    *  destructively and the item itself is returned.
    */
-  def withPos(pos: Position): this.type = {
-    val newpd = (if (pos == curPos || curPos.isSynthetic) this else clone.asInstanceOf[Positioned])
+  def withPos(pos: Position)(implicit ids: TreeIds): this.type = {
+    val newpd = if (pos == curPos || curPos.isSynthetic) this else cloned
     newpd.setPos(pos)
     newpd.asInstanceOf[this.type]
   }
 
-  def withPos(posd: Positioned): this.type =
+  def withPos(posd: Positioned)(implicit ids: TreeIds): this.type =
     if (posd == null) this else withPos(posd.pos)
 
   /** This item with a position that's the union of the given `pos` and the
    *  current position.
    */
-  def addPos(pos: Position): this.type = withPos(pos union this.pos)
+  def addPos(pos: Position)(implicit ids: TreeIds): this.type = withPos(pos union this.pos)
 
   /** Set position of this tree only, without performing
    *  any checks of consistency with - or updates of - other positions.
