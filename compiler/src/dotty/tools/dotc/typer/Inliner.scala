@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
-import ast._
+import ast.{untpd, _}
 import Trees._
 import core._
 import Flags._
@@ -682,7 +682,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
        *  bindings for variables bound in this pattern to `bindingsBuf`.
        */
-      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
+      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree, body: untpd.Tree)(implicit ctx: Context): Option[untpd.Tree] = {
 
       	/** Create a binding of a pattern bound variable with matching part of
       	 *  scrutinee as RHS and type that corresponds to RHS.
@@ -760,46 +760,91 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case Typed(pat1, tpt) =>
             val boundVarsMap = getBoundVarsMap(pat1, tpt)
             registerAsGadtSyms(boundVarsMap)
-            scrut <:< tpt.tpe && {
+            if (scrut <:< tpt.tpe) {
               addTypeBindings(boundVarsMap)
-              reducePattern(bindingsBuf, scrut, pat1)
-            }
+              reducePattern(bindingsBuf, scrut, pat1, body)
+            } else None
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
             val boundVarsMap = getBoundVarsMap(tpt, tpt)
             registerAsGadtSyms(boundVarsMap)
-            searchImplicit(pat.symbol.asTerm, tpt) && {
-              addTypeBindings(boundVarsMap)
-              true
-            }
-          case pat @ Bind(name: TermName, body) =>
-            reducePattern(bindingsBuf, scrut, body) && {
+            if (searchImplicit(pat.symbol.asTerm, tpt)) {
+              val from = mutable.ListBuffer.empty[Symbol]
+              val to = mutable.ListBuffer.empty[Symbol]
+              boundVarsMap.foreachBinding { case (sym, fromBelow) =>
+                val copied = sym.copy(
+                  name = sym.name
+                  info = TypeAlias(ctx.gadt.approximation(sym, fromBelow = fromBelow))
+                ).asType
+                from += sym
+                to += copied
+                bindingsBuf += TypeDef(copied)
+              }
+
+              val fromL = from.toList
+              val toL = to.toList
+              println(
+                s"""premap:
+                   |${fromL.map(s => i"$s -> ${s.name}")}
+                   |${toL.map(s => i"$s -> ${s.name}")}
+                 """.stripMargin.trim)
+
+              // addTypeBindings(boundVarsMap)
+              val treeMap = new untpd.TreeMap() {
+                override def transform(tree: untpd.Tree)(implicit ctx: Context): untpd.Tree = {
+                  println(i"transforming: $tree {${tree.getClass}}")
+                  tree.show
+                  tree match {
+                    case ttree @ TypeTree() if tree.hasType =>
+                      println(ttree.getClass.toString)
+                      ttree.withType(ttree.typeOpt.substSym(fromL, toL))
+                    // println(i"$ttree : ${ttree.typeOpt}")
+                    // untpd.TypeTree(ttree.typeOpt)
+                    // ttree.withType(ttree.typeOpt.substSym(from.toList, to.toList))
+                    case ident @ Ident(n) =>
+                      ident.withType(ident.typeOpt.substSym(fromL, toL)).ensuring(_.hasType)
+                      // tpd.ref(tp.asInstanceOf[TypeRef]).withPos(ident.pos)
+                      // fromL.iterator `zip` toL.iterator `find` (_._1.name == n) match {
+                      //   case None => ident
+                      //   case Some((_, t)) =>
+                      //     untpd.cpy.Ident(ident)(t.name)
+                      //  }
+                    case _ => super.transform(tree)
+                  }
+                }
+              }
+              Some(treeMap.transform(body))
+            } else None
+          case pat @ Bind(name: TermName, bindBody) =>
+            reducePattern(bindingsBuf, scrut, bindBody, body).map { b =>
               if (name != nme.WILDCARD) newBinding(pat.symbol.asTerm, ref(scrut))
-              true
+              b
             }
-          case Ident(nme.WILDCARD) =>
-            true
+          case Ident(nme.WILDCARD) => Some(body)
           case pat: Literal =>
-            scrut.widenTermRefExpr =:= pat.tpe
+            if (scrut.widenTermRefExpr =:= pat.tpe) Some(body) else None
           case pat: RefTree =>
-            scrut =:= pat.tpe ||
+            val cond = scrut =:= pat.tpe ||
             scrut.widen.classSymbol.is(Module) && scrut.widen =:= pat.tpe.widen && {
               scrut.prefix match {
                 case _: SingletonType | NoPrefix => true
                 case _ => false
               }
             }
+            if (cond) Some(body) else None
           case UnApply(unapp, _, pats) =>
             unapp.tpe.widen match {
               case mt: MethodType if mt.paramInfos.length == 1 =>
 
-                def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
-                  case (Nil, Nil) => true
+                def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Option[untpd.Tree] = (pats, selectors) match {
+                  case (Nil, Nil) => Some(body)
                   case (pat :: pats1, selector :: selectors1) =>
                     val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenTermRefExpr).asTerm
                     newBinding(elem, selector)
-                    reducePattern(bindingsBuf, elem.termRef, pat) &&
-                    reduceSubPatterns(pats1, selectors1)
-                  case _ => false
+                    reducePattern(bindingsBuf, elem.termRef, pat, body).map { b =>
+                      reduceSubPatterns(pats1, selectors1)
+                      b
+                    }
+                  case _ => None
                 }
 
                 val paramType = mt.paramInfos.head
@@ -811,19 +856,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                   val selectors =
                     for (accessor <- caseAccessors)
                     yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
-                  caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
+                  if (caseAccessors.length == pats.length) reduceSubPatterns(pats, selectors) else None
                 }
                 else if (unapp.symbol.isInlineMethod) { // TODO: Adapt to typed setting
                   val app = untpd.Apply(untpd.TypedSplice(unapp), untpd.ref(scrut))
                   val app1 = typer.typedExpr(app)
                   val args = tupleArgs(app1)
-                  args.nonEmpty && reduceSubPatterns(pats, args)
+                  if (args.nonEmpty) reduceSubPatterns(pats, args) else None
                 }
-                else false
+                else None
               case _ =>
-                false
+                None
             }
-          case _ => false
+          case _ => None
         }
       }
 
@@ -844,10 +889,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         if (!isImplicit) caseBindingsBuf += scrutineeBinding
         val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
         val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
-        if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1)(gadtCtx) && guardOK)
-          Some((caseBindingsBuf.toList, cdef.body))
-        else
-          None
+        for {
+          res <- reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1, cdef.body)(gadtCtx)
+          if guardOK
+        } yield (caseBindingsBuf.toList, res)
+        // if ( && guardOK)
+        //   Some((caseBindingsBuf.toList, cdef.body))
+        // else
+        //   None
       }
 
       def recur(cases: List[untpd.CaseDef]): MatchRedux = cases match {
