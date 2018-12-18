@@ -43,11 +43,11 @@ trait PhantomGet[K, M <: Tuple, I <: Nat] // extends PhantomAny
 
 object PhantomGet {
   implicit def getHead[K, V, T <: Tuple]
-    : PhantomGet[K, HEntry[K, V] TCons T, Zero] = null
+    : PhantomGet[K, HEntry[K, V] TCons T, Zero] = new PhantomGet[K, HEntry[K, V] TCons T, Zero] {}
 
   implicit def getTail[K, H, T <: Tuple, I <: Nat]
     (implicit t: PhantomGet[K, T, I])
-    : PhantomGet[K, H TCons T, Succ[I]] = null
+    : PhantomGet[K, H TCons T, Succ[I]] = new PhantomGet[K, H TCons T, Succ[I]] {}
 }
 
 // Syntax ---------------------------------------------------------------------

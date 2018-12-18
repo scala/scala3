@@ -94,7 +94,7 @@ class Probe(name: String, q: Quantity) extends Constraint {
 class Quantity() {
   private var value: Option[Double] = None;
   private var constraints: List[Constraint] = List();
-  private var informant: Constraint = null;
+  private var informant: Constraint|Null = null;
 
   def getValue: Option[Double] = value;
 

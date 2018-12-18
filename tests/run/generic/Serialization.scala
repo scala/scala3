@@ -46,7 +46,7 @@ object Serialization {
   implicit val StringSerializable: Serializable[String] =
     new Serializable[String] {
       def write(x: String, out: DataOutputStream) = out.writeUTF(x)
-      def read(in: DataInputStream) = in.readUTF()
+      def read(in: DataInputStream) = in.readUTF().nn
     }
 
   def RecSerializable[T, U](implicit

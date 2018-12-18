@@ -190,7 +190,7 @@ class Parser(s: String) {
   def term: Term = {
     val ch = token.charAt(0);
     if ('A' <= ch && ch <= 'Z') { val a = token; token = it.next; Var(a) }
-    else if (it.isDelimiter(ch)) { syntaxError("term expected"); null }
+    else if (it.isDelimiter(ch)) { syntaxError("term expected"); ??? }
     else constructor
   }
 

@@ -1,6 +1,6 @@
 object Test {
-  def loadField(x: scala.runtime.IntRef): Unit = x.elem
-  def storeField(x: scala.runtime.IntRef): Unit = x.elem = 42
+  def loadField(x: scala.runtime.IntRef|Null): Unit = x.nn.elem
+  def storeField(x: scala.runtime.IntRef|Null): Unit = x.nn.elem = 42
 
   def check(x: => Any) = try { x; sys.error("failed to throw NPE!") } catch { case _: NullPointerException => }
 
