@@ -107,8 +107,8 @@ class TreeTypeMap(
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
         case inlined @ Inlined(call, bindings, expanded) =>
-          val (tmap1, bindings1) = transformDefs(bindings)
-          val expanded1 = tmap1.transform(expanded)
+          val (tmap1, bindings1) = transformDefs(bindings)(inlinedTreeContext)
+          val expanded1 = tmap1.transform(expanded)(inlineContext(call))
           cpy.Inlined(inlined)(call, bindings1, expanded1)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))

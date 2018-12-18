@@ -9,3 +9,5 @@ implicitMatch.scala
 typeclass-derivation1.scala
 typeclass-derivation2.scala
 
+# assertion failed: owner discrepancy for value a, expected: class <refinement>, found: class <refinement>
+i4496a.scala

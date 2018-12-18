@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{PositionPickler, TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
+import dotty.tools.dotc.typer.Inliner
 
 import scala.quoted.Types._
 import scala.quoted.Exprs._

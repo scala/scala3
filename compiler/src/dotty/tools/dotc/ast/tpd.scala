@@ -1110,6 +1110,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 
+  /** A key to be used in a context property that tracks if the current tree is inside an Inlined tree */
+  private val IsInInlinedTree = new Property.Key[Boolean]
+
   /** Record an enclosing inlined call.
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
@@ -1123,13 +1126,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         ts2
       case _ => call :: oldIC
     }
-    ctx.fresh.setProperty(InlinedCalls, newIC)
+    ctx.fresh.setProperty(InlinedCalls, newIC).setProperty(IsInInlinedTree, true)
+  }
+
+  /** Return a contexts marked as inside an Inlined tree */
+  override def inlinedTreeContext(implicit ctx: Context): Context = {
+    if (isInInlinedTree) ctx
+    else ctx.fresh.setProperty(IsInInlinedTree, true)
   }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
   def enclosingInlineds(implicit ctx: Context): List[Tree] =
     ctx.property(InlinedCalls).getOrElse(Nil)
+
+  /** Returns true iff this the current contexts is inside of an Inliend tree */
+  def isInInlinedTree(implicit ctx: Context): Boolean =
+    ctx.property(IsInInlinedTree).getOrElse(false)
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined

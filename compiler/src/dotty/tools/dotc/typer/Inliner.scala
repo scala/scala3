@@ -158,6 +158,22 @@ object Inliner {
    */
   def inlineCallTrace(callSym: Symbol, pos: Position)(implicit ctx: Context): Tree =
     Ident(callSym.topLevelClass.typeRef).withPos(pos)
+
+  /** Reonstruct the original (non-inlined) call.
+   *  Assumes that `inlineCallTrace` has not been used on any nested `Inlined`.
+   */
+  def outlineCallTrace(call: Tree)(implicit ctx: Context): Tree = {
+    val outline = new TreeTypeMap(
+      oldOwners = ctx.owner :: Nil, newOwners = ctx.owner :: Nil, // To clone the definitions
+      treeMap = {
+        case tree @ Inlined(call, _, _) =>
+          if (tree.tpe <:< call.tpe) call
+          else call.asInstance(tree.tpe) // add casts explicitly for inlined methods that refined their return type
+        case tree => tree
+      }
+    )
+    outline.transform(call)
+  }
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.

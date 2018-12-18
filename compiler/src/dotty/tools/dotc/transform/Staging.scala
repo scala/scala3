@@ -620,6 +620,9 @@ class Staging extends MacroTransformWithImplicits {
                   """.stripMargin, tree.rhs.pos)
                 EmptyTree
             }
+          case tree @ Inlined(call, bindings, expansion) if !call.isEmpty && inQuote =>
+            // Remove inline call (and keep trace) of quoted trees that will be pickled
+            super.transform(cpy.Inlined(tree)(Inliner.inlineCallTrace(call.symbol, call.pos), bindings, expansion))
           case _ =>
             markDef(tree)
             checkLevel(mapOverTree(enteredSyms))

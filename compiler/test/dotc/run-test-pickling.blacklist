@@ -6,3 +6,6 @@ t7374
 tuples1.scala
 tuples1a.scala
 typeclass-derivation2.scala
+
+# assertion failed: owner discrepancy for value a, expected: class <refinement>
+i4496a.scala

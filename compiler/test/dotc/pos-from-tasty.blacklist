@@ -20,3 +20,8 @@ default-super.scala
 i3050.scala
 i4006b.scala
 i4006c.scala
+
+# Inlined import generates wrong tasty or unreadable tasty.
+# It only seams to happen if the inlined methods redefined in the DottyPredef
+inline-import.scala
+t8301b.scala
