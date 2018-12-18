@@ -1,14 +1,12 @@
+// Check that calling `.nn` on a null value throws a NPE.
 object Test {
   def len(x: Array[String]|Null): Unit = x.nn.length
   def load(x: Array[String]|Null): Unit = x.nn(0)
-  def newarray(i: Int): Unit = new Array[Int](i)
 
   def check(x: => Any) = try { x; sys.error("failed to throw NPE!") } catch { case _: NullPointerException => }
-  def checkNegSize(x: => Any) = try { x; sys.error("failed to throw NegativeArraySizeException!") } catch { case _: NegativeArraySizeException => }
 
   def main(args: Array[String]): Unit = {
-    check(len(null)) // bug: did not NPE
+    check(len(null)) 
     check(load(null))
-    checkNegSize(newarray(-1))
   }
 }
