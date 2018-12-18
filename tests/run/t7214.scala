@@ -35,7 +35,7 @@ class Crash {
   type CdotT = c.T
   type C2dotT = c2.T
 
-  val outerField = t.getClass.getDeclaredFields.find(_.getName contains ("outer")).get
+  val outerField = t.getClass.getDeclaredFields.find(_.nn.getName contains ("outer")).get.nn
   outerField.setAccessible(true)
 
   (t: Any) match {

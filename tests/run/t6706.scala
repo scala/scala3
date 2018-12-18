@@ -1,6 +1,6 @@
 object Test {
-  var name = "foo" + 1
-  var s1 = Symbol(name)
+  var name: String|Null = "foo" + 1
+  var s1: Symbol|Null = Symbol(name.nn)
   s1 = null
   System.gc
   val s2 = Symbol("foo1")
