@@ -9,6 +9,6 @@ class Sub extends Foo {
 object Test {
   def main(args: Array[String]): Unit = {
     val ms = classOf[Sub].getDeclaredMethods
-    assert(ms forall (x => !x.isBridge), ms mkString " ")
+    assert(ms forall (x => !x.nn.isBridge), ms mkString " ")
   }
 }
