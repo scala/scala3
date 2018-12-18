@@ -42,7 +42,7 @@ object XmlQuote {
     val parts: List[String] = stripTyped(receiver.unseal.underlying) match {
       case Apply(conv, List(ctx1)) if isSCOpsConversion(conv) =>
         ctx1 match {
-          case Apply(fun, List(Typed(Repeated(values), _))) if isStringContextApply(fun) =>
+          case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
             values.iterator.map {
               case Literal(Constant.String(value)) => value
               case _ => QuoteError("Expected statically known String")
@@ -55,7 +55,7 @@ object XmlQuote {
 
     // [a0, ...]: Any*
     val args2: Expr[List[Any]] = args.unseal.underlyingArgument match {
-      case Typed(Repeated(args0), _) => // statically known args, make list directly
+      case Typed(Repeated(args0, _), _) => // statically known args, make list directly
         args0.map(_.seal[Any]).toExprOfList
       case _ =>
         '((~args).toList)

@@ -26,8 +26,9 @@ trait CoreImpl extends scala.tasty.reflect.Core {
       type Term = tpd.Tree
       val Term: TermCoreModuleImpl
       trait TermCoreModuleImpl extends TermCoreModule {
-        type Ident = tpd.Ident
-        type Select = tpd.Select
+        type Ref = tpd.RefTree
+          type Ident = tpd.Ident
+          type Select = tpd.Select
         type Literal = tpd.Literal
         type This = tpd.This
         type New = tpd.New
@@ -56,8 +57,8 @@ trait CoreImpl extends scala.tasty.reflect.Core {
   type Pattern = tpd.Tree
     type Value = tpd.Tree
     type Bind = tpd.Bind
-    type Unapply = tpd.Tree
-    type Alternative = tpd.Alternative
+    type Unapply = tpd.UnApply
+    type Alternatives = tpd.Alternative
     type TypeTest = tpd.Typed
 
   type TypeOrBoundsTree = tpd.Tree
@@ -67,7 +68,7 @@ trait CoreImpl extends scala.tasty.reflect.Core {
       type Inferred = tpd.TypeTree
       type Ident = tpd.Ident
       type Select = tpd.Select
-      type Project = tpd.Select
+      type Projection = tpd.Select
       type Singleton = tpd.SingletonTypeTree
       type Refined = tpd.RefinedTypeTree
       type Applied = tpd.AppliedTypeTree
@@ -77,8 +78,8 @@ trait CoreImpl extends scala.tasty.reflect.Core {
       type MatchType = tpd.MatchTypeTree
       type ByName = tpd.ByNameTypeTree
       type LambdaTypeTree = tpd.LambdaTypeTree
-      type Bind = tpd.Bind
-      type Block = tpd.Block
+      type TypeBind = tpd.Bind
+      type TypeBlock = tpd.Block
     }
     type TypeBoundsTree = tpd.TypeBoundsTree
     type WildcardType = tpd.TypeTree
