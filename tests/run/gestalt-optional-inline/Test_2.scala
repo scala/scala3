@@ -16,18 +16,18 @@ object Test {
   }
 
   def getOrElseTest(): Unit = {
-    val opt = new Optional[String]("hello")
+    val opt = new Optional[String|Null]("hello")
     assert(opt.getOrElse("world") == "hello")
 
-    val opt2 = new Optional[String](null)
+    val opt2 = new Optional[String|Null](null)
     assert(opt2.getOrElse("hello") == "hello")
   }
 
   def mapTest(): Unit = {
-    val opt = new Optional[String]("hello")
+    val opt = new Optional[String|Null]("hello")
     assert(opt.map(_ + " world") == new Optional("hello world"))
 
-    val opt2 = new Optional[String](null)
+    val opt2 = new Optional[String|Null](null)
     assert(opt2.map(_ + " world") == new Optional(null))
   }
 
@@ -64,7 +64,7 @@ object Test {
   }
 
   def `owner chain corruptionTest`(): Unit = {
-    def foo(x: => Optional[C]) = x
+    def foo(x: => Optional[C|Null]) = x
     foo({ val y = new Optional(null); y }).getOrElse(new C)
   }
 
@@ -74,7 +74,7 @@ object Test {
   }
 
   def `the final thingTest`(): Unit = {
-    def foo(f: => C): C = f
+    def foo(f: => C|Null): C|Null = f
     val x1 = new Optional(new C)
     val x2 = x1.map(x => foo({ val y = x; y }))
   }
