@@ -42,8 +42,18 @@ object Contexts {
     def nextTreeId: Int
   }
 
+  private final val TreeIdChunkSize = 1024
+
+  /** Id generator for compiler-global trees that are not created in a context.
+   *  We reserve the first chunk of ids for these
+   */
   object GlobalTreeIds extends TreeIds {
-    def nextTreeId = 0
+    @sharable private var _nextTreeId: Int = 0
+    def nextTreeId: Int = synchronized {
+      _nextTreeId += 1
+      assert(_nextTreeId < TreeIdChunkSize)
+      _nextTreeId
+    }
   }
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
@@ -235,6 +245,19 @@ object Contexts {
         }
       implicitsCache
     }
+
+    def nextTreeId: Int = {
+      var id = base.nextTreeIdBySource.getOrElseUpdate(source, 0)
+      if (id % TreeIdChunkSize == 0) {
+        id = base.sourceOfChunk.length * TreeIdChunkSize
+        base.sourceOfChunk += source
+      }
+      base.nextTreeIdBySource(source) = id + 1
+      id
+    }
+
+    def sourceOfTreeId(id: Int): SourceFile =
+      base.sourceOfChunk(id / TreeIdChunkSize)
 
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) =
@@ -466,7 +489,6 @@ object Contexts {
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
     def nextSymId: Int                     = base.nextSymId
-    def nextTreeId: Int                    = base.nextTreeId
 
     def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
   }
@@ -578,7 +600,6 @@ object Contexts {
 
   @sharable object NoContext extends Context {
     val base: ContextBase = null
-    override def nextTreeId = 0
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
 
@@ -641,8 +662,8 @@ object Contexts {
     private[core] var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
-    private[dotc] var _nextTreeId: Int = 0
-    def nextTreeId: Int = { _nextTreeId += 1; _nextTreeId }
+    private[core] var nextTreeIdBySource = new mutable.HashMap[SourceFile, Int]
+    private[core] var sourceOfChunk = mutable.ArrayBuffer[SourceFile](NoSource)
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
@@ -720,6 +741,8 @@ object Contexts {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
       sources.clear()
+      nextTreeIdBySource.clear()
+      sourceOfChunk.clear()
     }
 
     // Test that access is single threaded
