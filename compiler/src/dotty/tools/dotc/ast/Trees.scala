@@ -30,8 +30,6 @@ object Trees {
   /** Property key for trees with documentation strings attached */
   val DocComment: Property.StickyKey[Comments.Comment] = new Property.StickyKey
 
-  @sharable private[this] var nextId = 0 // for debugging
-
   type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
   type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
 
@@ -51,24 +49,19 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[-T >: Untyped] extends Positioned
-                                        with Product
-                                        with Attachment.Container
-                                        with printing.Showable
-                                        with Cloneable {
+  abstract class Tree[-T >: Untyped](implicit ids: TreeIds)
+  extends Positioned
+     with Product
+     with Attachment.Container
+     with printing.Showable
+     with Cloneable {
 
     if (Stats.enabled) ntrees += 1
-
-    private def nxId = {
-      nextId += 1
-      //assert(nextId != 199, this)
-      nextId
-    }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
      *  tracking presentation compiler interactions.
      */
-    @sharable private var myUniqueId: Int = nxId
+    @sharable private var myUniqueId: Int = ids.nextTreeId
 
     def uniqueId: Int = myUniqueId
 
@@ -238,9 +231,9 @@ object Trees {
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
 
-    override def clone: Tree[T] = {
-      val tree = super.clone.asInstanceOf[Tree[T]]
-      tree.myUniqueId = nxId
+    override def cloned(implicit ids: TreeIds): Tree[T] = {
+      val tree = clone.asInstanceOf[Tree[T]]
+      tree.myUniqueId = ids.nextTreeId
       tree
     }
   }
@@ -276,7 +269,7 @@ object Trees {
   }
 
   /** Tree's denotation can be derived from its type */
-  abstract class DenotingTree[-T >: Untyped] extends Tree[T] {
+  abstract class DenotingTree[-T >: Untyped](implicit ids: TreeIds) extends Tree[T] {
     type ThisTree[-T >: Untyped] <: DenotingTree[T]
     override def denot(implicit ctx: Context): Denotation = typeOpt match {
       case tpe: NamedType => tpe.denot
@@ -293,7 +286,7 @@ object Trees {
   /** Tree's denot/isType/isTerm properties come from a subtree
    *  identified by `forwardTo`.
    */
-  abstract class ProxyTree[-T >: Untyped] extends Tree[T] {
+  abstract class ProxyTree[-T >: Untyped](implicit ids: TreeIds)  extends Tree[T] {
     type ThisTree[-T >: Untyped] <: ProxyTree[T]
     def forwardTo: Tree[T]
     override def denot(implicit ctx: Context): Denotation = forwardTo.denot
@@ -302,13 +295,13 @@ object Trees {
   }
 
   /** Tree has a name */
-  abstract class NameTree[-T >: Untyped] extends DenotingTree[T] {
+  abstract class NameTree[-T >: Untyped](implicit ids: TreeIds) extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: NameTree[T]
     def name: Name
   }
 
   /** Tree refers by name to a denotation */
-  abstract class RefTree[-T >: Untyped] extends NameTree[T] {
+  abstract class RefTree[-T >: Untyped](implicit ids: TreeIds) extends NameTree[T] {
     type ThisTree[-T >: Untyped] <: RefTree[T]
     def qualifier: Tree[T]
     override def isType: Boolean = name.isTypeName
@@ -327,7 +320,7 @@ object Trees {
    *  The envelope of a MemberDef contains the whole definition and has its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  abstract class MemberDef[-T >: Untyped] extends NameTree[T] with DefTree[T] {
+  abstract class MemberDef[-T >: Untyped](implicit ids: TreeIds) extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] <: MemberDef[T]
 
     private[this] var myMods: untpd.Modifiers = null
@@ -369,7 +362,7 @@ object Trees {
   }
 
   /** A ValDef or DefDef tree */
-  trait ValOrDefDef[-T >: Untyped] extends MemberDef[T] with WithLazyField[Tree[T]] {
+  abstract class ValOrDefDef[-T >: Untyped](implicit ids: TreeIds) extends MemberDef[T] with WithLazyField[Tree[T]] {
     def name: TermName
     def tpt: Tree[T]
     def unforcedRhs: LazyTree = unforced
@@ -379,7 +372,7 @@ object Trees {
   // ----------- Tree case classes ------------------------------------
 
   /** name */
-  case class Ident[-T >: Untyped] private[ast] (name: Name)
+  case class Ident[-T >: Untyped] private[ast] (name: Name)(implicit ids: TreeIds)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
@@ -388,31 +381,31 @@ object Trees {
     def isBackquoted: Boolean = false
   }
 
-  class BackquotedIdent[-T >: Untyped] private[ast] (name: Name)
+  class BackquotedIdent[-T >: Untyped]private[ast] (name: Name)(implicit ids: TreeIds)
     extends Ident[T](name) {
     override def isBackquoted: Boolean = true
 
     override def toString: String = s"BackquotedIdent($name)"
   }
 
-  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)
+  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)(implicit ids: TreeIds)
     extends Ident[T](name) {
     override def toString: String = s"SearchFailureIdent($name)"
   }
 
   /** qualifier.name, or qualifier#name, if qualifier is a type */
-  case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)
+  case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)(implicit ids: TreeIds)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Select[T]
   }
 
-  class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)
+  class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)(implicit ids: TreeIds)
     extends Select[T](qualifier, name) {
     override def toString: String = s"SelectWithSig($qualifier, $name, $sig)"
   }
 
   /** qual.this */
-  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)
+  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)(implicit ids: TreeIds)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
     // Denotation of a This tree is always the underlying class; needs correction for modules.
@@ -427,13 +420,13 @@ object Trees {
   }
 
   /** C.super[mix], where qual = C.this */
-  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: untpd.Ident)
+  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: untpd.Ident)(implicit ids: TreeIds)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Super[T]
     def forwardTo: Tree[T] = qual
   }
 
-  abstract class GenericApply[-T >: Untyped] extends ProxyTree[T] with TermTree[T] {
+  abstract class GenericApply[-T >: Untyped](implicit ids: TreeIds) extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] <: GenericApply[T]
     val fun: Tree[T]
     val args: List[Tree[T]]
@@ -441,50 +434,50 @@ object Trees {
   }
 
   /** fun(args) */
-  case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])
+  case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit ids: TreeIds)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
   }
 
   /** fun[args] */
-  case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])
+  case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit ids: TreeIds)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = TypeApply[T]
   }
 
   /** const */
-  case class Literal[-T >: Untyped] private[ast] (const: Constant)
-    extends TermTree[T] {
+  case class Literal[-T >: Untyped] private[ast] (const: Constant)(implicit ids: TreeIds)
+    extends Tree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Literal[T]
   }
 
   /** new tpt, but no constructor call */
-  case class New[-T >: Untyped] private[ast] (tpt: Tree[T])
-    extends TermTree[T] {
+  case class New[-T >: Untyped] private[ast] (tpt: Tree[T])(implicit ids: TreeIds)
+    extends Tree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = New[T]
   }
 
   /** expr : tpt */
-  case class Typed[-T >: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])
+  case class Typed[-T >: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit ids: TreeIds)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Typed[T]
     def forwardTo: Tree[T] = expr
   }
 
   /** name = arg, in a parameter list */
-  case class NamedArg[-T >: Untyped] private[ast] (name: Name, arg: Tree[T])
+  case class NamedArg[-T >: Untyped] private[ast] (name: Name, arg: Tree[T])(implicit ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = NamedArg[T]
   }
 
   /** name = arg, outside a parameter list */
-  case class Assign[-T >: Untyped] private[ast] (lhs: Tree[T], rhs: Tree[T])
+  case class Assign[-T >: Untyped] private[ast] (lhs: Tree[T], rhs: Tree[T])(implicit ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Assign[T]
   }
 
   /** { stats; expr } */
-  case class Block[-T >: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])
+  case class Block[-T >: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])(implicit ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Block[T]
     override def isType: Boolean = expr.isType
@@ -492,12 +485,12 @@ object Trees {
   }
 
   /** if cond then thenp else elsep */
-  case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
+  case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = If[T]
     def isInline = false
   }
-  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
+  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit ids: TreeIds)
     extends If(cond, thenp, elsep) {
     override def isInline = true
     override def toString = s"InlineIf($cond, $thenp, $elsep)"
@@ -512,32 +505,32 @@ object Trees {
    *                of the closure is a function type, otherwise it is the type
    *                given in `tpt`, which must be a SAM type.
    */
-  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])
+  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Closure[T]
   }
 
   /** selector match { cases } */
-  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
+  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit ids: TreeIds)
     extends TermTree[T] {
     assert(cases.nonEmpty)
     type ThisTree[-T >: Untyped] = Match[T]
     def isInline = false
   }
-  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
+  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit ids: TreeIds)
     extends Match(selector, cases) {
     override def isInline = true
     override def toString = s"InlineMatch($selector, $cases)"
   }
 
   /** case pat if guard => body; only appears as child of a Match */
-  case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])
+  case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = CaseDef[T]
   }
 
   /** label[tpt]: { expr } */
-  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])
+  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])(implicit ids: TreeIds)
     extends NameTree[T] {
     type ThisTree[-T >: Untyped] = Labeled[T]
     def name: Name = bind.name
@@ -548,13 +541,13 @@ object Trees {
    *  After program transformations this is not necessarily the enclosing method, because
    *  closures can intervene.
    */
-  case class Return[-T >: Untyped] private[ast] (expr: Tree[T], from: Tree[T] = genericEmptyTree)
+  case class Return[-T >: Untyped] private[ast] (expr: Tree[T], from: Tree[T] = genericEmptyTree)(implicit ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Return[T]
   }
 
   /** while (cond) { body } */
-  case class WhileDo[-T >: Untyped] private[ast] (cond: Tree[T], body: Tree[T])
+  case class WhileDo[-T >: Untyped] private[ast] (cond: Tree[T], body: Tree[T])(implicit ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = WhileDo[T]
   }
@@ -578,7 +571,7 @@ object Trees {
    *
    *    Match(EmptyTree, <case x: Throwable => $anonfun(x)>)
    */
-  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: List[CaseDef[T]], finalizer: Tree[T])
+  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: List[CaseDef[T]], finalizer: Tree[T])(implicit ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Try[T]
   }
@@ -586,13 +579,13 @@ object Trees {
   /** Seq(elems)
    *  @param  tpt  The element type of the sequence.
    */
-  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])
+  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = SeqLiteral[T]
   }
 
   /** Array(elems) */
-  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])
+  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit ids: TreeIds)
     extends SeqLiteral(elems, elemtpt) {
     override def toString: String = s"JavaSeqLiteral($elems, $elemtpt)"
   }
@@ -613,14 +606,14 @@ object Trees {
    *  different context: `bindings` represent the arguments to the inlined
    *  call, whereas `expansion` represents the body of the inlined function.
    */
-  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
+  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
     override def initialPos: Position = call.pos
   }
 
   /** A type tree that represents an existing or inferred type */
-  case class TypeTree[-T >: Untyped] ()
+  case class TypeTree[-T >: Untyped]()(implicit ids: TreeIds)
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeTree[T]
     override def isEmpty: Boolean = !hasType
@@ -631,66 +624,66 @@ object Trees {
   /** A type tree that defines a new type variable. Its type is always a TypeVar.
    *  Every TypeVar is created as the type of one TypeVarBinder.
    */
-  class TypeVarBinder[-T >: Untyped] extends TypeTree[T]
+  class TypeVarBinder[-T >: Untyped](implicit ids: TreeIds) extends TypeTree[T]
 
   /** ref.type */
-  case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
+  case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])(implicit ids: TreeIds)
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
   }
 
   /** left & right */
-  case class AndTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])
+  case class AndTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = AndTypeTree[T]
   }
 
   /** left | right */
-  case class OrTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])
+  case class OrTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = OrTypeTree[T]
   }
 
   /** tpt { refinements } */
-  case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: List[Tree[T]])
+  case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: List[Tree[T]])(implicit ids: TreeIds)
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = RefinedTypeTree[T]
     def forwardTo: Tree[T] = tpt
   }
 
   /** tpt[args] */
-  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: List[Tree[T]])
+  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: List[Tree[T]])(implicit ids: TreeIds)
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = AppliedTypeTree[T]
     def forwardTo: Tree[T] = tpt
   }
 
   /** [typeparams] -> tpt */
-  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])
+  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])(implicit ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
   }
 
   /** [bound] selector match { cases } */
-  case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: List[CaseDef[T]])
+  case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: List[CaseDef[T]])(implicit ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = MatchTypeTree[T]
   }
 
   /** => T */
-  case class ByNameTypeTree[-T >: Untyped] private[ast] (result: Tree[T])
+  case class ByNameTypeTree[-T >: Untyped] private[ast] (result: Tree[T])(implicit ids: TreeIds)
   extends TypTree[T] {
     type ThisTree[-T >: Untyped] = ByNameTypeTree[T]
   }
 
   /** >: lo <: hi */
-  case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T])
+  case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T])(implicit ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeBoundsTree[T]
   }
 
   /** name @ body */
-  case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])
+  case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])(implicit ids: TreeIds)
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = Bind[T]
     override def isType: Boolean = name.isTypeName
@@ -698,7 +691,7 @@ object Trees {
   }
 
   /** tree_1 | ... | tree_n */
-  case class Alternative[-T >: Untyped] private[ast] (trees: List[Tree[T]])
+  case class Alternative[-T >: Untyped] private[ast] (trees: List[Tree[T]])(implicit ids: TreeIds)
     extends PatternTree[T] {
     type ThisTree[-T >: Untyped] = Alternative[T]
   }
@@ -717,13 +710,13 @@ object Trees {
    *    val result = fun(sel)(implicits)
    *    if (result.isDefined) "match patterns against result"
    */
-  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])
+  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])(implicit ids: TreeIds)
     extends PatternTree[T] {
     type ThisTree[-T >: Untyped] = UnApply[T]
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree)
+  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree)(implicit ids: TreeIds)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
@@ -733,7 +726,7 @@ object Trees {
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)(implicit ids: TreeIds)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
@@ -746,7 +739,7 @@ object Trees {
    *  mods type name = rhs   or
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi) & (lo ne hi)
    */
-  case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])
+  case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit ids: TreeIds)
     extends MemberDef[T] {
     type ThisTree[-T >: Untyped] = TypeDef[T]
 
@@ -755,7 +748,7 @@ object Trees {
   }
 
   /** extends parents { self => body } */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)(implicit ids: TreeIds)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
     def unforcedBody: LazyTreeList = unforced
@@ -768,20 +761,20 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])
+  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])(implicit ids: TreeIds)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
 
   /** package pid { stats } */
-  case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])
+  case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit ids: TreeIds)
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
   }
 
   /** arg @annot */
-  case class Annotated[-T >: Untyped] private[ast] (arg: Tree[T], annot: Tree[T])
+  case class Annotated[-T >: Untyped] private[ast] (arg: Tree[T], annot: Tree[T])(implicit ids: TreeIds)
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = Annotated[T]
     def forwardTo: Tree[T] = arg
@@ -798,7 +791,7 @@ object Trees {
    *  The contained trees will be integrated when transformed with
    *  a `transform(List[Tree])` call.
    */
-  case class Thicket[-T >: Untyped](trees: List[Tree[T]])
+  case class Thicket[-T >: Untyped](trees: List[Tree[T]])(implicit ids: TreeIds)
     extends Tree[T] with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
 
@@ -806,26 +799,28 @@ object Trees {
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def withPos(pos: Position): this.type = {
+    override def withPos(pos: Position)(implicit ids: TreeIds): this.type = {
       val newTrees = trees.mapConserve(_.withPos(pos))
       if (trees eq newTrees)
         this
       else
-        new Thicket[T](newTrees).asInstanceOf[this.type]
+        Thicket[T](newTrees).asInstanceOf[this.type]
     }
     override def pos: Position = (NoPosition /: trees) ((pos, t) => pos union t.pos)
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
       trees foreach (_.foreachInThicket(op))
   }
 
+  class EmptyTree[T >: Untyped] extends Thicket(Nil)(GlobalTreeIds)
+
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
+    nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T])(GlobalTreeIds) with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
     override def isEmpty: Boolean = true
     setMods(untpd.Modifiers(PrivateLocal))
   }
 
-  @sharable val theEmptyTree: Thicket[Type] = Thicket(Nil)
+  @sharable val theEmptyTree: EmptyTree[Type] = new EmptyTree[Type]
   @sharable val theEmptyValDef: EmptyValDef[Type] = new EmptyValDef[Type]
 
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
@@ -950,15 +945,15 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val ImplicitEmptyTree: Thicket = Thicket(Nil) // an empty tree marking an implicit closure
+    @sharable val ImplicitEmptyTree: Thicket = new EmptyTree // an empty tree marking an implicit closure
 
     // ----- Auxiliary creation methods ------------------
 
-    def Thicket(trees: List[Tree]): Thicket = new Thicket(trees)
+    def Thicket(trees: List[Tree])(implicit ids:TreeIds): Thicket = new Thicket(trees)
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree): Thicket = Thicket(x1 :: x2 :: Nil)
-    def Thicket(x1: Tree, x2: Tree, x3: Tree): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
-    def flatTree(xs: List[Tree]): Tree = flatten(xs) match {
+    def Thicket(x1: Tree, x2: Tree)(implicit ids:TreeIds): Thicket = Thicket(x1 :: x2 :: Nil)
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit ids:TreeIds): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
+    def flatTree(xs: List[Tree])(implicit ids:TreeIds): Tree = flatten(xs) match {
       case x :: Nil => x
       case ys => Thicket(ys)
     }
@@ -978,13 +973,13 @@ object Trees {
       protected def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
       protected def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
-      protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
+      protected def finalize(tree: Tree, copied: untpd.Tree)(implicit ids:TreeIds): copied.ThisTree[T] =
         postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
-      protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
+      protected def finalize(tree: Tree, copied: untpd.MemberDef)(implicit ids:TreeIds): copied.ThisTree[T] =
         postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
-      def Ident(tree: Tree)(name: Name): Ident = tree match {
+      def Ident(tree: Tree)(name: Name)(implicit ctx: Context): Ident = tree match {
         case tree: BackquotedIdent =>
           if (name == tree.name) tree
           else finalize(tree, new BackquotedIdent(name))
@@ -1003,11 +998,11 @@ object Trees {
         case Ident(_) => Ident(tree)(name)
         case Select(qual, _) => Select(tree)(qual, name)
       }
-      def This(tree: Tree)(qual: untpd.Ident): This = tree match {
+      def This(tree: Tree)(qual: untpd.Ident)(implicit ctx: Context): This = tree match {
         case tree: This if qual eq tree.qual => tree
         case _ => finalize(tree, untpd.This(qual))
       }
-      def Super(tree: Tree)(qual: Tree, mix: untpd.Ident): Super = tree match {
+      def Super(tree: Tree)(qual: Tree, mix: untpd.Ident)(implicit ctx: Context): Super = tree match {
         case tree: Super if (qual eq tree.qual) && (mix eq tree.mix) => tree
         case _ => finalize(tree, untpd.Super(qual, mix))
       }
@@ -1088,75 +1083,75 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion))
       }
-      def SingletonTypeTree(tree: Tree)(ref: Tree): SingletonTypeTree = tree match {
+      def SingletonTypeTree(tree: Tree)(ref: Tree)(implicit ctx: Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if ref eq tree.ref => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))
       }
-      def AndTypeTree(tree: Tree)(left: Tree, right: Tree): AndTypeTree = tree match {
+      def AndTypeTree(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree = tree match {
         case tree: AndTypeTree if (left eq tree.left) && (right eq tree.right) => tree
         case _ => finalize(tree, untpd.AndTypeTree(left, right))
       }
-      def OrTypeTree(tree: Tree)(left: Tree, right: Tree): OrTypeTree = tree match {
+      def OrTypeTree(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree = tree match {
         case tree: OrTypeTree if (left eq tree.left) && (right eq tree.right) => tree
         case _ => finalize(tree, untpd.OrTypeTree(left, right))
       }
-      def RefinedTypeTree(tree: Tree)(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = tree match {
+      def RefinedTypeTree(tree: Tree)(tpt: Tree, refinements: List[Tree])(implicit ctx: Context): RefinedTypeTree = tree match {
         case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
         case _ => finalize(tree, untpd.RefinedTypeTree(tpt, refinements))
       }
-      def AppliedTypeTree(tree: Tree)(tpt: Tree, args: List[Tree]): AppliedTypeTree = tree match {
+      def AppliedTypeTree(tree: Tree)(tpt: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree = tree match {
         case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eq tree.args) => tree
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args))
       }
-      def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree = tree match {
+      def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree = tree match {
         case tree: LambdaTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.LambdaTypeTree(tparams, body))
       }
-      def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: List[CaseDef]): MatchTypeTree = tree match {
+      def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit ctx: Context): MatchTypeTree = tree match {
         case tree: MatchTypeTree if (bound eq tree.bound) && (selector eq tree.selector) && (cases eq tree.cases) => tree
         case _ => finalize(tree, untpd.MatchTypeTree(bound, selector, cases))
       }
-      def ByNameTypeTree(tree: Tree)(result: Tree): ByNameTypeTree = tree match {
+      def ByNameTypeTree(tree: Tree)(result: Tree)(implicit ctx: Context): ByNameTypeTree = tree match {
         case tree: ByNameTypeTree if result eq tree.result => tree
         case _ => finalize(tree, untpd.ByNameTypeTree(result))
       }
-      def TypeBoundsTree(tree: Tree)(lo: Tree, hi: Tree): TypeBoundsTree = tree match {
+      def TypeBoundsTree(tree: Tree)(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree = tree match {
         case tree: TypeBoundsTree if (lo eq tree.lo) && (hi eq tree.hi) => tree
         case _ => finalize(tree, untpd.TypeBoundsTree(lo, hi))
       }
-      def Bind(tree: Tree)(name: Name, body: Tree): Bind = tree match {
+      def Bind(tree: Tree)(name: Name, body: Tree)(implicit ctx: Context): Bind = tree match {
         case tree: Bind if (name eq tree.name) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.Bind(name, body))
       }
-      def Alternative(tree: Tree)(trees: List[Tree]): Alternative = tree match {
+      def Alternative(tree: Tree)(trees: List[Tree])(implicit ctx: Context): Alternative = tree match {
         case tree: Alternative if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Alternative(trees))
       }
-      def UnApply(tree: Tree)(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = tree match {
+      def UnApply(tree: Tree)(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit ctx: Context): UnApply = tree match {
         case tree: UnApply if (fun eq tree.fun) && (implicits eq tree.implicits) && (patterns eq tree.patterns) => tree
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns))
       }
-      def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree): ValDef = tree match {
+      def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(implicit ctx: Context): ValDef = tree match {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = tree match {
+      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit ctx: Context): DefDef = tree match {
         case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs))
       }
-      def TypeDef(tree: Tree)(name: TypeName, rhs: Tree): TypeDef = tree match {
+      def TypeDef(tree: Tree)(name: TypeName, rhs: Tree)(implicit ctx: Context): TypeDef = tree match {
         case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) => tree
         case _ => finalize(tree, untpd.TypeDef(name, rhs))
       }
-      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = tree match {
+      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit ctx: Context): Template = tree match {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
         case _ => finalize(tree, untpd.Template(constr, parents, self, body))
       }
-      def Import(tree: Tree)(expr: Tree, selectors: List[untpd.Tree]): Import = tree match {
+      def Import(tree: Tree)(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
         case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
         case _ => finalize(tree, untpd.Import(expr, selectors))
       }
-      def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree]): PackageDef = tree match {
+      def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
         case _ => finalize(tree, untpd.PackageDef(pid, stats))
       }
@@ -1164,7 +1159,7 @@ object Trees {
         case tree: Annotated if (arg eq tree.arg) && (annot eq tree.annot) => tree
         case _ => finalize(tree, untpd.Annotated(arg, annot))
       }
-      def Thicket(tree: Tree)(trees: List[Tree]): Thicket = tree match {
+      def Thicket(tree: Tree)(trees: List[Tree])(implicit ctx: Context): Thicket = tree match {
         case tree: Thicket if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Thicket(trees))
       }
@@ -1179,15 +1174,15 @@ object Trees {
         CaseDef(tree: Tree)(pat, guard, body)
       def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
         Try(tree: Tree)(expr, cases, finalizer)
-      def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns): UnApply =
+      def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns)(implicit ctx: Context): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)
-      def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): ValDef =
+      def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(implicit ctx: Context): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
+      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(implicit ctx: Context): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
-      def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs): TypeDef =
+      def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(implicit ctx: Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
-      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
+      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(implicit ctx: Context): Template =
         Template(tree: Tree)(constr, parents, self, body)
     }
 

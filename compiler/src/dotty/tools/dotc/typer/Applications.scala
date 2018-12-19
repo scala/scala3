@@ -189,7 +189,6 @@ object Applications {
   }
 }
 
-
 trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   import Applications._
