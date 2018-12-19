@@ -37,6 +37,15 @@ import plugins._
 
 object Contexts {
 
+  /** A generator for tree ids */
+  trait TreeIds {
+    def nextTreeId: Int
+  }
+
+  object GlobalTreeIds extends TreeIds {
+    def nextTreeId = 0
+  }
+
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
   private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
@@ -76,6 +85,7 @@ object Contexts {
                             with Reporting
                             with NamerContextOps
                             with Plugins
+                            with TreeIds
                             with Cloneable { thiscontext =>
     implicit def ctx: Context = this
 
@@ -456,6 +466,7 @@ object Contexts {
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
     def nextSymId: Int                     = base.nextSymId
+    def nextTreeId: Int                    = base.nextTreeId
 
     def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
   }
@@ -567,6 +578,7 @@ object Contexts {
 
   @sharable object NoContext extends Context {
     val base: ContextBase = null
+    override def nextTreeId = 0
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
 
@@ -625,10 +637,12 @@ object Contexts {
   class ContextState {
     // Symbols state
 
-    /** A counter for unique ids */
+    /** Counters for unique ids */
     private[core] var _nextSymId: Int = 0
-
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
+
+    private[dotc] var _nextTreeId: Int = 0
+    def nextTreeId: Int = { _nextTreeId += 1; _nextTreeId }
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]

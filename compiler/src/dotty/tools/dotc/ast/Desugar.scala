@@ -42,15 +42,15 @@ object desugar {
 
 // ----- DerivedTypeTrees -----------------------------------
 
-  class SetterParamTree extends DerivedTypeTree {
+  class SetterParamTree(implicit ids: TreeIds) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.info.resultType)
   }
 
-  class TypeRefTree extends DerivedTypeTree {
+  class TypeRefTree(implicit ids: TreeIds) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.typeRef)
   }
 
-  class TermRefTree extends DerivedTypeTree {
+  class TermRefTree(implicit ids: TreeIds) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
@@ -58,7 +58,7 @@ object desugar {
    *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
    *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
    */
-  class DerivedFromParamTree(suffix: String) extends DerivedTypeTree {
+  class DerivedFromParamTree(suffix: String)(implicit ids: TreeIds) extends DerivedTypeTree {
 
     /** Make sure that for all enclosing module classes their companion classes
      *  are completed. Reason: We need the constructor of such companion classes to
@@ -109,7 +109,7 @@ object desugar {
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
-  def derivedTypeParam(tdef: TypeDef, suffix: String = ""): TypeDef =
+  def derivedTypeParam(tdef: TypeDef, suffix: String = "")(implicit ctx: Context): TypeDef =
     cpy.TypeDef(tdef)(
       name = tdef.name ++ suffix,
       rhs = new DerivedFromParamTree(suffix).withPos(tdef.rhs.pos).watching(tdef)
@@ -120,9 +120,9 @@ object desugar {
     TypeDef(sym.name, new DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
-  def derivedTermParam(vdef: ValDef): ValDef =
+  def derivedTermParam(vdef: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = new DerivedFromParamTree("") withPos vdef.tpt.pos watching vdef)
+      tpt = new DerivedFromParamTree("").withPos(vdef.tpt.pos).watching(vdef))
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -932,9 +932,10 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isImplicit: Boolean)(implicit ctx: Context): Block =
     Block(
-      DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic | Artifact),
+      DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+        .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isImplicit) ImplicitEmptyTree else EmptyTree))
 
   /** If `nparams` == 1, expand partial function
@@ -1024,7 +1025,7 @@ object desugar {
     mayNeedSetter
    }
 
-  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
+  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ids: TreeIds) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
       .withMods(mods)
       .withPos(original.pos.withPoint(named.pos.start))
@@ -1388,5 +1389,6 @@ object desugar {
     buf.toList
   }
 
-  private class IrrefutableGenFrom(pat: Tree, expr: Tree) extends GenFrom(pat, expr)
+  private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit ids: TreeIds)
+    extends GenFrom(pat, expr)
 }

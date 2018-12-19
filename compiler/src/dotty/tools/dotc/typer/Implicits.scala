@@ -41,13 +41,6 @@ import scala.annotation.internal.sharable
 object Implicits {
   import tpd._
 
-  /** A flag indicating that this an application of an extension method
-   *  with the given name
-   */
-  case class ExtMethodResult(app: Tree) extends tpd.Tree {
-    override def pos = app.pos
-  }
-
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
@@ -355,7 +348,7 @@ object Implicits {
   }
 
   object SearchFailure {
-    def apply(tpe: SearchFailureType): SearchFailure = {
+    def apply(tpe: SearchFailureType)(implicit ids: TreeIds): SearchFailure = {
       val id =
         if (tpe.isInstanceOf[AmbiguousImplicits]) "/* ambiguous */"
         else "/* missing */"
@@ -394,7 +387,7 @@ object Implicits {
   @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
-    SearchFailure(NoMatchingImplicits)
+    SearchFailure(NoMatchingImplicits)(GlobalTreeIds)
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {

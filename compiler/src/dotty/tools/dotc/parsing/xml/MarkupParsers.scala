@@ -11,6 +11,7 @@ import Parsers._
 import util.Positions._
 import core._
 import Constants._
+import Contexts.TreeIds
 import Utility._
 
 
@@ -46,7 +47,7 @@ object MarkupParsers {
     override def getMessage: String = "input ended while parsing XML"
   }
 
-  class MarkupParser(parser: Parser, final val preserveWS: Boolean) extends MarkupParserCommon {
+  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit ids: TreeIds) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 
