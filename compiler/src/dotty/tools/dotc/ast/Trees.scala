@@ -13,6 +13,7 @@ import util.{Stats, Attachment, Property}
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
+import annotation.transientParam
 
 object Trees {
 
@@ -49,7 +50,7 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[-T >: Untyped](implicit ids: TreeIds)
+  abstract class Tree[-T >: Untyped](implicit @transientParam ids: TreeIds)
   extends Positioned
      with Product
      with Attachment.Container
@@ -269,7 +270,7 @@ object Trees {
   }
 
   /** Tree's denotation can be derived from its type */
-  abstract class DenotingTree[-T >: Untyped](implicit ids: TreeIds) extends Tree[T] {
+  abstract class DenotingTree[-T >: Untyped](implicit @transientParam ids: TreeIds) extends Tree[T] {
     type ThisTree[-T >: Untyped] <: DenotingTree[T]
     override def denot(implicit ctx: Context): Denotation = typeOpt match {
       case tpe: NamedType => tpe.denot
@@ -286,7 +287,7 @@ object Trees {
   /** Tree's denot/isType/isTerm properties come from a subtree
    *  identified by `forwardTo`.
    */
-  abstract class ProxyTree[-T >: Untyped](implicit ids: TreeIds)  extends Tree[T] {
+  abstract class ProxyTree[-T >: Untyped](implicit @transientParam ids: TreeIds)  extends Tree[T] {
     type ThisTree[-T >: Untyped] <: ProxyTree[T]
     def forwardTo: Tree[T]
     override def denot(implicit ctx: Context): Denotation = forwardTo.denot
@@ -295,13 +296,13 @@ object Trees {
   }
 
   /** Tree has a name */
-  abstract class NameTree[-T >: Untyped](implicit ids: TreeIds) extends DenotingTree[T] {
+  abstract class NameTree[-T >: Untyped](implicit @transientParam ids: TreeIds) extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: NameTree[T]
     def name: Name
   }
 
   /** Tree refers by name to a denotation */
-  abstract class RefTree[-T >: Untyped](implicit ids: TreeIds) extends NameTree[T] {
+  abstract class RefTree[-T >: Untyped](implicit @transientParam ids: TreeIds) extends NameTree[T] {
     type ThisTree[-T >: Untyped] <: RefTree[T]
     def qualifier: Tree[T]
     override def isType: Boolean = name.isTypeName
@@ -320,7 +321,7 @@ object Trees {
    *  The envelope of a MemberDef contains the whole definition and has its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  abstract class MemberDef[-T >: Untyped](implicit ids: TreeIds) extends NameTree[T] with DefTree[T] {
+  abstract class MemberDef[-T >: Untyped](implicit @transientParam ids: TreeIds) extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] <: MemberDef[T]
 
     private[this] var myMods: untpd.Modifiers = null
@@ -362,7 +363,7 @@ object Trees {
   }
 
   /** A ValDef or DefDef tree */
-  abstract class ValOrDefDef[-T >: Untyped](implicit ids: TreeIds) extends MemberDef[T] with WithLazyField[Tree[T]] {
+  abstract class ValOrDefDef[-T >: Untyped](implicit @transientParam ids: TreeIds) extends MemberDef[T] with WithLazyField[Tree[T]] {
     def name: TermName
     def tpt: Tree[T]
     def unforcedRhs: LazyTree = unforced
@@ -372,7 +373,7 @@ object Trees {
   // ----------- Tree case classes ------------------------------------
 
   /** name */
-  case class Ident[-T >: Untyped] private[ast] (name: Name)(implicit ids: TreeIds)
+  case class Ident[-T >: Untyped] private[ast] (name: Name)(implicit @transientParam ids: TreeIds)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
@@ -381,31 +382,31 @@ object Trees {
     def isBackquoted: Boolean = false
   }
 
-  class BackquotedIdent[-T >: Untyped]private[ast] (name: Name)(implicit ids: TreeIds)
+  class BackquotedIdent[-T >: Untyped]private[ast] (name: Name)(implicit @transientParam ids: TreeIds)
     extends Ident[T](name) {
     override def isBackquoted: Boolean = true
 
     override def toString: String = s"BackquotedIdent($name)"
   }
 
-  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)(implicit ids: TreeIds)
+  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)(implicit @transientParam ids: TreeIds)
     extends Ident[T](name) {
     override def toString: String = s"SearchFailureIdent($name)"
   }
 
   /** qualifier.name, or qualifier#name, if qualifier is a type */
-  case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)(implicit ids: TreeIds)
+  case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)(implicit @transientParam ids: TreeIds)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Select[T]
   }
 
-  class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)(implicit ids: TreeIds)
+  class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)(implicit @transientParam ids: TreeIds)
     extends Select[T](qualifier, name) {
     override def toString: String = s"SelectWithSig($qualifier, $name, $sig)"
   }
 
   /** qual.this */
-  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)(implicit ids: TreeIds)
+  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)(implicit @transientParam ids: TreeIds)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
     // Denotation of a This tree is always the underlying class; needs correction for modules.
@@ -420,13 +421,13 @@ object Trees {
   }
 
   /** C.super[mix], where qual = C.this */
-  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: untpd.Ident)(implicit ids: TreeIds)
+  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: untpd.Ident)(implicit @transientParam ids: TreeIds)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Super[T]
     def forwardTo: Tree[T] = qual
   }
 
-  abstract class GenericApply[-T >: Untyped](implicit ids: TreeIds) extends ProxyTree[T] with TermTree[T] {
+  abstract class GenericApply[-T >: Untyped](implicit @transientParam ids: TreeIds) extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] <: GenericApply[T]
     val fun: Tree[T]
     val args: List[Tree[T]]
@@ -434,50 +435,50 @@ object Trees {
   }
 
   /** fun(args) */
-  case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit ids: TreeIds)
+  case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
   }
 
   /** fun[args] */
-  case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit ids: TreeIds)
+  case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = TypeApply[T]
   }
 
   /** const */
-  case class Literal[-T >: Untyped] private[ast] (const: Constant)(implicit ids: TreeIds)
+  case class Literal[-T >: Untyped] private[ast] (const: Constant)(implicit @transientParam ids: TreeIds)
     extends Tree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Literal[T]
   }
 
   /** new tpt, but no constructor call */
-  case class New[-T >: Untyped] private[ast] (tpt: Tree[T])(implicit ids: TreeIds)
+  case class New[-T >: Untyped] private[ast] (tpt: Tree[T])(implicit @transientParam ids: TreeIds)
     extends Tree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = New[T]
   }
 
   /** expr : tpt */
-  case class Typed[-T >: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit ids: TreeIds)
+  case class Typed[-T >: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @transientParam ids: TreeIds)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Typed[T]
     def forwardTo: Tree[T] = expr
   }
 
   /** name = arg, in a parameter list */
-  case class NamedArg[-T >: Untyped] private[ast] (name: Name, arg: Tree[T])(implicit ids: TreeIds)
+  case class NamedArg[-T >: Untyped] private[ast] (name: Name, arg: Tree[T])(implicit @transientParam ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = NamedArg[T]
   }
 
   /** name = arg, outside a parameter list */
-  case class Assign[-T >: Untyped] private[ast] (lhs: Tree[T], rhs: Tree[T])(implicit ids: TreeIds)
+  case class Assign[-T >: Untyped] private[ast] (lhs: Tree[T], rhs: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Assign[T]
   }
 
   /** { stats; expr } */
-  case class Block[-T >: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])(implicit ids: TreeIds)
+  case class Block[-T >: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])(implicit @transientParam ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Block[T]
     override def isType: Boolean = expr.isType
@@ -485,12 +486,12 @@ object Trees {
   }
 
   /** if cond then thenp else elsep */
-  case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit ids: TreeIds)
+  case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = If[T]
     def isInline = false
   }
-  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit ids: TreeIds)
+  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @transientParam ids: TreeIds)
     extends If(cond, thenp, elsep) {
     override def isInline = true
     override def toString = s"InlineIf($cond, $thenp, $elsep)"
@@ -505,32 +506,32 @@ object Trees {
    *                of the closure is a function type, otherwise it is the type
    *                given in `tpt`, which must be a SAM type.
    */
-  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit ids: TreeIds)
+  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Closure[T]
   }
 
   /** selector match { cases } */
-  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit ids: TreeIds)
+  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     assert(cases.nonEmpty)
     type ThisTree[-T >: Untyped] = Match[T]
     def isInline = false
   }
-  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit ids: TreeIds)
+  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @transientParam ids: TreeIds)
     extends Match(selector, cases) {
     override def isInline = true
     override def toString = s"InlineMatch($selector, $cases)"
   }
 
   /** case pat if guard => body; only appears as child of a Match */
-  case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit ids: TreeIds)
+  case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @transientParam ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = CaseDef[T]
   }
 
   /** label[tpt]: { expr } */
-  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])(implicit ids: TreeIds)
+  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])(implicit @transientParam ids: TreeIds)
     extends NameTree[T] {
     type ThisTree[-T >: Untyped] = Labeled[T]
     def name: Name = bind.name
@@ -541,13 +542,13 @@ object Trees {
    *  After program transformations this is not necessarily the enclosing method, because
    *  closures can intervene.
    */
-  case class Return[-T >: Untyped] private[ast] (expr: Tree[T], from: Tree[T] = genericEmptyTree)(implicit ids: TreeIds)
+  case class Return[-T >: Untyped] private[ast] (expr: Tree[T], from: Tree[T] = genericEmptyTree)(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Return[T]
   }
 
   /** while (cond) { body } */
-  case class WhileDo[-T >: Untyped] private[ast] (cond: Tree[T], body: Tree[T])(implicit ids: TreeIds)
+  case class WhileDo[-T >: Untyped] private[ast] (cond: Tree[T], body: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = WhileDo[T]
   }
@@ -571,7 +572,7 @@ object Trees {
    *
    *    Match(EmptyTree, <case x: Throwable => $anonfun(x)>)
    */
-  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: List[CaseDef[T]], finalizer: Tree[T])(implicit ids: TreeIds)
+  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: List[CaseDef[T]], finalizer: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Try[T]
   }
@@ -579,13 +580,13 @@ object Trees {
   /** Seq(elems)
    *  @param  tpt  The element type of the sequence.
    */
-  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit ids: TreeIds)
+  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit @transientParam ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = SeqLiteral[T]
   }
 
   /** Array(elems) */
-  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit ids: TreeIds)
+  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit @transientParam ids: TreeIds)
     extends SeqLiteral(elems, elemtpt) {
     override def toString: String = s"JavaSeqLiteral($elems, $elemtpt)"
   }
@@ -606,14 +607,14 @@ object Trees {
    *  different context: `bindings` represent the arguments to the inlined
    *  call, whereas `expansion` represents the body of the inlined function.
    */
-  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit ids: TreeIds)
+  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @transientParam ids: TreeIds)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
     override def initialPos: Position = call.pos
   }
 
   /** A type tree that represents an existing or inferred type */
-  case class TypeTree[-T >: Untyped]()(implicit ids: TreeIds)
+  case class TypeTree[-T >: Untyped]()(implicit @transientParam ids: TreeIds)
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeTree[T]
     override def isEmpty: Boolean = !hasType
@@ -624,66 +625,66 @@ object Trees {
   /** A type tree that defines a new type variable. Its type is always a TypeVar.
    *  Every TypeVar is created as the type of one TypeVarBinder.
    */
-  class TypeVarBinder[-T >: Untyped](implicit ids: TreeIds) extends TypeTree[T]
+  class TypeVarBinder[-T >: Untyped](implicit @transientParam ids: TreeIds) extends TypeTree[T]
 
   /** ref.type */
-  case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])(implicit ids: TreeIds)
+  case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])(implicit @transientParam ids: TreeIds)
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
   }
 
   /** left & right */
-  case class AndTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit ids: TreeIds)
+  case class AndTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = AndTypeTree[T]
   }
 
   /** left | right */
-  case class OrTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit ids: TreeIds)
+  case class OrTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = OrTypeTree[T]
   }
 
   /** tpt { refinements } */
-  case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: List[Tree[T]])(implicit ids: TreeIds)
+  case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = RefinedTypeTree[T]
     def forwardTo: Tree[T] = tpt
   }
 
   /** tpt[args] */
-  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: List[Tree[T]])(implicit ids: TreeIds)
+  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = AppliedTypeTree[T]
     def forwardTo: Tree[T] = tpt
   }
 
   /** [typeparams] -> tpt */
-  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])(implicit ids: TreeIds)
+  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
   }
 
   /** [bound] selector match { cases } */
-  case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: List[CaseDef[T]])(implicit ids: TreeIds)
+  case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: List[CaseDef[T]])(implicit @transientParam ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = MatchTypeTree[T]
   }
 
   /** => T */
-  case class ByNameTypeTree[-T >: Untyped] private[ast] (result: Tree[T])(implicit ids: TreeIds)
+  case class ByNameTypeTree[-T >: Untyped] private[ast] (result: Tree[T])(implicit @transientParam ids: TreeIds)
   extends TypTree[T] {
     type ThisTree[-T >: Untyped] = ByNameTypeTree[T]
   }
 
   /** >: lo <: hi */
-  case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T])(implicit ids: TreeIds)
+  case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T])(implicit @transientParam ids: TreeIds)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeBoundsTree[T]
   }
 
   /** name @ body */
-  case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])(implicit ids: TreeIds)
+  case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])(implicit @transientParam ids: TreeIds)
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = Bind[T]
     override def isType: Boolean = name.isTypeName
@@ -691,7 +692,7 @@ object Trees {
   }
 
   /** tree_1 | ... | tree_n */
-  case class Alternative[-T >: Untyped] private[ast] (trees: List[Tree[T]])(implicit ids: TreeIds)
+  case class Alternative[-T >: Untyped] private[ast] (trees: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends PatternTree[T] {
     type ThisTree[-T >: Untyped] = Alternative[T]
   }
@@ -710,13 +711,13 @@ object Trees {
    *    val result = fun(sel)(implicits)
    *    if (result.isDefined) "match patterns against result"
    */
-  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])(implicit ids: TreeIds)
+  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends PatternTree[T] {
     type ThisTree[-T >: Untyped] = UnApply[T]
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree)(implicit ids: TreeIds)
+  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree)(implicit @transientParam ids: TreeIds)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
@@ -726,7 +727,7 @@ object Trees {
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)(implicit ids: TreeIds)
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)(implicit @transientParam ids: TreeIds)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
@@ -739,7 +740,7 @@ object Trees {
    *  mods type name = rhs   or
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi) & (lo ne hi)
    */
-  case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit ids: TreeIds)
+  case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit @transientParam ids: TreeIds)
     extends MemberDef[T] {
     type ThisTree[-T >: Untyped] = TypeDef[T]
 
@@ -748,7 +749,7 @@ object Trees {
   }
 
   /** extends parents { self => body } */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)(implicit ids: TreeIds)
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)(implicit @transientParam ids: TreeIds)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
     def unforcedBody: LazyTreeList = unforced
@@ -761,20 +762,20 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])(implicit ids: TreeIds)
+  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @transientParam ids: TreeIds)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
 
   /** package pid { stats } */
-  case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit ids: TreeIds)
+  case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
   }
 
   /** arg @annot */
-  case class Annotated[-T >: Untyped] private[ast] (arg: Tree[T], annot: Tree[T])(implicit ids: TreeIds)
+  case class Annotated[-T >: Untyped] private[ast] (arg: Tree[T], annot: Tree[T])(implicit @transientParam ids: TreeIds)
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = Annotated[T]
     def forwardTo: Tree[T] = arg
@@ -791,7 +792,7 @@ object Trees {
    *  The contained trees will be integrated when transformed with
    *  a `transform(List[Tree])` call.
    */
-  case class Thicket[-T >: Untyped](trees: List[Tree[T]])(implicit ids: TreeIds)
+  case class Thicket[-T >: Untyped](trees: List[Tree[T]])(implicit @transientParam ids: TreeIds)
     extends Tree[T] with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
 
