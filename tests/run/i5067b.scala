@@ -14,7 +14,7 @@ object Test {
         case null =>
           try {
             null match {
-              case Some(_) => ()
+              case _ if false => ()
             }
           } catch {
             case e: MatchError => println("match error nested")
