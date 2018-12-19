@@ -12,6 +12,7 @@ import util.Property
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
+import annotation.transientParam
 
 import scala.annotation.internal.sharable
 
@@ -42,15 +43,15 @@ object desugar {
 
 // ----- DerivedTypeTrees -----------------------------------
 
-  class SetterParamTree(implicit ids: TreeIds) extends DerivedTypeTree {
+  class SetterParamTree(implicit @transientParam ids: TreeIds) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.info.resultType)
   }
 
-  class TypeRefTree(implicit ids: TreeIds) extends DerivedTypeTree {
+  class TypeRefTree(implicit @transientParam ids: TreeIds) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.typeRef)
   }
 
-  class TermRefTree(implicit ids: TreeIds) extends DerivedTypeTree {
+  class TermRefTree(implicit @transientParam ids: TreeIds) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
@@ -58,7 +59,7 @@ object desugar {
    *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
    *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
    */
-  class DerivedFromParamTree(suffix: String)(implicit ids: TreeIds) extends DerivedTypeTree {
+  class DerivedFromParamTree(suffix: String)(implicit @transientParam ids: TreeIds) extends DerivedTypeTree {
 
     /** Make sure that for all enclosing module classes their companion classes
      *  are completed. Reason: We need the constructor of such companion classes to
@@ -1389,6 +1390,6 @@ object desugar {
     buf.toList
   }
 
-  private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit ids: TreeIds)
+  private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit @transientParam ids: TreeIds)
     extends GenFrom(pat, expr)
 }
