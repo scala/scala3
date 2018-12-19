@@ -954,13 +954,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       override def traverse(t: Tree)(implicit ctx: Context) = {
         def updateRefCount(sym: Symbol, inc: Int) =
           for (x <- refCount.get(sym)) refCount(sym) = x + inc
+        def updateTermRefCounts(t: Tree) =
+          t.typeOpt.foreachPart {
+            case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
+            case _ =>
+          }
+
         t match {
-          case t: RefTree => updateRefCount(t.symbol, 1)
+          case t: RefTree =>
+            updateRefCount(t.symbol, 1)
+            updateTermRefCounts(t)
           case _: New | _: TypeTree =>
-            t.typeOpt.foreachPart {
-              case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
-              case _ =>
-            }
+            updateTermRefCounts(t)
           case _ =>
         }
         traverseChildren(t)
