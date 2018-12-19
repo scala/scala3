@@ -29,6 +29,7 @@ import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{NotAnExtractor, UnapplyInvalidNumberOfArguments}
 import Denotations.SingleDenotation
+import annotation.transientParam
 
 object Applications {
   import tpd._
@@ -167,7 +168,7 @@ object Applications {
 
   /** A wrapper indicating that its argument is an application of an extension method.
    */
-  class ExtMethodApply(val app: Tree) extends tpd.Tree {
+  class ExtMethodApply(app: Tree)(implicit @transientParam ids: TreeIds) extends tpd.Tree {
     override def pos = app.pos
 
     def canEqual(that: Any): Boolean = app.canEqual(that)
