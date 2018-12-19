@@ -715,6 +715,9 @@ class Definitions {
 
     def Not_value(implicit ctx: Context): TermSymbol = NotModule.requiredMethod(nme.value)
 
+  lazy val ValueOfType: TypeRef = ctx.requiredClassRef("scala.ValueOf")
+  def ValueOfClass(implicit ctx: Context): ClassSymbol = ValueOfType.symbol.asClass
+
   lazy val XMLTopScopeModuleRef: TermRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
   lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
