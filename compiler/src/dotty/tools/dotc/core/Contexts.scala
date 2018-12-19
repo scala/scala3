@@ -178,6 +178,11 @@ object Contexts {
       _typeComparer
     }
 
+    /** The current source file */
+    private[this] var _source: SourceFile = _
+    protected def source_=(source: SourceFile): Unit = _source = source
+    def source: SourceFile = _source
+
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
      */
@@ -418,12 +423,6 @@ object Contexts {
       ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
     }
 
-    /** The current source file; will be derived from current
-     *  compilation unit.
-     */
-    def source: SourceFile =
-      if (compilationUnit == null) NoSource else compilationUnit.source
-
     /** Does current phase use an erased types interpretation? */
     def erasedTypes: Boolean = phase.erasedTypes
 
@@ -452,6 +451,9 @@ object Contexts {
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
+
+    final def withSource(source: SourceFile): Context =
+      if (source ne this.source) fresh.setSource(source) else this
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
@@ -521,16 +523,21 @@ object Contexts {
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
+    def setSource(source: SourceFile): this.type = { this.source = source; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
     private def setStore(store: Store): this.type = { this.store = store; this }
     def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
 
+    def setCompilationUnit(compilationUnit: CompilationUnit): this.type = {
+      setSource(compilationUnit.source)
+      updateStore(compilationUnitLoc, compilationUnit)
+    }
+
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
-    def setCompilationUnit(compilationUnit: CompilationUnit): this.type = updateStore(compilationUnitLoc, compilationUnit)
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
@@ -592,6 +599,7 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     moreProperties = Map.empty
+    source = NoSource
     store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchRoot
@@ -659,11 +667,12 @@ object Contexts {
     // Symbols state
 
     /** Counters for unique ids */
-    private[core] var _nextSymId: Int = 0
+    private[this] var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     private[core] var nextTreeIdBySource = new mutable.HashMap[SourceFile, Int]
     private[core] var sourceOfChunk = mutable.ArrayBuffer[SourceFile](NoSource)
+      // first element reserved for GlobalTreeIds
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
