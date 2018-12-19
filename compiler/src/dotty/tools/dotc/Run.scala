@@ -99,22 +99,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private[this] var finalizeActions = mutable.ListBuffer[() => Unit]()
 
-  def getSource(fileName: String): SourceFile = {
-    val f = new PlainFile(io.Path(fileName))
-    if (f.isDirectory) {
-      ctx.error(s"expected file, received directory '$fileName'")
-      NoSource
-    }
-    else if (f.exists)
-      ctx.getSource(f)
-    else {
-      ctx.error(s"not found: $fileName")
-      NoSource
-    }
-  }
-
   def compile(fileNames: List[String]): Unit = try {
-    val sources = fileNames map getSource
+    val sources = fileNames.map(ctx.getSource)
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
@@ -206,7 +192,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
-      val unit = new CompilationUnit(getSource(file.path))
+      val unit = new CompilationUnit(ctx.getSource(file.path))
       def process()(implicit ctx: Context) = {
         unit.untpdTree =
           if (unit.isJava) new JavaParser(unit.source).parse()
