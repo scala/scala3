@@ -320,7 +320,7 @@ trait TreeOps extends Core {
       /** Create a `this[<id: Id]>` */
       def apply(cls: ClassSymbol)(implicit ctx: Context): This
 
-      def copy(original: Tree)(qual: Option[Id]): This
+      def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This
 
       /** Matches `this[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]]
@@ -444,7 +444,7 @@ trait TreeOps extends Core {
       /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
       def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
 
-      def copy(original: Tree)(qual: Term, mix: Option[Id]): Super
+      def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
 
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])]
