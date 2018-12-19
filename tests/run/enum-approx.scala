@@ -1,5 +1,5 @@
 enum Fun[-T, +U >: Null] {
-  def f: T => U = this match {
+  def f: (T => U)|Null = this match {
     case Identity(g) => g
     case ConstNull => (_ => null)
     case ConstNullClass() => (_ => null)
@@ -14,8 +14,8 @@ enum Fun[-T, +U >: Null] {
 
 object Test {
   def main(args: Array[String]) = {
-    val x: Null = Fun.ConstNull.f("abc")
-    val y: Null = Fun.ConstNullClass().f("abc")
+    val x: Null = Fun.ConstNull.f.nn("abc")
+    val y: Null = Fun.ConstNullClass().f.nn("abc")
     assert(Fun.ConstNullSimple.f == null)
   }
 }

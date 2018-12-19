@@ -33,6 +33,7 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
 import reporting.trace
 import java.lang.ref.WeakReference
+import dotty.tools.dotc.transform.SymUtils._
 
 import scala.annotation.internal.sharable
 
@@ -4368,7 +4369,7 @@ object Types {
       // See tests/pos/explicit-null-sam-types.scala
       val strippedTp = tp.stripNull
       if (isInstantiatable(strippedTp)) {
-        val absMems = strippedTp.abstractTermMembers
+        val absMems = strippedTp.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {

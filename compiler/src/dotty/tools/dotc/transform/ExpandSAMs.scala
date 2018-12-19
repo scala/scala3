@@ -10,7 +10,7 @@ import dotty.tools.dotc.reporting.diagnostic.messages.TypeMismatch
 import dotty.tools.dotc.util.Positions.Position
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
- *  These fall into five categories
+ *  These fall into six categories
  *
  *   1. Partial function closures, we need to generate isDefinedAt and applyOrElse methods for these.
  *   2. Closures implementing non-trait classes
@@ -35,20 +35,33 @@ class ExpandSAMs extends MiniPhase {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType =>
-          tree // it's a plain function
-        case tpe if defn.isImplicitFunctionType(tpe) =>
-          tree
-        case tpe @ SAMType(_) if tpe.stripNull.isRef(defn.PartialFunctionClass) =>
-          val tpe1 = checkRefinements(tpe, fn.pos)
-          toPartialFunction(tree, tpe1)
-        case tpe @ SAMType(_) if isPlatformSam(tpe.stripNull.classSymbol.asClass) =>
-          checkRefinements(tpe, fn.pos)
-          tree
-        case tpe =>
-          val tpe1 = checkRefinements(tpe, fn.pos)
-          val Seq(samDenot) = tpe1.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
-          cpy.Block(tree)(stats,
+          tree // it's a plain or implicit function
+        case SAMType(_) =>
+          // If the type is a SAM type, it's also possibly nullable. However, here we're desugaring an
+          // expression of the form `def fun() = {...}; closure(fun)`, so the desugaring should use the
+          // more precise non-nullable type for the literal.
+          // TODO(abeln): this makes handling closures typed as nullable go through the slow path that doesn't
+          // use SAM types.
+          // In other words, `val x: Int => Int = (x) => x` and `val x: (Int => Int)|Null = (x) => x` both typecheck,
+          // but the former uses the platform SAM types, vs the latter which uses an anonymous class.
+          val tpe = tpt.tpe.stripNull
+          // TODO(abeln): remove comment below after review.
+          // The lines below were commented out because implicit function types should be handled
+          // in `case NoType` above, as per the comment on the contents of `tpe` in the definition of `Closure`.
+          // if (defn.isImplicitFunctionType(tpe)) {
+          //   tree
+          if (tpe.isRef(defn.PartialFunctionClass)) {
+            val tpe1 = checkRefinements(tpe, fn.pos)
+            toPartialFunction(tree, tpe1)
+          } else if (isPlatformSam(tpe.classSymbol.asClass)) {
+            checkRefinements(tpe, fn.pos)
+            tree
+          } else {
+            val tpe1 = checkRefinements(tpe, fn.pos)
+            val Seq(samDenot) = tpe1.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
+            cpy.Block(tree)(stats,
               AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
+          }
       }
     case _ =>
       tree
