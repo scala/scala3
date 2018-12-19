@@ -20,7 +20,7 @@ import config.Settings._
 import config.Config
 import reporting._
 import reporting.diagnostic.Message
-import io.AbstractFile
+import io.{AbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
 import printing._
@@ -268,6 +268,20 @@ object Contexts {
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) =
       base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
 
+    def getSource(fileName: String): SourceFile = {
+      val f = new PlainFile(Path(fileName))
+      if (f.isDirectory) {
+        error(s"expected file, received directory '$fileName'")
+        NoSource
+      }
+      else if (f.exists)
+        getSource(f)
+      else {
+        error(s"not found: $fileName")
+        NoSource
+      }
+    }
+
     /** Those fields are used to cache phases created in withPhase.
       * phasedCtx is first phase with altered phase ever requested.
       * phasedCtxs is array that uses phaseId's as indexes,
@@ -452,8 +466,19 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
+    private[this] var sourceCtx: SimpleIdentityMap[SourceFile, Context] = SimpleIdentityMap.Empty
+
     final def withSource(source: SourceFile): Context =
-      if (source ne this.source) fresh.setSource(source) else this
+      if (source `eq` this.source) this
+      else {
+        val prev = sourceCtx(source)
+        if (prev != null) prev
+        else {
+          val newCtx = fresh.setSource(source)
+          sourceCtx = sourceCtx.updated(source, newCtx)
+          newCtx
+        }
+      }
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
