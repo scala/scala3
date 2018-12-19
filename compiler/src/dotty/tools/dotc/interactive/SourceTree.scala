@@ -61,7 +61,7 @@ object SourceTree {
         case PackageDef(_, stats) =>
           stats.flatMap(sourceTreeOfClass).headOption
         case tree: tpd.TypeDef if tree.symbol == sym =>
-          val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
+          val sourceFile = ctx.getSource(sym.sourceFile, Codec.UTF8)
           Some(SourceTree(tree, sourceFile))
         case _ =>
           None

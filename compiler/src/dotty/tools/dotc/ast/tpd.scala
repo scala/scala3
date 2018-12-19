@@ -1136,8 +1136,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = {
     val file = call.symbol.sourceFile
-    val encoding = ctx.settings.encoding.value
-    if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
+    if (file != null && file.exists) ctx.getSource(file) else NoSource
   }
 
   /** Desugar identifier into a select node. Return the tree itself if not possible */
