@@ -444,7 +444,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       def apply(cls: ClassSymbol)(implicit ctx: Context): This =
         tpd.This(cls)
 
-      def copy(original: Tree)(qual: Option[Id]): This =
+      def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =
         tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
       def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]] = x match {
@@ -555,7 +555,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol)
 
-      def copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
+      def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
 
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])] = x match {
