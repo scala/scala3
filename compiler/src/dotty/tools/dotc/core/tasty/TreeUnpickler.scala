@@ -1385,7 +1385,7 @@ object TreeUnpickler {
   }
 
   /** A marker value used to detect cyclic reference while unpickling definitions. */
-  @sharable val PoisonTree: tpd.Tree = Thicket(Nil)
+  @sharable val PoisonTree: tpd.Tree = new EmptyTree
 
   /** An enumeration indicating which subtrees should be added to an OwnerTree. */
   type MemberDefMode = Int
