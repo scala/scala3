@@ -7,14 +7,14 @@ import Types._, Contexts._, Constants._, Names._, Flags._
 import Symbols._, StdNames._, Trees._
 import util.Property
 import language.higherKinds
-
-import scala.annotation.internal.sharable
+import annotation.transientParam
+import annotation.internal.sharable
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ----- Tree cases that exist in untyped form only ------------------
 
-  abstract class OpTree(implicit ids: TreeIds) extends Tree {
+  abstract class OpTree(implicit @transientParam ids: TreeIds) extends Tree {
     def op: Ident
     override def isTerm: Boolean = op.name.isTermName
     override def isType: Boolean = op.name.isTypeName
@@ -23,7 +23,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSplice
    *  @param owner  The current owner at the time the tree was defined
    */
-  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol)(implicit ids: TreeIds) extends ProxyTree {
+  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol)(implicit @transientParam ids: TreeIds) extends ProxyTree {
     def forwardTo: tpd.Tree = splice
   }
 
@@ -33,31 +33,31 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** mods object name impl */
-  case class ModuleDef(name: TermName, impl: Template)(implicit ids: TreeIds)
+  case class ModuleDef(name: TermName, impl: Template)(implicit @transientParam ids: TreeIds)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
     def withName(name: Name)(implicit ctx: Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
-  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree)(implicit ids: TreeIds) extends Tree with TermTree
+  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree)(implicit @transientParam ids: TreeIds) extends Tree with TermTree
 
-  case class SymbolLit(str: String)(implicit ids: TreeIds) extends TermTree
+  case class SymbolLit(str: String)(implicit @transientParam ids: TreeIds) extends TermTree
 
   /** An interpolated string
    *  @param segments  a list of two element tickets consisting of string literal and argument tree,
    *                   possibly with a simple string literal as last element of the list
    */
-  case class InterpolatedString(id: TermName, segments: List[Tree])(implicit ids: TreeIds)
+  case class InterpolatedString(id: TermName, segments: List[Tree])(implicit @transientParam ids: TreeIds)
     extends TermTree
 
   /** A function type */
-  case class Function(args: List[Tree], body: Tree)(implicit ids: TreeIds) extends Tree {
+  case class Function(args: List[Tree], body: Tree)(implicit @transientParam ids: TreeIds) extends Tree {
     override def isTerm: Boolean = body.isTerm
     override def isType: Boolean = body.isType
   }
 
   /** A function type with `implicit` or `erased` modifiers */
-  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit ids: TreeIds)
+  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @transientParam ids: TreeIds)
     extends Function(args, body)
 
   /** A function created from a wildcard expression
@@ -67,32 +67,32 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  This is equivalent to Function, except that forms a special case for the overlapping
    *  positions tests.
    */
-  class WildcardFunction(placeholderParams: List[ValDef], body: Tree)(implicit ids: TreeIds)
+  class WildcardFunction(placeholderParams: List[ValDef], body: Tree)(implicit @transientParam ids: TreeIds)
     extends Function(placeholderParams, body)
 
-  case class InfixOp(left: Tree, op: Ident, right: Tree)(implicit ids: TreeIds) extends OpTree
-  case class PostfixOp(od: Tree, op: Ident)(implicit ids: TreeIds) extends OpTree
-  case class PrefixOp(op: Ident, od: Tree)(implicit ids: TreeIds) extends OpTree {
+  case class InfixOp(left: Tree, op: Ident, right: Tree)(implicit @transientParam ids: TreeIds) extends OpTree
+  case class PostfixOp(od: Tree, op: Ident)(implicit @transientParam ids: TreeIds) extends OpTree
+  case class PrefixOp(op: Ident, od: Tree)(implicit @transientParam ids: TreeIds) extends OpTree {
     override def isType: Boolean = op.isType
     override def isTerm: Boolean = op.isTerm
   }
-  case class Parens(t: Tree)(implicit ids: TreeIds) extends ProxyTree {
+  case class Parens(t: Tree)(implicit @transientParam ids: TreeIds) extends ProxyTree {
     def forwardTo: Tree = t
   }
-  case class Tuple(trees: List[Tree])(implicit ids: TreeIds) extends Tree {
+  case class Tuple(trees: List[Tree])(implicit @transientParam ids: TreeIds) extends Tree {
     override def isTerm: Boolean = trees.isEmpty || trees.head.isTerm
     override def isType: Boolean = !isTerm
   }
-  case class Throw(expr: Tree)(implicit ids: TreeIds) extends TermTree
-  case class Quote(expr: Tree)(implicit ids: TreeIds) extends TermTree
-  case class DoWhile(body: Tree, cond: Tree)(implicit ids: TreeIds) extends TermTree
-  case class ForYield(enums: List[Tree], expr: Tree)(implicit ids: TreeIds) extends TermTree
-  case class ForDo(enums: List[Tree], body: Tree)(implicit ids: TreeIds) extends TermTree
-  case class GenFrom(pat: Tree, expr: Tree)(implicit ids: TreeIds) extends Tree
-  case class GenAlias(pat: Tree, expr: Tree)(implicit ids: TreeIds) extends Tree
-  case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit ids: TreeIds) extends TypTree
-  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit ids: TreeIds) extends DefTree
-  case class DependentTypeTree(tp: List[Symbol] => Type)(implicit ids: TreeIds) extends Tree
+  case class Throw(expr: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
+  case class Quote(expr: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
+  case class DoWhile(body: Tree, cond: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
+  case class ForYield(enums: List[Tree], expr: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
+  case class ForDo(enums: List[Tree], body: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
+  case class GenFrom(pat: Tree, expr: Tree)(implicit @transientParam ids: TreeIds) extends Tree
+  case class GenAlias(pat: Tree, expr: Tree)(implicit @transientParam ids: TreeIds) extends Tree
+  case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @transientParam ids: TreeIds) extends TypTree
+  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @transientParam ids: TreeIds) extends DefTree
+  case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @transientParam ids: TreeIds) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(GlobalTreeIds) with WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
@@ -100,7 +100,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   /** A block generated by the XML parser, only treated specially by
    *  `Positioned#checkPos` */
-  class XMLBlock(stats: List[Tree], expr: Tree)(implicit ids: TreeIds) extends Block(stats, expr)
+  class XMLBlock(stats: List[Tree], expr: Tree)(implicit @transientParam ids: TreeIds) extends Block(stats, expr)
 
   // ----- Modifiers -----------------------------------------------------
   /** Mod is intended to record syntactic information about modifiers, it's
@@ -219,7 +219,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A type tree that gets its type from some other tree's symbol. Enters the
    *  type tree in the References attachment of the `from` tree as a side effect.
    */
-  abstract class DerivedTypeTree(implicit ids: TreeIds) extends TypeTree {
+  abstract class DerivedTypeTree(implicit @transientParam ids: TreeIds) extends TypeTree {
 
     private[this] var myWatched: Tree = EmptyTree
 
