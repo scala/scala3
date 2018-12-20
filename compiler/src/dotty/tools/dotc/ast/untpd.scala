@@ -14,7 +14,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ----- Tree cases that exist in untyped form only ------------------
 
-  abstract class OpTree(implicit @transientParam ids: TreeIds) extends Tree {
+  abstract class OpTree(implicit @transientParam src: SourceInfo) extends Tree {
     def op: Ident
     override def isTerm: Boolean = op.name.isTermName
     override def isType: Boolean = op.name.isTypeName
@@ -23,7 +23,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSplice
    *  @param owner  The current owner at the time the tree was defined
    */
-  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol)(implicit @transientParam ids: TreeIds) extends ProxyTree {
+  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol)(implicit @transientParam src: SourceInfo) extends ProxyTree {
     def forwardTo: tpd.Tree = splice
   }
 
@@ -33,31 +33,31 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** mods object name impl */
-  case class ModuleDef(name: TermName, impl: Template)(implicit @transientParam ids: TreeIds)
+  case class ModuleDef(name: TermName, impl: Template)(implicit @transientParam src: SourceInfo)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
     def withName(name: Name)(implicit ctx: Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
-  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree)(implicit @transientParam ids: TreeIds) extends Tree with TermTree
+  case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree)(implicit @transientParam src: SourceInfo) extends Tree with TermTree
 
-  case class SymbolLit(str: String)(implicit @transientParam ids: TreeIds) extends TermTree
+  case class SymbolLit(str: String)(implicit @transientParam src: SourceInfo) extends TermTree
 
   /** An interpolated string
    *  @param segments  a list of two element tickets consisting of string literal and argument tree,
    *                   possibly with a simple string literal as last element of the list
    */
-  case class InterpolatedString(id: TermName, segments: List[Tree])(implicit @transientParam ids: TreeIds)
+  case class InterpolatedString(id: TermName, segments: List[Tree])(implicit @transientParam src: SourceInfo)
     extends TermTree
 
   /** A function type */
-  case class Function(args: List[Tree], body: Tree)(implicit @transientParam ids: TreeIds) extends Tree {
+  case class Function(args: List[Tree], body: Tree)(implicit @transientParam src: SourceInfo) extends Tree {
     override def isTerm: Boolean = body.isTerm
     override def isType: Boolean = body.isType
   }
 
   /** A function type with `implicit` or `erased` modifiers */
-  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @transientParam ids: TreeIds)
+  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @transientParam src: SourceInfo)
     extends Function(args, body)
 
   /** A function created from a wildcard expression
@@ -67,40 +67,40 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  This is equivalent to Function, except that forms a special case for the overlapping
    *  positions tests.
    */
-  class WildcardFunction(placeholderParams: List[ValDef], body: Tree)(implicit @transientParam ids: TreeIds)
+  class WildcardFunction(placeholderParams: List[ValDef], body: Tree)(implicit @transientParam src: SourceInfo)
     extends Function(placeholderParams, body)
 
-  case class InfixOp(left: Tree, op: Ident, right: Tree)(implicit @transientParam ids: TreeIds) extends OpTree
-  case class PostfixOp(od: Tree, op: Ident)(implicit @transientParam ids: TreeIds) extends OpTree
-  case class PrefixOp(op: Ident, od: Tree)(implicit @transientParam ids: TreeIds) extends OpTree {
+  case class InfixOp(left: Tree, op: Ident, right: Tree)(implicit @transientParam src: SourceInfo) extends OpTree
+  case class PostfixOp(od: Tree, op: Ident)(implicit @transientParam src: SourceInfo) extends OpTree
+  case class PrefixOp(op: Ident, od: Tree)(implicit @transientParam src: SourceInfo) extends OpTree {
     override def isType: Boolean = op.isType
     override def isTerm: Boolean = op.isTerm
   }
-  case class Parens(t: Tree)(implicit @transientParam ids: TreeIds) extends ProxyTree {
+  case class Parens(t: Tree)(implicit @transientParam src: SourceInfo) extends ProxyTree {
     def forwardTo: Tree = t
   }
-  case class Tuple(trees: List[Tree])(implicit @transientParam ids: TreeIds) extends Tree {
+  case class Tuple(trees: List[Tree])(implicit @transientParam src: SourceInfo) extends Tree {
     override def isTerm: Boolean = trees.isEmpty || trees.head.isTerm
     override def isType: Boolean = !isTerm
   }
-  case class Throw(expr: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
-  case class Quote(expr: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
-  case class DoWhile(body: Tree, cond: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
-  case class ForYield(enums: List[Tree], expr: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
-  case class ForDo(enums: List[Tree], body: Tree)(implicit @transientParam ids: TreeIds) extends TermTree
-  case class GenFrom(pat: Tree, expr: Tree)(implicit @transientParam ids: TreeIds) extends Tree
-  case class GenAlias(pat: Tree, expr: Tree)(implicit @transientParam ids: TreeIds) extends Tree
-  case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @transientParam ids: TreeIds) extends TypTree
-  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @transientParam ids: TreeIds) extends DefTree
-  case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @transientParam ids: TreeIds) extends Tree
+  case class Throw(expr: Tree)(implicit @transientParam src: SourceInfo) extends TermTree
+  case class Quote(expr: Tree)(implicit @transientParam src: SourceInfo) extends TermTree
+  case class DoWhile(body: Tree, cond: Tree)(implicit @transientParam src: SourceInfo) extends TermTree
+  case class ForYield(enums: List[Tree], expr: Tree)(implicit @transientParam src: SourceInfo) extends TermTree
+  case class ForDo(enums: List[Tree], body: Tree)(implicit @transientParam src: SourceInfo) extends TermTree
+  case class GenFrom(pat: Tree, expr: Tree)(implicit @transientParam src: SourceInfo) extends Tree
+  case class GenAlias(pat: Tree, expr: Tree)(implicit @transientParam src: SourceInfo) extends Tree
+  case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @transientParam src: SourceInfo) extends TypTree
+  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @transientParam src: SourceInfo) extends DefTree
+  case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @transientParam src: SourceInfo) extends Tree
 
-  @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(GlobalTreeIds) with WithoutTypeOrPos[Untyped] {
+  @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(NoContext) with WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
   }
 
   /** A block generated by the XML parser, only treated specially by
    *  `Positioned#checkPos` */
-  class XMLBlock(stats: List[Tree], expr: Tree)(implicit @transientParam ids: TreeIds) extends Block(stats, expr)
+  class XMLBlock(stats: List[Tree], expr: Tree)(implicit @transientParam src: SourceInfo) extends Block(stats, expr)
 
   // ----- Modifiers -----------------------------------------------------
   /** Mod is intended to record syntactic information about modifiers, it's
@@ -109,7 +109,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     * For any query about semantic information, check `flags` instead.
     */
   sealed abstract class Mod(val flags: FlagSet) extends Positioned {
-    def cloned(implicit ids: TreeIds): Positioned = clone.asInstanceOf[Positioned]
+    def cloned(implicit src: SourceInfo): Positioned = clone.asInstanceOf[Positioned]
   }
 
   object Mod {
@@ -208,7 +208,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
 
-    override def cloned(implicit ids: TreeIds): Modifiers =
+    override def cloned(implicit src: SourceInfo): Modifiers =
       clone.asInstanceOf[Modifiers]
   }
 
@@ -219,7 +219,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A type tree that gets its type from some other tree's symbol. Enters the
    *  type tree in the References attachment of the `from` tree as a side effect.
    */
-  abstract class DerivedTypeTree(implicit @transientParam ids: TreeIds) extends TypeTree {
+  abstract class DerivedTypeTree(implicit @transientParam src: SourceInfo) extends TypeTree {
 
     private[this] var myWatched: Tree = EmptyTree
 
@@ -263,54 +263,54 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ------ Creation methods for untyped only -----------------
 
-  def Ident(name: Name)(implicit ids: TreeIds): Ident = new Ident(name)
-  def BackquotedIdent(name: Name)(implicit ids: TreeIds): BackquotedIdent = new BackquotedIdent(name)
-  def SearchFailureIdent(name: Name)(implicit ids: TreeIds): SearchFailureIdent = new SearchFailureIdent(name)
-  def Select(qualifier: Tree, name: Name)(implicit ids: TreeIds): Select = new Select(qualifier, name)
-  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ids: TreeIds): Select = new SelectWithSig(qualifier, name, sig)
-  def This(qual: Ident)(implicit ids: TreeIds): This = new This(qual)
-  def Super(qual: Tree, mix: Ident)(implicit ids: TreeIds): Super = new Super(qual, mix)
-  def Apply(fun: Tree, args: List[Tree])(implicit ids: TreeIds): Apply = new Apply(fun, args)
-  def TypeApply(fun: Tree, args: List[Tree])(implicit ids: TreeIds): TypeApply = new TypeApply(fun, args)
-  def Literal(const: Constant)(implicit ids: TreeIds): Literal = new Literal(const)
-  def New(tpt: Tree)(implicit ids: TreeIds): New = new New(tpt)
-  def Typed(expr: Tree, tpt: Tree)(implicit ids: TreeIds): Typed = new Typed(expr, tpt)
-  def NamedArg(name: Name, arg: Tree)(implicit ids: TreeIds): NamedArg = new NamedArg(name, arg)
-  def Assign(lhs: Tree, rhs: Tree)(implicit ids: TreeIds): Assign = new Assign(lhs, rhs)
-  def Block(stats: List[Tree], expr: Tree)(implicit ids: TreeIds): Block = new Block(stats, expr)
-  def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ids: TreeIds): If = new If(cond, thenp, elsep)
-  def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit ids: TreeIds): If = new InlineIf(cond, thenp, elsep)
-  def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit ids: TreeIds): Closure = new Closure(env, meth, tpt)
-  def Match(selector: Tree, cases: List[CaseDef])(implicit ids: TreeIds): Match = new Match(selector, cases)
-  def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit ids: TreeIds): Match = new InlineMatch(selector, cases)
-  def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ids: TreeIds): CaseDef = new CaseDef(pat, guard, body)
-  def Labeled(bind: Bind, expr: Tree)(implicit ids: TreeIds): Labeled = new Labeled(bind, expr)
-  def Return(expr: Tree, from: Tree)(implicit ids: TreeIds): Return = new Return(expr, from)
-  def WhileDo(cond: Tree, body: Tree)(implicit ids: TreeIds): WhileDo = new WhileDo(cond, body)
-  def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ids: TreeIds): Try = new Try(expr, cases, finalizer)
-  def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ids: TreeIds): SeqLiteral = new SeqLiteral(elems, elemtpt)
-  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ids: TreeIds): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
-  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit ids: TreeIds): Inlined = new Inlined(call, bindings, expansion)
-  def TypeTree()(implicit ids: TreeIds): TypeTree = new TypeTree()
-  def SingletonTypeTree(ref: Tree)(implicit ids: TreeIds): SingletonTypeTree = new SingletonTypeTree(ref)
-  def AndTypeTree(left: Tree, right: Tree)(implicit ids: TreeIds): AndTypeTree = new AndTypeTree(left, right)
-  def OrTypeTree(left: Tree, right: Tree)(implicit ids: TreeIds): OrTypeTree = new OrTypeTree(left, right)
-  def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit ids: TreeIds): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
-  def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit ids: TreeIds): AppliedTypeTree = new AppliedTypeTree(tpt, args)
-  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit ids: TreeIds): LambdaTypeTree = new LambdaTypeTree(tparams, body)
-  def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit ids: TreeIds): MatchTypeTree = new MatchTypeTree(bound, selector, cases)
-  def ByNameTypeTree(result: Tree)(implicit ids: TreeIds): ByNameTypeTree = new ByNameTypeTree(result)
-  def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ids: TreeIds): TypeBoundsTree = new TypeBoundsTree(lo, hi)
-  def Bind(name: Name, body: Tree)(implicit ids: TreeIds): Bind = new Bind(name, body)
-  def Alternative(trees: List[Tree])(implicit ids: TreeIds): Alternative = new Alternative(trees)
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit ids: TreeIds): UnApply = new UnApply(fun, implicits, patterns)
-  def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit ids: TreeIds): ValDef = new ValDef(name, tpt, rhs)
-  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit ids: TreeIds): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
-  def TypeDef(name: TypeName, rhs: Tree)(implicit ids: TreeIds): TypeDef = new TypeDef(name, rhs)
-  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit ids: TreeIds): Template = new Template(constr, parents, self, body)
-  def Import(expr: Tree, selectors: List[Tree])(implicit ids: TreeIds): Import = new Import(expr, selectors)
-  def PackageDef(pid: RefTree, stats: List[Tree])(implicit ids: TreeIds): PackageDef = new PackageDef(pid, stats)
-  def Annotated(arg: Tree, annot: Tree)(implicit ids: TreeIds): Annotated = new Annotated(arg, annot)
+  def Ident(name: Name)(implicit src: SourceInfo): Ident = new Ident(name)
+  def BackquotedIdent(name: Name)(implicit src: SourceInfo): BackquotedIdent = new BackquotedIdent(name)
+  def SearchFailureIdent(name: Name)(implicit src: SourceInfo): SearchFailureIdent = new SearchFailureIdent(name)
+  def Select(qualifier: Tree, name: Name)(implicit src: SourceInfo): Select = new Select(qualifier, name)
+  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit src: SourceInfo): Select = new SelectWithSig(qualifier, name, sig)
+  def This(qual: Ident)(implicit src: SourceInfo): This = new This(qual)
+  def Super(qual: Tree, mix: Ident)(implicit src: SourceInfo): Super = new Super(qual, mix)
+  def Apply(fun: Tree, args: List[Tree])(implicit src: SourceInfo): Apply = new Apply(fun, args)
+  def TypeApply(fun: Tree, args: List[Tree])(implicit src: SourceInfo): TypeApply = new TypeApply(fun, args)
+  def Literal(const: Constant)(implicit src: SourceInfo): Literal = new Literal(const)
+  def New(tpt: Tree)(implicit src: SourceInfo): New = new New(tpt)
+  def Typed(expr: Tree, tpt: Tree)(implicit src: SourceInfo): Typed = new Typed(expr, tpt)
+  def NamedArg(name: Name, arg: Tree)(implicit src: SourceInfo): NamedArg = new NamedArg(name, arg)
+  def Assign(lhs: Tree, rhs: Tree)(implicit src: SourceInfo): Assign = new Assign(lhs, rhs)
+  def Block(stats: List[Tree], expr: Tree)(implicit src: SourceInfo): Block = new Block(stats, expr)
+  def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceInfo): If = new If(cond, thenp, elsep)
+  def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceInfo): If = new InlineIf(cond, thenp, elsep)
+  def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit src: SourceInfo): Closure = new Closure(env, meth, tpt)
+  def Match(selector: Tree, cases: List[CaseDef])(implicit src: SourceInfo): Match = new Match(selector, cases)
+  def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceInfo): Match = new InlineMatch(selector, cases)
+  def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit src: SourceInfo): CaseDef = new CaseDef(pat, guard, body)
+  def Labeled(bind: Bind, expr: Tree)(implicit src: SourceInfo): Labeled = new Labeled(bind, expr)
+  def Return(expr: Tree, from: Tree)(implicit src: SourceInfo): Return = new Return(expr, from)
+  def WhileDo(cond: Tree, body: Tree)(implicit src: SourceInfo): WhileDo = new WhileDo(cond, body)
+  def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit src: SourceInfo): Try = new Try(expr, cases, finalizer)
+  def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceInfo): SeqLiteral = new SeqLiteral(elems, elemtpt)
+  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceInfo): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
+  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceInfo): Inlined = new Inlined(call, bindings, expansion)
+  def TypeTree()(implicit src: SourceInfo): TypeTree = new TypeTree()
+  def SingletonTypeTree(ref: Tree)(implicit src: SourceInfo): SingletonTypeTree = new SingletonTypeTree(ref)
+  def AndTypeTree(left: Tree, right: Tree)(implicit src: SourceInfo): AndTypeTree = new AndTypeTree(left, right)
+  def OrTypeTree(left: Tree, right: Tree)(implicit src: SourceInfo): OrTypeTree = new OrTypeTree(left, right)
+  def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit src: SourceInfo): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
+  def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit src: SourceInfo): AppliedTypeTree = new AppliedTypeTree(tpt, args)
+  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit src: SourceInfo): LambdaTypeTree = new LambdaTypeTree(tparams, body)
+  def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit src: SourceInfo): MatchTypeTree = new MatchTypeTree(bound, selector, cases)
+  def ByNameTypeTree(result: Tree)(implicit src: SourceInfo): ByNameTypeTree = new ByNameTypeTree(result)
+  def TypeBoundsTree(lo: Tree, hi: Tree)(implicit src: SourceInfo): TypeBoundsTree = new TypeBoundsTree(lo, hi)
+  def Bind(name: Name, body: Tree)(implicit src: SourceInfo): Bind = new Bind(name, body)
+  def Alternative(trees: List[Tree])(implicit src: SourceInfo): Alternative = new Alternative(trees)
+  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit src: SourceInfo): UnApply = new UnApply(fun, implicits, patterns)
+  def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit src: SourceInfo): ValDef = new ValDef(name, tpt, rhs)
+  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit src: SourceInfo): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
+  def TypeDef(name: TypeName, rhs: Tree)(implicit src: SourceInfo): TypeDef = new TypeDef(name, rhs)
+  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceInfo): Template = new Template(constr, parents, self, body)
+  def Import(expr: Tree, selectors: List[Tree])(implicit src: SourceInfo): Import = new Import(expr, selectors)
+  def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceInfo): PackageDef = new PackageDef(pid, stats)
+  def Annotated(arg: Tree, annot: Tree)(implicit src: SourceInfo): Annotated = new Annotated(arg, annot)
 
   // ------ Additional creation methods for untyped only -----------------
 
@@ -339,32 +339,32 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ensureApplied((prefix /: argss)(Apply(_, _)))
   }
 
-  def Block(stat: Tree, expr: Tree)(implicit ids: TreeIds): Block =
+  def Block(stat: Tree, expr: Tree)(implicit src: SourceInfo): Block =
     Block(stat :: Nil, expr)
 
-  def Apply(fn: Tree, arg: Tree)(implicit ids: TreeIds): Apply =
+  def Apply(fn: Tree, arg: Tree)(implicit src: SourceInfo): Apply =
     Apply(fn, arg :: Nil)
 
-  def ensureApplied(tpt: Tree)(implicit ids: TreeIds): Tree = tpt match {
+  def ensureApplied(tpt: Tree)(implicit src: SourceInfo): Tree = tpt match {
     case _: Apply => tpt
     case _ => Apply(tpt, Nil)
   }
 
-  def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit ids: TreeIds): AppliedTypeTree =
+  def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceInfo): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
   def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
-  def unitLiteral(implicit ids: TreeIds): Literal = Literal(Constant(()))
+  def unitLiteral(implicit src: SourceInfo): Literal = Literal(Constant(()))
 
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     TypedSplice(tpd.ref(tp))
 
-  def rootDot(name: Name)(implicit ids: TreeIds): Select = Select(Ident(nme.ROOTPKG), name)
-  def scalaDot(name: Name)(implicit ids: TreeIds): Select = Select(rootDot(nme.scala_), name)
-  def scalaUnit(implicit ids: TreeIds): Select = scalaDot(tpnme.Unit)
-  def scalaAny(implicit ids: TreeIds): Select = scalaDot(tpnme.Any)
-  def javaDotLangDot(name: Name)(implicit ids: TreeIds): Select = Select(Select(Ident(nme.java), nme.lang), name)
+  def rootDot(name: Name)(implicit src: SourceInfo): Select = Select(Ident(nme.ROOTPKG), name)
+  def scalaDot(name: Name)(implicit src: SourceInfo): Select = Select(rootDot(nme.scala_), name)
+  def scalaUnit(implicit src: SourceInfo): Select = scalaDot(tpnme.Unit)
+  def scalaAny(implicit src: SourceInfo): Select = scalaDot(tpnme.Any)
+  def javaDotLangDot(name: Name)(implicit src: SourceInfo): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)

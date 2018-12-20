@@ -348,7 +348,7 @@ object Implicits {
   }
 
   object SearchFailure {
-    def apply(tpe: SearchFailureType)(implicit ids: TreeIds): SearchFailure = {
+    def apply(tpe: SearchFailureType)(implicit src: SourceInfo): SearchFailure = {
       val id =
         if (tpe.isInstanceOf[AmbiguousImplicits]) "/* ambiguous */"
         else "/* missing */"
@@ -387,7 +387,7 @@ object Implicits {
   @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
-    SearchFailure(NoMatchingImplicits)(GlobalTreeIds)
+    SearchFailure(NoMatchingImplicits)(NoContext)
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
