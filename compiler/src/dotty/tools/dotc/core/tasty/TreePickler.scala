@@ -20,7 +20,7 @@ object TreePickler {
 
   val sectionName = "ASTs"
 
-  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @transientParam ids: TreeIds) extends tpd.Tree {
+  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @transientParam src: SourceInfo) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
