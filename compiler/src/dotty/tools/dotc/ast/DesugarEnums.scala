@@ -73,7 +73,7 @@ object DesugarEnums {
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef
 
-  private def valuesDot(name: String)(implicit ids: TreeIds) =
+  private def valuesDot(name: String)(implicit src: SourceInfo) =
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
   private def registerCall(implicit ctx: Context): List[Tree] =
     if (enumClass.typeParams.nonEmpty) Nil

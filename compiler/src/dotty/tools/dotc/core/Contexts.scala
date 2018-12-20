@@ -12,7 +12,7 @@ import Symbols._
 import Scopes._
 import Uniques._
 import ast.Trees._
-import ast.untpd
+import ast.{untpd, TreeIds}
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
@@ -37,23 +37,8 @@ import plugins._
 
 object Contexts {
 
-  /** A generator for tree ids */
-  trait TreeIds {
-    def nextTreeId: Int
-  }
-
-  private final val TreeIdChunkSize = 1024
-
-  /** Id generator for compiler-global trees that are not created in a context.
-   *  We reserve the first chunk of ids for these
-   */
-  object GlobalTreeIds extends TreeIds {
-    @sharable private var _nextTreeId: Int = 0
-    def nextTreeId: Int = synchronized {
-      _nextTreeId += 1
-      assert(_nextTreeId < TreeIdChunkSize)
-      _nextTreeId
-    }
+  trait SourceInfo {
+    def source: SourceFile
   }
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
@@ -95,7 +80,7 @@ object Contexts {
                             with Reporting
                             with NamerContextOps
                             with Plugins
-                            with TreeIds
+                            with SourceInfo
                             with Cloneable { thiscontext =>
     implicit def ctx: Context = this
 
@@ -251,18 +236,8 @@ object Contexts {
       implicitsCache
     }
 
-    def nextTreeId: Int = {
-      var id = base.nextTreeIdBySource.getOrElseUpdate(source, 0)
-      if (id % TreeIdChunkSize == 0) {
-        id = base.sourceOfChunk.length * TreeIdChunkSize
-        base.sourceOfChunk += source
-      }
-      base.nextTreeIdBySource(source) = id + 1
-      id
-    }
-
     def sourceOfTreeId(id: Int): SourceFile =
-      base.sourceOfChunk(id / TreeIdChunkSize)
+      getSource(TreeIds.fileOfId(id))
 
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) =
@@ -638,6 +613,7 @@ object Contexts {
   }
 
   @sharable object NoContext extends Context {
+    override def source = NoSource
     val base: ContextBase = null
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
@@ -697,13 +673,9 @@ object Contexts {
   class ContextState {
     // Symbols state
 
-    /** Counters for unique ids */
+    /** Counter for unique symbol ids */
     private[this] var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
-
-    private[core] var nextTreeIdBySource = new mutable.HashMap[SourceFile, Int]
-    private[core] var sourceOfChunk = mutable.ArrayBuffer[SourceFile](NoSource)
-      // first element reserved for GlobalTreeIds
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
@@ -781,8 +753,6 @@ object Contexts {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
       sources.clear()
-      nextTreeIdBySource.clear()
-      sourceOfChunk.clear()
     }
 
     // Test that access is single threaded

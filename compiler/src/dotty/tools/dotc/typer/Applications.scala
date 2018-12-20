@@ -168,7 +168,7 @@ object Applications {
 
   /** A wrapper indicating that its argument is an application of an extension method.
    */
-  class ExtMethodApply(app: Tree)(implicit @transientParam ids: TreeIds) extends tpd.Tree {
+  class ExtMethodApply(val app: Tree)(implicit @transientParam src: SourceInfo) extends tpd.Tree {
     override def pos = app.pos
 
     def canEqual(that: Any): Boolean = app.canEqual(that)
