@@ -23,7 +23,7 @@ object DottyUnpickler {
 
   class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): PositionUnpickler =
-      new PositionUnpickler(reader)
+      new PositionUnpickler(reader, nameAtRef)
   }
 
   class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler]("Comments") {

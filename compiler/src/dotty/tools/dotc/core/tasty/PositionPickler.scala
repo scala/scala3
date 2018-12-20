@@ -6,11 +6,13 @@ package tasty
 import ast._
 import ast.Trees._
 import ast.Trees.WithLazyField
+import util.SourceFile
 import core._
-import Contexts._, Symbols._, Annotations._
+import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import TastyBuffer._
 import util.Positions._
+import TastyFormat.SOURCE
 
 class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Addr]) {
   val buf: TastyBuffer = new TastyBuffer(5000)
@@ -59,14 +61,20 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case _ => false
     }
 
-    def traverse(x: Any): Unit = x match {
+    def traverse(x: Any, curSource: SourceFile): Unit = x match {
       case x: untpd.Tree =>
+        var source = curSource
         val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
         if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
           addrOfTree(x) match {
             case Some(addr) if !pickledIndices.contains(addr.index) =>
               //println(i"pickling $x with $pos at $addr")
               pickleDeltas(addr.index, pos)
+              if (x.source != curSource) {
+                buf.writeInt(SOURCE)
+                buf.writeInt(pickler.nameBuffer.nameIndex(x.source.path.toTermName).index)
+                source = curSource
+              }
             case _ =>
               //println(i"no address for $x")
           }
@@ -74,16 +82,16 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
         //else if (x.pos.exists) println(i"skipping $x")
         x match {
           case x: untpd.MemberDef @unchecked =>
-            for (ann <- x.symbol.annotations) traverse(ann.tree)
+            for (ann <- x.symbol.annotations) traverse(ann.tree, source)
           case _ =>
         }
-        traverse(x.productIterator)
+        traverse(x.productIterator, source)
       case xs: TraversableOnce[_] =>
-        xs.foreach(traverse)
+        xs.foreach(traverse(_, curSource))
       case x: Annotation =>
-        traverse(x.tree)
+        traverse(x.tree, curSource)
       case _ =>
     }
-    traverse(roots)
+    for (root <- roots) traverse(root, root.source)
   }
 }
