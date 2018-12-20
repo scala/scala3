@@ -16,9 +16,14 @@ trait QuotedOps extends Core {
   implicit def QuotedTypeDeco[T](tpe: quoted.Type[T]): QuotedTypeAPI
 
   trait TermToQuotedAPI {
-    /** Convert `Term` to an `Expr[T]` and check that it conforms to `T` */
-    def seal[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T]
+    /** Convert `Term` to an `Expr[Tpe]` with its `Type[Tpe]` for some unknown `Tpe` */
+    def seal(implicit ctx: Context): quoted.Sealed
   }
   implicit def TermToQuoteDeco(term: Term): TermToQuotedAPI
 
+  trait SealedAPI {
+    /** Return the `expr` as an `Expr[T]` and check that it conforms to a known `T` */
+    def asExprOf[T: quoted.Type](implicit ctx: Context): quoted.Expr[T]
+  }
+  implicit def SealedDeco(seal: quoted.Sealed): SealedAPI
 }

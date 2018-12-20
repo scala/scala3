@@ -16,8 +16,8 @@ object scalatest {
 
     tree.underlyingArgument match {
       case Term.Apply(Term.Select(lhs, op), rhs :: Nil) =>
-        val left = lhs.seal[Any]
-        val right = rhs.seal[Any]
+        val left = lhs.seal.asExprOf[Any]
+        val right = rhs.seal.asExprOf[Any]
         op match {
           case "==" =>
         '{

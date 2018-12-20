@@ -27,7 +27,7 @@ object XmlQuote {
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
-        val head = x.seal[Any]
+        val head = x.seal.asExprOf[Any]
         val tail = liftListOfAny(xs)
         '{ ~head :: ~tail }
       case Nil => '(Nil)

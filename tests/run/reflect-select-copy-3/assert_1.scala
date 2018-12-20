@@ -1,0 +1,44 @@
+import scala.quoted._
+import scala.tasty._
+
+object scalatest {
+
+  inline def assert(condition: => Boolean): Unit = ~assertImpl('(condition), '(""))
+
+  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
+    import refl._
+
+    // Generic let binding
+    def let[T](s: Sealed)(body: Expr[s.Tpe] => Expr[T]): Expr[T] = '{
+      val x: ~s.tpe = ~s.expr
+      ~body('(x))
+    }
+
+    cond match {
+      case BinaryApplication(lhs, rhs, f) =>
+        let (lhs) { lhsExpr =>
+        let (rhs) { rhsExpr =>
+          '{ scala.Predef.assert(~f(lhsExpr, rhsExpr)) }
+        }}
+      case _ =>
+        '{ scala.Predef.assert(~cond) }
+    }
+  }
+
+  object BinaryApplication {
+    // TODO add dependent types to function parameters (not currently possible with this API)
+    def unapply[T: Type](arg: Expr[T])(implicit refl: Reflection): Option[(Sealed, Sealed, (Expr[_], Expr[_]) => Expr[T])] = {
+      import refl._
+      arg.unseal.underlyingArgument match {
+        case Term.Apply(Term.IsSelect(sel @ Term.Select(lhs, op)), rhs :: Nil) =>
+          val left = lhs.seal
+          val right = rhs.seal
+          val application = (lhs: Expr[_], rhs: Expr[_]) => Term.Apply(Term.Select.copy(sel)(lhs.unseal, op), rhs.unseal :: Nil).seal.asExprOf[T]
+          Some((left, right, application))
+        case _ =>
+          None
+      }
+    }
+
+  }
+}

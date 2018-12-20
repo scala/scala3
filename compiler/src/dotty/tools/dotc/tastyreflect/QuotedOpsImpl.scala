@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.core.Types
+import dotty.tools.dotc.core.{Contexts, Types}
 
 trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
 
@@ -20,9 +20,20 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
 
   def TermToQuoteDeco(term: Term): TermToQuotedAPI = new TermToQuotedAPI {
 
-    def seal[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
+    def seal(implicit ctx: Contexts.Context): scala.quoted.Sealed = {
+      val expr = new scala.quoted.Exprs.TastyTreeExpr(term)
+      val typeTree = tpd.TypeTree(term.tpe).withPos(term.pos)
+      val tpe = new scala.quoted.Types.TreeType(typeTree)
+      scala.quoted.Sealed(expr)(tpe)
+    }
 
+  }
+
+  def SealedDeco(seal: quoted.Sealed): SealedAPI = new SealedAPI {
+
+    def asExprOf[T: quoted.Type](implicit ctx: Context): quoted.Expr[T] = {
       val expectedType = QuotedTypeDeco(implicitly[scala.quoted.Type[T]]).unseal.tpe
+      val term = QuotedExprDeco(seal.expr).unseal
 
       def etaExpand(term: Term): Term = term.tpe.widen match {
         case mtpe: Types.MethodType if !mtpe.isParamDependent =>
@@ -47,5 +58,7 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
         )
       }
     }
+
   }
+
 }

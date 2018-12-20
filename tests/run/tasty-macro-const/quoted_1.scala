@@ -12,7 +12,7 @@ object Macros {
       case Term.Literal(Constant.Int(n)) =>
         if (n <= 0)
           throw new QuoteError("Parameter must be natural number")
-        xTree.seal[Int]
+        xTree.seal.asExprOf[Int]
       case _ =>
         throw new QuoteError("Parameter must be a known constant")
     }
