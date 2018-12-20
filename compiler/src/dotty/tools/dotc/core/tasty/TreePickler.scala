@@ -64,7 +64,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+  def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
   private def pickleNameAndSig(name: Name, sig: Signature): Unit =
     pickleName(

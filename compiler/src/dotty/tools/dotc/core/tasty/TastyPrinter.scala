@@ -5,7 +5,7 @@ package tasty
 import Contexts._, Decorators._
 import Names.Name
 import TastyUnpickler._
-import TastyBuffer.NameRef
+import TastyBuffer.{Addr, NameRef}
 import util.Positions.offsetToInt
 import printing.Highlighting._
 
