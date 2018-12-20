@@ -650,7 +650,7 @@ object ProtoTypes {
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    def apply(tp: Type)(implicit ids: TreeIds): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
+    def apply(tp: Type)(implicit src: SourceInfo): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: untpd.Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None

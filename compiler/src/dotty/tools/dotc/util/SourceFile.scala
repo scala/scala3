@@ -148,7 +148,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   override def toString: String = file.toString
 }
 
-@sharable object NoSource extends SourceFile("<no source>", "") {
+@sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
   override def exists: Boolean = false
   override def atPos(pos: Position): SourcePosition = NoSourcePosition
 }
