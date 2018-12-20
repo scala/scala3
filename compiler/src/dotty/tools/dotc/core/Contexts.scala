@@ -270,15 +270,20 @@ object Contexts {
 
     def getSource(fileName: String): SourceFile = {
       val f = new PlainFile(Path(fileName))
-      if (f.isDirectory) {
-        error(s"expected file, received directory '$fileName'")
-        NoSource
-      }
-      else if (f.exists)
-        getSource(f)
-      else {
-        error(s"not found: $fileName")
-        NoSource
+      base.sources.get(f) match {
+        case Some(source) =>
+          source
+        case None =>
+          if (f.isDirectory) {
+            error(s"expected file, received directory '$fileName'")
+            NoSource
+          }
+          else if (f.exists)
+            getSource(f)
+          else {
+            error(s"not found: $fileName")
+            NoSource
+          }
       }
     }
 
@@ -466,10 +471,11 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
-    private[this] var sourceCtx: SimpleIdentityMap[SourceFile, Context] = SimpleIdentityMap.Empty
+    private var sourceCtx: SimpleIdentityMap[SourceFile, Context] = SimpleIdentityMap.Empty
 
     final def withSource(source: SourceFile): Context =
       if (source `eq` this.source) this
+      else if ((source `eq` outer.source) && (outer.sourceCtx(this.source) `eq` this)) outer
       else {
         val prev = sourceCtx(source)
         if (prev != null) prev
