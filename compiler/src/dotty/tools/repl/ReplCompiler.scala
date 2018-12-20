@@ -75,26 +75,36 @@ class ReplCompiler extends Compiler {
 
     implicit val ctx: Context = state.context
 
-    var valIdx = state.valIndex
+    // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
+    val flattened = trees match {
+      case List(Block(stats, expr)) =>
+        if (expr eq EmptyTree) stats // happens when expr is not an expression
+        else stats :+ expr
+      case _ =>
+        trees
+    }
 
-    val defs = trees.flatMap {
+    var valIdx = state.valIndex
+    val defs = new mutable.ListBuffer[Tree]
+
+    flattened.foreach {
       case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
         val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
         val assign = ValDef(assignName, TypeTree(), id).withPos(expr.pos)
-        List(expr, assign)
+        defs += expr += assign
       case expr if expr.isTerm =>
         val resName = (str.REPL_RES_PREFIX + valIdx).toTermName
         valIdx += 1
         val vd = ValDef(resName, TypeTree(), expr).withPos(expr.pos)
-        vd :: Nil
+        defs += vd
       case other =>
-        other :: Nil
+        defs += other
     }
 
     Definitions(
-      defs,
+      defs.toList,
       state.copy(
         objectIndex = state.objectIndex + (if (defs.isEmpty) 0 else 1),
         valIndex = valIdx
