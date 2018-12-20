@@ -218,14 +218,19 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
 
 Standard Section: "Positions" Assoc*
 
-  Assoc         = Header offset_Delta? offset_Delta?
-  Header        = addr_Delta +              // in one Nat: difference of address to last recorded node << 2 +
-                  hasStartDiff +            // one bit indicating whether there follows a start address delta << 1
-                  hasEndDiff                // one bit indicating whether there follows an end address delta
+  Assoc         = Header offset_Delta? offset_Delta? point_Delta?
+                | SOURCE nameref_Int
+  Header        = addr_Delta +              // in one Nat: difference of address to last recorded node << 3 +
+                  hasStartDiff +            // one bit indicating whether there follows a start address delta << 2
+                  hasEndDiff +              // one bit indicating whether there follows an end address delta << 1
+                  hasPoint                  // one bit indicating whether the new position has a point (i.e ^ position)
                                             // Nodes which have the same positions as their parents are omitted.
                                             // offset_Deltas give difference of start/end offset wrt to the
                                             // same offset in the previously recorded node (or 0 for the first recorded node)
   Delta         = Int                       // Difference between consecutive offsets,
+  SOURCE        = 4                         // Impossible as header
+
+All elements of a position section are serialized as Ints
 
 Standard Section: "Comments" Comment*
 
@@ -272,7 +277,11 @@ object TastyFormat {
   }
   object NameTags extends NameTags
 
-  // AST tags
+  // Position header
+
+  final val SOURCE = 4
+
+ // AST tags
   // Cat. 1:    tag
 
   final val firstSimpleTreeTag = UNITconst
