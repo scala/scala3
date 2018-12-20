@@ -19,6 +19,7 @@ import NameKinds._
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Positions._
+import util.SourceFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
 import Decorators._
@@ -1250,7 +1251,7 @@ class TreeUnpickler(reader: TastyReader,
     def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Symbol => Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
-      owner => new LazyReader(localReader, owner, ctx.mode, op)
+      owner => new LazyReader(localReader, owner, ctx.mode, ctx.source, op)
     }
 
     def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
@@ -1300,10 +1301,16 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class LazyReader[T <: AnyRef](reader: TreeReader, owner: Symbol, mode: Mode, op: TreeReader => Context => T) extends Trees.Lazy[T] {
+  class LazyReader[T <: AnyRef](
+      reader: TreeReader, owner: Symbol, mode: Mode, source: SourceFile,
+      op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withModeBits(mode))
+      op(reader)(ctx
+        .withPhaseNoLater(ctx.picklerPhase)
+        .withOwner(owner)
+        .withModeBits(mode)
+        .withSource(source))
     }
   }
 
