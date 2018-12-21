@@ -769,16 +769,45 @@ object PatternMatcher {
     }
 
     /** Emit cases of a switch */
-    private def emitSwitchCases(cases: List[(List[Tree], Plan)]): List[CaseDef] = (cases: @unchecked) match {
-      case (alts, ons) :: cases1 =>
-        val pat = alts match {
-          case alt :: Nil => alt
-          case Nil => Underscore(defn.IntType) // default case
-          case _ => Alternative(alts)
+    private def emitSwitchCases(cases: List[(List[Tree], Plan)]): List[CaseDef] = cases.foldLeft((List[CaseDef](), List[Tree]())) {
+      case ((prev, collected), (alts, ons)) =>
+        collectCases(collected, alts) match {
+          case Some((pat, col)) => (CaseDef(pat, EmptyTree, emit(ons)) :: prev, col ::: collected)
+          case None             => (prev, collected)
         }
-        CaseDef(pat, EmptyTree, emit(ons)) :: emitSwitchCases(cases1)
-      case nil =>
-        Nil
+      }._1
+
+    /** Flattens the tree of patterns into a tree and collect all the alternative patterns in a list
+     *  returns None if the pattern is redundant
+     */
+    private def collectCases(existingPatterns: List[Tree], alts: List[Tree]): Option[(Tree, List[Tree])] = {
+      alts match {
+        case Nil => Some((Underscore(defn.IntType), Nil))
+        case _ => mapCases(removeRedundantCases(existingPatterns, alts))
+      }
+    }
+
+    private def mapCases(alts: List[Tree]): Option[(Tree, List[Tree])] = alts match {
+      case alt :: Nil => Some((alt, alt :: Nil))
+      case Nil => None
+      case _ => Some((Alternative(alts), alts))
+    }
+
+    /** Remove cases that already appear in the same pattern or in previous patterns */
+    private def removeRedundantCases(previousCases: List[Tree], cases: List[Tree]): List[Tree] = cases.foldLeft(List[Tree]()) {
+      case (cases, alt) =>
+        if (cases.exists(_ === alt) || previousCases.exists(_ === alt)) {
+          cases
+        } else {
+          alt :: cases
+        }
+    }
+
+    /** Flatten a list of patterns into a single tree */
+    private def simplifyCases(alts: List[Tree]): Tree = alts match {
+      case alt :: Nil => alt
+      case Nil => Underscore(defn.IntType) // default case
+      case _ => Alternative(alts)
     }
 
     /** If selfCheck is `true`, used to check whether a tree gets generated twice */
