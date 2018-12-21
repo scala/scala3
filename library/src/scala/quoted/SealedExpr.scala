@@ -21,5 +21,5 @@ final class Sealed private (e: Expr[_], t: Type[_]) {
 }
 
 object Sealed {
-  def apply[T](expr: Expr[T])(implicit tpe: Type[T]): Sealed = new Sealed(expr, tpe)
+  def apply[T](expr: Expr[T])(implicit tpe: Type[T]): Sealed { type Tpe = T } = new Sealed(expr, tpe).asInstanceOf[Sealed { type Tpe = T }]
 }
