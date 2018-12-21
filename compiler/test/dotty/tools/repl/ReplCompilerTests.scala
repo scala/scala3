@@ -1,13 +1,12 @@
 package dotty.tools.repl
 
-import java.lang.System.{lineSeparator => EOL}
-
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
 
-  private def lines() = storedOutput().split(EOL).toList
+  private def lines() =
+    storedOutput().trim.linesIterator.toList
 
   @Test def compileSingle = fromInitialState { implicit state =>
     run("def foo: 1 = 1")
