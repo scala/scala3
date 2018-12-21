@@ -742,6 +742,8 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     private def readNewDef()(implicit ctx: Context): Tree = {
+      val sctx = sourceChangeContext
+      if (sctx `ne` ctx) return readNewDef()(sctx)
       val start = currentAddr
       val sym = symAtAddr(start)
       val tag = readByte()
@@ -867,6 +869,7 @@ class TreeUnpickler(reader: TastyReader,
 
     private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
+      assert(sourcePathAt(start).isEmpty)
       val cls = ctx.owner.asClass
       val assumedSelfType =
         if (cls.is(Module) && cls.owner.isClass) TermRef(cls.owner.thisType, cls.name.sourceModuleName)
@@ -952,6 +955,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readImport()(implicit ctx: Context): Tree = {
       val start = currentAddr
+      assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
       val expr = readTerm()
@@ -961,6 +965,7 @@ class TreeUnpickler(reader: TastyReader,
     def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {
       case IMPORTED =>
         val start = currentAddr
+        assert(sourcePathAt(start).isEmpty)
         readByte()
         val from = setPos(start, untpd.Ident(readName()))
         nextByte match {
@@ -995,6 +1000,8 @@ class TreeUnpickler(reader: TastyReader,
 // ------ Reading trees -----------------------------------------------------
 
     def readTerm()(implicit ctx: Context): Tree = {  // TODO: rename to readTree
+      val sctx = sourceChangeContext
+      if (sctx `ne` ctx) return readTerm()(sctx)
       val start = currentAddr
       val tag = readByte()
       pickling.println(s"reading term ${astTagToString(tag)} at $start")
@@ -1236,6 +1243,8 @@ class TreeUnpickler(reader: TastyReader,
       }
 
     def readCase()(implicit ctx: Context): CaseDef = {
+      val sctx = sourceChangeContext
+      if (sctx `ne` ctx) return readCase()(sctx)
       val start = currentAddr
       assert(readByte() == CASEDEF)
       val end = readEnd()
@@ -1283,6 +1292,25 @@ class TreeUnpickler(reader: TastyReader,
             NoPosition
         }
       } else NoPosition
+
+    /** Pickled source path at `addr`. */
+    def sourcePathAt(addr: Addr)(implicit ctx: Context): String =
+      if (ctx.mode.is(Mode.ReadPositions)) {
+        posUnpicklerOpt match {
+          case Some(posUnpickler) =>
+            posUnpickler.sourcePathAt(addr)
+          case _  =>
+            ""
+        }
+      } else ""
+
+    /** If currentAddr carries a source path, the current context with
+     *  the source of that path, otherwise the current context itself.
+     */
+    def sourceChangeContext(implicit ctx: Context): Context = {
+      val path = sourcePathAt(currentAddr)
+      if (path.nonEmpty) ctx.withSource(ctx.getSource(path)) else ctx
+    }
 
     /** Coordinate for the symbol at `addr`. */
     def coordAt(addr: Addr)(implicit ctx: Context): Coord = {
