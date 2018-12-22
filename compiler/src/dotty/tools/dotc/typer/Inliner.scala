@@ -855,10 +855,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         }
         if (!isImplicit) caseBindingsBuf += scrutineeBinding
         val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
-        val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
         val fromBuf = mutable.ListBuffer.empty[TypeSymbol]
         val toBuf = mutable.ListBuffer.empty[TypeSymbol]
-        if (reducePattern(caseBindingsBuf, fromBuf, toBuf, scrutineeSym.termRef, pat1)(gadtCtx) && guardOK) {
+        if (reducePattern(caseBindingsBuf, fromBuf, toBuf, scrutineeSym.termRef, cdef.pat)(gadtCtx) && guardOK) {
           val caseBindings = caseBindingsBuf.toList
           val from = fromBuf.toList
           val to = toBuf.toList
