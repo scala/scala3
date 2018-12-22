@@ -254,14 +254,16 @@ class ReplDriver(settings: Array[String],
             denot.symbol.owner == defn.ObjectClass ||
             denot.symbol.isConstructor
           }
+          .sortBy(_.name)
 
       val vals =
         info.fields
           .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
+          .sortBy(_.name)
 
       val typeAliases =
-        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
+        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias).sortBy(_.name)
 
       (
         typeAliases.map("// defined alias " + _.symbol.showUser) ++

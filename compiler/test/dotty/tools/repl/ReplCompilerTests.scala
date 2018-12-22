@@ -48,10 +48,10 @@ class ReplCompilerTests extends ReplTest {
 
     val expected = List(
       "def foo: Int",
-      "val x: Int = 10",
       "val res0: Int = 2",
-      "var y: Int = 5",
-      "val res1: Int = 20"
+      "val res1: Int = 20",
+      "val x: Int = 10",
+      "var y: Int = 5"
     )
 
     assertEquals(expected, lines())
