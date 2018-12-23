@@ -94,13 +94,6 @@ class TreeUnpickler(reader: TastyReader,
       rdr.indexStats(reader.endAddr)
   }
 
-  def unpickleTypeTree()(implicit ctx: Context): Tree = {
-    this.roots = Set(ctx.owner)
-    val rdr = new TreeReader(reader).fork
-    ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
-    rdr.readTpt()
-  }
-
   /** The unpickled trees */
   def unpickle(mode: UnpickleMode)(implicit ctx: Context): List[Tree] = {
     assert(roots != null, "unpickle without previous enterTopLevel")
