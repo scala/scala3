@@ -9,6 +9,7 @@ import Variances._
 import NameKinds._
 import TypeApplications.varianceConforms
 import util.Positions._
+import util.SourcePosition
 import config.Printers.variances
 import reporting.trace
 
@@ -38,8 +39,8 @@ object VarianceChecker {
           }
           val pos = tree.tparams
             .find(_.name.toTermName == paramName)
-            .map(_.pos)
-            .getOrElse(tree.pos)
+            .map(_.sourcePos)
+            .getOrElse(tree.sourcePos)
           ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
         }
         def apply(x: Boolean, t: Type) = x && {
@@ -151,12 +152,14 @@ class VarianceChecker()(implicit ctx: Context) {
   }
 
   private object Traverser extends TreeTraverser {
-    def checkVariance(sym: Symbol, pos: Position) = Validator.validateDefinition(sym) match {
+    def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2Mode &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.is(ProtectedLocal)))) {
-          ctx.migrationWarning(s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg", pos)
+          ctx.migrationWarning(
+            s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
+            pos)
             // patch(Position(pos.end), " @scala.annotation.unchecked.uncheckedVariance")
             // Patch is disabled until two TODOs are solved:
             // TODO use an import or shorten if possible
@@ -178,15 +181,15 @@ class VarianceChecker()(implicit ctx: Context) {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
-          checkVariance(sym, tree.pos)
+          checkVariance(sym, tree.sourcePos)
           tree.rhs match {
             case rhs: Template => traverseChildren(rhs)
             case _ =>
           }
         case tree: ValDef =>
-          checkVariance(sym, tree.pos)
+          checkVariance(sym, tree.sourcePos)
         case DefDef(_, tparams, vparamss, _, _) =>
-          checkVariance(sym, tree.pos)
+          checkVariance(sym, tree.sourcePos)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case _ =>

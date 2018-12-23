@@ -7,6 +7,7 @@ import ast._
 import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Positions._
+import util.SourcePosition
 import config.Printers.typr
 import ast.Trees._
 import NameOps._
@@ -32,7 +33,7 @@ trait TypeAssigner {
       case _ =>
         ctx.error(
           if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
-          else qual.show + " is not an enclosing class", tree.pos)
+          else qual.show + " is not an enclosing class", tree.sourcePos)
         NoSymbol
     }
   }
@@ -149,7 +150,7 @@ trait TypeAssigner {
   def avoidingType(expr: Tree, bindings: List[Tree])(implicit ctx: Context): Type =
     avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
-  def avoidPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type =
+  def avoidPrivateLeaks(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Type =
     if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) checkNoPrivateLeaks(sym, pos)
     else sym.info
 
@@ -184,7 +185,7 @@ trait TypeAssigner {
    *  (2) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
    */
-  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
+  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(implicit ctx: Context): Type = {
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
       case tpe: NamedType =>
         val pre = tpe.prefix
@@ -235,7 +236,7 @@ trait TypeAssigner {
 
   /** The type of a selection with `name` of a tree with type `site`.
    */
-  def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
+  def selectionType(site: Type, name: Name, pos: SourcePosition)(implicit ctx: Context): Type = {
     val mbr = site.member(name)
     if (reallyExists(mbr))
       site.select(name, mbr)
@@ -261,11 +262,12 @@ trait TypeAssigner {
     var qualType = qual1.tpe.widenIfUnstable
     if (!qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR)
       // constructors are selected on typeconstructor, type arguments are passed afterwards
-      qualType = errorType(em"$qualType takes type parameters", qual1.pos)
-    else if (!qualType.isInstanceOf[TermType]) qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.pos)
-    val ownType = selectionType(qualType, tree.name, tree.pos)
+      qualType = errorType(em"$qualType takes type parameters", qual1.sourcePos)
+    else if (!qualType.isInstanceOf[TermType])
+      qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.sourcePos)
+    val ownType = selectionType(qualType, tree.name, tree.sourcePos)
     if (tree.getAttachment(desugar.SuppressAccessCheck).isDefined) ownType
-    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
+    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.sourcePos)
   }
 
   /** Type assignment method. Each method takes as parameters
@@ -316,7 +318,7 @@ trait TypeAssigner {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(
         if (cls.isClass) cls.thisType
-        else errorType("not a legal qualifying class for this", tree.pos))
+        else errorType("not a legal qualifying class for this", tree.sourcePos))
   }
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super = {
@@ -329,9 +331,9 @@ trait TypeAssigner {
           case p :: Nil =>
             p.typeConstructor
           case Nil =>
-            errorType(SuperQualMustBeParent(mix, cls), tree.pos)
+            errorType(SuperQualMustBeParent(mix, cls), tree.sourcePos)
           case p :: q :: _ =>
-            errorType("ambiguous parent class qualifier", tree.pos)
+            errorType("ambiguous parent class qualifier", tree.sourcePos)
         }
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
@@ -373,15 +375,15 @@ trait TypeAssigner {
           if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType
         else
-          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
+          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.sourcePos)
       case t =>
-        errorType(err.takesNoParamsStr(fn, ""), tree.pos)
+        errorType(err.takesNoParamsStr(fn, ""), tree.sourcePos)
     }
     ConstFold(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.pos))
+    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.sourcePos))
     fn.tpe.widen match {
       case pt: TypeLambda =>
         tree.withType {
@@ -393,9 +395,9 @@ trait TypeAssigner {
             val namedArgMap = new mutable.HashMap[Name, Type]
             for (NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
-                ctx.error(DuplicateNamedTypeParameter(name), arg.pos)
+                ctx.error(DuplicateNamedTypeParameter(name), arg.sourcePos)
               else if (!paramNames.contains(name))
-                ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.pos)
+                ctx.error(UndefinedNamedTypeParameter(name, paramNames), arg.sourcePos)
               else
                 namedArgMap(name) = arg.tpe
 
@@ -432,7 +434,7 @@ trait TypeAssigner {
           else {
             val argTypes = args.tpes
             if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
-            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
+            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.sourcePos)
           }
         }
       case err: ErrorType =>
@@ -544,7 +546,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     val ownType =
       if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.pos)
+      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.sourcePos)
     tree.withType(ownType)
   }
 

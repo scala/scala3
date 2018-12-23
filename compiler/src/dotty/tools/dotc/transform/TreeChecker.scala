@@ -180,7 +180,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context): Unit =
       if (tree.symbol.maybeOwner.isTerm)
-        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.pos.line)
+        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.sourcePos.line)
 
     /** assert Java classes are not used as objects */
     def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
