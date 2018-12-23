@@ -43,6 +43,11 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       pickledIndices += index
     }
 
+    def pickleSource(source: SourceFile): Unit = {
+      buf.writeInt(SOURCE)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
+    }
+
     /** True if x's position shouldn't be reconstructed automatically from its initialPos
      */
     def alwaysNeedsPos(x: Positioned) = x match {
@@ -71,9 +76,8 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
               //println(i"pickling $x with $pos at $addr")
               pickleDeltas(addr.index, pos)
               if (x.source != curSource) {
-                buf.writeInt(SOURCE)
-                buf.writeInt(pickler.nameBuffer.nameIndex(x.source.path.toTermName).index)
-                source = curSource
+                pickleSource(x.source)
+                source = x.source
               }
             case _ =>
               //println(i"no address for $x")
@@ -92,6 +96,10 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
         traverse(x.tree, curSource)
       case _ =>
     }
-    for (root <- roots) traverse(root, root.source)
+    pickleSource(ctx.source)
+    for (root <- roots) {
+      assert(root.source == ctx.source)
+      traverse(root, root.source)
+    }
   }
 }
