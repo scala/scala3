@@ -26,7 +26,7 @@ import reporting.diagnostic.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, Property}
+import util.{SourceFile, NoSource, Property, SourcePosition}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -415,7 +415,8 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
+  class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int)
+    extends Designator with ParamInfo with printing.Showable {
 
     type ThisName <: Name
 
@@ -626,9 +627,10 @@ object Symbols {
     final def sourceFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
       if (file != null && file.extension != "class") file
+      else if (!defTree.isEmpty) defTree.sourceFile
       else {
         val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
-        topLevelCls.getAnnotation(defn.SourceFileAnnot) match {
+        topLevelCls.unforcedAnnotation(defn.SourceFileAnnot) match {
           case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
             case Some(Constant(path: String)) => AbstractFile.getFile(path)
             case none => null
@@ -637,6 +639,8 @@ object Symbols {
         }
       }
     }
+
+    def source(implicit ctx: Context): SourceFile = ctx.getSource(sourceFile)
 
     /** A symbol related to `sym` that is defined in source code.
      *
@@ -666,6 +670,17 @@ object Symbols {
      *  TODO: Consider changing this method return type to `SourcePosition`.
      */
     final def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+
+    final def sourcePos(implicit ctx: Context): SourcePosition = {
+      val source = {
+        val f = sourceFile
+        if (f == null || f.isVirtual)
+          // don't trust virtual files for tree creation - replTest fails otherwise
+          ctx.source
+        else ctx.getSource(f)
+      }
+      source.atPos(pos)
+    }
 
     // ParamInfo types and methods
     def isTypeParam(implicit ctx: Context): Boolean = denot.is(TypeParam)

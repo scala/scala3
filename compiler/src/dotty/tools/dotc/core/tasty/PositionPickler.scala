@@ -6,7 +6,7 @@ package tasty
 import ast._
 import ast.Trees._
 import ast.Trees.WithLazyField
-import util.SourceFile
+import io.{AbstractFile, NoAbstractFile}
 import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
@@ -43,7 +43,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       pickledIndices += index
     }
 
-    def pickleSource(source: SourceFile): Unit = {
+    def pickleSource(source: AbstractFile): Unit = {
       buf.writeInt(SOURCE)
       buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
     }
@@ -66,18 +66,18 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case _ => false
     }
 
-    def traverse(x: Any, curSource: SourceFile): Unit = x match {
+    def traverse(x: Any, current: AbstractFile): Unit = x match {
       case x: untpd.Tree =>
-        var source = curSource
+        var sourceFile = current
         val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
         if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
           addrOfTree(x) match {
             case Some(addr) if !pickledIndices.contains(addr.index) =>
               //println(i"pickling $x with $pos at $addr")
               pickleDeltas(addr.index, pos)
-              if (x.source != curSource) {
-                pickleSource(x.source)
-                source = x.source
+              if (x.source.file != current) {
+                pickleSource(x.source.file)
+                sourceFile = x.source.file
               }
             case _ =>
               //println(i"no address for $x")
@@ -86,20 +86,18 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
         //else if (x.pos.exists) println(i"skipping $x")
         x match {
           case x: untpd.MemberDef @unchecked =>
-            for (ann <- x.symbol.annotations) traverse(ann.tree, source)
+            for (ann <- x.symbol.annotations) traverse(ann.tree, sourceFile)
           case _ =>
         }
-        traverse(x.productIterator, source)
+        traverse(x.productIterator, sourceFile)
       case xs: TraversableOnce[_] =>
-        xs.foreach(traverse(_, curSource))
+        xs.foreach(traverse(_, current))
       case x: Annotation =>
-        traverse(x.tree, curSource)
+        traverse(x.tree, current)
       case _ =>
     }
-    pickleSource(ctx.source)
     for (root <- roots) {
-      assert(root.source == ctx.source)
-      traverse(root, root.source)
+      traverse(root, NoAbstractFile)
     }
   }
 }

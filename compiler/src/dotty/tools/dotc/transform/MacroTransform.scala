@@ -63,7 +63,7 @@ abstract class MacroTransform extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.pos)
+          ctx.error(ex.toMessage, tree.sourcePos)
           tree
       }
 
