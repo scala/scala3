@@ -79,7 +79,7 @@ class TreePickler(pickler: TastyPickler) {
       // I believe it's a bug in typer: the type of an implicit argument refers
       // to a closure parameter outside the closure itself. TODO: track this down, so that we
       // can eliminate this case.
-      ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.pos)
+      ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.sourcePos)
       pickleForwardSymRef(sym)
   }
 

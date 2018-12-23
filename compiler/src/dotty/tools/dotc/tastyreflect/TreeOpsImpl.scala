@@ -10,7 +10,7 @@ import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFr
 trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers {
 
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
-    def pos(implicit ctx: Context): Position = tree.pos
+    def pos(implicit ctx: Context): Position = tree.sourcePos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
   }
 
@@ -353,7 +353,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   def TermDeco(term: Term): TermAPI = new TermAPI {
     import tpd._
-    def pos(implicit ctx: Context): Position = term.pos
+    def pos(implicit ctx: Context): Position = term.sourcePos
     def tpe(implicit ctx: Context): Type = term.tpe
     def underlyingArgument(implicit ctx: Context): Term = term.underlyingArgument
     def underlying(implicit ctx: Context): Term = term.underlying

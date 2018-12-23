@@ -103,7 +103,7 @@ object Parsers {
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
 
     def sourcePos(off: Int = in.offset): SourcePosition =
-      source atPos Position(off)
+      source.atPos(Position(off))
 
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a

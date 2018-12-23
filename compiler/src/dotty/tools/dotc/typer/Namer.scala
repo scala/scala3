@@ -247,7 +247,8 @@ class Namer { typer: Typer =>
     if (name.isEmpty) NoSymbol
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
-      if (!cls.exists) ctx.error(s"no enclosing class or object is named $name", pos)
+      if (!cls.exists)
+        ctx.error(s"no enclosing class or object is named $name", ctx.source.atPos(pos))
       cls
     }
   }
@@ -279,7 +280,7 @@ class Namer { typer: Typer =>
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
         if (!ok)
-          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
+          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.sourcePos)
         adapted
       }
 
@@ -292,7 +293,7 @@ class Namer { typer: Typer =>
 
     def checkNoConflict(name: Name): Name = {
       def errorName(msg: => String) = {
-        ctx.error(msg, tree.pos)
+        ctx.error(msg, tree.sourcePos)
         name.freshened
       }
       def preExisting = ctx.effectiveScope.lookup(name)
@@ -404,7 +405,7 @@ class Namer { typer: Typer =>
       /** If there's already an existing type, then the package is a dup of this type */
       val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
       if (existingType.exists) {
-        ctx.error(PkgDuplicateSymbol(existingType), pid.pos)
+        ctx.error(PkgDuplicateSymbol(existingType), pid.sourcePos)
         ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
       else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
@@ -693,7 +694,7 @@ class Namer { typer: Typer =>
   }
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
-    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
+    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
     sym.resetFlag(Implicit)
   }
 
@@ -796,7 +797,7 @@ class Namer { typer: Typer =>
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
-      denot.info = avoidPrivateLeaks(sym, sym.pos)
+      denot.info = avoidPrivateLeaks(sym, sym.sourcePos)
     }
   }
 
@@ -886,7 +887,7 @@ class Namer { typer: Typer =>
         val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.pos,
+          val pt = checkClassType(ptype, parent.sourcePos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
@@ -894,15 +895,15 @@ class Namer { typer: Typer =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            ctx.error(CyclicInheritance(cls, addendum), parent.pos)
+            ctx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
             defn.ObjectType
           }
           else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
-              ctx.error(ExtendFinalClass(cls, pclazz), cls.pos)
+              ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-              ctx.error(UnableToExtendSealedClass(pclazz), cls.pos)
+              ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
             pt
           }
         }
@@ -970,7 +971,7 @@ class Namer { typer: Typer =>
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.info = avoidPrivateLeaks(cls, cls.pos)
+      cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(Stable)
@@ -1155,7 +1156,7 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        checkMembersOK(inferredType, mdef.pos)
+        checkMembersOK(inferredType, mdef.sourcePos)
       case DependentTypeTree(tpFun) =>
         val tpe = tpFun(paramss.head)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
@@ -1167,7 +1168,7 @@ class Namer { typer: Typer =>
             val hygienicType = avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                i"it is not a supertype of the hygienic type $hygienicType", mdef.pos)
+                i"it is not a supertype of the hygienic type $hygienicType", mdef.sourcePos)
             //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>

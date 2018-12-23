@@ -311,7 +311,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val txt = tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
             val pre = if (tp.symbol is JavaStatic) tp.prefix.widen else tp.prefix
-            toTextPrefix(pre) ~ withPos(selectionString(tp), tree.pos)
+            toTextPrefix(pre) ~ withPos(selectionString(tp), tree.sourcePos)
           case _ =>
             toText(name)
         }
@@ -335,8 +335,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         typeApplyText(tree)
       case Literal(c) =>
         tree.typeOpt match {
-          case ConstantType(tc) => withPos(toText(tc), tree.pos)
-          case _ => withPos(toText(c), tree.pos)
+          case ConstantType(tc) => withPos(toText(tc), tree.sourcePos)
+          case _ => withPos(toText(c), tree.sourcePos)
         }
       case New(tpt) =>
         keywordStr("new ") ~ {
@@ -501,7 +501,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SymbolLit(str) =>
         "'" + str
       case InterpolatedString(id, segments) =>
-        def strText(str: Literal) = withPos(escapedString(str.const.stringValue), tree.pos)
+        def strText(str: Literal) = withPos(escapedString(str.const.stringValue), tree.sourcePos)
         def segmentText(segment: Tree) = segment match {
           case Thicket(List(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
           case str: Literal => strText(str)
@@ -642,8 +642,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tree.hasType && tree.symbol.exists) {
       val str: Text = nameString(tree.symbol)
       tree match {
-        case tree: RefTree => withPos(str, tree.pos)
-        case tree: MemberDef => withPos(str, tree.namePos)
+        case tree: RefTree => withPos(str, tree.sourcePos)
+        case tree: MemberDef => withPos(str, tree.sourcePos.withRange(tree.namePos))
         case _ => str
       }
     }

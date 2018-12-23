@@ -39,13 +39,13 @@ class ExpandSAMs extends MiniPhase {
         case tpe if defn.isImplicitFunctionType(tpe) =>
           tree
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
-          val tpe1 = checkRefinements(tpe, fn.pos)
+          val tpe1 = checkRefinements(tpe, fn)
           toPartialFunction(tree, tpe1)
         case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
-          checkRefinements(tpe, fn.pos)
+          checkRefinements(tpe, fn)
           tree
         case tpe =>
-          val tpe1 = checkRefinements(tpe, fn.pos)
+          val tpe1 = checkRefinements(tpe, fn)
           val Seq(samDenot) = tpe1.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
           cpy.Block(tree)(stats,
               AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
@@ -161,16 +161,16 @@ class ExpandSAMs extends MiniPhase {
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))
-        ctx.error(TypeMismatch(found, tpe), tree.pos)
+        ctx.error(TypeMismatch(found, tpe), tree.sourcePos)
         tree
     }
   }
 
-  private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Type = tpe.dealias match {
+  private def checkRefinements(tpe: Type, tree: Tree)(implicit ctx: Context): Type = tpe.dealias match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
-        ctx.error("Lambda does not define " + name, pos)
-      checkRefinements(parent, pos)
+        ctx.error("Lambda does not define " + name, tree.sourcePos)
+      checkRefinements(parent, tree)
     case tpe =>
       tpe
   }
