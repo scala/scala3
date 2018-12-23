@@ -38,7 +38,7 @@ object Docstrings {
               case List(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>
-                ctx.error("`@usecase` was not a valid definition", usecase.codePos)
+                ctx.error("`@usecase` was not a valid definition", ctx.source.atPos(usecase.codePos))
                 usecase
             }
           }

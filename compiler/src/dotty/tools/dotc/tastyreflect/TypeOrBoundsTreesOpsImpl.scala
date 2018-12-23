@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.{Contexts, Types}
 trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with CoreImpl {
 
   def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
-    def pos(implicit ctx: Context): Position = tpt.pos
+    def pos(implicit ctx: Context): Position = tpt.sourcePos
     def symbol(implicit ctx: Context): Symbol = tpt.symbol
     def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }

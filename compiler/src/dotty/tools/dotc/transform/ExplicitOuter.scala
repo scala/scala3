@@ -118,7 +118,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
-        ctx.error("Not a single abstract method type, requires an outer pointer", tree.pos)
+        ctx.error("Not a single abstract method type, requires an outer pointer", tree.sourcePos)
     }
     tree
   }

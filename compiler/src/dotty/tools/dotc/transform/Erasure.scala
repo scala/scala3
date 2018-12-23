@@ -322,7 +322,7 @@ object Erasure {
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
       if (tree.symbol.isEffectivelyErased && !ctx.mode.is(Mode.Type))
-        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.pos)
+        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
       tree
     }
 

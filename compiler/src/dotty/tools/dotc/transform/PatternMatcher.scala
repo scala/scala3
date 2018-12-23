@@ -926,7 +926,7 @@ object PatternMatcher {
           patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
           patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
           patmatch.println(i"tree = $result")
-          ctx.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.pos)
+          ctx.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.sourcePos)
         }
       case _ =>
     }
