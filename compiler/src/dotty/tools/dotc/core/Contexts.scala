@@ -461,6 +461,9 @@ object Contexts {
         }
       }
 
+    final def withSource(f: AbstractFile): Context =
+      if (f == null) this else withSource(getSource(f))
+
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
       else value match {

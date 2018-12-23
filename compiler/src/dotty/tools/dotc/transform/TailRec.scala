@@ -123,7 +123,7 @@ class TailRec extends MiniPhase {
       // We don't report a new error if failures were reported
       // during the transformation.
       if (mandatory && !failureReported)
-        ctx.error(TailrecNotApplicable(method), method.pos)
+        ctx.error(TailrecNotApplicable(method), method.sourcePos)
 
       tree
     }
@@ -282,7 +282,7 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            ctx.error(s"Cannot rewrite recursive call: $reason", tree.pos)
+            ctx.error(s"Cannot rewrite recursive call: $reason", tree.sourcePos)
           }
           else
             tailrec.println("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)

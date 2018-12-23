@@ -15,6 +15,7 @@ import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, Outpu
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class VirtualFile(val name: String, override val path: String) extends AbstractFile {
+
   /**
    * Initializes this instance with the specified name and an
    * identical path.

@@ -9,6 +9,7 @@ import ast.untpd
 import collection.{mutable, immutable}
 import ShortcutImplicits._
 import util.Positions.Position
+import util.SourcePosition
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
@@ -40,8 +41,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   private val bridgesScope = newScope
   private val bridgeTarget = newMutableSymbolMap[Symbol]
 
-  def bridgePosFor(member: Symbol): Position =
-    if (member.owner == root && member.pos.exists) member.pos else root.pos
+  def bridgePosFor(member: Symbol): SourcePosition =
+    (if (member.owner == root && member.pos.exists) member else root).sourcePos
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
    *  before erasure, if the following conditions are satisfied.
@@ -85,7 +86,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       owner = root,
       flags = (member.flags | Method | Bridge | Artifact) &~
         (Accessor | ParamAccessor | CaseAccessor | Deferred | Lazy | Module),
-      coord = bridgePosFor(member)).enteredAfter(thisPhase).asTerm
+      coord = bridgePosFor(member).pos).enteredAfter(thisPhase).asTerm
 
     ctx.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}

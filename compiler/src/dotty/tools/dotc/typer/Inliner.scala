@@ -23,6 +23,7 @@ import ErrorReporting.errorTree
 import collection.mutable
 import reporting.trace
 import util.Positions.Position
+import util.SourcePosition
 import ast.TreeInfo
 
 object Inliner {
@@ -111,7 +112,7 @@ object Inliner {
         i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
             |Maybe this is caused by a recursive inline method?
             |You can use -Xmax-inlines to change the limit.""",
-        (tree :: enclosingInlineds).last.pos
+        (tree :: enclosingInlineds).last.sourcePos
       )
   }
 
@@ -361,7 +362,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       if (inlinedMethod == defn.Typelevel_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
-        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.pos)
+        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
       }
       else if (inlinedMethod == defn.Typelevel_constValueOpt) {
         val constVal = tryConstValue
@@ -448,7 +449,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                     case _ => arg.show
                   }
               }
-              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.pos)
+              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.sourcePos)
             }
             issueInCtx(ctxToReport)
           case _ =>
@@ -702,7 +703,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.pos)(ctx.fresh.setTyper(evTyper))
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
-              ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
+              ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)
               true // hard error: return true to stop implicit search here
             case fail: Implicits.SearchFailureType =>
               false
@@ -854,7 +855,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   class InlineTyper extends ReTyper {
     import reducer._
 
-    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
+    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(implicit ctx: Context): Type = {
       tpe match {
         case tpe: NamedType if tpe.symbol.exists && !tpe.symbol.isAccessibleFrom(tpe.prefix, superAccess) =>
           tpe.info match {
@@ -874,7 +875,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
       val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
-      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
+      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
       res
     }
 

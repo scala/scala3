@@ -81,7 +81,9 @@ class SuperAccessors(thisPhase: DenotTransformer) {
               superInfo, coord = accPos).enteredAfter(thisPhase)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))
-            ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
+            ctx.error(
+              s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})",
+              sel.sourcePos)
           else accDefs(clazz) += DefDef(acc, EmptyTree).withPos(accPos)
           acc
         }
@@ -100,9 +102,9 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
       if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.is(ParamForwarder))
         // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
-        ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.pos)
+        ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.sourcePos)
       else if (isDisallowed(sym))
-        ctx.error(s"super not allowed here: use this.${sel.name} instead", sel.pos)
+        ctx.error(s"super not allowed here: use this.${sel.name} instead", sel.sourcePos)
       else if (sym is Deferred) {
         val member = sym.overridingSymbol(clazz.asClass)
         if (!mix.name.isEmpty ||
@@ -110,7 +112,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             !((member is AbsOverride) && member.isIncompleteIn(clazz)))
           ctx.error(
               i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
-              sel.pos)
+              sel.sourcePos)
         else ctx.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
       }
       else if (mix.name.isEmpty && !(sym.owner is Trait))
@@ -120,8 +122,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           if ((overriding is (Deferred, butNot = AbsOverride)) && !(overriding.owner is Trait))
             ctx.error(
                 s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
-                sel.pos)
-
+                sel.sourcePos)
         }
       if (name.isTermName && mix.name.isEmpty &&
           ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))

@@ -9,8 +9,9 @@ import language.higherKinds
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
-import util.{Stats, Attachment, Property, SourceFile}
+import util.{Stats, Attachment, Property, SourceFile, SourcePosition}
 import config.Config
+import io.AbstractFile
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.transientParam
@@ -66,7 +67,11 @@ object Trees {
 
     def uniqueId: Int = myUniqueId
 
-    def source(implicit ctx: Context): SourceFile = ctx.sourceOfTreeId(uniqueId)
+    def sourceFile(implicit ctx: Context): AbstractFile = TreeIds.fileOfId(uniqueId)
+
+    def source(implicit ctx: Context): SourceFile = ctx.getSource(sourceFile)
+
+    def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]

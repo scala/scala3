@@ -57,7 +57,7 @@ object DesugarEnums {
           if (tparam.variance == 0) "is non variant"
           else "has bounds that depend on a type parameter in the same parameter list"
         errorType(i"""cannot determine type argument for enum parent $enumClass,
-                     |type parameter $tparam $problem""", pos)
+                     |type parameter $tparam $problem""", ctx.source.atPos(pos))
       }
     }
     TypeTree(enumClass.typeRef.appliedTo(targs)).withPos(pos)
