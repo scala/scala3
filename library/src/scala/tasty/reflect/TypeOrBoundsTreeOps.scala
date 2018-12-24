@@ -9,7 +9,7 @@ trait TypeOrBoundsTreeOps extends Core {
   implicit def InferredDeco(x: TypeTree.Inferred): TypeTree.InferredAPI
   implicit def TypeIdentDeco(x: TypeTree.Ident): TypeTree.IdentAPI
   implicit def TypeSelectDeco(x: TypeTree.Select): TypeTree.SelectAPI
-  implicit def ProjectDeco(x: TypeTree.Project): TypeTree.ProjectAPI
+  implicit def ProjectionDeco(x: TypeTree.Projection): TypeTree.ProjectionAPI
   implicit def SingletonDeco(x: TypeTree.Singleton): TypeTree.SingletonAPI
   implicit def RefinedDeco(x: TypeTree.Refined): TypeTree.RefinedAPI
   implicit def AppliedDeco(x: TypeTree.Applied): TypeTree.AppliedAPI
@@ -19,8 +19,8 @@ trait TypeOrBoundsTreeOps extends Core {
   implicit def MatchTypeTreeDeco(x: TypeTree.MatchType): TypeTree.MatchTypeAPI
   implicit def ByNameDeco(x: TypeTree.ByName): TypeTree.ByNameAPI
   implicit def LambdaTypeTreeDeco(x: TypeTree.LambdaTypeTree): TypeTree.LambdaTypeTreeAPI
-  implicit def BindDeco(x: TypeTree.Bind): TypeTree.BindAPI
-  implicit def TypeBlockDeco(x: TypeTree.Block): TypeTree.BlockAPI
+  implicit def TypeBindDeco(x: TypeTree.TypeBind): TypeTree.TypeBindAPI
+  implicit def TypeBlockDeco(x: TypeTree.TypeBlock): TypeTree.TypeBlockAPI
 
   implicit def TypeBoundsTreeDeco(tpt: TypeBoundsTree): TypeBoundsTreeAPI
 
@@ -61,6 +61,7 @@ trait TypeOrBoundsTreeOps extends Core {
     /** TypeTree containing an inferred type */
     val Inferred: InferredModule
     abstract class InferredModule {
+      def apply(tpe: Type)(implicit ctx: Context): Inferred
       /** Matches a TypeTree containing an inferred type */
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
     }
@@ -77,6 +78,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Ident: IdentModule
     abstract class IdentModule {
+      // TODO def apply(name: String)(implicit ctx: Context): Ident
+      def copy(original: Ident)(name: String)(implicit ctx: Context): Ident
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String]
     }
 
@@ -93,22 +96,26 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Select: SelectModule
     abstract class SelectModule {
+      def apply(qualifier: Term, name: String)(implicit ctx: Context): Select
+      def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)]
     }
 
-    val IsProject: IsProjectModule
-    abstract class IsProjectModule {
-      /** Matches any Project and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Project]
+    val IsProjection: IsProjectionModule
+    abstract class IsProjectionModule {
+      /** Matches any Projection and returns it */
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Projection]
     }
 
-    trait ProjectAPI {
+    trait ProjectionAPI {
       def qualifier(implicit ctx: Context): TypeTree
       def name(implicit ctx: Context): String
     }
 
-    val Project: ProjectModule
-    abstract class ProjectModule {
+    val Projection: ProjectionModule
+    abstract class ProjectionModule {
+      // TODO def apply(qualifier: TypeTree, name: String)(implicit ctx: Context): Project
+      def copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)]
     }
 
@@ -124,6 +131,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Singleton: SingletonModule
     abstract class SingletonModule {
+      def apply(ref: Term)(implicit ctx: Context): Singleton
+      def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[Term]
     }
 
@@ -140,6 +149,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Refined: RefinedModule
     abstract class RefinedModule {
+      // TODO def apply(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined
+      def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])]
     }
 
@@ -156,6 +167,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Applied: AppliedModule
     abstract class AppliedModule {
+      def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied
+      def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])]
     }
 
@@ -172,6 +185,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Annotated: AnnotatedModule
     abstract class AnnotatedModule {
+      def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated
+      def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, Term)]
     }
 
@@ -188,6 +203,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val And: AndModule
     abstract class AndModule {
+      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): And
+      def copy(original: And)(left: TypeTree, right: TypeTree)(implicit ctx: Context): And
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 
@@ -204,6 +221,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val Or: OrModule
     abstract class OrModule {
+      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or
+      def copy(original: Or)(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 
@@ -221,6 +240,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val MatchType: MatchTypeModule
     abstract class MatchTypeModule {
+      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType
+      def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
     }
 
@@ -236,6 +257,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val ByName: ByNameModule
     abstract class ByNameModule {
+      def apply(result: TypeTree)(implicit ctx: Context): ByName
+      def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
     }
 
@@ -252,38 +275,44 @@ trait TypeOrBoundsTreeOps extends Core {
 
     val LambdaTypeTree: LambdaTypeTreeModule
     abstract class LambdaTypeTreeModule {
+      def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree
+      def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)]
     }
 
-    val IsBind: IsBindModule
-    abstract class IsBindModule {
-      /** Matches any Bind and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Bind]
+    val IsTypeBind: IsTypeBindModule
+    abstract class IsTypeBindModule {
+      /** Matches any TypeBind and returns it */
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBind]
     }
 
-    trait BindAPI {
+    trait TypeBindAPI {
       def name(implicit ctx: Context): String
       def body(implicit ctx: Context): TypeOrBoundsTree
     }
 
-    val Bind: BindModule
-    abstract class BindModule {
+    val TypeBind: TypeBindModule
+    abstract class TypeBindModule {
+      // TODO def apply(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind
+      def copy(original: TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)]
     }
 
-    val IsBlock: IsBlockModule
-    abstract class IsBlockModule {
-      /** Matches any Block and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Block]
+    val IsTypeBlock: IsTypeBlockModule
+    abstract class IsTypeBlockModule {
+      /** Matches any TypeBlock and returns it */
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBlock]
     }
 
-    trait BlockAPI {
+    trait TypeBlockAPI {
       def aliases(implicit ctx: Context): List[TypeDef]
       def tpt(implicit ctx: Context): TypeTree
     }
 
-    val Block: BlockModule
-    abstract class BlockModule {
+    val TypeBlock: TypeBlockModule
+    abstract class TypeBlockModule {
+      def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock
+      def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)]
     }
   }

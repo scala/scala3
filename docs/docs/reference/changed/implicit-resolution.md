@@ -72,5 +72,13 @@ affect implicits on the language level.
     most (but not all) divergence errors in Scala 2 would terminate the implicit
     search as a whole.
 
+ 5. Scala-2 gives a lower level of priority to implicit conversions with call-by-name
+    parameters relative to implicit conversions with call-by-value parameters. Dotty
+    drops this distinction. So the following code snippet would be ambiguous in Dotty:
+
+        implicit def conv1(x: Int): A = new A(x)
+        implicit def conv2(x: => Int): A = new A(x)
+        def buzz(y: A) = ???
+        buzz(1)   // error: ambiguous
 
 [//]: # todo: expand with precise rules

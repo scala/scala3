@@ -17,14 +17,20 @@ import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import reporting.trace
 
+final class AbsentContext
+object AbsentContext {
+  implicit val absentContext: AbsentContext = new AbsentContext
+}
+
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling {
+class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   import TypeComparer._
-  implicit val ctx: Context = initctx
+  implicit def ctx(implicit nc: AbsentContext): Context = initctx
 
-  val state: TyperState = ctx.typerState
-  import state.constraint
+  val state = ctx.typerState
+  def constraint: Constraint = state.constraint
+  def constraint_=(c: Constraint): Unit = state.constraint = c
 
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
@@ -105,8 +111,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     true
   }
 
-  protected def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = ctx.gadt.bounds(sym)
-  protected def gadtSetBounds(sym: Symbol, b: TypeBounds): Unit = ctx.gadt.setBounds(sym, b)
+  protected def gadtBounds(sym: Symbol)(implicit ctx: Context) = ctx.gadt.bounds(sym)
+  protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
+  protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
 
   protected def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = tvar.underlying
 
@@ -136,7 +143,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     finally this.approx = saved
   }
 
-  protected def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
+  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, NoApprox)
 
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
@@ -183,7 +190,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
-          implicit val ctx = this.ctx
+          implicit val ctx: Context = this.ctx
           tp2.info match {
             case info2: TypeAlias => recur(tp1, info2.alias)
             case _ => tp1 match {
@@ -739,9 +746,28 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2.dealiasKeepRefiningAnnots match {
-                case tycon2: TypeRef if tycon1.symbol == tycon2.symbol =>
+                case tycon2: TypeRef =>
+                  val tycon1sym = tycon1.symbol
+                  val tycon2sym = tycon2.symbol
+
+                  var touchedGADTs = false
+                  def gadtBoundsContain(sym: Symbol, tp: Type): Boolean = {
+                    touchedGADTs = true
+                    val b = gadtBounds(sym)
+                    b != null && inFrozenConstraint {
+                      (b.lo =:= tp) && (b.hi =:= tp)
+                    }
+                  }
+
+                  val res = (
+                    tycon1sym == tycon2sym ||
+                    gadtBoundsContain(tycon1sym, tycon2) ||
+                    gadtBoundsContain(tycon2sym, tycon1)
+                  ) &&
                   isSubType(tycon1.prefix, tycon2.prefix) &&
                   isSubArgs(args1, args2, tp1, tparams)
+                  if (res && touchedGADTs) GADTused = true
+                  res
                 case _ =>
                   false
               }
@@ -831,9 +857,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
       *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
       */
-      def compareLower(tycon2bounds: TypeBounds, followSuperType: Boolean): Boolean =
+      def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
-          if (followSuperType) recur(tp1, tp2.superType)
+          if (tyconIsTypeRef) recur(tp1, tp2.superType)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
           fallback(tycon2bounds.lo)
@@ -842,15 +868,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
           canConstrain(param2) && canInstantiate(param2) ||
-          compareLower(bounds(param2), followSuperType = false)
+          compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
           defn.isTypelevel_S(tycon2.symbol) && compareS(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
-                val gbounds2 = ctx.gadt.bounds(tycon2.symbol)
-                if (gbounds2 == null) compareLower(info2, followSuperType = true)
-                else compareLower(gbounds2 & info2, followSuperType = false)
+                compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
                 tycon2.name.toString.startsWith("Tuple") &&
                   defn.isTupleType(tp2) && isSubType(tp1, tp2.toNestedPairs) ||
@@ -886,11 +910,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
           !sym.isClass && (
-            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) || {
-              val gbounds1 = ctx.gadt.bounds(tycon1.symbol)
-              if (gbounds1 == null) recur(tp1.superType, tp2)
-              else recur((gbounds1.hi & tycon1.info.bounds.hi).applyIfParameterized(args1), tp2)
-            })
+            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
+            recur(tp1.superType, tp2))
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
@@ -1217,14 +1238,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
-      else {
-        val oldBounds = gadtBounds(tparam)
-        val newBounds =
-          if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
-          else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
-        isSubType(newBounds.lo, newBounds.hi) &&
-          { gadtSetBounds(tparam, newBounds); true }
-      }
+      else if (isUpper) gadtAddUpperBound(tparam, bound)
+      else gadtAddLowerBound(tparam, bound)
     }
   }
 
@@ -1308,7 +1323,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   // Type equality =:=
 
   /** Two types are the same if are mutual subtypes of each other */
-  def isSameType(tp1: Type, tp2: Type): Boolean =
+  def isSameType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean =
     if (tp1 eq NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
@@ -1643,8 +1658,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName,
-            tp1.refinedInfo & tp2.refinedInfo)
+          try {
+            val jointInfo = Denotations.infoMeet(tp1.refinedInfo, tp2.refinedInfo, NoSymbol, NoSymbol, safeIntersection = false)
+            tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName, jointInfo)
+          }
+          catch {
+            case ex: MergeError => NoType
+          }
         case _ =>
           NoType
       }
@@ -1771,6 +1791,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       totalCount = 0
     }
   }
+
+  /** Returns last check's debug mode, if explicitly enabled. */
+  def lastTrace(): String = ""
 }
 
 object TypeComparer {
@@ -1803,10 +1826,18 @@ object TypeComparer {
   val NoApprox: ApproxState = new ApproxState(0)
 
   /** Show trace of comparison operations when performing `op` as result string */
-  def explained[T](op: Context => T)(implicit ctx: Context): String = {
+  def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
-    op(nestedCtx)
-    nestedCtx.typeComparer.toString
+    val res = op(nestedCtx)
+    say(nestedCtx.typeComparer.lastTrace())
+    res
+  }
+
+  /** Like [[explaining]], but returns the trace instead */
+  def explained[T](op: Context => T)(implicit ctx: Context): String = {
+    var trace: String = null
+    explaining(trace = _)(op)
+    trace
   }
 }
 
@@ -1815,12 +1846,12 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   val footprint: mutable.Set[Type] = mutable.Set[Type]()
 
-  override def bounds(param: TypeParamRef): TypeBounds = {
+  override def bounds(param: TypeParamRef)(implicit nc: AbsentContext): TypeBounds = {
     if (param.binder `ne` caseLambda) footprint += param
     super.bounds(param)
   }
 
-  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean = {
+  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit nc: AbsentContext): Boolean = {
     if (param.binder `ne` caseLambda) footprint += param
     super.addOneBound(param, bound, isUpper)
   }
@@ -1830,9 +1861,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.gadtBounds(sym)
   }
 
-  override def gadtSetBounds(sym: Symbol, b: TypeBounds): Unit = {
+  override def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = {
     footprint += sym.typeRef
-    super.gadtSetBounds(sym, b)
+    super.gadtAddLowerBound(sym, b)
+  }
+
+  override def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = {
+    footprint += sym.typeRef
+    super.gadtAddUpperBound(sym, b)
   }
 
   override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context): Type = {
@@ -1926,12 +1962,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean =
+  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit nc: AbsentContext): Boolean =
     traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
       super.addConstraint(param, bound, fromBelow)
     }
 
   override def copyIn(ctx: Context): ExplainingTypeComparer = new ExplainingTypeComparer(ctx)
 
-  override def toString: String = "Subtype trace:" + { try b.toString finally b.clear() }
+  override def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
 }

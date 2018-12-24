@@ -46,7 +46,7 @@ object XmlQuote {
 
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
     val parts = receiver.unseal.underlyingArgument match {
-      case Apply(conv, List(Apply(fun, List(Typed(Repeated(values), _)))))
+      case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
@@ -56,7 +56,7 @@ object XmlQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(args0), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(args0, _), _) = args.unseal.underlyingArgument
 
     val string = parts.mkString("??")
     '(new Xml(~string.toExpr, ~liftListOfAny(args0)))

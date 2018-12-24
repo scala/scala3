@@ -11,7 +11,7 @@ import NameKinds.UniqueName
 import util.Positions._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
-import config.Printers.typr
+import config.Printers.{gadts, typr}
 import annotation.tailrec
 import reporting._
 import collection.mutable
@@ -206,7 +206,9 @@ object Inferencing {
     }
 
     val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    tp <:< widePt
+    trace(i"constraining pattern type $tp <:< $widePt", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
+      tp <:< widePt
+    }
   }
 
   /** The list of uninstantiated type variables bound by some prefix of type `T` which

@@ -801,10 +801,10 @@ class Typer extends Namer
       val typeArgs = params1.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
       val core = assignType(cpy.AppliedTypeTree(tree)(tycon, typeArgs), tycon, typeArgs)
-      val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Deferred, mt)
+      val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Method | Deferred, mt, coord = body.pos)
       val appDef = assignType(
         untpd.DefDef(appMeth.name, Nil, List(params1), resultTpt, EmptyTree),
-        appMeth)
+        appMeth).withPos(body.pos)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     }
 
@@ -1040,8 +1040,7 @@ class Typer extends Namer
   def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context): Context = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
-      if (!gadtCtx.gadt.bounds.contains(sym))
-        gadtCtx.gadt.setBounds(sym, TypeBounds.empty)
+      if (!gadtCtx.gadt.contains(sym)) gadtCtx.gadt.addEmptyBounds(sym)
     gadtCtx
   }
 
@@ -1233,7 +1232,9 @@ class Typer extends Namer
         }
       case _ =>
         tree.withType(
-          if (isFullyDefined(pt, ForceDegree.none)) pt else UnspecifiedErrorType)
+          if (isFullyDefined(pt, ForceDegree.noBottom)) pt
+          else if (ctx.reporter.errorsReported) UnspecifiedErrorType
+          else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.pos))
     }
   }
 
@@ -1518,8 +1519,11 @@ class Typer extends Namer
       // that their type parameters are aliases of the class type parameters.
       // See pos/i941.scala
       rhsCtx = ctx.fresh.setFreshGADTBounds
-      (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
-        rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
+      (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
+        val tr = tparam.typeRef
+        rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
+        rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
+      }
     }
     if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)

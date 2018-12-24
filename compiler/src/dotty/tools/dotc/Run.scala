@@ -104,10 +104,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if (f.isDirectory) {
       ctx.error(s"expected file, received directory '$fileName'")
       NoSource
-    } else if (f.exists) {
-      val encoding = ctx.settings.encoding.value
-      new SourceFile(f, Codec(encoding))
-    } else {
+    }
+    else if (f.exists)
+      ctx.getSource(f)
+    else {
       ctx.error(s"not found: $fileName")
       NoSource
     }

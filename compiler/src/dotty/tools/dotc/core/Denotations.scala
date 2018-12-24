@@ -334,17 +334,6 @@ object Denotations {
       else asSingleDenotation
     }
 
-    /** Handle merge conflict by throwing a `MergeError` exception */
-    private def mergeConflict(tp1: Type, tp2: Type, that: Denotation)(implicit ctx: Context): Type =
-      throw new MergeError(this.symbol, that.symbol, tp1, tp2, NoPrefix)
-
-    /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
-     *  otherwise generate new synthetic names.
-     */
-    private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
-      (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
-       yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
-
     /** Form a denotation by conjoining with denotation `that`.
      *
      *  NoDenotations are dropped. MultiDenotations are handled by merging
@@ -374,72 +363,6 @@ object Denotations {
      *  If SingleDenotations with different signatures are joined, return NoDenotation.
      */
     def & (that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
-
-      /** Normally, `tp1 & tp2`. Special cases for matching methods and classes, with
-       *  the possibility of raising a merge error.
-       */
-      def infoMeet(tp1: Type, tp2: Type): Type = {
-        if (tp1 eq tp2) tp1
-        else tp1 match {
-          case tp1: TypeBounds =>
-            tp2 match {
-              case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
-              case tp2: ClassInfo if tp1 contains tp2 => tp2
-              case _ => mergeConflict(tp1, tp2, that)
-            }
-          case tp1: ClassInfo =>
-            tp2 match {
-              case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-              case tp2: TypeBounds if tp2 contains tp1 => tp1
-              case _ => mergeConflict(tp1, tp2, that)
-            }
-
-          // Two remedial strategies:
-          //
-          //  1. Prefer method types over poly types. This is necessary to handle
-          //     overloaded definitions like the following
-          //
-          //        def ++ [B >: A](xs: C[B]): D[B]
-          //        def ++ (xs: C[A]): D[A]
-          //
-          //     (Code like this is found in the collection strawman)
-          //
-          // 2. In the case of two method types or two polytypes with matching
-          //    parameters and implicit status, merge corresponding parameter
-          //    and result types.
-          case tp1: MethodType =>
-            tp2 match {
-              case tp2: PolyType =>
-                tp1
-              case tp2: MethodType if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
-                  tp1.isImplicitMethod == tp2.isImplicitMethod =>
-                tp1.derivedLambdaType(
-                  mergeParamNames(tp1, tp2),
-                  tp1.paramInfos,
-                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
-              case _ =>
-                mergeConflict(tp1, tp2, that)
-            }
-          case tp1: PolyType =>
-            tp2 match {
-              case tp2: MethodType =>
-                tp2
-              case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
-                tp1.derivedLambdaType(
-                  mergeParamNames(tp1, tp2),
-                  tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                    infoMeet(p1,  p2.subst(tp2, tp1)).bounds
-                  },
-                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
-              case _ =>
-                mergeConflict(tp1, tp2, that)
-            }
-
-          case _ =>
-            tp1 & tp2
-        }
-      }
-
       /** Try to merge denot1 and denot2 without adding a new signature. */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
@@ -535,7 +458,7 @@ object Denotations {
               if (preferSym(sym2, sym1)) sym2
               else sym1
             val jointInfo =
-              try infoMeet(info1, info2)
+              try infoMeet(info1, info2, sym1, sym2, safeIntersection)
               catch {
                 case ex: MergeError =>
                   // TODO: this picks one type over the other whereas it might be better
@@ -571,51 +494,6 @@ object Denotations {
      */
     def | (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
-      /** Normally, `tp1 | tp2`. Special cases for matching methods and classes, with
-       *  the possibility of raising a merge error.
-       */
-      def infoJoin(tp1: Type, tp2: Type): Type = tp1 match {
-        case tp1: TypeBounds =>
-          tp2 match {
-            case tp2: TypeBounds => tp1 | tp2
-            case tp2: ClassInfo if tp1 contains tp2 => tp1
-            case _ => mergeConflict(tp1, tp2, that)
-          }
-        case tp1: ClassInfo =>
-          tp2 match {
-            case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
-            case tp2: TypeBounds if tp2 contains tp1 => tp2
-            case _ => mergeConflict(tp1, tp2, that)
-          }
-        case tp1: MethodType =>
-          tp2 match {
-            case tp2: MethodType
-            if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
-               tp1.isImplicitMethod == tp2.isImplicitMethod =>
-              tp1.derivedLambdaType(
-                mergeParamNames(tp1, tp2),
-                tp1.paramInfos,
-                tp1.resultType | tp2.resultType.subst(tp2, tp1))
-            case _ =>
-              mergeConflict(tp1, tp2, that)
-          }
-        case tp1: PolyType =>
-          tp2 match {
-            case tp2: PolyType
-            if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
-              tp1.derivedLambdaType(
-                mergeParamNames(tp1, tp2),
-                tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
-                  (p1 | p2.subst(tp2, tp1)).bounds
-                },
-                tp1.resultType | tp2.resultType.subst(tp2, tp1))
-            case _ =>
-              mergeConflict(tp1, tp2, that)
-          }
-        case _ =>
-          tp1 | tp2
-      }
-
       def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
         if (denot1.matches(denot2)) {
           val sym1 = denot1.symbol
@@ -646,7 +524,7 @@ object Denotations {
                 lubSym(sym1.allOverriddenSymbols, NoSymbol)
               }
             new JointRefDenotation(
-                jointSym, infoJoin(info1, info2), denot1.validFor & denot2.validFor)
+                jointSym, infoJoin(info1, info2, sym1, sym2), denot1.validFor & denot2.validFor)
           }
         }
         else NoDenotation
@@ -677,6 +555,134 @@ object Denotations {
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
   }
+
+  // ------ Info meets and joins ---------------------------------------------
+
+    /** Handle merge conflict by throwing a `MergeError` exception */
+    private def mergeConflict(sym1: Symbol, sym2: Symbol, tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+      throw new MergeError(sym1, sym2, tp1, tp2, NoPrefix)
+
+    /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
+     *  otherwise generate new synthetic names.
+     */
+    private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
+      (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
+       yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
+
+    /** Normally, `tp1 & tp2`. Special cases for matching methods and classes, with
+      *  the possibility of raising a merge error.
+      */
+    def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type = {
+      if (tp1 eq tp2) tp1
+      else tp1 match {
+        case tp1: TypeBounds =>
+          tp2 match {
+            case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
+            case tp2: ClassInfo if tp1 contains tp2 => tp2
+            case _ => mergeConflict(sym1, sym2, tp1, tp2)
+          }
+        case tp1: ClassInfo =>
+          tp2 match {
+            case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
+            case tp2: TypeBounds if tp2 contains tp1 => tp1
+            case _ => mergeConflict(sym1, sym2, tp1, tp2)
+          }
+
+        // Two remedial strategies:
+        //
+        //  1. Prefer method types over poly types. This is necessary to handle
+        //     overloaded definitions like the following
+        //
+        //        def ++ [B >: A](xs: C[B]): D[B]
+        //        def ++ (xs: C[A]): D[A]
+        //
+        //     (Code like this is found in the collection strawman)
+        //
+        // 2. In the case of two method types or two polytypes with matching
+        //    parameters and implicit status, merge corresponding parameter
+        //    and result types.
+        case tp1: MethodType =>
+          tp2 match {
+            case tp2: PolyType =>
+              tp1
+            case tp2: MethodType if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
+                tp1.isImplicitMethod == tp2.isImplicitMethod =>
+              tp1.derivedLambdaType(
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos,
+                infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
+            case _ =>
+              mergeConflict(sym1, sym2, tp1, tp2)
+          }
+        case tp1: PolyType =>
+          tp2 match {
+            case tp2: MethodType =>
+              tp2
+            case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+              tp1.derivedLambdaType(
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+                  infoMeet(p1, p2.subst(tp2, tp1), sym1, sym2, safeIntersection).bounds
+                },
+                infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2, safeIntersection))
+            case _ =>
+              mergeConflict(sym1, sym2, tp1, tp2)
+          }
+
+        case _ =>
+          try tp1 & tp2
+          catch {
+            case ex: Throwable =>
+              println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
+              throw ex
+          }
+      }
+    }
+
+    /** Normally, `tp1 | tp2`. Special cases for matching methods and classes, with
+      *  the possibility of raising a merge error.
+      */
+    def infoJoin(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Type = tp1 match {
+      case tp1: TypeBounds =>
+        tp2 match {
+          case tp2: TypeBounds => tp1 | tp2
+          case tp2: ClassInfo if tp1 contains tp2 => tp1
+          case _ => mergeConflict(sym1, sym2, tp1, tp2)
+        }
+      case tp1: ClassInfo =>
+        tp2 match {
+          case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
+          case tp2: TypeBounds if tp2 contains tp1 => tp2
+          case _ => mergeConflict(sym1, sym2, tp1, tp2)
+        }
+      case tp1: MethodType =>
+        tp2 match {
+          case tp2: MethodType
+          if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
+              tp1.isImplicitMethod == tp2.isImplicitMethod =>
+            tp1.derivedLambdaType(
+              mergeParamNames(tp1, tp2),
+              tp1.paramInfos,
+              infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
+          case _ =>
+            mergeConflict(sym1, sym2, tp1, tp2)
+        }
+      case tp1: PolyType =>
+        tp2 match {
+          case tp2: PolyType
+          if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+            tp1.derivedLambdaType(
+              mergeParamNames(tp1, tp2),
+              tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+                infoJoin(p1, p2.subst(tp2, tp1), sym1, sym2).bounds
+              },
+              infoJoin(tp1.resultType, tp2.resultType.subst(tp2, tp1), sym1, sym2))
+          case _ =>
+            mergeConflict(sym1, sym2, tp1, tp2)
+        }
+      case _ =>
+        tp1 | tp2
+    }
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
