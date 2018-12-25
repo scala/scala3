@@ -435,6 +435,7 @@ object Contexts {
       this.implicitsCache = null
       this.phasedCtx = this
       this.phasedCtxs = null
+      this.sourceCtx = null
       // See comment related to `creationTrace` in this file
       // setCreationTrace()
       this
@@ -446,12 +447,13 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
-    private var sourceCtx: SimpleIdentityMap[SourceFile, Context] = SimpleIdentityMap.Empty
+    private var sourceCtx: SimpleIdentityMap[SourceFile, Context] = null
 
     final def withSource(source: SourceFile): Context =
       if (source `eq` this.source) this
       else if ((source `eq` outer.source) && (outer.sourceCtx(this.source) `eq` this)) outer
       else {
+        if (sourceCtx == null) sourceCtx = SimpleIdentityMap.Empty
         val prev = sourceCtx(source)
         if (prev != null) prev
         else {
