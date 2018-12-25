@@ -117,7 +117,7 @@ trait RunnerOrchestration {
           val sb = new StringBuilder
 
           if (childStdout eq null)
-            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream))
+            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, "UTF-8"))
 
           var childOutput: String = childStdout.readLine()
 
@@ -127,8 +127,7 @@ trait RunnerOrchestration {
           childOutput = childStdout.readLine()
 
           while (childOutput != ChildJVMMain.MessageEnd && childOutput != null) {
-            sb.append(childOutput)
-            sb += '\n'
+            sb.append(childOutput).append(System.lineSeparator)
             childOutput = childStdout.readLine()
           }
 
@@ -161,7 +160,7 @@ trait RunnerOrchestration {
       val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
       val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = sys.props("java.home") + sep + "bin" + sep + "java"
-      new ProcessBuilder(javaBin, "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
+      new ProcessBuilder(javaBin, "-Dfile.encoding=UTF-8", "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)
         .redirectInput(ProcessBuilder.Redirect.PIPE)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
