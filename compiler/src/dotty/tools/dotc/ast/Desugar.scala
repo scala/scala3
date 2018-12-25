@@ -920,8 +920,8 @@ object desugar {
     assert(arity <= Definitions.MaxTupleArity)
     def tupleTypeRef = defn.TupleType(arity)
     if (arity == 1) ts.head
-    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
     else if (arity == 0) unitLiteral
+    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
