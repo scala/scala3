@@ -2,13 +2,15 @@ package dotty.tools
 package dotc
 package util
 
+import printing.{Showable, Printer}
+import printing.Texts._
 import Positions.{Position, NoPosition}
 
 import scala.annotation.internal.sharable
 
 /** A source position is comprised of a position in a source file */
 case class SourcePosition(source: SourceFile, pos: Position, outer: SourcePosition = NoSourcePosition)
-extends interfaces.SourcePosition {
+extends interfaces.SourcePosition with Showable {
   /** Is `that` a source position contained in this source position ?
    *  `outer` is not taken into account. */
   def contains(that: SourcePosition): Boolean =
@@ -56,8 +58,9 @@ extends interfaces.SourcePosition {
   def withOuter(outer: SourcePosition): SourcePosition = new SourcePosition(source, pos, outer)
 
   override def toString: String =
-    if (source.exists) s"${source.file}:${line + 1}"
-    else s"(no source file, offset = ${pos.point})"
+    s"${if (source.exists) source.file.toString else "(no source)"}:$pos"
+
+  def toText(printer: Printer): Text = printer.toText(this)
 }
 
 /** A sentinel for a non-existing source position */
