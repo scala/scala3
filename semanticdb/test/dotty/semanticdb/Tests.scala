@@ -212,5 +212,8 @@ class Tests {
   //@Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   //@Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
   //@Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
-  @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
+  //@Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
+  @Test def testCase(): Unit = checkFile("example/Case.scala")
+
+
  }

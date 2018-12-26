@@ -416,6 +416,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         // We want to add symbols coming from our file
         // if (symbol.pos.sourceFile != sourceFile) return
         if (symbol_path == "" || symbol.isUselessOccurrence) return
+        if (symbol.flags.is(Flags.Synthetic) && type_symbol == s.SymbolOccurrence.Role.DEFINITION) return
 
         val key = (symbol_path, range)
         // TODO: refactor the following
@@ -430,7 +431,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         }
         println(symbol_path,
                 range,
-                symbol.owner.flags,
+                symbol.flags,
                 is_global,
                 iterateParent(symbol))
         occurrences =
@@ -583,17 +584,18 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           case TypeTree.Select(qualifier, _) => {
             val typetree = extractTypeTree(tree)
             val range = rangeSelect(typetree.symbol.trueName, typetree.pos)
+            println(typetree.pos.start, typetree.pos.end)
             addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
                                  range)
             super.traverseTypeTree(typetree)
-          }
+          }/*
           case TypeTree.Inferred() => {
             val typetree = extractTypeTree(tree)
             addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
                                  posToRange(typetree.pos).get)
-          }
+          }*/
           case _ => {
             super.traverseTypeTree(tree)
           }
@@ -829,7 +831,10 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       }
 
     }
+    println("{--------------------------------------}")
     println(root)
+    println("{--------------------------------------}")
+
     Traverser.traverseTree(root)(reflect.rootContext)
   }
 
