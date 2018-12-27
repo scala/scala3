@@ -669,7 +669,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             fittedInitClassRange = None
 
             // we add the parents to the symbol list
-            forceAddBecauseParents = true
+            forceAddBecauseParents = !(tree.symbol.flags.is(Flags.Case))
             parents.foreach(_ match {
               case IsTypeTree(t) => traverseTypeTree(t)
               case IsTerm(t) => {

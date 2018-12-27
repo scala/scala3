@@ -214,6 +214,7 @@ class Tests {
   //@Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
   //@Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
   @Test def testCase(): Unit = checkFile("example/Case.scala")
+  @Test def teastCase(): Unit = checkFile("example/Example.scala")
 
 
  }

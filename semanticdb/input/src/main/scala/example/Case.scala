@@ -1,5 +1,5 @@
 package example
-/*
+
 class CaseTest {
   def foo (x: Option[Int]) : Int =
   x match {
@@ -7,6 +7,6 @@ class CaseTest {
     case None => 0
   }
 }
-*/
+
 case class CaseClass(x: Int)
-//case object CaseObject
+case object CaseObject

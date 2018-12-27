@@ -15,7 +15,7 @@ class Example {
       y
     )
 }
-/*
+
 class ExampleInit {
 
-}*/
+}
