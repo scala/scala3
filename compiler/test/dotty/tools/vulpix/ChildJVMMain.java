@@ -29,7 +29,8 @@ public class ChildJVMMain {
             Class<?> cls = ucl.loadClass("Test");
             meth = cls.getMethod("main", String[].class);
         }
-        catch(Throwable e) {
+        catch (Throwable e) {
+            // Include the failure stack trace to the test output
             System.out.println(MessageStart);
             e.printStackTrace();
             throw e;
