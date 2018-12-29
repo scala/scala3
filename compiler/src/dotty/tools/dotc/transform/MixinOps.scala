@@ -72,28 +72,6 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot))
   }
 
-  /** Get `sym` of the method that needs a forwarder
-    *  Method needs a forwarder in those cases:
-    *   - there is a trait that defines a primitive version of implemented polymorphic method.
-    *   - there is a trait that defines a polymorphic version of implemented primitive method.
-    */
-  def needsPrimitiveForwarderTo(meth: Symbol): Option[Symbol] = {
-    def hasPrimitiveMissMatch(tp1: Type, tp2: Type): Boolean = (tp1, tp2) match {
-      case (tp1: MethodicType, tp2: MethodicType) =>
-        hasPrimitiveMissMatch(tp1.resultType, tp2.resultType) ||
-        tp1.paramInfoss.flatten.zip(tp1.paramInfoss.flatten).exists(args => hasPrimitiveMissMatch(args._1, args._2))
-      case _ =>
-        def isPrimitiveOrValueClass(sym: Symbol): Boolean = sym.isPrimitiveValueClass || sym.isValueClass
-        isPrimitiveOrValueClass(tp1.typeSymbol) ^ isPrimitiveOrValueClass(tp2.typeSymbol)
-    }
-
-    def needsPrimitiveForwarder(m: Symbol): Boolean =
-      m.owner != cls && !m.is(Deferred) && hasPrimitiveMissMatch(meth.info, m.info)
-
-    if (!meth.is(Method | Deferred, butNot = PrivateOrAccessor) || meth.overriddenSymbol(cls).exists || needsForwarder(meth)) None
-    else competingMethodsIterator(meth).find(needsPrimitiveForwarder)
-  }
-
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
@@ -104,7 +82,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
     cls.baseClasses.iterator
       .filter(_ ne meth.owner)
-      .map(meth.overriddenSymbol)
+      .map(base => meth.overriddenSymbol(base, cls))
       .filter(_.exists)
   }
 }
