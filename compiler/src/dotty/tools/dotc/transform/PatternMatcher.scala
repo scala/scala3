@@ -711,9 +711,14 @@ object PatternMatcher {
         (tpe isRef defn.ShortClass) ||
         (tpe isRef defn.CharClass)
 
-      def isIntConst(tree: Tree) = tree match {
-        case Literal(const) => const.isIntRange
-        case _ => false
+      val seen = mutable.Set[Int]()
+
+      def isNewIntConst(tree: Tree) = tree match {
+        case Literal(const) if const.isIntRange && !seen.contains(const.intValue) =>
+          seen += const.intValue
+          true
+        case _ =>
+          false
       }
 
       // An extractor to recover the shape of plans that can become alternatives
@@ -725,7 +730,7 @@ object PatternMatcher {
               val alts = List.newBuilder[Tree]
               def rec(innerPlan: Plan): Boolean = innerPlan match {
                 case SeqPlan(TestPlan(EqualTest(tree), scrut, _, ReturnPlan(`innerLabel`)), tail)
-                if scrut === scrutinee && isIntConst(tree) =>
+                if scrut === scrutinee && isNewIntConst(tree) =>
                   alts += tree
                   rec(tail)
                 case ReturnPlan(`outerLabel`) =>
@@ -746,7 +751,7 @@ object PatternMatcher {
 
       def recur(plan: Plan): List[(List[Tree], Plan)] = plan match {
         case SeqPlan(testPlan @ TestPlan(EqualTest(tree), scrut, _, ons), tail)
-        if scrut === scrutinee && isIntConst(tree) && !canFallThrough(ons) =>
+        if scrut === scrutinee && !canFallThrough(ons) && isNewIntConst(tree) =>
           (tree :: Nil, ons) :: recur(tail)
         case SeqPlan(AlternativesPlan(alts, ons), tail) =>
           (alts, ons) :: recur(tail)
