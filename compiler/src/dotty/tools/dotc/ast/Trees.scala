@@ -71,6 +71,26 @@ object Trees {
 
     def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
 
+    def withPos(posd: Tree[_])(implicit ctx: Context): this.type = {
+      val tree1 =
+        if (posd.source == source && (posd.pos == pos || posd.pos.isSynthetic)) this
+        else cloned(ctx.withSource(posd.source))
+      tree1.setPos(sourcePos.pos)
+      tree1.asInstanceOf[this.type]
+    }
+
+    def withSource(source: SourceFile)(implicit ctx: Context): Tree[T] =
+      if (source == this.source) this
+      else cloned(ctx.withSource(source))
+
+    def withSourcePos(sourcePos: SourcePosition)(implicit ctx: Context): this.type = {
+      val tree1 =
+        if (sourcePos.source == source && (sourcePos.pos == pos || pos.isSynthetic)) this
+        else cloned(ctx.withSource(sourcePos.source))
+      tree1.setPos(sourcePos.pos)
+      tree1.asInstanceOf[this.type]
+    }
+
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
 
@@ -790,6 +810,8 @@ object Trees {
     override def withTypeUnchecked(tpe: Type): ThisTree[Type] = this.asInstanceOf[ThisTree[Type]]
     override def pos: Position = NoPosition
     override def setPos(pos: Position): Unit = {}
+    override def withSource(source: SourceFile)(implicit ctx: Context): Tree[T] = this
+    override def withSourcePos(sourcePos: SourcePosition)(implicit ctx: Context): this.type = this
   }
 
   /** Temporary class that results from translation of ModuleDefs
@@ -817,7 +839,9 @@ object Trees {
       trees foreach (_.foreachInThicket(op))
   }
 
-  class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoContext)
+  class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoContext) {
+    assert(uniqueId != 1492)
+  }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T])(NoContext) with WithoutTypeOrPos[T] {
@@ -1032,7 +1056,8 @@ object Trees {
       }
       def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed = tree match {
         case tree: Typed if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-        case _ => finalize(tree, untpd.Typed(expr, tpt)(srcCtx(tree)))
+        case tree => finalize(tree, untpd.Typed(expr, tpt)(srcCtx(tree)))
+          //.ensuring(res => res.uniqueId != 1471, s"source = $tree, ${tree.uniqueId}")
       }
       def NamedArg(tree: Tree)(name: Name, arg: Tree)(implicit ctx: Context): NamedArg = tree match {
         case tree: NamedArg if (name == tree.name) && (arg eq tree.arg) => tree

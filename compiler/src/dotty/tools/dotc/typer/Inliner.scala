@@ -63,15 +63,15 @@ object Inliner {
    */
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
 
-	/** Set the position of all trees logically contained in the expansion of
-	 *  inlined call `call` to the position of `call`. This transform is necessary
-	 *  when lifting bindings from the expansion to the outside of the call.
-	 */
+   /** Set the position of all trees logically contained in the expansion of
+    *  inlined call `call` to the position of `call`. This transform is necessary
+    *  when lifting bindings from the expansion to the outside of the call.
+    */
     def liftFromInlined(call: Tree) = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = {
         t match {
           case Inlined(t, Nil, expr) if t.isEmpty => expr
-          case _ => super.transform(t.withPos(call.pos))
+          case _ => super.transform(t.withSourcePos(call.sourcePos))
         }
       }
     }
@@ -122,8 +122,8 @@ object Inliner {
   def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
-      val inlinedAtPos = inlined.call.pos
-      val callSourceFile = ctx.compilationUnit.source.file
+      val inlinedAtPos = inlined.call.sourcePos
+      val curSourceFile = ctx.compilationUnit.source.file
 
       /** Removes all Inlined trees, replacing them with blocks.
        *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
@@ -136,10 +136,10 @@ object Inliner {
             case _ =>
               val transformed = super.transform(tree)
               enclosingInlineds match {
-                case call :: _ if call.symbol.sourceFile != callSourceFile =>
+                case call :: _ if call.symbol.sourceFile != curSourceFile =>
                   // Until we implement JSR-45, we cannot represent in output positions in other source files.
                   // So, reposition inlined code from other files with the call position:
-                  transformed.withPos(inlinedAtPos)
+                  transformed.withSourcePos(inlinedAtPos)
                 case _ => transformed
               }
           }
@@ -159,8 +159,8 @@ object Inliner {
    *  in the call field of an Inlined node.
    *  The trace has enough info to completely reconstruct positions.
    */
-  def inlineCallTrace(callSym: Symbol, pos: Position)(implicit ctx: Context): Tree =
-    Ident(callSym.topLevelClass.typeRef).withPos(pos)
+  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(implicit ctx: Context): Tree =
+    Ident(callSym.topLevelClass.typeRef).withSourcePos(pos)
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -235,7 +235,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val binding = {
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
       else ValDef(boundSym, arg)
-    }.withPos(boundSym.pos)
+    }.withSourcePos(boundSym.sourcePos)
     boundSym.defTree = binding
     bindingsBuf += binding
     binding
@@ -289,7 +289,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, rhs).withPos(selfSym.pos)
+      val binding = ValDef(selfSym.asTerm, rhs).withSourcePos(selfSym.sourcePos)
       bindingsBuf += binding
       selfSym.defTree = binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
@@ -347,13 +347,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context): Tree = {
     val result = tree.changeOwner(originalOwner, ctx.owner)
-    if (!originalOwner.isContainedIn(inlinedMethod)) Inlined(EmptyTree, Nil, result)
+    if (!originalOwner.isContainedIn(inlinedMethod))
+      Inlined(EmptyTree, Nil, result)(ctx.withSource(tree.source)).withPos(tree.pos)
     else result
   }
 
   def tryConstValue: Tree =
     ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
-      case Some(c) => Literal(c).withPos(call.pos)
+      case Some(c) => Literal(c)(ctx.withSource(call.source)).withPos(call.pos)
       case _ => EmptyTree
     }
 
@@ -410,15 +411,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           tree.tpe match {
             case thistpe: ThisType =>
               thisProxy.get(thistpe.cls) match {
-                case Some(t) => ref(t).withPos(tree.pos)
+                case Some(t) => ref(t).withSourcePos(tree.sourcePos)
                 case None => tree
               }
             case _ => tree
           }
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
-            case Some(t) if tree.isTerm && t.isSingleton => singleton(t.dealias).withPos(tree.pos)
-            case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
+            case Some(t) if tree.isTerm && t.isSingleton =>
+              singleton(t.dealias).withSourcePos(tree.sourcePos)
+            case Some(t) if tree.isType =>
+              TypeTree(t).withSourcePos(tree.sourcePos)
             case _ => tree
           }
         case tree => tree
@@ -429,7 +432,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion = inliner.transform(rhsToInline.withPos(call.pos))
+    val expansion = inliner.transform(rhsToInline.withSourcePos(call.sourcePos))
 
     def issueError() = callValueArgss match {
       case (msgArg :: rest) :: Nil =>
@@ -595,7 +598,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ =>
           binding
       }
-      binding1.withPos(call.pos)
+      binding1.withSourcePos(call.sourcePos)
     }
 
     /** An extractor for references to inlineable arguments. These are :
