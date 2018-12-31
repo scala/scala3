@@ -5,7 +5,6 @@ package util
 import printing.{Showable, Printer}
 import printing.Texts._
 import Positions.{Position, NoPosition}
-
 import scala.annotation.internal.sharable
 
 /** A source position is comprised of a position in a source file */
@@ -61,6 +60,7 @@ extends interfaces.SourcePosition with Showable {
   def startPos: SourcePosition = withRange(pos.startPos)
   def endPos  : SourcePosition = withRange(pos.endPos)
   def focus   : SourcePosition = withRange(pos.focus)
+  def toSynthetic: SourcePosition = withRange(pos.toSynthetic)
 
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$pos"

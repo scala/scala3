@@ -41,9 +41,6 @@ abstract class Positioned extends Product {
     newpd.asInstanceOf[this.type]
   }
 
-  def withPos(posd: Positioned)(implicit src: SourceInfo): this.type =
-    if (posd == null) this else withPos(posd.pos)
-
   /** This item with a position that's the union of the given `pos` and the
    *  current position.
    */
