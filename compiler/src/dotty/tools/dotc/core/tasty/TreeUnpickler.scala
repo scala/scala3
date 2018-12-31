@@ -276,7 +276,7 @@ class TreeUnpickler(reader: TastyReader,
     def readType()(implicit ctx: Context): Type = {
       val start = currentAddr
       val tag = readByte()
-      pickling.println(s"reading type ${astTagToString(tag)} at $start")
+      pickling.println(s"reading type ${astTagToString(tag)} at $start, ${ctx.source}")
 
       def registeringType[T](tp: Type, op: => T): T = {
         typeAtAddr(start) = tp
@@ -1004,7 +1004,7 @@ class TreeUnpickler(reader: TastyReader,
       if (sctx `ne` ctx) return readTerm()(sctx)
       val start = currentAddr
       val tag = readByte()
-      pickling.println(s"reading term ${astTagToString(tag)} at $start")
+      pickling.println(s"reading term ${astTagToString(tag)} at $start, ${ctx.source}")
 
       def readPathTerm(): Tree = {
         goto(start)
