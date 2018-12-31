@@ -34,7 +34,9 @@ object ScriptSourceFile {
   }
 }
 
-case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfaces.SourceFile {
+class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
+
+  lazy val content = computeContent
 
   def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
   def this(name: String, content: String) = this(new VirtualFile(name), content.toCharArray)
@@ -146,6 +148,9 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   }
 
   override def toString: String = file.toString
+}
+object SourceFile {
+  implicit def eqSurce: Eq[SourceFile, SourceFile] = Eq
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
