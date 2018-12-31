@@ -627,7 +627,7 @@ object Symbols {
     final def sourceFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
       if (file != null && file.extension != "class") file
-      else if (!defTree.isEmpty) defTree.sourceFile
+      else if (!defTree.isEmpty) defTree.source.file
       else {
         val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
         topLevelCls.unforcedAnnotation(defn.SourceFileAnnot) match {
