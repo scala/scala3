@@ -121,7 +121,7 @@ object Inliner {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
       val inlinedAtPos = inlined.call.pos
-      val callSourceFile = ctx.source.file
+      val callSourceFile = ctx.compilationUnit.source.file
 
       /** Removes all Inlined trees, replacing them with blocks.
        *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
