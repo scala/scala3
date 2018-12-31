@@ -70,7 +70,10 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case x: untpd.Tree =>
         var sourceFile = current
         val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
-        if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
+        if (pos.exists && (
+          pos != x.initialPos.toSynthetic ||
+          x.source.file != current ||
+          alwaysNeedsPos(x))) {
           addrOfTree(x) match {
             case Some(addr) if !pickledIndices.contains(addr.index) =>
               //println(i"pickling $x with $pos at $addr")
