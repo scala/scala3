@@ -67,9 +67,7 @@ object Trees {
 
     def uniqueId: Int = myUniqueId
 
-    def sourceFile(implicit ctx: Context): AbstractFile = TreeIds.fileOfId(uniqueId)
-
-    def source(implicit ctx: Context): SourceFile = ctx.getSource(sourceFile)
+    def source(implicit ctx: Context): SourceFile = ctx.getSource(TreeIds.fileOfId(uniqueId))
 
     def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
 
