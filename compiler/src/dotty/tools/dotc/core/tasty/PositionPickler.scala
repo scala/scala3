@@ -70,12 +70,13 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case x: untpd.Tree =>
         var sourceFile = current
         val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
-        if (pos.exists && (
-          pos != x.initialPos.toSynthetic ||
-          x.source.file != current ||
-          alwaysNeedsPos(x))) {
+        val sourceChange = x.source.file != current
+        if (pos.exists && (pos != x.initialPos.toSynthetic || sourceChange || alwaysNeedsPos(x))) {
           addrOfTree(x) match {
-            case Some(addr) if !pickledIndices.contains(addr.index) =>
+            case Some(addr) if !pickledIndices.contains(addr.index) || sourceChange =>
+              // we currently do not share trees when unpickling, so if one path to a tree contains
+              // a source change while another does not, we have to record the position of the tree twice
+              // in order not to miss the source change. Test case is t3232a.scala.
               //println(i"pickling $x with $pos at $addr")
               pickleDeltas(addr.index, pos)
               if (x.source.file != current) {
