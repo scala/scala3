@@ -105,6 +105,8 @@ abstract class Positioned extends Product {
             end = p.pos.start
           }
           else outstanding = p :: outstanding
+        case m: untpd.Modifiers =>
+          elems = elems ::: m.mods.reverse ::: m.annotations.reverse
         case xs: List[_] =>
           elems = elems ::: xs.reverse
         case _ =>
@@ -121,6 +123,7 @@ abstract class Positioned extends Product {
       n -= 1
       productElement(n) match {
         case p: Positioned => pos = pos union p.pos
+        case m: untpd.Modifiers => pos = unionPos(unionPos(pos, m.mods), m.annotations)
         case xs: List[_] => pos = unionPos(pos, xs)
         case _ =>
       }
@@ -138,9 +141,11 @@ abstract class Positioned extends Product {
   def contains(that: Positioned): Boolean = {
     def isParent(x: Any): Boolean = x match {
       case x: Positioned =>
-        x contains that
+        x.contains(that)
+      case m: untpd.Modifiers =>
+        m.mods.exists(isParent) || m.annotations.exists(isParent)
       case xs: List[_] =>
-        xs exists isParent
+        xs.exists(isParent)
       case _ =>
         false
     }
@@ -198,6 +203,9 @@ abstract class Positioned extends Product {
           lastPos = p.pos
         }
         p.checkPos(nonOverlapping)
+      case m: untpd.Modifiers =>
+        m.annotations.foreach(check)
+        m.mods.foreach(check)
       case xs: List[_] =>
         xs.foreach(check)
       case _ =>

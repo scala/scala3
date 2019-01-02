@@ -72,6 +72,7 @@ object NavigateAST {
       while (it.hasNext) {
         val path1 = it.next() match {
           case p: Positioned => singlePath(p, path)
+          case m: untpd.Modifiers => childPath(m.productIterator, path)
           case xs: List[_] => childPath(xs.iterator, path)
           case _ => path
         }

@@ -266,7 +266,7 @@ class Namer { typer: Typer =>
   def createSymbol(tree: Tree)(implicit ctx: Context): Symbol = {
 
     def privateWithinClass(mods: Modifiers) =
-      enclosingClassNamed(mods.privateWithin, mods.pos)
+      enclosingClassNamed(mods.privateWithin, tree.pos)
 
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
