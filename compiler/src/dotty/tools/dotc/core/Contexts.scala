@@ -39,6 +39,7 @@ object Contexts {
 
   trait SourceInfo {
     def source: SourceFile
+    def withSource(file: AbstractFile): SourceInfo
   }
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()

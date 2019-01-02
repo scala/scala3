@@ -1,34 +1,49 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package ast
 
 import util.Positions._
-import util.SourcePosition
+import util.{SourceFile, SourcePosition}
 import core.Contexts.{Context, SourceInfo}
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
+import io.AbstractFile
+import annotation.transientParam
+import annotation.internal.sharable
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned extends Product {
+abstract class Positioned(implicit @transientParam src: SourceInfo) extends Product with Cloneable {
 
+  /** A unique identifier. Among other things, used for determining the source file
+   *  component of the position.
+   */
+  private var myUniqueId: Int = _
   private[this] var curPos: Position = _
 
-  setPos(initialPos)
-
-  /** The item's position.
-   */
+  /** The item's position */
   def pos: Position = curPos
 
- /** Destructively update `curPos` to given position. Also, set any missing
+  /** item's id */
+  def uniqueId: Int = myUniqueId
+
+  protected def srcfile: AbstractFile = TreeIds.fileOfId(uniqueId)
+  def source(implicit ctx: Context): SourceFile = ctx.getSource(srcfile)
+  def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
+
+  setId(TreeIds.nextIdFor(initialFile(src)))
+  setPos(initialPos, srcfile)
+
+  protected def setId(id: Int): Unit = myUniqueId = id
+
+  /** Destructively update `curPos` to given position. Also, set any missing
    *  positions in children.
    */
-  protected def setPos(pos: Position): Unit = {
-    setPosUnchecked(pos)
-    if (pos.exists) setChildPositions(pos.toSynthetic)
+  protected def setPos(pos: Position, file: AbstractFile): Unit = {
+    setPosUnchecked(pos, file)
+    if (pos.exists) setChildPositions(pos.toSynthetic, file)
   }
-
-  def cloned(implicit src: SourceInfo): Positioned
 
   /** A positioned item like this one with the position set to `pos`.
    *  if the positioned item is source-derived, a clone is returned.
@@ -36,9 +51,28 @@ abstract class Positioned extends Product {
    *  destructively and the item itself is returned.
    */
   def withPos(pos: Position)(implicit src: SourceInfo): this.type = {
-    val newpd = if (pos == curPos || curPos.isSynthetic) this else cloned
-    newpd.setPos(pos)
-    newpd.asInstanceOf[this.type]
+    val ownPos = this.pos
+    val newpd: this.type = if (pos == ownPos || ownPos.isSynthetic) this else cloneIn(srcfile)
+    newpd.setPos(pos, srcfile)
+    newpd
+  }
+
+  def withPos(posd: Positioned)(implicit ctx: Context): this.type = {
+    val ownPos = this.pos
+    val newpd: this.type =
+      if (posd.source == source && posd.pos == ownPos || ownPos.isSynthetic) this
+      else cloneIn(posd.srcfile)
+    newpd.setPos(posd.pos, posd.srcfile)
+    newpd
+  }
+
+  def withSourcePos(sourcePos: SourcePosition)(implicit ctx: Context): this.type = {
+    val ownPos = this.pos
+    val newpd: this.type =
+      if (sourcePos.source == source && sourcePos.pos == ownPos || ownPos.isSynthetic) this
+      else cloneIn(sourcePos.source.file)
+    newpd.setPos(sourcePos.pos, sourcePos.source.file)
+    newpd
   }
 
   /** This item with a position that's the union of the given `pos` and the
@@ -50,7 +84,10 @@ abstract class Positioned extends Product {
    *  any checks of consistency with - or updates of - other positions.
    *  Called from Unpickler when entering positions.
    */
-  private[dotc] def setPosUnchecked(pos: Position): Unit = curPos = pos
+  private[dotc] def setPosUnchecked(pos: Position, file: AbstractFile = this.srcfile): Unit = {
+    if (file != this.srcfile) setId(TreeIds.nextIdFor(file))
+    curPos = pos
+  }
 
   /** If any children of this node do not have positions,
    *  fit their positions between the positions of the known subtrees
@@ -63,7 +100,7 @@ abstract class Positioned extends Product {
    *  But since mutual tail recursion is not supported in Scala, we express it instead
    *  as a while loop with a termination by return in the middle.
    */
-  private def setChildPositions(pos: Position): Unit = {
+  private def setChildPositions(pos: Position, file: AbstractFile): Unit = {
     var n = productArity                    // subnodes are analyzed right to left
     var elems: List[Any] = Nil              // children in lists still to be considered, from right to left
     var end = pos.end                       // the last defined offset, fill in positions up to this offset
@@ -75,10 +112,10 @@ abstract class Positioned extends Product {
         // synthetic. We can preserve this invariant by always setting a
         // zero-extent position for these trees here.
         if (!p.pos.exists || p.pos.isZeroExtent) {
-          p.setPos(Position(start, start))
+          p.setPos(Position(start, start), file)
           fillIn(ps1, start, end)
         } else {
-          p.setPos(Position(start, end))
+          p.setPos(Position(start, end), file)
           fillIn(ps1, end, end)
         }
       case nil =>
@@ -114,6 +151,31 @@ abstract class Positioned extends Product {
     }
   }
 
+  protected def cloneIn(file: AbstractFile): this.type = {
+    val newpd: this.type = clone.asInstanceOf[this.type]
+    newpd.setId(TreeIds.nextIdFor(file))
+    newpd
+  }
+
+  def initialFile(src: SourceInfo): AbstractFile = {
+    def firstFile(x: Any): AbstractFile = x match {
+      case x: Positioned if x.pos.exists =>
+        x.srcfile
+      case x1 :: xs1 =>
+        val f = firstFile(x1)
+        if (f != null) f else firstFile(xs1)
+      case _ =>
+        null
+    }
+    def firstElemFile(n: Int): AbstractFile =
+      if (n == productArity) src.source.file
+      else {
+        val f = firstFile(productElement(n))
+        if (f != null) f else firstElemFile(n + 1)
+      }
+    firstElemFile(0)
+  }
+
   /** The initial, synthetic position. This is usually the union of all positioned children's positions.
    */
   def initialPos: Position = {
@@ -122,7 +184,7 @@ abstract class Positioned extends Product {
     while (n > 0) {
       n -= 1
       productElement(n) match {
-        case p: Positioned => pos = pos union p.pos
+        case p: Positioned if sameSource(p) => pos = pos union p.pos
         case m: untpd.Modifiers => pos = unionPos(unionPos(pos, m.mods), m.annotations)
         case xs: List[_] => pos = unionPos(pos, xs)
         case _ =>
@@ -132,11 +194,13 @@ abstract class Positioned extends Product {
   }
 
   private def unionPos(pos: Position, xs: List[_]): Position = xs match {
-    case (p: Positioned) :: xs1 => unionPos(pos union p.pos, xs1)
+    case (p: Positioned) :: xs1 if sameSource(p) => unionPos(pos union p.pos, xs1)
     case (xs0: List[_]) :: xs1 => unionPos(unionPos(pos, xs0), xs1)
     case _ :: xs1 => unionPos(pos, xs1)
     case _ => pos
   }
+
+  private def sameSource(that: Positioned) = srcfile == that.srcfile
 
   def contains(that: Positioned): Boolean = {
     def isParent(x: Any): Boolean = x match {
