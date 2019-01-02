@@ -15,6 +15,7 @@ import io.AbstractFile
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.transientParam
+import Decorators._
 
 object Trees {
 
@@ -55,41 +56,9 @@ object Trees {
   extends Positioned
      with Product
      with Attachment.Container
-     with printing.Showable
-     with Cloneable {
+     with printing.Showable {
 
     if (Stats.enabled) ntrees += 1
-
-    /** A unique identifier for this tree. Used for debugging, and potentially
-     *  tracking presentation compiler interactions.
-     */
-    @sharable private var myUniqueId: Int = TreeIds.nextId
-
-    def uniqueId: Int = myUniqueId
-
-    def source(implicit ctx: Context): SourceFile = ctx.getSource(TreeIds.fileOfId(uniqueId))
-
-    def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
-
-    def withPos(posd: Tree[_])(implicit ctx: Context): this.type = {
-      val tree1 =
-        if (posd.source == source && (posd.pos == pos || posd.pos.isSynthetic)) this
-        else cloned(ctx.withSource(posd.source))
-      tree1.setPos(sourcePos.pos)
-      tree1.asInstanceOf[this.type]
-    }
-
-    def withSource(source: SourceFile)(implicit ctx: Context): Tree[T] =
-      if (source == this.source) this
-      else cloned(ctx.withSource(source))
-
-    def withSourcePos(sourcePos: SourcePosition)(implicit ctx: Context): this.type = {
-      val tree1 =
-        if (sourcePos.source == source && (sourcePos.pos == pos || pos.isSynthetic)) this
-        else cloned(ctx.withSource(sourcePos.source))
-      tree1.setPos(sourcePos.pos)
-      tree1.asInstanceOf[this.type]
-    }
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
@@ -160,7 +129,7 @@ object Trees {
       val tree =
         (if (myTpe == null ||
           (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
-         else clone).asInstanceOf[Tree[Type]]
+         else cloneIn(srcfile)).asInstanceOf[Tree[Type]]
       tree overwriteType tpe
       tree.asInstanceOf[ThisTree[Type]]
     }
@@ -256,12 +225,6 @@ object Trees {
 
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-
-    override def cloned(implicit src: SourceInfo): Tree[T] = {
-      val tree = clone.asInstanceOf[Tree[T]]
-      tree.myUniqueId = TreeIds.nextId
-      tree
-    }
   }
 
   class UnAssignedTypeException[T >: Untyped](tree: Tree[T]) extends RuntimeException {
@@ -357,7 +320,7 @@ object Trees {
     def rawComment: Option[Comment] = getAttachment(DocComment)
 
     def withMods(mods: untpd.Modifiers): ThisTree[Untyped] = {
-      val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[Untyped]]
+      val tree = if (myMods == null || (myMods == mods)) this else cloneIn(srcfile)
       tree.setMods(mods)
       tree.asInstanceOf[ThisTree[Untyped]]
     }
@@ -809,9 +772,7 @@ object Trees {
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
     override def withTypeUnchecked(tpe: Type): ThisTree[Type] = this.asInstanceOf[ThisTree[Type]]
     override def pos: Position = NoPosition
-    override def setPos(pos: Position): Unit = {}
-    override def withSource(source: SourceFile)(implicit ctx: Context): Tree[T] = this
-    override def withSourcePos(sourcePos: SourcePosition)(implicit ctx: Context): this.type = this
+    override def setPos(pos: Position, file: AbstractFile): Unit = {}
   }
 
   /** Temporary class that results from translation of ModuleDefs
