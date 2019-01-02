@@ -732,7 +732,7 @@ object JavaParsers {
       val members = new ListBuffer[Tree]
       while (in.token != RBRACE && in.token != EOF) {
         val start = in.offset
-        var mods = atPos(start) { modifiers(inInterface) }
+        var mods = modifiers(inInterface)
         if (in.token == LBRACE) {
           skipAhead() // skip init block, we just assume we have seen only static
           accept(RBRACE)
@@ -895,7 +895,7 @@ object JavaParsers {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {
           val start = in.offset
-          val mods = atPos(start) { modifiers(inInterface = false) }
+          val mods = modifiers(inInterface = false)
           buf ++= typeDecl(start, mods)
         }
       }
