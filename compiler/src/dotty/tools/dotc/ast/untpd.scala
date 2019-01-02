@@ -108,36 +108,35 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     *
     * For any query about semantic information, check `flags` instead.
     */
-  sealed abstract class Mod(val flags: FlagSet) extends Positioned {
-    def cloned(implicit src: SourceInfo): Positioned = clone.asInstanceOf[Positioned]
-  }
+  sealed abstract class Mod(val flags: FlagSet)(implicit @transientParam src: SourceInfo)
+  extends Positioned
 
   object Mod {
-    case class Private() extends Mod(Flags.Private)
+    case class Private()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Private)
 
-    case class Protected() extends Mod(Flags.Protected)
+    case class Protected()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Protected)
 
-    case class Var() extends Mod(Flags.Mutable)
+    case class Var()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Mutable)
 
-    case class Implicit() extends Mod(Flags.ImplicitCommon)
+    case class Implicit()(implicit @transientParam src: SourceInfo) extends Mod(Flags.ImplicitCommon)
 
-    case class Erased() extends Mod(Flags.Erased)
+    case class Erased()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Erased)
 
-    case class Final() extends Mod(Flags.Final)
+    case class Final()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Final)
 
-    case class Sealed() extends Mod(Flags.Sealed)
+    case class Sealed()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Sealed)
 
-    case class Opaque() extends Mod(Flags.Opaque)
+    case class Opaque()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Opaque)
 
-    case class Override() extends Mod(Flags.Override)
+    case class Override()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Override)
 
-    case class Abstract() extends Mod(Flags.Abstract)
+    case class Abstract()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Abstract)
 
-    case class Lazy() extends Mod(Flags.Lazy)
+    case class Lazy()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Lazy)
 
-    case class Inline() extends Mod(Flags.Inline)
+    case class Inline()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Inline)
 
-    case class Enum() extends Mod(Flags.Enum)
+    case class Enum()(implicit @transientParam src: SourceInfo) extends Mod(Flags.Enum)
   }
 
   /** Modifiers and annotations for definitions
@@ -151,7 +150,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     flags: FlagSet = EmptyFlags,
     privateWithin: TypeName = tpnme.EMPTY,
     annotations: List[Tree] = Nil,
-    mods: List[Mod] = Nil) extends Cloneable {
+    mods: List[Mod] = Nil) {
 
     def is(fs: FlagSet): Boolean = flags is fs
     def is(fc: FlagConjunction): Boolean = flags is fc
@@ -207,9 +206,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
-
-    override def cloned(implicit src: SourceInfo): Modifiers =
-      clone.asInstanceOf[Modifiers]
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()
