@@ -411,7 +411,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           tree.tpe match {
             case thistpe: ThisType =>
               thisProxy.get(thistpe.cls) match {
-                case Some(t) => ref(t).withSourcePos(tree.sourcePos)
+                case Some(t) => ref(t)
                 case None => tree
               }
             case _ => tree
@@ -419,7 +419,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              singleton(t.dealias).withSourcePos(tree.sourcePos)
+              singleton(t.dealias)
             case Some(t) if tree.isType =>
               TypeTree(t).withSourcePos(tree.sourcePos)
             case _ => tree
@@ -432,7 +432,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion = inliner.transform(rhsToInline.withSourcePos(call.sourcePos))
+    val expansion = inliner.transform(rhsToInline).withSourcePos(call.sourcePos)
 
     def issueError() = callValueArgss match {
       case (msgArg :: rest) :: Nil =>
