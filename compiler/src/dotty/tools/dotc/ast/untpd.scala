@@ -146,7 +146,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     flags: FlagSet = EmptyFlags,
     privateWithin: TypeName = tpnme.EMPTY,
     annotations: List[Tree] = Nil,
-    mods: List[Mod] = Nil) extends Positioned with Cloneable {
+    mods: List[Mod] = Nil) extends Cloneable {
 
     def is(fs: FlagSet): Boolean = flags is fs
     def is(fc: FlagConjunction): Boolean = flags is fc
