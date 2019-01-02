@@ -1935,7 +1935,7 @@ object Parsers {
       def typeParam(): TypeDef = {
         val isConcreteOwner = ownerKind == ParamOwner.Class || ownerKind == ParamOwner.Def
         val start = in.offset
-        val mods = atPos(start) {
+        val mods =
           annotsAsMods() | {
             if (ownerKind == ParamOwner.Class) Param | PrivateLocal
             else Param
@@ -1946,7 +1946,6 @@ object Parsers {
               else EmptyFlags
             else EmptyFlags
           }
-        }
         atPos(start, nameStart) {
           val name =
             if (isConcreteOwner || in.token != USCORE) ident().toTypeName
@@ -1992,27 +1991,25 @@ object Parsers {
         if (ofClass) {
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
-            atPos(start, in.offset) {
-              if (in.token == VAL) {
-                in.nextToken()
-                mods
-              }
-              else if (in.token == VAR) {
-                val mod = atPos(in.skipToken()) { Mod.Var() }
-                addMod(mods, mod)
-              }
-              else {
-                if (!(mods.flags &~ (ParamAccessor | Inline | impliedMods.flags)).isEmpty)
-                  syntaxError("`val' or `var' expected")
-                if (firstClause && ofCaseClass) mods
-                else mods | PrivateLocal
-              }
+            if (in.token == VAL) {
+              in.nextToken()
+              mods
+            }
+            else if (in.token == VAR) {
+              val mod = atPos(in.skipToken()) { Mod.Var() }
+              addMod(mods, mod)
+            }
+            else {
+              if (!(mods.flags &~ (ParamAccessor | Inline | impliedMods.flags)).isEmpty)
+                syntaxError("`val' or `var' expected")
+              if (firstClause && ofCaseClass) mods
+              else mods | PrivateLocal
             }
         }
         else {
           if (isIdent(nme.inline) && in.isSoftModifierInParamModifierPosition)
             mods = addModifier(mods)
-          mods = atPos(start) { mods | Param }
+          mods |= Param
         }
         atPos(start, nameStart) {
           val name = ident()
@@ -2024,7 +2021,7 @@ object Parsers {
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
           if (implicitOffset >= 0) {
-            mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
+            //mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
             implicitOffset = -1
           }
           ValDef(name, tpt, default).withMods(mods)
@@ -2165,9 +2162,8 @@ object Parsers {
     }
 
     def posMods(start: Int, mods: Modifiers): Modifiers = {
-      val mods1 = atPos(start)(mods)
       in.nextToken()
-      mods1
+      mods
     }
 
     /** Def      ::= val PatDef
@@ -2557,8 +2553,10 @@ object Parsers {
         setLastStatOffset()
         if (in.token == PACKAGE) {
           val start = in.skipToken()
-          if (in.token == OBJECT)
-            stats += objectDef(start, atPos(start, in.skipToken()) { Modifiers(Package) })
+          if (in.token == OBJECT) {
+            in.nextToken()
+            stats += objectDef(start, Modifiers(Package))
+          }
           else stats += packaging(start)
         }
         else if (in.token == IMPORT)
@@ -2718,7 +2716,8 @@ object Parsers {
         if (in.token == PACKAGE) {
           in.nextToken()
           if (in.token == OBJECT) {
-            ts += objectDef(start, atPos(start, in.skipToken()) { Modifiers(Package) })
+            in.nextToken()
+            ts += objectDef(start, Modifiers(Package))
             if (in.token != EOF) {
               acceptStatSep()
               ts ++= topStatSeq()
