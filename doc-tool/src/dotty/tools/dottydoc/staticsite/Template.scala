@@ -68,7 +68,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
               s"unexpected end of file, expected: '$expected'"
             else
               s"unexpected token '$unexpected', expected: '$expected'",
-            content atPos Span(mm.index)
+            content atSpan Span(mm.index)
           )
 
           None

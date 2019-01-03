@@ -738,7 +738,7 @@ trait Implicits { self: Typer =>
   def implicitArgTree(formal: Type, pos: Span)(implicit ctx: Context): Tree = {
     val arg = inferImplicitArg(formal, pos)
     if (arg.tpe.isInstanceOf[SearchFailureType])
-      ctx.error(missingArgMsg(arg, formal, ""), ctx.source.atPos(pos))
+      ctx.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(pos))
     arg
   }
 
@@ -909,7 +909,7 @@ trait Implicits { self: Typer =>
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
                     s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
-                    ctx.source.atPos(pos))
+                    ctx.source.atSpan(pos))
                   altResult
                 case _ =>
                   result
@@ -1153,7 +1153,7 @@ trait Implicits { self: Typer =>
              |the search will fail with a global ambiguity error instead.
              |
              |Consider using the scala.implicits.Not class to implement similar functionality.""",
-             ctx.source.atPos(pos))
+             ctx.source.atSpan(pos))
 
       /** A relation that imfluences the order in which implicits are tried.
        *  We prefer (in order of importance)

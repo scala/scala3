@@ -244,7 +244,7 @@ class ReplCompiler extends Compiler {
         case _ => List(
           new messages.Error(
             s"Couldn't parse '$expr' to valid scala",
-            sourceFile.atPos(Span(0, expr.length))
+            sourceFile.atSpan(Span(0, expr.length))
           )
         ).errors
       }
@@ -253,7 +253,7 @@ class ReplCompiler extends Compiler {
     def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
       def error: Result[tpd.ValDef] =
         List(new messages.Error(s"Invalid scala expression",
-          sourceFile.atPos(Span(0, sourceFile.content.length)))).errors
+          sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
 
       import tpd._
       tree match {

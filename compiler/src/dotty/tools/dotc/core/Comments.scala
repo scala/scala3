@@ -125,7 +125,7 @@ object Comments {
             val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
             tree.copy(name = newName)
           case _ =>
-            ctx.error(ProperDefinitionNotFound(), ctx.source.atPos(codePos))
+            ctx.error(ProperDefinitionNotFound(), ctx.source.atSpan(codePos))
             tree
         }
       }
