@@ -1316,7 +1316,10 @@ class TreeUnpickler(reader: TastyReader,
      */
     def sourceChangeContext(addr: Addr = currentAddr)(implicit ctx: Context): Context = {
       val path = sourcePathAt(addr)
-      if (path.nonEmpty) ctx.withSource(ctx.getSource(path))
+      if (path.nonEmpty) {
+        pickling.println(i"source change at $addr: $path")
+        ctx.withSource(ctx.getSource(path))
+      }
       else ctx
     }
 
@@ -1332,7 +1335,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Set position of `tree` at given `addr`. */
     def setPos[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type = {
       val pos = posAt(addr)
-      if (pos.exists) tree.setPosUnchecked(pos)
+      if (pos.exists) tree.setPosUnchecked(pos, ctx.source.file)
       tree
     }
   }
