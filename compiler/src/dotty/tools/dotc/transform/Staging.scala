@@ -447,7 +447,7 @@ class Staging extends MacroTransformWithImplicits {
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
-        val pos: SourcePosition = spliceCtx.source.atPos(enclosingInlineds.head.pos)
+        val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.pos)
         val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPosOf(splice)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }

@@ -67,7 +67,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** The start of this file in the underlying source file */
   def start: Int = 0
 
-  def atPos(pos: Span): SourcePosition =
+  def atSpan(pos: Span): SourcePosition =
     if (pos.exists) SourcePosition(underlying, pos)
     else NoSourcePosition
 
@@ -155,6 +155,6 @@ object SourceFile {
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
   override def exists: Boolean = false
-  override def atPos(pos: Span): SourcePosition = NoSourcePosition
+  override def atSpan(pos: Span): SourcePosition = NoSourcePosition
 }
 

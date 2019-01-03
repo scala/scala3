@@ -680,7 +680,7 @@ object Symbols {
           ctx.source
         else ctx.getSource(f)
       }
-      source.atPos(pos)
+      source.atSpan(pos)
     }
 
     // ParamInfo types and methods

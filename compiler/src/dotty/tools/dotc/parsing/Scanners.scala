@@ -66,14 +66,14 @@ object Scanners {
 
     /** Generate an error at the given offset */
     def error(msg: String, off: Offset = offset): Unit = {
-      ctx.error(msg, source atPos Span(off))
+      ctx.error(msg, source atSpan Span(off))
       token = ERROR
       errOffset = off
     }
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String): Unit = {
-      ctx.incompleteInputError(msg, source atPos Span(offset))
+      ctx.incompleteInputError(msg, source atSpan Span(offset))
       token = EOF
       errOffset = offset
     }
@@ -246,7 +246,7 @@ object Scanners {
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
     def testScala2Mode(msg: String, pos: Span = Span(offset)): Boolean = {
-      if (isScala2Mode) ctx.migrationWarning(msg, source atPos pos)
+      if (isScala2Mode) ctx.migrationWarning(msg, source atSpan pos)
       isScala2Mode
     }
 

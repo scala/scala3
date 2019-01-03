@@ -17,7 +17,7 @@ import util._, util.Spans._
 case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, source: SourceFile) {
 
   /** The position of `tree` */
-  final def pos(implicit ctx: Context): SourcePosition = source.atPos(tree.pos)
+  final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.pos)
 
   /** The position of the name in `tree` */
   def namePos(implicit ctx: Context): SourcePosition = tree match {
@@ -43,7 +43,7 @@ case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, s
               (treePos.end - nameLength, treePos.end)
           Span(start, end, start)
         }
-        source.atPos(position)
+        source.atSpan(position)
       }
     case _ =>
       NoSourcePosition
