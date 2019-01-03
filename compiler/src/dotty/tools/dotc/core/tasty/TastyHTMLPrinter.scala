@@ -6,7 +6,7 @@ import Contexts._, Decorators._
 import Names.Name
 import TastyUnpickler._
 import TastyBuffer.NameRef
-import util.Positions.offsetToInt
+import util.Spans.offsetToInt
 import printing.Highlighting._
 
 class TastyHTMLPrinter(bytes: Array[Byte])(implicit ctx: Context) extends TastyPrinter(bytes) {
