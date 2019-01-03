@@ -34,7 +34,7 @@ object TypeToolbox {
   private def isCaseClassImpl(tp: Type[_])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
     val res = tp.unseal.symbol match {
-      case IsClassSymbol(sym) => sym.flags.isCase
+      case IsClassSymbol(sym) => sym.flags.is(Flags.Case)
       case _ => false
     }
     res.toExpr

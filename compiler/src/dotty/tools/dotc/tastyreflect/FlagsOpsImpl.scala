@@ -7,40 +7,40 @@ import scala.tasty.reflect
 
 trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
 
-  def FlagsDeco(flagSet: scala.tasty.reflect.FlagSet): FlagsAPI = new FlagsAPI {
-    def is(that: reflect.FlagSet): Boolean = flagSet.asInstanceOf[FlagSet].flags is that.asInstanceOf[FlagSet].flags
-    def |(that: reflect.FlagSet): reflect.FlagSet = new FlagSet(flagSet.asInstanceOf[FlagSet].flags | that.asInstanceOf[FlagSet].flags)
-    def &(that: reflect.FlagSet): reflect.FlagSet = new FlagSet(flagSet.asInstanceOf[FlagSet].flags & that.asInstanceOf[FlagSet].flags)
+  def FlagsDeco(flagSet: Flags): FlagsAPI = new FlagsAPI {
+    def is(that: Flags): Boolean = flagSet is that
+    def |(that: Flags): Flags = flagSet | that
+    def &(that: Flags): Flags = flagSet & that
   }
 
   object Flags extends FlagsModule {
-    def Protected: FlagSet = new FlagSet(core.Flags.Protected)
-    def Abstract: FlagSet = new FlagSet(core.Flags.Abstract)
-    def Final: FlagSet = new FlagSet(core.Flags.Final)
-    def Sealed: FlagSet = new FlagSet(core.Flags.Sealed)
-    def Case: FlagSet = new FlagSet(core.Flags.Case)
-    def Implicit: FlagSet = new FlagSet(core.Flags.Implicit)
-    def Erased: FlagSet = new FlagSet(core.Flags.Erased)
-    def Lazy: FlagSet = new FlagSet(core.Flags.Lazy)
-    def Override: FlagSet = new FlagSet(core.Flags.Override)
-    def Inline: FlagSet = new FlagSet(core.Flags.Inline)
-    def Macro: FlagSet = new FlagSet(core.Flags.Macro)
-    def Static: FlagSet = new FlagSet(core.Flags.JavaStatic)
-    def Object: FlagSet = new FlagSet(core.Flags.Module)
-    def Trait: FlagSet = new FlagSet(core.Flags.Trait)
-    def Local: FlagSet = new FlagSet(core.Flags.Local)
-    def Synthetic: FlagSet = new FlagSet(core.Flags.Synthetic)
-    def Artifact: FlagSet = new FlagSet(core.Flags.Artifact)
-    def Mutable: FlagSet = new FlagSet(core.Flags.Mutable)
-    def FieldAccessor: FlagSet = new FlagSet(core.Flags.Accessor)
-    def CaseAcessor: FlagSet = new FlagSet(core.Flags.CaseAccessor)
-    def Covariant: FlagSet = new FlagSet(core.Flags.Covariant)
-    def Contravariant: FlagSet = new FlagSet(core.Flags.Contravariant)
-    def Scala2X: FlagSet = new FlagSet(core.Flags.Scala2x)
-    def DefaultParameterized: FlagSet = new FlagSet(core.Flags.DefaultParameterized)
-    def Stable: FlagSet = new FlagSet(core.Flags.Stable)
-    def Param: FlagSet = new FlagSet(core.Flags.Param)
-    def ParamAccessor: FlagSet = new FlagSet(core.Flags.ParamAccessor)
+    def Protected: Flags = core.Flags.Protected
+    def Abstract: Flags = core.Flags.Abstract
+    def Final: Flags = core.Flags.Final
+    def Sealed: Flags = core.Flags.Sealed
+    def Case: Flags = core.Flags.Case
+    def Implicit: Flags = core.Flags.Implicit
+    def Erased: Flags = core.Flags.Erased
+    def Lazy: Flags = core.Flags.Lazy
+    def Override: Flags = core.Flags.Override
+    def Inline: Flags = core.Flags.Inline
+    def Macro: Flags = core.Flags.Macro
+    def Static: Flags = core.Flags.JavaStatic
+    def Object: Flags = core.Flags.Module
+    def Trait: Flags = core.Flags.Trait
+    def Local: Flags = core.Flags.Local
+    def Synthetic: Flags = core.Flags.Synthetic
+    def Artifact: Flags = core.Flags.Artifact
+    def Mutable: Flags = core.Flags.Mutable
+    def FieldAccessor: Flags = core.Flags.Accessor
+    def CaseAcessor: Flags = core.Flags.CaseAccessor
+    def Covariant: Flags = core.Flags.Covariant
+    def Contravariant: Flags = core.Flags.Contravariant
+    def Scala2X: Flags = core.Flags.Scala2x
+    def DefaultParameterized: Flags = core.Flags.DefaultParameterized
+    def Stable: Flags = core.Flags.Stable
+    def Param: Flags = core.Flags.Param
+    def ParamAccessor: Flags = core.Flags.ParamAccessor
   }
 
 }

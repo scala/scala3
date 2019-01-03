@@ -12,7 +12,7 @@ trait SymbolOps extends Core {
     def owner(implicit ctx: Context): Symbol
 
     /** Flags of this symbol */
-    def flags(implicit ctx: Context): FlagSet
+    def flags(implicit ctx: Context): Flags
 
     /** This symbol is private within the resulting type. */
     def privateWithin(implicit ctx: Context): Option[Type]

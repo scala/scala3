@@ -1,4 +1,5 @@
 package dotty.tools.dotc.tastyreflect
+import dotty.tools.dotc.core.Flags
 
 trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect.Core { reflect: ReflectionImpl =>
 
@@ -48,4 +49,9 @@ trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect
     def showCode(implicit ctx: Context): String = showSourceCode.showSymbol(symbol)
   }
 
+  /** Adds `show` as an extension method of a `Flags` */
+  implicit def FlagsShowDeco(flags: Flags): ShowAPI = new ShowAPI {
+    def show(implicit ctx: Context): String = showExtractors.showFlags(flags)
+    def showCode(implicit ctx: Context): String = showSourceCode.showFlags(flags)
+  }
 }

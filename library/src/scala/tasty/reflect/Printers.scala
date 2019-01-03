@@ -10,6 +10,7 @@ trait Printers
   extends Core
   with CaseDefOps
   with ConstantOps
+  with FlagsOps
   with IdOps
   with ImportSelectorOps
   with PatternOps
@@ -43,6 +44,9 @@ trait Printers
   /** Adds `show` as an extension method of a `Symbol` */
   implicit def SymbolShowDeco(symbol: Symbol): ShowAPI
 
+  /** Adds `show` as an extension method of a `Flags` */
+  implicit def FlagsShowDeco(flags: Flags): ShowAPI
+
   /** Define `show` as method */
   trait ShowAPI {
     /** Shows the tree as extractors */
@@ -68,6 +72,8 @@ trait Printers
 
     def showSymbol(symbol: Symbol)(implicit ctx: Context): String
 
+    def showFlags(flags: Flags)(implicit ctx: Context): String
+
   }
 
   class ExtractorsPrinter extends Printer {
@@ -91,6 +97,38 @@ trait Printers
 
     def showSymbol(symbol: Symbol)(implicit ctx: Context): String =
       new Buffer().visitSymbol(symbol).result()
+
+    def showFlags(flags: Flags)(implicit ctx: Context): String = {
+      val flagList = List.newBuilder[String]
+      if (flags.is(Flags.Protected)) flagList += "Flags.Protected"
+      if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
+      if (flags.is(Flags.Final)) flagList += "Flags.Final"
+      if (flags.is(Flags.Sealed)) flagList += "Flags.Sealed"
+      if (flags.is(Flags.Case)) flagList += "Flags.Case"
+      if (flags.is(Flags.Implicit)) flagList += "Flags.Implicit"
+      if (flags.is(Flags.Erased)) flagList += "Flags.Erased"
+      if (flags.is(Flags.Lazy)) flagList += "Flags.Lazy"
+      if (flags.is(Flags.Override)) flagList += "Flags.Override"
+      if (flags.is(Flags.Inline)) flagList += "Flags.Inline"
+      if (flags.is(Flags.Macro)) flagList += "Flags.Macro"
+      if (flags.is(Flags.Static)) flagList += "Flags.javaStatic"
+      if (flags.is(Flags.Object)) flagList += "Flags.Object"
+      if (flags.is(Flags.Trait)) flagList += "Flags.Trait"
+      if (flags.is(Flags.Local)) flagList += "Flags.Local"
+      if (flags.is(Flags.Synthetic)) flagList += "Flags.Synthetic"
+      if (flags.is(Flags.Artifact)) flagList += "Flags.Artifact"
+      if (flags.is(Flags.Mutable)) flagList += "Flags.Mutable"
+      if (flags.is(Flags.FieldAccessor)) flagList += "Flags.FieldAccessor"
+      if (flags.is(Flags.CaseAcessor)) flagList += "Flags.CaseAcessor"
+      if (flags.is(Flags.Covariant)) flagList += "Flags.Covariant"
+      if (flags.is(Flags.Contravariant)) flagList += "Flags.Contravariant"
+      if (flags.is(Flags.Scala2X)) flagList += "Flags.Scala2X"
+      if (flags.is(Flags.DefaultParameterized)) flagList += "Flags.DefaultParameterized"
+      if (flags.is(Flags.Stable)) flagList += "Flags.Stable"
+      if (flags.is(Flags.Param)) flagList += "Flags.Param"
+      if (flags.is(Flags.ParamAccessor)) flagList += "Flags.ParamAccessor"
+      flagList.result().mkString(" | ")
+    }
 
     private class Buffer(implicit ctx: Context) { self =>
 
@@ -431,6 +469,38 @@ trait Printers
     def showSymbol(symbol: Symbol)(implicit ctx: Context): String =
       symbol.fullName
 
+    def showFlags(flags: Flags)(implicit ctx: Context): String = {
+      val flagList = List.newBuilder[String]
+      if (flags.is(Flags.Protected)) flagList += "protected"
+      if (flags.is(Flags.Abstract)) flagList += "abstract"
+      if (flags.is(Flags.Final)) flagList += "final"
+      if (flags.is(Flags.Sealed)) flagList += "sealed"
+      if (flags.is(Flags.Case)) flagList += "case"
+      if (flags.is(Flags.Implicit)) flagList += "implicit"
+      if (flags.is(Flags.Erased)) flagList += "erased"
+      if (flags.is(Flags.Lazy)) flagList += "lazy"
+      if (flags.is(Flags.Override)) flagList += "override"
+      if (flags.is(Flags.Inline)) flagList += "inline"
+      if (flags.is(Flags.Macro)) flagList += "macro"
+      if (flags.is(Flags.Static)) flagList += "javaStatic"
+      if (flags.is(Flags.Object)) flagList += "object"
+      if (flags.is(Flags.Trait)) flagList += "trait"
+      if (flags.is(Flags.Local)) flagList += "local"
+      if (flags.is(Flags.Synthetic)) flagList += "synthetic"
+      if (flags.is(Flags.Artifact)) flagList += "artifact"
+      if (flags.is(Flags.Mutable)) flagList += "mutable"
+      if (flags.is(Flags.FieldAccessor)) flagList += "accessor"
+      if (flags.is(Flags.CaseAcessor)) flagList += "caseAccessor"
+      if (flags.is(Flags.Covariant)) flagList += "covariant"
+      if (flags.is(Flags.Contravariant)) flagList += "contravariant"
+      if (flags.is(Flags.Scala2X)) flagList += "scala2x"
+      if (flags.is(Flags.DefaultParameterized)) flagList += "defaultParameterized"
+      if (flags.is(Flags.Stable)) flagList += "stable"
+      if (flags.is(Flags.Param)) flagList += "param"
+      if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"
+      flagList.result().mkString("/*", " ", "*/")
+    }
+
     private class Buffer(implicit ctx: Context) {
 
       private[this] val sb: StringBuilder = new StringBuilder
@@ -479,7 +549,7 @@ trait Printers
         case tree @ PackageClause(name, stats) =>
           val stats1 = stats.collect {
             case IsPackageClause(stat) => stat
-            case IsDefinition(stat) if !(stat.symbol.flags.isObject && stat.symbol.flags.isLazy) => stat
+            case IsDefinition(stat) if !(stat.symbol.flags.is(Flags.Object) && stat.symbol.flags.is(Flags.Lazy)) => stat
             case stat @ Import(_, _) => stat
           }
           name match {
@@ -501,20 +571,20 @@ trait Printers
           printDefAnnotations(cdef)
 
           val flags = cdef.symbol.flags
-          if (flags.isImplicit) this += highlightKeyword("implicit ", color)
-          if (flags.isSealed) this += highlightKeyword("sealed ", color)
-          if (flags.isFinal && !flags.isObject) this += highlightKeyword("final ", color)
-          if (flags.isCase) this += highlightKeyword("case ", color)
+          if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
+          if (flags.is(Flags.Sealed)) this += highlightKeyword("sealed ", color)
+          if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ", color)
+          if (flags.is(Flags.Case)) this += highlightKeyword("case ", color)
 
           if (name == "package$") {
             this += highlightKeyword("package object ", color) += highlightTypeDef(cdef.symbol.owner.name.stripSuffix("$"), color)
           }
-          else if (flags.isObject) this += highlightKeyword("object ", color) += highlightTypeDef(name.stripSuffix("$"), color)
-          else if (flags.isTrait) this += highlightKeyword("trait ", color) += highlightTypeDef(name, color)
-          else if (flags.isAbstract) this += highlightKeyword("abstract class ", color) += highlightTypeDef(name, color)
+          else if (flags.is(Flags.Object)) this += highlightKeyword("object ", color) += highlightTypeDef(name.stripSuffix("$"), color)
+          else if (flags.is(Flags.Trait)) this += highlightKeyword("trait ", color) += highlightTypeDef(name, color)
+          else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ", color) += highlightTypeDef(name, color)
           else this += highlightKeyword("class ", color) += highlightTypeDef(name, color)
 
-          if (!flags.isObject) {
+          if (!flags.is(Flags.Object)) {
             printTargsDefs(targs)
             val it = argss.iterator
             while (it.hasNext)
@@ -558,10 +628,10 @@ trait Printers
             val flags = d.symbol.flags
             def isCaseClassUnOverridableMethod: Boolean = {
               // Currently the compiler does not allow overriding some of the methods generated for case classes
-              d.symbol.flags.isSynthetic &&
+              d.symbol.flags.is(Flags.Synthetic) &&
               (d match {
-                case DefDef("apply" | "unapply", _, _, _, _) if d.symbol.owner.flags.isObject => true
-                case DefDef(n, _, _, _, _) if d.symbol.owner.flags.isCase =>
+                case DefDef("apply" | "unapply", _, _, _, _) if d.symbol.owner.flags.is(Flags.Object) => true
+                case DefDef(n, _, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
                   n == "copy" ||
                   n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
                   n.matches("_[1-9][0-9]*") || // Getters from Product
@@ -569,8 +639,8 @@ trait Printers
                 case _ => false
               })
             }
-            def isInnerModuleObject = d.symbol.flags.isLazy && d.symbol.flags.isObject
-            !flags.isParam && !flags.isParamAccessor && !flags.isFieldAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
+            def isInnerModuleObject = d.symbol.flags.is(Flags.Lazy) && d.symbol.flags.is(Flags.Object)
+            !flags.is(Flags.Param) && !flags.is(Flags.ParamAccessor) && !flags.is(Flags.FieldAccessor) && !isCaseClassUnOverridableMethod && !isInnerModuleObject
           }
           val stats1 = stats.collect {
             case IsDefinition(stat) if keepDefinition(stat) => stat
@@ -616,13 +686,13 @@ trait Printers
           printDefAnnotations(vdef)
 
           val flags = vdef.symbol.flags
-          if (flags.isImplicit) this += highlightKeyword("implicit ", color)
-          if (flags.isOverride) this += highlightKeyword("override ", color)
+          if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
+          if (flags.is(Flags.Override)) this += highlightKeyword("override ", color)
 
           printProtectedOrPrivate(vdef)
 
-          if (flags.isLazy) this += highlightKeyword("lazy ", color)
-          if (vdef.symbol.flags.isMutable) this += highlightKeyword("var ", color)
+          if (flags.is(Flags.Lazy)) this += highlightKeyword("lazy ", color)
+          if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightKeyword("var ", color)
           else this += highlightKeyword("val ", color)
 
           this += highlightValDef(name, color) += ": "
@@ -664,9 +734,9 @@ trait Printers
           val isConstructor = name == "<init>"
 
           val flags = ddef.symbol.flags
-          if (flags.isImplicit) this += highlightKeyword("implicit ", color)
-          if (flags.isInline) this += highlightKeyword("inline ", color)
-          if (flags.isOverride) this += highlightKeyword("override ", color)
+          if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
+          if (flags.is(Flags.Inline)) this += highlightKeyword("inline ", color)
+          if (flags.is(Flags.Override)) this += highlightKeyword("override ", color)
 
           printProtectedOrPrivate(ddef)
 
@@ -786,7 +856,7 @@ trait Printers
 
         case Term.Block(stats0, expr) =>
           val stats = stats0.filter {
-            case IsValDef(tree) => !tree.symbol.flags.isObject
+            case IsValDef(tree) => !tree.symbol.flags.is(Flags.Object)
             case _ => true
           }
           printFlatBlock(stats, expr)
@@ -1092,8 +1162,8 @@ trait Printers
         args match {
           case Nil =>
           case arg :: _ =>
-            if (arg.symbol.flags.isErased) this += "erased "
-            if (arg.symbol.flags.isImplicit) this += "implicit "
+            if (arg.symbol.flags.is(Flags.Erased)) this += "erased "
+            if (arg.symbol.flags.is(Flags.Implicit)) this += "implicit "
         }
 
         def printSeparated(list: List[ValDef]): Unit = list match {
@@ -1127,16 +1197,16 @@ trait Printers
           case IsDefSymbol(sym) if sym.name == "<init>" =>
             val ClassDef(_, _, _, _, body) = sym.owner.asClass.tree
             body.collectFirst {
-              case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.isParamAccessor =>
-                if (!vdef.symbol.flags.isLocal) {
+              case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
+                if (!vdef.symbol.flags.is(Flags.Local)) {
                   var printedPrefix = false
-                  if (vdef.symbol.flags.isOverride) {
+                  if (vdef.symbol.flags.is(Flags.Override)) {
                     this += "override "
                     printedPrefix = true
                   }
                   printedPrefix  |= printProtectedOrPrivate(vdef)
-                  if (vdef.symbol.flags.isMutable) this += highlightValDef("var ", color)
-                  else if (printedPrefix || !vdef.symbol.flags.isCaseAcessor) this += highlightValDef("val ", color)
+                  if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightValDef("var ", color)
+                  else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAcessor)) this += highlightValDef("val ", color)
                   else this // val not explicitly needed
                 }
             }
@@ -1359,7 +1429,7 @@ trait Printers
               printType(prefix)
               this += "#"
             case IsType(prefix) =>
-              if (!sym.flags.isLocal) {
+              if (!sym.flags.is(Flags.Local)) {
                 printType(prefix)
                 this += "."
               }
@@ -1426,7 +1496,7 @@ trait Printers
 
         case Type.ThisType(tp) =>
           tp match {
-            case Type.SymRef(cdef, _) if !cdef.flags.isObject =>
+            case Type.SymRef(cdef, _) if !cdef.flags.is(Flags.Object) =>
               printFullClassName(tp)
               this += highlightTypeDef(".this", color)
             case Type.TypeRef(name, prefix) if name.endsWith("$") =>
@@ -1593,7 +1663,7 @@ trait Printers
             this += sym.name
           case _ => printFullClassName(within)
         }
-        if (definition.symbol.flags.isProtected) {
+        if (definition.symbol.flags.is(Flags.Protected)) {
           this += highlightKeyword("protected", color)
           definition.symbol.protectedWithin match {
             case Some(within) =>
