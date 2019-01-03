@@ -53,7 +53,7 @@ abstract class AccessProxies {
             accessRef.becomes(forwardedArgss.head.head)
           else
             accessRef.appliedToTypes(forwardedTypes).appliedToArgss(forwardedArgss)
-        rhs.withPos(accessed.pos)
+        rhs.withSpan(accessed.pos)
       })
 
   /** Add all needed accessors to the `body` of class `cls` */
@@ -97,7 +97,7 @@ abstract class AccessProxies {
         case Select(qual, _) if qual.tpe.derivesFrom(accessor.owner) => qual.select(accessor)
         case _ => ref(accessor)
       }
-    }.withPos(reference.pos)
+    }.withPosOf(reference)
 
     /** Given a reference to a getter accessor, the corresponding setter reference */
     def useSetter(getterRef: Tree)(implicit ctx: Context): Tree = getterRef match {

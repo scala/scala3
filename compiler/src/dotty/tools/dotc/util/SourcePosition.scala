@@ -55,12 +55,12 @@ extends interfaces.SourcePosition with Showable {
   def endColumn: Int = source.column(end)
 
   def withOuter(outer: SourcePosition): SourcePosition = SourcePosition(source, pos, outer)
-  def withRange(range: Position) = SourcePosition(source, range, outer)
+  def withSpan(range: Position) = SourcePosition(source, range, outer)
 
-  def startPos: SourcePosition = withRange(pos.startPos)
-  def endPos  : SourcePosition = withRange(pos.endPos)
-  def focus   : SourcePosition = withRange(pos.focus)
-  def toSynthetic: SourcePosition = withRange(pos.toSynthetic)
+  def startPos: SourcePosition = withSpan(pos.startPos)
+  def endPos  : SourcePosition = withSpan(pos.endPos)
+  def focus   : SourcePosition = withSpan(pos.focus)
+  def toSynthetic: SourcePosition = withSpan(pos.toSynthetic)
 
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$pos"

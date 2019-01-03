@@ -180,8 +180,7 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context): Tree =
-      (if (isPureExpr(tree)) const else Block(tree :: Nil, const))
-        .withPos(tree.pos)
+      (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withPosOf(tree)
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
@@ -559,7 +558,7 @@ object Erasure {
       if (sym.isEffectivelyErased) erasedDef(sym)
       else
         super.typedValDef(untpd.cpy.ValDef(vdef)(
-          tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
+          tpt = untpd.TypedSplice(TypeTree(sym.info).withPosOf(vdef.tpt))), sym)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
@@ -592,7 +591,7 @@ object Erasure {
         val ddef1 = untpd.cpy.DefDef(ddef)(
           tparams = Nil,
           vparamss = vparamss1,
-          tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+          tpt = untpd.TypedSplice(TypeTree(restpe).withPosOf(ddef.tpt)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)
       }

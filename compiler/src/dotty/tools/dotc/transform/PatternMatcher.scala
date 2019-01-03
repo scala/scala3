@@ -823,7 +823,7 @@ object PatternMatcher {
               case plan2: TestPlan =>
                 emitWithMashedConditions(plan2 :: plans)
               case _ =>
-                def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withPos(plan.pos)
+                def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withSpan(plan.pos)
                 val conditions =
                   plans.foldRight[Tree](EmptyTree) { (otherPlan, acc) =>
                     if (acc.isEmpty) emitCondWithPos(otherPlan)

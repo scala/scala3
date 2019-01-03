@@ -113,7 +113,7 @@ object desugar {
   def derivedTypeParam(tdef: TypeDef, suffix: String = "")(implicit ctx: Context): TypeDef =
     cpy.TypeDef(tdef)(
       name = tdef.name ++ suffix,
-      rhs = new DerivedFromParamTree(suffix).withPos(tdef.rhs.pos).watching(tdef)
+      rhs = new DerivedFromParamTree(suffix).withPosOf(tdef.rhs).watching(tdef)
     )
 
   /** A derived type definition watching `sym` */
@@ -123,7 +123,7 @@ object desugar {
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = new DerivedFromParamTree("").withPos(vdef.tpt.pos).watching(vdef))
+      tpt = new DerivedFromParamTree("").withPosOf(vdef.tpt).watching(vdef))
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -351,10 +351,10 @@ object desugar {
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
-          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withRange(cdef.namePos))
+          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withSpan(cdef.namePos))
         ListOfNil
       } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withRange(cdef.namePos))
+          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withSpan(cdef.namePos))
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
@@ -398,7 +398,7 @@ object desugar {
 
     def appliedTypeTree(tycon: Tree, args: List[Tree]) =
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
-        .withPos(cdef.pos.startPos)
+        .withSpan(cdef.pos.startPos)
 
     def isHK(tparam: Tree): Boolean = tparam match {
       case TypeDef(_, LambdaTypeTree(tparams, body)) => true
@@ -564,7 +564,7 @@ object desugar {
         ModuleDef(
           className.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
-      .withPos(cdef.pos).toList
+      .withPosOf(cdef).toList
 
     val companionMembers = defaultGetters ::: eqInstances ::: enumCases
 
@@ -653,7 +653,7 @@ object desugar {
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(className.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
           .withMods(companionMods | Synthetic | Implicit)
-          .withPos(cdef.pos) :: Nil
+          .withPosOf(cdef) :: Nil
 
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
@@ -710,17 +710,17 @@ object desugar {
       val clsRef = Ident(clsName)
       val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
         .withMods(mods.toTermFlags & RetainedModuleValFlags | ModuleValCreationFlags)
-        .withPos(mdef.pos.startPos)
+        .withSpan(mdef.pos.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
       if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.sourcePos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
-        .withPos(impl.self.pos orElse impl.pos.startPos)
+        .withSpan(impl.self.pos.orElse(impl.pos.startPos))
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
-      Thicket(modul, classDef(cls).withPos(mdef.pos))
+      Thicket(modul, classDef(cls).withPosOf(mdef))
     }
   }
 
@@ -842,7 +842,7 @@ object desugar {
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
-              .withPos(pat.pos.union(rhs.pos)).withMods(patMods)
+              .withSpan(pat.pos.union(rhs.pos)).withMods(patMods)
           def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex)
@@ -856,7 +856,7 @@ object desugar {
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(implicit ctx: Context): Bind = {
     val Ident(name) = tree
-    Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
+    Bind(name, Ident(nme.WILDCARD)).withPosOf(tree)
   }
 
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
@@ -879,7 +879,7 @@ object desugar {
   def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
     case EmptyTree =>
       cpy.Block(tree)(tree.stats,
-        unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
+        unitLiteral.withSpan(if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
     case _ =>
       tree
   }
@@ -900,7 +900,7 @@ object desugar {
         case Tuple(args) => args.mapConserve(assignToNamedArg)
         case _ => arg :: Nil
       }
-      Apply(Select(fn, op.name).withPos(selectPos), args)
+      Apply(Select(fn, op.name).withSpan(selectPos), args)
     }
 
     if (isLeftAssoc(op.name))
@@ -985,7 +985,7 @@ object desugar {
     val vdefs =
       params.zipWithIndex.map{
         case (param, idx) =>
-          DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withPos(param.pos)
+          DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withPosOf(param)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
@@ -1021,7 +1021,7 @@ object desugar {
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
-      .withPos(original.pos.withPoint(named.pos.start))
+      .withSpan(original.pos.withPoint(named.pos.start))
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
    }
@@ -1029,7 +1029,7 @@ object desugar {
   private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceInfo) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
       .withMods(mods)
-      .withPos(original.pos.withPoint(named.pos.start))
+      .withSpan(original.pos.withPoint(named.pos.start))
 
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
@@ -1279,7 +1279,7 @@ object desugar {
               finalizer)
         }
     }
-    desugared.withPos(tree.pos)
+    desugared.withPosOf(tree)
   }
 
   /** Create a class definition with the same info as the refined type given by `parent`

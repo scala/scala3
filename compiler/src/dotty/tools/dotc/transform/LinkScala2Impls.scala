@@ -74,7 +74,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
       case Apply(sel @ Select(Super(_, _), _), args)
       if sel.symbol.owner.is(Scala2xTrait) && currentClass.mixins.contains(sel.symbol.owner) =>
         val impl = implMethod(sel.symbol)
-        if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withPos(app.pos)
+        if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withPosOf(app)
         else app // could have been an abstract method in a trait linked to from a super constructor
       case Apply(sel, args)
       if sel.symbol.maybeOwner.is(ImplClass) && sel.symbol.owner.traitOfImplClass.is(Scala_2_12_Trait) =>

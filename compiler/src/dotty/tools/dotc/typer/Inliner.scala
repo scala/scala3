@@ -348,13 +348,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context): Tree = {
     val result = tree.changeOwner(originalOwner, ctx.owner)
     if (!originalOwner.isContainedIn(inlinedMethod))
-      Inlined(EmptyTree, Nil, result)(ctx.withSource(tree.source)).withPos(tree.pos)
+      Inlined(EmptyTree, Nil, result).withPosOf(tree)
     else result
   }
 
   def tryConstValue: Tree =
     ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
-      case Some(c) => Literal(c)(ctx.withSource(call.source)).withPos(call.pos)
+      case Some(c) => Literal(c).withPosOf(call)
       case _ => EmptyTree
     }
 
@@ -706,7 +706,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       	 */
         def newBinding(sym: TermSymbol, rhs: Tree): Unit = {
           sym.info = rhs.tpe.widenTermRefExpr
-          bindingsBuf += ValDef(sym, constToLiteral(rhs)).withPos(sym.pos)
+          bindingsBuf += ValDef(sym, constToLiteral(rhs)).withSpan(sym.pos)
         }
 
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {

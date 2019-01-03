@@ -92,12 +92,12 @@ class ReplCompiler extends Compiler {
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
         val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
-        val assign = ValDef(assignName, TypeTree(), id).withPos(expr.pos)
+        val assign = ValDef(assignName, TypeTree(), id).withPosOf(expr)
         defs += expr += assign
       case expr if expr.isTerm =>
         val resName = (str.REPL_RES_PREFIX + valIdx).toTermName
         valIdx += 1
-        val vd = ValDef(resName, TypeTree(), expr).withPos(expr.pos)
+        val vd = ValDef(resName, TypeTree(), expr).withPosOf(expr)
         defs += vd
       case other =>
         defs += other
@@ -135,7 +135,7 @@ class ReplCompiler extends Compiler {
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
-      .withPos(Position(0, defs.stats.last.pos.end))
+      .withSpan(Position(0, defs.stats.last.pos.end))
 
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
   }
@@ -231,7 +231,7 @@ class ReplCompiler extends Compiler {
         val tmpl = Template(emptyConstructor, Nil, EmptyValDef, List(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
-          .withPos(Position(0, expr.length))
+          .withSpan(Position(0, expr.length))
         PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 

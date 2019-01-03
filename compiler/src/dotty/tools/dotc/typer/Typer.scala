@@ -398,7 +398,7 @@ class Typer extends Namer
 
     val tree1 = ownType match {
       case ownType: NamedType if !prefixIsElidable(ownType) =>
-        ref(ownType).withPos(tree.pos)
+        ref(ownType).withPosOf(tree)
       case _ =>
         tree.withType(ownType)
     }
@@ -517,7 +517,7 @@ class Typer extends Namer
           case _ =>
         }
         if (checkClassType(tpt1.tpe, tpt1.sourcePos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
-          tpt1 = TypeTree(defn.ObjectType).withPos(tpt1.pos)
+          tpt1 = TypeTree(defn.ObjectType).withPosOf(tpt1)
 
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
@@ -543,7 +543,7 @@ class Typer extends Namer
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd._
-          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPos(tree.pos), pt)
+          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPosOf(tree), pt)
         }
       case _ => ifExpr
     }
@@ -729,7 +729,7 @@ class Typer extends Namer
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
-      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+      val elsep1 = typed(tree.elsep.orElse(untpd.unitLiteral.withPosOf(tree)), pt.notApplied)
       thenp1 :: elsep1 :: Nil
     }
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
@@ -798,14 +798,14 @@ class Typer extends Namer
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.sourcePos)
-      val resTpt = TypeTree(mt.nonDependentResultApprox).withPos(body.pos)
+      val resTpt = TypeTree(mt.nonDependentResultApprox).withPosOf(body)
       val typeArgs = params1.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
       val core = assignType(cpy.AppliedTypeTree(tree)(tycon, typeArgs), tycon, typeArgs)
       val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Method | Deferred, mt, coord = body.pos)
       val appDef = assignType(
         untpd.DefDef(appMeth.name, Nil, List(params1), resultTpt, EmptyTree),
-        appMeth).withPos(body.pos)
+        appMeth).withPosOf(body)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     }
 
@@ -1000,7 +1000,7 @@ class Typer extends Namer
         else {
           val (protoFormals, _) = decomposeProtoFunction(pt, 1)
           val unchecked = pt.isRef(defn.PartialFunctionClass)
-          typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+          typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked).withPosOf(tree), pt)
         }
       case _ =>
         if (tree.isInline) checkInInlineContext("inline match", tree.sourcePos)
@@ -1154,7 +1154,7 @@ class Typer extends Namer
                             // Hence no adaptation is possible, and we assume WildcardType as prototype.
         (from, proto)
       }
-    val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPos(tree.pos), proto)
+    val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPosOf(tree), proto)
     assignType(cpy.Return(tree)(expr1, from))
   }
 
@@ -1179,7 +1179,7 @@ class Typer extends Namer
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = track("typedThrow") {
     val expr1 = typed(tree.expr, defn.ThrowableType)
-    Throw(expr1).withPos(tree.pos)
+    Throw(expr1).withPosOf(tree)
   }
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
@@ -1223,7 +1223,7 @@ class Typer extends Namer
         tree.ensureCompletions
         tree.getAttachment(untpd.OriginalSymbol) match {
           case Some(origSym) =>
-            tree.derivedTree(origSym).withPos(tree.pos)
+            tree.derivedTree(origSym).withPosOf(tree)
             // btw, no need to remove the attachment. The typed
             // tree is different from the untyped one, so the
             // untyped tree is no longer accessed after all
@@ -1260,7 +1260,7 @@ class Typer extends Namer
 
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = track("typedRefinedTypeTree") {
     val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
-    val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withPos(tree.pos)
+    val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withPosOf(tree)
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, impl: Template) = typed(refineClsDef)
     val refinements1 = impl.body
@@ -1320,7 +1320,7 @@ class Typer extends Namer
                 // type parameter in `C`.
                 // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                TypeTree(tparamBounds).withPos(arg.pos)
+                TypeTree(tparamBounds).withPosOf(arg)
               case _ =>
                 typed(desugaredArg, argPt)
             }
@@ -1401,7 +1401,7 @@ class Typer extends Namer
         // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
         // Rewrite further to `ctag(x @ e)`
         tpd.cpy.UnApply(body1)(fn, Nil,
-            typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
+            typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPosOf(tree), arg.tpe) :: Nil)
       case _ =>
         if (tree.name == nme.WILDCARD) body1
         else {
@@ -1642,7 +1642,7 @@ class Typer extends Namer
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
         .withType(dummy.termRef)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
-        checkRealizableBounds(cls, cdef.sourcePos.withRange(cdef.namePos))
+        checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.namePos))
       if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) {
         val firstParent = parents1.head.tpe.dealias.typeSymbol
         checkEnum(cdef, cls, firstParent)
@@ -1721,7 +1721,7 @@ class Typer extends Namer
   /** Ensure that first parent tree refers to a real class. */
   def ensureFirstTreeIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withPos(pos.focus) :: parents
+    case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withSpan(pos.focus) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a
@@ -1862,7 +1862,7 @@ class Typer extends Namer
   def typedTuple(tree: untpd.Tuple, pt: Type)(implicit ctx: Context): Tree = {
     val arity = tree.trees.length
     if (arity <= Definitions.MaxTupleArity)
-      typed(desugar.smallTuple(tree).withPos(tree.pos), pt)
+      typed(desugar.smallTuple(tree).withPosOf(tree), pt)
     else {
       val pts =
         if (arity == pt.tupleArity) pt.tupleElementTypes
@@ -1871,11 +1871,11 @@ class Typer extends Namer
       if (ctx.mode.is(Mode.Type))
         (elems :\ (TypeTree(defn.UnitType): Tree))((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairType), List(elemTpt, elemTpts)))
-          .withPos(tree.pos)
+          .withPosOf(tree)
       else {
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
         val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems.map(untpd.TypedSplice(_)))
-          .withPos(tree.pos)
+          .withPosOf(tree)
         val app1 = typed(app, defn.TupleXXLType)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
@@ -1976,7 +1976,7 @@ class Typer extends Namer
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree: untpd.UnApply => typedUnApply(tree, pt)
           case tree: untpd.Tuple => typedTuple(tree, pt)
-          case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withPos(tree.pos), pt)
+          case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withPosOf(tree), pt)
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
@@ -2603,7 +2603,7 @@ class Typer extends Namer
 
     /** Adapt an expression of constant type to a different constant type `tpe`. */
     def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
-      def lit = Literal(tpe.value).withPos(tree.pos)
+      def lit = Literal(tpe.value).withPosOf(tree)
       tree match {
         case Literal(c) => lit
         case tree @ Block(stats, expr) => tpd.cpy.Block(tree)(stats, adaptConstant(expr, tpe))
@@ -2653,7 +2653,7 @@ class Typer extends Namer
             try {
               findRef(name, WildcardType, ExtensionMethod, tree) match {
                 case ref: TermRef =>
-                  extMethodApply(untpd.ref(ref).withPos(tree.pos), tree, mbrType)
+                  extMethodApply(untpd.ref(ref).withPosOf(tree), tree, mbrType)
                 case _ => EmptyTree
               }
             }

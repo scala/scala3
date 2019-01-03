@@ -78,7 +78,7 @@ class QuoteCompiler extends Compiler {
 
       val run = DefDef(meth, quoted)
       val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
-      PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withPos(pos)
+      PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withSpan(pos)
     }
 
     def run(implicit ctx: Context): Unit = unsupported("run")
