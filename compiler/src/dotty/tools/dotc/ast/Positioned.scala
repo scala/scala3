@@ -33,7 +33,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
 
   setId(TreeIds.nextIdFor(initialFile(src)))
-  setPos(initialPos, srcfile)
+  setPos(initialSpan(), srcfile)
 
   protected def setId(id: Int): Unit = {
     myUniqueId = id
@@ -156,7 +156,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     newpd
   }
 
-  def initialFile(src: SourceInfo): AbstractFile = {
+  def elemsFile: AbstractFile = {
     def firstFile(x: Any): AbstractFile = x match {
       case x: Positioned if x.pos.exists =>
         x.srcfile
@@ -167,7 +167,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
         null
     }
     def firstElemFile(n: Int): AbstractFile =
-      if (n == productArity) src.source.file
+      if (n == productArity) null
       else {
         val f = firstFile(productElement(n))
         if (f != null) f else firstElemFile(n + 1)
@@ -175,28 +175,43 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     firstElemFile(0)
   }
 
-  /** The initial, synthetic position. This is usually the union of all positioned children's positions.
+  private def initialFile(src: SourceInfo): AbstractFile = {
+    val f = elemsFile
+    if (f != null) f else src.srcfile
+  }
+
+  /** The initial, synthetic span. This is usually the union of all positioned children's positions.
+   *  @param  ignoreTypeTrees  If true, TypeTree children are not counted for the span.
+   *                           This is important for predicting whether a position entry is
+   *                           needed for pickling, since TypeTrees are pickled as types, so
+   *                           their position is lost.
    */
-  def initialPos: Position = {
+  def initialSpan(ignoreTypeTrees: Boolean = false): Position = {
+
+    def include(p1: Position, p2: Positioned) = p2 match {
+      case _: Trees.TypeTree[_] if ignoreTypeTrees => p1
+      case _ => p1.union(p2.pos)
+    }
+
+    def includeAll(pos: Position, xs: List[_]): Position = xs match {
+      case (p: Positioned) :: xs1 if sameSource(p) => includeAll(include(pos, p), xs1)
+      case (xs0: List[_]) :: xs1 => includeAll(includeAll(pos, xs0), xs1)
+      case _ :: xs1 => includeAll(pos, xs1)
+      case _ => pos
+    }
+
     var n = productArity
     var pos = NoPosition
     while (n > 0) {
       n -= 1
       productElement(n) match {
-        case p: Positioned if sameSource(p) => pos = pos union p.pos
-        case m: untpd.Modifiers => pos = unionPos(unionPos(pos, m.mods), m.annotations)
-        case xs: List[_] => pos = unionPos(pos, xs)
+        case p: Positioned if sameSource(p) => pos = include(pos, p)
+        case m: untpd.Modifiers => pos = includeAll(includeAll(pos, m.mods), m.annotations)
+        case xs: List[_] => pos = includeAll(pos, xs)
         case _ =>
       }
     }
     pos.toSynthetic
-  }
-
-  private def unionPos(pos: Position, xs: List[_]): Position = xs match {
-    case (p: Positioned) :: xs1 if sameSource(p) => unionPos(pos union p.pos, xs1)
-    case (xs0: List[_]) :: xs1 => unionPos(unionPos(pos, xs0), xs1)
-    case _ :: xs1 => unionPos(pos, xs1)
-    case _ => pos
   }
 
   private def sameSource(that: Positioned) = srcfile == that.srcfile

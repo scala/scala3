@@ -16,7 +16,7 @@ object TreeIds {
   @sharable private[this] val counters = new ConcurrentHashMap[AbstractFile, AtomicInteger]
   @sharable private[this] val fileOfChunk = mutable.ArrayBuffer[AbstractFile]()
 
-  def nextId(implicit src: SourceInfo): Int = nextIdFor(src.source.file)
+  def nextId(implicit src: SourceInfo): Int = nextIdFor(src.srcfile)
 
   def nextIdFor(file: AbstractFile): Int = {
     var ctr = counters.get(file)
