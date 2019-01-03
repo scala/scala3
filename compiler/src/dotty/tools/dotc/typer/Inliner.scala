@@ -20,7 +20,7 @@ import SymDenotations.SymDenotation
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.SimpleIdentitySet
+import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet}
 
 import collection.mutable
 import reporting.trace
@@ -719,16 +719,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
         }
 
-        def getBoundVarsList(pat: Tree, tpt: Tree): List[(TypeSymbol, Boolean)] = {
-          // UnApply nodes with pattern bound variables translate to something like this
-          //   UnApply[t @ t](pats)(implicits): T[t]
-          // Need to traverse any binds in type arguments of the UnAppyl to get the set of
-          // all instantiable type variables. Test case is pos/inline-caseclass.scala.
-          val allTpts = tpt :: (pat match {
-            case UnApply(TypeApply(_, tpts), _, _) => tpts
-            case _ => Nil
-          })
+        type TypeBindsMap = SimpleIdentityMap[TypeSymbol, java.lang.Boolean]
 
+        def getTypeBindsMap(pat: Tree, tpt: Tree): TypeBindsMap = {
           val getBinds = new TreeAccumulator[Set[TypeSymbol]] {
             def apply(syms: Set[TypeSymbol], t: Tree)(implicit ctx: Context): Set[TypeSymbol] = {
               val syms1 = t match {
@@ -739,48 +732,65 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               foldOver(syms1, t)
             }
           }
-          val binds = allTpts.foldLeft[Set[TypeSymbol]](Set.empty)(getBinds.apply(_, _))
-          val findBoundVars = new TypeAccumulator[List[(TypeSymbol, Boolean)]] {
-            def apply(syms: List[(TypeSymbol, Boolean)], t: Type) = {
+
+          // Extractors contain Bind nodes in type parameter lists, the tree looks like this:
+          //   UnApply[t @ t](pats)(implicits): T[t]
+          // Test case is pos/inline-caseclass.scala.
+          val binds: Set[TypeSymbol] = pat match {
+            case UnApply(TypeApply(_, tpts), _, _) => getBinds(Set.empty[TypeSymbol], tpts)
+            case _ => getBinds(Set.empty[TypeSymbol], tpt)
+          }
+
+          val extractBindVariance = new TypeAccumulator[TypeBindsMap] {
+            def apply(syms: TypeBindsMap, t: Type) = {
               val syms1 = t match {
-                 case tr: TypeRef if tr.symbol.is(Case) && binds.contains(tr.symbol.asType) =>
-                  (tr.typeSymbol.asType, variance >= 0) :: syms
+                // `binds` is used to check if the symbol was actually bound by the pattern we're processing
+                case tr: TypeRef if tr.symbol.is(Case) && binds.contains(tr.symbol.asType) =>
+                  val trSym = tr.symbol.asType
+                  // Exact same logic as in IsFullyDefinedAccumulator:
+                  // the binding is to be maximized iff it only occurs contravariantly in the type
+                  val wasToBeMinimized: Boolean = {
+                    val v = syms(trSym)
+                    if (v ne null) v else false
+                  }
+                  syms.updated(trSym, wasToBeMinimized || variance >= 0 : java.lang.Boolean)
                 case _ =>
                   syms
               }
               foldOver(syms1, t)
             }
           }
-          findBoundVars(Nil, tpt.tpe)
+
+          extractBindVariance(SimpleIdentityMap.Empty, tpt.tpe)
         }
 
-        def registerAsGadtSyms(list: List[(TypeSymbol, Boolean)])(implicit ctx: Context): Unit =
-          list.foreach { case (sym, _) =>
+        def registerAsGadtSyms(typeBinds: TypeBindsMap)(implicit ctx: Context): Unit =
+          typeBinds.foreachBinding { case (sym, _) =>
             val TypeBounds(lo, hi) = sym.info.bounds
             ctx.gadt.addBound(sym, lo, isUpper = false)
             ctx.gadt.addBound(sym, hi, isUpper = true)
           }
 
-        def addTypeBindings(list: List[(TypeSymbol, Boolean)])(implicit ctx: Context): Unit =
-          list.foreach { case (sym, fromBelow) =>
-            val copied = sym.copy(info = TypeAlias(ctx.gadt.approximation(sym, fromBelow = fromBelow))).asType
+        def addTypeBindings(typeBinds: TypeBindsMap)(implicit ctx: Context): Unit =
+          typeBinds.foreachBinding { case (sym, shouldBeMinimized) =>
+            val copied = sym.copy(info = TypeAlias(ctx.gadt.approximation(sym, fromBelow = shouldBeMinimized))).asType
             fromBuf += sym
             toBuf += copied
           }
 
         pat match {
           case Typed(pat1, tpt) =>
-            val boundVars = getBoundVarsList(pat1, tpt)
-            registerAsGadtSyms(boundVars)
+            val typeBinds = getTypeBindsMap(pat1, tpt)
+            registerAsGadtSyms(typeBinds)
             scrut <:< tpt.tpe && {
-              addTypeBindings(boundVars)
+              addTypeBindings(typeBinds)
               reducePattern(bindingsBuf, fromBuf, toBuf, scrut, pat1)
             }
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
-            val boundVars = getBoundVarsList(tpt, tpt)
-            registerAsGadtSyms(boundVars)
+            val typeBinds = getTypeBindsMap(tpt, tpt)
+            registerAsGadtSyms(typeBinds)
             searchImplicit(pat.symbol.asTerm, tpt) && {
-              addTypeBindings(boundVars)
+              addTypeBindings(typeBinds)
               true
             }
           case pat @ Bind(name: TermName, body) =>
@@ -990,7 +1000,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
     // inlining.println(i"drop unused $bindings%, % in $tree")
 
-    def go(termBindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
+    def inlineTermBindings(termBindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
       val refCount = newMutableSymbolMap[Int]
       val bindingOfSym = newMutableSymbolMap[MemberDef]
 
@@ -1068,17 +1078,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
     val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
-    if (typeBindings.isEmpty) go(termBindings, tree)
+    if (typeBindings.isEmpty) inlineTermBindings(termBindings, tree)
     else {
       val typeBindingsSet = typeBindings.foldLeft[SimpleIdentitySet[Symbol]](SimpleIdentitySet.empty)(_ + _.symbol)
-      val ttm = new TreeTypeMap(
+      val inlineTypeBindings = new TreeTypeMap(
         typeMap = new TypeMap() {
           override def apply(tp: Type): Type = tp match {
-            case tr: TypeRef if tr.prefix eq NoPrefix =>
-              if (typeBindingsSet.contains(tr.symbol)) {
-                val TypeAlias(res) = tr.info
-                res
-              } else tr
+            case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
+              val TypeAlias(res) = tr.info
+              res
             case tp => mapOver(tp)
           }
         },
@@ -1090,8 +1098,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         }
       )
 
-      val Block(termBindings1, tree1) = ttm(Block(termBindings, tree))
-      go(termBindings1.asInstanceOf[List[MemberDef]], tree1)
+      val Block(termBindings1, tree1) = inlineTypeBindings(Block(termBindings, tree))
+      inlineTermBindings(termBindings1.asInstanceOf[List[MemberDef]], tree1)
     }
   }
 }
