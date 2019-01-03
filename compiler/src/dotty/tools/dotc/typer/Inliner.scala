@@ -955,7 +955,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         val selType = if (sel.isEmpty) wideSelType else sel.tpe
         reduceInlineMatch(sel, selType, cases.asInstanceOf[List[CaseDef]], this) match {
           case Some((caseBindings, rhs0)) =>
-            // drop type ascriptions/casts hiding internal types (which are now aliases after reducing the match)
+            // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
+            // note that any actually necessary casts will be reinserted by the typing pass below
             val rhs1 = rhs0 match {
               case Block(stats, t) if t.pos.isSynthetic =>
                 t match {
