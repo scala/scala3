@@ -103,7 +103,7 @@ object Parsers {
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
 
     def sourcePos(off: Int = in.offset): SourcePosition =
-      source.atPos(Span(off))
+      source.atSpan(Span(off))
 
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
@@ -125,7 +125,7 @@ object Parsers {
       *  updating lastErrorOffset.
       */
     def syntaxError(msg: => Message, pos: Span): Unit =
-      ctx.error(msg, source atPos pos)
+      ctx.error(msg, source.atSpan(pos))
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -263,14 +263,14 @@ object Parsers {
       ctx.warning(msg, sourcePos)
 
     def warning(msg: => Message, offset: Int = in.offset): Unit =
-      ctx.warning(msg, source atPos Span(offset))
+      ctx.warning(msg, source.atSpan(Span(offset)))
 
     def deprecationWarning(msg: => Message, offset: Int = in.offset): Unit =
-      ctx.deprecationWarning(msg, source atPos Span(offset))
+      ctx.deprecationWarning(msg, source.atSpan(Span(offset)))
 
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: => Message): Unit =
-      ctx.incompleteInputError(msg, source atPos Span(in.offset))
+      ctx.incompleteInputError(msg, source.atSpan(Span(in.offset)))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
@@ -349,7 +349,7 @@ object Parsers {
 
     def migrationWarningOrError(msg: String, offset: Int = in.offset): Unit =
       if (in.isScala2Mode)
-        ctx.migrationWarning(msg, source atPos Span(offset))
+        ctx.migrationWarning(msg, source.atSpan(Span(offset)))
       else
         syntaxError(msg, offset)
 
@@ -708,7 +708,7 @@ object Parsers {
                 if (inPattern) Block(Nil, inBraces(pattern()))
                 else expr()
               else {
-                ctx.error(InterpolatedStringError(), source atPos Span(in.offset))
+                ctx.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
                 EmptyTree
               }
             })
@@ -1204,7 +1204,7 @@ object Parsers {
             else {
               if (handler.isEmpty) warning(
                 EmptyCatchAndFinallyBlock(body),
-                source atPos Span(tryOffset, endOffset(body))
+                source.atSpan(Span(tryOffset, endOffset(body)))
               )
               EmptyTree
             }

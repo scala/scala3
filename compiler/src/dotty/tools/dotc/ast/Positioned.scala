@@ -30,7 +30,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
 
   protected def srcfile: AbstractFile = TreeIds.fileOfId(uniqueId)
   def source(implicit ctx: Context): SourceFile = ctx.getSource(srcfile)
-  def sourcePos(implicit ctx: Context): SourcePosition = source.atPos(pos)
+  def sourcePos(implicit ctx: Context): SourcePosition = source.atSpan(pos)
 
   setId(TreeIds.nextIdFor(initialFile(src)))
   setPos(initialSpan(), srcfile)

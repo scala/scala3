@@ -1713,7 +1713,7 @@ class Typer extends Namer
         val pcls = (defn.ObjectClass /: parents)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
         val first = ctx.typeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
-        checkFeasibleParent(first, ctx.source.atPos(pos), em" in inferred superclass $first") :: parents
+        checkFeasibleParent(first, ctx.source.atSpan(pos), em" in inferred superclass $first") :: parents
     }
   }
 

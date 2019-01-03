@@ -959,7 +959,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         currentLevel.levelAndIndex.get(sym) match {
           case Some((level, symIdx)) if symIdx <= level.maxIndex =>
             ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym),
-              ctx.source.atPos(level.refPos))
+              ctx.source.atSpan(level.refPos))
           case _ =>
         }
       }
@@ -1005,7 +1005,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
         ctx.debuglog("refsym = " + level.refSym)
         ctx.error("forward reference not allowed from self constructor invocation",
-          ctx.source.atPos(level.refPos))
+          ctx.source.atSpan(level.refPos))
       }
     }
     tree

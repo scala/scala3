@@ -168,9 +168,9 @@ object Decorators {
   implicit def sourcePos(pos: Span)(implicit ctx: Context): SourcePosition = {
     def recur(inlinedCalls: List[Tree], pos: Span): SourcePosition = inlinedCalls match {
       case inlinedCall :: rest =>
-        sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
+        sourceFile(inlinedCall).atSpan(pos).withOuter(recur(rest, inlinedCall.pos))
       case empty =>
-        ctx.source.atPos(pos)
+        ctx.source.atSpan(pos)
     }
     recur(enclosingInlineds, pos)
   }
