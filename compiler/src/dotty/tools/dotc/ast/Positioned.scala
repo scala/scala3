@@ -52,12 +52,13 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    */
   def withPos(pos: Position)(implicit src: SourceInfo): this.type = {
     val ownPos = this.pos
-    val newpd: this.type = if (pos == ownPos || ownPos.isSynthetic) this else cloneIn(srcfile)
+    val newpd: this.type =
+      if (pos == ownPos || ownPos.isSynthetic) this else cloneIn(srcfile)
     newpd.setPos(pos, srcfile)
     newpd
   }
 
-  def withPos(posd: Positioned)(implicit ctx: Context): this.type = {
+  def withPosOf(posd: Positioned)(implicit ctx: Context): this.type = {
     val ownPos = this.pos
     val newpd: this.type =
       if (posd.source == source && posd.pos == ownPos || ownPos.isSynthetic) this
