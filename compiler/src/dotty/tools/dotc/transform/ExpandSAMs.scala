@@ -7,7 +7,7 @@ import MegaPhase._
 import SymUtils._
 import ast.Trees._
 import dotty.tools.dotc.reporting.diagnostic.messages.TypeMismatch
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories

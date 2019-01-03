@@ -7,7 +7,7 @@ import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
+import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.mutable
@@ -401,7 +401,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `elemTpe`. No type arguments or
    *  `length` arguments are given.
    */
-  def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
+  def newArray(elemTpe: Type, returnTpe: Type, pos: Span, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
     val elemClass = elemTpe.classSymbol
     def newArr =
       ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(pos)

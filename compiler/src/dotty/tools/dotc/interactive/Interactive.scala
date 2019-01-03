@@ -9,7 +9,7 @@ import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators._
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils.decorateSymbol
-import util.Positions._, util.SourceFile, util.SourcePosition
+import util.Spans._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
@@ -256,7 +256,7 @@ object Interactive {
       case None => Nil
     }
 
-  def pathTo(tree: Tree, pos: Position)(implicit ctx: Context): List[Tree] =
+  def pathTo(tree: Tree, pos: Span)(implicit ctx: Context): List[Tree] =
     if (tree.pos.contains(pos))
       NavigateAST.pathTo(pos, tree, skipZeroExtent = true)
         .collect { case t: untpd.Tree => t }

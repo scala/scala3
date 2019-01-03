@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
+import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
 import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
@@ -66,14 +66,14 @@ object Scanners {
 
     /** Generate an error at the given offset */
     def error(msg: String, off: Offset = offset): Unit = {
-      ctx.error(msg, source atPos Position(off))
+      ctx.error(msg, source atPos Span(off))
       token = ERROR
       errOffset = off
     }
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String): Unit = {
-      ctx.incompleteInputError(msg, source atPos Position(offset))
+      ctx.incompleteInputError(msg, source atPos Span(offset))
       token = EOF
       errOffset = offset
     }
@@ -178,10 +178,10 @@ object Scanners {
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
-    private[this] val commentPosBuf = new mutable.ListBuffer[Position]
+    private[this] val commentPosBuf = new mutable.ListBuffer[Span]
 
     /** Return a list of all the comment positions */
-    def commentPositions: List[Position] = commentPosBuf.toList
+    def commentPositions: List[Span] = commentPosBuf.toList
 
     private[this] def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
@@ -211,8 +211,8 @@ object Scanners {
 
     private def treatAsIdent() = {
       testScala2Mode(i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier")
-      patch(source, Position(offset), "`")
-      patch(source, Position(offset + name.length), "`")
+      patch(source, Span(offset), "`")
+      patch(source, Span(offset + name.length), "`")
       IDENTIFIER
     }
 
@@ -245,7 +245,7 @@ object Scanners {
     val isScala2Mode: Boolean = ctx.scala2Setting
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    def testScala2Mode(msg: String, pos: Position = Position(offset)): Boolean = {
+    def testScala2Mode(msg: String, pos: Span = Span(offset)): Boolean = {
       if (isScala2Mode) ctx.migrationWarning(msg, source atPos pos)
       isScala2Mode
     }
@@ -617,7 +617,7 @@ object Scanners {
       val start = lastCharOffset
       def finishComment(): Boolean = {
         if (keepComments) {
-          val pos = Position(start, charOffset - 1, start)
+          val pos = Span(start, charOffset - 1, start)
           val comment = Comment(pos, flushBuf(commentBuf))
           commentPosBuf += pos
 

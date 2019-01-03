@@ -11,7 +11,7 @@ import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import TastyBuffer._
-import util.Positions._
+import util.Spans._
 import TastyFormat.SOURCE
 
 class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Addr]) {
@@ -28,8 +28,8 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
 
   def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
     var lastIndex = 0
-    var lastPos = Position(0, 0)
-    def pickleDeltas(index: Int, pos: Position) = {
+    var lastPos = Span(0, 0)
+    def pickleDeltas(index: Int, pos: Span) = {
       val addrDelta = index - lastIndex
       val startDelta = pos.start - lastPos.start
       val endDelta = pos.end - lastPos.end

@@ -6,7 +6,7 @@ import ast._
 import core._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._
-import util.Positions._
+import util.Spans._
 import util.SourcePosition
 import java.util.regex.Matcher.quoteReplacement
 import reporting.diagnostic.Message

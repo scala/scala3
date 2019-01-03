@@ -11,7 +11,7 @@ import Symbols._
 import Names._
 import StdNames._
 import NameKinds.UniqueName
-import util.Positions._
+import util.Spans._
 import collection.mutable
 import Trees._
 

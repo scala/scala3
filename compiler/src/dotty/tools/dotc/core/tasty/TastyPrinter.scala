@@ -6,7 +6,7 @@ import Contexts._, Decorators._
 import Names.Name
 import TastyUnpickler._
 import TastyBuffer.{Addr, NameRef}
-import util.Positions.offsetToInt
+import util.Spans.offsetToInt
 import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {

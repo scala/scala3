@@ -12,7 +12,7 @@ import TypeUtils._
 import Types._
 import NameKinds.ClassifiedNameKind
 import ast.Trees._
-import util.Positions.Position
+import util.Spans.Span
 import config.Printers.transforms
 
 /** A utility class for generating access proxies. Currently used for
@@ -75,7 +75,7 @@ abstract class AccessProxies {
     }
 
     /** A fresh accessor symbol */
-    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Position)(implicit ctx: Context): TermSymbol = {
+    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Span)(implicit ctx: Context): TermSymbol = {
       val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = pos).entered
       if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
       sym

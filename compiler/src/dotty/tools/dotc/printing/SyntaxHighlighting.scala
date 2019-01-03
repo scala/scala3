@@ -7,7 +7,7 @@ import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 
 import java.util.Arrays
@@ -39,7 +39,7 @@ object SyntaxHighlighting {
       def highlightRange(from: Int, to: Int, color: String) =
         Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
 
-      def highlightPosition(pos: Position, color: String) = if (pos.exists) {
+      def highlightPosition(pos: Span, color: String) = if (pos.exists) {
         if (pos.start < 0 || pos.end > in.length) {
           if (debug)
             println(s"Trying to highlight erroneous position $pos. Input size: ${in.length}")

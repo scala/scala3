@@ -9,7 +9,7 @@ import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.
  *
@@ -81,7 +81,7 @@ class TryCatchPatterns extends MiniPhase {
       false
   }
 
-  private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], pos: Position)(
+  private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], pos: Span)(
       implicit ctx: Context): Option[CaseDef] = {
     if (patternMatchCases.isEmpty) None
     else {

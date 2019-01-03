@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast.{Trees, TreeTypeMap, untpd, tpd}
-import util.Positions._
+import util.Spans._
 import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
 import printing.Texts._
@@ -611,7 +611,7 @@ trait Implicits { self: Typer =>
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+  def inferImplicitArg(formal: Type, pos: Span)(implicit ctx: Context): Tree = {
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
@@ -735,7 +735,7 @@ trait Implicits { self: Typer =>
   }
 
   /** Search an implicit argument and report error if not found */
-  def implicitArgTree(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+  def implicitArgTree(formal: Type, pos: Span)(implicit ctx: Context): Tree = {
     val arg = inferImplicitArg(formal, pos)
     if (arg.tpe.isInstanceOf[SearchFailureType])
       ctx.error(missingArgMsg(arg, formal, ""), ctx.source.atPos(pos))
@@ -867,7 +867,7 @@ trait Implicits { self: Typer =>
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =
+  def checkCanEqual(ltp: Type, rtp: Type, pos: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = implicitArgTree(defn.EqType.appliedTo(ltp, rtp), pos)
       implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
@@ -879,7 +879,7 @@ trait Implicits { self: Typer =>
    *                         it should be applied, EmptyTree otherwise.
    *  @param pos             The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
+  def inferImplicit(pt: Type, argument: Tree, pos: Span)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     assert(ctx.phase.allowsImplicitSearch,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
@@ -925,7 +925,7 @@ trait Implicits { self: Typer =>
   }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Span)(implicit ctx: Context) {
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
@@ -1380,7 +1380,7 @@ abstract class SearchHistory { outer =>
   def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = root.defineBynameImplicit(tpe, result)
 
   // This is NOOP unless at the root of this search history.
-  def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = result
+  def emitDictionary(pos: Span, result: SearchResult)(implicit ctx: Context): SearchResult = result
 
   override def toString: String = s"SearchHistory(open = $open, byname = $byname)"
 }
@@ -1463,7 +1463,7 @@ final class SearchRoot extends SearchHistory {
    * @result       The elaborated result, comprising the implicit dictionary and a result tree
    *               substituted with references into the dictionary.
    */
-  override def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = {
+  override def emitDictionary(pos: Span, result: SearchResult)(implicit ctx: Context): SearchResult = {
     if (implicitDictionary == null || implicitDictionary.isEmpty) result
     else {
       result match {

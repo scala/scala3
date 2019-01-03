@@ -7,7 +7,7 @@ import MegaPhase._
 import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import ast.Trees._
-import util.Positions._
+import util.Spans._
 import typer.Applications.{isProductMatch, isGetMatch, productSelectors}
 import SymUtils._
 import Flags._, Constants._
@@ -131,7 +131,7 @@ object PatternMatcher {
     /** The different kinds of plans */
     sealed abstract class Plan { val id: Int = nxId; nxId += 1 }
 
-    case class TestPlan(test: Test, var scrutinee: Tree, pos: Position,
+    case class TestPlan(test: Test, var scrutinee: Tree, pos: Span,
                         var onSuccess: Plan) extends Plan {
       override def equals(that: Any): Boolean = that match {
         case that: TestPlan => this.scrutinee === that.scrutinee && this.test == that.test
@@ -147,7 +147,7 @@ object PatternMatcher {
     case class ResultPlan(var tree: Tree) extends Plan
 
     object TestPlan {
-      def apply(test: Test, sym: Symbol, pos: Position, ons: Plan): TestPlan =
+      def apply(test: Test, sym: Symbol, pos: Span, ons: Plan): TestPlan =
         TestPlan(test, ref(sym), pos, ons)
     }
 

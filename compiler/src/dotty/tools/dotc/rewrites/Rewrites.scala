@@ -1,8 +1,8 @@
 package dotty.tools.dotc
 package rewrites
 
-import util.{SourceFile, Positions}
-import Positions.Position
+import util.{SourceFile, Spans}
+import Spans.Span
 import core.Contexts.Context
 import collection.mutable
 import scala.annotation.tailrec
@@ -12,14 +12,14 @@ import dotty.tools.dotc.reporting.Reporter
 object Rewrites {
   private class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
 
-  private case class Patch(pos: Position, replacement: String) {
+  private case class Patch(pos: Span, replacement: String) {
     def delta = replacement.length - (pos.end - pos.start)
   }
 
   private class Patches(source: SourceFile) {
     private val pbuf = new mutable.ListBuffer[Patch]()
 
-    def addPatch(pos: Position, replacement: String): Unit =
+    def addPatch(pos: Span, replacement: String): Unit =
       pbuf += Patch(pos, replacement)
 
     def apply(cs: Array[Char]): Array[Char] = {
@@ -63,7 +63,7 @@ object Rewrites {
   /** If -rewrite is set, record a patch that replaces the range
    *  given by `pos` in `source` by `replacement`
    */
-  def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: Context): Unit =
+  def patch(source: SourceFile, pos: Span, replacement: String)(implicit ctx: Context): Unit =
     if (ctx.reporter != Reporter.NoReporter) // NoReporter is used for syntax highlighting
       for (rewrites <- ctx.settings.rewrite.value)
         rewrites.patched
@@ -71,7 +71,7 @@ object Rewrites {
           .addPatch(pos, replacement)
 
   /** Patch position in `ctx.compilationUnit.source`. */
-  def patch(pos: Position, replacement: String)(implicit ctx: Context): Unit =
+  def patch(pos: Span, replacement: String)(implicit ctx: Context): Unit =
     patch(ctx.compilationUnit.source, pos, replacement)
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.

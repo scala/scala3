@@ -17,7 +17,7 @@ import NameKinds.WildcardParamName
 import ast.{Positioned, Trees}
 import ast.Trees._
 import StdNames._
-import util.Positions._
+import util.Spans._
 import Constants._
 import ScriptParsers._
 import Decorators._
@@ -71,11 +71,11 @@ object Parsers {
     /** Positions tree.
      *  If `t` does not have a position yet, set its position to the given one.
      */
-    def atPos[T <: Positioned](pos: Position)(t: T): T =
+    def atPos[T <: Positioned](pos: Span)(t: T): T =
       if (t.pos.isSourceDerived) t else t.withSpan(pos)
 
     def atPos[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
-      atPos(Position(start, end, point))(t)
+      atPos(Span(start, end, point))(t)
 
     /** If the last read offset is strictly greater than `start`, position tree
      *  to position spanning from `start` to last read offset, with given point.
@@ -103,7 +103,7 @@ object Parsers {
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
 
     def sourcePos(off: Int = in.offset): SourcePosition =
-      source.atPos(Position(off))
+      source.atPos(Span(off))
 
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
@@ -117,14 +117,14 @@ object Parsers {
     def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         val length = if (in.name != null) in.name.show.length else 0
-        syntaxError(msg, Position(offset, offset + length))
+        syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
       }
 
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(msg: => Message, pos: Position): Unit =
+    def syntaxError(msg: => Message, pos: Span): Unit =
       ctx.error(msg, source atPos pos)
   }
 
@@ -263,14 +263,14 @@ object Parsers {
       ctx.warning(msg, sourcePos)
 
     def warning(msg: => Message, offset: Int = in.offset): Unit =
-      ctx.warning(msg, source atPos Position(offset))
+      ctx.warning(msg, source atPos Span(offset))
 
     def deprecationWarning(msg: => Message, offset: Int = in.offset): Unit =
-      ctx.deprecationWarning(msg, source atPos Position(offset))
+      ctx.deprecationWarning(msg, source atPos Span(offset))
 
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: => Message): Unit =
-      ctx.incompleteInputError(msg, source atPos Position(in.offset))
+      ctx.incompleteInputError(msg, source atPos Span(in.offset))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
@@ -349,7 +349,7 @@ object Parsers {
 
     def migrationWarningOrError(msg: String, offset: Int = in.offset): Unit =
       if (in.isScala2Mode)
-        ctx.migrationWarning(msg, source atPos Position(offset))
+        ctx.migrationWarning(msg, source atPos Span(offset))
       else
         syntaxError(msg, offset)
 
@@ -708,7 +708,7 @@ object Parsers {
                 if (inPattern) Block(Nil, inBraces(pattern()))
                 else expr()
               else {
-                ctx.error(InterpolatedStringError(), source atPos Position(in.offset))
+                ctx.error(InterpolatedStringError(), source atPos Span(in.offset))
                 EmptyTree
               }
             })
@@ -832,8 +832,8 @@ object Parsers {
       }
     }
 
-    private def implicitKwPos(start: Int): Position =
-      Position(start, start + nme.IMPLICITkw.asSimpleName.length)
+    private def implicitKwPos(start: Int): Span =
+      Span(start, start + nme.IMPLICITkw.asSimpleName.length)
 
     /** TypedFunParam   ::= id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atPos(start) {
@@ -903,7 +903,7 @@ object Parsers {
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
       else if (in.token == USCORE) {
         val start = in.skipToken()
-        typeBounds().withSpan(Position(start, in.lastOffset, start))
+        typeBounds().withSpan(Span(start, in.lastOffset, start))
       }
       else if (isIdent(nme.raw.TILDE) && in.lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
         atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
@@ -1030,7 +1030,7 @@ object Parsers {
 
     def typedOpt(): Tree =
       if (in.token == COLON) { in.nextToken(); toplevelTyp() }
-      else TypeTree().withSpan(Position(in.lastOffset))
+      else TypeTree().withSpan(Span(in.lastOffset))
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
@@ -1194,7 +1194,7 @@ object Parsers {
               assert(handlerStart != -1)
               syntaxError(
                 EmptyCatchBlock(body),
-                Position(handlerStart, endOffset(handler))
+                Span(handlerStart, endOffset(handler))
               )
             case _ =>
           }
@@ -1204,7 +1204,7 @@ object Parsers {
             else {
               if (handler.isEmpty) warning(
                 EmptyCatchAndFinallyBlock(body),
-                source atPos Position(tryOffset, endOffset(body))
+                source atPos Span(tryOffset, endOffset(body))
               )
               EmptyTree
             }
@@ -1347,8 +1347,8 @@ object Parsers {
             in.nextToken()
             val t = infixType()
             if (false && in.isScala2Mode) {
-              patch(source, Position(start), "(")
-              patch(source, Position(in.lastOffset), ")")
+              patch(source, Span(start), "(")
+              patch(source, Span(in.lastOffset), ")")
             }
             t
           }
@@ -1425,7 +1425,7 @@ object Parsers {
           val start = in.skipToken()
           val pname = WildcardParamName.fresh()
           val param = ValDef(pname, TypeTree(), EmptyTree).withFlags(SyntheticTermParam)
-            .withSpan(Position(start))
+            .withSpan(Span(start))
           placeholderParams = param :: placeholderParams
           atPos(start) { Ident(pname) }
         case LPAREN =>
@@ -1449,9 +1449,9 @@ object Parsers {
           impl.parents match {
             case parent :: Nil if missingBody =>
               if (parent.isType) ensureApplied(wrapNew(parent))
-              else parent.withSpan(Position(start, in.lastOffset))
+              else parent.withSpan(Span(start, in.lastOffset))
             case _ =>
-              New(impl.withSpan(Position(start, in.lastOffset)))
+              New(impl.withSpan(Span(start, in.lastOffset)))
           }
         case _ =>
           if (isLiteral) literal()
@@ -2021,7 +2021,7 @@ object Parsers {
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
           if (implicitOffset >= 0) {
-            //mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
+            //mods = mods.withPos(mods.pos.union(Span(implicitOffset, implicitOffset)))
             implicitOffset = -1
           }
           ValDef(name, tpt, default).withMods(mods)
@@ -2100,7 +2100,7 @@ object Parsers {
           // The first import should start at the position of the keyword.
           val firstPos =
             if (t.pos.exists) t.pos.withStart(offset)
-            else Position(offset, in.lastOffset)
+            else Span(offset, in.lastOffset)
           t.withSpan(firstPos) :: rest
         case nil => nil
       }
@@ -2232,7 +2232,7 @@ object Parsers {
           if (in.token == LBRACE) s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
         in.testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
-          patch(source, Position(in.lastOffset), toInsert)
+          patch(source, Span(in.lastOffset), toInsert)
           true
         }
       }

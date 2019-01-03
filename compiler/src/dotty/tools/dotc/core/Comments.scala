@@ -5,7 +5,7 @@ package core
 import ast.{ untpd, tpd }
 import Decorators._, Symbols._, Contexts._
 import util.SourceFile
-import util.Positions._
+import util.Spans._
 import util.CommentParsing._
 import util.Property.Key
 import parsing.Parsers.Parser
@@ -45,7 +45,7 @@ object Comments {
    * @param expanded If this comment has been expanded, it's expansion, otherwise `None`.
    * @param usecases The usecases for this comment.
    */
-  final case class Comment(pos: Position, raw: String, expanded: Option[String], usecases: List[UseCase]) {
+  final case class Comment(pos: Span, raw: String, expanded: Option[String], usecases: List[UseCase]) {
 
     /** Has this comment been cooked or expanded? */
     def isExpanded: Boolean = expanded.isDefined
@@ -74,10 +74,10 @@ object Comments {
 
     def isDocComment(comment: String): Boolean = comment.startsWith("/**")
 
-    def apply(pos: Position, raw: String): Comment =
+    def apply(pos: Span, raw: String): Comment =
       Comment(pos, raw, None, Nil)
 
-    private def parseUsecases(expandedComment: String, pos: Position)(implicit ctx: Context): List[UseCase] =
+    private def parseUsecases(expandedComment: String, pos: Span)(implicit ctx: Context): List[UseCase] =
       if (!isDocComment(expandedComment)) {
         Nil
       } else {
@@ -94,9 +94,9 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(body: String, pos: Position, start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private[this] def decomposeUseCase(body: String, pos: Span, start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
-        if (pos == NoPosition) NoPosition
+        if (pos == NoSpan) NoSpan
         else {
           val start1 = pos.start + start
           val end1 = pos.end + end
@@ -112,12 +112,12 @@ object Comments {
     }
   }
 
-  final case class UseCase(code: String, codePos: Position, untpdCode: untpd.Tree, tpdCode: Option[tpd.DefDef]) {
+  final case class UseCase(code: String, codePos: Span, untpdCode: untpd.Tree, tpdCode: Option[tpd.DefDef]) {
     def typed(tpdCode: tpd.DefDef): UseCase = copy(tpdCode = Some(tpdCode))
   }
 
   object UseCase {
-    def apply(code: String, codePos: Position)(implicit ctx: Context): UseCase = {
+    def apply(code: String, codePos: Span)(implicit ctx: Context): UseCase = {
       val tree = {
         val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
         tree match {
@@ -441,8 +441,8 @@ object Comments {
      *  If a symbol does not have a doc comment but some overridden version of it does,
      *  the position of the doc comment of the overridden version is returned instead.
      */
-    def docCommentPos(sym: Symbol)(implicit ctx: Context): Position =
-      ctx.docCtx.flatMap(_.docstring(sym).map(_.pos)).getOrElse(NoPosition)
+    def docCommentPos(sym: Symbol)(implicit ctx: Context): Span =
+      ctx.docCtx.flatMap(_.docstring(sym).map(_.pos)).getOrElse(NoSpan)
 
     /** A version which doesn't consider self types, as a temporary measure:
      *  an infinite loop has broken out between superComment and cookedDocComment

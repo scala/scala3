@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
+import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._
 import Decorators._
 import util.Property
@@ -44,7 +44,7 @@ object DesugarEnums {
    *  It is an error if a type parameter is non-variant, or if its approximation
    *  refers to pther type parameters.
    */
-  def interpolatedEnumParent(pos: Position)(implicit ctx: Context): Tree = {
+  def interpolatedEnumParent(pos: Span)(implicit ctx: Context): Tree = {
     val tparams = enumClass.typeParams
     def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) eq tp
     val targs = tparams map { tparam =>
@@ -195,7 +195,7 @@ object DesugarEnums {
   }
 
   /** Expand a module definition representing a parameterless enum case */
-  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
+  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Span)(implicit ctx: Context): Tree = {
     assert(impl.body.isEmpty)
     if (!enumClass.exists) EmptyTree
     else if (impl.parents.isEmpty)
@@ -212,7 +212,7 @@ object DesugarEnums {
   }
 
   /** Expand a simple enum case */
-  def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
+  def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Span)(implicit ctx: Context): Tree =
     if (!enumClass.exists) EmptyTree
     else if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(pos)

@@ -3,7 +3,7 @@ package dotty.tools.languageserver.worksheet
 import dotty.tools.dotc.ast.tpd.{DefTree, Template, Tree, TypeDef}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.SourceTree
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 
 import dotty.tools.dotc.core.Flags.Synthetic
@@ -71,7 +71,7 @@ object Worksheet {
     (line, source)
   }
 
-  private def bounds(pos: Position): (Int, Int) = (pos.start, pos.end)
+  private def bounds(pos: Span): (Int, Int) = (pos.start, pos.end)
 
 }
 

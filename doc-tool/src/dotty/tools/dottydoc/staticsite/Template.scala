@@ -6,7 +6,7 @@ import scala.util.control.NonFatal
 
 import dotc.util.SourceFile
 import dotc.core.Contexts.Context
-import dotc.util.Positions.{ Position, NoPosition }
+import dotc.util.Spans.Span
 import util.syntax._
 
 trait Template {
@@ -68,7 +68,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
               s"unexpected end of file, expected: '$expected'"
             else
               s"unexpected token '$unexpected', expected: '$expected'",
-            content atPos Position(mm.index)
+            content atPos Span(mm.index)
           )
 
           None
