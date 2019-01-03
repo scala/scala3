@@ -71,7 +71,7 @@ object Inliner {
       override def transform(t: Tree)(implicit ctx: Context) = {
         t match {
           case Inlined(t, Nil, expr) if t.isEmpty => expr
-          case _ => super.transform(t.withSourcePos(call.sourcePos))
+          case _ => super.transform(t.withPosOf(call))
         }
       }
     }
@@ -139,7 +139,7 @@ object Inliner {
                 case call :: _ if call.symbol.sourceFile != curSourceFile =>
                   // Until we implement JSR-45, we cannot represent in output positions in other source files.
                   // So, reposition inlined code from other files with the call position:
-                  transformed.withSourcePos(inlinedAtPos)
+                  transformed.withPosOf(inlined.call)
                 case _ => transformed
               }
           }
@@ -421,7 +421,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case Some(t) if tree.isTerm && t.isSingleton =>
               singleton(t.dealias)
             case Some(t) if tree.isType =>
-              TypeTree(t).withSourcePos(tree.sourcePos)
+              TypeTree(t).withPosOf(tree)
             case _ => tree
           }
         case tree => tree
@@ -432,7 +432,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion = inliner.transform(rhsToInline).withSourcePos(call.sourcePos)
+    val expansion = inliner.transform(rhsToInline).withPosOf(call)
 
     def issueError() = callValueArgss match {
       case (msgArg :: rest) :: Nil =>
@@ -598,7 +598,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ =>
           binding
       }
-      binding1.withSourcePos(call.sourcePos)
+      binding1.withPosOf(call)
     }
 
     /** An extractor for references to inlineable arguments. These are :
