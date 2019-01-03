@@ -48,16 +48,16 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
     }
 
-    /** True if x's position shouldn't be reconstructed automatically from its initialPos
+    /** True if x's position shouldn't be reconstructed automatically from its initial span
      */
     def alwaysNeedsPos(x: Positioned) = x match {
       case
-          // initialPos is inaccurate for trees with lazy field
+          // initialSpan is inaccurate for trees with lazy field
           _: WithLazyField[_]
 
           // A symbol is created before the corresponding tree is unpickled,
           // and its position cannot be changed afterwards.
-          // so we cannot use the tree initialPos to set the symbol position.
+          // so we cannot use the tree initialSpan to set the symbol position.
           // Instead, we always pickle the position of definitions.
           | _: Trees.DefTree[_]
 
@@ -70,8 +70,13 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case x: untpd.Tree =>
         var sourceFile = current
         val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
-        val sourceChange = x.source.file != current
-        if (pos.exists && (pos != x.initialPos.toSynthetic || sourceChange || alwaysNeedsPos(x))) {
+        val sourceChange =
+          x.source.file != x.elemsFile ||
+          x.elemsFile == null && x.source.file != current
+        if (pos.exists && (
+              pos != x.initialSpan(ignoreTypeTrees = true).toSynthetic ||
+              sourceChange ||
+              alwaysNeedsPos(x))) {
           addrOfTree(x) match {
             case Some(addr) if !pickledIndices.contains(addr.index) || sourceChange =>
               // we currently do not share trees when unpickling, so if one path to a tree contains

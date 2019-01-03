@@ -598,7 +598,7 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @transientParam src: SourceInfo)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
-    override def initialPos: Position = call.pos
+    override def initialSpan(ignoreTypeTrees: Boolean): Position = call.pos
   }
 
   /** A type tree that represents an existing or inferred type */
@@ -793,7 +793,7 @@ object Trees {
       if (trees eq newTrees)
         this
       else
-        Thicket[T](newTrees).asInstanceOf[this.type]
+        Thicket[T](newTrees)(SourceInfo(srcfile)).asInstanceOf[this.type]
     }
     override def pos: Position = (NoPosition /: trees) ((pos, t) => pos union t.pos)
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
