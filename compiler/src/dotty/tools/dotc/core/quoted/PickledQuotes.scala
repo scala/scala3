@@ -140,7 +140,7 @@ object PickledQuotes {
         new TreeTypeMap(
           oldOwners = ddef.symbol :: Nil,
           newOwners = ctx.owner :: Nil,
-          treeMap = tree => paramToVals.get(tree.symbol).map(_.withPos(tree.pos)).getOrElse(tree)
+          treeMap = tree => paramToVals.get(tree.symbol).map(_.withPosOf(tree)).getOrElse(tree)
         ).transform(ddef.rhs)
       case Block(stats, expr) =>
         seq(stats, rec(expr))

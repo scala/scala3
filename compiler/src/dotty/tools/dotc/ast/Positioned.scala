@@ -35,7 +35,10 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   setId(TreeIds.nextIdFor(initialFile(src)))
   setPos(initialPos, srcfile)
 
-  protected def setId(id: Int): Unit = myUniqueId = id
+  protected def setId(id: Int): Unit = {
+    myUniqueId = id
+    //assert(id != 2067, getClass)
+  }
 
   /** Destructively update `curPos` to given position. Also, set any missing
    *  positions in children.
@@ -50,7 +53,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  If the positioned item is synthetic, the position is updated
    *  destructively and the item itself is returned.
    */
-  def withPos(pos: Position)(implicit src: SourceInfo): this.type = {
+  def withSpan(pos: Position): this.type = {
     val ownPos = this.pos
     val newpd: this.type =
       if (pos == ownPos || ownPos.isSynthetic) this else cloneIn(srcfile)
@@ -58,28 +61,23 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     newpd
   }
 
-  def withPosOf(posd: Positioned)(implicit ctx: Context): this.type = {
+  def withPosOf(posd: Positioned): this.type = {
     val ownPos = this.pos
     val newpd: this.type =
-      if (posd.source == source && posd.pos == ownPos || ownPos.isSynthetic) this
+      if (posd.srcfile == srcfile && posd.pos == ownPos || ownPos.isSynthetic) this
       else cloneIn(posd.srcfile)
     newpd.setPos(posd.pos, posd.srcfile)
     newpd
   }
 
-  def withSourcePos(sourcePos: SourcePosition)(implicit ctx: Context): this.type = {
+  def withSourcePos(sourcePos: SourcePosition): this.type = {
     val ownPos = this.pos
     val newpd: this.type =
-      if (sourcePos.source == source && sourcePos.pos == ownPos || ownPos.isSynthetic) this
+      if (sourcePos.source.file == srcfile && sourcePos.pos == ownPos || ownPos.isSynthetic) this
       else cloneIn(sourcePos.source.file)
     newpd.setPos(sourcePos.pos, sourcePos.source.file)
     newpd
   }
-
-  /** This item with a position that's the union of the given `pos` and the
-   *  current position.
-   */
-  def addPos(pos: Position)(implicit src: SourceInfo): this.type = withPos(pos union this.pos)
 
   /** Set position of this tree only, without performing
    *  any checks of consistency with - or updates of - other positions.

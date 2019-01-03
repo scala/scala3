@@ -42,7 +42,7 @@ class TreeBuilder(implicit ctx: Context) {
       case Ident(name) if isVarPattern(tree) && name != nme.WILDCARD =>
         Bind(
           name, Ident(nme.WILDCARD).withPos(tree.pos.focus)
-        ).withPos(tree.pos)
+        ).withPosOf(tree)
       case Typed(id @ Ident(name), tpt) if isVarPattern(id) && name != nme.WILDCARD =>
         Bind(
           name,

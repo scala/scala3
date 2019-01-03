@@ -105,7 +105,7 @@ trait Dynamic { self: Typer with Applications =>
   }
 
   private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selPos: Position, targs: List[untpd.Tree])(implicit ctx: Context): untpd.Apply = {
-    val select = untpd.Select(qual, dynName).withPos(selPos)
+    val select = untpd.Select(qual, dynName).withSpan(selPos)
     val selectWithTypes =
       if (targs.isEmpty) select
       else untpd.TypeApply(select, targs)
@@ -144,7 +144,7 @@ trait Dynamic { self: Typer with Applications =>
       // ($qual: Selectable).$selectorName("$name", ..$ctags)
       val base =
         untpd.Apply(
-          untpd.TypedSplice(selectable.select(selectorName)).withPos(fun.pos),
+          untpd.TypedSplice(selectable.select(selectorName)).withPosOf(fun),
           (Literal(Constant(name.toString)) :: ctags).map(untpd.TypedSplice(_)))
 
       val scall =

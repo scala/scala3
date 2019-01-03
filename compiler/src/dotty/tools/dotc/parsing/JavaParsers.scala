@@ -87,7 +87,7 @@ object JavaParsers {
         skip()
     }
 
-    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType) withPos Position(in.offset)
+    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType).withSpan(Position(in.offset))
 
     // --------- tree building -----------------------------
 
@@ -225,7 +225,7 @@ object JavaParsers {
     /** Convert (qual)ident to type identifier
       */
     def convertToTypeId(tree: Tree): Tree = convertToTypeName(tree) match {
-      case Some(t)  => t withPos tree.pos
+      case Some(t)  => t.withPosOf(tree)
       case _        => tree match {
         case AppliedTypeTree(_, _) | Select(_, _) =>
           tree
@@ -603,7 +603,7 @@ object JavaParsers {
       }
 
     def importCompanionObject(cdef: TypeDef): Tree =
-      Import(Ident(cdef.name.toTermName).withPos(NoPosition), Ident(nme.WILDCARD) :: Nil)
+      Import(Ident(cdef.name.toTermName).withSpan(NoPosition), Ident(nme.WILDCARD) :: Nil)
 
     // Importing the companion object members cannot be done uncritically: see
     // ticket #2377 wherein a class contains two static inner classes, each of which
@@ -660,7 +660,7 @@ object JavaParsers {
       } else {
         val qual = ((Ident(names.head): Tree) /: names.tail.init) (Select(_, _))
         val lastname = names.last
-        val ident = Ident(lastname) withPos Position(lastnameOffset)
+        val ident = Ident(lastname).withSpan(Position(lastnameOffset))
 //        val selector = lastname match {
 //          case nme.WILDCARD => Pair(ident, Ident(null) withPos Position(-1))
 //          case _            => Pair(ident, ident)

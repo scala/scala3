@@ -72,7 +72,7 @@ object Parsers {
      *  If `t` does not have a position yet, set its position to the given one.
      */
     def atPos[T <: Positioned](pos: Position)(t: T): T =
-      if (t.pos.isSourceDerived) t else t.withPos(pos)
+      if (t.pos.isSourceDerived) t else t.withSpan(pos)
 
     def atPos[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atPos(Position(start, end, point))(t)
@@ -367,9 +367,9 @@ object Parsers {
     */
     def convertToParam(tree: Tree, mods: Modifiers = Modifiers(), expected: String = "formal parameter"): ValDef = tree match {
       case Ident(name) =>
-        makeParameter(name.asTermName, TypeTree(), mods) withPos tree.pos
+        makeParameter(name.asTermName, TypeTree(), mods).withPosOf(tree)
       case Typed(Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt, mods) withPos tree.pos
+        makeParameter(name.asTermName, tpt, mods).withPosOf(tree)
       case _ =>
         syntaxError(s"not a legal $expected", tree.pos)
         makeParameter(nme.ERROR, tree, mods)
@@ -903,7 +903,7 @@ object Parsers {
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
       else if (in.token == USCORE) {
         val start = in.skipToken()
-        typeBounds().withPos(Position(start, in.lastOffset, start))
+        typeBounds().withSpan(Position(start, in.lastOffset, start))
       }
       else if (isIdent(nme.raw.TILDE) && in.lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
         atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
@@ -1030,7 +1030,7 @@ object Parsers {
 
     def typedOpt(): Tree =
       if (in.token == COLON) { in.nextToken(); toplevelTyp() }
-      else TypeTree().withPos(Position(in.lastOffset))
+      else TypeTree().withSpan(Position(in.lastOffset))
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
@@ -1270,7 +1270,7 @@ object Parsers {
           if (isWildcard(t) && location != Location.InPattern) {
             val vd :: rest = placeholderParams
             placeholderParams =
-              cpy.ValDef(vd)(tpt = tpt).withPos(vd.pos union tpt.pos) :: rest
+              cpy.ValDef(vd)(tpt = tpt).withSpan(vd.pos.union(tpt.pos)) :: rest
           }
           Typed(t, tpt)
       }
@@ -1425,7 +1425,7 @@ object Parsers {
           val start = in.skipToken()
           val pname = WildcardParamName.fresh()
           val param = ValDef(pname, TypeTree(), EmptyTree).withFlags(SyntheticTermParam)
-            .withPos(Position(start))
+            .withSpan(Position(start))
           placeholderParams = param :: placeholderParams
           atPos(start) { Ident(pname) }
         case LPAREN =>
@@ -1449,9 +1449,9 @@ object Parsers {
           impl.parents match {
             case parent :: Nil if missingBody =>
               if (parent.isType) ensureApplied(wrapNew(parent))
-              else parent.withPos(Position(start, in.lastOffset))
+              else parent.withSpan(Position(start, in.lastOffset))
             case _ =>
-              New(impl.withPos(Position(start, in.lastOffset)))
+              New(impl.withSpan(Position(start, in.lastOffset)))
           }
         case _ =>
           if (isLiteral) literal()
@@ -1893,7 +1893,7 @@ object Parsers {
         case _ => tree
       }
       if (tree1.pos.exists && start < tree1.pos.start)
-        tree1.withPos(tree1.pos.withStart(start))
+        tree1.withSpan(tree1.pos.withStart(start))
       else tree1
     }
 
@@ -2101,7 +2101,7 @@ object Parsers {
           val firstPos =
             if (t.pos.exists) t.pos.withStart(offset)
             else Position(offset, in.lastOffset)
-          t.withPos(firstPos) :: rest
+          t.withSpan(firstPos) :: rest
         case nil => nil
       }
     }
@@ -2593,11 +2593,11 @@ object Parsers {
         if (in.token == ARROW) {
           first match {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
-              self = makeSelfDef(nme.WILDCARD, tpt).withPos(first.pos)
+              self = makeSelfDef(nme.WILDCARD, tpt).withPosOf(first)
             case _ =>
               val ValDef(name, tpt, _) = convertToParam(first, EmptyModifiers, "self type clause")
               if (name != nme.ERROR)
-                self = makeSelfDef(name, tpt).withPos(first.pos)
+                self = makeSelfDef(name, tpt).withPosOf(first)
           }
           in.nextToken()
         } else {

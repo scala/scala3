@@ -85,7 +85,7 @@ object Trees {
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
     final def copyAttr[U >: Untyped](from: Tree[U]): ThisTree[T] = {
-      val t1 = this.withPos(from.pos)
+      val t1 = this.withPosOf(from)
       val t2 =
         if (from.myTpe != null) t1.withType(from.myTpe.asInstanceOf[Type])
         else t1
@@ -783,21 +783,30 @@ object Trees {
   case class Thicket[-T >: Untyped](trees: List[Tree[T]])(implicit @transientParam src: SourceInfo)
     extends Tree[T] with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
-
     type ThisTree[-T >: Untyped] = Thicket[T]
-    override def isEmpty: Boolean = trees.isEmpty
-    override def toList: List[Tree[T]] = flatten(trees)
-    override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def withPos(pos: Position)(implicit src: SourceInfo): this.type = {
-      val newTrees = trees.mapConserve(_.withPos(pos))
+
+    def mapElems(op: Tree[T] => Tree[T] @uncheckedVariance): Thicket[T] = {
+      val newTrees = trees.mapConserve(op)
       if (trees eq newTrees)
         this
       else
         Thicket[T](newTrees).asInstanceOf[this.type]
     }
-    override def pos: Position = (NoPosition /: trees) ((pos, t) => pos union t.pos)
+
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
       trees foreach (_.foreachInThicket(op))
+
+    override def isEmpty: Boolean = trees.isEmpty
+    override def toList: List[Tree[T]] = flatten(trees)
+    override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
+    override def pos: Position = (NoPosition /: trees) ((pos, t) => pos union t.pos)
+
+    override def withSpan(pos: Position): this.type =
+      mapElems(_.withSpan(pos)).asInstanceOf[this.type]
+    override def withPosOf(posd: Positioned): this.type =
+      mapElems(_.withPosOf(posd)).asInstanceOf[this.type]
+    override def withSourcePos(sourcePos: SourcePosition): this.type =
+      mapElems(_.withSourcePos(sourcePos)).asInstanceOf[this.type]
   }
 
   class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoContext) {
@@ -965,10 +974,10 @@ object Trees {
       protected def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
       protected def finalize(tree: Tree, copied: untpd.Tree)(implicit src: SourceInfo): copied.ThisTree[T] =
-        postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
+        postProcess(tree, copied.withPosOf(tree).withAttachmentsFrom(tree))
 
       protected def finalize(tree: Tree, copied: untpd.MemberDef)(implicit src: SourceInfo): copied.ThisTree[T] =
-        postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
+        postProcess(tree, copied.withPosOf(tree).withAttachmentsFrom(tree))
 
       protected def srcCtx(tree: Tree)(implicit ctx: Context) = ctx.withSource(tree.source)
 

@@ -424,7 +424,7 @@ object LambdaLift {
       case proxies =>
         val sym = tree.symbol
         val freeParamDefs = proxies.map(proxy =>
-          thisPhase.transformFollowingDeep(ValDef(proxy.asTerm).withPos(tree.pos)).asInstanceOf[ValDef])
+          thisPhase.transformFollowingDeep(ValDef(proxy.asTerm).withPosOf(tree)).asInstanceOf[ValDef])
         def proxyInit(field: Symbol, param: Symbol) =
           thisPhase.transformFollowingDeep(memberRef(field).becomes(ref(param)))
 
@@ -523,9 +523,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         val lft = lifter
         if (prefix eq NoPrefix)
           if (sym.enclosure != lft.currentEnclosure && !sym.isStatic)
-            (if (sym is Method) lft.memberRef(sym) else lft.proxyRef(sym)).withPos(tree.pos)
+            (if (sym is Method) lft.memberRef(sym) else lft.proxyRef(sym)).withPosOf(tree)
           else if (sym.owner.isClass) // sym was lifted out
-            ref(sym).withPos(tree.pos)
+            ref(sym).withPosOf(tree)
           else
             tree
         else if (!prefixIsElidable(tpe)) ref(tpe)
@@ -536,7 +536,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   }
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Apply =
-    cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withPos(tree.pos)
+    cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withPosOf(tree)
 
   override def transformClosure(tree: Closure)(implicit ctx: Context): Closure =
     cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
@@ -553,7 +553,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree.expr match {
     case Block(stats, value) =>
-      Block(stats, Return(value, tree.from)).withPos(tree.pos)
+      Block(stats, Return(value, tree.from)).withPosOf(tree)
     case _ =>
       tree
   }
