@@ -60,7 +60,7 @@ object DesugarEnums {
                      |type parameter $tparam $problem""", ctx.source.atPos(pos))
       }
     }
-    TypeTree(enumClass.typeRef.appliedTo(targs)).withPos(pos)
+    TypeTree(enumClass.typeRef.appliedTo(targs)).withSpan(pos)
   }
 
   /** A type tree referring to `enumClass` */
@@ -207,7 +207,7 @@ object DesugarEnums {
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
       val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
-      flatTree(scaffolding ::: vdef :: Nil).withPos(pos)
+      flatTree(scaffolding ::: vdef :: Nil).withSpan(pos)
     }
   }
 
@@ -223,6 +223,6 @@ object DesugarEnums {
       val (tag, scaffolding) = nextEnumTag(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final)
-      flatTree(scaffolding ::: vdef :: Nil).withPos(pos)
+      flatTree(scaffolding ::: vdef :: Nil).withSpan(pos)
     }
 }

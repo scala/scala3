@@ -330,7 +330,7 @@ class TailRec extends MiniPhase {
               case _ :: _ =>
                 val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
                   val temp = ctx.newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
-                  (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withPos(tree.pos))
+                  (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withPosOf(tree))
                 }).unzip
                 tempValDefs ::: assigns
               case nil =>
@@ -342,7 +342,7 @@ class TailRec extends MiniPhase {
              * which can cause Ycheck errors.
              */
             val tpt = TypeTree(method.info.resultType)
-            seq(assignments, Typed(Return(unitLiteral.withPos(tree.pos), continueLabel), tpt))
+            seq(assignments, Typed(Return(unitLiteral.withPosOf(tree), continueLabel), tpt))
           }
           else fail("it is not in tail position")
         }

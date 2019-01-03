@@ -47,8 +47,8 @@ abstract class Lifter {
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = positionCoord(expr.pos))
-      defs += liftedDef(lifted, expr).withPos(expr.pos)
-      ref(lifted.termRef).withPos(expr.pos.focus)
+      defs += liftedDef(lifted, expr).withPosOf(expr)
+      ref(lifted.termRef).withSpan(expr.pos.focus)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
@@ -208,8 +208,8 @@ object EtaExpansion extends LiftImpure {
     var paramFlag = Synthetic | Param
     if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withPos(tree.pos.startPos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos.startPos))
+      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.pos.startPos))
+    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.pos.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)

@@ -407,7 +407,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
         // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
         x.tpe match {
           case tpe: Types.TypeBounds =>
-            Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withPos(x.pos), tpd.TypeTree(tpe.hi).withPos(x.pos)))
+            Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withPosOf(x), tpd.TypeTree(tpe.hi).withPosOf(x)))
           case _ => None
         }
       case _ => None

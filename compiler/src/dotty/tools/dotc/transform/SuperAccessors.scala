@@ -70,7 +70,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       if (clazz is Trait) superName = superName.expandedName(clazz)
       val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
-      val accPos = sel.pos.focus
+      val accRange = sel.pos.focus
       val superAcc = clazz.info.decl(superName)
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {
@@ -78,17 +78,17 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           val maybeDeferred = if (clazz is Trait) Deferred else EmptyFlags
           val acc = ctx.newSymbol(
               clazz, superName, Artifact | Method | maybeDeferred,
-              superInfo, coord = accPos).enteredAfter(thisPhase)
+              superInfo, coord = accRange).enteredAfter(thisPhase)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))
             ctx.error(
               s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})",
               sel.sourcePos)
-          else accDefs(clazz) += DefDef(acc, EmptyTree).withPos(accPos)
+          else accDefs(clazz) += DefDef(acc, EmptyTree).withSpan(accRange)
           acc
         }
 
-      This(clazz).select(superAcc).withPos(sel.pos)
+      This(clazz).select(superAcc).withPosOf(sel)
     }
 
     /** Check selection `super.f` for conforming to rules. If necessary,

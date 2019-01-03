@@ -624,14 +624,13 @@ trait Implicits { self: Typer =>
             if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
             val sym = tp.typeSymbol
-            if (sym == defn.UnitClass || sym == defn.AnyClass || sym == defn.AnyValClass)
-              ref(defn.ClassTagModule).select(sym.name.toTermName).withPos(pos)
-            else
-              ref(defn.ClassTagModule)
-                .select(nme.apply)
-                .appliedToType(tp)
-                .appliedTo(clsOf(erasure(tp)))
-                .withPos(pos)
+            val classTag = ref(defn.ClassTagModule)
+            val tag =
+              if (sym == defn.UnitClass || sym == defn.AnyClass || sym == defn.AnyValClass)
+                classTag.select(sym.name.toTermName)
+              else
+                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
+              tag.withSpan(pos)
           case tp =>
             EmptyTree
         }
@@ -677,7 +676,7 @@ trait Implicits { self: Typer =>
         case args @ (arg1 :: arg2 :: Nil)
         if !ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality) &&
            ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)) =>
-          ref(defn.Eq_eqAny).appliedToTypes(args).withPos(pos)
+          ref(defn.Eq_eqAny).appliedToTypes(args).withSpan(pos)
         case _ =>
           EmptyTree
       }
@@ -954,7 +953,7 @@ trait Implicits { self: Typer =>
     /** Try to typecheck an implicit reference */
     def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
       val ref = cand.ref
-      var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
+      var generated: Tree = tpd.ref(ref).withSpan(pos.startPos)
       val locked = ctx.typerState.ownedVars
       val generated1 =
         if (argument.isEmpty)
@@ -979,7 +978,7 @@ trait Implicits { self: Typer =>
           else tryConversion
         }
       lazy val shadowing =
-        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
+        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName).withSpan(pos.toSynthetic))(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
 
       /** Is candidate reference the same as the `shadowing` reference? (i.e.
@@ -1207,7 +1206,7 @@ trait Implicits { self: Typer =>
       // other candidates need to be considered.
       ctx.searchHistory.recursiveRef(pt) match {
         case ref: TermRef =>
-          SearchSuccess(tpd.ref(ref).withPos(pos.startPos), ref, 0)(ctx.typerState)
+          SearchSuccess(tpd.ref(ref).withSpan(pos.startPos), ref, 0)(ctx.typerState)
         case _ =>
           val eligible =
             if (contextual) ctx.implicits.eligible(wildProto)
@@ -1447,7 +1446,7 @@ final class SearchRoot extends SearchHistory {
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
         implicitDictionary.put(tpe, (ref, result.tree))
-        SearchSuccess(tpd.ref(ref).withPos(result.tree.pos), result.ref, result.level)(result.tstate)
+        SearchSuccess(tpd.ref(ref).withPosOf(result.tree), result.ref, result.level)(result.tstate)
       case None => result
     }
   }

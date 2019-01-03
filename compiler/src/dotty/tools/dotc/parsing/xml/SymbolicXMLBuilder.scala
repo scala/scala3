@@ -147,7 +147,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   def parseAttribute(pos: Position, s: String): Tree = {
     val ts = Utility.parseAttributeValue(s, text(pos, _), entityRef(pos, _))
     ts match {
-      case Nil      => TypedSplice(tpd.ref(defn.NilModule) withPos pos)
+      case Nil      => TypedSplice(tpd.ref(defn.NilModule).withSpan(pos))
       case t :: Nil => t
       case _        => makeXMLseq(pos, ts)
     }

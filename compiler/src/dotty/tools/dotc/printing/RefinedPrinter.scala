@@ -645,7 +645,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val str: Text = nameString(tree.symbol)
       tree match {
         case tree: RefTree => withPos(str, tree.sourcePos)
-        case tree: MemberDef => withPos(str, tree.sourcePos.withRange(tree.namePos))
+        case tree: MemberDef => withPos(str, tree.sourcePos.withSpan(tree.namePos))
         case _ => str
       }
     }

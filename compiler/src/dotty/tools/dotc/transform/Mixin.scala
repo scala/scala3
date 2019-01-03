@@ -250,13 +250,13 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !was(setr, Deferred)))
-        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos)))
+        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withSpan(cls.pos)))
 
     cpy.Template(impl)(
       constr =
         if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
         else impl.constr,
-      parents = impl.parents.map(p => TypeTree(p.tpe).withPos(p.pos)),
+      parents = impl.parents.map(p => TypeTree(p.tpe).withPosOf(p)),
       body =
         if (cls is Trait) traitDefs(impl.body)
         else {
