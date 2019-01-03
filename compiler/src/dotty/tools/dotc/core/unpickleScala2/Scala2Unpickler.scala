@@ -10,7 +10,7 @@ import java.lang.Double.longBitsToDouble
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
-import util.Positions._
+import util.Spans._
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
 import printing.Texts._
@@ -984,7 +984,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       symbol = readSymbolRef()
     }
 
-    implicit val pos: Position = NoPosition
+    implicit val pos: Span = NoSpan
 
     tag match {
       case EMPTYtree =>

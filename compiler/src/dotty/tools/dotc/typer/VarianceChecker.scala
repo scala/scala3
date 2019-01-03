@@ -8,7 +8,7 @@ import Decorators._
 import Variances._
 import NameKinds._
 import TypeApplications.varianceConforms
-import util.Positions._
+import util.Spans._
 import util.SourcePosition
 import config.Printers.variances
 import reporting.trace
@@ -160,7 +160,7 @@ class VarianceChecker()(implicit ctx: Context) {
           ctx.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
             pos)
-            // patch(Position(pos.end), " @scala.annotation.unchecked.uncheckedVariance")
+            // patch(Span(pos.end), " @scala.annotation.unchecked.uncheckedVariance")
             // Patch is disabled until two TODOs are solved:
             // TODO use an import or shorten if possible
             // TODO need to use a `:' if annotation is on term

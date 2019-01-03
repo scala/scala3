@@ -9,7 +9,7 @@ import Decorators._
 import Flags.Mutable
 import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
-import util.Positions._
+import util.Spans._
 import Parsers.Parser
 
 /** This class builds instance of `Tree` that represent XML.
@@ -89,7 +89,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
 
   /** Wildly wrong documentation deleted in favor of "self-documenting code." */
   protected def mkXML(
-    pos: Position,
+    pos: Span,
     isPattern: Boolean,
     pre: Tree,
     label: Tree,
@@ -108,28 +108,28 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     atPos(pos) { if (isPattern) pat else nonpat }
   }
 
-  final def entityRef(pos: Position, n: String): Tree =
+  final def entityRef(pos: Span, n: String): Tree =
     atPos(pos)( New(_scala_xml_EntityRef, LL(const(n))) )
 
   // create scala.xml.Text here <: scala.xml.Node
-  final def text(pos: Position, txt: String): Tree = atPos(pos) {
+  final def text(pos: Span, txt: String): Tree = atPos(pos) {
     if (isPattern) makeTextPat(const(txt))
     else makeText1(const(txt))
   }
 
   def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
   def makeText1(txt: Tree): Tree                  = New(_scala_xml_Text, LL(txt))
-  def comment(pos: Position, text: String): Tree  = atPos(pos)( Comment(const(text)) )
-  def charData(pos: Position, txt: String): Tree  = atPos(pos)( makeText1(const(txt)) )
+  def comment(pos: Span, text: String): Tree  = atPos(pos)( Comment(const(text)) )
+  def charData(pos: Span, txt: String): Tree  = atPos(pos)( makeText1(const(txt)) )
 
-  def procInstr(pos: Position, target: String, txt: String): Tree =
+  def procInstr(pos: Span, target: String, txt: String): Tree =
     atPos(pos)( ProcInstr(const(target), const(txt)) )
 
   protected def Comment(txt: Tree): Tree                  = New(_scala_xml_Comment, LL(txt))
   protected def ProcInstr(target: Tree, txt: Tree): Tree  = New(_scala_xml_ProcInstr, LL(target, txt))
 
   /** @todo: attributes */
-  def makeXMLpat(pos: Position, n: String, args: Seq[Tree]): Tree = {
+  def makeXMLpat(pos: Span, n: String, args: Seq[Tree]): Tree = {
     val (prepat, labpat) = splitPrefix(n) match {
       case (Some(pre), rest)  => (const(pre), const(rest))
       case _                  => (wild, const(n))
@@ -144,7 +144,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   protected def convertToTextPat(buf: Seq[Tree]): List[Tree] =
     (buf map convertToTextPat).toList
 
-  def parseAttribute(pos: Position, s: String): Tree = {
+  def parseAttribute(pos: Span, s: String): Tree = {
     val ts = Utility.parseAttributeValue(s, text(pos, _), entityRef(pos, _))
     ts match {
       case Nil      => TypedSplice(tpd.ref(defn.NilModule).withSpan(pos))
@@ -159,7 +159,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
-  def makeXMLseq(pos: Position, args: Seq[Tree]): Block = {
+  def makeXMLseq(pos: Span, args: Seq[Tree]): Block = {
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
@@ -173,13 +173,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** Various node constructions. */
-  def group(pos: Position, args: Seq[Tree]): Tree =
+  def group(pos: Span, args: Seq[Tree]): Tree =
     atPos(pos)( New(_scala_xml_Group, LL(makeXMLseq(pos, args))) )
 
-  def unparsed(pos: Position, str: String): Tree =
+  def unparsed(pos: Span, str: String): Tree =
     atPos(pos)( New(_scala_xml_Unparsed, LL(const(str))) )
 
-  def element(pos: Position, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree]): Tree = {
+  def element(pos: Span, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree]): Tree = {
     def handleNamespaceBinding(pre: String, z: String): Tree = {
       def mkAssign(t: Tree): Tree = Assign(
         Ident(_tmpscope),

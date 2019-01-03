@@ -2,8 +2,8 @@ package dotty.tools.backend.sjs
 
 import dotty.tools.dotc.core._
 import Contexts._
-import dotty.tools.dotc.util.Positions
-import Positions.Position
+import dotty.tools.dotc.util.Spans
+import Spans.Span
 
 import org.scalajs.ir
 
@@ -11,7 +11,7 @@ import org.scalajs.ir
 class JSPositions()(implicit ctx: Context) {
 
   /** Implicit conversion from dotty Position to ir.Position. */
-  implicit def pos2irPos(pos: Position): ir.Position = {
+  implicit def pos2irPos(pos: Span): ir.Position = {
     if (!pos.exists) ir.Position.NoPosition
     else {
       val source = pos2irPosCache.toIRSource(ctx.compilationUnit.source)
@@ -23,7 +23,7 @@ class JSPositions()(implicit ctx: Context) {
 
   /** Implicitly materializes an ir.Position from an implicit dotty Position. */
   implicit def implicitPos2irPos(
-      implicit pos: Position): ir.Position = {
+      implicit pos: Span): ir.Position = {
     pos2irPos(pos)
   }
 

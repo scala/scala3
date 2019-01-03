@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
+import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
@@ -793,7 +793,7 @@ object desugar {
       pats map {
         case id: Ident =>
           expandSimpleEnumCase(id.name.asTermName, mods,
-            Position(pdef.pos.start, id.pos.end, id.pos.start))
+            Span(pdef.pos.start, id.pos.end, id.pos.start))
     }
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
@@ -894,7 +894,7 @@ object desugar {
       case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
       case _ => arg
     }
-    def makeOp(fn: Tree, arg: Tree, selectPos: Position) = {
+    def makeOp(fn: Tree, arg: Tree, selectPos: Span) = {
       val args: List[Tree] = arg match {
         case Parens(arg) => assignToNamedArg(arg) :: Nil
         case Tuple(args) => args.mapConserve(assignToNamedArg)
@@ -904,9 +904,9 @@ object desugar {
     }
 
     if (isLeftAssoc(op.name))
-      makeOp(left, right, Position(left.pos.start, op.pos.end, op.pos.start))
+      makeOp(left, right, Span(left.pos.start, op.pos.end, op.pos.start))
     else
-      makeOp(right, left, Position(op.pos.start, right.pos.end))
+      makeOp(right, left, Span(op.pos.start, right.pos.end))
   }
 
   /** Translate tuple expressions of arity <= 22

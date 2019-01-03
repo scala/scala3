@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import Types._, Names._, NameOps._, Flags._, util.Positions._, Contexts._, Constants._
+import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
 import language.higherKinds
 import collection.mutable.ListBuffer
@@ -339,13 +339,13 @@ object Trees {
      *  This is a point position if the definition is synthetic, or a range position
      *  if the definition comes from source.
      *  It might also be that the definition does not have a position (for instance when synthesized by
-     *  a calling chain from `viewExists`), in that case the return position is NoPosition.
+     *  a calling chain from `viewExists`), in that case the return position is NoSpan.
      */
-    def namePos: Position =
+    def namePos: Span =
       if (pos.exists) {
         val point = pos.point
-        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Position(point)
-        else Position(point, point + name.stripModuleClassSuffix.lastPart.length, point)
+        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
+        else Span(point, point + name.stripModuleClassSuffix.lastPart.length, point)
       }
       else pos
   }
@@ -598,7 +598,7 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @transientParam src: SourceInfo)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
-    override def initialSpan(ignoreTypeTrees: Boolean): Position = call.pos
+    override def initialSpan(ignoreTypeTrees: Boolean): Span = call.pos
   }
 
   /** A type tree that represents an existing or inferred type */
@@ -771,8 +771,8 @@ object Trees {
 
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
     override def withTypeUnchecked(tpe: Type): ThisTree[Type] = this.asInstanceOf[ThisTree[Type]]
-    override def pos: Position = NoPosition
-    override def setPos(pos: Position, file: AbstractFile): Unit = {}
+    override def pos: Span = NoSpan
+    override def setPos(pos: Span, file: AbstractFile): Unit = {}
   }
 
   /** Temporary class that results from translation of ModuleDefs
@@ -799,9 +799,9 @@ object Trees {
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def pos: Position = (NoPosition /: trees) ((pos, t) => pos union t.pos)
+    override def pos: Span = (NoSpan /: trees) ((pos, t) => pos union t.pos)
 
-    override def withSpan(pos: Position): this.type =
+    override def withSpan(pos: Span): this.type =
       mapElems(_.withSpan(pos)).asInstanceOf[this.type]
     override def withPosOf(posd: Positioned): this.type =
       mapElems(_.withPosOf(posd)).asInstanceOf[this.type]

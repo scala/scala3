@@ -13,7 +13,7 @@ import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import Types._
-import util.Positions._
+import util.Spans._
 import DenotTransformers._
 import StdNames._
 import NameOps._
@@ -212,7 +212,7 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Position): Symbol = {
+  def newPatternBoundSymbol(name: Name, info: Type, pos: Span): Symbol = {
     val sym = newSymbol(owner, name, Case, info, coord = pos)
     if (name.isTypeName) {
       val bounds = info.bounds
@@ -670,7 +670,7 @@ object Symbols {
      *  the implicit conversion `sourcePos` will return the wrong result, careful!
      *  TODO: Consider changing this method return type to `SourcePosition`.
      */
-    final def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+    final def pos: Span = if (coord.isPosition) coord.toPosition else NoSpan
 
     final def sourcePos(implicit ctx: Context): SourcePosition = {
       val source = {

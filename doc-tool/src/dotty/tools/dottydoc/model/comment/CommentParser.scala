@@ -3,7 +3,7 @@ package model
 package comment
 
 import dotty.tools.dottydoc.util.syntax._
-import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
@@ -28,7 +28,7 @@ trait CommentParser extends util.MemberLookup {
     packages: Map[String, Package],
     comment: List[String],
     src: String,
-    pos: Position,
+    pos: Span,
     site: Symbol = NoSymbol
   )(implicit ctx: Context): ParsedComment = {
 
@@ -202,7 +202,7 @@ trait CommentParser extends util.MemberLookup {
           // with the point being at the very end. This ensures that the entire
           // comment will be visible in error reporting. A more fine-grained
           // reporting would be amazing here.
-          entity.symbol.sourcePosition(Position(pos.start, pos.end, pos.end))
+          entity.symbol.sourcePosition(Span(pos.start, pos.end, pos.end))
         )
 
         cmt
@@ -236,7 +236,7 @@ trait CommentParser extends util.MemberLookup {
     entity: Entity,
     packages: Map[String, Package],
     string: String,
-    pos: Position,
+    pos: Span,
     site: Symbol
   )(implicit ctx: Context): Body = new WikiParser(entity, packages, string, pos, site).document()
 }

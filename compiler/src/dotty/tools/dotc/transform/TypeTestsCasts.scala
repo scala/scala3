@@ -10,7 +10,7 @@ import TypeErasure._
 import ValueClasses._
 import SymUtils._
 import core.Flags._
-import util.Positions._
+import util.Spans._
 import reporting.diagnostic.messages.TypeTestAlwaysSucceeds
 import reporting.trace
 import config.Printers.{ transforms => debug }
@@ -53,7 +53,7 @@ object TypeTestsCasts {
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type, pos: Position)(implicit ctx: Context): Boolean = {
+  def checkable(X: Type, P: Type, pos: Span)(implicit ctx: Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 

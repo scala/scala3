@@ -14,7 +14,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.transform.PostTyper
 import dotty.tools.dotc.typer.ImportInfo
-import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results._
@@ -135,7 +135,7 @@ class ReplCompiler extends Compiler {
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
-      .withSpan(Position(0, defs.stats.last.pos.end))
+      .withSpan(Span(0, defs.stats.last.pos.end))
 
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
   }
@@ -231,7 +231,7 @@ class ReplCompiler extends Compiler {
         val tmpl = Template(emptyConstructor, Nil, EmptyValDef, List(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
-          .withSpan(Position(0, expr.length))
+          .withSpan(Span(0, expr.length))
         PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 
@@ -244,7 +244,7 @@ class ReplCompiler extends Compiler {
         case _ => List(
           new messages.Error(
             s"Couldn't parse '$expr' to valid scala",
-            sourceFile.atPos(Position(0, expr.length))
+            sourceFile.atPos(Span(0, expr.length))
           )
         ).errors
       }
@@ -253,7 +253,7 @@ class ReplCompiler extends Compiler {
     def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(implicit ctx: Context): Result[tpd.ValDef] = {
       def error: Result[tpd.ValDef] =
         List(new messages.Error(s"Invalid scala expression",
-          sourceFile.atPos(Position(0, sourceFile.content.length)))).errors
+          sourceFile.atPos(Span(0, sourceFile.content.length)))).errors
 
       import tpd._
       tree match {

@@ -21,7 +21,7 @@ import Decorators._
 import StdNames._
 import dotty.tools.dotc.reporting.diagnostic.messages.IdentifierExpected
 import dotty.tools.dotc.util.SourceFile
-import util.Positions._
+import util.Spans._
 import scala.collection.mutable.ListBuffer
 
 object JavaParsers {
@@ -87,7 +87,7 @@ object JavaParsers {
         skip()
     }
 
-    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType).withSpan(Position(in.offset))
+    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType).withSpan(Span(in.offset))
 
     // --------- tree building -----------------------------
 
@@ -603,7 +603,7 @@ object JavaParsers {
       }
 
     def importCompanionObject(cdef: TypeDef): Tree =
-      Import(Ident(cdef.name.toTermName).withSpan(NoPosition), Ident(nme.WILDCARD) :: Nil)
+      Import(Ident(cdef.name.toTermName).withSpan(NoSpan), Ident(nme.WILDCARD) :: Nil)
 
     // Importing the companion object members cannot be done uncritically: see
     // ticket #2377 wherein a class contains two static inner classes, each of which
@@ -660,9 +660,9 @@ object JavaParsers {
       } else {
         val qual = ((Ident(names.head): Tree) /: names.tail.init) (Select(_, _))
         val lastname = names.last
-        val ident = Ident(lastname).withSpan(Position(lastnameOffset))
+        val ident = Ident(lastname).withSpan(Span(lastnameOffset))
 //        val selector = lastname match {
-//          case nme.WILDCARD => Pair(ident, Ident(null) withPos Position(-1))
+//          case nme.WILDCARD => Pair(ident, Ident(null) withPos Span(-1))
 //          case _            => Pair(ident, ident)
 //        }
         val imp = atPos(start) { Import(qual, List(ident)) }

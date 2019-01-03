@@ -4,7 +4,7 @@ package model
 package comment
 
 import dotc.core.Contexts.Context
-import dotc.util.Positions._
+import dotc.util.Spans._
 import dotty.tools.dottydoc.util.syntax._
 import util.MemberLookup
 
@@ -70,7 +70,7 @@ object HtmlParsers {
   }
 
   implicit class StringToWiki(val text: String) extends AnyVal {
-    def toWiki(origin: Entity, packages: Map[String, Package], pos: Position): Body =
+    def toWiki(origin: Entity, packages: Map[String, Package], pos: Span): Body =
       new WikiParser(origin, packages, text, pos, origin.symbol).document()
   }
 

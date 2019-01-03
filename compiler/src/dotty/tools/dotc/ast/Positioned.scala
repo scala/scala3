@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package ast
 
-import util.Positions._
+import util.Spans._
 import util.{SourceFile, SourcePosition}
 import core.Contexts.{Context, SourceInfo}
 import core.Decorators._
@@ -20,10 +20,10 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  component of the position.
    */
   private var myUniqueId: Int = _
-  private[this] var curPos: Position = _
+  private[this] var curPos: Span = _
 
   /** The item's position */
-  def pos: Position = curPos
+  def pos: Span = curPos
 
   /** item's id */
   def uniqueId: Int = myUniqueId
@@ -43,7 +43,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   /** Destructively update `curPos` to given position. Also, set any missing
    *  positions in children.
    */
-  protected def setPos(pos: Position, file: AbstractFile): Unit = {
+  protected def setPos(pos: Span, file: AbstractFile): Unit = {
     setPosUnchecked(pos, file)
     if (pos.exists) setChildPositions(pos.toSynthetic, file)
   }
@@ -53,7 +53,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  If the positioned item is synthetic, the position is updated
    *  destructively and the item itself is returned.
    */
-  def withSpan(pos: Position): this.type = {
+  def withSpan(pos: Span): this.type = {
     val ownPos = this.pos
     val newpd: this.type =
       if (pos == ownPos || ownPos.isSynthetic) this else cloneIn(srcfile)
@@ -83,7 +83,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  any checks of consistency with - or updates of - other positions.
    *  Called from Unpickler when entering positions.
    */
-  private[dotc] def setPosUnchecked(pos: Position, file: AbstractFile = this.srcfile): Unit = {
+  private[dotc] def setPosUnchecked(pos: Span, file: AbstractFile = this.srcfile): Unit = {
     if (file != this.srcfile) setId(TreeIds.nextIdFor(file))
     curPos = pos
   }
@@ -99,7 +99,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  But since mutual tail recursion is not supported in Scala, we express it instead
    *  as a while loop with a termination by return in the middle.
    */
-  private def setChildPositions(pos: Position, file: AbstractFile): Unit = {
+  private def setChildPositions(pos: Span, file: AbstractFile): Unit = {
     var n = productArity                    // subnodes are analyzed right to left
     var elems: List[Any] = Nil              // children in lists still to be considered, from right to left
     var end = pos.end                       // the last defined offset, fill in positions up to this offset
@@ -111,10 +111,10 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
         // synthetic. We can preserve this invariant by always setting a
         // zero-extent position for these trees here.
         if (!p.pos.exists || p.pos.isZeroExtent) {
-          p.setPos(Position(start, start), file)
+          p.setPos(Span(start, start), file)
           fillIn(ps1, start, end)
         } else {
-          p.setPos(Position(start, end), file)
+          p.setPos(Span(start, end), file)
           fillIn(ps1, end, end)
         }
       case nil =>
@@ -186,14 +186,14 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *                           needed for pickling, since TypeTrees are pickled as types, so
    *                           their position is lost.
    */
-  def initialSpan(ignoreTypeTrees: Boolean = false): Position = {
+  def initialSpan(ignoreTypeTrees: Boolean = false): Span = {
 
-    def include(p1: Position, p2: Positioned) = p2 match {
+    def include(p1: Span, p2: Positioned) = p2 match {
       case _: Trees.TypeTree[_] if ignoreTypeTrees => p1
       case _ => p1.union(p2.pos)
     }
 
-    def includeAll(pos: Position, xs: List[_]): Position = xs match {
+    def includeAll(pos: Span, xs: List[_]): Span = xs match {
       case (p: Positioned) :: xs1 if sameSource(p) => includeAll(include(pos, p), xs1)
       case (xs0: List[_]) :: xs1 => includeAll(includeAll(pos, xs0), xs1)
       case _ :: xs1 => includeAll(pos, xs1)
@@ -201,7 +201,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     }
 
     var n = productArity
-    var pos = NoPosition
+    var pos = NoSpan
     while (n > 0) {
       n -= 1
       productElement(n) match {
@@ -246,7 +246,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   def checkPos(nonOverlapping: Boolean)(implicit ctx: Context): Unit = try {
     import untpd._
     var lastPositioned: Positioned = null
-    var lastPos = NoPosition
+    var lastPos = NoSpan
     def check(p: Any): Unit = p match {
       case p: Positioned =>
         assert(pos contains p.pos,

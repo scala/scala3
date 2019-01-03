@@ -9,7 +9,7 @@ import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Fla
 import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar._
 import ProtoTypes._
-import util.Positions._
+import util.Spans._
 import util.Property
 import collection.mutable
 import tpd.ListOfTreeDecorator
@@ -243,7 +243,7 @@ class Namer { typer: Typer =>
   }
 
   /** The enclosing class with given name; error if none exists */
-  def enclosingClassNamed(name: TypeName, pos: Position)(implicit ctx: Context): Symbol = {
+  def enclosingClassNamed(name: TypeName, pos: Span)(implicit ctx: Context): Symbol = {
     if (name.isEmpty) NoSymbol
     else {
       val cls = ctx.owner.enclosingClassNamed(name)

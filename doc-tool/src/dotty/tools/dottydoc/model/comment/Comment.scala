@@ -5,7 +5,7 @@ package comment
 
 import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Spans._
 import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
 import HtmlParsers._
 import util.MemberLookup
@@ -59,7 +59,7 @@ private[comment] case class ParsedComment (
 
 trait MarkupConversion[T] extends MemberLookup {
   def ent: Entity
-  def pos: Position
+  def pos: Span
   def parsed: ParsedComment
 
   protected def linkedExceptions(m: Map[String, String])(implicit ctx: Context): Map[String, String]
@@ -104,7 +104,7 @@ trait MarkupConversion[T] extends MemberLookup {
   )
 }
 
-case class MarkdownComment(ent: Entity, parsed: ParsedComment, pos: Position)
+case class MarkdownComment(ent: Entity, parsed: ParsedComment, pos: Span)
 extends MarkupConversion[MarkdownNode] {
 
   def stringToMarkup(str: String)(implicit ctx: Context) =
@@ -135,7 +135,7 @@ extends MarkupConversion[MarkdownNode] {
       .mapValues(stringToMarkup)
 }
 
-case class WikiComment(ent: Entity, parsed: ParsedComment, pos: Position)
+case class WikiComment(ent: Entity, parsed: ParsedComment, pos: Span)
 extends MarkupConversion[Body] {
 
   def filterEmpty(xs: Map[String,String])(implicit ctx: Context) =

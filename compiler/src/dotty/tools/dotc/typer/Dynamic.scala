@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
-import util.Positions._
+import util.Spans._
 import core.Symbols._
 import core.Definitions
 import ErrorReporting._
@@ -49,7 +49,7 @@ trait Dynamic { self: Typer with Applications =>
    *    foo.bar[T0, ...](x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed[T0, ...]("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    */
   def typedDynamicApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
-    def typedDynamicApply(qual: untpd.Tree, name: Name, selPos: Position, targs: List[untpd.Tree]): Tree = {
+    def typedDynamicApply(qual: untpd.Tree, name: Name, selPos: Span, targs: List[untpd.Tree]): Tree = {
       def isNamedArg(arg: untpd.Tree): Boolean = arg match { case NamedArg(_, _) => true; case _ => false }
       val args = tree.args
       val dynName = if (args.exists(isNamedArg)) nme.applyDynamicNamed else nme.applyDynamic
@@ -92,7 +92,7 @@ trait Dynamic { self: Typer with Applications =>
    *    foo.bar = baz ~~> foo.updateDynamic(bar)(baz)
    */
   def typedDynamicAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context): Tree = {
-    def typedDynamicAssign(qual: untpd.Tree, name: Name, selPos: Position, targs: List[untpd.Tree]): Tree =
+    def typedDynamicAssign(qual: untpd.Tree, name: Name, selPos: Span, targs: List[untpd.Tree]): Tree =
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selPos, targs), tree.rhs), pt)
     tree.lhs match {
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
@@ -104,7 +104,7 @@ trait Dynamic { self: Typer with Applications =>
     }
   }
 
-  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selPos: Position, targs: List[untpd.Tree])(implicit ctx: Context): untpd.Apply = {
+  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selPos: Span, targs: List[untpd.Tree])(implicit ctx: Context): untpd.Apply = {
     val select = untpd.Select(qual, dynName).withSpan(selPos)
     val selectWithTypes =
       if (targs.isEmpty) select
