@@ -404,13 +404,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
     val elemClass = elemTpe.classSymbol
     def newArr =
-      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withPos(pos)
+      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(pos)
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(pos)
     } else  // after erasure
-      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(pos)
   }
 
   /** The wrapped array method name for an array of type elemtp */
@@ -1012,7 +1012,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     else {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
-      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
+      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withPosOf(tree)
     }
   }
 
@@ -1204,7 +1204,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // Give a zero-extent position to the qualifier to prevent it from being included several
       // times in results in the language server.
       val noPosExpr = focusPositions(imp.expr)
-      val selectTree = Select(noPosExpr, sym.name).withPos(id.pos)
+      val selectTree = Select(noPosExpr, sym.name).withPosOf(id)
       rename match {
         case None =>
           selectTree :: Nil
@@ -1213,7 +1213,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // node with the new name and the type of the real symbol.
           val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
           val actual = Select(noPosExpr, sym.name)
-          val renameTree = Select(noPosExpr, name).withPos(rename.pos).withType(actual.tpe)
+          val renameTree = Select(noPosExpr, name).withPosOf(rename).withType(actual.tpe)
           selectTree :: renameTree :: Nil
       }
     }
@@ -1236,7 +1236,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private def focusPositions(tree: Tree)(implicit ctx: Context): Tree = {
     val transformer = new tpd.TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-        super.transform(tree).withPos(tree.pos.focus)
+        super.transform(tree).withSpan(tree.pos.focus)
       }
     }
     transformer.transform(tree)

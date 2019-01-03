@@ -34,7 +34,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     else
       Super(This(cls), target.owner.name.asTypeName, false, target.owner)
     //println(i"super ref $target on $sup")
-    ast.untpd.Select(sup.withPos(pos), target.name)
+    ast.untpd.Select(sup.withSpan(pos), target.name)
       .withType(NamedType(sup.tpe, target))
     //sup.select(target)
   }

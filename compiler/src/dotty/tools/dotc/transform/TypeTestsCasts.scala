@@ -147,7 +147,7 @@ object TypeTestsCasts {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree)(expr1.select(sym).withPos(expr.pos), List(TypeTree(tp)))
+          cpy.TypeApply(tree)(expr1.select(sym).withPosOf(expr), List(TypeTree(tp)))
 
         def effectiveClass(tp: Type): Symbol =
           if (tp.isRef(defn.PairClass)) effectiveClass(erasure(tp))
@@ -248,7 +248,7 @@ object TypeTestsCasts {
          */
         def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
           case _: SingletonType =>
-            expr.isInstance(testType).withPos(tree.pos)
+            expr.isInstance(testType).withPosOf(tree)
           case OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated = false)

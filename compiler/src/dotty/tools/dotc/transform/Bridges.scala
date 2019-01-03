@@ -107,7 +107,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       else ref.appliedToArgss(argss)
     }
 
-    bridges += DefDef(bridge, bridgeRhs(_).withPos(bridge.pos))
+    bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.pos))
   }
 
   /** Add all necessary bridges to template statements `stats`, and remove at the same

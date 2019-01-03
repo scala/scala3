@@ -149,7 +149,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
           if (sym is (ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
-          if (sym.owner.isConstructor) ref(sym).withPos(tree.pos) else tree
+          if (sym.owner.isConstructor) ref(sym).withPosOf(tree) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
           if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
@@ -195,7 +195,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
-                constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withPos(stat.pos)
+                constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withPosOf(stat)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
             else if (!stat.rhs.isEmpty) {
@@ -230,7 +230,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         if (!target.exists) Nil // this case arises when the parameter accessor is an alias
         else {
           val param = acc.subst(accessors, paramSyms)
-          val assigns = Assign(ref(target), ref(param)).withPos(tree.pos) :: Nil
+          val assigns = Assign(ref(target), ref(param)).withPosOf(tree) :: Nil
           if (acc.name != nme.OUTER) assigns
           else {
             // insert test: if ($outer eq null) throw new NullPointerException
