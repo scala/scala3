@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast.{Trees, tpd, untpd}
-import util.Positions._
+import util.Spans._
 import util.Stats.track
 import util.{SourcePosition, NoSourcePosition}
 import Trees.Untyped

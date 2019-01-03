@@ -4,11 +4,11 @@ package util
 
 import printing.{Showable, Printer}
 import printing.Texts._
-import Positions.{Position, NoPosition}
+import Spans.{Span, NoSpan}
 import scala.annotation.internal.sharable
 
 /** A source position is comprised of a position in a source file */
-case class SourcePosition(source: SourceFile, pos: Position, outer: SourcePosition = NoSourcePosition)
+case class SourcePosition(source: SourceFile, pos: Span, outer: SourcePosition = NoSourcePosition)
 extends interfaces.SourcePosition with Showable {
   /** Is `that` a source position contained in this source position ?
    *  `outer` is not taken into account. */
@@ -55,7 +55,7 @@ extends interfaces.SourcePosition with Showable {
   def endColumn: Int = source.column(end)
 
   def withOuter(outer: SourcePosition): SourcePosition = SourcePosition(source, pos, outer)
-  def withSpan(range: Position) = SourcePosition(source, range, outer)
+  def withSpan(range: Span) = SourcePosition(source, range, outer)
 
   def startPos: SourcePosition = withSpan(pos.startPos)
   def endPos  : SourcePosition = withSpan(pos.endPos)
@@ -69,7 +69,7 @@ extends interfaces.SourcePosition with Showable {
 }
 
 /** A sentinel for a non-existing source position */
-@sharable object NoSourcePosition extends SourcePosition(NoSource, NoPosition) {
+@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan) {
   override def toString: String = "?"
   override def withOuter(outer: SourcePosition): SourcePosition = outer
 }

@@ -5,7 +5,7 @@ import core._
 import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
-import util.Positions._
+import util.Spans._
 import util.SourcePosition
 import tasty.TreePickler.Hole
 import SymUtils._

@@ -24,7 +24,7 @@ import ErrorReporting._
 import Checking._
 import Inferencing._
 import EtaExpansion.etaExpand
-import util.Positions._
+import util.Spans._
 import util.common._
 import util.Property
 import Applications.{ExtMethodApply, wrapDefs, productSelectorTypes}
@@ -1476,7 +1476,7 @@ class Typer extends Namer
     if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
         ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
         !ctx.isAfterTyper)
-      patch(Position(toUntyped(vdef).pos.start), "@volatile ")
+      patch(Span(toUntyped(vdef).pos.start), "@volatile ")
   }
 
   /** Adds inline to final vals with idempotent rhs
@@ -1696,7 +1696,7 @@ class Typer extends Namer
    *  - has C as its class symbol, and
    *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
    */
-  def ensureFirstIsClass(parents: List[Type], pos: Position)(implicit ctx: Context): List[Type] = {
+  def ensureFirstIsClass(parents: List[Type], pos: Span)(implicit ctx: Context): List[Type] = {
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
       else if (!(cls is Trait)) cls.asClass
@@ -1719,7 +1719,7 @@ class Typer extends Namer
   }
 
   /** Ensure that first parent tree refers to a real class. */
-  def ensureFirstTreeIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
+  def ensureFirstTreeIsClass(parents: List[Tree], pos: Span)(implicit ctx: Context): List[Tree] = parents match {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
     case _ => TypeTree(ensureFirstIsClass(parents.tpes, pos).head).withSpan(pos.focus) :: parents
   }
@@ -1806,8 +1806,8 @@ class Typer extends Namer
         ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.sourcePos)
         if (ctx.scala2Mode) {
           // Under -rewrite, patch `x _` to `(() => x)`
-          patch(Position(tree.pos.start), "(() => ")
-          patch(Position(qual.pos.end, tree.pos.end), ")")
+          patch(Span(tree.pos.start), "(() => ")
+          patch(Span(qual.pos.end, tree.pos.end), ")")
           return typed(untpd.Function(Nil, qual), pt)
         }
     }
@@ -1826,8 +1826,8 @@ class Typer extends Namer
       ctx.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
                                      |you can $remedy""", tree.sourcePos)
       if (ctx.scala2Mode) {
-        patch(Position(tree.pos.start), prefix)
-        patch(Position(qual.pos.end, tree.pos.end), suffix)
+        patch(Span(tree.pos.start), prefix)
+        patch(Span(qual.pos.end, tree.pos.end), suffix)
       }
     }
     res

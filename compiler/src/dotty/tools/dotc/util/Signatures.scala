@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.Implicit
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.core.Types.{ErrorType, MethodType, PolyType}
 import dotty.tools.dotc.reporting.diagnostic.messages
 
@@ -48,7 +48,7 @@ object Signatures {
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
-  def callInfo(path: List[tpd.Tree], pos: Position)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) = {
+  def callInfo(path: List[tpd.Tree], pos: Span)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) = {
     path match {
       case Apply(fun, params) :: _ =>
         val alreadyAppliedCount = Signatures.countParams(fun)

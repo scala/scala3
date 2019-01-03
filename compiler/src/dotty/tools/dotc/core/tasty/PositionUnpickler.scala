@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import util.Positions._
+import util.Spans._
 import collection.{mutable, Map}
 import TastyBuffer.{Addr, NameRef}
 import TastyFormat.SOURCE
@@ -13,13 +13,13 @@ import Names.TermName
 class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   import reader._
 
-  private var myPositions: mutable.HashMap[Addr, Position] = _
+  private var myPositions: mutable.HashMap[Addr, Span] = _
   private var mySourcePaths: mutable.HashMap[Addr, String] = _
   private var isDefined = false
 
   def ensureDefined(): Unit =
     if (!isDefined) {
-      myPositions = new mutable.HashMap[Addr, Position]
+      myPositions = new mutable.HashMap[Addr, Span]
       mySourcePaths = new mutable.HashMap[Addr, String]
       var curIndex = 0
       var curStart = 0
@@ -40,14 +40,14 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
           if (hasStart) curStart += readInt()
           if (hasEnd) curEnd += readInt()
           myPositions(Addr(curIndex)) =
-            if (hasPoint) Position(curStart, curEnd, curStart + readInt())
-            else Position(curStart, curEnd)
+            if (hasPoint) Span(curStart, curEnd, curStart + readInt())
+            else Span(curStart, curEnd)
           }
       }
       isDefined = true
     }
 
-  private[tasty] def positions: Map[Addr, Position] = {
+  private[tasty] def positions: Map[Addr, Span] = {
     ensureDefined()
     myPositions
   }
@@ -57,7 +57,7 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
     mySourcePaths
   }
 
-  def posAt(addr: Addr): Position = positions.getOrElse(addr, NoPosition)
+  def posAt(addr: Addr): Span = positions.getOrElse(addr, NoSpan)
   def sourcePathAt(addr: Addr): String = sourcePaths.getOrElse(addr, "")
 }
 

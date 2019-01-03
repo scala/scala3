@@ -3,7 +3,7 @@ package model
 package comment
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.config.Printers.dottydoc
 import util.MemberLookup
@@ -21,7 +21,7 @@ private[comment] final class WikiParser(
   entity: Entity,
   packages: Map[String, Package],
   val buffer: String,
-  pos: Position,
+  pos: Span,
   site: Symbol
 ) extends CharReader(buffer) with MemberLookup { wiki =>
   var summaryParsed = false
@@ -402,7 +402,7 @@ private[comment] final class WikiParser(
     }
   }
 
-  def reportError(pos: Position, message: String) =
+  def reportError(pos: Span, message: String) =
     dottydoc.println(s"$pos: $message")
 }
 

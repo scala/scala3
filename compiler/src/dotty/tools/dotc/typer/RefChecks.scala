@@ -7,7 +7,7 @@ import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
 import StdNames._, Denotations._, SymUtils._
 import NameKinds.DefaultGetterName
 import Annotations._
-import util.Positions._
+import util.Spans._
 import util.{Store, SourcePosition}
 import scala.collection.{ mutable, immutable }
 import ast._
@@ -861,7 +861,7 @@ object RefChecks {
 
   class OptLevelInfo {
     def levelAndIndex: LevelAndIndex = Map()
-    def enterReference(sym: Symbol, pos: Position): Unit = ()
+    def enterReference(sym: Symbol, pos: Span): Unit = ()
   }
 
   /** A class to help in forward reference checking */
@@ -877,10 +877,10 @@ object RefChecks {
         (m1, idx + 1)
       }._1
     var maxIndex: Int = Int.MinValue
-    var refPos: Position = _
+    var refPos: Span = _
     var refSym: Symbol = _
 
-    override def enterReference(sym: Symbol, pos: Position): Unit =
+    override def enterReference(sym: Symbol, pos: Span): Unit =
       if (sym.exists && sym.owner.isTerm)
         levelAndIndex.get(sym) match {
           case Some((level, idx)) if (level.maxIndex < idx) =>

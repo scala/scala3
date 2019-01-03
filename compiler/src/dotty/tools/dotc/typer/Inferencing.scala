@@ -8,7 +8,7 @@ import Contexts._, Types._, Flags._, Symbols._
 import Trees._
 import ProtoTypes._
 import NameKinds.UniqueName
-import util.Positions._
+import util.Spans._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
 import config.Printers.{gadts, typr}
@@ -38,7 +38,7 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context): Type =
+  def fullyDefinedType(tp: Type, what: String, pos: Span)(implicit ctx: Context): Type =
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
@@ -288,7 +288,7 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, pos: Position, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
+  def maximizeType(tp: Type, pos: Span, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
     val vs = variances(tp)
     val patternBound = new mutable.ListBuffer[Symbol]
     vs foreachBinding { (tvar, v) =>

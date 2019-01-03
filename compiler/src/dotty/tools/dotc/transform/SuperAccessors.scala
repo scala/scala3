@@ -9,7 +9,7 @@ import Contexts._, Flags._, Symbols._, NameOps._, Trees._
 import TypeUtils._, SymUtils._
 import DenotTransformers.DenotTransformer
 import Symbols._
-import util.Positions._
+import util.Spans._
 import Decorators._
 import NameKinds.SuperAccessorName
 

@@ -646,7 +646,7 @@ object DottyLanguageServer {
       else pos
     val source = driver.openedFiles(uri)
     if (source.exists) {
-      val p = Positions.Position(source.lineToOffset(actualPosition.getLine) + actualPosition.getCharacter)
+      val p = Spans.Span(source.lineToOffset(actualPosition.getLine) + actualPosition.getCharacter)
       new SourcePosition(source, p)
     }
     else NoSourcePosition

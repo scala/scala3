@@ -8,7 +8,7 @@ import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
 import ShortcutImplicits._
-import util.Positions.Position
+import util.Spans.Span
 import util.SourcePosition
 
 /** A helper class for generating bridge methods in class `root`. */

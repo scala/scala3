@@ -24,7 +24,7 @@ import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet}
 
 import collection.mutable
 import reporting.trace
-import util.Positions.Position
+import util.Spans.Span
 import util.SourcePosition
 import ast.TreeInfo
 

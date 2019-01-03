@@ -17,7 +17,7 @@ import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.io._
@@ -169,7 +169,7 @@ class ReplDriver(settings: Array[String],
         val unit = new CompilationUnit(file)
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
-        val srcPos = SourcePosition(file, Position(cursor))
+        val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
       }

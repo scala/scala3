@@ -18,7 +18,7 @@ import Annotations._
 import NameKinds._
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
-import util.Positions._
+import util.Spans._
 import util.SourceFile
 import io.AbstractFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
@@ -1290,15 +1290,15 @@ class TreeUnpickler(reader: TastyReader,
 // ------ Setting positions ------------------------------------------------
 
     /** Pickled position for `addr`. */
-    def posAt(addr: Addr)(implicit ctx: Context): Position =
+    def posAt(addr: Addr)(implicit ctx: Context): Span =
       if (ctx.mode.is(Mode.ReadPositions)) {
         posUnpicklerOpt match {
           case Some(posUnpickler) =>
             posUnpickler.posAt(addr)
           case _  =>
-            NoPosition
+            NoSpan
         }
-      } else NoPosition
+      } else NoSpan
 
     /** Pickled source path at `addr`. */
     def sourcePathAt(addr: Addr)(implicit ctx: Context): String =

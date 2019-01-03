@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.transform.Staging
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
 
@@ -66,7 +66,7 @@ class QuoteCompiler extends Compiler {
       *  `package __root__ { class ' { def apply: Any = <expr> } }`
       */
     private def inClass(expr: Expr[_])(implicit ctx: Context): Tree = {
-      val pos = Position(0)
+      val pos = Span(0)
       val assocFile = new VirtualFile("<quote>")
 
       val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,

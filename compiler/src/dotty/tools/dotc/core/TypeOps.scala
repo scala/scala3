@@ -4,7 +4,7 @@ package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
-import util.Positions._
+import util.Spans._
 import util.SourcePosition
 import NameKinds.DepParamName
 import Decorators._

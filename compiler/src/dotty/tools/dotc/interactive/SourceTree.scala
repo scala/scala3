@@ -7,7 +7,7 @@ import scala.io.Codec
 import ast.tpd
 import core._
 import Contexts._, NameOps._, Symbols._, StdNames._
-import util._, util.Positions._
+import util._, util.Spans._
 
 /**
  * A `tree` coming from `source`
@@ -41,7 +41,7 @@ case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, s
             else
               // If we don't have a point, we need to find it
               (treePos.end - nameLength, treePos.end)
-          Position(start, end, start)
+          Span(start, end, start)
         }
         source.atPos(position)
       }

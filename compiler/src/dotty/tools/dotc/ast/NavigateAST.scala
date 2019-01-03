@@ -3,7 +3,7 @@ package ast
 
 import core.Contexts.Context
 import core.Decorators._
-import util.Positions._
+import util.Spans._
 import Trees.{MemberDef, DefTree, WithLazyField}
 
 /** Utility functions to go from typed to untyped ASTs */
@@ -54,7 +54,7 @@ object NavigateAST {
   /** The reverse part of the untyped root of the compilation unit of `ctx` to
    *  position `pos`.
    */
-  def untypedPath(pos: Position)(implicit ctx: Context): List[Positioned] =
+  def untypedPath(pos: Span)(implicit ctx: Context): List[Positioned] =
     pathTo(pos, ctx.compilationUnit.untpdTree)
 
 
@@ -67,7 +67,7 @@ object NavigateAST {
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(pos: Position, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
+  def pathTo(pos: Span, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       while (it.hasNext) {
         val path1 = it.next() match {
