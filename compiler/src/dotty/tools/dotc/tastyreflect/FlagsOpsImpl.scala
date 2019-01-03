@@ -3,7 +3,15 @@ package tastyreflect
 
 import dotty.tools.dotc.core.Decorators._
 
+import scala.tasty.reflect
+
 trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
+
+  def FlagsDeco(flagSet: scala.tasty.reflect.FlagSet): FlagsAPI = new FlagsAPI {
+    def is(that: reflect.FlagSet): Boolean = flagSet.asInstanceOf[FlagSet].flags is that.asInstanceOf[FlagSet].flags
+    def |(that: reflect.FlagSet): reflect.FlagSet = new FlagSet(flagSet.asInstanceOf[FlagSet].flags | that.asInstanceOf[FlagSet].flags)
+    def &(that: reflect.FlagSet): reflect.FlagSet = new FlagSet(flagSet.asInstanceOf[FlagSet].flags & that.asInstanceOf[FlagSet].flags)
+  }
 
   object Flags extends FlagsModule {
     def Protected: FlagSet = new FlagSet(core.Flags.Protected)

@@ -2,6 +2,16 @@ package scala.tasty.reflect
 
 trait FlagsOps extends Core {
 
+  trait FlagsAPI {
+    /** Is the given flag set a subset of this flag sets */
+    def is(flagSet: FlagSet): Boolean
+    /** Union of the two flag sets */
+    def |(flagSet: FlagSet): FlagSet
+    /** Intersection of the two flag sets */
+    def &(flagSet: FlagSet): FlagSet
+  }
+  implicit def FlagsDeco(flagSet: FlagSet): FlagsAPI
+
   val Flags: FlagsModule
   abstract class FlagsModule {
     /** Is this symbol `protected` */

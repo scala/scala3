@@ -3,7 +3,7 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags._
 
-class FlagSet(flags: Flags.FlagSet) extends scala.tasty.reflect.FlagSet {
+class FlagSet(val flags: Flags.FlagSet) extends scala.tasty.reflect.FlagSet {
 
   def isProtected: Boolean = flags.is(Protected)
   def isAbstract: Boolean = flags.is(Abstract)
