@@ -20,7 +20,7 @@ import config.Settings._
 import config.Config
 import reporting._
 import reporting.diagnostic.Message
-import io.{AbstractFile, PlainFile, Path}
+import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
 import printing._
@@ -38,8 +38,12 @@ import plugins._
 object Contexts {
 
   trait SourceInfo {
-    def source: SourceFile
-    def withSource(file: AbstractFile): SourceInfo
+    def srcfile: AbstractFile
+  }
+  object SourceInfo {
+    def apply(src: AbstractFile) = new SourceInfo {
+      def srcfile = src
+    }
   }
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
@@ -168,6 +172,8 @@ object Contexts {
     private[this] var _source: SourceFile = _
     protected def source_=(source: SourceFile): Unit = _source = source
     def source: SourceFile = _source
+
+    def srcfile = source.file
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
