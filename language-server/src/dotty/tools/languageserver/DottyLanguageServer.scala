@@ -18,7 +18,7 @@ import scala.io.Codec
 
 import dotc._
 import ast.{Trees, tpd}
-import core._, core.Decorators.{sourcePos => _, _}
+import core._, core.Decorators._
 import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
@@ -388,7 +388,7 @@ class DottyLanguageServer extends LanguageServer
     val refs =
       path match {
         // Selected a renaming in an import node
-        case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.pos.contains(pos.pos) =>
+        case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.span.contains(pos.span) =>
           findRenamedReferences(uriTrees, syms, rename.name)
 
         // Selected a reference that has been renamed
@@ -545,7 +545,7 @@ class DottyLanguageServer extends LanguageServer
     val trees = driver.openedTrees(uri)
     val path = Interactive.pathTo(trees, pos).dropWhile(!_.isInstanceOf[Apply])
 
-    val (paramN, callableN, alternatives) = Signatures.callInfo(path, pos.pos)
+    val (paramN, callableN, alternatives) = Signatures.callInfo(path, pos.span)
     val signatureInfos = alternatives.flatMap(Signatures.toSignature)
 
     new SignatureHelp(signatureInfos.map(signatureToSignatureInformation).asJava, callableN, paramN)
@@ -754,7 +754,7 @@ object DottyLanguageServer {
    * @return The position in the actual source file (before wrapping).
    */
   private def toUnwrappedPosition(position: SourcePosition): SourcePosition = {
-    new SourcePosition(position.source, position.pos, position.outer) {
+    new SourcePosition(position.source, position.span, position.outer) {
       override def startLine: Int = position.startLine - 1
       override def endLine: Int = position.endLine - 1
     }
