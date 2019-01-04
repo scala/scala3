@@ -81,7 +81,7 @@ object Parsers {
      *  to position spanning from `start` to last read offset, with given point.
      *  If the last offset is less than or equal to start, the tree `t` did not
      *  consume any source for its construction. In this case, don't position it yet,
-     *  but wait for its position to be determined by `setChildPositions` when the
+     *  but wait for its position to be determined by `setChildSpans` when the
      *  parent node is positioned.
      */
     def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
@@ -1990,9 +1990,9 @@ object Parsers {
                     prefix: Boolean = false,                 // clause precedes name of an extension method
                     firstClause: Boolean = false)            // clause is the first in regular list of clauses
                     : List[ValDef] = {
-      var implicitOffset = -1 // use once
+      var impliedMods: Modifiers = EmptyModifiers
 
-      def param(impliedMods: Modifiers): ValDef = {
+      def param(): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
         if (ofClass) {
@@ -2027,9 +2027,8 @@ object Parsers {
           val default =
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
-          if (implicitOffset >= 0) {
-            //mods = mods.withPos(mods.span.union(Span(implicitOffset, implicitOffset)))
-            implicitOffset = -1
+          if (impliedMods.mods.nonEmpty) {
+            impliedMods = impliedMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
           }
           ValDef(name, tpt, default).withMods(mods)
         }
@@ -2052,18 +2051,16 @@ object Parsers {
         if (in.token == RPAREN && !prefix) Nil
         else {
           def funArgMods(mods: Modifiers): Modifiers =
-            if (in.token == IMPLICIT) {
-              implicitOffset = in.offset
+            if (in.token == IMPLICIT)
               funArgMods(addMod(mods, atPos(accept(IMPLICIT)) { Mod.Implicit() }))
-            }
             else if (in.token == ERASED)
               funArgMods(addMod(mods, atPos(accept(ERASED)) { Mod.Erased() }))
             else mods
 
-          val paramMods = funArgMods(EmptyModifiers)
+          impliedMods = funArgMods(EmptyModifiers)
           val clause =
-            if (prefix) param(paramMods) :: Nil
-            else commaSeparated(() => param(paramMods))
+            if (prefix) param() :: Nil
+            else commaSeparated(() => param())
           checkVarArgsRules(clause)
           clause
         }
