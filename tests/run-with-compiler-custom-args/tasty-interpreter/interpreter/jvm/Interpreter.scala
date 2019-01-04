@@ -1,7 +1,6 @@
 package scala.tasty.interpreter
 package jvm
 
-import scala.tasty.interpreter.abstr.{Ref, Eager, Lazy, Var}
 import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
@@ -32,7 +31,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                 symbol match {
                   case IsDefSymbol(symbol) =>
                     val args1 = if (args == null) Nil else args.toList
-                    val evaluatedArgs = args1.map(arg => new Eager(arg))
+                    val evaluatedArgs = args1.map(arg => LocalValue.valFrom(arg))
 
                     val env1 = env ++ symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
                     // println(symbol.tree)
@@ -83,7 +82,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def evaluatedArgss(argss: List[List[Term]])(implicit env: Env): List[Object] = argss.flatMap((a: List[Term]) => a.map(b => eval(b).asInstanceOf[Object]))
 
-  def interpretUnit()(implicit env: Env): AbstractAny = ().asInstanceOf[Object]
+  def interpretUnit(): AbstractAny = ().asInstanceOf[Object]
 
   def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny = const.value
 

@@ -1,13 +1,12 @@
 package scala.tasty.interpreter
 
-import scala.tasty.interpreter.abstr.{Ref, Eager, Lazy, Var}
 import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
 abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   import reflect._
 
-  type Env = Map[Symbol, Ref]
+  type Env = Map[Symbol, LocalValue]
 
   /** Representation of objects and values in the interpreter */
   type AbstractAny
@@ -15,7 +14,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): AbstractAny = {
     fn.symbol match {
       case IsDefSymbol(sym) =>
-        val evaluatedArgs = argss.flatten.map(arg => new Eager(eval(arg)))
+        val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
         val env1 = env ++ sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
         eval(sym.tree.rhs.get)(env1)
       case _ =>
@@ -37,14 +36,11 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretBlock(stats: List[Statement], expr: Term)(implicit env: Env): AbstractAny = {
     val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
       case ValDef(name, tpt, Some(rhs)) =>
-        val evalRef: Ref =
-          if (stat.symbol.flags.isLazy)
-          // do not factor out rhs from here (laziness)
-            new Lazy(eval(rhs)(accEnv))
-          else if (stat.symbol.flags.isMutable)
-            new Var(eval(rhs)(accEnv))
-          else
-            new Eager(eval(rhs)(accEnv))
+        def evalRhs = eval(rhs)(accEnv)
+        val evalRef: LocalValue =
+          if (stat.symbol.flags.isLazy) LocalValue.lazyValFrom(evalRhs)
+          else if (stat.symbol.flags.isMutable) LocalValue.varFrom(evalRhs)
+          else LocalValue.valFrom(evalRhs)
 
         accEnv.updated(stat.symbol, evalRef)
       case DefDef(_, _, _, _, _) =>
@@ -57,7 +53,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     eval(expr)(newEnv)
   }
 
-  def interpretUnit()(implicit env: Env): AbstractAny
+  def interpretUnit(): AbstractAny
   def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny
 
   def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny
@@ -74,11 +70,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
         }
 
       case Term.Assign(lhs, rhs) =>
-        env(lhs.symbol) match {
-          case varf: Var =>
-            varf.update(eval(rhs))
-            interpretUnit()
-        }
+        env(lhs.symbol).update(eval(rhs))
 
       case Term.If(cond, thenp, elsep) => interpretIf(cond, thenp, elsep)
       case Term.While(cond, body)      => interpretWhile(cond, body)
@@ -90,20 +82,25 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
-  trait Ref {
+  trait LocalValue {
     def get: AbstractAny
+    def update(rhs: AbstractAny): AbstractAny = throw new UnsupportedOperationException
   }
 
-  class Eager(val get: AbstractAny) extends Ref
-
-  class Lazy(thunk: => AbstractAny) extends Ref {
-    lazy val get: AbstractAny = thunk
-  }
-
-  class Var(private var value: AbstractAny) extends Ref {
-    def get = value
-    def update(rhs: AbstractAny): Unit = {
-      value = rhs
+  object LocalValue {
+    def valFrom(rhs: AbstractAny): LocalValue = new LocalValue {
+      def get: AbstractAny = rhs
+    }
+    def lazyValFrom(rhs: => AbstractAny): LocalValue = new LocalValue {
+      lazy val get: AbstractAny = rhs
+    }
+    def varFrom(rhs: AbstractAny): LocalValue = new LocalValue {
+      private[this] var value = rhs
+      def get = value
+      override def update(rhs: AbstractAny): AbstractAny = {
+        value = rhs
+        interpretUnit()
+      }
     }
   }
 
