@@ -887,7 +887,7 @@ class Namer { typer: Typer =>
         val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.sourcePos,
+          val pt = checkClassType(ptype, parent.posd,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
