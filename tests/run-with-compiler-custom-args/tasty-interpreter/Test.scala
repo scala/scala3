@@ -1,5 +1,5 @@
 import scala.tasty.file._
-import scala.tasty.interpreter.Interpreter
+import scala.tasty.interpreter.jvm.Interpreter
 import scala.tasty.Reflection
 
 object Test {
