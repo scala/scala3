@@ -87,13 +87,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny = const.value
 
-  def interpretIsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): AbstractAny = {
-    val o = eval(prefix)
+  def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny =
     jvmReflection.getClassOf(tpt.symbol).isInstance(o)
-  }
 
-  def interpretAsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): AbstractAny = {
-    val o = eval(prefix)
+  def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny =
     jvmReflection.getClassOf(tpt.symbol).cast(o)
-  }
+
 }
