@@ -433,7 +433,7 @@ class Typer extends Namer
             case _ => app
           }
         case qual1 =>
-          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.sourcePos)
+          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.posd)
           val select = typedSelect(tree, pt, qual1)
           if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
           else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
@@ -516,7 +516,7 @@ class Typer extends Namer
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        if (checkClassType(tpt1.tpe, tpt1.sourcePos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
+        if (checkClassType(tpt1.tpe, tpt1.posd, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
           tpt1 = TypeTree(defn.ObjectType).withPosOf(tpt1)
 
         tpt1 match {
@@ -725,7 +725,7 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    if (tree.isInline) checkInInlineContext("inline if", tree.sourcePos)
+    if (tree.isInline) checkInInlineContext("inline if", tree.posd)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
@@ -988,7 +988,7 @@ class Typer extends Namer
     tree.selector match {
       case EmptyTree =>
         if (tree.isInline) {
-          checkInInlineContext("implicit match", tree.sourcePos)
+          checkInInlineContext("implicit match", tree.posd)
           val cases1 = tree.cases.mapconserve {
             case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
               // case _ : T  -->  case evidence$n : T
@@ -1003,7 +1003,7 @@ class Typer extends Namer
           typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked).withPosOf(tree), pt)
         }
       case _ =>
-        if (tree.isInline) checkInInlineContext("inline match", tree.sourcePos)
+        if (tree.isInline) checkInInlineContext("inline match", tree.posd)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
         typedMatchFinish(tree, sel1, selType, tree.cases, pt)
@@ -1241,7 +1241,7 @@ class Typer extends Namer
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.sourcePos)
+    checkStable(ref1.tpe, tree.posd)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
@@ -1661,7 +1661,7 @@ class Typer extends Namer
           cls, isRequired, cdef.sourcePos)
       }
 
-      checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.sourcePos)
+      checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.posd)
 
       // check value class constraints
       checkDerivedValueClass(cls, body1)
@@ -1742,8 +1742,8 @@ class Typer extends Namer
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkStable(expr1.tpe, imp.expr.sourcePos)
-    if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.sourcePos)
+    checkStable(expr1.tpe, imp.expr.posd)
+    if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.posd)
     assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
   }
 
@@ -2681,7 +2681,7 @@ class Typer extends Namer
           case SearchSuccess(inferred: ExtMethodApply, _, _) =>
             inferred // nothing to check or adapt for extension method applications
           case SearchSuccess(inferred, _, _) =>
-            checkImplicitConversionUseOK(inferred.symbol, tree.sourcePos)
+            checkImplicitConversionUseOK(inferred.symbol, tree.posd)
             readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
             if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)

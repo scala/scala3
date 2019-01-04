@@ -199,7 +199,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Select(qual, name) =>
           handleMeta(tree.symbol)
           if (name.isTypeName) {
-            Checking.checkRealizable(qual.tpe, qual.sourcePos.focus)
+            Checking.checkRealizable(qual.tpe, qual.posd)
             super.transform(tree)(ctx.addMode(Mode.Type))
           }
           else
@@ -219,7 +219,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
-              Checking.checkInstantiable(tree.tpe, nu.sourcePos)
+              Checking.checkInstantiable(tree.tpe, nu.posd)
               withNoCheckNews(nu :: Nil)(super.transform(app))
             case _ =>
               super.transform(app)
@@ -266,10 +266,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
-          Checking.checkInstantiable(tree.tpe, tree.sourcePos)
+          Checking.checkInstantiable(tree.tpe, tree.posd)
           super.transform(tree)
         case tree: Closure if !tree.tpt.isEmpty =>
-          Checking.checkRealizable(tree.tpt.tpe, tree.sourcePos, "SAM type")
+          Checking.checkRealizable(tree.tpt.tpe, tree.posd, "SAM type")
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
@@ -277,7 +277,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-          Checking.checkRealizable(ref.tpe, ref.sourcePos.focus)
+          Checking.checkRealizable(ref.tpe, ref.posd)
           super.transform(tree)
         case tree: TypeTree =>
           tree.withType(
@@ -289,7 +289,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: AndTypeTree =>
           // Ideally, this should be done by Typer, but we run into cyclic references
           // when trying to typecheck self types which are intersections.
-          Checking.checkNonCyclicInherited(tree.tpe, tree.left.tpe :: tree.right.tpe :: Nil, EmptyScope, tree.sourcePos)
+          Checking.checkNonCyclicInherited(tree.tpe, tree.left.tpe :: tree.right.tpe :: Nil, EmptyScope, tree.posd)
           super.transform(tree)
         case tree: LambdaTypeTree =>
           VarianceChecker.checkLambda(tree)

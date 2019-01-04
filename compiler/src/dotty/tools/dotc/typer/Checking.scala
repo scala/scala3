@@ -79,16 +79,16 @@ object Checking {
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
 
-    def checkWildcardApply(tp: Type, pos: SourcePosition): Unit = tp match {
+    def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, args) =>
         if (tycon.isLambdaSub && args.exists(_.isInstanceOf[TypeBounds]))
           ctx.errorOrMigrationWarning(
             ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
-            pos)
+            tree.sourcePos)
       case _ =>
     }
     def checkValidIfApply(implicit ctx: Context): Unit =
-      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.sourcePos)
+      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
     checkValidIfApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
@@ -118,28 +118,28 @@ object Checking {
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */
-  def checkInstantiable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit =
+  def checkInstantiable(tp: Type, posd: Positioned)(implicit ctx: Context): Unit =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.is(AbstractOrTrait))
-          ctx.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), pos)
+          ctx.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), posd.sourcePos)
         if (!cls.is(Module)) {
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.
           val stp = SkolemType(tp)
           val selfType = cls.asClass.givenSelfType.asSeenFrom(stp, cls)
           if (selfType.exists && !(stp <:< selfType))
-            ctx.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), pos)
+            ctx.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), posd.sourcePos)
         }
       case _ =>
     }
 
   /** Check that type `tp` is realizable. */
-  def checkRealizable(tp: Type, pos: SourcePosition, what: String = "path")(implicit ctx: Context): Unit = {
+  def checkRealizable(tp: Type, posd: Positioned, what: String = "path")(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
-      ctx.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", pos)
+      ctx.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", posd.sourcePos)
   }
 
   /** A type map which checks that the only cycles in a type are F-bounds
@@ -332,7 +332,7 @@ object Checking {
    *  unless a type with the same name aleadry appears in `decls`.
    *  @return    true iff no cycles were detected
    */
-  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SourcePosition)(implicit ctx: Context): Unit = {
+  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = {
     def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
     val abstractTypeNames =
       for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
@@ -350,7 +350,7 @@ object Checking {
       }
       catch {
         case ex: RecursionOverflow =>
-          ctx.error(em"cyclic reference involving type $name", pos)
+          ctx.error(em"cyclic reference involving type $name", posd.sourcePos)
           false
       }
   }
@@ -562,8 +562,8 @@ trait Checking {
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
 
-  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SourcePosition)(implicit ctx: Context): Unit =
-    Checking.checkNonCyclicInherited(joint, parents, decls, pos)
+  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit =
+    Checking.checkNonCyclicInherited(joint, parents, decls, posd)
 
   /** Check that Java statics and packages can only be used in selections.
    */
@@ -578,8 +578,8 @@ trait Checking {
   }
 
   /** Check that type `tp` is stable. */
-  def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
+  def checkStable(tp: Type, posd: Positioned)(implicit ctx: Context): Unit =
+    if (!tp.isStable) ctx.error(ex"$tp is not stable", posd.sourcePos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
@@ -594,14 +594,14 @@ trait Checking {
   *   check that class prefix is stable.
    *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
-  def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
+  def checkClassType(tp: Type, posd: Positioned, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
-        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
+        if (traitReq && !(tref.symbol is Trait)) ctx.error(TraitIsExpected(tref.symbol), posd.sourcePos)
+        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, posd)
         tp
       case _ =>
-        ctx.error(ex"$tp is not a class type", pos)
+        ctx.error(ex"$tp is not a class type", posd.sourcePos)
         defn.ObjectType
     }
 
@@ -634,7 +634,7 @@ trait Checking {
    *    - it is defined in Predef
    *    - it is the scala.reflect.Selectable.reflectiveSelectable conversion
    */
-  def checkImplicitConversionUseOK(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
+  def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = {
     val conversionOK =
       !sym.exists ||
       sym.is(Synthetic) ||
@@ -643,7 +643,7 @@ trait Checking {
       sym.name == nme.reflectiveSelectable && sym.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
     if (!conversionOK)
       checkFeature(defn.LanguageModuleClass, nme.implicitConversions,
-        i"Use of implicit conversion ${sym.showLocated}", NoSymbol, pos)
+        i"Use of implicit conversion ${sym.showLocated}", NoSymbol, posd.sourcePos)
   }
 
   /** Issue a feature warning if feature is not enabled */
@@ -890,14 +890,14 @@ trait Checking {
   }
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
-  def checkInInlineContext(what: String, pos: SourcePosition)(implicit ctx: Context): Unit =
+  def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit =
     if (!ctx.inInlineMethod && !ctx.isInlineContext) {
       val inInlineUnapply = ctx.owner.ownersIterator.exists(owner =>
         owner.name == nme.unapply && owner.is(Inline) && owner.is(Method))
       val msg =
         if (inInlineUnapply) "cannot be used in an inline unapply"
         else "can only be used in an inline method"
-      ctx.error(em"$what $msg", pos)
+      ctx.error(em"$what $msg", posd.sourcePos)
     }
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
@@ -994,12 +994,12 @@ trait ReChecking extends Checking {
 trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
-  override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  override def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = ()
-  override def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
+  override def checkStable(tp: Type, posd: Positioned)(implicit ctx: Context): Unit = ()
+  override def checkClassType(tp: Type, posd: Positioned, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
-  override def checkImplicitConversionUseOK(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
@@ -1011,6 +1011,6 @@ trait NoChecking extends ReChecking {
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
-  override def checkInInlineContext(what: String, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }
