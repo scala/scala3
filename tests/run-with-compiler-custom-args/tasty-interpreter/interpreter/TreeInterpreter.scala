@@ -59,6 +59,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny
   def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny
 
+  def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny
+
   def eval(tree: Statement)(implicit env: Env): AbstractAny = {
     tree match {
       case Call(fn, targs, argss) =>
@@ -66,6 +68,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
           case Term.Select(_, "<init>") => interpretNew(fn, argss)
           case Term.Select(prefix, "isInstanceOf") => interpretIsInstanceOf(eval(prefix), targs.head)
           case Term.Select(prefix, "asInstanceOf") => interpretAsInstanceOf(eval(prefix), targs.head)
+          case Term.Select(prefix, "==") => interpretEqEq(eval(prefix), eval(argss.head.head))
           case _ => interpretCall(fn, argss)
         }
 

@@ -58,8 +58,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
       fn.symbol match {
         // TODO: obviously
         case IsDefSymbol(sym) =>
-          if (sym.name == "==") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] == eval(argss.head.head).asInstanceOf[Int]
-          else if (sym.name == ">") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] > eval(argss.head.head).asInstanceOf[Int]
+          if (sym.name == ">") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] > eval(argss.head.head).asInstanceOf[Int]
           else if (sym.name == "-") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] - eval(argss.head.head).asInstanceOf[Int]
           else if (sym.name == "+") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] + eval(argss.head.head).asInstanceOf[Int]
           else {
@@ -90,5 +89,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny =
     jvmReflection.getClassOf(tpt.symbol).cast(o)
+
+  def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny = x == y
 
 }
