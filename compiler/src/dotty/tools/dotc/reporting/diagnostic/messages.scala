@@ -2093,7 +2093,7 @@ object messages {
           case _ /* Signature.FullMatch */ => "\nThe definitions have matching type signatures after erasure."
         }
       } else ""
-      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} ${if (previousDecl.pos.exists) s"at line ${previousDecl.sourcePos.line + 1}" else ""}." + details
+      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} ${if (previousDecl.span.exists) s"at line ${previousDecl.sourcePos.line + 1}" else ""}." + details
     }
     val explanation: String = ""
   }

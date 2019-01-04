@@ -706,7 +706,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       	 */
         def newBinding(sym: TermSymbol, rhs: Tree): Unit = {
           sym.info = rhs.tpe.widenTermRefExpr
-          bindingsBuf += ValDef(sym, constToLiteral(rhs)).withSpan(sym.pos)
+          bindingsBuf += ValDef(sym, constToLiteral(rhs)).withSpan(sym.span)
         }
 
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {

@@ -256,7 +256,7 @@ object PatternMatcher {
       def matchElemsPlan(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Plan) = {
         val selectors = args.indices.toList.map(idx =>
           ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx))))
-        TestPlan(LengthTest(args.length, exact), seqSym, seqSym.pos,
+        TestPlan(LengthTest(args.length, exact), seqSym, seqSym.span,
           matchArgsPlan(selectors, args, onSuccess))
       }
 

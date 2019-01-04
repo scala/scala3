@@ -23,7 +23,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]
       buf.writeAddr(addr)
       buf.writeNat(length)
       buf.writeBytes(bytes, length)
-      buf.writeLongInt(cmt.pos.coords)
+      buf.writeLongInt(cmt.span.coords)
     case other =>
       ()
   }

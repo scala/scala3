@@ -1234,7 +1234,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           // `isSubType` as a TypeVar might get constrained by a TypeRef it's
           // part of.
           val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
-          fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.pos)
+          fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
 
           val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
           isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)

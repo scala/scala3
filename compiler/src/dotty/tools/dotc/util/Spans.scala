@@ -158,13 +158,13 @@ object Spans {
    */
   class Coord(val encoding: Int) extends AnyVal {
     def isIndex: Boolean = encoding > 0
-    def isPosition: Boolean = encoding <= 0
+    def isSpan: Boolean = encoding <= 0
     def toIndex: Int = {
       assert(isIndex)
       encoding - 1
     }
-    def toPosition: Span = {
-      assert(isPosition)
+    def toSpan: Span = {
+      assert(isSpan)
       if (this == NoCoord) NoSpan else Span(-1 - encoding)
     }
   }

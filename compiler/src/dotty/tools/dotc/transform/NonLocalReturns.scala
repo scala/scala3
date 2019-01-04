@@ -37,7 +37,7 @@ class NonLocalReturns extends MiniPhase {
   private def nonLocalReturnKey(meth: Symbol)(implicit ctx: Context) =
     nonLocalReturnKeys.getOrElseUpdate(meth,
       ctx.newSymbol(
-        meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.pos))
+        meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.span))
 
   /** Generate a non-local return throw with given return expression from given method.
    *  I.e. for the method's non-local return key, generate:

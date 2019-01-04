@@ -42,7 +42,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   private val bridgeTarget = newMutableSymbolMap[Symbol]
 
   def bridgePosFor(member: Symbol): SourcePosition =
-    (if (member.owner == root && member.pos.exists) member else root).sourcePos
+    (if (member.owner == root && member.span.exists) member else root).sourcePos
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
    *  before erasure, if the following conditions are satisfied.
@@ -90,7 +90,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
 
     ctx.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}
-             |to ${member.showLocated}: ${member.info} @ ${member.pos}
+             |to ${member.showLocated}: ${member.info} @ ${member.span}
              |bridge: ${bridge.showLocated} with flags: ${bridge.flags}""")
 
     bridgeTarget(bridge) = member
@@ -107,7 +107,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       else ref.appliedToArgss(argss)
     }
 
-    bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.pos))
+    bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))
   }
 
   /** Add all necessary bridges to template statements `stats`, and remove at the same
