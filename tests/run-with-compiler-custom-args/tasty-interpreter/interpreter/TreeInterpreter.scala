@@ -54,11 +54,16 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   def interpretLiteral(const: Constant)(implicit env: Env): Any = const.value
 
+  def interpretIsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): Any
+  def interpretAsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): Any
+
   def eval(tree: Statement)(implicit env: Env): Any = {
     tree match {
-      case Call(fn, argss) =>
+      case Call(fn, targs, argss) =>
         fn match {
           case Term.Select(_, "<init>") => interpretNew(fn, argss)
+          case Term.Select(prefix, "isInstanceOf") => interpretIsInstanceOf(prefix, targs.head)
+          case Term.Select(prefix, "asInstanceOf") => interpretAsInstanceOf(prefix, targs.head)
           case _ => interpretCall(fn, argss)
         }
 
@@ -78,11 +83,11 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   }
 
   private object Call {
-    def unapply(arg: Tree): Option[(Tree, List[List[Term]])] = arg match {
-      case fn@ Term.Select(_, _) => Some((fn, Nil))
-      case fn@ Term.Ident(_) => Some((fn, Nil))
-      case Term.Apply(Call(fn, args1), args2) => Some((fn, args1 :+ args2))
-      case Term.TypeApply(Call(fn, args), _) => Some((fn, args))
+    def unapply(arg: Tree): Option[(Tree, List[TypeTree], List[List[Term]])] = arg match {
+      case fn@ Term.Select(_, _) => Some((fn, Nil, Nil))
+      case fn@ Term.Ident(_) => Some((fn, Nil, Nil))
+      case Term.Apply(Call(fn, targs, args1), args2) => Some((fn, targs, args1 :+ args2))
+      case Term.TypeApply(Call(fn, _, _), targs) => Some((fn, targs, Nil))
       case _ => None
     }
   }

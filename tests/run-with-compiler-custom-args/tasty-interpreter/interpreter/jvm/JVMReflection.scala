@@ -13,7 +13,7 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   def loadModule(sym: Symbol): Object = {
     if (sym.owner.flags.isPackage) {
       // is top level object
-      val moduleClass = loadClass(sym.fullName)
+      val moduleClass = getClassOf(sym)
       moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
     }
     else {
@@ -24,7 +24,20 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
- def loadClass(name: String): Class[_] = {
+  def getClassOf(sym: Symbol): Class[_] = {
+    sym.fullName match {
+      case "scala.Boolean" => classOf[java.lang.Boolean]
+      case "scala.Short" => classOf[java.lang.Short]
+      case "scala.Char" => classOf[java.lang.Character]
+      case "scala.Int" => classOf[java.lang.Integer]
+      case "scala.Long" => classOf[java.lang.Long]
+      case "scala.Float" => classOf[java.lang.Float]
+      case "scala.Double" => classOf[java.lang.Double]
+      case _ => loadClass(sym.fullName)
+    }
+  }
+
+  def loadClass(name: String): Class[_] = {
     try classLoader.loadClass(name)
     catch {
       case _: ClassNotFoundException =>
@@ -51,7 +64,7 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   def interpretNew(fn: Symbol, args: List[Object]): Object = {
-    val clazz = loadClass(fn.owner.fullName)
+    val clazz = getClassOf(fn.owner)
     val constr = clazz.getConstructor(paramsSig(fn): _*)
     constr.newInstance(args: _*).asInstanceOf[Object]
   }

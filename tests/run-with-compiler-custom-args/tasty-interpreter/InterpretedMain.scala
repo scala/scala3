@@ -47,11 +47,16 @@ object IntepretedMain {
     println(Precompiled.staticMeth4(new Bar))
     println(Precompiled.staticMeth5(new Bar, 61))
     println(Precompiled.staticMeth4(new InterpretedBar))
-    println(Precompiled.staticMeth5(new InterpretedBar, 61))
+    println(Precompiled.staticMeth5(new InterpretedBar, 62))
+
+    val x6: Any = 64
+    println(x6.isInstanceOf[Int])
+    println(x6.isInstanceOf[Long])
+    println(x6.asInstanceOf[Int])
   }
 }
 
 class InterpretedBar extends IFace {
-  def meth(): Int = 70
+  def meth(): Int = 62
   def methA(x: Int): Int = x + 1
 }
