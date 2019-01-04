@@ -22,6 +22,38 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   def interpretNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any
 
+  def interpretIf(cond: Term, thenp: Term, elsep: Term)(implicit env: Env): Any =
+    if (eval(cond).asInstanceOf[Boolean]) eval(thenp)
+    else eval(elsep)
+
+  def interpretWhile(cond: Term, body: Term)(implicit env: Env): Any =
+    while (eval(cond).asInstanceOf[Boolean]) eval(body)
+
+  def interpretBlock(stats: List[Statement], expr: Term)(implicit env: Env): Any = {
+    val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
+      case ValDef(name, tpt, Some(rhs)) =>
+        val evalRef: Ref =
+          if (stat.symbol.flags.isLazy)
+          // do not factor out rhs from here (laziness)
+            new Lazy(eval(rhs)(accEnv))
+          else if (stat.symbol.flags.isMutable)
+            new Var(eval(rhs)(accEnv))
+          else
+            new Eager(eval(rhs)(accEnv))
+
+        accEnv.updated(stat.symbol, evalRef)
+      case DefDef(_, _, _, _, _) =>
+        // TODO: record the environment for closure purposes
+        accEnv
+      case stat =>
+        eval(stat)(accEnv)
+        accEnv
+    })
+    eval(expr)(newEnv)
+  }
+
+  def interpretLiteral(const: Constant)(implicit env: Env): Any = const.value
+
   def eval(tree: Statement)(implicit env: Env): Any = {
     tree match {
       case Call(fn, argss) =>
@@ -35,41 +67,11 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
           case varf: Var => varf.update(eval(rhs))
         }
 
-      case Term.If(cond, thenp, elsep) =>
-        if (eval(cond).asInstanceOf[Boolean]) eval(thenp)
-        else eval(elsep)
-
-      case Term.While(cond, expr) =>
-        while (eval(cond).asInstanceOf[Boolean]){
-          eval(expr)
-        }
-
-      case Term.Block(stats, expr) =>
-        val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
-          case ValDef(name, tpt, Some(rhs)) =>
-            val evalRef: Ref =
-              if (stat.symbol.flags.isLazy)
-                // do not factor out rhs from here (laziness)
-                new Lazy(eval(rhs)(accEnv))
-              else if (stat.symbol.flags.isMutable)
-                new Var(eval(rhs)(accEnv))
-              else
-                new Eager(eval(rhs)(accEnv))
-
-            accEnv.updated(stat.symbol, evalRef)
-          case DefDef(_, _, _, _, _) =>
-            // TODO: record the environment for closure purposes
-            accEnv
-          case stat =>
-            eval(stat)(accEnv)
-            accEnv
-        })
-        eval(expr)(newEnv)
-
-
-      case Term.Literal(const) => const.value
-
-      case Term.Typed(expr, _) => eval(expr)
+      case Term.If(cond, thenp, elsep) => interpretIf(cond, thenp, elsep)
+      case Term.While(cond, body)      => interpretWhile(cond, body)
+      case Term.Block(stats, expr)     => interpretBlock(stats, expr)
+      case Term.Literal(const)         => interpretLiteral(const)
+      case Term.Typed(expr, _)         => eval(expr)
 
       case _ => throw new MatchError(tree.show)
     }

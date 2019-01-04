@@ -80,7 +80,4 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def evaluatedArgss(argss: List[List[Term]])(implicit env: Env): List[Object] = argss.flatMap((a: List[Term]) => a.map(b => eval(b).asInstanceOf[Object]))
 
-  def reflectNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any =
-    jvmReflection.interpretNew(fn.symbol, evaluatedArgss(argss))
-
 }
