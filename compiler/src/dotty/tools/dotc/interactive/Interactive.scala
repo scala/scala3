@@ -121,10 +121,10 @@ object Interactive {
         List(select.symbol)
 
       case (_: Thicket) :: (imp: Import) :: _ =>
-        importedSymbols(imp, _.pos.contains(pos.pos))
+        importedSymbols(imp, _.pos.contains(pos.span))
 
       case (imp: Import) :: _ =>
-        importedSymbols(imp, _.pos.contains(pos.pos))
+        importedSymbols(imp, _.pos.contains(pos.span))
 
       case _ =>
         List(enclosingTree(path).symbol)
@@ -252,7 +252,7 @@ object Interactive {
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Tree] =
     trees.find(_.pos.contains(pos)) match {
-      case Some(tree) => pathTo(tree.tree, pos.pos)
+      case Some(tree) => pathTo(tree.tree, pos.span)
       case None => Nil
     }
 
