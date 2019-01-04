@@ -263,7 +263,7 @@ class Staging extends MacroTransformWithImplicits {
           None
         } else {
           val reqType = defn.QuotedTypeType.appliedTo(tp)
-          val tag = ctx.typer.inferImplicitArg(reqType, pos.pos)
+          val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
             case fail: SearchFailureType =>
               Some(i"""

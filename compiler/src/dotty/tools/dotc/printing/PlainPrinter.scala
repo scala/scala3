@@ -505,10 +505,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided ctx.settings.YprintPos.value)
   }.close // todo: override in refined printer
 
-  def toText(pos: SourcePosition): Text =
+  def toText(pos: SourcePosition): Text = {
     if (!pos.exists) "<no position>"
-    else if (pos.source.exists) s"${pos.source.file}:${pos.line + 1}"
-    else s"(no source file, offset = ${pos.pos.point})"
+    else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
+    else s"(no source file, offset = ${pos.span.point})"
+  }
 
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>

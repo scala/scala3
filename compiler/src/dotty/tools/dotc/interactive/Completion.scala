@@ -40,7 +40,7 @@ object Completion {
    *  @return offset and list of symbols for possible completions
    */
   def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Completion]) = {
-    val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.pos)
+    val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     computeCompletions(pos, path)(Interactive.contextOfPath(path))
   }
 
@@ -62,7 +62,7 @@ object Completion {
         else Mode.None
 
       case Thicket(name :: _ :: Nil) :: (_: Import) :: _ =>
-        if (name.pos.contains(pos.pos)) Mode.Import
+        if (name.pos.contains(pos.span)) Mode.Import
         else Mode.None // Can't help completing the renaming
 
       case Import(_, _) :: _ =>
@@ -83,13 +83,13 @@ object Completion {
         completionPrefix(name :: Nil, pos)
 
       case Import(expr, selectors) :: _ =>
-        selectors.find(_.pos.contains(pos.pos)).map { selector =>
+        selectors.find(_.pos.contains(pos.span)).map { selector =>
           completionPrefix(selector.asInstanceOf[Tree] :: Nil, pos)
         }.getOrElse("")
 
       case (ref: RefTree) :: _ =>
         if (ref.name == nme.ERROR) ""
-        else ref.name.toString.take(pos.pos.point - ref.pos.point)
+        else ref.name.toString.take(pos.span.point - ref.pos.point)
 
       case _ =>
         ""
@@ -313,7 +313,7 @@ object Completion {
      */
     private def implicitConversionTargets(qual: Tree)(implicit ctx: Context): Set[Type] = {
       val typer = ctx.typer
-      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.pos).allImplicits
+      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
       val targets = conversions.map(_.widen.finalResultType)
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
       targets

@@ -77,7 +77,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    *  For regular source files, simply return the argument.
    */
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
-    SourcePosition(underlying, position.pos shift start)
+    SourcePosition(underlying, position.span shift start)
 
   private def isLineBreak(idx: Int) =
     if (idx >= length) false else {

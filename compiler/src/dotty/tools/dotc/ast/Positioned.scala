@@ -73,9 +73,9 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   def withSourcePos(sourcePos: SourcePosition): this.type = {
     val ownPos = this.pos
     val newpd: this.type =
-      if (sourcePos.source.file == srcfile && sourcePos.pos == ownPos || ownPos.isSynthetic) this
+      if (sourcePos.source.file == srcfile && sourcePos.span == ownPos || ownPos.isSynthetic) this
       else cloneIn(sourcePos.source.file)
-    newpd.setPos(sourcePos.pos, sourcePos.source.file)
+    newpd.setPos(sourcePos.span, sourcePos.source.file)
     newpd
   }
 
