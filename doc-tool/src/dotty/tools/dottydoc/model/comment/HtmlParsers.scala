@@ -70,8 +70,8 @@ object HtmlParsers {
   }
 
   implicit class StringToWiki(val text: String) extends AnyVal {
-    def toWiki(origin: Entity, packages: Map[String, Package], pos: Span): Body =
-      new WikiParser(origin, packages, text, pos, origin.symbol).document()
+    def toWiki(origin: Entity, packages: Map[String, Package], span: Span): Body =
+      new WikiParser(origin, packages, text, span, origin.symbol).document()
   }
 
   implicit class BodyToHtml(val body: Body) extends AnyVal {

@@ -245,8 +245,8 @@ object Scanners {
     val isScala2Mode: Boolean = ctx.scala2Setting
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    def testScala2Mode(msg: String, pos: Span = Span(offset)): Boolean = {
-      if (isScala2Mode) ctx.migrationWarning(msg, source atSpan pos)
+    def testScala2Mode(msg: String, span: Span = Span(offset)): Boolean = {
+      if (isScala2Mode) ctx.migrationWarning(msg, source.atSpan(span))
       isScala2Mode
     }
 
