@@ -58,14 +58,9 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
       fn.symbol match {
         // TODO: obviously
         case IsDefSymbol(sym) =>
-          if (sym.name == ">") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] > eval(argss.head.head).asInstanceOf[Int]
-          else if (sym.name == "-") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] - eval(argss.head.head).asInstanceOf[Int]
-          else if (sym.name == "+") eval(Term.IsSelect.unapply(fn).get.qualifier).asInstanceOf[Int] + eval(argss.head.head).asInstanceOf[Int]
-          else {
-            val argss2 = evaluatedArgss(argss)
-            // argss2.foreach(println)
-            jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
-          }
+          val argss2 = evaluatedArgss(argss)
+          // argss2.foreach(println)
+          jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
         case _ =>
           if (fn.symbol.flags.isObject) {
             jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
@@ -91,5 +86,47 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     jvmReflection.getClassOf(tpt.symbol).cast(o)
 
   def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny = x == y
+
+  def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.lt(_, _))
+  def interpretPrivitiveGt(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.gt(_, _))
+  def interpretPrivitivePlus(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.plus(_, _))
+  def interpretPrivitiveMinus(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.minus(_, _))
+
+  private def coerce(x: AbstractAny, y: AbstractAny)(body: (Numeric[AbstractAny], AbstractAny, AbstractAny) => AbstractAny): AbstractAny = {
+    def getNumericFor[T](implicit x: Numeric[T]): Numeric[AbstractAny] =
+      x.asInstanceOf[Numeric[Any]]
+    // TODO complete: Float Double Char
+    x match {
+      case x: Byte =>
+        y match {
+          case y: Byte  => body(getNumericFor[Byte], x, y)
+          case y: Short => body(getNumericFor[Short], x.toShort, y)
+          case y: Int   => body(getNumericFor[Int], x.toInt, y)
+          case y: Long  => body(getNumericFor[Long], x.toLong, y)
+        }
+      case x: Short =>
+        y match {
+          case y: Byte  => body(getNumericFor[Short], x, y.toShort)
+          case y: Short => body(getNumericFor[Short], x, y)
+          case y: Int   => body(getNumericFor[Int], x.toInt, y)
+          case y: Long  => body(getNumericFor[Long], x.toLong, y)
+        }
+      case x: Int =>
+        y match {
+          case y: Byte  => body(getNumericFor[Int], x, y.toInt)
+          case y: Short => body(getNumericFor[Int], x, y.toInt)
+          case y: Int   => body(getNumericFor[Int], x, y)
+          case y: Long  => body(getNumericFor[Long], x.toLong, y)
+        }
+      case x: Long =>
+        y match {
+          case y: Byte  => body(getNumericFor[Long], x, y.toLong)
+          case y: Short => body(getNumericFor[Long], x, y.toLong)
+          case y: Int   => body(getNumericFor[Long], x, y.toLong)
+          case y: Long  => body(getNumericFor[Long], x, y)
+        }
+    }
+  }
+
 
 }
