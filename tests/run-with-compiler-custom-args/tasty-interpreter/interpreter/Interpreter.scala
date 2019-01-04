@@ -1,3 +1,6 @@
+package scala.tasty.interpreter
+
+import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
 trait Ref {

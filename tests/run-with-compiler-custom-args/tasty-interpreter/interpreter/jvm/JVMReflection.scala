@@ -1,3 +1,5 @@
+package scala.tasty.interpreter.jvm
+
 import scala.tasty.Reflection
 
 class JVMReflection[R <: Reflection & Singleton](val reflect: R) {

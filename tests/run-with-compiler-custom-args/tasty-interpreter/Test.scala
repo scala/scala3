@@ -1,5 +1,6 @@
-import scala.tasty.Reflection
 import scala.tasty.file._
+import scala.tasty.interpreter.Interpreter
+import scala.tasty.Reflection
 
 object Test {
   def main(args: Array[String]): Unit = {
