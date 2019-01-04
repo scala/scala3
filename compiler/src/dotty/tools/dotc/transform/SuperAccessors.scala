@@ -70,7 +70,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       if (clazz is Trait) superName = superName.expandedName(clazz)
       val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
-      val accRange = sel.pos.focus
+      val accRange = sel.span.focus
       val superAcc = clazz.info.decl(superName)
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {

@@ -553,7 +553,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  apply of a function class?
    */
   def isSyntheticApply(tree: Tree): Boolean = tree match {
-    case Select(qual, nme.apply) => tree.pos.end == qual.pos.end
+    case Select(qual, nme.apply) => tree.span.end == qual.span.end
     case _ => false
   }
 
@@ -667,7 +667,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     require(sym.pos.exists)
     object accum extends TreeAccumulator[List[Tree]] {
       def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
-        if (tree.pos.contains(sym.pos))
+        if (tree.span.contains(sym.pos))
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)

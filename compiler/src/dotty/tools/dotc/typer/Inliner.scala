@@ -177,7 +177,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private val inlineCallPrefix = qualifier(methPart)
 
   // Make sure all type arguments to the call are fully determined
-  for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
+  for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.span)
 
   /** A map from parameter names of the inlineable method to references of the actual arguments.
    *  For a type argument this is the full argument type.
@@ -211,7 +211,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private val bindingsBuf = new mutable.ListBuffer[MemberDef]
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
-    ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
+    ctx.newSymbol(ctx.owner, name, flags, info, coord = call.span)
 
   /** A binding for the parameter of an inline method. This is a `val` def for
    *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
@@ -711,7 +711,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
           val evTyper = new Typer
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.pos)(ctx.fresh.setTyper(evTyper))
+          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(ctx.fresh.setTyper(evTyper))
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
               ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)

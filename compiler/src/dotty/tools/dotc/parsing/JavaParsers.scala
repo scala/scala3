@@ -77,9 +77,9 @@ object JavaParsers {
       syntaxError(in.offset, msg, skipIt)
     }
 
-    def syntaxError(pos: Int, msg: String, skipIt: Boolean): Unit = {
-      if (pos > lastErrorOffset) {
-        syntaxError(msg, pos)
+    def syntaxError(offset: Int, msg: String, skipIt: Boolean): Unit = {
+      if (offset > lastErrorOffset) {
+        syntaxError(msg, offset)
         // no more errors on this token.
         lastErrorOffset = in.offset
       }
@@ -230,7 +230,7 @@ object JavaParsers {
         case AppliedTypeTree(_, _) | Select(_, _) =>
           tree
         case _ =>
-          syntaxError(IdentifierExpected(tree.show), tree.pos)
+          syntaxError(IdentifierExpected(tree.show), tree.span)
           errorTypeTree
       }
     }
@@ -248,14 +248,14 @@ object JavaParsers {
       var t: RefTree = atPos(in.offset) { Ident(ident()) }
       while (in.token == DOT) {
         in.nextToken()
-        t = atPos(t.pos.start, in.offset) { Select(t, ident()) }
+        t = atPos(t.span.start, in.offset) { Select(t, ident()) }
       }
       t
     }
 
     def optArrayBrackets(tpt: Tree): Tree =
       if (in.token == LBRACKET) {
-        val tpt1 = atPos(tpt.pos.start, in.offset) { arrayOf(tpt) }
+        val tpt1 = atPos(tpt.span.start, in.offset) { arrayOf(tpt) }
         in.nextToken()
         accept(RBRACKET)
         optArrayBrackets(tpt1)
@@ -289,7 +289,7 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
-            t = typeArgs(atPos(t.pos.start, in.offset)(typeSelect(t, ident())))
+            t = typeArgs(atPos(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
         } else {
@@ -323,7 +323,7 @@ object JavaParsers {
         val t1 = convertToTypeId(t)
         val args = repsep(() => typeArg(), COMMA)
         acceptClosingAngle()
-        atPos(t1.pos.start) {
+        atPos(t1.span.start) {
           AppliedTypeTree(t1, args)
         }
       } else t
@@ -445,7 +445,7 @@ object JavaParsers {
       var t = typ()
       if (in.token == DOTDOTDOT) {
         in.nextToken()
-        t = atPos(t.pos.start) {
+        t = atPos(t.span.start) {
           PostfixOp(t, Ident(tpnme.raw.STAR))
         }
       }
@@ -596,8 +596,8 @@ object JavaParsers {
     }
 
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
-      atPos(cdef.pos) {
-        assert(cdef.pos.exists)
+      atPos(cdef.span) {
+        assert(cdef.span.exists)
         ModuleDef(cdef.name.toTermName,
           makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }

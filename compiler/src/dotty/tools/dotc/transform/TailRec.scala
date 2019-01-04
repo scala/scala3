@@ -117,8 +117,8 @@ class TailRec extends MiniPhase {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TailrecAnnot)
     def noTailTransform(failureReported: Boolean) = {
-      // FIXME: want to report this error on `tree.namePos`, but
-      // because of extension method getting a weird pos, it is
+      // FIXME: want to report this error on `tree.nameSpan`, but
+      // because of extension method getting a weird position, it is
       // better to report on method symbol so there's no overlap.
       // We don't report a new error if failures were reported
       // during the transformation.
@@ -285,7 +285,7 @@ class TailRec extends MiniPhase {
             ctx.error(s"Cannot rewrite recursive call: $reason", tree.sourcePos)
           }
           else
-            tailrec.println("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)
+            tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)
           continue
         }
 
@@ -303,7 +303,7 @@ class TailRec extends MiniPhase {
 
         if (isRecursiveCall) {
           if (inTailPosition) {
-            tailrec.println("Rewriting tail recursive call:  " + tree.pos)
+            tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
 
             val assignParamPairs = for {

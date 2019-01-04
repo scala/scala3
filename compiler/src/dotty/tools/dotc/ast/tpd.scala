@@ -204,7 +204,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
-    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
+    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
 
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
@@ -401,16 +401,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `elemTpe`. No type arguments or
    *  `length` arguments are given.
    */
-  def newArray(elemTpe: Type, returnTpe: Type, pos: Span, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
+  def newArray(elemTpe: Type, returnTpe: Type, span: Span, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
     val elemClass = elemTpe.classSymbol
     def newArr =
-      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(pos)
+      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(span)
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(pos)
+      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
     } else  // after erasure
-      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(pos)
+      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
   }
 
   /** The wrapped array method name for an array of type elemtp */
@@ -1236,7 +1236,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private def focusPositions(tree: Tree)(implicit ctx: Context): Tree = {
     val transformer = new tpd.TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-        super.transform(tree).withSpan(tree.pos.focus)
+        super.transform(tree).withSpan(tree.span.focus)
       }
     }
     transformer.transform(tree)

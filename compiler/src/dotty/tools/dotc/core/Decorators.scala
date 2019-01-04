@@ -165,16 +165,6 @@ object Decorators {
     }
   }
 
-  implicit def sourcePos(pos: Span)(implicit ctx: Context): SourcePosition = {
-    def recur(inlinedCalls: List[Tree], pos: Span): SourcePosition = inlinedCalls match {
-      case inlinedCall :: rest =>
-        sourceFile(inlinedCall).atSpan(pos).withOuter(recur(rest, inlinedCall.pos))
-      case empty =>
-        ctx.source.atSpan(pos)
-    }
-    recur(enclosingInlineds, pos)
-  }
-
   implicit class genericDeco[T](val x: T) extends AnyVal {
     def reporting(op: T => String, printer: config.Printers.Printer = config.Printers.default): T = {
       printer.println(op(x))

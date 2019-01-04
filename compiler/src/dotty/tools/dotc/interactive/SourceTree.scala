@@ -17,14 +17,14 @@ import util._, util.Spans._
 case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, source: SourceFile) {
 
   /** The position of `tree` */
-  final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.pos)
+  final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.span)
 
   /** The position of the name in `tree` */
   def namePos(implicit ctx: Context): SourcePosition = tree match {
     case tree: tpd.NameTree =>
       // FIXME: Merge with NameTree#namePos ?
-      val treePos = tree.pos
-      if (treePos.isZeroExtent || tree.name.toTermName == nme.ERROR)
+      val treeSpan = tree.span
+      if (treeSpan.isZeroExtent || tree.name.toTermName == nme.ERROR)
         NoSourcePosition
       else {
         // Constructors are named `<init>` in the trees, but `this` in the source.
@@ -36,11 +36,11 @@ case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, s
           // FIXME: This is incorrect in some cases, like with backquoted identifiers,
           //        see https://github.com/lampepfl/dotty/pull/1634#issuecomment-257079436
           val (start, end) =
-            if (!treePos.isSynthetic)
-              (treePos.point, treePos.point + nameLength)
+            if (!treeSpan.isSynthetic)
+              (treeSpan.point, treeSpan.point + nameLength)
             else
               // If we don't have a point, we need to find it
-              (treePos.end - nameLength, treePos.end)
+              (treeSpan.end - nameLength, treeSpan.end)
           Span(start, end, start)
         }
         source.atSpan(position)

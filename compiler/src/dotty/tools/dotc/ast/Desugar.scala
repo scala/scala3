@@ -351,10 +351,10 @@ object desugar {
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
-          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withSpan(cdef.namePos))
+          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withSpan(cdef.nameSpan))
         ListOfNil
       } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withSpan(cdef.namePos))
+          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withSpan(cdef.nameSpan))
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
@@ -398,7 +398,7 @@ object desugar {
 
     def appliedTypeTree(tycon: Tree, args: List[Tree]) =
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
-        .withSpan(cdef.pos.startPos)
+        .withSpan(cdef.span.startPos)
 
     def isHK(tparam: Tree): Boolean = tparam match {
       case TypeDef(_, LambdaTypeTree(tparams, body)) => true
@@ -704,19 +704,19 @@ object desugar {
     if (mods is Package)
       PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else if (isEnumCase)
-      expandEnumModule(moduleName, impl, mods, mdef.pos)
+      expandEnumModule(moduleName, impl, mods, mdef.span)
     else {
       val clsName = moduleName.moduleClassName
       val clsRef = Ident(clsName)
       val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
         .withMods(mods.toTermFlags & RetainedModuleValFlags | ModuleValCreationFlags)
-        .withSpan(mdef.pos.startPos)
+        .withSpan(mdef.span.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
       if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.sourcePos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
-        .withSpan(impl.self.pos.orElse(impl.pos.startPos))
+        .withSpan(impl.self.span.orElse(impl.span.startPos))
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
@@ -793,7 +793,7 @@ object desugar {
       pats map {
         case id: Ident =>
           expandSimpleEnumCase(id.name.asTermName, mods,
-            Span(pdef.pos.start, id.pos.end, id.pos.start))
+            Span(pdef.span.start, id.span.end, id.span.start))
     }
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
@@ -842,7 +842,7 @@ object desugar {
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
-              .withSpan(pat.pos.union(rhs.pos)).withMods(patMods)
+              .withSpan(pat.span.union(rhs.span)).withMods(patMods)
           def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex)
@@ -879,7 +879,7 @@ object desugar {
   def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
     case EmptyTree =>
       cpy.Block(tree)(tree.stats,
-        unitLiteral.withSpan(if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
+        unitLiteral.withSpan(if (tree.stats.isEmpty) tree.span else tree.span.endPos))
     case _ =>
       tree
   }
@@ -904,9 +904,9 @@ object desugar {
     }
 
     if (isLeftAssoc(op.name))
-      makeOp(left, right, Span(left.pos.start, op.pos.end, op.pos.start))
+      makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
     else
-      makeOp(right, left, Span(op.pos.start, right.pos.end))
+      makeOp(right, left, Span(op.span.start, right.span.end))
   }
 
   /** Translate tuple expressions of arity <= 22
@@ -1021,7 +1021,7 @@ object desugar {
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
-      .withSpan(original.pos.withPoint(named.pos.start))
+      .withSpan(original.span.withPoint(named.span.start))
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
    }
@@ -1029,7 +1029,7 @@ object desugar {
   private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceInfo) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
       .withMods(mods)
-      .withSpan(original.pos.withPoint(named.pos.start))
+      .withSpan(original.span.withPoint(named.span.start))
 
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
