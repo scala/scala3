@@ -63,6 +63,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitiveGt(x: AbstractAny, y: AbstractAny): AbstractAny
+  def interpretPrivitiveLtEq(x: AbstractAny, y: AbstractAny): AbstractAny
+  def interpretPrivitiveGtEq(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitivePlus(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitiveMinus(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitiveTimes(x: AbstractAny, y: AbstractAny): AbstractAny
@@ -79,7 +81,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
           case Term.Select(prefix, "isInstanceOf") => interpretIsInstanceOf(eval(prefix), targs.head)
           case Term.Select(prefix, "asInstanceOf") => interpretAsInstanceOf(eval(prefix), targs.head)
           case Term.Select(prefix, "==") => interpretEqEq(eval(prefix), eval(argss.head.head))
-          case Term.Select(prefix, name @ ("+" | "-" | "<" | ">" | "*" | "/" | "%")) if isNumericPrimitive(prefix.tpe) =>
+          case Term.Select(prefix, name @ ("+" | "-" | "*" | "<" | ">" | "<=" | "=>")) if isNumericPrimitive(prefix.tpe) =>
             val lhs = eval(prefix)
             val rhs = eval(argss.head.head)
             name match {
@@ -88,6 +90,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
               case "*" => interpretPrivitiveTimes(lhs, rhs)
               case "<" => interpretPrivitiveLt(lhs, rhs)
               case ">" => interpretPrivitiveGt(lhs, rhs)
+              case "<=" => interpretPrivitiveLtEq(lhs, rhs)
+              case ">=" => interpretPrivitiveGtEq(lhs, rhs)
             }
           case Term.Select(prefix, name @ ("/" | "%")) if isIntegralPrimitive(prefix.tpe) =>
             val lhs = eval(prefix)

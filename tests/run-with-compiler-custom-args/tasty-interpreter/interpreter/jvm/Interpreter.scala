@@ -89,6 +89,8 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.lt(_, _))
   def interpretPrivitiveGt(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.gt(_, _))
+  def interpretPrivitiveLtEq(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.lteq(_, _))
+  def interpretPrivitiveGtEq(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.gteq(_, _))
   def interpretPrivitivePlus(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.plus(_, _))
   def interpretPrivitiveMinus(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.minus(_, _))
   def interpretPrivitiveTimes(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.times(_, _))
