@@ -1,11 +1,12 @@
 package dotty.tools.repl
 
-import java.lang.System.{lineSeparator => EOL}
-
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
+
+  private def lines() =
+    storedOutput().trim.linesIterator.toList
 
   @Test def compileSingle = fromInitialState { implicit state =>
     run("def foo: 1 = 1")
@@ -47,13 +48,13 @@ class ReplCompilerTests extends ReplTest {
 
     val expected = List(
       "def foo: Int",
-      "val x: Int = 10",
       "val res0: Int = 2",
-      "var y: Int = 5",
-      "val res1: Int = 20"
+      "val res1: Int = 20",
+      "val x: Int = 10",
+      "var y: Int = 5"
     )
 
-    assertEquals(expected, storedOutput().split(EOL).toList)
+    assertEquals(expected, lines())
   }
 
   @Test def testImportMutable =
@@ -124,6 +125,6 @@ class ReplCompilerTests extends ReplTest {
     )
 
     run(source)
-    assertEquals(expected, storedOutput().split(EOL).toList)
+    assertEquals(expected, lines())
   }
 }

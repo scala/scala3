@@ -95,9 +95,9 @@ final class JLineTerminal extends java.io.Closeable {
       def words = java.util.Collections.emptyList[String]
     }
 
-    def parse(line: String, cursor: Int, context: ParseContext): reader.ParsedLine = {
+    def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine = {
       def parsedLine(word: String, wordCursor: Int) =
-        new ParsedLine(cursor, line, word, wordCursor)
+        new ParsedLine(cursor, input, word, wordCursor)
       // Used when no word is being completed
       def defaultParsedLine = parsedLine("", 0)
 
@@ -110,7 +110,7 @@ final class JLineTerminal extends java.io.Closeable {
 
       case class TokenData(token: Token, start: Int, end: Int)
       def currentToken: TokenData /* | Null */ = {
-        val source = new SourceFile("<completions>", line)
+        val source = new SourceFile("<completions>", input)
         val scanner = new Scanner(source)(ctx.fresh.setReporter(Reporter.NoReporter))
         while (scanner.token != EOF) {
           val start = scanner.offset
@@ -125,23 +125,22 @@ final class JLineTerminal extends java.io.Closeable {
         null
       }
 
+      def acceptLine = {
+        val onLastLine = !input.substring(cursor).contains(System.lineSeparator)
+        onLastLine && !ParseResult.isIncomplete(input)
+      }
+
       context match {
-        case ParseContext.ACCEPT_LINE =>
-          // ENTER means SUBMIT when
-          //   - cursor is at end (discarding whitespaces)
-          //   - and, input line is complete
-          val cursorIsAtEnd = line.indexWhere(!_.isWhitespace, from = cursor) < 0
-          if (cursorIsAtEnd && !ParseResult.isIncomplete(line))
-            defaultParsedLine // using dummy values, resulting parsed line is probably unused
-          else
-            incomplete()
+        case ParseContext.ACCEPT_LINE if acceptLine =>
+          // using dummy values, resulting parsed input is probably unused
+          defaultParsedLine
 
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
           def isCompletable(token: Token) = isIdentifier(token) || isKeyword(token)
           currentToken match {
             case TokenData(token, start, end) if isCompletable(token) =>
-              val word = line.substring(start, end)
+              val word = input.substring(start, end)
               val wordCursor = cursor - start
               parsedLine(word, wordCursor)
             case _ =>
