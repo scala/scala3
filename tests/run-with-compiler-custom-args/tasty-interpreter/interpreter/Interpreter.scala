@@ -1,25 +1,8 @@
 package scala.tasty.interpreter
 
+import scala.tasty.interpreter.abstr.{Ref, Eager, Lazy, Var}
 import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
-
-trait Ref {
-  def get: Any
-}
-
-class Eager(val get: Any) extends Ref
-
-class Lazy(thunk: => Any) extends Ref {
-  lazy val get: Any = thunk
-}
-
-class Var(private var value: Any) extends Ref {
-  def get = value
-
-  def update(rhs: Any): Unit = {
-    value = rhs
-  }
-}
 
 class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: reflect.Context) {
   import reflect._
