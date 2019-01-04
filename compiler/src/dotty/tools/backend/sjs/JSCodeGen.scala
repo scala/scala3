@@ -129,7 +129,7 @@ class JSCodeGen()(implicit ctx: Context) {
     /* Finally, we emit true code for the remaining class defs. */
     for (td <- allTypeDefs) {
       val sym = td.symbol
-      implicit val pos: Position = sym.pos
+      implicit val pos: Position = sym.span
 
       /* Do not actually emit code for primitive types nor scala.Array. */
       val isPrimitive =
@@ -197,7 +197,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genScalaClass(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.pos
+    implicit val pos: Position = sym.span
 
     assert(!sym.is(Trait),
         "genScalaClass() must be called only for normal classes: "+sym)
@@ -321,7 +321,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genRawJSClassData(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.pos
+    implicit val pos: Position = sym.span
 
     val classIdent = encodeClassFullNameIdent(sym)
     val kind = {
@@ -357,7 +357,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genInterface(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.pos
+    implicit val pos: Position = sym.span
 
     val classIdent = encodeClassFullNameIdent(sym)
 
@@ -413,7 +413,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     // Non-method term members are fields
     classSym.info.decls.filter(f => !f.is(Method) && f.isTerm).map({ f =>
-      implicit val pos = f.pos
+      implicit val pos = f.span
 
       val name =
         /*if (isExposed(f)) js.StringLiteral(jsNameOf(f))
@@ -506,7 +506,7 @@ class JSCodeGen()(implicit ctx: Context) {
       val methodName: js.PropertyName = encodeMethodSym(sym)
 
       def jsParams = for (param <- params) yield {
-        implicit val pos = param.pos
+        implicit val pos = param.span
         js.ParamDef(encodeLocalSym(param), toIRType(param.info),
             mutable = false, rest = false)
       }
@@ -585,7 +585,7 @@ class JSCodeGen()(implicit ctx: Context) {
     ctx.debuglog("")
 
     val jsParams = for (param <- paramsSyms) yield {
-      implicit val pos = param.pos
+      implicit val pos = param.span
       js.ParamDef(encodeLocalSym(param), toIRType(param.info),
           mutable = false, rest = false)
     }

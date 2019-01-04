@@ -212,8 +212,8 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Span): Symbol = {
-    val sym = newSymbol(owner, name, Case, info, coord = pos)
+  def newPatternBoundSymbol(name: Name, info: Type, span: Span): Symbol = {
+    val sym = newSymbol(owner, name, Case, info, coord = span)
     if (name.isTypeName) {
       val bounds = info.bounds
       gadt.addBound(sym, bounds.lo, isUpper = false)
@@ -498,7 +498,7 @@ object Symbols {
 
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(implicit ctx: Context): Boolean =
-      pos.exists && defRunId == ctx.runId && {
+      span.exists && defRunId == ctx.runId && {
         val file = associatedFile
         file != null && ctx.run.files.contains(file)
       }
@@ -663,14 +663,13 @@ object Symbols {
         denot.owner.sourceSymbol
       else this
 
-    /** The position of this symbol, or NoPosition if the symbol was not loaded
+    /** The position of this symbol, or NoSpan if the symbol was not loaded
      *  from source or from TASTY. This is always a zero-extent position.
      *
      *  NOTE: If the symbol was not loaded from the current compilation unit,
      *  the implicit conversion `sourcePos` will return the wrong result, careful!
-     *  TODO: Consider changing this method return type to `SourcePosition`.
      */
-    final def pos: Span = if (coord.isPosition) coord.toPosition else NoSpan
+    final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
     final def sourcePos(implicit ctx: Context): SourcePosition = {
       val source = {
@@ -680,7 +679,7 @@ object Symbols {
           ctx.source
         else ctx.getSource(f)
       }
-      source.atSpan(pos)
+      source.atSpan(span)
     }
 
     // ParamInfo types and methods
