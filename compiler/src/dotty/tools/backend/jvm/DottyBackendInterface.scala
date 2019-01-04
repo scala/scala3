@@ -800,7 +800,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos.pos)
+      ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos.span)
     }
 
     def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
