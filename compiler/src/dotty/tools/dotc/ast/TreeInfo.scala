@@ -663,11 +663,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  if no such path exists.
    *  Pre: `sym` must have a position.
    */
-  def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = trace.onDebug(s"defpath($sym with position ${sym.pos}, ${root.show})") {
-    require(sym.pos.exists)
+  def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = trace.onDebug(s"defpath($sym with position ${sym.span}, ${root.show})") {
+    require(sym.span.exists)
     object accum extends TreeAccumulator[List[Tree]] {
       def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
-        if (tree.span.contains(sym.pos))
+        if (tree.span.contains(sym.span))
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)
@@ -716,7 +716,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  tree must be reachable from come tree stored in an enclosing context.
    */
   def definingStats(sym: Symbol)(implicit ctx: Context): List[Tree] =
-    if (!sym.pos.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
+    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
     else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
         def verify(stats: List[Tree]) =

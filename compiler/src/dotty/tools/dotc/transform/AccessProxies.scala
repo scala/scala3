@@ -53,7 +53,7 @@ abstract class AccessProxies {
             accessRef.becomes(forwardedArgss.head.head)
           else
             accessRef.appliedToTypes(forwardedTypes).appliedToArgss(forwardedArgss)
-        rhs.withSpan(accessed.pos)
+        rhs.withSpan(accessed.span)
       })
 
   /** Add all needed accessors to the `body` of class `cls` */
@@ -75,8 +75,8 @@ abstract class AccessProxies {
     }
 
     /** A fresh accessor symbol */
-    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Span)(implicit ctx: Context): TermSymbol = {
-      val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = pos).entered
+    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, span: Span)(implicit ctx: Context): TermSymbol = {
+      val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = span).entered
       if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
       sym
     }
@@ -85,7 +85,7 @@ abstract class AccessProxies {
     protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context): Symbol = {
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
-        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.pos)
+        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.span)
         accessedBy(acc) = accessed
         acc
       }
