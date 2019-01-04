@@ -873,7 +873,7 @@ trait Checking {
     val checker = new TreeTraverser {
       def traverse(t: Tree)(implicit ctx: Context) = {
         def check(owner: Symbol, checkedSym: Symbol) =
-          if (t.pos.isSourceDerived && owner == badOwner)
+          if (t.span.isSourceDerived && owner == badOwner)
             t match {
               case t: RefTree if allowed(t.name, checkedSym) =>
               case _ => ctx.error(i"illegal reference to $checkedSym from $where", t.sourcePos)

@@ -600,8 +600,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (printPos) {
         val posStr =
           if (homogenizedView)
-            if (tree.isInstanceOf[MemberDef]) Str(s"${tree.source}${tree.pos}")
-            else Str(s"${tree.source}${tree.pos.toSynthetic}")
+            if (tree.isInstanceOf[MemberDef]) Str(s"${tree.source}${tree.span}")
+            else Str(s"${tree.source}${tree.span.toSynthetic}")
           else
             "<" ~ toText(tree.sourcePos) ~ ">"
         val clsStr = ""//if (tree.isType) tree.getClass.toString else ""
@@ -646,7 +646,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val str: Text = nameString(tree.symbol)
       tree match {
         case tree: RefTree => withPos(str, tree.sourcePos)
-        case tree: MemberDef => withPos(str, tree.sourcePos.withSpan(tree.namePos))
+        case tree: MemberDef => withPos(str, tree.sourcePos.withSpan(tree.nameSpan))
         case _ => str
       }
     }

@@ -87,7 +87,7 @@ object PatternMatcher {
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
-        sanitize(rhs.tpe), coord = rhs.pos)
+        sanitize(rhs.tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
@@ -131,7 +131,7 @@ object PatternMatcher {
     /** The different kinds of plans */
     sealed abstract class Plan { val id: Int = nxId; nxId += 1 }
 
-    case class TestPlan(test: Test, var scrutinee: Tree, pos: Span,
+    case class TestPlan(test: Test, var scrutinee: Tree, span: Span,
                         var onSuccess: Plan) extends Plan {
       override def equals(that: Any): Boolean = that match {
         case that: TestPlan => this.scrutinee === that.scrutinee && this.test == that.test
@@ -147,8 +147,8 @@ object PatternMatcher {
     case class ResultPlan(var tree: Tree) extends Plan
 
     object TestPlan {
-      def apply(test: Test, sym: Symbol, pos: Span, ons: Plan): TestPlan =
-        TestPlan(test, ref(sym), pos, ons)
+      def apply(test: Test, sym: Symbol, span: Span, ons: Plan): TestPlan =
+        TestPlan(test, ref(sym), span, ons)
     }
 
     /** The different kinds of tests */
@@ -297,7 +297,7 @@ object PatternMatcher {
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
         else if (unapp.tpe.widenSingleton.isRef(defn.BooleanClass))
-          TestPlan(GuardTest, unapp, unapp.pos, onSuccess)
+          TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else {
           letAbstract(unapp) { unappResult =>
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
@@ -320,7 +320,7 @@ object PatternMatcher {
                     matchArgsPlan(selectors, args, onSuccess)
                   }
               }
-              TestPlan(NonEmptyTest, unappResult, unapp.pos, argsPlan)
+              TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
             }
           }
         }
@@ -329,7 +329,7 @@ object PatternMatcher {
       // begin patternPlan
       swapBind(tree) match {
         case Typed(pat, tpt) =>
-          TestPlan(TypeTest(tpt), scrutinee, tree.pos,
+          TestPlan(TypeTest(tpt), scrutinee, tree.span,
             letAbstract(ref(scrutinee).asInstance(tpt.tpe)) { casted =>
               nonNull += casted
               patternPlan(casted, pat, onSuccess)
@@ -340,7 +340,7 @@ object PatternMatcher {
           if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
           val unappPlan = unapplyPlan(unapp, args)
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
-          else TestPlan(NonNullTest, scrutinee, tree.pos, unappPlan)
+          else TestPlan(NonNullTest, scrutinee, tree.span, unappPlan)
         case Bind(name, body) =>
           if (name == nme.WILDCARD) patternPlan(scrutinee, body, onSuccess)
           else {
@@ -365,14 +365,14 @@ object PatternMatcher {
         case SeqLiteral(pats, _) =>
           matchElemsPlan(scrutinee, pats, exact = true, onSuccess)
         case _ =>
-          TestPlan(EqualTest(tree), scrutinee, tree.pos, onSuccess)
+          TestPlan(EqualTest(tree), scrutinee, tree.span, onSuccess)
       }
     }
 
     private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan = {
       var onSuccess: Plan = ResultPlan(cdef.body)
       if (!cdef.guard.isEmpty)
-        onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.pos, onSuccess)
+        onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.span, onSuccess)
       patternPlan(scrutinee, cdef.pat, onSuccess)
     }
 
@@ -823,7 +823,7 @@ object PatternMatcher {
               case plan2: TestPlan =>
                 emitWithMashedConditions(plan2 :: plans)
               case _ =>
-                def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withSpan(plan.pos)
+                def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withSpan(plan.span)
                 val conditions =
                   plans.foldRight[Tree](EmptyTree) { (otherPlan, acc) =>
                     if (acc.isEmpty) emitCondWithPos(otherPlan)

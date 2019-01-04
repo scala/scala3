@@ -28,17 +28,17 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
 
   def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
     var lastIndex = 0
-    var lastPos = Span(0, 0)
-    def pickleDeltas(index: Int, pos: Span) = {
+    var lastSpan = Span(0, 0)
+    def pickleDeltas(index: Int, span: Span) = {
       val addrDelta = index - lastIndex
-      val startDelta = pos.start - lastPos.start
-      val endDelta = pos.end - lastPos.end
-      buf.writeInt(header(addrDelta, startDelta != 0, endDelta != 0, !pos.isSynthetic))
+      val startDelta = span.start - lastSpan.start
+      val endDelta = span.end - lastSpan.end
+      buf.writeInt(header(addrDelta, startDelta != 0, endDelta != 0, !span.isSynthetic))
       if (startDelta != 0) buf.writeInt(startDelta)
       if (endDelta != 0) buf.writeInt(endDelta)
-      if (!pos.isSynthetic) buf.writeInt(pos.pointDelta)
+      if (!span.isSynthetic) buf.writeInt(span.pointDelta)
       lastIndex = index
-      lastPos = pos
+      lastSpan = span
 
       pickledIndices += index
     }
@@ -69,12 +69,12 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
     def traverse(x: Any, current: AbstractFile): Unit = x match {
       case x: untpd.Tree =>
         var sourceFile = current
-        val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
+        val span = if (x.isInstanceOf[untpd.MemberDef]) x.span else x.span.toSynthetic
         val sourceChange =
           x.source.file != x.elemsFile ||
           x.elemsFile == null && x.source.file != current
-        if (pos.exists && (
-              pos != x.initialSpan(ignoreTypeTrees = true).toSynthetic ||
+        if (span.exists && (
+              span != x.initialSpan(ignoreTypeTrees = true).toSynthetic ||
               sourceChange ||
               alwaysNeedsPos(x))) {
           addrOfTree(x) match {
@@ -82,8 +82,8 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
               // we currently do not share trees when unpickling, so if one path to a tree contains
               // a source change while another does not, we have to record the position of the tree twice
               // in order not to miss the source change. Test case is t3232a.scala.
-              //println(i"pickling $x with $pos at $addr")
-              pickleDeltas(addr.index, pos)
+              //println(i"pickling $x with $span at $addr")
+              pickleDeltas(addr.index, span)
               if (x.source.file != current) {
                 pickleSource(x.source.file)
                 sourceFile = x.source.file
@@ -92,7 +92,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
               //println(i"no address for $x")
           }
         }
-        //else if (x.pos.exists) println(i"skipping $x")
+        //else if (x.span.exists) println(i"skipping $x")
         x match {
           case x: untpd.MemberDef @unchecked =>
             for (ann <- x.symbol.annotations) traverse(ann.tree, sourceFile)

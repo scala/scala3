@@ -135,7 +135,7 @@ class ReplCompiler extends Compiler {
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
-      .withSpan(Span(0, defs.stats.last.pos.end))
+      .withSpan(Span(0, defs.stats.last.span.end))
 
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
   }

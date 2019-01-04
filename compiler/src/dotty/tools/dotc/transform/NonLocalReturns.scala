@@ -68,7 +68,7 @@ class NonLocalReturns extends MiniPhase {
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(implicit ctx: Context) = {
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
     val nonLocalReturnControl = defn.NonLocalReturnControlType
-    val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.pos)
+    val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),

@@ -61,7 +61,7 @@ class Pickler extends Phase {
       treePkl.compactify()
       pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
-      if (tree.pos.exists)
+      if (tree.span.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
       if (!ctx.settings.YdropComments.value)
