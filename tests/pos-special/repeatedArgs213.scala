@@ -1,12 +1,7 @@
 import scala.collection.{immutable, mutable}
 import java.nio.file.Paths
 
-// Code below is to trick the compiler into thinking that we are
-// compiling with the 2.13 standard library on the classpath.
-package scala.collection {
-  class IterableOnce
-}
-
+// Missing from 2.12 standard library
 package scala.runtime {
   object ScalaRunTime {
     abstract class ArraySeq[+A] extends immutable.Seq[A]
@@ -27,7 +22,8 @@ package scala.runtime {
 
 // Start of Test
 class repeatedArgs {
-  def bar(xs: String*): Int = xs.length
+  def bar(xs: String*): Int = bat(xs)
+  def bat(xs: immutable.Seq[String]) = xs.length
 
   def test(xs: immutable.Seq[String]): Unit = {
     bar("a", "b", "c")
