@@ -53,7 +53,7 @@ object TypeTestsCasts {
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type, pos: Span)(implicit ctx: Context): Boolean = {
+  def checkable(X: Type, P: Type, span: Span)(implicit ctx: Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
@@ -103,7 +103,7 @@ object TypeTestsCasts {
       P1 <:< X       // constraint P1
 
       // use fromScala2x to avoid generating pattern bound symbols
-      maximizeType(P1, pos, fromScala2x = true)
+      maximizeType(P1, span, fromScala2x = true)
 
       val res = P1 <:< P
       debug.println("P1 : " + P1)
@@ -273,7 +273,7 @@ object TypeTestsCasts {
 
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
-          if (!checkable(expr.tpe, argType, tree.pos))
+          if (!checkable(expr.tpe, argType, tree.span))
             ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }

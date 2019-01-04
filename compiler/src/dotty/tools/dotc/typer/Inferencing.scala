@@ -38,9 +38,9 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, pos: Span)(implicit ctx: Context): Type =
+  def fullyDefinedType(tp: Type, what: String, span: Span)(implicit ctx: Context): Type =
     if (isFullyDefined(tp, ForceDegree.all)) tp
-    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
+    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $span") // !!! DEBUG
 
 
   /** Instantiate selected type variables `tvars` in type `tp` */
@@ -144,7 +144,7 @@ object Inferencing {
       val (tl1, tvars) = constrained(tl, tree)
       var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
       tree1.tpe <:< pt
-      fullyDefinedType(tree1.tpe, "template parent", tree.pos)
+      fullyDefinedType(tree1.tpe, "template parent", tree.span)
       tree1
     case _ =>
       tree
@@ -288,7 +288,7 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, pos: Span, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
+  def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
     val vs = variances(tp)
     val patternBound = new mutable.ListBuffer[Symbol]
     vs foreachBinding { (tvar, v) =>
@@ -299,7 +299,7 @@ object Inferencing {
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
-          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, pos)
+          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }

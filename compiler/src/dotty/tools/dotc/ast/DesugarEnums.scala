@@ -44,7 +44,7 @@ object DesugarEnums {
    *  It is an error if a type parameter is non-variant, or if its approximation
    *  refers to pther type parameters.
    */
-  def interpolatedEnumParent(pos: Span)(implicit ctx: Context): Tree = {
+  def interpolatedEnumParent(span: Span)(implicit ctx: Context): Tree = {
     val tparams = enumClass.typeParams
     def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) eq tp
     val targs = tparams map { tparam =>
@@ -57,10 +57,10 @@ object DesugarEnums {
           if (tparam.variance == 0) "is non variant"
           else "has bounds that depend on a type parameter in the same parameter list"
         errorType(i"""cannot determine type argument for enum parent $enumClass,
-                     |type parameter $tparam $problem""", ctx.source.atSpan(pos))
+                     |type parameter $tparam $problem""", ctx.source.atSpan(span))
       }
     }
-    TypeTree(enumClass.typeRef.appliedTo(targs)).withSpan(pos)
+    TypeTree(enumClass.typeRef.appliedTo(targs)).withSpan(span)
   }
 
   /** A type tree referring to `enumClass` */
@@ -195,11 +195,11 @@ object DesugarEnums {
   }
 
   /** Expand a module definition representing a parameterless enum case */
-  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Span)(implicit ctx: Context): Tree = {
+  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, span: Span)(implicit ctx: Context): Tree = {
     assert(impl.body.isEmpty)
     if (!enumClass.exists) EmptyTree
     else if (impl.parents.isEmpty)
-      expandSimpleEnumCase(name, mods, pos)
+      expandSimpleEnumCase(name, mods, span)
     else {
       def toStringMeth =
         DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
@@ -207,22 +207,22 @@ object DesugarEnums {
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
       val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
-      flatTree(scaffolding ::: vdef :: Nil).withSpan(pos)
+      flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
   }
 
   /** Expand a simple enum case */
-  def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Span)(implicit ctx: Context): Tree =
+  def expandSimpleEnumCase(name: TermName, mods: Modifiers, span: Span)(implicit ctx: Context): Tree =
     if (!enumClass.exists) EmptyTree
     else if (enumClass.typeParams.nonEmpty) {
-      val parent = interpolatedEnumParent(pos)
+      val parent = interpolatedEnumParent(span)
       val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, Nil)
-      expandEnumModule(name, impl, mods, pos)
+      expandEnumModule(name, impl, mods, span)
     }
     else {
       val (tag, scaffolding) = nextEnumTag(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final)
-      flatTree(scaffolding ::: vdef :: Nil).withSpan(pos)
+      flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
 }

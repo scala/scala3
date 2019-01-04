@@ -7,6 +7,7 @@ import util.Spans._
 import Trees.{MemberDef, DefTree, WithLazyField}
 
 /** Utility functions to go from typed to untyped ASTs */
+// TODO: Handle trees with mixed source files
 object NavigateAST {
 
   /** The untyped tree corresponding to typed tree `tree` in the compilation
@@ -19,9 +20,9 @@ object NavigateAST {
       case _ =>
         val loosePath = untypedPath(tree, exactMatch = false)
         throw new
-          Error(i"""no untyped tree for $tree, pos = ${tree.pos}
+          Error(i"""no untyped tree for $tree, pos = ${tree.sourcePos}
                    |best matching path =\n$loosePath%\n====\n%
-                   |path positions = ${loosePath.map(_.pos)}""")
+                   |path positions = ${loosePath.map(_.sourcePos)}""")
     }
 
   /** The reverse path of untyped trees starting with a tree that closest matches
@@ -39,35 +40,35 @@ object NavigateAST {
   def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(implicit ctx: Context): List[Positioned] =
     tree match {
       case tree: MemberDef[_] =>
-        untypedPath(tree.pos) match {
+        untypedPath(tree.span) match {
           case path @ (last: DefTree[_]) :: _ => path
           case path if !exactMatch => path
           case _ => Nil
         }
       case _ =>
-        untypedPath(tree.pos) match {
-          case (path @ last :: _) if last.pos == tree.pos || !exactMatch => path
+        untypedPath(tree.span) match {
+          case (path @ last :: _) if last.span == tree.span || !exactMatch => path
           case _ => Nil
         }
     }
 
   /** The reverse part of the untyped root of the compilation unit of `ctx` to
-   *  position `pos`.
+   *  the given `span`.
    */
-  def untypedPath(pos: Span)(implicit ctx: Context): List[Positioned] =
-    pathTo(pos, ctx.compilationUnit.untpdTree)
+  def untypedPath(span: Span)(implicit ctx: Context): List[Positioned] =
+    pathTo(span, ctx.compilationUnit.untpdTree)
 
 
-  /** The reverse path from node `from` to the node that closest encloses position `pos`,
+  /** The reverse path from node `from` to the node that closest encloses `span`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
-   *  the node closest enclosing `pos` and ends with `from`.
+   *  the node closest enclosing `span` and ends with `from`.
    *
    *  @param skipZeroExtent  If true, skip over zero-extent nodes in the search. These nodes
    *                         do not correspond to code the user wrote since their start and
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(pos: Span, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
+  def pathTo(span: Span, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       while (it.hasNext) {
         val path1 = it.next() match {
@@ -81,7 +82,7 @@ object NavigateAST {
       path
     }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
-      if (p.pos.exists && !(skipZeroExtent && p.pos.isZeroExtent) && p.pos.contains(pos)) {
+      if (p.span.exists && !(skipZeroExtent && p.span.isZeroExtent) && p.span.contains(span)) {
         // FIXME: We shouldn't be manually forcing trees here, we should replace
         // our usage of `productIterator` by something in `Positioned` that takes
         // care of low-level details like this for us.

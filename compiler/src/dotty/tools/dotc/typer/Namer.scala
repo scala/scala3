@@ -243,12 +243,12 @@ class Namer { typer: Typer =>
   }
 
   /** The enclosing class with given name; error if none exists */
-  def enclosingClassNamed(name: TypeName, pos: Span)(implicit ctx: Context): Symbol = {
+  def enclosingClassNamed(name: TypeName, span: Span)(implicit ctx: Context): Symbol = {
     if (name.isEmpty) NoSymbol
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
       if (!cls.exists)
-        ctx.error(s"no enclosing class or object is named $name", ctx.source.atSpan(pos))
+        ctx.error(s"no enclosing class or object is named $name", ctx.source.atSpan(span))
       cls
     }
   }
@@ -266,7 +266,7 @@ class Namer { typer: Typer =>
   def createSymbol(tree: Tree)(implicit ctx: Context): Symbol = {
 
     def privateWithinClass(mods: Modifiers) =
-      enclosingClassNamed(mods.privateWithin, tree.pos)
+      enclosingClassNamed(mods.privateWithin, tree.span)
 
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
@@ -332,7 +332,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.namePos, ctx.source.file))
+            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -364,9 +364,9 @@ class Namer { typer: Typer =>
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
           _ => info,
-          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.namePos))
+          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
-        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.pos), tree)
+        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.span), tree)
       case _ =>
         NoSymbol
     }
@@ -870,7 +870,7 @@ class Namer { typer: Typer =>
               else {
                 if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
                   missingType(denot.symbol, "parent ")(creationContext)
-                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
               }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
@@ -917,7 +917,7 @@ class Namer { typer: Typer =>
           val moduleType = cls.owner.thisType select sourceModule
           if (self.name == nme.WILDCARD) moduleType
           else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
             self)
         }
         else createSymbol(self)
@@ -1130,7 +1130,7 @@ class Namer { typer: Typer =>
       }
 
       def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
-      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
+      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
       if (inherited.exists) {
         if (sym.is(Final, butNot = Method)) {

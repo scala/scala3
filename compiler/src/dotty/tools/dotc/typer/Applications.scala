@@ -170,7 +170,7 @@ object Applications {
   /** A wrapper indicating that its argument is an application of an extension method.
    */
   class ExtMethodApply(val app: Tree)(implicit @transientParam src: SourceInfo) extends tpd.Tree {
-    override def pos = app.pos
+    override def span = app.span
 
     def canEqual(that: Any): Boolean = app.canEqual(that)
     def productArity: Int = app.productArity
@@ -870,7 +870,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
-              checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
+              checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
           case _ =>
         }
         app
@@ -926,7 +926,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    */
   def convertNewGenericArray(tree:  Tree)(implicit ctx: Context):  Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
-      fullyDefinedType(tree.tpe, "array", tree.pos)
+      fullyDefinedType(tree.tpe, "array", tree.span)
 
       def newGenericArrayCall =
         ref(defn.DottyArraysModule)
@@ -1054,10 +1054,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val ownType =
           if (selType <:< unapplyArgType) {
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
-            fullyDefinedType(unapplyArgType, "pattern selector", tree.pos)
+            fullyDefinedType(unapplyArgType, "pattern selector", tree.span)
             selType
           } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
-            val patternBound = maximizeType(unapplyArgType, tree.pos, fromScala2x)
+            val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType

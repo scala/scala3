@@ -861,7 +861,7 @@ object RefChecks {
 
   class OptLevelInfo {
     def levelAndIndex: LevelAndIndex = Map()
-    def enterReference(sym: Symbol, pos: Span): Unit = ()
+    def enterReference(sym: Symbol, span: Span): Unit = ()
   }
 
   /** A class to help in forward reference checking */
@@ -877,15 +877,15 @@ object RefChecks {
         (m1, idx + 1)
       }._1
     var maxIndex: Int = Int.MinValue
-    var refPos: Span = _
+    var refSpan: Span = _
     var refSym: Symbol = _
 
-    override def enterReference(sym: Symbol, pos: Span): Unit =
+    override def enterReference(sym: Symbol, span: Span): Unit =
       if (sym.exists && sym.owner.isTerm)
         levelAndIndex.get(sym) match {
           case Some((level, idx)) if (level.maxIndex < idx) =>
             level.maxIndex = idx
-            level.refPos = pos
+            level.refSpan = span
             level.refSym = sym
           case _ =>
         }
@@ -959,7 +959,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         currentLevel.levelAndIndex.get(sym) match {
           case Some((level, symIdx)) if symIdx <= level.maxIndex =>
             ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym),
-              ctx.source.atSpan(level.refPos))
+              ctx.source.atSpan(level.refSpan))
           case _ =>
         }
       }
@@ -988,7 +988,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
     checkUndesiredProperties(tree.symbol, tree.sourcePos)
-    currentLevel.enterReference(tree.symbol, tree.pos)
+    currentLevel.enterReference(tree.symbol, tree.span)
     tree
   }
 
@@ -1005,7 +1005,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
         ctx.debuglog("refsym = " + level.refSym)
         ctx.error("forward reference not allowed from self constructor invocation",
-          ctx.source.atSpan(level.refPos))
+          ctx.source.atSpan(level.refSpan))
       }
     }
     tree
@@ -1015,9 +1015,9 @@ class RefChecks extends MiniPhase { thisPhase =>
     val tpe = tree.tpe
     val sym = tpe.typeSymbol
     checkUndesiredProperties(sym, tree.sourcePos)
-    currentLevel.enterReference(sym, tree.pos)
+    currentLevel.enterReference(sym, tree.span)
     tpe.dealias.foreachPart {
-      case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.pos)
+      case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)
       case _ =>
     }
     tree

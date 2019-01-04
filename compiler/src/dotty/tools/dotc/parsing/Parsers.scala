@@ -71,8 +71,8 @@ object Parsers {
     /** Positions tree.
      *  If `t` does not have a position yet, set its position to the given one.
      */
-    def atPos[T <: Positioned](pos: Span)(t: T): T =
-      if (t.pos.isSourceDerived) t else t.withSpan(pos)
+    def atPos[T <: Positioned](span: Span)(t: T): T =
+      if (t.span.isSourceDerived) t else t.withSpan(span)
 
     def atPos[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atPos(Span(start, end, point))(t)
@@ -81,7 +81,7 @@ object Parsers {
      *  to position spanning from `start` to last read offset, with given point.
      *  If the last offset is less than or equal to start, the tree `t` did not
      *  consume any source for its construction. In this case, don't position it yet,
-     *  but wait for its position to be determined by `setChildPositions` when the
+     *  but wait for its position to be determined by `setChildSpans` when the
      *  parent node is positioned.
      */
     def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
@@ -91,13 +91,13 @@ object Parsers {
       atPos(start, start)(t)
 
     def startOffset(t: Positioned): Int =
-      if (t.pos.exists) t.pos.start else in.offset
+      if (t.span.exists) t.span.start else in.offset
 
     def pointOffset(t: Positioned): Int =
-      if (t.pos.exists) t.pos.point else in.offset
+      if (t.span.exists) t.span.point else in.offset
 
     def endOffset(t: Positioned): Int =
-      if (t.pos.exists) t.pos.end else in.lastOffset
+      if (t.span.exists) t.span.end else in.lastOffset
 
     def nameStart: Offset =
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
@@ -131,8 +131,8 @@ object Parsers {
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(msg: => Message, pos: Span): Unit =
-      ctx.error(msg, source.atSpan(pos))
+    def syntaxError(msg: => Message, span: Span): Unit =
+      ctx.error(msg, source.atSpan(span))
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -378,7 +378,7 @@ object Parsers {
       case Typed(Ident(name), tpt) =>
         makeParameter(name.asTermName, tpt, mods).withPosOf(tree)
       case _ =>
-        syntaxError(s"not a legal $expected", tree.pos)
+        syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree, mods)
     }
 
@@ -390,7 +390,7 @@ object Parsers {
       case id @ Select(qual, name) =>
         cpy.Select(id)(qual, name.toTypeName)
       case _ =>
-        syntaxError(IdentifierExpected(tree.show), tree.pos)
+        syntaxError(IdentifierExpected(tree.show), tree.span)
         tree
     }
 
@@ -408,7 +408,7 @@ object Parsers {
       try op
       finally {
         placeholderParams match {
-          case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.pos)
+          case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
         }
         placeholderParams = savedPlaceholderParams
@@ -487,7 +487,7 @@ object Parsers {
           if (prec < opPrec || leftAssoc && prec == opPrec) {
             opStack = opStack.tail
             recur {
-              atPos(opInfo.operator.pos union opInfo.operand.pos union top.pos) {
+              atPos(opInfo.operator.span union opInfo.operand.span union top.span) {
                 val op = opInfo.operator
                 val l = opInfo.operand
                 val r = top
@@ -609,7 +609,7 @@ object Parsers {
       def handleThis(qual: Ident) = {
         in.nextToken()
         val t = atPos(start) { This(qual) }
-        if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), t.pos)
+        if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), t.span)
         dotSelectors(t, finish)
       }
       def handleSuper(qual: Ident) = {
@@ -804,7 +804,7 @@ object Parsers {
                 for (t <- ts) yield {
                   t match {
                     case t@ByNameTypeTree(t1) =>
-                      syntaxError(ByNameParameterNotSupported(t), t.pos)
+                      syntaxError(ByNameParameterNotSupported(t), t.span)
                       t1
                     case _ =>
                       t
@@ -1018,7 +1018,7 @@ object Parsers {
       val t = typeBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
-      else atPos((t.pos union cbs.head.pos).start) { ContextBounds(t, cbs) }
+      else atPos((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
     def contextBounds(pname: TypeName): List[Tree] = in.token match {
@@ -1059,7 +1059,7 @@ object Parsers {
     def rejectWildcard(t: Tree, fallbackTree: Tree): Tree =
       findNonValueTypeTree(t, false) match {
         case Some(wildcardTree) =>
-          syntaxError(UnboundWildcardType(), wildcardTree.pos)
+          syntaxError(UnboundWildcardType(), wildcardTree.span)
           fallbackTree
         case None => t
       }
@@ -1076,9 +1076,9 @@ object Parsers {
         case Some(typTree) =>
           typTree match {
             case typTree: TypeBoundsTree =>
-              syntaxError(UnboundWildcardType(), typTree.pos)
+              syntaxError(UnboundWildcardType(), typTree.span)
             case typTree: ByNameTypeTree =>
-              syntaxError(ByNameParameterNotSupported(typTree), typTree.pos)
+              syntaxError(ByNameParameterNotSupported(typTree), typTree.span)
           }
           scalaAny
         case None => t
@@ -1191,9 +1191,9 @@ object Parsers {
           val body = expr()
           val (handler, handlerStart) =
             if (in.token == CATCH) {
-              val pos = in.offset
+              val span = in.offset
               in.nextToken()
-              (expr(), pos)
+              (expr(), span)
             } else (EmptyTree, -1)
 
           handler match {
@@ -1277,7 +1277,7 @@ object Parsers {
           if (isWildcard(t) && location != Location.InPattern) {
             val vd :: rest = placeholderParams
             placeholderParams =
-              cpy.ValDef(vd)(tpt = tpt).withSpan(vd.pos.union(tpt.pos)) :: rest
+              cpy.ValDef(vd)(tpt = tpt).withSpan(vd.span.union(tpt.span)) :: rest
           }
           Typed(t, tpt)
       }
@@ -1307,7 +1307,7 @@ object Parsers {
      */
     def implicitMatch(start: Int, imods: Modifiers) = {
       def markFirstIllegal(mods: List[Mod]) = mods match {
-        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.pos)
+        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.span)
         case _ =>
       }
       imods.mods match {
@@ -1322,7 +1322,7 @@ object Parsers {
           case pat => isVarPattern(pat)
         }
         if (!isImplicitPattern(pat))
-          syntaxError(em"not a legal pattern for an implicit match", pat.pos)
+          syntaxError(em"not a legal pattern for an implicit match", pat.span)
       }
       result
     }
@@ -1330,7 +1330,7 @@ object Parsers {
     /**    `match' { TypeCaseClauses }
      */
     def matchType(bound: Tree, t: Tree): MatchTypeTree =
-      atPos((if (bound.isEmpty) t else bound).pos.start, accept(MATCH)) {
+      atPos((if (bound.isEmpty) t else bound).span.start, accept(MATCH)) {
         inBraces(MatchTypeTree(bound, t, caseClauses(typeCaseClause)))
       }
 
@@ -1745,8 +1745,8 @@ object Parsers {
         // `x: _*' is parsed in `ascription'
         if (isIdent(nme.raw.STAR)) {
           in.nextToken()
-          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIndent.pos)
-          atPos(wildIndent.pos) { Ident(tpnme.WILDCARD_STAR) }
+          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIndent.span)
+          atPos(wildIndent.span) { Ident(tpnme.WILDCARD_STAR) }
         } else wildIndent
       case LPAREN =>
         atPos(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
@@ -1899,8 +1899,8 @@ object Parsers {
         case Select(qual, name) => cpy.Select(tree)(adjustStart(start)(qual), name)
         case _ => tree
       }
-      if (tree1.pos.exists && start < tree1.pos.start)
-        tree1.withSpan(tree1.pos.withStart(start))
+      if (tree1.span.exists && start < tree1.span.start)
+        tree1.withSpan(tree1.span.withStart(start))
       else tree1
     }
 
@@ -2028,7 +2028,7 @@ object Parsers {
             if (in.token == EQUALS) { in.nextToken(); expr() }
             else EmptyTree
           if (implicitOffset >= 0) {
-            //mods = mods.withPos(mods.pos.union(Span(implicitOffset, implicitOffset)))
+            //mods = mods.withPos(mods.span.union(Span(implicitOffset, implicitOffset)))
             implicitOffset = -1
           }
           ValDef(name, tpt, default).withMods(mods)
@@ -2041,7 +2041,7 @@ object Parsers {
         case vparam :: rest =>
           vparam.tpt match {
             case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
-              syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
+              syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
             case _ =>
           }
           checkVarArgsRules(rest)
@@ -2106,7 +2106,7 @@ object Parsers {
         case t :: rest =>
           // The first import should start at the position of the keyword.
           val firstPos =
-            if (t.pos.exists) t.pos.withStart(offset)
+            if (t.span.exists) t.span.withStart(offset)
             else Span(offset, in.lastOffset)
           t.withSpan(firstPos) :: rest
         case nil => nil
@@ -2657,7 +2657,7 @@ object Parsers {
         }
         if (isLegal) tree :: Nil
         else {
-          syntaxError("illegal refinement", tree.pos)
+          syntaxError("illegal refinement", tree.span)
           Nil
         }
       }

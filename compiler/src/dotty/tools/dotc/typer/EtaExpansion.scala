@@ -46,9 +46,9 @@ abstract class Lifter {
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = positionCoord(expr.pos))
+      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = positionCoord(expr.span))
       defs += liftedDef(lifted, expr).withPosOf(expr)
-      ref(lifted.termRef).withSpan(expr.pos.focus)
+      ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
@@ -208,8 +208,8 @@ object EtaExpansion extends LiftImpure {
     var paramFlag = Synthetic | Param
     if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.pos.startPos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.pos.startPos))
+      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
+    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)

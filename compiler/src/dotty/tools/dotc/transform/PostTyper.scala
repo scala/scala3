@@ -211,7 +211,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               tpd.cpy.Apply(tree)(
                 tree.fun,
                 tree.args.mapConserve(arg =>
-                  if (methType.isImplicitMethod && arg.pos.isSynthetic) ref(defn.Predef_undefined)
+                  if (methType.isImplicitMethod && arg.span.isSynthetic) ref(defn.Predef_undefined)
                   else dropInlines.transform(arg)))
             else
               tree
@@ -239,7 +239,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          val callTrace = Inliner.inlineCallTrace(call.symbol, call.pos)
+          val callTrace = Inliner.inlineCallTrace(call.symbol, call.sourcePos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {

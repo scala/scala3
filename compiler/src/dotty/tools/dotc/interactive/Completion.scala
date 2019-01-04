@@ -62,7 +62,7 @@ object Completion {
         else Mode.None
 
       case Thicket(name :: _ :: Nil) :: (_: Import) :: _ =>
-        if (name.pos.contains(pos.span)) Mode.Import
+        if (name.span.contains(pos.span)) Mode.Import
         else Mode.None // Can't help completing the renaming
 
       case Import(_, _) :: _ =>
@@ -83,13 +83,13 @@ object Completion {
         completionPrefix(name :: Nil, pos)
 
       case Import(expr, selectors) :: _ =>
-        selectors.find(_.pos.contains(pos.span)).map { selector =>
+        selectors.find(_.span.contains(pos.span)).map { selector =>
           completionPrefix(selector.asInstanceOf[Tree] :: Nil, pos)
         }.getOrElse("")
 
       case (ref: RefTree) :: _ =>
         if (ref.name == nme.ERROR) ""
-        else ref.name.toString.take(pos.span.point - ref.pos.point)
+        else ref.name.toString.take(pos.span.point - ref.span.point)
 
       case _ =>
         ""
@@ -99,7 +99,7 @@ object Completion {
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   private def completionOffset(path: List[Tree]): Int = {
     path match {
-      case (ref: RefTree) :: _ => ref.pos.point
+      case (ref: RefTree) :: _ => ref.span.point
       case _ => 0
     }
   }

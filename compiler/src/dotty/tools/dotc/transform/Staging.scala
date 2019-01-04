@@ -384,7 +384,7 @@ class Staging extends MacroTransformWithImplicits {
           if (level == 0 && !ctx.inInlineMethod) {
             val body2 =
               if (body1.isType) body1
-              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.pos), Nil, body1)
+              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
             pickledQuote(body2, splices, body.tpe, isType).withPosOf(quote)
           }
           else {
@@ -447,7 +447,7 @@ class Staging extends MacroTransformWithImplicits {
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
-        val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.pos)
+        val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.span)
         val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPosOf(splice)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
