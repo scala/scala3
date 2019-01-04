@@ -171,8 +171,8 @@ object Spans {
 
   /** An index coordinate */
   implicit def indexCoord(n: Int): Coord = new Coord(n + 1)
-  implicit def positionCoord(pos: Span): Coord =
-    if (pos.exists) new Coord(-(pos.point + 1))
+  implicit def spanCoord(span: Span): Coord =
+    if (span.exists) new Coord(-(span.point + 1))
     else NoCoord
 
   /** A sentinel for a missing coordinate */

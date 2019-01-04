@@ -20,7 +20,7 @@ object syntax {
   }
 
   implicit class SymbolExtensions(val sym: Symbol) extends AnyVal {
-    def sourcePosition(pos: Span)(implicit ctx: Context): SourcePosition =
-      ctx.getSource(sym.sourceFile).atSpan(pos)
+    def sourcePosition(span: Span)(implicit ctx: Context): SourcePosition =
+      ctx.getSource(sym.sourceFile).atSpan(span)
   }
 }
