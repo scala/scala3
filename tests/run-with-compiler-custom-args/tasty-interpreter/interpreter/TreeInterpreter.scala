@@ -65,6 +65,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretPrivitiveGt(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitivePlus(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitiveMinus(x: AbstractAny, y: AbstractAny): AbstractAny
+  def interpretPrivitiveTimes(x: AbstractAny, y: AbstractAny): AbstractAny
+  def interpretPrivitiveDiv(x: AbstractAny, y: AbstractAny): AbstractAny
+  def interpretPrivitiveQuot(x: AbstractAny, y: AbstractAny): AbstractAny
+  def interpretPrivitiveRem(x: AbstractAny, y: AbstractAny): AbstractAny
 
   def eval(tree: Statement)(implicit env: Env): AbstractAny = {
 
@@ -75,15 +79,25 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
           case Term.Select(prefix, "isInstanceOf") => interpretIsInstanceOf(eval(prefix), targs.head)
           case Term.Select(prefix, "asInstanceOf") => interpretAsInstanceOf(eval(prefix), targs.head)
           case Term.Select(prefix, "==") => interpretEqEq(eval(prefix), eval(argss.head.head))
-          case Term.Select(prefix, name) if isNumericPrimitive(prefix.tpe) =>
+          case Term.Select(prefix, name @ ("+" | "-" | "<" | ">" | "*" | "/" | "%")) if isNumericPrimitive(prefix.tpe) =>
             val lhs = eval(prefix)
             val rhs = eval(argss.head.head)
             name match {
               case "+" => interpretPrivitivePlus(lhs, rhs)
               case "-" => interpretPrivitiveMinus(lhs, rhs)
+              case "*" => interpretPrivitiveTimes(lhs, rhs)
               case "<" => interpretPrivitiveLt(lhs, rhs)
               case ">" => interpretPrivitiveGt(lhs, rhs)
             }
+          case Term.Select(prefix, name @ ("/" | "%")) if isIntegralPrimitive(prefix.tpe) =>
+            val lhs = eval(prefix)
+            val rhs = eval(argss.head.head)
+            if (name == "/") interpretPrivitiveQuot(lhs, rhs)
+            else interpretPrivitiveRem(lhs, rhs)
+          case Term.Select(prefix, name @ "/") if isFractionalPrimitive(prefix.tpe) =>
+            val lhs = eval(prefix)
+            val rhs = eval(argss.head.head)
+            interpretPrivitiveDiv(lhs, rhs)
           case _ => interpretCall(fn, argss)
         }
 
@@ -122,16 +136,20 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
-  private def isNumericPrimitive(tpe: Type): Boolean = {
-    // TODO: improve
+  private def isNumericPrimitive(tpe: Type): Boolean =
+    isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
+
+  private def isIntegralPrimitive(tpe: Type): Boolean = {
     tpe <:< definitions.ByteType ||
     tpe <:< definitions.CharType ||
     tpe <:< definitions.ShortType ||
     tpe <:< definitions.IntType ||
-    tpe <:< definitions.LongType ||
-    tpe <:< definitions.FloatType ||
-    tpe <:< definitions.DoubleType
+    tpe <:< definitions.LongType
   }
+
+  private def isFractionalPrimitive(tpe: Type): Boolean =
+    tpe <:< definitions.FloatType || tpe <:< definitions.DoubleType
+
 
   private object Call {
     def unapply(arg: Tree): Option[(Tree, List[TypeTree], List[List[Term]])] = arg match {

@@ -87,46 +87,79 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny = x == y
 
-  def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.lt(_, _))
-  def interpretPrivitiveGt(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.gt(_, _))
-  def interpretPrivitivePlus(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.plus(_, _))
-  def interpretPrivitiveMinus(x: AbstractAny, y: AbstractAny): AbstractAny = coerce(x, y)(_.minus(_, _))
+  def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.lt(_, _))
+  def interpretPrivitiveGt(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.gt(_, _))
+  def interpretPrivitivePlus(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.plus(_, _))
+  def interpretPrivitiveMinus(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.minus(_, _))
+  def interpretPrivitiveTimes(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.times(_, _))
+  def interpretPrivitiveDiv(x: AbstractAny, y: AbstractAny): AbstractAny = withFractional(x, y)(_.div(_, _))
+  def interpretPrivitiveQuot(x: AbstractAny, y: AbstractAny): AbstractAny = withIntegral(x, y)(_.quot(_, _))
+  def interpretPrivitiveRem(x: AbstractAny, y: AbstractAny): AbstractAny = withIntegral(x, y)(_.rem(_, _))
 
-  private def coerce(x: AbstractAny, y: AbstractAny)(body: (Numeric[AbstractAny], AbstractAny, AbstractAny) => AbstractAny): AbstractAny = {
-    def getNumericFor[T](implicit x: Numeric[T]): Numeric[AbstractAny] =
-      x.asInstanceOf[Numeric[Any]]
+  private def coerce(x: AbstractAny, y: AbstractAny): (AbstractAny, AbstractAny) = {
     // TODO complete: Float Double Char
     x match {
       case x: Byte =>
         y match {
-          case y: Byte  => body(getNumericFor[Byte], x, y)
-          case y: Short => body(getNumericFor[Short], x.toShort, y)
-          case y: Int   => body(getNumericFor[Int], x.toInt, y)
-          case y: Long  => body(getNumericFor[Long], x.toLong, y)
+          case y: Byte  => (x, y)
+          case y: Short => (x.toShort, y)
+          case y: Int   => (x.toInt, y)
+          case y: Long  => (x.toLong, y)
         }
       case x: Short =>
         y match {
-          case y: Byte  => body(getNumericFor[Short], x, y.toShort)
-          case y: Short => body(getNumericFor[Short], x, y)
-          case y: Int   => body(getNumericFor[Int], x.toInt, y)
-          case y: Long  => body(getNumericFor[Long], x.toLong, y)
+          case y: Byte  => (x, y.toShort)
+          case y: Short => (x, y)
+          case y: Int   => (x.toInt, y)
+          case y: Long  => (x.toLong, y)
         }
       case x: Int =>
         y match {
-          case y: Byte  => body(getNumericFor[Int], x, y.toInt)
-          case y: Short => body(getNumericFor[Int], x, y.toInt)
-          case y: Int   => body(getNumericFor[Int], x, y)
-          case y: Long  => body(getNumericFor[Long], x.toLong, y)
+          case y: Byte  => (x, y.toInt)
+          case y: Short => (x, y.toInt)
+          case y: Int   => (x, y)
+          case y: Long  => (x.toLong, y)
         }
       case x: Long =>
         y match {
-          case y: Byte  => body(getNumericFor[Long], x, y.toLong)
-          case y: Short => body(getNumericFor[Long], x, y.toLong)
-          case y: Int   => body(getNumericFor[Long], x, y.toLong)
-          case y: Long  => body(getNumericFor[Long], x, y)
+          case y: Byte  => (x, y.toLong)
+          case y: Short => (x, y.toLong)
+          case y: Int   => (x, y.toLong)
+          case y: Long  => (x, y)
         }
     }
   }
 
+  def withNumeric[T](x: AbstractAny, y: AbstractAny)(body: (Numeric[AbstractAny], AbstractAny, AbstractAny) => AbstractAny): AbstractAny = {
+    val (coX, coY) = coerce(x, y)
+    def getNumericFor[T](implicit x: Numeric[T]): Numeric[AbstractAny] =
+      x.asInstanceOf[Numeric[AbstractAny]]
+    coX match {
+      case _: Int => body(getNumericFor[Int], coX, coY)
+      case _: Long => body(getNumericFor[Long], coX, coY)
+    }
+  }
+
+  def withIntegral[T](x: AbstractAny, y: AbstractAny)(body: (Integral[AbstractAny], AbstractAny, AbstractAny) => AbstractAny): AbstractAny = {
+    val (coX, coY) = coerce(x, y)
+    def getIntegralFor[T](implicit x: Integral[T]): Integral[AbstractAny] =
+      x.asInstanceOf[Integral[AbstractAny]]
+    coX match {
+      case _: Byte => body(getIntegralFor[Byte], coX, coY)
+      case _: Short => body(getIntegralFor[Short], coX, coY)
+      case _: Int => body(getIntegralFor[Int], coX, coY)
+      case _: Long => body(getIntegralFor[Long], coX, coY)
+    }
+  }
+
+  def withFractional[T](x: AbstractAny, y: AbstractAny)(body: (Fractional[AbstractAny], AbstractAny, AbstractAny) => AbstractAny): AbstractAny = {
+    val (coX, coY) = coerce(x, y)
+    def getFractionalFor[T](implicit x: Fractional[T]): Fractional[AbstractAny] =
+      x.asInstanceOf[Fractional[AbstractAny]]
+    coX match {
+      case _: Float => body(getFractionalFor[Float], coX, coY)
+      case _: Double => body(getFractionalFor[Double], coX, coY)
+    }
+  }
 
 }
