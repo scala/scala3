@@ -179,8 +179,8 @@ object MarkupParsers {
       xTakeUntil(handle.comment, () => Span(start, curOffset, start), "-->")
     }
 
-    def appendText(pos: Span, ts: Buffer[Tree], txt: String): Unit = {
-      def append(t: String) = ts append handle.text(pos, t)
+    def appendText(span: Span, ts: Buffer[Tree], txt: String): Unit = {
+      def append(t: String) = ts append handle.text(span, t)
 
       if (preserveWS) append(txt)
       else {
@@ -286,10 +286,10 @@ object MarkupParsers {
         val ts = content
         xEndTag(qname)
         debugLastStartElement = debugLastStartElement.tail
-        val pos = Span(start, curOffset, start)
+        val span = Span(start, curOffset, start)
         qname match {
-          case "xml:group" => handle.group(pos, ts)
-          case _ => handle.element(pos, qname, attrMap, false, ts)
+          case "xml:group" => handle.group(span, ts)
+          case _ => handle.element(span, qname, attrMap, false, ts)
         }
       }
     }
@@ -411,7 +411,7 @@ object MarkupParsers {
      */
     def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
 
-    def reportSyntaxError(pos: Int, str: String): Unit = parser.syntaxError(str, pos)
+    def reportSyntaxError(offset: Int, str: String): Unit = parser.syntaxError(str, offset)
     def reportSyntaxError(str: String): Unit = {
       reportSyntaxError(curOffset, "in XML literal: " + str)
       nextch()

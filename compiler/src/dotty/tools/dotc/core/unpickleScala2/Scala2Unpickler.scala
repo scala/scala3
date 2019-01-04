@@ -984,7 +984,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       symbol = readSymbolRef()
     }
 
-    implicit val pos: Span = NoSpan
+    implicit val span: Span = NoSpan
 
     tag match {
       case EMPTYtree =>

@@ -12,22 +12,22 @@ import dotty.tools.dotc.reporting.Reporter
 object Rewrites {
   private class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
 
-  private case class Patch(pos: Span, replacement: String) {
-    def delta = replacement.length - (pos.end - pos.start)
+  private case class Patch(span: Span, replacement: String) {
+    def delta = replacement.length - (span.end - span.start)
   }
 
   private class Patches(source: SourceFile) {
     private val pbuf = new mutable.ListBuffer[Patch]()
 
-    def addPatch(pos: Span, replacement: String): Unit =
-      pbuf += Patch(pos, replacement)
+    def addPatch(span: Span, replacement: String): Unit =
+      pbuf += Patch(span, replacement)
 
     def apply(cs: Array[Char]): Array[Char] = {
       val delta = pbuf.map(_.delta).sum
-      val patches = pbuf.toList.sortBy(_.pos.start)
+      val patches = pbuf.toList.sortBy(_.span.start)
       if (patches.nonEmpty)
         patches reduceLeft {(p1, p2) =>
-          assert(p1.pos.end <= p2.pos.start, s"overlapping patches: $p1 and $p2")
+          assert(p1.span.end <= p2.span.start, s"overlapping patches: $p1 and $p2")
           p2
         }
       val ds = new Array[Char](cs.length + delta)
@@ -38,10 +38,10 @@ object Rewrites {
           outIdx + untouched
         }
         ps match {
-          case patch @ Patch(pos, replacement) :: ps1 =>
-            val outNew = copy(pos.start)
+          case patch @ Patch(span, replacement) :: ps1 =>
+            val outNew = copy(span.start)
             replacement.copyToArray(ds, outNew)
-            loop(ps1, pos.end, outNew + replacement.length)
+            loop(ps1, span.end, outNew + replacement.length)
           case Nil =>
             val outNew = copy(cs.length)
             assert(outNew == ds.length, s"$outNew != ${ds.length}")
@@ -61,18 +61,18 @@ object Rewrites {
   }
 
   /** If -rewrite is set, record a patch that replaces the range
-   *  given by `pos` in `source` by `replacement`
+   *  given by `span` in `source` by `replacement`
    */
-  def patch(source: SourceFile, pos: Span, replacement: String)(implicit ctx: Context): Unit =
+  def patch(source: SourceFile, span: Span, replacement: String)(implicit ctx: Context): Unit =
     if (ctx.reporter != Reporter.NoReporter) // NoReporter is used for syntax highlighting
       for (rewrites <- ctx.settings.rewrite.value)
         rewrites.patched
           .getOrElseUpdate(source, new Patches(source))
-          .addPatch(pos, replacement)
+          .addPatch(span, replacement)
 
   /** Patch position in `ctx.compilationUnit.source`. */
-  def patch(pos: Span, replacement: String)(implicit ctx: Context): Unit =
-    patch(ctx.compilationUnit.source, pos, replacement)
+  def patch(span: Span, replacement: String)(implicit ctx: Context): Unit =
+    patch(ctx.compilationUnit.source, span, replacement)
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
