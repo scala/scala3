@@ -40,12 +40,12 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     //assert(id != 2067, getClass)
   }
 
-  /** Destructively update `mySpan` to given span. Also, set any missing
-   *  spans in children.
+  /** Destructively update `mySpan` to given span and potentially update `id` so that
+   *  it refers to `file`. Also, set any missing positions in children.
    */
   protected def setPos(span: Span, file: AbstractFile): Unit = {
-    setOneSpan(span, file)
-    if (span.exists) setChildSpans(span.toSynthetic, file)
+    setOnePos(span, file)
+    if (span.exists) setChildPositions(span.toSynthetic, file)
   }
 
   /** A positioned item like this one with given `span`.
@@ -82,7 +82,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   /** Set span of this tree only, without updating children spans.
    *  Called from Unpickler when entering positions.
    */
-  private[dotc] def setOneSpan(span: Span, file: AbstractFile = this.srcfile): Unit = {
+  private[dotc] def setOnePos(span: Span, file: AbstractFile = this.srcfile): Unit = {
     if (file != this.srcfile) setId(TreeIds.nextIdFor(file))
     mySpan = span
   }
@@ -98,7 +98,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  But since mutual tail recursion is not supported in Scala, we express it instead
    *  as a while loop with a termination by return in the middle.
    */
-  private def setChildSpans(span: Span, file: AbstractFile): Unit = {
+  private def setChildPositions(span: Span, file: AbstractFile): Unit = {
     var n = productArity                    // subnodes are analyzed right to left
     var elems: List[Any] = Nil              // children in lists still to be considered, from right to left
     var end = span.end                      // the last defined offset, fill in spans up to this offset

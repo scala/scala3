@@ -1335,7 +1335,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Set position of `tree` at given `addr`. */
     def setPos[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type = {
       val pos = posAt(addr)
-      if (pos.exists) tree.setOneSpan(pos, ctx.source.file)
+      if (pos.exists) tree.setOnePos(pos, ctx.source.file)
       tree
     }
   }

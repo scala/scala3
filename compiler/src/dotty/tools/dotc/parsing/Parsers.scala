@@ -81,7 +81,7 @@ object Parsers {
      *  to position spanning from `start` to last read offset, with given point.
      *  If the last offset is less than or equal to start, the tree `t` did not
      *  consume any source for its construction. In this case, don't position it yet,
-     *  but wait for its position to be determined by `setChildSpans` when the
+     *  but wait for its position to be determined by `setChildPositions` when the
      *  parent node is positioned.
      */
     def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
