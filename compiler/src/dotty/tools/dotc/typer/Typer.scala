@@ -27,6 +27,7 @@ import EtaExpansion.etaExpand
 import util.Positions._
 import util.common._
 import util.Property
+import Applications.{ExtMethodApply, wrapDefs, productSelectorTypes}
 
 import collection.mutable
 import annotation.tailrec
@@ -426,7 +427,7 @@ class Typer extends Namer
 
     def typeSelectOnTerm(implicit ctx: Context): Tree =
       typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
-        case qual1 @ Applications.ExtMethodApply(app) =>
+        case qual1 @ ExtMethodApply(app) =>
           pt.revealIgnored match {
             case _: PolyProto => qual1 // keep the ExtMethodApply to strip at next typedTypeApply
             case _ => app
@@ -926,7 +927,7 @@ class Typer extends Namer
     def ptIsCorrectProduct(formal: Type) = {
       isFullyDefined(formal, ForceDegree.noBottom) &&
       (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
-      Applications.productSelectorTypes(formal).corresponds(params) {
+      productSelectorTypes(formal).corresponds(params) {
         (argType, param) =>
           param.tpt.isEmpty || argType <:< typedAheadType(param.tpt).tpe
       }
@@ -1841,7 +1842,7 @@ class Typer extends Namer
         case Block(stats, expr) =>
           tpd.cpy.Block(app)(stats, lift(expr))
       }
-      Applications.wrapDefs(defs, lift(app))
+      wrapDefs(defs, lift(app))
     }
   }
 
@@ -2644,7 +2645,9 @@ class Typer extends Namer
           val app = tryExtension(nestedCtx)
           if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
             nestedCtx.typerState.commit()
-            return Applications.ExtMethodApply(app).withType(app.tpe)
+            return ExtMethodApply(app).withType(WildcardType)
+              // Use wildcard type in order not to prompt any further adaptations such as eta expansion
+              // before the method is fully applied.
           }
         case _ =>
       }
@@ -2656,7 +2659,7 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
-          case SearchSuccess(inferred: Applications.ExtMethodApply, _, _) =>
+          case SearchSuccess(inferred: ExtMethodApply, _, _) =>
             inferred // nothing to check or adapt for extension method applications
           case SearchSuccess(inferred, _, _) =>
             checkImplicitConversionUseOK(inferred.symbol, tree.pos)
@@ -2736,7 +2739,7 @@ class Typer extends Namer
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tree match {
-                case _: Applications.ExtMethodApply => tree
+                case _: ExtMethodApply => tree
                 case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
               }
             case _ =>
