@@ -8,6 +8,9 @@ import scala.tasty.Reflection
 class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpreter[R](reflect0) {
   import reflect._
 
+  // All references are represented by themselfs and values are boxed
+  type AbstractAny = Any
+
   val jvmReflection = new JVMReflection(reflect)
 
   def interpretNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
@@ -80,12 +83,16 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def evaluatedArgss(argss: List[List[Term]])(implicit env: Env): List[Object] = argss.flatMap((a: List[Term]) => a.map(b => eval(b).asInstanceOf[Object]))
 
-  def interpretIsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): Any = {
+  def interpretUnit()(implicit env: Env): AbstractAny = ().asInstanceOf[Object]
+
+  def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny = const.value
+
+  def interpretIsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): AbstractAny = {
     val o = eval(prefix)
     jvmReflection.getClassOf(tpt.symbol).isInstance(o)
   }
 
-  def interpretAsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): Any = {
+  def interpretAsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): AbstractAny = {
     val o = eval(prefix)
     jvmReflection.getClassOf(tpt.symbol).cast(o)
   }

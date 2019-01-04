@@ -9,7 +9,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   type Env = Map[Symbol, Ref]
 
-  def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
+  /** Representation of objects and values in the interpreter */
+  type AbstractAny
+
+  def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): AbstractAny = {
     fn.symbol match {
       case IsDefSymbol(sym) =>
         val evaluatedArgs = argss.flatten.map(arg => new Eager(eval(arg)))
@@ -20,16 +23,18 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
-  def interpretNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any
+  def interpretNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): AbstractAny
 
-  def interpretIf(cond: Term, thenp: Term, elsep: Term)(implicit env: Env): Any =
+  def interpretIf(cond: Term, thenp: Term, elsep: Term)(implicit env: Env): AbstractAny =
     if (eval(cond).asInstanceOf[Boolean]) eval(thenp)
     else eval(elsep)
 
-  def interpretWhile(cond: Term, body: Term)(implicit env: Env): Any =
+  def interpretWhile(cond: Term, body: Term)(implicit env: Env): AbstractAny = {
     while (eval(cond).asInstanceOf[Boolean]) eval(body)
+    interpretUnit()
+  }
 
-  def interpretBlock(stats: List[Statement], expr: Term)(implicit env: Env): Any = {
+  def interpretBlock(stats: List[Statement], expr: Term)(implicit env: Env): AbstractAny = {
     val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
       case ValDef(name, tpt, Some(rhs)) =>
         val evalRef: Ref =
@@ -52,12 +57,13 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     eval(expr)(newEnv)
   }
 
-  def interpretLiteral(const: Constant)(implicit env: Env): Any = const.value
+  def interpretUnit()(implicit env: Env): AbstractAny
+  def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny
 
-  def interpretIsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): Any
-  def interpretAsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): Any
+  def interpretIsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): AbstractAny
+  def interpretAsInstanceOf(prefix: Term, tpt: TypeTree)(implicit env: Env): AbstractAny
 
-  def eval(tree: Statement)(implicit env: Env): Any = {
+  def eval(tree: Statement)(implicit env: Env): AbstractAny = {
     tree match {
       case Call(fn, targs, argss) =>
         fn match {
@@ -69,7 +75,9 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
       case Term.Assign(lhs, rhs) =>
         env(lhs.symbol) match {
-          case varf: Var => varf.update(eval(rhs))
+          case varf: Var =>
+            varf.update(eval(rhs))
+            interpretUnit()
         }
 
       case Term.If(cond, thenp, elsep) => interpretIf(cond, thenp, elsep)
@@ -79,6 +87,23 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case Term.Typed(expr, _)         => eval(expr)
 
       case _ => throw new MatchError(tree.show)
+    }
+  }
+
+  trait Ref {
+    def get: AbstractAny
+  }
+
+  class Eager(val get: AbstractAny) extends Ref
+
+  class Lazy(thunk: => AbstractAny) extends Ref {
+    lazy val get: AbstractAny = thunk
+  }
+
+  class Var(private var value: AbstractAny) extends Ref {
+    def get = value
+    def update(rhs: AbstractAny): Unit = {
+      value = rhs
     }
   }
 
