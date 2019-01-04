@@ -494,8 +494,6 @@ object Denotations {
          *      boundary of sym1. For protected access, we count the enclosing
          *      package as access boundary.
          *   5. sym1 is a method but sym2 is not.
-         *   6. sym1 is a non-polymorphic method but sym2 is a polymorphic method.
-         *      (to be consistent with infoMeet, see #4819)
          *  The aim of these criteria is to give some disambiguation on access which
          *   - does not depend on textual order or other arbitrary choices
          *   - minimizes raising of doubleDef errors
@@ -510,7 +508,6 @@ object Denotations {
                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
                 sym2.is(Bridge) && !sym1.is(Bridge) ||
                 sym1.is(Method) && !sym2.is(Method)) ||
-                sym1.info.isInstanceOf[MethodType] && sym2.info.isInstanceOf[PolyType] ||
               sym1.info.isErroneous)
 
         /** Sym preference provided types also override */
