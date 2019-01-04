@@ -4,7 +4,7 @@ import scala.tasty.interpreter.abstr.{Ref, Eager, Lazy, Var}
 import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
-class Interpreter[R <: Reflection & Singleton](val reflect: R)(implicit ctx: reflect.Context) {
+class Interpreter[R <: Reflection & Singleton](val reflect: R) {
   import reflect._
 
   val jvmReflection = new JVMReflection(reflect)
