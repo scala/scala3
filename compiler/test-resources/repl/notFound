@@ -2,3 +2,7 @@ scala>  Foo
 1 |  Foo
   |  ^^^
   |  Not found: Foo
+scala>  Bar
+1 |  Bar
+  |  ^^^
+  |  Not found: Bar
