@@ -39,7 +39,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   lazy val content = computeContent
 
   def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
-  def this(name: String, content: String) = this(new VirtualFile(name), content.toCharArray)
+  def this(name: String, content: String) = this(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
 
   /** Tab increment; can be overridden */
   def tabInc: Int = 8
