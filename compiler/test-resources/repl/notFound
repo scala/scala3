@@ -1,0 +1,4 @@
+scala>  Foo
+1 |  Foo
+  |  ^^^
+  |  Not found: Foo

@@ -25,6 +25,19 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
    */
   def this(name: String) = this(name, name)
 
+  /**
+    * Initializes this instance with the specified name and an
+    * identical path.
+    *
+    * @param name the name of the virtual file to be created
+    * @param content the initial contents of the virtual file
+    * @return     the created virtual file
+    */
+  def this(name: String, content: Array[Byte]) = {
+    this(name)
+    this.content = content
+  }
+
   override def hashCode: Int = path.hashCode
   override def equals(that: Any): Boolean = that match {
     case x: VirtualFile => x.path == path
