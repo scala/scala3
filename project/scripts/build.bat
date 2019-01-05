@@ -120,6 +120,9 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 shift
 goto args_loop
 :args_done
+if %_TIMER%==1 (
+    for /f "delims=" %%i in ('powershell -c "(Get-Date)"') do set _TIMER_START=%%i
+)
 goto :eof
 
 :help
@@ -159,9 +162,6 @@ if %_VERBOSE%==1 (
     echo Current Git branch
     echo    !__GIT_BRANCH!
     echo.
-)
-if %_TIMER%==1 (
-    for /f "delims=" %%i in ('powershell -c "(Get-Date)"') do set _TIMER_START=%%i
 )
 goto :eof
 
