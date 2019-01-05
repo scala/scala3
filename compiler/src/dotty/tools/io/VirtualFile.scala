@@ -38,12 +38,6 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
     this.content = content
   }
 
-  override def hashCode: Int = path.hashCode
-  override def equals(that: Any): Boolean = that match {
-    case x: VirtualFile => x.path == path
-    case _              => false
-  }
-
   private[this] var content = Array.emptyByteArray
 
   def absolute: AbstractFile = this
