@@ -11,6 +11,8 @@ import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
+  private[this] val sb: StringBuilder = new StringBuilder
+
   val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}
 
@@ -21,41 +23,56 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   def printNames(): Unit =
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
       val index = nameColor("%4d".format(idx))
-      println(index + ": " + nameToString(name))
+      sb.append(index).append(": ").append(nameToString(name)).append("\n")
     }
 
-  def printContents(): Unit = {
-    println("Names:")
+  def printContents(): String = {
+    sb.append("Names:\n")
     printNames()
-    println()
-    println("Trees:")
-    unpickle(new TreeSectionUnpickler)
-    unpickle(new PositionSectionUnpickler)
-    unpickle(new CommentSectionUnpickler)
+    sb.append("\n")
+    sb.append("Trees:\n")
+    unpickle(new TreeSectionUnpickler) match {
+      case Some(s) => sb.append(s)
+      case _ => Unit
+    }
+    sb.append("\n\n")
+    unpickle(new PositionSectionUnpickler) match {
+      case Some(s) => sb.append(s)
+      case _ => Unit
+    }
+    sb.append("\n\n")
+    unpickle(new CommentSectionUnpickler) match {
+      case Some(s) => sb.append(s)
+      case _ => Unit
+    }
+    sb.result
   }
 
-  class TreeSectionUnpickler extends SectionUnpickler[Unit](TreePickler.sectionName) {
+  class TreeSectionUnpickler extends SectionUnpickler[String](TreePickler.sectionName) {
     import TastyFormat._
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
+
+    private[this] val sb: StringBuilder = new StringBuilder
+
+    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       import reader._
       var indent = 0
       def newLine() = {
         val length = treeColor("%5d".format(index(currentAddr) - index(startAddr)))
-        print(s"\n $length:" + " " * indent)
+        sb.append(s"\n $length:" + " " * indent)
       }
-      def printNat() = print(Yellow(" " + readNat()).show)
+      def printNat() = sb.append(treeColor(" " + readNat()))
       def printName() = {
         val idx = readNat()
-        print(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
+        sb.append(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
       }
       def printTree(): Unit = {
         newLine()
         val tag = readByte()
-        print(" ");print(astTagToString(tag))
+        sb.append(" ").append(astTagToString(tag))
         indent += 2
         if (tag >= firstLengthTreeTag) {
           val len = readNat()
-          print(s"(${lengthColor(len.toString)})")
+          sb.append(s"(${lengthColor(len.toString)})")
           val end = currentAddr + len
           def printTrees() = until(end)(printTree())
           tag match {
@@ -76,7 +93,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               printTrees()
           }
           if (currentAddr != end) {
-            println(s"incomplete read, current = $currentAddr, end = $end")
+            sb.append(s"incomplete read, current = $currentAddr, end = $end\n")
             goto(end)
           }
         }
@@ -96,42 +113,51 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           }
         indent -= 2
       }
-      println(i"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr")
-      println(s"${endAddr.index - startAddr.index} bytes of AST, base = $currentAddr")
+      sb.append(i"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr\n")
+      sb.append(s"${endAddr.index - startAddr.index} bytes of AST, base = $currentAddr\n")
       while (!isAtEnd) {
         printTree()
         newLine()
       }
+      sb.result
     }
   }
 
-  class PositionSectionUnpickler extends SectionUnpickler[Unit]("Positions") {
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
-      print(s" ${reader.endAddr.index - reader.currentAddr.index}")
+  class PositionSectionUnpickler extends SectionUnpickler[String]("Positions") {
+
+    private[this] val sb: StringBuilder = new StringBuilder
+
+    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
       val positions = new PositionUnpickler(reader).positions
-      println(s" position bytes:")
+      sb.append(s" position bytes:\n")
       val sorted = positions.toSeq.sortBy(_._1.index)
       for ((addr, pos) <- sorted) {
-        print(treeColor("%10d".format(addr.index)))
-        println(s": ${offsetToInt(pos.start)} .. ${pos.end}")
+        sb.append(treeColor("%10d".format(addr.index)))
+        sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")
       }
+      sb.result
     }
   }
 
-  class CommentSectionUnpickler extends SectionUnpickler[Unit]("Comments") {
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
-      print(s" ${reader.endAddr.index - reader.currentAddr.index}")
+  class CommentSectionUnpickler extends SectionUnpickler[String]("Comments") {
+
+    private[this] val sb: StringBuilder = new StringBuilder
+
+    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
       val comments = new CommentUnpickler(reader).comments
-      println(s" comment bytes:")
+      sb.append(s" comment bytes:\n")
       val sorted = comments.toSeq.sortBy(_._1.index)
       for ((addr, cmt) <- sorted) {
-        print(treeColor("%10d".format(addr.index)))
-        println(s": ${cmt.raw} (expanded = ${cmt.isExpanded})")
+        sb.append(treeColor("%10d".format(addr.index)))
+        sb.append(s": ${cmt.raw} (expanded = ${cmt.isExpanded})\n")
       }
+      sb.result
     }
   }
 
-  private def nameColor(str: String): String = Magenta(str).show
-  private def treeColor(str: String): String = Yellow(str).show
-  private def lengthColor(str: String): String = Cyan(str).show
+  protected def nameColor(str: String): String = Magenta(str).show
+  protected def treeColor(str: String): String = Yellow(str).show
+  protected def lengthColor(str: String): String = Cyan(str).show
 }

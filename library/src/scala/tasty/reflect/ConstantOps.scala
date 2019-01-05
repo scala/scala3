@@ -15,6 +15,9 @@ trait ConstantOps extends Core {
     /** Module of Null literals */
     val Unit: UnitModule
     abstract class UnitModule {
+      /** Unit `()` literal */
+      def apply(): Constant
+
       /** Extractor for Unit literals */
       def unapply(constant: Constant): Boolean
     }
@@ -22,6 +25,9 @@ trait ConstantOps extends Core {
     /** Module of Null literals */
     val Null: NullModule
     abstract class NullModule {
+      /** `null` literal */
+      def apply(): Constant
+
       /** Extractor for Null literals */
       def unapply(constant: Constant): Boolean
     }
@@ -29,6 +35,9 @@ trait ConstantOps extends Core {
     /** Module of Boolean literals */
     val Boolean: BooleanModule
     abstract class BooleanModule {
+      /** Boolean literal */
+      def apply(x: Boolean): Constant
+
       /** Extractor for Boolean literals */
       def unapply(constant: Constant): Option[Boolean]
     }
@@ -36,6 +45,9 @@ trait ConstantOps extends Core {
     /** Module of Byte literals */
     val Byte: ByteModule
     abstract class ByteModule {
+      /** Byte literal */
+      def apply(x: Byte): Constant
+
       /** Extractor for Byte literals */
       def unapply(constant: Constant): Option[Byte]
     }
@@ -43,6 +55,9 @@ trait ConstantOps extends Core {
     /** Module of Short literals */
     val Short: ShortModule
     abstract class ShortModule {
+      /** Short literal */
+      def apply(x: Short): Constant
+
       /** Extractor for Short literals */
       def unapply(constant: Constant): Option[Short]
     }
@@ -50,6 +65,9 @@ trait ConstantOps extends Core {
     /** Module of Char literals */
     val Char: CharModule
     abstract class CharModule {
+      /** Char literal */
+      def apply(x: Char): Constant
+
       /** Extractor for Char literals */
       def unapply(constant: Constant): Option[Char]
     }
@@ -57,6 +75,9 @@ trait ConstantOps extends Core {
     /** Module of Int literals */
     val Int: IntModule
     abstract class IntModule {
+      /** Int literal */
+      def apply(x: Int): Constant
+
       /** Extractor for Int literals */
       def unapply(constant: Constant): Option[Int]
     }
@@ -64,6 +85,9 @@ trait ConstantOps extends Core {
     /** Module of Long literals */
     val Long: LongModule
     abstract class LongModule {
+      /** Long literal */
+      def apply(x: Long): Constant
+
       /** Extractor for Long literals */
       def unapply(constant: Constant): Option[Long]
     }
@@ -71,6 +95,9 @@ trait ConstantOps extends Core {
     /** Module of Float literals */
     val Float: FloatModule
     abstract class FloatModule {
+      /** Float literal */
+      def apply(x: Float): Constant
+
       /** Extractor for Float literals */
       def unapply(constant: Constant): Option[Float]
     }
@@ -78,6 +105,9 @@ trait ConstantOps extends Core {
     /** Module of Double literals */
     val Double: DoubleModule
     abstract class DoubleModule {
+      /** Double literal */
+      def apply(x: Double): Constant
+
       /** Extractor for Double literals */
       def unapply(constant: Constant): Option[Double]
     }
@@ -85,6 +115,9 @@ trait ConstantOps extends Core {
     /** Module of String literals */
     val String: StringModule
     abstract class StringModule {
+      /** String literal */
+      def apply(x: String): Constant
+
       /** Extractor for String literals */
       def unapply(constant: Constant): Option[String]
     }
@@ -92,6 +125,9 @@ trait ConstantOps extends Core {
     /** Module of ClassTag literals */
     val ClassTag: ClassTagModule
     abstract class ClassTagModule {
+      /** scala.reflect.ClassTag literal */
+      def apply[T](implicit x: scala.reflect.ClassTag[T]): Constant
+
       /** Extractor for ClassTag literals */
       def unapply(constant: Constant): Option[Type]
     }
@@ -100,6 +136,10 @@ trait ConstantOps extends Core {
     val Symbol: SymbolModule
     /** Extractor for scala.Symbol literals */
     abstract class SymbolModule {
+      /** scala.Symbol literal */
+      def apply(x: scala.Symbol): Constant
+
+      /** Extractor for scala.Symbol literals */
       def unapply(constant: Constant): Option[scala.Symbol]
     }
   }

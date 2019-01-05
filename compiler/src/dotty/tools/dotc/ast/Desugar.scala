@@ -486,7 +486,7 @@ object desugar {
 
       // TODO When the Scala library is updated to 2.13.x add the override keyword to this generated method.
       // (because Product.scala was updated)
-      def productElemNameMethod = {
+      def productElemNameMeth = {
         val methodParam = makeSyntheticParameter(tpt = scalaDot(tpnme.Int))
         val paramRef = Ident(methodParam.name)
 
@@ -499,11 +499,11 @@ object desugar {
         } :+ defaultCase
         val body = Match(paramRef, patternMatchCases)
         DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
-          .withFlags(Synthetic)
+          .withFlags(if (defn.isNewCollections) Override | Synthetic else Synthetic)
       }
 
       if (isCaseClass)
-        productElemNameMethod :: copyMeths ::: enumTagMeths ::: productElemMeths
+        productElemNameMeth :: copyMeths ::: enumTagMeths ::: productElemMeths
       else Nil
     }
 
@@ -920,8 +920,9 @@ object desugar {
     assert(arity <= Definitions.MaxTupleArity)
     def tupleTypeRef = defn.TupleType(arity)
     if (arity == 1) ts.head
+    else if (arity == 0)
+      if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
     else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
-    else if (arity == 0) unitLiteral
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 

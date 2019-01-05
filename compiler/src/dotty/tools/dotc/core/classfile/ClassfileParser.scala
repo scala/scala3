@@ -363,7 +363,7 @@ class ClassfileParser(
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
             val clazz = tpe.member(name).symbol
-            tpe = processClassType(processInner(clazz.typeRef))
+            tpe = processClassType(processInner(TypeRef(tpe, clazz)))
           }
           accept(';')
           tpe

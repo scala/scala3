@@ -89,7 +89,7 @@ object PickledQuotes {
     val pickled = pickler.assembleParts()
 
     if (quotePickling ne noPrinter)
-      new TastyPrinter(pickled).printContents()
+      println(new TastyPrinter(pickled).printContents())
 
     pickled
   }
@@ -98,7 +98,7 @@ object PickledQuotes {
   private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
     if (quotePickling ne noPrinter) {
       println(i"**** unpickling quote from TASTY")
-      new TastyPrinter(bytes).printContents()
+      println(new TastyPrinter(bytes).printContents())
     }
 
     val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term

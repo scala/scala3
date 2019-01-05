@@ -53,10 +53,6 @@ scala> val x: List[Int] = "foo" :: List(1)
   |                    ^^^^^
   |                    Found:    String("foo")
   |                    Required: Int
-scala> { def f: Int = g; val x: Int = 1; def g: Int = 5; }
-1 | { def f: Int = g; val x: Int = 1; def g: Int = 5; }
-  |                ^
-  |               g is a forward reference extending over the definition of x
 scala> while (((  foo ))) {}
 1 | while (((  foo ))) {}
   |            ^^^

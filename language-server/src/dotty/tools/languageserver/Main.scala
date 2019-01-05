@@ -67,9 +67,9 @@ object Main {
 
     println("Starting server")
     val launcher =
-      new Launcher.Builder[worksheet.WorksheetClient]()
+      new Launcher.Builder[DottyClient]()
         .setLocalService(server)
-        .setRemoteInterface(classOf[worksheet.WorksheetClient])
+        .setRemoteInterface(classOf[DottyClient])
         .setInput(in)
         .setOutput(out)
         // For debugging JSON messages:

@@ -276,7 +276,14 @@ object Denotations {
      *  if generateStubs is specified, return a stubsymbol if denotation is a missing ref.
      *  Throw a `TypeError` if predicate fails to disambiguate symbol or no alternative matches.
      */
-    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol =
+    def requiredSymbol(kind: String,
+                       name: Name,
+                       site: Denotation = NoDenotation,
+                       args: List[Type] = Nil,
+                       source: AbstractFile = null,
+                       generateStubs: Boolean = true)
+                      (p: Symbol => Boolean)
+                      (implicit ctx: Context): Symbol =
       disambiguate(p) match {
         case m @ MissingRef(ownerd, name) =>
           if (generateStubs) {
@@ -285,18 +292,25 @@ object Denotations {
           }
           else NoSymbol
         case NoDenotation | _: NoQualifyingRef =>
-          throw new TypeError(i"None of the alternatives of $this satisfies required predicate")
+          def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
+          val msg =
+            if (site.exists) i"$site does not have a member $kind $name$argStr"
+            else i"missing: $kind $name$argStr"
+          throw new TypeError(msg)
         case denot =>
           denot.symbol
       }
 
-    def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+    def requiredMethod(pname: PreName)(implicit ctx: Context): TermSymbol = {
+      val name = pname.toTermName
+      info.member(name).requiredSymbol("method", name, this)(_ is Method).asTerm
+    }
     def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
 
-    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
-      info.member(name.toTermName).requiredSymbol { x =>
+    def requiredMethod(pname: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
+      val name = pname.toTermName
+      info.member(name).requiredSymbol(i"method", name, this, argTypes) { x =>
         (x is Method) && {
           x.info.paramInfoss match {
             case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
@@ -308,16 +322,22 @@ object Denotations {
     def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
       requiredMethod(name, argTypes).termRef
 
-    def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
+    def requiredValue(pname: PreName)(implicit ctx: Context): TermSymbol = {
+      val name = pname.toTermName
+      info.member(name).requiredSymbol("field or getter", name, this)(_.info.isParameterless).asTerm
+    }
     def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredValue(name).termRef
 
-    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
-      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
+    def requiredClass(pname: PreName)(implicit ctx: Context): ClassSymbol = {
+      val name = pname.toTypeName
+      info.member(name).requiredSymbol("class", name, this)(_.isClass).asClass
+    }
 
-    def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
-      info.member(name.toTypeName).requiredSymbol(_.isType).asType
+    def requiredType(pname: PreName)(implicit ctx: Context): TypeSymbol = {
+      val name = pname.toTypeName
+      info.member(name).requiredSymbol("type", name, this)(_.isType).asType
+    }
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.

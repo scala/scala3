@@ -7,8 +7,9 @@ import { generateUuid } from 'vscode-languageclient/lib/utils/uuid'
 import { DocumentSelector } from 'vscode-languageserver-protocol'
 import { Disposable } from 'vscode-jsonrpc'
 
-import { WorksheetRunRequest } from './protocol'
+import { WorksheetRunRequest, TastyDecompileRequest } from './protocol'
 import { WorksheetProvider } from './worksheet'
+import { TastyDecompilerProvider, DecompiledDocumentProvider } from './tasty-decompiler'
 
 // Remove this if
 // https://github.com/Microsoft/vscode-languageserver-node/issues/423 is fixed.
@@ -58,5 +59,47 @@ export class WorksheetRunFeature extends TextDocumentFeature<TextDocumentRegistr
   protected registerLanguageProvider(options: TextDocumentRegistrationOptions): Disposable {
     let client = this._client
     return new WorksheetProvider(client, options.documentSelector!)
+  }
+}
+
+export interface TastyDecompilerServerCapabilities {
+  /**
+   * The server provides support for decompiling Tasty files.
+   */
+  tastyDecompiler?: boolean
+}
+
+export interface TastyDecompilerClientCapabilities {
+  tasty?: {
+    decompile?: {
+      dynamicRegistration?: boolean
+    }
+  }
+}
+
+export class TastyDecompilerFeature extends TextDocumentFeature<TextDocumentRegistrationOptions> {
+  constructor(client: BaseLanguageClient, readonly provider: DecompiledDocumentProvider) {
+    super(client, TastyDecompileRequest.type)
+  }
+
+  fillClientCapabilities(capabilities: ClientCapabilities & TastyDecompilerClientCapabilities): void {
+    ensure(ensure(capabilities, "tasty")!, "decompile")!.dynamicRegistration = true
+  }
+
+  initialize(capabilities: ServerCapabilities & TastyDecompilerServerCapabilities, documentSelector: DocumentSelector): void {
+    if (!capabilities.tastyDecompiler) {
+      return
+    }
+
+    const selector: DocumentSelector = [ { language: 'tasty' } ]
+    this.register(this.messages, {
+      id: generateUuid(),
+      registerOptions: { documentSelector: selector }
+    })
+  }
+
+  protected registerLanguageProvider(options: TextDocumentRegistrationOptions): vscode.Disposable {
+    let client = this._client
+    return new TastyDecompilerProvider(client, options.documentSelector!, this.provider)
   }
 }

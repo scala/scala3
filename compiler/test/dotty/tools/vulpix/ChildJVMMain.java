@@ -13,19 +13,28 @@ public class ChildJVMMain {
     static final String MessageEnd = "##THIS IS THE END FOR ME, GOODBYE##";
 
     private static void runMain(String dir) throws Exception {
-        String jcp = System.getProperty("java.class.path");
-        String sep = File.pathSeparator;
-        System.setProperty("java.class.path", jcp == null ? dir : dir + sep + jcp);
-
-        ArrayList<URL> cp = new ArrayList<>();
-        for (String path : dir.split(sep))
-            cp.add(new File(path).toURI().toURL());
-
-        URLClassLoader ucl = new URLClassLoader(cp.toArray(new URL[cp.size()]));
-        Class<?> cls = ucl.loadClass("Test");
-        Method meth = cls.getMethod("main", String[].class);
+        Method meth = null;
         Object[] args = new Object[]{ new String[]{ "jvm" } };
+        try {
+            String jcp = System.getProperty("java.class.path");
+            String sep = File.pathSeparator;
+            System.setProperty("java.class.path", jcp == null ? dir : dir + sep + jcp);
 
+            ArrayList<URL> cp = new ArrayList<>();
+            for (String path : dir.split(sep))
+                cp.add(new File(path).toURI().toURL());
+
+            URLClassLoader ucl = new URLClassLoader(cp.toArray(new URL[cp.size()]));
+
+            Class<?> cls = ucl.loadClass("Test");
+            meth = cls.getMethod("main", String[].class);
+        }
+        catch (Throwable e) {
+            // Include the failure stack trace to the test output
+            System.out.println(MessageStart);
+            e.printStackTrace();
+            throw e;
+        }
         System.out.println(MessageStart);
 
         meth.invoke(null, args);

@@ -1125,10 +1125,10 @@ object SymDenotations {
     final def memberCanMatchInheritedSymbols(implicit ctx: Context): Boolean =
       !isConstructor && !is(Private)
 
-    /** The symbol, in class `inClass`, that is overridden by this denotation. */
-    final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
+    /** The symbol, in class `inClass`, that is overridden by this denotation in class `siteClass`.*/
+    final def overriddenSymbol(inClass: ClassSymbol, siteClass: ClassSymbol = owner.asClass)(implicit ctx: Context): Symbol =
       if (!canMatchInheritedSymbols && (owner ne inClass)) NoSymbol
-      else matchingDecl(inClass, owner.thisType)
+      else matchingDecl(inClass, siteClass.thisType)
 
     /** All symbols overridden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
@@ -1142,7 +1142,7 @@ object SymDenotations {
 
     private def overriddenFromType(tp: Type)(implicit ctx: Context): Iterator[Symbol] =
       tp.baseClasses match {
-        case _ :: inherited => inherited.iterator map overriddenSymbol filter (_.exists)
+        case _ :: inherited => inherited.iterator.map(overriddenSymbol(_)).filter(_.exists)
         case Nil => Iterator.empty
       }
 
