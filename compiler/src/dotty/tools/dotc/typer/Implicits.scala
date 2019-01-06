@@ -686,11 +686,11 @@ trait Implicits { self: Typer =>
       * An EmptyTree is returned if materialization fails.
       */
     def synthesizedValueOf(formal: Type)(implicit ctx: Context): Tree = {
-      def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withPos(pos)
+      def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
       formal.argTypes match {
         case arg :: Nil =>
-          fullyDefinedType(arg.dealias, "ValueOf argument", pos) match {
+          fullyDefinedType(arg.dealias, "ValueOf argument", span) match {
             case ConstantType(c: Constant) =>
               success(Literal(c))
             case TypeRef(_, sym) if sym == defn.UnitClass =>
