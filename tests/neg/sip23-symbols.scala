@@ -1,7 +1,7 @@
 object Test {
-  val sym0 = 's
+  val sym0 = 's // error: no longer supported
   //sym0: Symbol
-  sym0: 's // error
+  sym0: 's // error // error: no longer supported
 
   //val sym1: 's = 's
   //sym1: Symbol
@@ -15,9 +15,9 @@ object Test {
   type Identity[T] = T
   def narrow[T <: Singleton](t: T): Identity[T] = t
 
-  final val sym3 = id('s)
+  final val sym3 = id('s)   // error: no longer supported
   //sym3: Symbol
-  sym3: 's // error
+  sym3: 's // error // error: no longer supported
 
   //val sym4 = narrow('s)
   //sym4: Symbol

@@ -2,7 +2,7 @@ import collection.mutable.ListBuffer
 
 //object Test extends dotty.runtime.LegacyApp {
 object Test extends App {
-  def newLB = ListBuffer('a, 'b, 'c, 'd, 'e)
+  def newLB = ListBuffer(Symbol("a"), Symbol("b"), Symbol("c"), Symbol("d"), Symbol("e"))
 
   val lb0 = newLB
   println("Trying lb0 ...")
