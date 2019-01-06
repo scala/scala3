@@ -506,7 +506,6 @@ object Trees {
   /** selector match { cases } */
   case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
-    assert(cases.nonEmpty)
     type ThisTree[-T >: Untyped] = Match[T]
     def isInline = false
   }
