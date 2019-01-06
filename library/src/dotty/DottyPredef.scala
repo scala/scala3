@@ -40,4 +40,19 @@ object DottyPredef {
   @forceInline final def implicitly[T](implicit ev: T): T = ev
 
   @forceInline def locally[T](body: => T): T = body
+
+  /**
+   * Retrieve the single value of a type with a unique inhabitant.
+   *
+   * @example {{{
+   * object Foo
+   * val foo = valueOf[Foo.type]
+   * // foo is Foo.type = Foo
+   *
+   * val bar = valueOf[23]
+   * // bar is 23.type = 23
+   * }}}
+   * @group utilities
+   */
+  @forceInline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
 }
