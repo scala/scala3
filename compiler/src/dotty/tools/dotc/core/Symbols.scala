@@ -43,11 +43,11 @@ trait Symbols { this: Context =>
    *  it's debug-friendlier not to create an anonymous class here.
    */
   def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(implicit ctx: Context): Symbol { type ThisName = N } =
-    new Symbol(coord, ctx.nextId).asInstanceOf[Symbol { type ThisName = N }]
+    new Symbol(coord, ctx.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol without a denotation. */
   def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(implicit ctx: Context): ClassSymbol =
-    new ClassSymbol(coord, assocFile, ctx.nextId)
+    new ClassSymbol(coord, assocFile, ctx.nextSymId)
 
 // ---- Symbol creation methods ----------------------------------
 

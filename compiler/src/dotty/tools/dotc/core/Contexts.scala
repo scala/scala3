@@ -455,7 +455,7 @@ object Contexts {
     def pendingUnderlying: mutable.HashSet[Type]   = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
-    def nextId: Int                        = base.nextId
+    def nextSymId: Int                     = base.nextSymId
 
     def initialize()(implicit ctx: Context): Unit = base.initialize()(ctx)
   }
@@ -626,9 +626,9 @@ object Contexts {
     // Symbols state
 
     /** A counter for unique ids */
-    private[core] var _nextId: Int = 0
+    private[core] var _nextSymId: Int = 0
 
-    def nextId: Int = { _nextId += 1; _nextId }
+    def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
