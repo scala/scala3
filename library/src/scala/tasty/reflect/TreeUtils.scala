@@ -77,9 +77,9 @@ trait TreeUtils
         case IsDefinition(tdef @ TypeDef(_, rhs)) =>
           implicit val ctx = localCtx(tdef)
           foldTypeTree(x, rhs)
-        case IsDefinition(cdef @ ClassDef(_, constr, parents, self, body)) =>
+        case IsDefinition(cdef @ ClassDef(_, constr, parents, derived, self, body)) =>
           implicit val ctx = localCtx(cdef)
-          foldTrees(foldTrees(foldParents(foldTree(x, constr), parents), self), body)
+          foldTrees(foldTrees(foldTypeTrees(foldParents(foldTree(x, constr), parents), derived), self), body)
         case Import(expr, selectors) =>
           foldTree(x, expr)
         case IsPackageClause(clause @ PackageClause(pid, stats)) =>
@@ -183,7 +183,7 @@ trait TreeUtils
           implicit val ctx = localCtx(tree)
           TypeDef.copy(tree)(tree.name, transformTypeOrBoundsTree(tree.rhs))
         case IsClassDef(tree) =>
-          ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, tree.body)
+          ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
         case IsImport(tree) =>
           Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
       }
