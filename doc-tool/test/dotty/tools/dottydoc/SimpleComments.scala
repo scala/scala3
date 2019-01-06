@@ -3,6 +3,7 @@ package dottydoc
 
 import model.internal._
 import dotc.util.SourceFile
+import dotty.tools.io._
 
 import org.junit.Test
 import org.junit.Assert._
@@ -35,8 +36,7 @@ abstract class SimpleCommentsBase extends DottyDocTest {
   }
 
   @Test def simpleComment = {
-    val source = new SourceFile(
-      "HelloWorld.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -44,6 +44,7 @@ abstract class SimpleCommentsBase extends DottyDocTest {
       |trait HelloWorld
       """.stripMargin
     )
+
 
     val className = "scala.HelloWorld"
 
