@@ -109,6 +109,8 @@ sidebar:
               url: docs/reference/dropped-features/limit22.html
             - title: XML literals
               url: docs/reference/dropped-features/xml.html
+            - title: Symbol Literals
+              url: docs/reference/dropped-features/symlits.html
             - title: Auto-Application
               url: docs/reference/dropped-features/auto-apply.html
             - title: Weak Conformance
