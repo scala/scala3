@@ -51,9 +51,9 @@ object Rewrites {
     }
 
     def writeBack(): Unit = {
-      val out = source.file.output
       val chars = apply(source.underlying.content)
       val bytes = new String(chars).getBytes
+      val out = source.file.output
       out.write(bytes)
       out.close()
     }
