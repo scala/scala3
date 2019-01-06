@@ -109,7 +109,24 @@ trait ConstraintHandling[AbstractContext] {
         (c1 eq constraint) || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param)
-          isSubType(lo, hi)
+          hi match {
+            case AppliedType(tr: TypeRef, targs) =>
+              val recursiveBound: Boolean =
+                targs.exists {
+                  case lr: LazyRef => lr.ref == param
+                  case _ => false
+                }
+              if(!recursiveBound) isSubType(lo, hi)
+              else
+                tr.underlying match {
+                  case TypeBounds(trlo, trhi) if trlo.isMatch || trhi.isMatch =>
+                    true
+                  case _ =>
+                    isSubType(lo, hi)
+                }
+            case _ =>
+              isSubType(lo, hi)
+          }
         }
       }
     }
