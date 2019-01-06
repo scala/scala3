@@ -189,6 +189,7 @@ trait Printers
         case ClassDef(name, constr, parents, derived, self, body) =>
           this += "ClassDef(\"" += name += "\", " += constr += ", "
           visitList[TermOrTypeTree](parents, visitTermOrTypeTree)
+          this += ", "
           visitList[TypeTree](derived, visitTypeTree)
           this += ", " += self += ", " ++= body += ")"
         case PackageDef(name, owner) =>
