@@ -176,13 +176,13 @@ object Applications {
     def productArity: Int = app.productArity
     def productElement(n: Int): Any = app.productElement(n)
   }
-  
+
   /** The unapply method of this extractor also recognizes ExtMethodApplys in closure blocks.
    *  This is necessary to deal with closures as left arguments of extension method applications.
    *  A test case is i5606.scala
    */
   object ExtMethodApply {
-    def apply(app: Tree) = new ExtMethodApply(app)
+    def apply(app: Tree)(implicit ctx: Context) = new ExtMethodApply(app)
     def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
       case tree: ExtMethodApply => Some(tree.app)
       case Block(stats, ExtMethodApply(app)) => Some(tpd.cpy.Block(tree)(stats, app))
