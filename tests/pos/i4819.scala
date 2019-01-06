@@ -7,6 +7,12 @@ trait Two[Y <: Foo] {
 }
 
 class Foo extends One[Foo] with Two[Foo] {
-  concat(0) // OK
+  concat[Int](0) // OK
   // See also tests/neg/i4819.scala
+}
+
+class Bar extends One[String] with Two[Foo] {
+  val x: String = concat(0)
+  val y = concat[Int](0)
+  val z: Foo = concat(0)
 }
