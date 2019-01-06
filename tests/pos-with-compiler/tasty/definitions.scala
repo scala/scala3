@@ -348,7 +348,7 @@ object ReflectionImpl extends Tasty {
   import dotty.tools.dotc._
   import ast.tpd
   import core.{Types, Symbols, Contexts}
-  import util.{Positions}
+  import util.Spans
 
   type Type = Types.Type
   implicit class TypeDeco(x: Type) extends TypeAPI {}
@@ -361,7 +361,7 @@ object ReflectionImpl extends Tasty {
     val owner = c.owner
   }
 
-  type Position = Positions.Position
+  type Position = Spans.Span
   implicit class PositionDeco(p: Position) extends PositionAPI {
     val start = p.start
     val end = p.end
@@ -369,19 +369,19 @@ object ReflectionImpl extends Tasty {
 
   type Pattern = tpd.Tree
   implicit class PatternDeco(p: Pattern) extends TypedPositioned {
-    val pos = p.pos
+    val pos = p.span
     val tpe = p.tpe
   }
 
   type Term = tpd.Tree
   implicit class TermDeco(t: Term) extends TypedPositioned {
-    val pos = t.pos
+    val pos = t.span
     val tpe = t.tpe
   }
 
   type CaseDef = tpd.CaseDef
   implicit class CaseDefDeco(c: CaseDef) extends TypedPositioned {
-    val pos = c.pos
+    val pos = c.span
     val tpe = c.tpe
   }
 
