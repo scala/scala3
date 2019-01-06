@@ -690,6 +690,29 @@ trait Implicits { self: Typer =>
       }
     }
 
+    /** Creates a tree that will produce a ValueOf instance for the requested type.
+      * An EmptyTree is returned if materialization fails.
+      */
+    def synthesizedValueOf(formal: Type)(implicit ctx: Context): Tree = {
+      def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withPos(pos)
+
+      formal.argTypes match {
+        case arg :: Nil =>
+          fullyDefinedType(arg.dealias, "ValueOf argument", pos) match {
+            case ConstantType(c: Constant) =>
+              success(Literal(c))
+            case TypeRef(_, sym) if sym == defn.UnitClass =>
+              success(Literal(Constant(())))
+            case n: NamedType =>
+              success(ref(n))
+            case tp =>
+              EmptyTree
+          }
+        case _ =>
+          EmptyTree
+      }
+    }
+
     def hasEq(tp: Type): Boolean =
       inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).isSuccess
 
@@ -714,7 +737,8 @@ trait Implicits { self: Typer =>
           trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
               trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
-                trySpecialCase(defn.EqClass, synthesizedEq, failed))))
+                trySpecialCase(defn.EqClass, synthesizedEq,
+                  trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))
     }
   }
 
