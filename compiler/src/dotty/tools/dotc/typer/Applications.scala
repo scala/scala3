@@ -182,7 +182,7 @@ object Applications {
    *  A test case is i5606.scala
    */
   object ExtMethodApply {
-    def apply(app: Tree) = new ExtMethodApply(app)
+    def apply(app: Tree)(implicit ctx: Context) = new ExtMethodApply(app)
     def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
       case tree: ExtMethodApply => Some(tree.app)
       case Block(stats, ExtMethodApply(app)) => Some(tpd.cpy.Block(tree)(stats, app))
