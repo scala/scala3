@@ -90,4 +90,10 @@ class TabcompleteTests extends ReplTest {
       val expected = List("Renamed")
       assertEquals(expected, tabComplete("val foo: Rena"))
     }
+
+  @Test def tabClosureComplete = fromInitialState { implicit s =>
+    assertEquals(List("map", "mapConserve"), tabComplete("Nil.map"))
+    assertEquals(List("map", "mapConserve"), tabComplete("(x: Int => Int) => Nil.map"))
+    assertEquals(List("apply"), tabComplete("(x: Int => Int) => x.ap"))
+  }
 }
