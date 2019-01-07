@@ -14,6 +14,7 @@ trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
   }
 
   object Flags extends FlagsModule {
+    def Private: Flags = core.Flags.Private
     def Protected: Flags = core.Flags.Protected
     def Abstract: Flags = core.Flags.Abstract
     def Final: Flags = core.Flags.Final

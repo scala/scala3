@@ -100,6 +100,7 @@ trait Printers
 
     def showFlags(flags: Flags)(implicit ctx: Context): String = {
       val flagList = List.newBuilder[String]
+      if (flags.is(Flags.Private)) flagList += "Flags.Private"
       if (flags.is(Flags.Protected)) flagList += "Flags.Protected"
       if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
       if (flags.is(Flags.Final)) flagList += "Flags.Final"
@@ -471,6 +472,7 @@ trait Printers
 
     def showFlags(flags: Flags)(implicit ctx: Context): String = {
       val flagList = List.newBuilder[String]
+      if (flags.is(Flags.Private)) flagList += "private"
       if (flags.is(Flags.Protected)) flagList += "protected"
       if (flags.is(Flags.Abstract)) flagList += "abstract"
       if (flags.is(Flags.Final)) flagList += "final"
