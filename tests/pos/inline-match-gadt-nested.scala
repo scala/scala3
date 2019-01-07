@@ -1,5 +1,5 @@
 object `inline-match-gadt-nested` {
-  import scala.typelevel._
+  import scala.compiletime._
 
   enum Gadt[A, B] {
     case Nested(gadt: Gadt[A, Int]) extends Gadt[A, Int]
