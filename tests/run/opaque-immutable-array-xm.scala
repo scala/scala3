@@ -16,7 +16,7 @@ object Test extends App {
 
     // return a sorted copy of the array
     def sorted[A <: AnyRef : math.Ordering](ia: IArray[A]): IArray[A] = {
-      val arr = Arrays.copyOf(ia, (ia: Array[A]).length)
+      val arr = Arrays.copyOf(ia, (ia: Array[A]).length).nn
       scala.util.Sorting.quickSort(arr)
       arr
     }

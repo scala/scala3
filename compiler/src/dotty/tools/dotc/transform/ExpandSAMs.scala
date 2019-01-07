@@ -36,7 +36,7 @@ class ExpandSAMs extends MiniPhase {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType =>
-          tree // it's a plain or implicit function
+          tree // it's a plain function
         case SAMType(_) =>
           // If the type is a SAM type, it's also possibly nullable. However, here we're desugaring an
           // expression of the form `def fun() = {...}; closure(fun)`, so the desugaring should use the

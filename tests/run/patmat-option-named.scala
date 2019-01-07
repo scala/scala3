@@ -1,4 +1,4 @@
-case class HasSingleField(f: HasSingleField)
+case class HasSingleField(f: HasSingleField|Null)
 
 object Test {
 
