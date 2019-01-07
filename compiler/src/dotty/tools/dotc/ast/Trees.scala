@@ -815,7 +815,7 @@ object Trees {
   }
 
   class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoContext) {
-    assert(uniqueId != 1492)
+    // assert(uniqueId != 1492)
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
