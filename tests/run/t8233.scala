@@ -1,5 +1,5 @@
 object Test {
-  def bar(s: String) = s;
+  def bar(s: String|Null) = s;
   val o: Option[Null] = None
   def nullReference: Unit = {
     val a: Null = o.get

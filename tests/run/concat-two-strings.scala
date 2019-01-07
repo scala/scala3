@@ -4,7 +4,7 @@
 object Test {
   def f1(x: AnyRef)      = "" + x
   def f2(x: Int)         = "" + x
-  def f3(x: Array[Char]) = "" + x
+  def f3(x: Array[Char]|Null) = "" + x
   def f4(x: List[Int])   = "" + x
   def f5(x: Any)         = "" + x
   def f6(x: AnyVal)      = "" + x
