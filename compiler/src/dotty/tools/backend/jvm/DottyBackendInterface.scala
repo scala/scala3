@@ -21,7 +21,7 @@ import Types._
 import Symbols._
 import Phases._
 
-import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
+import dotty.tools.dotc.util.Positions
 import Decorators._
 import tpd._
 
@@ -41,7 +41,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type CompilationUnit = dotc.CompilationUnit
   type Constant        = Constants.Constant
   type Literal         = tpd.Literal
-  type Position        = SourcePosition
+  type Position        = Positions.Position
   type Name            = Names.Name
   type ClassDef        = tpd.TypeDef
   type TypeDef         = tpd.TypeDef
@@ -77,7 +77,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type Closure         = tpd.Closure
 
   val NoSymbol: Symbol = Symbols.NoSymbol
-  val NoPosition: Position = NoSourcePosition
+  val NoPosition: Position = Positions.NoPosition
   val EmptyTree: Tree = tpd.EmptyTree
 
 
@@ -383,8 +383,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def debuglog(msg: => String): Unit = ctx.debuglog(msg)
   def informProgress(msg: String): Unit = ctx.informProgress(msg)
   def log(msg: => String): Unit = ctx.log(msg)
-  def error(pos: SourcePosition, msg: String): Unit = ctx.error(msg, pos)
-  def warning(pos: SourcePosition, msg: String): Unit = ctx.warning(msg, pos)
+  def error(pos: Position, msg: String): Unit = ctx.error(msg, pos)
+  def warning(pos: Position, msg: String): Unit = ctx.warning(msg, pos)
   def abort(msg: String): Nothing = {
     ctx.error(msg)
     throw new RuntimeException(msg)
@@ -501,7 +501,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
             |signature: $sig
             |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-        """.trim, sym.sourcePos)
+        """.trim, sym.pos)
     }
   }
 
@@ -562,7 +562,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   implicit def positionHelper(a: Position): PositionHelper = new PositionHelper {
     def isDefined: Boolean = a.exists
-    def line: Int = a.line + 1
+    def line: Int = sourcePos(a).line + 1
     def finalPosition: Position = a
   }
 
@@ -586,7 +586,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit def treeHelper(a: Tree): TreeHelper = new TreeHelper {
     def symbol: Symbol = a.symbol
 
-    def pos: Position = a.sourcePos
+    def pos: Position = a.pos
 
     def isEmpty: Boolean = a.isEmpty
 
@@ -800,7 +800,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos.pos)
+      ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)
     }
 
     def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
@@ -808,7 +808,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def moduleSuffix: String = "" // todo: validate that names already have $ suffix
     def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
-    def pos: Position = sym.sourcePos
+    def pos: Position = sym.pos
 
     def throwsAnnotations: List[Symbol] = Nil
 
@@ -1104,7 +1104,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        error(field.sourcePos, s"JavaSeqArray with type ${field.tpe} reached backend: $field")
+        error(field.pos, s"JavaSeqArray with type ${field.tpe} reached backend: $field")
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
