@@ -127,4 +127,6 @@ trait CoreImpl extends scala.tasty.reflect.Core {
     type BindSymbol = core.Symbols.TermSymbol
     type ValSymbol = core.Symbols.TermSymbol
     type NoSymbol = core.Symbols.NoSymbol.type
+
+  type Flags = core.Flags.FlagSet
 }
