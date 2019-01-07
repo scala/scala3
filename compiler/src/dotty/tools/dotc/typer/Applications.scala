@@ -531,7 +531,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               case arg :: Nil if isVarArg(arg) =>
                 addTyped(arg, formal)
               case _ =>
-                val elemFormal = formal.repeatedToSingle
+                val elemFormal = formal.widenExpr.repeatedToSingle
                 val typedArgs =
                   harmonic(harmonizeArgs, elemFormal)(args.map(typedArg(_, elemFormal)))
                 typedArgs.foreach(addArg(_, elemFormal))

@@ -1273,14 +1273,7 @@ object Types {
     /** If this is a repeated type, its element type, otherwise the type itself */
     def repeatedToSingle(implicit ctx: Context): Type = this match {
       case tp @ ExprType(tp1) => tp.derivedExprType(tp1.repeatedToSingle)
-      case _                  =>
-        if (isRepeatedParam) {
-          val repTpe = stripJavaNull
-          assert(repTpe.argTypesLo.size == 1, s"Found repeated parameter type with more than one argument: ${this.show}")
-          repTpe.argTypesLo.head
-        } else {
-          this
-        }
+      case _                  => if (isRepeatedParam) stripJavaNull.argTypesHi.head else this
     }
 
     /** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
