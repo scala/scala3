@@ -724,15 +724,18 @@ object Contexts {
     def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean
     def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds
     def contains(sym: Symbol)(implicit ctx: Context): Boolean
+    def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type
     def debugBoundsDescription(implicit ctx: Context): String
     def fresh: GADTMap
+    def restore(other: GADTMap): Unit
+    def isEmpty: Boolean
   }
 
   final class SmartGADTMap private (
-    private[this] var myConstraint: Constraint,
-    private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar],
-    private[this] var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-    private[this] var boundCache: SimpleIdentityMap[Symbol, TypeBounds]
+    private var myConstraint: Constraint,
+    private var mapping: SimpleIdentityMap[Symbol, TypeVar],
+    private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+    private var boundCache: SimpleIdentityMap[Symbol, TypeBounds]
   ) extends GADTMap with ConstraintHandling[Context] {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -833,12 +836,29 @@ object Contexts {
 
     override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 
+    override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = {
+      val res = removeTypeVars(approximation(tvar(sym).origin, fromBelow = fromBelow))
+      gadts.println(i"approximating $sym ~> $res")
+      res
+    }
+
     override def fresh: GADTMap = new SmartGADTMap(
       myConstraint,
       mapping,
       reverseMapping,
       boundCache
     )
+
+    def restore(other: GADTMap): Unit = other match {
+      case other: SmartGADTMap =>
+        this.myConstraint = other.myConstraint
+        this.mapping = other.mapping
+        this.reverseMapping = other.reverseMapping
+        this.boundCache = other.boundCache
+      case _ => ;
+    }
+
+    override def isEmpty: Boolean = mapping.size == 0
 
     // ---- Private ----------------------------------------------------------
 
@@ -916,7 +936,12 @@ object Contexts {
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = unsupported("EmptyGADTMap.addBound")
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
     override def contains(sym: Symbol)(implicit ctx: Context) = false
+    override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = unsupported("EmptyGADTMap.approximation")
     override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGADTMap"
     override def fresh = new SmartGADTMap
+    override def restore(other: GADTMap): Unit = {
+      if (!other.isEmpty) sys.error("cannot restore a non-empty GADTMap")
+    }
+    override def isEmpty: Boolean = true
   }
 }
