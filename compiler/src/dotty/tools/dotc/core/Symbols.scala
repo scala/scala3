@@ -674,9 +674,7 @@ object Symbols {
     final def sourcePos(implicit ctx: Context): SourcePosition = {
       val source = {
         val f = sourceFile
-        if (f == null || f.isVirtual)
-          // don't trust virtual files for tree creation - replTest fails otherwise
-          ctx.source
+        if (f == null) ctx.source
         else ctx.getSource(f)
       }
       source.atSpan(span)
