@@ -137,7 +137,7 @@ class ModifiersParsingTest {
 
     source = parse("def f(implicit a: Int, b: Int) = ???")
     assert(source.defParam(0).modifiers == List(Mod.Implicit()))
-    assert(source.defParam(1).modifiers == List(Mod.Implicit()))
+    assert(source.defParam(1).modifiers == List())
 
     source = parse("def f(x: Int, y: Int)(implicit a: Int, b: Int) = ???")
     assert(source.defParam(0, 0).modifiers == List())
