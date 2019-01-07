@@ -91,6 +91,12 @@ class TabcompleteTests extends ReplTest {
       assertEquals(expected, tabComplete("val foo: Rena"))
     }
 
+  @Test def tabClosureComplete = fromInitialState { implicit s =>
+    assertEquals(List("map", "mapConserve"), tabComplete("Nil.map"))
+    assertEquals(List("map", "mapConserve"), tabComplete("(x: Int => Int) => Nil.map"))
+    assertEquals(List("apply"), tabComplete("(x: Int => Int) => x.ap"))
+  }
+
   @Test def importScala = fromInitialState { implicit s =>
     val comp = tabComplete("import scala.")
     // check that there are no special symbols leaked: <byname>, <special-ops>, ...
