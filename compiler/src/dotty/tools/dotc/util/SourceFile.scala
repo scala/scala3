@@ -36,7 +36,12 @@ object ScriptSourceFile {
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
 
-  lazy val content = computeContent
+  private var myContent: Array[Char] = null
+
+  def content(): Array[Char] = {
+    if (myContent == null) myContent = computeContent
+    myContent
+  }
 
   def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
   def this(name: String, content: String) = this(new VirtualFile(name), content.toCharArray)
@@ -54,9 +59,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
   override def hashCode: Int = file.path.## + start.##
 
-  def apply(idx: Int): Char = content.apply(idx)
+  def apply(idx: Int): Char = content().apply(idx)
 
-  val length: Int = content.length
+  val length: Int = content().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -81,9 +86,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   private def isLineBreak(idx: Int) =
     if (idx >= length) false else {
-      val ch = content(idx)
+      val ch = content()(idx)
       // don't identify the CR in CR LF as a line break, since LF will do.
-      if (ch == CR) (idx + 1 == length) || (content(idx + 1) != LF)
+      if (ch == CR) (idx + 1 == length) || (content()(idx + 1) != LF)
       else isLineBreakChar(ch)
     }
 
@@ -94,7 +99,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
   }
-  private lazy val lineIndices: Array[Int] = calculateLineIndices(content)
+  private lazy val lineIndices: Array[Int] = calculateLineIndices(content())
 
   /** Map line to offset of first character in line */
   def lineToOffset(index: Int): Int = lineIndices(index)
@@ -130,7 +135,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     var idx = startOfLine(offset)
     var col = 0
     while (idx != offset) {
-      col += (if (idx < length && content(idx) == '\t') (tabInc - col) % tabInc else 1)
+      col += (if (idx < length && content()(idx) == '\t') (tabInc - col) % tabInc else 1)
       idx += 1
     }
     col
@@ -141,7 +146,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     var idx = startOfLine(offset)
     val pad = new StringBuilder
     while (idx != offset) {
-      pad.append(if (idx < length && content(idx) == '\t') '\t' else ' ')
+      pad.append(if (idx < length && content()(idx) == '\t') '\t' else ' ')
       idx += 1
     }
     pad.result()
