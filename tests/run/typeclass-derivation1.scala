@@ -42,8 +42,8 @@ object Deriving {
       case eq: Eq[T] => eq.equals(x, y)
     }
 
-    inline def deriveForSum[Alts <: Tuple](x: Any, y: Any): Boolean = inline erasedValue[Alts] match {
-      case _: (alt *: alts1) =>
+    inline def deriveForSum[Alts <: Tuple](x: Any, y: Any): Boolean = inline typeOf[Alts] match {
+      case _: Subtype[(alt *: alts1)] =>
         x match {
           case x: `alt` =>
             y match {
@@ -52,17 +52,17 @@ object Deriving {
             }
           case _ => deriveForSum[alts1](x, y)
         }
-      case _: Unit =>
+      case _: Subtype[Unit] =>
         false
     }
 
-    inline def deriveForProduct[Elems <: Tuple](xs: Elems, ys: Elems): Boolean = inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
+    inline def deriveForProduct[Elems <: Tuple](xs: Elems, ys: Elems): Boolean = inline typeOf[Elems] match {
+      case _: Subtype[(elem *: elems1)] =>
         val xs1 = xs.asInstanceOf[elem *: elems1]
         val ys1 = ys.asInstanceOf[elem *: elems1]
         tryEq[elem](xs1.head, ys1.head) &&
         deriveForProduct[elems1](xs1.tail, ys1.tail)
-      case _: Unit =>
+      case _: Subtype[Unit] =>
         true
     }
 

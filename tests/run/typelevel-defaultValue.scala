@@ -1,21 +1,18 @@
-
-object typelevel {
-  erased def erasedValue[T]: T = ???
-}
-
 object Test extends App {
+  import scala.typelevel._
 
-  inline def defaultValue[T] <: Option[Any] = inline typelevel.erasedValue[T] match {
-    case _: Byte => Some(0: Byte)
-    case c: Char => Some(0: Char)
-    case d @ (_: Short) => Some(0: Short)
-    case _: Int => Some(0)
-    case _: Long => Some(0L)
-    case _: Float => Some(0.0f)
-    case _: Double => Some(0.0d)
-    case _: Boolean => Some(false)
-    case _: Unit => Some(())
-    //case _: t >: Null => Some(null)
+  inline def defaultValue[T]: Option[T] = inline typeOf[T] match {
+    case _: Subtype[Singleton] => Some(constValue[T])
+    case _: Exactly[Byte] => Some(0: Byte)
+    case c: Exactly[Char] => Some(0: Char)
+    case d @ (_: Exactly[Short]) => Some(0: Short)
+    case _: Exactly[Int] => Some(0)
+    case _: Exactly[Long] => Some(0L)
+    case _: Exactly[Float] => Some(0.0f)
+    case _: Exactly[Double] => Some(0.0d)
+    case _: Exactly[Boolean] => Some(false)
+    case _: Exactly[Unit] => Some(())
+    case _: Supertype[Null] => Some(null)
     case _ => None
   }
 

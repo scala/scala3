@@ -2,7 +2,12 @@ package scala
 
 package object typelevel {
 
-  erased def erasedValue[T]: T = ???
+  final abstract class Type[-A, +B]
+  type Exactly[T] = Type[T, T]
+  type Subtype[T] = Type[_, T]
+  type Supertype[T] = Type[T, _]
+
+  erased def typeOf[T]: Type[T, T] = ???
 
   case class Typed[T](val value: T) { type Type = T }
 

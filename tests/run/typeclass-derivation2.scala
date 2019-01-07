@@ -183,11 +183,11 @@ object Eq {
   }
 
   inline def eqlElems[Elems <: Tuple](xs: Mirror, ys: Mirror, n: Int): Boolean =
-    inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
+    inline typeOf[Elems] match {
+      case _: Subtype[(elem *: elems1)] =>
         tryEql[elem](xs(n).asInstanceOf, ys(n).asInstanceOf) &&
         eqlElems[elems1](xs, ys, n + 1)
-      case _: Unit =>
+      case _: Subtype[Unit] =>
         true
     }
 
@@ -195,8 +195,8 @@ object Eq {
     eqlElems[Elems](r.reflect(x), r.reflect(y), 0)
 
   inline def eqlCases[T, Alts <: Tuple](r: Reflected[T], x: T, y: T): Boolean =
-    inline erasedValue[Alts] match {
-      case _: (Shape.Case[alt, elems] *: alts1) =>
+    inline typeOf[Alts] match {
+      case _: Subtype[(Shape.Case[alt, elems] *: alts1)] =>
         x match {
           case x: `alt` =>
             y match {
@@ -205,15 +205,15 @@ object Eq {
             }
           case _ => eqlCases[T, alts1](r, x, y)
       }
-    case _: Unit =>
+    case _: Subtype[Unit] =>
       false
   }
 
   inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Eq[T] = new {
-    def eql(x: T, y: T): Boolean = inline erasedValue[S] match {
-      case _: Shape.Cases[alts] =>
+    def eql(x: T, y: T): Boolean = inline typeOf[S] match {
+      case _: Subtype[Shape.Cases[alts]] =>
         eqlCases[T, alts](ev, x, y)
-      case _: Shape.Case[_, elems] =>
+      case _: Subtype[Shape.Case[_, elems]] =>
         eqlCase[T, elems](ev, x, y)
     }
   }
@@ -240,19 +240,19 @@ object Pickler {
   }
 
   inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Mirror, n: Int): Unit =
-    inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
+    inline typeOf[Elems] match {
+      case _: Subtype[(elem *: elems1)] =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
         pickleElems[elems1](buf, elems, n + 1)
-      case _: Unit =>
+      case _: Subtype[Unit] =>
     }
 
   inline def pickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T): Unit =
     pickleElems[Elems](buf, r.reflect(x), 0)
 
   inline def pickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
-    inline erasedValue[Alts] match {
-      case _: (Shape.Case[alt, elems] *: alts1) =>
+    inline typeOf[Alts] match {
+      case _: Subtype[(Shape.Case[alt, elems] *: alts1)] =>
         x match {
           case x: `alt` =>
             buf += n
@@ -260,7 +260,7 @@ object Pickler {
           case _ =>
             pickleCases[T, alts1](r, buf, x, n + 1)
         }
-      case _: Unit =>
+      case _: Subtype[Unit] =>
     }
 
   inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implicit match {
@@ -268,11 +268,11 @@ object Pickler {
   }
 
   inline def unpickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
-    inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
+    inline typeOf[Elems] match {
+      case _: Subtype[(elem *: elems1)] =>
         elems(n) = tryUnpickle[elem](buf).asInstanceOf[AnyRef]
         unpickleElems[elems1](buf, elems, n + 1)
-      case _: Unit =>
+      case _: Subtype[Unit] =>
     }
 
   inline def unpickleCase[T, Elems <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int): T = {
@@ -287,8 +287,8 @@ object Pickler {
   }
 
   inline def unpickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
-    inline erasedValue[Alts] match {
-      case _: (Shape.Case[_, elems] *: alts1) =>
+    inline typeOf[Alts] match {
+      case _: Subtype[(Shape.Case[_, elems] *: alts1)] =>
         if (n == ordinal) unpickleCase[T, elems](r, buf, ordinal)
         else unpickleCases[T, alts1](r, buf, ordinal, n + 1)
       case _ =>
@@ -296,16 +296,16 @@ object Pickler {
     }
 
   inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Pickler[T] = new {
-    def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline erasedValue[S] match {
-      case _: Shape.Cases[alts] =>
+    def pickle(buf: mutable.ListBuffer[Int], x: T): Unit = inline typeOf[S] match {
+      case _: Subtype[Shape.Cases[alts]] =>
         pickleCases[T, alts](ev, buf, x, 0)
-      case _: Shape.Case[_, elems] =>
+      case _: Subtype[Shape.Case[_, elems]] =>
         pickleCase[T, elems](ev, buf, x)
     }
-    def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[S] match {
-      case _: Shape.Cases[alts] =>
+    def unpickle(buf: mutable.ListBuffer[Int]): T = inline typeOf[S] match {
+      case _: Subtype[Shape.Cases[alts]] =>
         unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
-      case _: Shape.Case[_, elems] =>
+      case _: Subtype[Shape.Case[_, elems]] =>
         unpickleCase[T, elems](ev, buf, 0)
     }
   }
@@ -329,12 +329,12 @@ object Show {
   }
 
   inline def showElems[Elems <: Tuple](elems: Mirror, n: Int): List[String] =
-    inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
+    inline typeOf[Elems] match {
+      case _: Subtype[(elem *: elems1)] =>
         val formal = elems.elementLabel(n)
         val actual = tryShow[elem](elems(n).asInstanceOf)
         s"$formal = $actual" :: showElems[elems1](elems, n + 1)
-      case _: Unit =>
+      case _: Subtype[Unit] =>
         Nil
     }
 
@@ -345,21 +345,21 @@ object Show {
   }
 
   inline def showCases[T, Alts <: Tuple](r: Reflected[T], x: T): String =
-    inline erasedValue[Alts] match {
-      case _: (Shape.Case[alt, elems] *: alts1) =>
+    inline typeOf[Alts] match {
+      case _: Subtype[(Shape.Case[alt, elems] *: alts1)] =>
         x match {
           case x: `alt` => showCase[T, elems](r, x)
           case _ => showCases[T, alts1](r, x)
         }
-      case _: Unit =>
+      case _: Subtype[Unit] =>
         throw new MatchError(x)
     }
 
   inline def derived[T, S <: Shape](implicit ev: Shaped[T, S]): Show[T] = new {
-    def show(x: T): String = inline erasedValue[S] match {
-      case _: Shape.Cases[alts] =>
+    def show(x: T): String = inline typeOf[S] match {
+      case _: Subtype[Shape.Cases[alts]] =>
         showCases[T, alts](ev, x)
-      case _: Shape.Case[_, elems] =>
+      case _: Subtype[Shape.Case[_, elems]] =>
         showCase[T, elems](ev, x)
     }
   }
