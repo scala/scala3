@@ -93,6 +93,12 @@ object Test {
     assert(rf(1, "hello") == 1)
     assert(sf("abc") == 1)
 
+    // Implicit nullary function
+    {
+      val f: implicit () => Int = 42
+      assert (f == 42)
+    }
+
     // With null
     {
       val f: (Int => Int)|Null = (x: Int) => 2

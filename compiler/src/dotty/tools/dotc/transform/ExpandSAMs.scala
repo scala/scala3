@@ -19,6 +19,7 @@ import dotty.tools.dotc.util.Positions.Position
  *   4. Closures that implement traits which run initialization code.
  *   5. Closures that get synthesized abstract methods in the transformation pipeline. These methods can be
  *      (1) superaccessors, (2) outer references, (3) accessors for fields.
+ *   6. Nullable functions: e.g. `(Int => Int)|Null`
  *
  *  However, implicit function types do not count as SAM types.
  */
@@ -45,12 +46,9 @@ class ExpandSAMs extends MiniPhase {
           // In other words, `val x: Int => Int = (x) => x` and `val x: (Int => Int)|Null = (x) => x` both typecheck,
           // but the former uses the platform SAM types, vs the latter which uses an anonymous class.
           val tpe = tpt.tpe.stripNull
-          // TODO(abeln): remove comment below after review.
-          // The lines below were commented out because implicit function types should be handled
-          // in `case NoType` above, as per the comment on the contents of `tpe` in the definition of `Closure`.
-          // if (defn.isImplicitFunctionType(tpe)) {
-          //   tree
-          if (tpe.isRef(defn.PartialFunctionClass)) {
+          if (defn.isImplicitFunctionType(tpe)) {
+            tree
+          } else if (tpe.isRef(defn.PartialFunctionClass)) {
             val tpe1 = checkRefinements(tpe, fn.pos)
             toPartialFunction(tree, tpe1)
           } else if (isPlatformSam(tpe.classSymbol.asClass)) {

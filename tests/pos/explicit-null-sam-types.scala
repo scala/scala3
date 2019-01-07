@@ -18,4 +18,10 @@ class Foo {
   def foo(m: Int) = {}
 
   foo((x) => "hello")
+
+  // Implicit nullary function
+  {
+    val f: implicit () => String = "hello"
+    f
+  }
 }
