@@ -48,4 +48,11 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
       }
     }
   }
+
+  def TypeToQuoteDeco(tpe: Types.Type): TypeToQuotedAPI = new TypeToQuotedAPI {
+    def seal(implicit ctx: Context): quoted.Type[_] = {
+      val dummyPos = ctx.owner.pos // FIXME
+      new scala.quoted.Types.TreeType(tpd.TypeTree(tpe).withPos(dummyPos))
+    }
+  }
 }
