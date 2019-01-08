@@ -35,10 +35,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                   case IsDefSymbol(symbol) =>
                     val args1 = if (args == null) Nil else args.toList
                     val evaluatedArgs = args1.map(arg => LocalValue.valFrom(arg))
-
-                    val env1 = implicitly[Env] ++ symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
-                    // println(symbol.tree)
-                    eval(symbol.tree.rhs.get)(env1).asInstanceOf[Object]
+                    val syms = symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+                    withLocalValues(syms, evaluatedArgs) {
+                      eval(symbol.tree.rhs.get).asInstanceOf[Object]
+                    }
                 }
               }
               else {

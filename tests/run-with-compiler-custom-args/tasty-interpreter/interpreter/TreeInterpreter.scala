@@ -15,6 +15,14 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   type Result = implicit Env => AbstractAny
 
+  def localValue(sym: Symbol)(implicit env: Env): LocalValue = env(sym)
+
+  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: implicit Env => T)(implicit env: Env): T =
+    in(env.updated(sym, value))
+
+  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: implicit Env => T)(implicit env: Env): T =
+    in(env ++ syms.zip(values))
+
   def interpretCall(fn: Term, argss: List[List[Term]]): Result = {
     val env0 = fn match {
       case Term.Select(prefix, _) =>
@@ -25,10 +33,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     fn.symbol match {
       case IsDefSymbol(sym) =>
         val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-        val env1 = env0 ++ sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
-        eval(sym.tree.rhs.get)(env1)
+        val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+        withLocalValues(syms, evaluatedArgs) {
+          eval(sym.tree.rhs.get)
+        }
       case _ =>
-        env0(fn.symbol).get
+        localValue(fn.symbol)(env0).get
     }
   }
 
@@ -115,7 +125,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
         }
 
       case Term.Assign(lhs, rhs) =>
-        log("<interpretAssing>", tree)(implicitly[Env].apply(lhs.symbol).update(eval(rhs)))
+        log("<interpretAssing>", tree)(localValue(lhs.symbol).update(eval(rhs)))
 
       case Term.If(cond, thenp, elsep) => log("interpretIf", tree)(interpretIf(cond, thenp, elsep))
       case Term.While(cond, body)      => log("interpretWhile", tree)(interpretWhile(cond, body))
