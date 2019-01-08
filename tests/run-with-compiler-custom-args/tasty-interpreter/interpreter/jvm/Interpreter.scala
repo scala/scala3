@@ -31,6 +31,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
               val symbol = sym.methods.find(_.name == method.getName).get
 
               if (symbol.isDefinedInCurrentRun) {
+                // TODO use `super.interpretCall(...)`
                 symbol match {
                   case IsDefSymbol(symbol) =>
                     val args1 = if (args == null) Nil else args.toList
@@ -58,35 +59,33 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
   override def interpretCall(fn: Term, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) super.interpretCall(fn, argss)
     else {
+      fn match {
+        case Term.Select(prefix, _) =>
+          val IsDefSymbol(sym) = fn.symbol
+          val pre = eval(prefix).asInstanceOf[Object]
+          val argss2 = evaluatedArgss(argss)
+          jvmReflection.interpretMethodCall(pre, fn.symbol, argss2)
+        case _ =>
+          val IsDefSymbol(sym) = fn.symbol
+          val argss2 = evaluatedArgss(argss)
+          jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
+      }
+    }
+  }
+
+  override def interpretValGet(fn: Term): Result = {
+    if (fn.symbol.isDefinedInCurrentRun) super.interpretValGet(fn)
+    else {
       import Term._
       fn match {
         case Select(prefix, _) =>
-          fn.symbol match {
-            case IsDefSymbol(sym) =>
-              val pre = eval(prefix).asInstanceOf[Object]
-              val argss2 = evaluatedArgss(argss)
-              jvmReflection.interpretMethodCall(pre, fn.symbol, argss2)
-            case _ =>
-              // TODO not necesarly static?
-              jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
-          }
+          // FIXME not necesarly static
+          jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
-          // println(fn.show)
-          fn.symbol match {
-            // TODO: obviously
-            case IsDefSymbol(sym) =>
-              val argss2 = evaluatedArgss(argss)
-              // argss2.foreach(println)
-              jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
-            case _ =>
-              if (fn.symbol.flags.isObject) {
-                jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
-              }
-              // call to a static val
-              else {
-                jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
-              }
-          }
+          if (fn.symbol.flags.isObject)
+            jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
+          else
+            jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
       }
     }
   }
