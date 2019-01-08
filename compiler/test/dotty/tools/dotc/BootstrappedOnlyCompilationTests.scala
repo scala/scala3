@@ -49,7 +49,6 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   @Test def posTwiceWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("posTwiceWithCompiler")
     compileFile("tests/pos-with-compiler/Labels.scala", withCompilerOptions) +
-    compileFile("tests/pos-with-compiler/Labels.scala", withCompilerOptions) +
     compileFile("tests/pos-with-compiler/Patterns.scala", withCompilerOptions) +
     compileList(
       "testNonCyclic",
