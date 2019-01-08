@@ -9,7 +9,7 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def SymbolDeco(symbol: Symbol): SymbolAPI = new SymbolAPI {
 
-    def flags(implicit ctx: Context): FlagSet = new FlagSet(symbol.flags)
+    def flags(implicit ctx: Context): Flags = symbol.flags
 
     def privateWithin(implicit ctx: Context): Option[Type] = {
       val within = symbol.privateWithin

@@ -48,6 +48,7 @@ object Macros {
       def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
       def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
+      def showFlags(flags: Flags)(implicit ctx: reflect.Context): String = "Flags"
     }
   }
 

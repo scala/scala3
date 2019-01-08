@@ -109,6 +109,8 @@ package scala.tasty.reflect
  *              +- BindSymbol
  *              +- NoSymbol
  *
+ *  +- Flags
+ *
  *  Aliases:
  *   # TermOrTypeTree = Term | TypeTree
  *
@@ -445,4 +447,6 @@ trait Core {
     /** No symbol available. */
     type NoSymbol <: Symbol
 
+  /** FlagSet of a Symbol */
+  type Flags
 }
