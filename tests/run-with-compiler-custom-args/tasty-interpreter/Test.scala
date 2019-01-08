@@ -1,10 +1,60 @@
+import java.io.{ByteArrayOutputStream, PrintStream}
+
+import dotty.tools.dotc.util.DiffUtil
+
+import scala.io.Source
 import scala.tasty.file._
 import scala.tasty.interpreter.jvm.Interpreter
 import scala.tasty.Reflection
 
 object Test {
   def main(args: Array[String]): Unit = {
-    ConsumeTasty("", List("IntepretedMain", "InterpretedBar"), new TastyInterpreter)
+    val ps = new ByteArrayOutputStream()
+    scala.Console.withOut(ps) {
+      ConsumeTasty("", List("IntepretedMain", "InterpretedBar"), new TastyInterpreter)
+    }
+    val expectedOutput =
+      """42
+        |
+        |Hello
+        |
+        |42
+        |
+        |43
+        |
+        |if
+        |
+        |5
+        |4
+        |3
+        |2
+        |1
+        |
+        |42
+        |
+        |55
+        |precompiledModule
+        |55
+        |56
+        |57
+        |58
+        |59
+        |60
+        |61
+        |62
+        |63
+        |true
+        |false
+        |64
+        |""".stripMargin
+
+    val actualOutput = ps.toString
+
+    assert(expectedOutput == actualOutput,
+      "\n>>>>>>>>>>>>>>>>>>\n" +
+      DiffUtil.mkColoredCodeDiff(actualOutput, expectedOutput, true) +
+      "<<<<<<<<<<<<<<<<<<"
+    )
   }
 }
 
