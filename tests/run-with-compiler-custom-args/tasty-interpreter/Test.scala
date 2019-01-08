@@ -4,7 +4,7 @@ import dotty.tools.dotc.util.DiffUtil
 
 import scala.io.Source
 import scala.tasty.file._
-import scala.tasty.interpreter.jvm.Interpreter
+import scala.tasty.interpreter.TastyInterpreter
 import scala.tasty.Reflection
 
 object Test {
@@ -61,26 +61,5 @@ object Test {
       DiffUtil.mkColoredCodeDiff(actualOutput, expectedOutput, true) +
       "<<<<<<<<<<<<<<<<<<"
     )
-  }
-}
-
-class TastyInterpreter extends TastyConsumer {
-
-  final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect._
-    object Traverser extends TreeTraverser {
-
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
-        // TODO: check the correct sig and object enclosement for main
-        case DefDef("main", _, _, _, Some(rhs)) =>
-          val interpreter = new Interpreter(reflect)
-
-          interpreter.eval(rhs)(Map.empty)
-        // TODO: recurse only for PackageDef, ClassDef
-        case tree =>
-          super.traverseTree(tree)
-      }
-    }
-    Traverser.traverseTree(root)(reflect.rootContext)
   }
 }
