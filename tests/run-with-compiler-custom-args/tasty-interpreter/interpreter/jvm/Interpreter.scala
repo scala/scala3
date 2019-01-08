@@ -20,11 +20,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
           val parentSymbols = sym.tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
           import java.lang.reflect._
           val handler: InvocationHandler = new InvocationHandler() {
-            val instance = new Object
 
             def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
               if (LOG) {
-                val proxyString = if (method.getName == "toString") method.invoke(instance) else proxy.toString
+                val proxyString = if (method.getName == "toString") method.invoke(this) else proxy.toString
                 println(s"%> proxy call `$method` on `$proxyString` with args=${if (args == null) Nil else args.toList}")
               }
 
@@ -42,8 +41,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                     eval(symbol.tree.rhs.get)(env1).asInstanceOf[Object]
                 }
               }
-              else
-                method.invoke(instance, args: _*)
+              else {
+                assert(method.getClass == classOf[Object])
+                method.invoke(this, args: _*)
+              }
             }
 
           }
