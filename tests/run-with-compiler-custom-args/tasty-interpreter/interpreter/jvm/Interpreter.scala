@@ -31,15 +31,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
               val symbol = sym.methods.find(_.name == method.getName).get
 
               if (symbol.isDefinedInCurrentRun) {
-                // TODO use `super.interpretCall(...)`
+                val argsList = if (args == null) Nil else args.toList
                 symbol match {
                   case IsDefSymbol(symbol) =>
-                    val args1 = if (args == null) Nil else args.toList
-                    val evaluatedArgs = args1.map(arg => LocalValue.valFrom(arg))
-                    val syms = symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
-                    withLocalValues(syms, evaluatedArgs) {
-                      eval(symbol.tree.rhs.get).asInstanceOf[Object]
-                    }
+                    interpretCall(this, symbol, argsList).asInstanceOf[Object]
                 }
               }
               else {

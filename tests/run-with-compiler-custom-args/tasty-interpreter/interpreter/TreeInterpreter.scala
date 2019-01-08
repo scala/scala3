@@ -23,12 +23,22 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: implicit Env => T)(implicit env: Env): T =
     in(env ++ syms.zip(values))
 
+  def interpretCall(instance: AbstractAny, sym: DefSymbol, args: List[AbstractAny]): Result = {
+    // TODO
+    // withLocalValue(`this`, instance) {
+      val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+      withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
+        eval(sym.tree.rhs.get)
+      }
+    // }
+  }
+
   def interpretCall(fn: Term, argss: List[List[Term]]): Result = {
-    val env0 = fn match {
-      case Term.Select(prefix, _) =>
-        val pre = eval(prefix)
-        implicitly[Env] // FIXME add pre to the env as `this`
-      case _ => implicitly[Env]
+    fn match {
+      case Term.Select (prefix, _) =>
+        val pre = eval (prefix)
+        // TODO use
+      case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
     val IsDefSymbol(sym) = fn.symbol
