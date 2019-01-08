@@ -207,9 +207,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
-
-    override def cloned(implicit src: SourceInfo): Modifiers =
-      clone.asInstanceOf[Modifiers]
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()
