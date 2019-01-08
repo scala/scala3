@@ -2,15 +2,13 @@
 
 
 - Abstract platform operations
+  - Arrays
 - Proxies
+  - Enviroment of the object
+  - `this` in Env
+  - Class with fields
+  - Class with custom constructor (and secondary)
 
-  // Foo defined in current run
-  class Foo extends IFace1 with IFace2 ...
-  new Foo.meth()
-
-  // Bar is precompiled
-  class Bar {
-    def meth(x: IFace1) = x.meth()
-  }
-
-  FooProxy(obj).meth()
+- Stack
+  - local def env (closures)
+  - local class env
