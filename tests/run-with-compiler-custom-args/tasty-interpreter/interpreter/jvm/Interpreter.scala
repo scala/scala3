@@ -23,6 +23,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
             val instance = new Object
 
             def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
+              if (LOG) {
+                val proxyString = if (method.getName == "toString") method.invoke(instance) else proxy.toString
+                println(s"%> proxy call `$method` on `$proxyString` with args=${if (args == null) Nil else args.toList}")
+              }
 
               // println(method)
               val symbol = sym.methods.find(_.name == method.getName).get
