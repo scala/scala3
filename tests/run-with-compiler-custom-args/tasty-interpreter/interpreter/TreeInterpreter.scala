@@ -6,6 +6,8 @@ import scala.tasty.Reflection
 abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   import reflect._
 
+  final val LOG = false
+
   type Env = Map[Symbol, LocalValue]
 
   /** Representation of objects and values in the interpreter */
@@ -73,49 +75,54 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretPrivitiveRem(x: AbstractAny, y: AbstractAny): AbstractAny
 
   def eval(tree: Statement)(implicit env: Env): AbstractAny = {
-
     tree match {
       case Call(fn, targs, argss) =>
         fn match {
-          case Term.Select(_, "<init>") => interpretNew(fn, argss)
-          case Term.Select(prefix, "isInstanceOf") => interpretIsInstanceOf(eval(prefix), targs.head)
-          case Term.Select(prefix, "asInstanceOf") => interpretAsInstanceOf(eval(prefix), targs.head)
-          case Term.Select(prefix, "==") => interpretEqEq(eval(prefix), eval(argss.head.head))
+          case Term.Select(_, "<init>") =>  log("interpretNew", tree)(interpretNew(fn, argss))
+          case Term.Select(prefix, "isInstanceOf") => log("interpretIsInstanceOf", tree)(interpretIsInstanceOf(eval(prefix), targs.head))
+          case Term.Select(prefix, "asInstanceOf") => log("interpretAsInstanceOf", tree)(interpretAsInstanceOf(eval(prefix), targs.head))
+          case Term.Select(prefix, "==") => log("interpretEqEq", tree)(interpretEqEq(eval(prefix), eval(argss.head.head)))
           case Term.Select(prefix, name @ ("+" | "-" | "*" | "<" | ">" | "<=" | "=>")) if isNumericPrimitive(prefix.tpe) =>
             val lhs = eval(prefix)
             val rhs = eval(argss.head.head)
             name match {
-              case "+" => interpretPrivitivePlus(lhs, rhs)
-              case "-" => interpretPrivitiveMinus(lhs, rhs)
-              case "*" => interpretPrivitiveTimes(lhs, rhs)
-              case "<" => interpretPrivitiveLt(lhs, rhs)
-              case ">" => interpretPrivitiveGt(lhs, rhs)
-              case "<=" => interpretPrivitiveLtEq(lhs, rhs)
-              case ">=" => interpretPrivitiveGtEq(lhs, rhs)
+              case "+" => log("interpretPrivitivePlus", tree)(interpretPrivitivePlus(lhs, rhs))
+              case "-" => log("interpretPrivitiveMinus", tree)(interpretPrivitiveMinus(lhs, rhs))
+              case "*" => log("interpretPrivitiveTimes", tree)(interpretPrivitiveTimes(lhs, rhs))
+              case "<" => log("interpretPrivitiveLt", tree)(interpretPrivitiveLt(lhs, rhs))
+              case ">" => log("interpretPrivitiveGt", tree)(interpretPrivitiveGt(lhs, rhs))
+              case "<=" => log("interpretPrivitiveLtEq", tree)(interpretPrivitiveLtEq(lhs, rhs))
+              case ">=" => log("interpretPrivitiveGtEq", tree)(interpretPrivitiveGtEq(lhs, rhs))
             }
           case Term.Select(prefix, name @ ("/" | "%")) if isIntegralPrimitive(prefix.tpe) =>
-            val lhs = eval(prefix)
-            val rhs = eval(argss.head.head)
-            if (name == "/") interpretPrivitiveQuot(lhs, rhs)
-            else interpretPrivitiveRem(lhs, rhs)
+            def lhs = eval(prefix)
+            def rhs = eval(argss.head.head)
+            if (name == "/") log("interpretPrivitiveQuot", tree)(interpretPrivitiveQuot(lhs, rhs))
+            else log("interpretPrivitiveRem", tree)(interpretPrivitiveRem(lhs, rhs))
           case Term.Select(prefix, name @ "/") if isFractionalPrimitive(prefix.tpe) =>
-            val lhs = eval(prefix)
-            val rhs = eval(argss.head.head)
-            interpretPrivitiveDiv(lhs, rhs)
-          case _ => interpretCall(fn, argss)
+            def lhs = eval(prefix)
+            def rhs = eval(argss.head.head)
+            log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))
+          case _ => log("interpretCall", tree)(interpretCall(fn, argss))
         }
 
       case Term.Assign(lhs, rhs) =>
-        env(lhs.symbol).update(eval(rhs))
+        log("<interpretAssing>", tree)(env(lhs.symbol).update(eval(rhs)))
 
-      case Term.If(cond, thenp, elsep) => interpretIf(cond, thenp, elsep)
-      case Term.While(cond, body)      => interpretWhile(cond, body)
-      case Term.Block(stats, expr)     => interpretBlock(stats, expr)
-      case Term.Literal(const)         => interpretLiteral(const)
-      case Term.Typed(expr, _)         => eval(expr)
+      case Term.If(cond, thenp, elsep) => log("interpretIf", tree)(interpretIf(cond, thenp, elsep))
+      case Term.While(cond, body)      => log("interpretWhile", tree)(interpretWhile(cond, body))
+      case Term.Block(stats, expr)     => log("interpretBlock", tree)(interpretBlock(stats, expr))
+      case Term.Literal(const)         => log("interpretLiteral", tree)(interpretLiteral(const))
+      case Term.Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
 
       case _ => throw new MatchError(tree.show)
     }
+  }
+
+  inline def log[T](tag: => String, tree: => Statement)(thunk: => T): T = {
+    if (LOG)
+      println(s"#> $tag: ${tree.show}")
+    thunk
   }
 
   trait LocalValue {

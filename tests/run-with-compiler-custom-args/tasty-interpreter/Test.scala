@@ -10,8 +10,10 @@ import scala.tasty.Reflection
 object Test {
   def main(args: Array[String]): Unit = {
     val ps = new ByteArrayOutputStream()
-    scala.Console.withOut(ps) {
-      ConsumeTasty("", List("IntepretedMain", "InterpretedBar"), new TastyInterpreter)
+    try scala.Console.withOut(ps) {
+        ConsumeTasty("", List("IntepretedMain", "InterpretedBar"), new TastyInterpreter)
+    } catch {
+      case e: Throwable => throw new Exception(ps.toString, e)
     }
     val expectedOutput =
       """42
