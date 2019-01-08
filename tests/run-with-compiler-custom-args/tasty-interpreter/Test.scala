@@ -60,7 +60,7 @@ object Test {
       "<<<<<<<<<<<<<<<<<<"
     )
 
-//    compileAndInterpret("HelloWorld")
+    compileAndInterpret("HelloWorld")
 //    compileAndInterpret("i3518")
 //    compileAndInterpret("withIndex")
   }
@@ -77,7 +77,7 @@ object Test {
     val actualOutput = interpret(out.toString)("Test")
 
     val checkFile = java.nio.file.Paths.get("tests/run/" + testName + ".check")
-    val expectedOutput = Source.fromFile(checkFile.toFile).getLines().mkString("\n")
+    val expectedOutput = Source.fromFile(checkFile.toFile).getLines().mkString("", "\n", "\n")
 
     assert(expectedOutput == actualOutput,
       "\n>>>>>>>>>>>>>>>>>>\n" +

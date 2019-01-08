@@ -155,7 +155,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   inline def log[T](tag: => String, tree: => Statement)(thunk: => T): T = {
     if (LOG)
-      println(s"#> $tag: ${tree.show}")
+      println(
+        s"""#> $tag:
+           |${tree.showCode}
+           |${tree.show}
+           |
+           |""".stripMargin)
     thunk
   }
 
