@@ -12,7 +12,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   val jvmReflection = new JVMReflection(reflect)
 
-  def interpretNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
+  def interpretNew(fn: Tree, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) {
       // Best effort to try to create a proxy
       fn.symbol.owner match {
@@ -36,7 +36,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                     val args1 = if (args == null) Nil else args.toList
                     val evaluatedArgs = args1.map(arg => LocalValue.valFrom(arg))
 
-                    val env1 = env ++ symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
+                    val env1 = implicitly[Env] ++ symbol.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
                     // println(symbol.tree)
                     eval(symbol.tree.rhs.get)(env1).asInstanceOf[Object]
                 }
@@ -55,7 +55,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     else jvmReflection.interpretNew(fn.symbol, evaluatedArgss(argss))
   }
 
-  override def interpretCall(fn: Term, argss: List[List[Term]])(implicit env: Env): Any = {
+  override def interpretCall(fn: Term, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) super.interpretCall(fn, argss)
     else {
       import Term._
@@ -95,12 +95,12 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
 
   def interpretUnit(): AbstractAny = ().asInstanceOf[Object]
 
-  def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny = const.value
+  def interpretLiteral(const: Constant): Result = const.value
 
-  def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny =
+  def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree): Result =
     jvmReflection.getClassOf(tpt.symbol).isInstance(o)
 
-  def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny =
+  def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree): Result =
     jvmReflection.getClassOf(tpt.symbol).cast(o)
 
   def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny = x == y

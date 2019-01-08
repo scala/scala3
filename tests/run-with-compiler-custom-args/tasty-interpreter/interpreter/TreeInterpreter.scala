@@ -13,12 +13,14 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   /** Representation of objects and values in the interpreter */
   type AbstractAny
 
-  def interpretCall(fn: Term, argss: List[List[Term]])(implicit env: Env): AbstractAny = {
+  type Result = implicit Env => AbstractAny
+
+  def interpretCall(fn: Term, argss: List[List[Term]]): Result = {
     val env0 = fn match {
       case Term.Select(prefix, _) =>
         val pre = eval(prefix)
-        env // FIXME add pre to the env as `this`
-      case _ => env
+        implicitly[Env] // FIXME add pre to the env as `this`
+      case _ => implicitly[Env]
     }
     fn.symbol match {
       case IsDefSymbol(sym) =>
@@ -30,19 +32,19 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
-  def interpretNew(fn: Tree, argss: List[List[Term]])(implicit env: Env): AbstractAny
+  def interpretNew(fn: Tree, argss: List[List[Term]]): Result
 
-  def interpretIf(cond: Term, thenp: Term, elsep: Term)(implicit env: Env): AbstractAny =
+  def interpretIf(cond: Term, thenp: Term, elsep: Term): Result =
     if (eval(cond).asInstanceOf[Boolean]) eval(thenp)
     else eval(elsep)
 
-  def interpretWhile(cond: Term, body: Term)(implicit env: Env): AbstractAny = {
+  def interpretWhile(cond: Term, body: Term): Result = {
     while (eval(cond).asInstanceOf[Boolean]) eval(body)
     interpretUnit()
   }
 
-  def interpretBlock(stats: List[Statement], expr: Term)(implicit env: Env): AbstractAny = {
-    val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
+  def interpretBlock(stats: List[Statement], expr: Term): Result = {
+    val newEnv = stats.foldLeft(implicitly[Env])((accEnv, stat) => stat match {
       case ValDef(name, tpt, Some(rhs)) =>
         def evalRhs = eval(rhs)(accEnv)
         val evalRef: LocalValue =
@@ -62,10 +64,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   }
 
   def interpretUnit(): AbstractAny
-  def interpretLiteral(const: Constant)(implicit env: Env): AbstractAny
+  def interpretLiteral(const: Constant): Result
 
-  def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny
-  def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree)(implicit env: Env): AbstractAny
+  def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree): Result
+  def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree): Result
 
   def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny
 
@@ -80,7 +82,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretPrivitiveQuot(x: AbstractAny, y: AbstractAny): AbstractAny
   def interpretPrivitiveRem(x: AbstractAny, y: AbstractAny): AbstractAny
 
-  def eval(tree: Statement)(implicit env: Env): AbstractAny = {
+  def eval(tree: Statement): Result = {
     tree match {
       case Call(fn, targs, argss) =>
         fn match {
@@ -113,7 +115,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
         }
 
       case Term.Assign(lhs, rhs) =>
-        log("<interpretAssing>", tree)(env(lhs.symbol).update(eval(rhs)))
+        log("<interpretAssing>", tree)(implicitly[Env].apply(lhs.symbol).update(eval(rhs)))
 
       case Term.If(cond, thenp, elsep) => log("interpretIf", tree)(interpretIf(cond, thenp, elsep))
       case Term.While(cond, body)      => log("interpretWhile", tree)(interpretWhile(cond, body))
