@@ -54,12 +54,14 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
+    // TODO can we use interpretMethodCall instead?
     val instance = loadModule(moduleClass)
     val method = getMethod(instance.getClass, fn.name, paramsSig(fn))
-    // println(">>>>>>")
-    // println(moduleClass)
-    // println(fn)
-    // println(method)
+    method.invoke(instance, args: _*)
+  }
+
+  def interpretMethodCall(instance: Object, fn: Symbol, args: List[Object]): Object = {
+    val method = getMethod(instance.getClass, fn.name, paramsSig(fn))
     method.invoke(instance, args: _*)
   }
 

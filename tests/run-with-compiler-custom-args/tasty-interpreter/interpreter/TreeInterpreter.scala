@@ -13,14 +13,20 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   /** Representation of objects and values in the interpreter */
   type AbstractAny
 
-  def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): AbstractAny = {
+  def interpretCall(fn: Term, argss: List[List[Term]])(implicit env: Env): AbstractAny = {
+    val env0 = fn match {
+      case Term.Select(prefix, _) =>
+        val pre = eval(prefix)
+        env // FIXME add pre to the env as `this`
+      case _ => env
+    }
     fn.symbol match {
       case IsDefSymbol(sym) =>
         val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-        val env1 = env ++ sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
+        val env1 = env0 ++ sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol).zip(evaluatedArgs)
         eval(sym.tree.rhs.get)(env1)
       case _ =>
-        env(fn.symbol).get
+        env0(fn.symbol).get
     }
   }
 
@@ -163,9 +169,9 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
 
   private object Call {
-    def unapply(arg: Tree): Option[(Tree, List[TypeTree], List[List[Term]])] = arg match {
-      case fn@ Term.Select(_, _) => Some((fn, Nil, Nil))
-      case fn@ Term.Ident(_) => Some((fn, Nil, Nil))
+    def unapply(arg: Tree): Option[(Term, List[TypeTree], List[List[Term]])] = arg match {
+      case Term.IsSelect(fn) => Some((fn, Nil, Nil))
+      case Term.IsIdent(fn) => Some((fn, Nil, Nil))
       case Term.Apply(Call(fn, targs, args1), args2) => Some((fn, targs, args1 :+ args2))
       case Term.TypeApply(Call(fn, _, _), targs) => Some((fn, targs, Nil))
       case _ => None

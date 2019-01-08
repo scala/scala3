@@ -50,24 +50,37 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     else jvmReflection.interpretNew(fn.symbol, evaluatedArgss(argss))
   }
 
-  override def interpretCall(fn: Tree, argss: List[List[Term]])(implicit env: Env): Any = {
+  override def interpretCall(fn: Term, argss: List[List[Term]])(implicit env: Env): Any = {
     if (fn.symbol.isDefinedInCurrentRun) super.interpretCall(fn, argss)
     else {
       import Term._
-      // println(fn.show)
-      fn.symbol match {
-        // TODO: obviously
-        case IsDefSymbol(sym) =>
-          val argss2 = evaluatedArgss(argss)
-          // argss2.foreach(println)
-          jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
-        case _ =>
-          if (fn.symbol.flags.isObject) {
-            jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
+      fn match {
+        case Select(prefix, _) =>
+          fn.symbol match {
+            case IsDefSymbol(sym) =>
+              val pre = eval(prefix).asInstanceOf[Object]
+              val argss2 = evaluatedArgss(argss)
+              jvmReflection.interpretMethodCall(pre, fn.symbol, argss2)
+            case _ =>
+              // TODO not necesarly static?
+              jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
           }
-          // call to a static val
-          else {
-            jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
+        case _ =>
+          // println(fn.show)
+          fn.symbol match {
+            // TODO: obviously
+            case IsDefSymbol(sym) =>
+              val argss2 = evaluatedArgss(argss)
+              // argss2.foreach(println)
+              jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
+            case _ =>
+              if (fn.symbol.flags.isObject) {
+                jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
+              }
+              // call to a static val
+              else {
+                jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
+              }
           }
       }
     }

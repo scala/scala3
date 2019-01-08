@@ -48,6 +48,10 @@ object Test {
         |true
         |false
         |64
+        |65
+        |66
+        |67
+        |68
         |""".stripMargin
 
     val actualOutput = ps.toString

@@ -53,7 +53,18 @@ object IntepretedMain {
     println(x6.isInstanceOf[Int])
     println(x6.isInstanceOf[Long])
     println(x6.asInstanceOf[Int])
+
+
+    val bar = new Bar
+    println(bar.meth() + 5)
+    println(bar.methA(66))
+
+    val ibar = new InterpretedBar
+    println(ibar.meth() + 5)
+    println(ibar.methA(67))
   }
+
+  def foo(x: Int): Unit = println(x)
 }
 
 class InterpretedBar extends IFace {
