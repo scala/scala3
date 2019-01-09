@@ -240,7 +240,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
 
   def compile(sourceCode: String): Unit = {
-    val virtualFile = new VirtualFile(sourceCode) // use source code as name as it's used for equals
+    val virtualFile = new VirtualFile(sourceCode)
     val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
     writer.write(sourceCode)
     writer.close()
