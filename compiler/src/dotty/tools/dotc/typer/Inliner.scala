@@ -879,7 +879,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           if (from.isEmpty) Some((caseBindings, cdef.body))
           else {
             val Block(stats, expr) = tpd.Block(caseBindings, cdef.body).subst(from, to)
-            val typeDefs = to.collect { case sym if sym.name != tpnme.WILDCARD => tpd.TypeDef(sym).withPos(sym.pos) }
+            val typeDefs = to.collect { case sym if sym.name != tpnme.WILDCARD => tpd.TypeDef(sym).withSpan(sym.span) }
             Some((typeDefs ::: stats.asInstanceOf[List[MemberDef]], expr))
           }
         }
@@ -963,7 +963,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
             // note that any actually necessary casts will be reinserted by the typing pass below
             val rhs1 = rhs0 match {
-              case Block(stats, t) if t.pos.isSynthetic =>
+              case Block(stats, t) if t.span.isSynthetic =>
                 t match {
                   case Typed(expr, _) =>
                     Block(stats, expr)
@@ -1099,7 +1099,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         treeMap = {
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
             val TypeAlias(r) = ident.symbol.info
-            TypeTree(r).withPos(ident.pos)
+            TypeTree(r).withSpan(ident.span)
           case tree => tree
         }
       )
