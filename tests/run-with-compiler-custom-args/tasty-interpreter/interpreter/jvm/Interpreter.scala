@@ -97,6 +97,8 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
   def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree): Result =
     jvmReflection.getClassOf(tpt.symbol).cast(o)
 
+  def interpretRepeated(elems: List[AbstractAny]): AbstractAny = elems.toSeq
+
   def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny = x == y
 
   def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny = withNumeric(x, y)(_.lt(_, _))

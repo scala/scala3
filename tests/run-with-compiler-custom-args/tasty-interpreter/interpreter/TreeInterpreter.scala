@@ -88,6 +88,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree): Result
   def interpretAsInstanceOf(o: AbstractAny, tpt: TypeTree): Result
 
+  def interpretRepeated(elems: List[AbstractAny]): AbstractAny
+
   def interpretEqEq(x: AbstractAny, y: AbstractAny): AbstractAny
 
   def interpretPrivitiveLt(x: AbstractAny, y: AbstractAny): AbstractAny
@@ -148,6 +150,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case Term.Block(stats, expr)     => log("interpretBlock", tree)(interpretBlock(stats, expr))
       case Term.Literal(const)         => log("interpretLiteral", tree)(interpretLiteral(const))
       case Term.Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
+      case Term.Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
 
       case _ => throw new MatchError(tree.show)
     }
