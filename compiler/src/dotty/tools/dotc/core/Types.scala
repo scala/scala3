@@ -85,6 +85,8 @@ object Types {
    */
   abstract class Type extends Hashable with printing.Showable {
 
+    protected def hashSeed: Int = getClass.hashCode
+
 // ----- Tests -----------------------------------------------------
 
 //    // debug only: a unique identifier for a type

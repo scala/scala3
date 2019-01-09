@@ -38,7 +38,7 @@ object Hashable {
 trait Hashable {
   import Hashable._
 
-  protected def hashSeed: Int = getClass.hashCode
+  protected def hashSeed: Int
 
   protected final def finishHash(hashCode: Int, arity: Int): Int =
     avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))

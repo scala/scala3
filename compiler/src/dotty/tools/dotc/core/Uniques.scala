@@ -42,6 +42,9 @@ object Uniques {
  */
 
   final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
+
+    protected def hashSeed: Int = 617566154
+
     override def hash(x: NamedType): Int = x.hash
 
     private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
@@ -68,6 +71,9 @@ object Uniques {
   }
 
   final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity) with Hashable {
+
+    protected def hashSeed: Int = 325718325
+
     override def hash(x: AppliedType): Int = x.hash
 
     private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
