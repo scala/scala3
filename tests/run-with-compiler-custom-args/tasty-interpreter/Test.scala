@@ -60,30 +60,45 @@ object Test {
       "<<<<<<<<<<<<<<<<<<"
     )
 
-    compileAndInterpret("HelloWorld")
-//    compileAndInterpret("i3518")
-//    compileAndInterpret("withIndex")
+    compileAndInterpret("HelloWorld.scala")
+    compileAndInterpret("nullInstanceEval.scala")
+    compileAndInterpret("t3327.scala")
+//    compileAndInterpret("t5614.scala")
+//    compileAndInterpret("t4054.scala")
+//    compileAndInterpret("sort.scala")
+//    compileAndInterpret("t0607.scala")
+//    compileAndInterpret("i4073b.scala")
+//    compileAndInterpret("i4430.scala")
+//    compileAndInterpret("nullAsInstanceOf.scala")
+//    compileAndInterpret("classof.scala")
+//    compileAndInterpret("null-hash.scala")
+//    compileAndInterpret("i3518.scala")
+//    compileAndInterpret("withIndex.scala")
+//    compileAndInterpret("unboxingBug.scala")
+//    compileAndInterpret("traitInit.scala")
   }
 
-  def compileAndInterpret(testName: String) = {
+  def compileAndInterpret(testFileName: String) = {
     val reproter = new Reporter {
       def doReport(m: MessageContainer)(implicit ctx: Contexts.Context): Unit = println(m)
     }
     val out = java.nio.file.Paths.get("out/interpreted")
     if (!java.nio.file.Files.exists(out))
       java.nio.file.Files.createDirectory(out)
-    dotty.tools.dotc.Main.process(Array("-classpath", System.getProperty("java.class.path"), "-d", out.toString, "tests/run/" + testName + ".scala"), reproter)
+    dotty.tools.dotc.Main.process(Array("-classpath", System.getProperty("java.class.path"), "-d", out.toString, "tests/run/" + testFileName), reproter)
 
     val actualOutput = interpret(out.toString)("Test")
 
-    val checkFile = java.nio.file.Paths.get("tests/run/" + testName + ".check")
-    val expectedOutput = Source.fromFile(checkFile.toFile).getLines().mkString("", "\n", "\n")
+    val checkFile = java.nio.file.Paths.get("tests/run/" + testFileName.stripSuffix(".scala") + ".check")
+    if (java.nio.file.Files.exists(checkFile)) {
+      val expectedOutput = Source.fromFile(checkFile.toFile).getLines().mkString("", "\n", "\n")
 
-    assert(expectedOutput == actualOutput,
-      "\n>>>>>>>>>>>>>>>>>>\n" +
-        DiffUtil.mkColoredCodeDiff(actualOutput, expectedOutput, true) +
-        "<<<<<<<<<<<<<<<<<<"
-    )
+      assert(expectedOutput == actualOutput,
+        "\n>>>>>>>>>>>>>>>>>>\n" +
+          DiffUtil.mkColoredCodeDiff(actualOutput, expectedOutput, true) +
+          "<<<<<<<<<<<<<<<<<<"
+      )
+    }
   }
 
   def interpret(classpath: String*)(interpretedClasses: String*): String = {
