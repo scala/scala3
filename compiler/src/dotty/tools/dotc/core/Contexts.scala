@@ -34,11 +34,16 @@ import util.Property.Key
 import util.Store
 import xsbti.AnalysisCallback
 import plugins._
+import java.util.concurrent.atomic.AtomicInteger
 
 object Contexts {
 
   trait SourceInfo {
     def srcfile: AbstractFile
+
+    private[this] var _counter: AtomicInteger = null
+    def counter = _counter
+    def counter_=(c: AtomicInteger) = _counter = c
   }
   object SourceInfo {
     def apply(src: AbstractFile) = new SourceInfo {
@@ -170,7 +175,10 @@ object Contexts {
 
     /** The current source file */
     private[this] var _source: SourceFile = _
-    protected def source_=(source: SourceFile): Unit = _source = source
+    protected def source_=(source: SourceFile): Unit = {
+      _source = source
+      counter = null
+    }
     def source: SourceFile = _source
 
     def srcfile = source.file
@@ -247,8 +255,10 @@ object Contexts {
       getSource(TreeIds.fileOfId(id))
 
     /** Sourcefile corresponding to given abstract file, memoized */
-    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) =
+    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
+      util.Stats.record("getSource")
       base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
+    }
 
     def getSource(fileName: String): SourceFile = {
       val f = new PlainFile(Path(fileName))
