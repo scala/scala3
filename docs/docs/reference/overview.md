@@ -14,33 +14,33 @@ The new features address four major concerns:
 Scala 3 also drops a number of features that were used rarely, or where experience showed
 that they tended to cause problems. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
 
-Another important set of changes is about meta programming and generative programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution that extends [principled meta programming](http://dotty.epfl.ch/docs/reference/principled-meta-programming.html) and [inline](http://dotty.epfl.ch/docs/reference/inline.html) definitions with some reflective capabilities. The current state of the full design and its ramifications for generative programming will be described elsewhere.
+Another important set of changes is about meta programming and generative programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution that extends [principled meta programming](http://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) and [inline](http://dotty.epfl.ch/docs/reference/other-new-features/inline.html) definitions with some reflective capabilities. The current state of the full design and its ramifications for generative programming will be described elsewhere.
 
 <a name="consistency"></a>
 ## Consistency
 
 The primary goal of the language constructs in this section is to make the language more consistent, both internally, and in relationship to its [foundations](http://www.scala-lang.org/blog/2016/02/03/essence-of-scala.html).
 
- - [Intersection types](http://dotty.epfl.ch/docs/reference/intersection-types.html) `A & B`
+ - [Intersection types](http://dotty.epfl.ch/docs/reference/new-types/intersection-types.html) `A & B`
 
    They replace compound types `A with B` (the old syntax is kept for the moment but will
    be deprecated in the future). Intersection types are one of the core features of DOT. They
    are commutative: `A & B` and `B & A` represent the same type.
 
- - [Implicit function types](http://dotty.epfl.ch/docs/reference/implicit-function-types.html) `implicit A => B`.
+ - [Implicit function types](http://dotty.epfl.ch/docs/reference/new-types/implicit-function-types.html) `implicit A => B`.
 
    Methods and lambdas can have implicit parameters, so it's natural to extend the
    same property to function types. Implicit function types help ergonomics and performance
    as well. They can replace many uses of monads, offering better composability and an order of magnitude improvement in runtime speed.
 
- - [Dependent function types](http://dotty.epfl.ch/docs/reference/dependent-function-types.html) `(x: T) => x.S`.
+ - [Dependent function types](http://dotty.epfl.ch/docs/reference/new-types/dependent-function-types.html) `(x: T) => x.S`.
 
    The result type of a method can refer to its parameters. We now extend the same capability
    to the result type of a function.
 
- - [Trait parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html) `trait T(x: S)`
+ - [Trait parameters](http://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) `trait T(x: S)`
 
-   Traits can now have value parameters, just like classes do. This replaces the more complex [early initializer](http://dotty.epfl.ch/docs/reference/dropped/early-initializers.html) syntax.
+   Traits can now have value parameters, just like classes do. This replaces the more complex [early initializer](http://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) syntax.
 
  - Generic tuples
 
@@ -51,7 +51,7 @@ The primary goal of the language constructs in this section is to make the langu
 
 Listed in this section are new language constructs that help precise, typechecked domain modeling and that improve the reliability of refactorings.
 
- - [Union types](http://dotty.epfl.ch/docs/reference/union-types.html)  `A | B`
+ - [Union types](http://dotty.epfl.ch/docs/reference/new-types/union-types.html)  `A | B`
 
    Union types gives fine-grained control over the possible values of a type.
    A union type `A | B` states that a value can be an `A` or a `B` without having
@@ -59,7 +59,7 @@ Listed in this section are new language constructs that help precise, typechecke
    precise domain modeling. They are also very useful for interoperating with
    Javascript libraries and JSON protocols.
 
- - [Multiversal Equality](http://dotty.epfl.ch/docs/reference/multiversal-equality.html)
+ - [Multiversal Equality](http://dotty.epfl.ch/docs/reference/other-new-features/multiversal-equality.html)
 
    Multiversal equality is an opt-in way to check that comparisons using `==` and
    `!=` only apply to compatible types. It thus removes the biggest remaining hurdle
@@ -108,11 +108,11 @@ The primary goal of the language constructs in this section is to make common pr
    Scala enums will interoperate with  the host platform. They support multiversal equality
    out of the box, i.e. an enum can only be compared to values of the same enum type.
 
- - [Type lambdas](http://dotty.epfl.ch/docs/reference/type-lambdas.html) `[X] => C[X]`
+ - [Type lambdas](http://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html) `[X] => C[X]`
 
    Type lambdas were encoded previously in a roundabout way, exploiting
    loopholes in Scala's type system which made it Turing complete. With
-   the removal of [unrestricted type projection](dropped/type-projection.html), the loopholes are eliminated, so the
+   the removal of [unrestricted type projection](dropped-features/type-projection.html), the loopholes are eliminated, so the
    previous encodings are no longer expressible. Type lambdas in the language provide
    a safe and more ergonomic alternative.
 
@@ -134,7 +134,7 @@ The primary goal of the language constructs in this section is to enable high-le
 
    ([Pending](https://github.com/lampepfl/dotty/pull/4028)) An opaque alias defines a new type `A` in terms of an existing type `T`.  Unlike the previous modeling using value classes, opaque types never box. Opaque types are described in detail in [SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
 
- - [Erased parameters](http://dotty.epfl.ch/docs/reference/erased-terms.html)
+ - [Erased parameters](http://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html)
 
    Parameters of methods and functions can be declared `erased`. This means that
    the corresponding arguments are only used for type checking purposes and no code
