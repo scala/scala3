@@ -47,7 +47,6 @@ set _JAVA_DEBUG=
 set _HELP=
 set _VERBOSE=
 set _QUIET=
-set _COLORS=
 set _SCALA_ARGS=
 set _JAVA_ARGS=
 set _RESIDUAL_ARGS=
@@ -78,12 +77,10 @@ rem Optimize for short-running applications, see https://github.com/lampepfl/dot
 ) else if /i "%__ARG%"=="-repl" ( set _PROG_NAME=%_REPL_MAIN%
 ) else if /i "%__ARG%"=="-compile" ( set _PROG_NAME=%_COMPILER_MAIN%
 ) else if /i "%__ARG%"=="-decompile" ( set _PROG_NAME=%_DECOMPILER_MAIN%
-) else if /i "%__ARG%"=="print-tasty" (
+) else if /i "%__ARG%"=="-print-tasty" (
     set _PROG_NAME=%_DECOMPILER_MAIN%
     call :addScala "-print-tasty"
 ) else if /i "%__ARG%"=="-run" ( set _PROG_NAME=%_REPL_MAIN%
-) else if /i "%__ARG%"=="-colors" ( set _COLORS=true
-) else if /i "%__ARG%"=="-no-colors" ( set _COLORS=
 ) else if /i "%__ARG%"=="-with-compiler" ( set _JVM_CP_ARGS=%_PSEP%%_DOTTY_COMP%
 rem break out -D and -J options and add them to JAVA_OPTS as well
 rem so they reach the JVM in time to do some good. The -D options
