@@ -16,13 +16,21 @@ object TreeIds {
   @sharable private[this] val counters = new ConcurrentHashMap[AbstractFile, AtomicInteger]
   @sharable private[this] val fileOfChunk = mutable.ArrayBuffer[AbstractFile]()
 
-  def nextId(implicit src: SourceInfo): Int = nextIdFor(src.srcfile)
-
-  def nextIdFor(file: AbstractFile): Int = {
-    var ctr = counters.get(file)
+  def nextIdFor(file: AbstractFile)(implicit src: SourceInfo): Int = {
+    def getCounter: AtomicInteger =
+      if (file `eq` src.srcfile) {
+        var cachedCtr = src.counter
+        if (cachedCtr == null) {
+          cachedCtr = counters.get(file)
+          src.counter = cachedCtr
+        }
+        cachedCtr
+      }
+      else counters.get(file)
+    var ctr = getCounter
     if (ctr == null) {
       counters.putIfAbsent(file, new AtomicInteger)
-      ctr = counters.get(file)
+      ctr = getCounter
     }
     def recur(): Int = {
       val id = ctr.get
