@@ -20,7 +20,6 @@ import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Spans._
 import util.SourceFile
-import io.AbstractFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
 import Decorators._
@@ -1335,7 +1334,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Set position of `tree` at given `addr`. */
     def setPos[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type = {
       val pos = posAt(addr)
-      if (pos.exists) tree.setOnePos(pos, ctx.source.file)
+      if (pos.exists) tree.setOnePos(pos, ctx.source)
       tree
     }
   }

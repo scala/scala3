@@ -10,6 +10,7 @@ import scala.annotation.internal.sharable
 /** A source position is comprised of a span and a source file */
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
 extends interfaces.SourcePosition with Showable {
+
   /** Is `that` a source position contained in this source position ?
    *  `outer` is not taken into account. */
   def contains(that: SourcePosition): Boolean =

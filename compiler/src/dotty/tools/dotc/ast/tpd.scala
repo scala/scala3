@@ -1134,10 +1134,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined
    */
-  def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = {
-    val file = call.symbol.sourceFile
-    if (file != null && file.exists) ctx.getSource(file) else NoSource
-  }
+  def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = call.symbol.source
 
   /** Desugar identifier into a select node. Return the tree itself if not possible */
   def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {

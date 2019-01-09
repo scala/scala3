@@ -228,7 +228,7 @@ class Typer extends Namer
        */
       def isDefinedInCurrentUnit(denot: Denotation)(implicit ctx: Context): Boolean = denot match {
         case MultiDenotation(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
-        case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source.file
+        case denot: SingleDenotation => denot.symbol.source `eq` ctx.compilationUnit.source
       }
 
       /** Is `denot` the denotation of a self symbol? */

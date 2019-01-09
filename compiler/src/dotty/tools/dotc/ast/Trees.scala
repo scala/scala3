@@ -11,7 +11,6 @@ import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, SourcePosition}
 import config.Config
-import io.AbstractFile
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.transientParam
@@ -134,7 +133,7 @@ object Trees {
       val tree =
         (if (myTpe == null ||
           (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
-         else cloneIn(srcfile)).asInstanceOf[Tree[Type]]
+         else cloneIn(source)).asInstanceOf[Tree[Type]]
       tree overwriteType tpe
       tree.asInstanceOf[ThisTree[Type]]
     }
@@ -325,7 +324,7 @@ object Trees {
     def rawComment: Option[Comment] = getAttachment(DocComment)
 
     def withMods(mods: untpd.Modifiers): ThisTree[Untyped] = {
-      val tree = if (myMods == null || (myMods == mods)) this else cloneIn(srcfile)
+      val tree = if (myMods == null || (myMods == mods)) this else cloneIn(source)
       tree.setMods(mods)
       tree.asInstanceOf[ThisTree[Untyped]]
     }
@@ -777,7 +776,7 @@ object Trees {
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
     override def withTypeUnchecked(tpe: Type): ThisTree[Type] = this.asInstanceOf[ThisTree[Type]]
     override def span: Span = NoSpan
-    override def setPos(span: Span, file: AbstractFile): Unit = {}
+    override def setPos(span: Span, src: SourceFile): Unit = {}
   }
 
   /** Temporary class that results from translation of ModuleDefs
@@ -795,7 +794,7 @@ object Trees {
       if (trees eq newTrees)
         this
       else
-        Thicket[T](newTrees)(SourceInfo(srcfile)).asInstanceOf[this.type]
+        Thicket[T](newTrees)(SourceInfo(source)).asInstanceOf[this.type]
     }
 
     override def foreachInThicket(op: Tree[T] => Unit): Unit =

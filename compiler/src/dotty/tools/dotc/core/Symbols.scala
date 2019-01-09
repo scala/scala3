@@ -623,25 +623,23 @@ object Symbols {
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
     type DontUseSymbolOnSymbol
 
-    /** The source file from which this class was generated, null if not applicable. */
-    final def sourceFile(implicit ctx: Context): AbstractFile =
-      if (!defTree.isEmpty) defTree.source.file
+    def source(implicit ctx: Context): SourceFile =
+      if (!defTree.isEmpty) defTree.source
       else {
         val file = associatedFile
-        if (file != null && file.extension != "class") file
+        if (file != null && file.extension != "class") ctx.getSource(file)
         else {
           val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
           topLevelCls.unforcedAnnotation(defn.SourceFileAnnot) match {
             case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
-              case Some(Constant(path: String)) => AbstractFile.getFile(path)
-              case none => null
+              case Some(Constant(path: String)) => ctx.getSource(path)
+              case none => NoSource
             }
-            case none => null
+            case none => NoSource
           }
         }
       }
 
-    def source(implicit ctx: Context): SourceFile = ctx.getSource(sourceFile)
 
     /** A symbol related to `sym` that is defined in source code.
      *
@@ -672,12 +670,8 @@ object Symbols {
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
     final def sourcePos(implicit ctx: Context): SourcePosition = {
-      val source = {
-        val f = sourceFile
-        if (f == null) ctx.source
-        else ctx.getSource(f)
-      }
-      source.atSpan(span)
+      val src = source
+      (if (src.exists) src else ctx.source).atSpan(span)
     }
 
     // ParamInfo types and methods
