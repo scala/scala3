@@ -54,10 +54,10 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
 
   override def equals(that : Any): Boolean = that match {
-    case that : SourceFile => file.path == that.file.path && start == that.start
+    case that : SourceFile => file == that.file && start == that.start
     case _ => false
   }
-  override def hashCode: Int = file.path.## + start.##
+  override def hashCode: Int = file.hashCode * 41 + start.hashCode
 
   def apply(idx: Int): Char = content().apply(idx)
 
