@@ -9,7 +9,11 @@ import java.io.IOException
 import scala.tasty.util.Chars._
 import Spans._
 import scala.io.Codec
+import core.Names.TermName
 import scala.annotation.internal.sharable
+import core.Decorators.PreNamedString
+import java.util.concurrent.atomic.AtomicInteger
+import scala.collection.mutable
 
 import java.util.Optional
 
@@ -35,6 +39,7 @@ object ScriptSourceFile {
 }
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
+  import SourceFile._
 
   private var myContent: Array[Char] = null
 
@@ -52,6 +57,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   override def name: String = file.name
   override def path: String = file.path
   override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
+
+  def pathName: PathName = file.absolutePath.toTermName
 
   override def equals(that : Any): Boolean = that match {
     case that : SourceFile => file == that.file && start == that.start
@@ -153,9 +160,35 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   override def toString: String = file.toString
+
+  // Positioned ids
+
+  private[this] val ctr = new AtomicInteger
+
+  def nextId: Int = {
+    val id = ctr.get
+    if (id % ChunkSize == 0) newChunk
+    else if (ctr.compareAndSet(id, id + 1)) id
+    else nextId
+  }
+
+  private def newChunk: Int = sourceOfChunk.synchronized {
+    val id = sourceOfChunk.length * ChunkSize
+    sourceOfChunk += this
+    ctr.set(id + 1)
+    id
+  }
 }
 object SourceFile {
   implicit def eqSurce: Eq[SourceFile, SourceFile] = Eq
+
+  type PathName = TermName
+
+  def fromId(id: Int): SourceFile =
+    sourceOfChunk(id / ChunkSize)
+
+  private val ChunkSize = 1024
+  @sharable private val sourceOfChunk = mutable.ArrayBuffer[SourceFile]()
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

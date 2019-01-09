@@ -12,7 +12,7 @@ import Symbols._
 import Scopes._
 import Uniques._
 import ast.Trees._
-import ast.{untpd, TreeIds}
+import ast.untpd
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
@@ -39,15 +39,11 @@ import java.util.concurrent.atomic.AtomicInteger
 object Contexts {
 
   trait SourceInfo {
-    def srcfile: AbstractFile
-
-    private[this] var _counter: AtomicInteger = null
-    def counter = _counter
-    def counter_=(c: AtomicInteger) = _counter = c
+    def source: SourceFile
   }
   object SourceInfo {
-    def apply(src: AbstractFile) = new SourceInfo {
-      def srcfile = src
+    def apply(src: SourceFile) = new SourceInfo {
+      def source = src
     }
   }
 
@@ -175,13 +171,8 @@ object Contexts {
 
     /** The current source file */
     private[this] var _source: SourceFile = _
-    protected def source_=(source: SourceFile): Unit = {
-      _source = source
-      counter = null
-    }
+    protected def source_=(source: SourceFile): Unit = _source = source
     def source: SourceFile = _source
-
-    def srcfile = source.file
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
@@ -251,33 +242,35 @@ object Contexts {
       implicitsCache
     }
 
-    def sourceOfTreeId(id: Int): SourceFile =
-      getSource(TreeIds.fileOfId(id))
-
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("getSource")
       base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
     }
 
-    def getSource(fileName: String): SourceFile = {
-      val f = new PlainFile(Path(fileName))
-      base.sources.get(f) match {
-        case Some(source) =>
-          source
-        case None =>
-          if (f.isDirectory) {
-            error(s"expected file, received directory '$fileName'")
-            NoSource
-          }
-          else if (f.exists)
-            getSource(f)
-          else {
-            error(s"not found: $fileName")
-            NoSource
-          }
-      }
+    /** Sourcefile with given path name, memoized */
+    def getSource(path: SourceFile.PathName): SourceFile = base.sourceNamed.get(path) match {
+      case Some(source) =>
+        source
+      case None =>
+        val f = new PlainFile(Path(path.toString))
+        if (f.isDirectory) {
+          error(s"expected file, received directory '$path'")
+          NoSource
+        }
+        else if (f.exists) {
+          val src = getSource(f)
+          base.sourceNamed(path) = src
+          src
+        }
+        else {
+          error(s"not found: $path")
+          NoSource
+        }
     }
+
+    /** Sourcefile with given path, memoized */
+    def getSource(path: String): SourceFile = getSource(path.toTermName)
 
     /** Those fields are used to cache phases created in withPhase.
       * phasedCtx is first phase with altered phase ever requested.
@@ -468,7 +461,9 @@ object Contexts {
 
     final def withSource(source: SourceFile): Context =
       if (source `eq` this.source) this
-      else if ((source `eq` outer.source) && (outer.sourceCtx(this.source) `eq` this)) outer
+      else if ((source `eq` outer.source) &&
+               outer.sourceCtx != null &&
+               (outer.sourceCtx(this.source) `eq` this)) outer
       else {
         if (sourceCtx == null) sourceCtx = SimpleIdentityMap.Empty
         val prev = sourceCtx(source)
@@ -479,9 +474,6 @@ object Contexts {
           newCtx
         }
       }
-
-    final def withSource(f: AbstractFile): Context =
-      if (f == null) this else withSource(getSource(f))
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
@@ -701,6 +693,7 @@ object Contexts {
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
+    val sourceNamed: mutable.HashMap[SourceFile.PathName, SourceFile] = new mutable.HashMap[SourceFile.PathName, SourceFile]
 
     // Types state
     /** A table for hash consing unique types */
@@ -775,6 +768,7 @@ object Contexts {
       for ((_, set) <- uniqueSets) set.clear()
       errorTypeMsg.clear()
       sources.clear()
+      sourceNamed.clear()
     }
 
     // Test that access is single threaded
