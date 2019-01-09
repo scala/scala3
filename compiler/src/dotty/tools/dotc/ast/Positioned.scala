@@ -3,12 +3,11 @@ package dotc
 package ast
 
 import util.Spans._
-import util.{SourceFile, SourcePosition}
+import util.{SourceFile, NoSource, SourcePosition}
 import core.Contexts.{Context, SourceInfo}
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
-import io.AbstractFile
 import annotation.transientParam
 import annotation.internal.sharable
 
@@ -28,12 +27,11 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   /** item's id */
   def uniqueId: Int = myUniqueId
 
-  protected def srcfile: AbstractFile = TreeIds.fileOfId(uniqueId)
-  def source(implicit ctx: Context): SourceFile = ctx.getSource(srcfile)
+  def source: SourceFile = SourceFile.fromId(uniqueId)
   def sourcePos(implicit ctx: Context): SourcePosition = source.atSpan(span)
 
-  setId(TreeIds.nextIdFor(initialFile(src)))
-  setPos(initialSpan(), srcfile)
+  setId(initialSource(src).nextId)
+  setPos(initialSpan(), source)
 
   protected def setId(id: Int): Unit = {
     myUniqueId = id
@@ -43,7 +41,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   /** Destructively update `mySpan` to given span and potentially update `id` so that
    *  it refers to `file`. Also, set any missing positions in children.
    */
-  protected def setPos(span: Span, file: AbstractFile): Unit = {
+  protected def setPos(span: Span, file: SourceFile): Unit = {
     setOnePos(span, file)
     if (span.exists) setChildPositions(span.toSynthetic, file)
   }
@@ -56,34 +54,34 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   def withSpan(span: Span): this.type = {
     val ownSpan = this.span
     val newpd: this.type =
-      if (span == ownSpan || ownSpan.isSynthetic) this else cloneIn(srcfile)
-    newpd.setPos(span, srcfile)
+      if (span == ownSpan || ownSpan.isSynthetic) this else cloneIn(source)
+    newpd.setPos(span, source)
     newpd
   }
 
   def withPosOf(posd: Positioned): this.type = {
     val ownSpan = this.span
     val newpd: this.type =
-      if (posd.srcfile == srcfile && posd.span == ownSpan || ownSpan.isSynthetic) this
-      else cloneIn(posd.srcfile)
-    newpd.setPos(posd.span, posd.srcfile)
+      if ((posd.source `eq` source) && posd.span == ownSpan || ownSpan.isSynthetic) this
+      else cloneIn(posd.source)
+    newpd.setPos(posd.span, posd.source)
     newpd
   }
 
   def withSourcePos(sourcePos: SourcePosition): this.type = {
     val ownSpan = this.span
     val newpd: this.type =
-      if (sourcePos.source.file == srcfile && sourcePos.span == ownSpan || ownSpan.isSynthetic) this
-      else cloneIn(sourcePos.source.file)
-    newpd.setPos(sourcePos.span, sourcePos.source.file)
+      if ((sourcePos.source `eq` source) && sourcePos.span == ownSpan || ownSpan.isSynthetic) this
+      else cloneIn(sourcePos.source)
+    newpd.setPos(sourcePos.span, sourcePos.source)
     newpd
   }
 
   /** Set span of this tree only, without updating children spans.
    *  Called from Unpickler when entering positions.
    */
-  private[dotc] def setOnePos(span: Span, file: AbstractFile = this.srcfile): Unit = {
-    if (file != this.srcfile) setId(TreeIds.nextIdFor(file))
+  private[dotc] def setOnePos(span: Span, file: SourceFile = this.source): Unit = {
+    if (file `ne` this.source) setId(file.nextId)
     mySpan = span
   }
 
@@ -98,7 +96,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  But since mutual tail recursion is not supported in Scala, we express it instead
    *  as a while loop with a termination by return in the middle.
    */
-  private def setChildPositions(span: Span, file: AbstractFile): Unit = {
+  private def setChildPositions(span: Span, file: SourceFile): Unit = {
     var n = productArity                    // subnodes are analyzed right to left
     var elems: List[Any] = Nil              // children in lists still to be considered, from right to left
     var end = span.end                      // the last defined offset, fill in spans up to this offset
@@ -150,39 +148,39 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   }
 
   /** Clone this node but assign it a fresh id which marks it as a node in `file`. */
-  protected def cloneIn(file: AbstractFile): this.type = {
+  protected def cloneIn(file: SourceFile): this.type = {
     val newpd: this.type = clone.asInstanceOf[this.type]
-    newpd.setId(TreeIds.nextIdFor(file))
+    newpd.setId(file.nextId)
     newpd
   }
 
   /** The source of the first element of this node that has a position */
-  def elemsFile: AbstractFile = {
-    def firstFile(x: Any): AbstractFile = x match {
+  def elemsSource: SourceFile = {
+    def firstSource(x: Any): SourceFile = x match {
       case x: Positioned if x.span.exists =>
-        x.srcfile
+        x.source
       case x1 :: xs1 =>
-        val f = firstFile(x1)
-        if (f != null) f else firstFile(xs1)
+        val f = firstSource(x1)
+        if (f.exists) f else firstSource(xs1)
       case _ =>
-        null
+        NoSource
     }
-    def firstElemFile(n: Int): AbstractFile =
-      if (n == productArity) null
+    def firstElemSource(n: Int): SourceFile =
+      if (n == productArity) NoSource
       else {
-        val f = firstFile(productElement(n))
-        if (f != null) f else firstElemFile(n + 1)
+        val f = firstSource(productElement(n))
+        if (f.exists) f else firstElemSource(n + 1)
       }
-    firstElemFile(0)
+    firstElemSource(0)
   }
 
   /** The source file to use for the `id` of this node. This is
-   *  `elemsFile` if it exists, or the source file indicated by
+   *  `elemsSource` if it exists, or the source file indicated by
    *  `src` otherwise
    */
-  private def initialFile(src: SourceInfo): AbstractFile = {
-    val f = elemsFile
-    if (f != null) f else src.srcfile
+  private def initialSource(src: SourceInfo): SourceFile = {
+    val f = elemsSource
+    if (f.exists) f else src.source
   }
 
   /** The initial, synthetic span. This is usually the union of all positioned children's spans.
@@ -219,7 +217,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     span.toSynthetic
   }
 
-  private def sameSource(that: Positioned) = srcfile == that.srcfile
+  private def sameSource(that: Positioned) = source `eq` that.source
 
   def contains(that: Positioned): Boolean = {
     def isParent(x: Any): Boolean = x match {

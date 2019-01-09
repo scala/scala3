@@ -6,7 +6,7 @@ package tasty
 import ast._
 import ast.Trees._
 import ast.Trees.WithLazyField
-import io.{AbstractFile, NoAbstractFile}
+import util.{SourceFile, NoSource}
 import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
@@ -43,9 +43,9 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       pickledIndices += index
     }
 
-    def pickleSource(source: AbstractFile): Unit = {
+    def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
@@ -66,13 +66,13 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case _ => false
     }
 
-    def traverse(x: Any, current: AbstractFile): Unit = x match {
+    def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         var sourceFile = current
         val span = if (x.isInstanceOf[untpd.MemberDef]) x.span else x.span.toSynthetic
         val sourceChange =
-          x.source.file != x.elemsFile ||
-          x.elemsFile == null && x.source.file != current
+          x.source != x.elemsSource ||
+          !x.elemsSource.exists && x.source != current
         if (span.exists && (
               span != x.initialSpan(ignoreTypeTrees = true).toSynthetic ||
               sourceChange ||
@@ -84,9 +84,9 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
               // in order not to miss the source change. Test case is t3232a.scala.
               //println(i"pickling $x with $span at $addr")
               pickleDeltas(addr.index, span)
-              if (x.source.file != current) {
-                pickleSource(x.source.file)
-                sourceFile = x.source.file
+              if (x.source != current) {
+                pickleSource(x.source)
+                sourceFile = x.source
               }
             case _ =>
               //println(i"no address for $x")
@@ -106,7 +106,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case _ =>
     }
     for (root <- roots) {
-      traverse(root, NoAbstractFile)
+      traverse(root, NoSource)
     }
   }
 }

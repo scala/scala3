@@ -22,10 +22,11 @@ class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
 class PlainFile(val givenPath: Path) extends AbstractFile {
   assert(path ne null)
 
+  dotc.util.Stats.record("new PlainFile")
+
   def jpath: JPath = givenPath.jpath
   override def underlyingSource: Some[PlainFile] = Some(this)
 
-  private val fpath = givenPath.toAbsolute
 
   /** Returns the name of this abstract file. */
   def name: String = givenPath.name
@@ -34,7 +35,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   def path: String = givenPath.path
 
   /** Returns the absolute path of this abstract file as an interned string. */
-  val absolutePath: String = givenPath.toAbsolute.toString.intern
+  override val absolutePath: String = givenPath.toAbsolute.toString.intern
 
   /** The absolute file. */
   def absolute: PlainFile = new PlainFile(givenPath.toAbsolute)
