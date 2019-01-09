@@ -33,6 +33,9 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   /** Returns the path of this abstract file. */
   def path: String = givenPath.path
 
+  /** Returns the absolute path of this abstract file as an interned string. */
+  val absolutePath: String = givenPath.toAbsolute.toString.intern
+
   /** The absolute file. */
   def absolute: PlainFile = new PlainFile(givenPath.toAbsolute)
 
@@ -41,9 +44,9 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   override def output: OutputStream = givenPath.toFile.outputStream()
   override def sizeOption: Option[Int] = Some(givenPath.length.toInt)
 
-  override def hashCode(): Int = fpath.hashCode()
+  override def hashCode(): Int = System.identityHashCode(absolutePath)
   override def equals(that: Any): Boolean = that match {
-    case x: PlainFile => fpath == x.fpath
+    case x: PlainFile => absolutePath == x.absolutePath
     case _            => false
   }
 
