@@ -42,6 +42,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
+  protected def debugPos: Boolean = ctx.settings.YdebugPos.value
 
   def homogenize(tp: Type): Type =
     if (homogenizedView)
