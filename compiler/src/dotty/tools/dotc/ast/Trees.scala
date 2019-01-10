@@ -602,7 +602,7 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @transientParam src: SourceInfo)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
-    override def initialSpan(ignoreTypeTrees: Boolean): Span = call.span
+    override def relevantElemCount = 1 // only consider call when computing span
   }
 
   /** A type tree that represents an existing or inferred type */

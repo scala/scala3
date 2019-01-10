@@ -139,7 +139,8 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
           }
           else outstanding = p :: outstanding
         case m: untpd.Modifiers =>
-          elems = elems ::: m.mods.reverse ::: m.annotations.reverse
+          if (m.mods.nonEmpty || m.annotations.nonEmpty)
+            elems = elems ::: m.mods.reverse ::: m.annotations.reverse
         case xs: List[_] =>
           elems = elems ::: xs.reverse
         case _ =>
@@ -216,6 +217,11 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     }
     span.toSynthetic
   }
+
+  /** How many elements to consider when computing the span.
+   *  Normally: all, overridden in Inlined.
+   */
+  def relevantElemCount = productArity
 
   private def sameSource(that: Positioned) = source `eq` that.source
 
