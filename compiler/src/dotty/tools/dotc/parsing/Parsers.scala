@@ -663,8 +663,8 @@ object Parsers {
           migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
                                       |use a string literal "${in.name}" or an application Symbol("${in.name}") instead.""")
           if (in.isScala2Mode) {
-            patch(source, Position(in.offset, in.offset + 1), "Symbol(\"")
-            patch(source, Position(in.charOffset - 1), "\")")
+            patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
+            patch(source, Span(in.charOffset - 1), "\")")
           }
           atPos(in.skipToken()) { SymbolLit(in.strVal) }
         }
