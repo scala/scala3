@@ -604,7 +604,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (!suppressPositions) {
       if (printPos) {
         val posStr =
-          if (homogenizedView)
+          if (homogenizedView || debugPos)
             if (tree.isInstanceOf[MemberDef]) Str(s"${tree.source}${tree.span}")
             else Str(s"${tree.source}${tree.span.toSynthetic}")
           else
