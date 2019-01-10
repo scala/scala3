@@ -275,13 +275,13 @@ object Parsers {
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-    def syntaxErrorOrIncomplete(msg: => Message): Unit =
+    def syntaxErrorOrIncomplete(msg: => Message, offset: Int = in.offset): Unit =
       if (in.token == EOF) incompleteInputError(msg)
       else {
-        syntaxError(msg)
+        syntaxError(msg, offset)
         skip()
         lastErrorOffset = in.offset
-      } // DEBUG
+      }
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -1456,7 +1456,7 @@ object Parsers {
         case _ =>
           if (isLiteral) literal()
           else {
-            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)))
+            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)), in.lastOffset)
             errorTermTree
           }
       }
