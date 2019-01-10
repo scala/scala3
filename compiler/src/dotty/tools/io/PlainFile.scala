@@ -47,7 +47,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
 
   override def hashCode(): Int = System.identityHashCode(absolutePath)
   override def equals(that: Any): Boolean = that match {
-    case x: PlainFile => absolutePath == x.absolutePath
+    case x: PlainFile => absolutePath `eq` x.absolutePath
     case _            => false
   }
 
