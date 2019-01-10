@@ -659,7 +659,15 @@ object Parsers {
       }
       val isNegated = negOffset < in.offset
       atPos(negOffset) {
-        if (in.token == SYMBOLLIT) atPos(in.skipToken()) { SymbolLit(in.strVal) }
+        if (in.token == SYMBOLLIT) {
+          migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
+                                      |use a string literal "${in.name}" or an application Symbol("${in.name}") instead.""")
+          if (in.isScala2Mode) {
+            patch(source, Position(in.offset, in.offset + 1), "Symbol(\"")
+            patch(source, Position(in.charOffset - 1), "\")")
+          }
+          atPos(in.skipToken()) { SymbolLit(in.strVal) }
+        }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
         else finish(in.token match {
           case CHARLIT                => in.charVal

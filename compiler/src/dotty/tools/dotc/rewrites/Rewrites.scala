@@ -6,6 +6,7 @@ import Positions.Position
 import core.Contexts.Context
 import collection.mutable
 import scala.annotation.tailrec
+import dotty.tools.dotc.reporting.Reporter
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
@@ -51,9 +52,9 @@ object Rewrites {
     }
 
     def writeBack(): Unit = {
-      val out = source.file.output
       val chars = apply(source.underlying.content)
       val bytes = new String(chars).getBytes
+      val out = source.file.output
       out.write(bytes)
       out.close()
     }
@@ -63,10 +64,11 @@ object Rewrites {
    *  given by `pos` in `source` by `replacement`
    */
   def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: Context): Unit =
-    for (rewrites <- ctx.settings.rewrite.value)
-      rewrites.patched
-        .getOrElseUpdate(source, new Patches(source))
-        .addPatch(pos, replacement)
+    if (ctx.reporter != Reporter.NoReporter) // NoReporter is used for syntax highlighting
+      for (rewrites <- ctx.settings.rewrite.value)
+        rewrites.patched
+          .getOrElseUpdate(source, new Patches(source))
+          .addPatch(pos, replacement)
 
   /** Patch position in `ctx.compilationUnit.source`. */
   def patch(pos: Position, replacement: String)(implicit ctx: Context): Unit =
