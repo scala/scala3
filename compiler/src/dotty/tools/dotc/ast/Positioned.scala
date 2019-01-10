@@ -18,8 +18,8 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   /** A unique identifier. Among other things, used for determining the source file
    *  component of the position.
    */
-  private var myUniqueId: Int = _
-  private[this] var mySpan: Span = _
+  private var myUniqueId: Int = -1
+  private[this] var mySpan: Span = NoSpan
 
   /** The span part of the item's position */
   def span: Span = mySpan
@@ -30,8 +30,8 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
   def source: SourceFile = SourceFile.fromId(uniqueId)
   def sourcePos(implicit ctx: Context): SourcePosition = source.atSpan(span)
 
-  setId(initialSource(src).nextId)
-  setPos(initialSpan(), source)
+  //setId(initialSource(src).nextId)
+  setPos(initialSpan(src), source)
 
   protected def setId(id: Int): Unit = {
     myUniqueId = id
@@ -155,66 +155,49 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
     newpd
   }
 
-  /** The source of the first element of this node that has a position */
-  def elemsSource: SourceFile = {
-    def firstSource(x: Any): SourceFile = x match {
-      case x: Positioned if x.span.exists =>
-        x.source
-      case x1 :: xs1 =>
-        val f = firstSource(x1)
-        if (f.exists) f else firstSource(xs1)
-      case _ =>
-        NoSource
-    }
-    def firstElemSource(n: Int): SourceFile =
-      if (n == productArity) NoSource
-      else {
-        val f = firstSource(productElement(n))
-        if (f.exists) f else firstElemSource(n + 1)
-      }
-    firstElemSource(0)
-  }
-
-  /** The source file to use for the `id` of this node. This is
-   *  `elemsSource` if it exists, or the source file indicated by
-   *  `src` otherwise
-   */
-  private def initialSource(src: SourceInfo): SourceFile = {
-    val f = elemsSource
-    if (f.exists) f else src.source
-  }
-
   /** The initial, synthetic span. This is usually the union of all positioned children's spans.
-   *  @param  ignoreTypeTrees  If true, TypeTree children are not counted for the span.
-   *                           This is important for predicting whether a position entry is
-   *                           needed for pickling, since TypeTrees are pickled as types, so
-   *                           their position is lost.
    */
-  def initialSpan(ignoreTypeTrees: Boolean = false): Span = {
+  def initialSpan(si: SourceInfo): Span = {
 
-    def include(p1: Span, p2: Positioned) = p2 match {
-      case _: Trees.TypeTree[_] if ignoreTypeTrees => p1
-      case _ => p1.union(p2.span)
+    def include(span1: Span, p2: Positioned): Span = {
+      val span2 = p2.span
+      if (span2.exists) {
+        var src = if (uniqueId == -1) NoSource else source
+        val src2 = p2.source
+        if (src `eq` src2) span1.union(span2)
+        else if (!src.exists) {
+          setId(src2.nextId)
+          if (span1.exists) initialSpan(si) // we might have some mis-classified children; re-run everything
+          else span2
+        }
+        else span1 // sources differ: ignore child span
+      }
+      else span1
     }
 
     def includeAll(span: Span, xs: List[_]): Span = xs match {
-      case (p: Positioned) :: xs1 if sameSource(p) => includeAll(include(span, p), xs1)
+      case Nil => span
+      case (p: Positioned) :: xs1 => includeAll(include(span, p), xs1)
       case (xs0: List[_]) :: xs1 => includeAll(includeAll(span, xs0), xs1)
       case _ :: xs1 => includeAll(span, xs1)
-      case _ => span
     }
 
-    var n = productArity
+    val limit = relevantElemCount
+    var n = 0
     var span = NoSpan
-    while (n > 0) {
-      n -= 1
+    while (n < limit) {
       productElement(n) match {
-        case p: Positioned if sameSource(p) => span = include(span, p)
-        case m: untpd.Modifiers => span = includeAll(includeAll(span, m.mods), m.annotations)
-        case xs: List[_] => span = includeAll(span, xs)
+        case p: Positioned =>
+          span = include(span, p)
+        case m: untpd.Modifiers =>
+          span = includeAll(includeAll(span, m.mods), m.annotations)
+        case xs: ::[_] =>
+          span = includeAll(span, xs)
         case _ =>
       }
+      n += 1
     }
+    if (uniqueId == -1) setId(si.source.nextId)
     span.toSynthetic
   }
 
@@ -222,8 +205,6 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
    *  Normally: all, overridden in Inlined.
    */
   def relevantElemCount = productArity
-
-  private def sameSource(that: Positioned) = source `eq` that.source
 
   def contains(that: Positioned): Boolean = {
     def isParent(x: Any): Boolean = x match {
