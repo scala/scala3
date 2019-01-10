@@ -378,6 +378,7 @@ object Build {
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
     baseDirectory in Test := baseDirectory.value / "..",
     unmanagedSourceDirectories in Test += baseDirectory.value / "input" / "src" / "main" / "scala",
+    scalacOptions in Test ++= Seq("-Yno-inline"),
     libraryDependencies ++= List(
       ("org.scalameta" %% "semanticdb" % "4.0.0").withDottyCompat(scalaVersion.value),
       "com.novocode" % "junit-interface" % "0.11",
