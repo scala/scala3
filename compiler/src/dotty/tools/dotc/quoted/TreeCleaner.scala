@@ -21,7 +21,7 @@ class TreeCleaner extends tpd.TreeMap {
 
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
     val tree0 = tree match {
-      case TypeDef(_, TypeBoundsTree(lo, hi)) if lo == hi =>
+      case TypeDef(_, TypeBoundsTree(lo, hi)) if lo.tpe =:= hi.tpe =>
         aliasesSyms = tree.symbol :: aliasesSyms
         aliasesTypes = lo.tpe :: aliasesTypes
         aliases(tree.symbol) = ref(lo.tpe.typeSymbol)

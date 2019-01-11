@@ -46,7 +46,8 @@ class Compiler {
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new Staging) ::            // Expand macros and turn quoted trees into explicit run-time data structures
+    List(new Staging) ::            // Check quotation levels (while healing types) and expand macros
+    List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
