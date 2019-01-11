@@ -10,6 +10,7 @@ import scala.tasty.util.Chars._
 import Spans._
 import scala.io.Codec
 import core.Names.TermName
+import core.Contexts.Context
 import scala.annotation.internal.sharable
 import core.Decorators.PreNamedString
 import java.util.concurrent.atomic.AtomicInteger
@@ -187,6 +188,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 }
 object SourceFile {
   implicit def eqSurce: Eq[SourceFile, SourceFile] = Eq
+
+  implicit def fromContext(implicit ctx: Context): SourceFile = ctx.source
 
   type PathName = TermName
 

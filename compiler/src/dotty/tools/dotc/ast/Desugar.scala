@@ -8,7 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
-import util.Property
+import util.{Property, SourceFile}
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -43,15 +43,15 @@ object desugar {
 
 // ----- DerivedTypeTrees -----------------------------------
 
-  class SetterParamTree(implicit @transientParam src: SourceInfo) extends DerivedTypeTree {
+  class SetterParamTree(implicit @transientParam src: SourceFile) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.info.resultType)
   }
 
-  class TypeRefTree(implicit @transientParam src: SourceInfo) extends DerivedTypeTree {
+  class TypeRefTree(implicit @transientParam src: SourceFile) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.typeRef)
   }
 
-  class TermRefTree(implicit @transientParam src: SourceInfo) extends DerivedTypeTree {
+  class TermRefTree(implicit @transientParam src: SourceFile) extends DerivedTypeTree {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
@@ -59,7 +59,7 @@ object desugar {
    *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
    *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
    */
-  class DerivedFromParamTree(suffix: String)(implicit @transientParam src: SourceInfo) extends DerivedTypeTree {
+  class DerivedFromParamTree(suffix: String)(implicit @transientParam src: SourceFile) extends DerivedTypeTree {
 
     /** Make sure that for all enclosing module classes their companion classes
      *  are completed. Reason: We need the constructor of such companion classes to
@@ -1029,7 +1029,7 @@ object desugar {
     mayNeedSetter
    }
 
-  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceInfo) =
+  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
       .withMods(mods)
       .withSpan(original.span.withPoint(named.span.start))
@@ -1393,6 +1393,6 @@ object desugar {
     buf.toList
   }
 
-  private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit @transientParam src: SourceInfo)
+  private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit @transientParam src: SourceFile)
     extends GenFrom(pat, expr)
 }

@@ -4,7 +4,7 @@ package ast
 
 import util.Spans._
 import util.{SourceFile, NoSource, SourcePosition}
-import core.Contexts.{Context, SourceInfo}
+import core.Contexts.Context
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
@@ -13,7 +13,7 @@ import annotation.internal.sharable
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @transientParam src: SourceInfo) extends Product with Cloneable {
+abstract class Positioned(implicit @transientParam src: SourceFile) extends Product with Cloneable {
 
   /** A unique identifier. Among other things, used for determining the source file
    *  component of the position.
@@ -157,7 +157,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
 
   /** The initial, synthetic span. This is usually the union of all positioned children's spans.
    */
-  def initialSpan(si: SourceInfo): Span = {
+  def initialSpan(givenSource: SourceFile): Span = {
 
     def include(span1: Span, p2: Positioned): Span = {
       val span2 = p2.span
@@ -167,7 +167,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
         if (src `eq` src2) span1.union(span2)
         else if (!src.exists) {
           setId(src2.nextId)
-          if (span1.exists) initialSpan(si) // we might have some mis-classified children; re-run everything
+          if (span1.exists) initialSpan(givenSource) // we might have some mis-classified children; re-run everything
           else span2
         }
         else span1 // sources differ: ignore child span
@@ -197,7 +197,7 @@ abstract class Positioned(implicit @transientParam src: SourceInfo) extends Prod
       }
       n += 1
     }
-    if (uniqueId == -1) setId(si.source.nextId)
+    if (uniqueId == -1) setId(givenSource.nextId)
     span.toSynthetic
   }
 

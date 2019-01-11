@@ -11,7 +11,7 @@ import Parsers._
 import util.Spans._
 import core._
 import Constants._
-import Contexts.SourceInfo
+import util.SourceFile
 import Utility._
 
 
@@ -47,7 +47,7 @@ object MarkupParsers {
     override def getMessage: String = "input ended while parsing XML"
   }
 
-  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit src: SourceInfo) extends MarkupParserCommon {
+  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit src: SourceFile) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 
