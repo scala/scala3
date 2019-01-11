@@ -922,7 +922,7 @@ object messages {
   case class IllegalStartOfSimplePattern()(implicit ctx: Context)
   extends Message(IllegalStartOfSimplePatternID) {
     val kind: String = "Syntax"
-    val msg: String = "Illegal start of simple pattern"
+    val msg: String = "pattern expected"
     val explanation: String = {
       val sipCode =
         """def f(x: Int, y: Int) = x match {
