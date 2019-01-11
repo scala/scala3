@@ -5,7 +5,7 @@ package reporting
 import scala.annotation.internal.sharable
 
 import core.Contexts._
-import util.{SourcePosition, NoSourcePosition}
+import util.{Position, NoPosition}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
 import java.lang.System.currentTimeMillis
@@ -37,10 +37,10 @@ object Reporter {
 trait Reporting { this: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
-  def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def inform(msg: => String, pos: Position = NoPosition): Unit =
     if (this.settings.verbose.value) this.echo(msg, pos)
 
-  def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def echo(msg: => String, pos: Position = NoPosition): Unit =
     reporter.report(new Info(msg, pos))
 
   def reportWarning(warning: Warning): Unit =
@@ -49,20 +49,20 @@ trait Reporting { this: Context =>
       else reporter.report(warning)
     }
 
-  def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def deprecationWarning(msg: => Message, pos: Position = NoPosition): Unit =
     if (this.settings.deprecation.value) reportWarning(new DeprecationWarning(msg, pos))
 
-  def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def migrationWarning(msg: => Message, pos: Position = NoPosition): Unit =
     reportWarning(new MigrationWarning(msg, pos))
 
-  def uncheckedWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def uncheckedWarning(msg: => Message, pos: Position = NoPosition): Unit =
     reportWarning(new UncheckedWarning(msg, pos))
 
-  def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def featureWarning(msg: => Message, pos: Position = NoPosition): Unit =
     reportWarning(new FeatureWarning(msg, pos))
 
   def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
-      featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
+      featureUseSite: Symbol, required: Boolean, pos: Position): Unit = {
     val req = if (required) "needs to" else "should"
     val prefix = if (isScala2Feature) "scala." else "dotty."
     val fqname = prefix + "language." + feature
@@ -84,32 +84,32 @@ trait Reporting { this: Context =>
     else reportWarning(new FeatureWarning(msg, pos))
   }
 
-  def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def warning(msg: => Message, pos: Position = NoPosition): Unit =
     reportWarning(new Warning(msg, pos))
 
-  def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def strictWarning(msg: => Message, pos: Position = NoPosition): Unit =
     if (this.settings.strict.value) error(msg, pos)
     else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos))
 
-  def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def error(msg: => Message, pos: Position = NoPosition): Unit =
     reporter.report(new Error(msg, pos))
 
-  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def errorOrMigrationWarning(msg: => Message, pos: Position = NoPosition): Unit =
     if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
 
-  def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def restrictionError(msg: => Message, pos: Position = NoPosition): Unit =
     reporter.report {
       new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(pos)
     }
 
-  def incompleteInputError(msg: => Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
+  def incompleteInputError(msg: => Message, pos: Position = NoPosition)(implicit ctx: Context): Unit =
     reporter.incomplete(new Error(msg, pos))(ctx)
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
    *  "contains" here.
    */
-  def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def log(msg: => String, pos: Position = NoPosition): Unit =
     if (this.settings.Ylog.value.containsPhase(phase))
       echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
 
@@ -129,7 +129,7 @@ trait Reporting { this: Context =>
     value
   }
 
-  def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def debugwarn(msg: => String, pos: Position = NoPosition): Unit =
     if (this.settings.Ydebug.value) warning(msg, pos)
 }
 

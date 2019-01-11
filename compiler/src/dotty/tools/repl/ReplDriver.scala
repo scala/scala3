@@ -18,7 +18,7 @@ import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.{SourceFile, Position}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.io._
 import org.jline.reader._
@@ -169,7 +169,7 @@ class ReplDriver(settings: Array[String],
         val unit = new CompilationUnit(file)
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
-        val srcPos = SourcePosition(file, Span(cursor))
+        val srcPos = Position(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
       }
@@ -357,7 +357,7 @@ class ReplDriver(settings: Array[String],
 
   /** A `MessageRenderer` without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
+    override def posStr(pos: Position, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
   }
 
   /** Render messages using the `MessageRendering` trait */

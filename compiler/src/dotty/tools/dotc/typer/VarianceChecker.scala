@@ -9,7 +9,7 @@ import Variances._
 import NameKinds._
 import TypeApplications.varianceConforms
 import util.Spans._
-import util.SourcePosition
+import util.Position
 import config.Printers.variances
 import reporting.trace
 
@@ -152,7 +152,7 @@ class VarianceChecker()(implicit ctx: Context) {
   }
 
   private object Traverser extends TreeTraverser {
-    def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
+    def checkVariance(sym: Symbol, pos: Position) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2Mode &&

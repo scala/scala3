@@ -639,21 +639,21 @@ object DottyLanguageServer {
   final val RENAME_OVERRIDDEN= "Rename the base member"
   final val RENAME_NO_OVERRIDDEN = "Rename only this member"
 
-  /** Convert an lsp4j.Position to a SourcePosition */
-  def sourcePosition(driver: InteractiveDriver, uri: URI, pos: lsp4j.Position): SourcePosition = {
+  /** Convert an lsp4j.Position to a util.Position */
+  def sourcePosition(driver: InteractiveDriver, uri: URI, pos: lsp4j.Position): Position = {
     val actualPosition =
       if (isWorksheet(uri)) toWrappedPosition(pos)
       else pos
     val source = driver.openedFiles(uri)
     if (source.exists) {
       val p = Spans.Span(source.lineToOffset(actualPosition.getLine) + actualPosition.getCharacter)
-      new SourcePosition(source, p)
+      new Position(source, p)
     }
-    else NoSourcePosition
+    else NoPosition
   }
 
-  /** Convert a SourcePosition to an lsp4j.Range */
-  def range(p: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Range] =
+  /** Convert a Position to an lsp4j.Range */
+  def range(p: Position, positionMapper: Option[Position => Position] = None): Option[lsp4j.Range] =
     if (p.exists) {
       val mappedPosition = positionMapper.map(_(p)).getOrElse(p)
       Some(new lsp4j.Range(
@@ -663,8 +663,8 @@ object DottyLanguageServer {
     } else
       None
 
-  /** Convert a SourcePosition to an lsp4.Location */
-  def location(p: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Location] =
+  /** Convert a Position to an lsp4.Location */
+  def location(p: Position, positionMapper: Option[Position => Position] = None): Option[lsp4j.Location] =
     for {
       uri <- toUriOption(p.source)
       r <- range(p, positionMapper)
@@ -675,7 +675,7 @@ object DottyLanguageServer {
    * `positionMapper`.
    */
   def diagnostic(mc: MessageContainer,
-                 positionMapper: Option[SourcePosition => SourcePosition] = None
+                 positionMapper: Option[Position => Position] = None
                 )(implicit ctx: Context): Option[lsp4j.Diagnostic] =
     if (!mc.pos.exists)
       None // diagnostics without positions are not supported: https://github.com/Microsoft/language-server-protocol/issues/249
@@ -753,8 +753,8 @@ object DottyLanguageServer {
    * @param position The position as seen by the compiler (after wrapping)
    * @return The position in the actual source file (before wrapping).
    */
-  private def toUnwrappedPosition(position: SourcePosition): SourcePosition = {
-    new SourcePosition(position.source, position.span, position.outer) {
+  private def toUnwrappedPosition(position: Position): Position = {
+    new Position(position.source, position.span, position.outer) {
       override def startLine: Int = position.startLine - 1
       override def endLine: Int = position.endLine - 1
     }
@@ -778,7 +778,7 @@ object DottyLanguageServer {
    * Returns the position mapper necessary to unwrap positions for `sourcefile`. If `sourcefile` is
    * not a worksheet, no mapper is necessary. Otherwise, return `toUnwrappedPosition`.
    */
-  private def positionMapperFor(sourcefile: SourceFile): Option[SourcePosition => SourcePosition] = {
+  private def positionMapperFor(sourcefile: SourceFile): Option[Position => Position] = {
     if (isWorksheet(sourcefile)) Some(toUnwrappedPosition _)
     else None
   }
@@ -865,8 +865,8 @@ object DottyLanguageServer {
     markupContent(buf.toString)
   }
 
-  /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
-  def symbolInfo(sym: Symbol, pos: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition])(implicit ctx: Context): Option[lsp4j.SymbolInformation] = {
+  /** Create an lsp4j.SymbolInfo from a Symbol and a Position */
+  def symbolInfo(sym: Symbol, pos: Position, positionMapper: Option[Position => Position])(implicit ctx: Context): Option[lsp4j.SymbolInformation] = {
     def symbolKind(sym: Symbol)(implicit ctx: Context): lsp4j.SymbolKind = {
       import lsp4j.{SymbolKind => SK}
 

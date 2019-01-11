@@ -25,7 +25,7 @@ import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet}
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
-import util.SourcePosition
+import util.Position
 import ast.TreeInfo
 
 object Inliner {
@@ -159,7 +159,7 @@ object Inliner {
    *  in the call field of an Inlined node.
    *  The trace has enough info to completely reconstruct positions.
    */
-  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(implicit ctx: Context): Tree =
+  def inlineCallTrace(callSym: Symbol, pos: Position)(implicit ctx: Context): Tree =
     Ident(callSym.topLevelClass.typeRef).withSourcePos(pos)
 }
 
@@ -908,7 +908,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   class InlineTyper extends ReTyper {
     import reducer._
 
-    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(implicit ctx: Context): Type = {
+    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
         case tpe: NamedType if tpe.symbol.exists && !tpe.symbol.isAccessibleFrom(tpe.prefix, superAccess) =>
           tpe.info match {

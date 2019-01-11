@@ -3,7 +3,7 @@ package dotc
 package reporting
 package diagnostic
 
-import util.SourcePosition
+import util.Position
 
 import messages._
 
@@ -91,31 +91,31 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
   }
 
   /** Enclose this message in an `Error` container */
-  def error(pos: SourcePosition): Error =
+  def error(pos: Position): Error =
     new Error(toMessage, pos)
 
   /** Enclose this message in an `Warning` container */
-  def warning(pos: SourcePosition): Warning =
+  def warning(pos: Position): Warning =
     new Warning(toMessage, pos)
 
   /** Enclose this message in an `Info` container */
-  def info(pos: SourcePosition): Info =
+  def info(pos: Position): Info =
     new Info(toMessage, pos)
 
   /** Enclose this message in an `FeatureWarning` container */
-  def featureWarning(pos: SourcePosition): FeatureWarning =
+  def featureWarning(pos: Position): FeatureWarning =
     new FeatureWarning(toMessage, pos)
 
   /** Enclose this message in an `UncheckedWarning` container */
-  def uncheckedWarning(pos: SourcePosition): UncheckedWarning =
+  def uncheckedWarning(pos: Position): UncheckedWarning =
     new UncheckedWarning(toMessage, pos)
 
   /** Enclose this message in an `DeprecationWarning` container */
-  def deprecationWarning(pos: SourcePosition): DeprecationWarning =
+  def deprecationWarning(pos: Position): DeprecationWarning =
     new DeprecationWarning(toMessage, pos)
 
   /** Enclose this message in an `MigrationWarning` container */
-  def migrationWarning(pos: SourcePosition): MigrationWarning =
+  def migrationWarning(pos: Position): MigrationWarning =
     new MigrationWarning(toMessage, pos)
 }
 

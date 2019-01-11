@@ -24,7 +24,7 @@ import scala.tasty.util.Chars.isOperatorPart
 import transform.TypeUtils._
 
 import language.implicitConversions
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Position
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -841,7 +841,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def plain: PlainPrinter = new PlainPrinter(_ctx)
 
-  private def withPos(txt: Text, pos: SourcePosition): Text = {
+  private def withPos(txt: Text, pos: Position): Text = {
     if (!printLines || !pos.exists) txt
     else txt match {
       case Str(s, _) => Str(s, LineRange(pos.line, pos.endLine))

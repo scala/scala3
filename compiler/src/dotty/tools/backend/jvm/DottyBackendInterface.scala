@@ -390,7 +390,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     ctx.error(msg)
     throw new RuntimeException(msg)
   }
-  def sourcePos(pos: Position)(implicit ctx: Context): util.SourcePosition =
+  def sourcePos(pos: Position)(implicit ctx: Context): util.Position =
     ctx.source.atSpan(pos)
 
   def emitAsmp: Option[String] = None

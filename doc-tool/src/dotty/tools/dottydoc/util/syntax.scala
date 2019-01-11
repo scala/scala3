@@ -8,7 +8,7 @@ import model.Package
 import core.ContextDottydoc
 import dotc.core.Symbols._
 
-import dotc.util.{ SourcePosition, SourceFile }
+import dotc.util.{ Position, SourceFile }
 import dotc.util.Spans.Span
 import scala.io.Codec
 
@@ -20,7 +20,7 @@ object syntax {
   }
 
   implicit class SymbolExtensions(val sym: Symbol) extends AnyVal {
-    def sourcePosition(span: Span)(implicit ctx: Context): SourcePosition =
+    def sourcePosition(span: Span)(implicit ctx: Context): Position =
       sym.source.atSpan(span)
   }
 }

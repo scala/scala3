@@ -20,7 +20,7 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.util.control.NonFatal
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Position
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
@@ -35,7 +35,7 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
+  def splice(tree: Tree, pos: Position, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val interpreter = new Interpreter(pos, classLoader)
@@ -71,7 +71,7 @@ object Splicer {
   }
 
   /** Tree interpreter that evaluates the tree */
-  private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context) extends AbstractInterpreter {
+  private class Interpreter(pos: Position, classLoader: ClassLoader)(implicit ctx: Context) extends AbstractInterpreter {
 
     type Result = Object
 
@@ -108,7 +108,7 @@ object Splicer {
 
     protected def interpretTastyContext()(implicit env: Env): Object = {
       new ReflectionImpl(ctx) {
-        override def rootPosition: SourcePosition = pos
+        override def rootPosition: Position = pos
       }
     }
 
@@ -266,7 +266,7 @@ object Splicer {
     }
 
     /** Exception that stops interpretation if some issue is found */
-    private class StopInterpretation(val msg: String, val pos: SourcePosition) extends Exception
+    private class StopInterpretation(val msg: String, val pos: Position) extends Exception
 
   }
 

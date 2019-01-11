@@ -9,7 +9,7 @@ import core.Decorators._
 
 import scala.collection.mutable
 
-import util.SourcePosition
+import util.Position
 import core.Contexts._
 import Reporter._
 import diagnostic.{ Message, MessageContainer, NoExplanation }
@@ -29,7 +29,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   private[this] var _didCrash = false
   final def compilerCrashed: Boolean = _didCrash
 
-  protected final def inlineInfo(pos: SourcePosition)(implicit ctx: Context): String =
+  protected final def inlineInfo(pos: Position)(implicit ctx: Context): String =
     if (pos.exists) {
       if (pos.outer.exists)
         i"\ninlined at ${pos.outer}:\n" + inlineInfo(pos.outer)

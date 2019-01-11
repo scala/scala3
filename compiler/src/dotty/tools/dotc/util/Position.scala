@@ -8,12 +8,12 @@ import Spans.{Span, NoSpan}
 import scala.annotation.internal.sharable
 
 /** A source position is comprised of a span and a source file */
-case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
+case class Position(source: SourceFile, span: Span, outer: Position = NoPosition)
 extends interfaces.SourcePosition with Showable {
 
   /** Is `that` a source position contained in this source position ?
    *  `outer` is not taken into account. */
-  def contains(that: SourcePosition): Boolean =
+  def contains(that: Position): Boolean =
     this.source == that.source && this.span.contains(that.span)
 
   def exists: Boolean = span.exists
@@ -55,13 +55,13 @@ extends interfaces.SourcePosition with Showable {
   def endLine: Int = source.offsetToLine(end)
   def endColumn: Int = source.column(end)
 
-  def withOuter(outer: SourcePosition): SourcePosition = SourcePosition(source, span, outer)
-  def withSpan(range: Span) = SourcePosition(source, range, outer)
+  def withOuter(outer: Position): Position = Position(source, span, outer)
+  def withSpan(range: Span) = Position(source, range, outer)
 
-  def startPos: SourcePosition = withSpan(span.startPos)
-  def endPos  : SourcePosition = withSpan(span.endPos)
-  def focus   : SourcePosition = withSpan(span.focus)
-  def toSynthetic: SourcePosition = withSpan(span.toSynthetic)
+  def startPos: Position = withSpan(span.startPos)
+  def endPos  : Position = withSpan(span.endPos)
+  def focus   : Position = withSpan(span.focus)
+  def toSynthetic: Position = withSpan(span.toSynthetic)
 
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
@@ -70,8 +70,8 @@ extends interfaces.SourcePosition with Showable {
 }
 
 /** A sentinel for a non-existing source position */
-@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan) {
+@sharable object NoPosition extends Position(NoSource, NoSpan) {
   override def toString: String = "?"
-  override def withOuter(outer: SourcePosition): SourcePosition = outer
+  override def withOuter(outer: Position): Position = outer
 }
 

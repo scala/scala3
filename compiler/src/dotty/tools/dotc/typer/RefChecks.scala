@@ -8,7 +8,7 @@ import StdNames._, Denotations._, SymUtils._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Spans._
-import util.{Store, SourcePosition}
+import util.{Store, Position}
 import scala.collection.{ mutable, immutable }
 import ast._
 import Trees._
@@ -809,7 +809,7 @@ object RefChecks {
   // I assume that's a consequence of some code trying to avoid noise by suppressing
   // warnings after the first, but I think it'd be better if we didn't have to
   // arbitrarily choose one as more important than the other.
-  private def checkUndesiredProperties(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
+  private def checkUndesiredProperties(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = {
     // If symbol is deprecated, and the point of reference is not enclosed
     // in either a deprecated member or a scala bridge method, issue a warning.
     if (sym.isDeprecated && !ctx.owner.ownersIterator.exists(_.isDeprecated)) {

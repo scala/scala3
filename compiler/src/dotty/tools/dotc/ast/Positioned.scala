@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import util.Spans._
-import util.{SourceFile, NoSource, SourcePosition}
+import util.{SourceFile, NoSource, Position}
 import core.Contexts.Context
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
@@ -28,7 +28,7 @@ abstract class Positioned(implicit @transientParam src: SourceFile) extends Prod
   def uniqueId: Int = myUniqueId
 
   def source: SourceFile = SourceFile.fromId(uniqueId)
-  def sourcePos(implicit ctx: Context): SourcePosition = source.atSpan(span)
+  def sourcePos(implicit ctx: Context): Position = source.atSpan(span)
 
   //setId(initialSource(src).nextId)
   setPos(initialSpan(src), source)
@@ -68,7 +68,7 @@ abstract class Positioned(implicit @transientParam src: SourceFile) extends Prod
     newpd
   }
 
-  def withSourcePos(sourcePos: SourcePosition): this.type = {
+  def withSourcePos(sourcePos: Position): this.type = {
     val ownSpan = this.span
     val newpd: this.type =
       if ((sourcePos.source `eq` source) && sourcePos.span == ownSpan || ownSpan.isSynthetic) this

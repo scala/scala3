@@ -26,7 +26,7 @@ import reporting.diagnostic.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{SourceFile, NoSource, Property, SourcePosition}
+import util.{SourceFile, NoSource, Property, Position}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -661,7 +661,7 @@ object Symbols {
      */
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
-    final def sourcePos(implicit ctx: Context): SourcePosition = {
+    final def sourcePos(implicit ctx: Context): Position = {
       val src = source
       (if (src.exists) src else ctx.source).atSpan(span)
     }

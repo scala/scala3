@@ -115,7 +115,7 @@ trait CoreImpl extends scala.tasty.reflect.Core {
 
   type Signature = core.Signature
 
-  type Position = util.SourcePosition
+  type Position = util.Position
 
   type Constant = Constants.Constant
 

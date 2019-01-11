@@ -6,7 +6,7 @@ import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Spans._
-import util.SourcePosition
+import util.Position
 import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
@@ -17,7 +17,7 @@ import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.typer.Inliner
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Position
 
 
 /** Translates quoted terms and types to `unpickle` method calls.
@@ -258,7 +258,7 @@ class Staging extends MacroTransformWithImplicits {
      *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
      *                    to be added to the "inconsistent phase" message.
      */
-    def tryHeal(tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[String] = tp match {
+    def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == -1) {
           assert(ctx.inInlineMethod)
@@ -284,7 +284,7 @@ class Staging extends MacroTransformWithImplicits {
     /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
      *  by which we refer to `sym`.
      */
-    def check(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = {
+    def check(sym: Symbol, tp: Type, pos: Position)(implicit ctx: Context): Unit = {
       val isThis = tp.isInstanceOf[ThisType]
       def symStr =
         if (!isThis) sym.show
@@ -302,7 +302,7 @@ class Staging extends MacroTransformWithImplicits {
     }
 
     /** Check all named types and this-types in a given type for phase consistency. */
-    def checkType(pos: SourcePosition)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
+    def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
       def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
         tp match {
           case tp: TypeRef if tp.symbol.isSplice =>
@@ -449,7 +449,7 @@ class Staging extends MacroTransformWithImplicits {
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
-        val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.span)
+        val pos: Position = spliceCtx.source.atSpan(enclosingInlineds.head.span)
         val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPosOf(splice)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }

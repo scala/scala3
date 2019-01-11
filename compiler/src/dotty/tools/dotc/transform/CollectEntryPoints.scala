@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import Types._
 import Decorators._
 import StdNames._
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Position
 import dotty.tools.dotc.config.JavaPlatform
 
 class CollectEntryPoints extends MiniPhase {
@@ -38,7 +38,7 @@ class CollectEntryPoints extends MiniPhase {
   }
 
   def isJavaEntryPoint(sym: Symbol)(implicit ctx: Context): Boolean = {
-    def fail(msg: String, pos: SourcePosition = sym.sourcePos) = {
+    def fail(msg: String, pos: Position = sym.sourcePos) = {
       ctx.warning(
         i"""${sym.name} has a main method with parameter type Array[String], but ${sym.fullName} will not be a runnable program.
            |Reason: $msg""", sym.sourcePos

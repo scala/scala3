@@ -3,7 +3,7 @@ package dotc
 package reporting
 package diagnostic
 
-import util.SourcePosition
+import util.Position
 import core.Contexts.Context
 
 import java.util.Optional
@@ -25,7 +25,7 @@ object MessageContainer {
 
 class MessageContainer(
   msgFn: => Message,
-  val pos: SourcePosition,
+  val pos: Position,
   val level: Int
 ) extends Exception with interfaces.Diagnostic {
   import MessageContainer._

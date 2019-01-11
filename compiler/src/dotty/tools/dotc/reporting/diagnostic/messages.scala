@@ -10,7 +10,7 @@ import Symbols._
 import Names._
 import NameOps._
 import Types._
-import util.SourcePosition
+import util.Position
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotc.parsing.Scanners.Token
@@ -31,52 +31,52 @@ object messages {
   // `MessageContainer`s to be consumed by `Reporter` ---------------------- //
   class Error(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends MessageContainer(msgFn, pos, ERROR)
 
   class Warning(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends MessageContainer(msgFn, pos, WARNING) {
     def toError: Error = new Error(msgFn, pos)
   }
 
   class Info(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends MessageContainer(msgFn, pos, INFO)
 
   abstract class ConditionalWarning(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends Warning(msgFn, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean]
   }
 
   class FeatureWarning(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.feature
   }
 
   class UncheckedWarning(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.unchecked
   }
 
   class DeprecationWarning(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.deprecation
   }
 
   class MigrationWarning(
     msgFn: => Message,
-    pos: SourcePosition
+    pos: Position
   ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.migration
   }

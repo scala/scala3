@@ -5,7 +5,7 @@ package parsing
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition }
+import util.{ SourceFile, Position }
 import Tokens._
 import Scanners._
 import xml.MarkupParsers.MarkupParser
@@ -102,7 +102,7 @@ object Parsers {
     def nameStart: Offset =
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
 
-    def sourcePos(off: Int = in.offset): SourcePosition =
+    def sourcePos(off: Int = in.offset): Position =
       source.atSpan(Span(off))
 
     /* ------------- ERROR HANDLING ------------------------------------------- */
@@ -259,7 +259,7 @@ object Parsers {
       }
     }
 
-    def warning(msg: => Message, sourcePos: SourcePosition): Unit =
+    def warning(msg: => Message, sourcePos: Position): Unit =
       ctx.warning(msg, sourcePos)
 
     def warning(msg: => Message, offset: Int = in.offset): Unit =

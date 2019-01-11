@@ -9,7 +9,7 @@ import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators._
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils.decorateSymbol
-import util.Spans._, util.SourceFile, util.SourcePosition
+import util.Spans._, util.SourceFile, util.Position
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
@@ -70,7 +70,7 @@ object Interactive {
     tree.isInstanceOf[DefTree with NameTree]
 
   /** The type of the closest enclosing tree with a type containing position `pos`. */
-  def enclosingType(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Type = {
+  def enclosingType(trees: List[SourceTree], pos: Position)(implicit ctx: Context): Type = {
     val path = pathTo(trees, pos)
     if (path.isEmpty) NoType
     else path.head.tpe
@@ -78,7 +78,7 @@ object Interactive {
 
   /** The closest enclosing tree with a symbol containing position `pos`, or the `EmptyTree`.
    */
-  def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Tree =
+  def enclosingTree(trees: List[SourceTree], pos: Position)(implicit ctx: Context): Tree =
     enclosingTree(pathTo(trees, pos))
 
   /** The closes enclosing tree with a symbol, or the `EmptyTree`.
@@ -97,7 +97,7 @@ object Interactive {
    *
    * @see sourceSymbol
    */
-  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
+  def enclosingSourceSymbols(path: List[Tree], pos: Position)(implicit ctx: Context): List[Symbol] = {
     val syms = path match {
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
@@ -250,7 +250,7 @@ object Interactive {
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
    *  the tree closest enclosing `pos` and ends with an element of `trees`.
    */
-  def pathTo(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Tree] =
+  def pathTo(trees: List[SourceTree], pos: Position)(implicit ctx: Context): List[Tree] =
     trees.find(_.pos.contains(pos)) match {
       case Some(tree) => pathTo(tree.tree, pos.span)
       case None => Nil
@@ -332,7 +332,7 @@ object Interactive {
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver): List[SourceTree] = {
+  def findDefinitions(path: List[Tree], pos: Position, driver: InteractiveDriver): List[SourceTree] = {
     implicit val ctx = driver.currentCtx
     val enclTree = enclosingTree(path)
     val includeOverridden = enclTree.isInstanceOf[MemberDef]

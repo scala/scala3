@@ -8,7 +8,7 @@ import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
 import typer.ImportInfo
-import util.SourcePosition
+import util.Position
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.util.control.NonFatal
@@ -506,7 +506,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided ctx.settings.YprintPos.value)
   }.close // todo: override in refined printer
 
-  def toText(pos: SourcePosition): Text = {
+  def toText(pos: Position): Text = {
     if (!pos.exists) "<no position>"
     else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"

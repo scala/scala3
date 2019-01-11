@@ -17,7 +17,7 @@ import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
 
-import util.SourcePosition
+import util.Position
 import transform.SymUtils._
 import Decorators._
 import ErrorReporting.{err, errorType}
@@ -442,7 +442,7 @@ object Checking {
    *
    *  @return The `info` of `sym`, with problematic aliases expanded away.
    */
-  def checkNoPrivateLeaks(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Type = {
+  def checkNoPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type = {
     class NotPrivate extends TypeMap {
       var errors: List[() => String] = Nil
 
@@ -582,7 +582,7 @@ trait Checking {
     if (!tp.isStable) ctx.error(ex"$tp is not stable", posd.sourcePos)
 
   /** Check that all type members of `tp` have realizable bounds */
-  def checkRealizableBounds(cls: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
+  def checkRealizableBounds(cls: Symbol, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = boundsRealizability(cls.thisType)
     if (rstatus ne Realizable)
       ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
@@ -651,7 +651,7 @@ trait Checking {
                    name: TermName,
                    description: => String,
                    featureUseSite: Symbol,
-                   pos: SourcePosition)(implicit ctx: Context): Unit =
+                   pos: Position)(implicit ctx: Context): Unit =
     if (!ctx.featureEnabled(base, name))
       ctx.featureWarning(name.toString, description,
         isScala2Feature = base.isContainedIn(defn.LanguageModuleClass),
@@ -661,7 +661,7 @@ trait Checking {
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
    *  argument is infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(implicit ctx: Context): Type = {
+  def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = {
     def checkGoodBounds(tp: Type) = tp match {
       case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
         ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
@@ -800,7 +800,7 @@ trait Checking {
    *
    *  The standard library relies on this idiom.
    */
-  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit =
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit =
     parent match {
       case parent: ClassSymbol if parent is Trait =>
         val psuper = parent.superClass
@@ -815,7 +815,7 @@ trait Checking {
 
   /** Check that case classes are not inherited by case classes.
    */
-  def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit =
+  def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit =
     parent match {
       case parent: ClassSymbol =>
         if (parent is Case)
@@ -849,7 +849,7 @@ trait Checking {
    *  of the self type, yet is no longer visible once the `this` has been replaced
    *  by some other prefix. See neg/i3083.scala
    */
-  def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = {
+  def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = {
     var ok = true
     val check: Type => Unit = {
       case ref: NamedType =>
@@ -1000,17 +1000,17 @@ trait NoChecking extends ReChecking {
   override def checkClassType(tp: Type, posd: Positioned, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(implicit ctx: Context): Type = tp
+  override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context): Unit = ()
-  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
-  override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
-  override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
+  override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
 }

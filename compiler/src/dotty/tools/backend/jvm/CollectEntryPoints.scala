@@ -12,7 +12,7 @@ import SymDenotations._
 import Contexts._
 import Types._
 import Symbols._
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Position
 import Decorators._
 import StdNames.nme
 
@@ -47,7 +47,7 @@ object CollectEntryPoints{
     def hasJavaMainMethod(sym: Symbol): Boolean =
       (toDenot(sym).info member nme.main).alternatives exists(x => isJavaMainMethod(x.symbol))
 
-    def fail(msg: String, pos: SourcePosition = sym.sourcePos) = {
+    def fail(msg: String, pos: Position = sym.sourcePos) = {
       ctx.warning(
         i"""${sym.name} has a main method with parameter type Array[String], but ${sym.fullName} will not be a runnable program.
            |Reason: $msg""", sym.sourcePos

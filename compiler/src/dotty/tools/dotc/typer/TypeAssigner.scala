@@ -7,7 +7,7 @@ import ast._
 import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Spans._
-import util.SourcePosition
+import util.Position
 import config.Printers.typr
 import ast.Trees._
 import NameOps._
@@ -150,7 +150,7 @@ trait TypeAssigner {
   def avoidingType(expr: Tree, bindings: List[Tree])(implicit ctx: Context): Type =
     avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
-  def avoidPrivateLeaks(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Type =
+  def avoidPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type =
     if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) checkNoPrivateLeaks(sym, pos)
     else sym.info
 
@@ -185,7 +185,7 @@ trait TypeAssigner {
    *  (2) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
    */
-  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(implicit ctx: Context): Type = {
+  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
       case tpe: NamedType =>
         val pre = tpe.prefix
@@ -236,7 +236,7 @@ trait TypeAssigner {
 
   /** The type of a selection with `name` of a tree with type `site`.
    */
-  def selectionType(site: Type, name: Name, pos: SourcePosition)(implicit ctx: Context): Type = {
+  def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val mbr = site.member(name)
     if (reallyExists(mbr))
       site.select(name, mbr)

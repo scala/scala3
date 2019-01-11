@@ -6,7 +6,7 @@ import core._
 import ast.{Trees, tpd, untpd}
 import util.Spans._
 import util.Stats.track
-import util.{SourcePosition, NoSourcePosition, SourceFile}
+import util.{Position, NoPosition, SourceFile}
 import Trees.Untyped
 import Contexts._
 import Flags._
@@ -38,7 +38,7 @@ object Applications {
   def extractorMember(tp: Type, name: Name)(implicit ctx: Context): SingleDenotation =
     tp.member(name).suchThat(_.info.isParameterless)
 
-  def extractorMemberType(tp: Type, name: Name, errorPos: SourcePosition)(implicit ctx: Context): Type = {
+  def extractorMemberType(tp: Type, name: Name, errorPos: Position)(implicit ctx: Context): Type = {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
@@ -49,18 +49,18 @@ object Applications {
    *  for a pattern with `numArgs` subpatterns?
    *  This is the case of `tp` has members `_1` to `_N` where `N == numArgs`.
    */
-  def isProductMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean =
+  def isProductMatch(tp: Type, numArgs: Int, errorPos: Position = NoPosition)(implicit ctx: Context): Boolean =
     numArgs > 0 && productArity(tp, errorPos) == numArgs
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
    *  parameterless `isEmpty` member of result type `Boolean`.
    */
-  def isGetMatch(tp: Type, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean =
+  def isGetMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): Boolean =
     extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
     extractorMemberType(tp, nme.get, errorPos).exists
 
-  def productSelectorTypes(tp: Type, errorPos: SourcePosition)(implicit ctx: Context): List[Type] = {
+  def productSelectorTypes(tp: Type, errorPos: Position)(implicit ctx: Context): List[Type] = {
     def tupleSelectors(n: Int, tp: Type): List[Type] = {
       val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
       // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail
@@ -76,7 +76,7 @@ object Applications {
     genTupleSelectors(0, tp)
   }
 
-  def productArity(tp: Type, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Int =
+  def productArity(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
 
   def productSelectors(tp: Type)(implicit ctx: Context): List[Symbol] = {
@@ -85,14 +85,14 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): List[Type] =
+  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: Position)(implicit ctx: Context): List[Type] =
     if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
       else tp :: Nil
     } else tp :: Nil
 
-  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): List[Type] = {
+  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position)(implicit ctx: Context): List[Type] = {
 
     val unapplyName = unapplyFn.symbol.name
     def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
@@ -240,7 +240,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Signal failure with given message at position of the application itself */
     protected def fail(msg: => Message): Unit
 
-    protected def appPos: SourcePosition
+    protected def appPos: Position
 
     /** The current function part, which might be affected by lifting.
      */
@@ -589,7 +589,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       ok = false
     def fail(msg: => Message): Unit =
       ok = false
-    def appPos: SourcePosition = NoSourcePosition
+    def appPos: Position = NoPosition
     lazy val normalizedFun:   Tree = ref(methRef)
     init()
   }
@@ -648,7 +648,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] = harmonize(args)
 
-    override def appPos: SourcePosition = app.sourcePos
+    override def appPos: Position = app.sourcePos
 
     def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
       ctx.error(msg, arg.sourcePos)

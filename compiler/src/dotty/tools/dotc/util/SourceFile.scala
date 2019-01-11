@@ -80,17 +80,17 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** The start of this file in the underlying source file */
   def start: Int = 0
 
-  def atSpan(span: Span): SourcePosition =
-    if (span.exists) SourcePosition(underlying, span)
-    else NoSourcePosition
+  def atSpan(span: Span): Position =
+    if (span.exists) Position(underlying, span)
+    else NoPosition
 
   def isSelfContained: Boolean = underlying eq this
 
   /** Map a position to a position in the underlying source file.
    *  For regular source files, simply return the argument.
    */
-  def positionInUltimateSource(position: SourcePosition): SourcePosition =
-    SourcePosition(underlying, position.span shift start)
+  def positionInUltimateSource(position: Position): Position =
+    Position(underlying, position.span shift start)
 
   private def isLineBreak(idx: Int) =
     if (idx >= length) false else {
@@ -203,6 +203,6 @@ object SourceFile {
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
   override def exists: Boolean = false
-  override def atSpan(span: Span): SourcePosition = NoSourcePosition
+  override def atSpan(span: Span): Position = NoPosition
 }
 

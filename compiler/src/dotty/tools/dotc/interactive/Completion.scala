@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.StdNames.{nme, tpnme}
 import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.Types.{NameFilter, NamedType, Type, NoType}
 import dotty.tools.dotc.printing.Texts._
-import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
+import dotty.tools.dotc.util.{NoPosition, Position}
 
 import scala.collection.mutable
 
@@ -39,7 +39,7 @@ object Completion {
    *
    *  @return offset and list of symbols for possible completions
    */
-  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Completion]) = {
+  def completions(pos: Position)(implicit ctx: Context): (Int, List[Completion]) = {
     val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     computeCompletions(pos, path)(Interactive.contextOfPath(path))
   }
@@ -54,7 +54,7 @@ object Completion {
    *
    * Otherwise, provide no completion suggestion.
    */
-  private def completionMode(path: List[Tree], pos: SourcePosition): Mode = {
+  private def completionMode(path: List[Tree], pos: Position): Mode = {
     path match {
       case (ref: RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
@@ -77,7 +77,7 @@ object Completion {
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  private def completionPrefix(path: List[Tree], pos: SourcePosition): String = {
+  private def completionPrefix(path: List[Tree], pos: Position): String = {
     path match {
       case Thicket(name :: _ :: Nil) :: (_: Import) :: _ =>
         completionPrefix(name :: Nil, pos)
@@ -105,13 +105,13 @@ object Completion {
   }
 
   /** Create a new `CompletionBuffer` for completing at `pos`. */
-  private def completionBuffer(path: List[Tree], pos: SourcePosition): CompletionBuffer = {
+  private def completionBuffer(path: List[Tree], pos: Position): CompletionBuffer = {
     val mode = completionMode(path, pos)
     val prefix = completionPrefix(path, pos)
     new CompletionBuffer(mode, prefix, pos)
   }
 
-  private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Completion]) = {
+  private def computeCompletions(pos: Position, path: List[Tree])(implicit ctx: Context): (Int, List[Completion]) = {
 
     val offset = completionOffset(path)
     val buffer = completionBuffer(path, pos)
@@ -135,7 +135,7 @@ object Completion {
     (offset, completionList)
   }
 
-  private class CompletionBuffer(val mode: Mode, val prefix: String, pos: SourcePosition) {
+  private class CompletionBuffer(val mode: Mode, val prefix: String, pos: Position) {
 
     private[this] val completions = new RenameAwareScope
 

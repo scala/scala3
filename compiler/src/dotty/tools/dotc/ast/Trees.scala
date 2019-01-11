@@ -9,7 +9,7 @@ import language.higherKinds
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
-import util.{Stats, Attachment, Property, SourceFile, NoSource, SourcePosition}
+import util.{Stats, Attachment, Property, SourceFile, NoSource, Position}
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
@@ -809,7 +809,7 @@ object Trees {
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
     override def withPosOf(posd: Positioned): this.type =
       mapElems(_.withPosOf(posd)).asInstanceOf[this.type]
-    override def withSourcePos(sourcePos: SourcePosition): this.type =
+    override def withSourcePos(sourcePos: Position): this.type =
       mapElems(_.withSourcePos(sourcePos)).asInstanceOf[this.type]
   }
 

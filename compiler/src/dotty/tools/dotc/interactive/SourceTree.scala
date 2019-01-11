@@ -17,15 +17,15 @@ import util._, util.Spans._
 case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, source: SourceFile) {
 
   /** The position of `tree` */
-  final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.span)
+  final def pos(implicit ctx: Context): Position = source.atSpan(tree.span)
 
   /** The position of the name in `tree` */
-  def namePos(implicit ctx: Context): SourcePosition = tree match {
+  def namePos(implicit ctx: Context): Position = tree match {
     case tree: tpd.NameTree =>
       // FIXME: Merge with NameTree#namePos ?
       val treeSpan = tree.span
       if (treeSpan.isZeroExtent || tree.name.toTermName == nme.ERROR)
-        NoSourcePosition
+        NoPosition
       else {
         // Constructors are named `<init>` in the trees, but `this` in the source.
         val nameLength = tree.name match {
@@ -46,7 +46,7 @@ case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, s
         source.atSpan(position)
       }
     case _ =>
-      NoSourcePosition
+      NoPosition
   }
 }
 

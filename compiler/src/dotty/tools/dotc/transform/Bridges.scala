@@ -9,7 +9,7 @@ import ast.untpd
 import collection.{mutable, immutable}
 import ShortcutImplicits._
 import util.Spans.Span
-import util.SourcePosition
+import util.Position
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
@@ -41,7 +41,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   private val bridgesScope = newScope
   private val bridgeTarget = newMutableSymbolMap[Symbol]
 
-  def bridgePosFor(member: Symbol): SourcePosition =
+  def bridgePosFor(member: Symbol): Position =
     (if (member.owner == root && member.span.exists) member else root).sourcePos
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
