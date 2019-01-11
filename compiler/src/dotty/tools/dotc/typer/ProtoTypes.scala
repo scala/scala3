@@ -12,6 +12,7 @@ import util.{Stats, SimpleIdentityMap}
 import Decorators._
 import Uniques._
 import config.Printers.typr
+import util.SourceFile
 
 import scala.annotation.internal.sharable
 
@@ -410,7 +411,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx))(ctx) :: Nil, WildcardType)(typer)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -652,7 +653,7 @@ object ProtoTypes {
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    def apply(tp: Type)(implicit src: SourceInfo): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
+    def apply(tp: Type)(implicit src: SourceFile): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: untpd.Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None

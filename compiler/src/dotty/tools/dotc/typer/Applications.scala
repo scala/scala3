@@ -6,7 +6,7 @@ import core._
 import ast.{Trees, tpd, untpd}
 import util.Spans._
 import util.Stats.track
-import util.{SourcePosition, NoSourcePosition}
+import util.{SourcePosition, NoSourcePosition, SourceFile}
 import Trees.Untyped
 import Contexts._
 import Flags._
@@ -169,7 +169,7 @@ object Applications {
 
   /** A wrapper indicating that its argument is an application of an extension method.
    */
-  class ExtMethodApply(val app: Tree)(implicit @transientParam src: SourceInfo) extends tpd.Tree {
+  class ExtMethodApply(val app: Tree)(implicit @transientParam src: SourceFile) extends tpd.Tree {
     override def span = app.span
 
     def canEqual(that: Any): Boolean = app.canEqual(that)
