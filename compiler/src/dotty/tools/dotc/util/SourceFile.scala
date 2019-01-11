@@ -173,8 +173,14 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   private def newChunk: Int = sourceOfChunk.synchronized {
-    val id = sourceOfChunk.length * ChunkSize
-    sourceOfChunk += this
+    val id = chunks << ChunkSizeLog
+    if (chunks == sourceOfChunk.length) {
+      val a = new Array[SourceFile](chunks * 2)
+      Array.copy(sourceOfChunk, 0, a, 0, chunks)
+      sourceOfChunk = a
+    }
+    sourceOfChunk(chunks) = this
+    chunks += 1
     ctr.set(id + 1)
     id
   }
@@ -184,11 +190,12 @@ object SourceFile {
 
   type PathName = TermName
 
-  def fromId(id: Int): SourceFile =
-    sourceOfChunk(id / ChunkSize)
+  def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
 
-  private val ChunkSize = 1024
-  @sharable private val sourceOfChunk = mutable.ArrayBuffer[SourceFile]()
+  private final val ChunkSizeLog = 10
+  private final val ChunkSize = 1 << ChunkSizeLog
+  @sharable private var chunks: Int = 0
+  @sharable private var sourceOfChunk: Array[SourceFile] = new Array[SourceFile](2000)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
