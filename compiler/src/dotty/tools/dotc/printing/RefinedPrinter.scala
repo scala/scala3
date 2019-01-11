@@ -318,7 +318,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
+        if (tree.symbol == defn.QuotedExpr_~ || tree.symbol == defn.QuotedType_~) keywordStr("~(") ~ toTextLocal(qual) ~ keywordStr(")")
+        else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case tree: This =>
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
@@ -329,6 +330,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
+        else if (fun.symbol == defn.QuotedExpr_apply)
+          keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
+        else if (fun.symbol == defn.QuotedType_apply)
+          keywordStr("'[") ~ toTextGlobal(args, ", ") ~ keywordStr("]")
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
       case tree: TypeApply =>
