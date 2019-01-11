@@ -623,23 +623,15 @@ object Symbols {
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
     type DontUseSymbolOnSymbol
 
-    def source(implicit ctx: Context): SourceFile =
+    final def source(implicit ctx: Context): SourceFile =
       if (!defTree.isEmpty) defTree.source
-      else {
-        val file = associatedFile
-        if (file != null && file.extension != "class") ctx.getSource(file)
-        else {
-          val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
-          topLevelCls.unforcedAnnotation(defn.SourceFileAnnot) match {
-            case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
-              case Some(Constant(path: String)) => ctx.getSource(path)
-              case none => NoSource
-            }
-            case none => NoSource
-          }
-        }
+      else this match {
+        case cls: ClassSymbol => cls.sourceOfClass
+        case _ =>
+          if (denot.is(Module)) denot.moduleClass.source
+          else if (denot.exists) denot.owner.source
+          else NoSource
       }
-
 
     /** A symbol related to `sym` that is defined in source code.
      *
@@ -770,6 +762,30 @@ object Symbols {
     override def associatedFile(implicit ctx: Context): AbstractFile =
       if (assocFile != null || (this.owner is PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
+
+    private[this] var mySource: SourceFile = NoSource
+
+    final def sourceOfClass(implicit ctx: Context): SourceFile = {
+      if (!mySource.exists && !denot.is(Package))
+        // this allows sources to be added in annotations after `sourceOfClass` is first called
+        mySource = {
+          val file = associatedFile
+          if (file != null && file.extension != "class") ctx.getSource(file)
+          else {
+            def sourceFromTopLevel(implicit ctx: Context) =
+              denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match {
+                case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
+                  case Some(Constant(path: String)) =>
+                    ctx.getSource(path)
+                  case none => NoSource
+                }
+                case none => NoSource
+              }
+            sourceFromTopLevel(ctx.withPhaseNoLater(ctx.flattenPhase))
+          }
+        }//.reporting(res => i"source of $this # $id in ${denot.owner} = $res")
+      mySource
+    }
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
