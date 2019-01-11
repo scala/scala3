@@ -14,13 +14,14 @@ import TastyBuffer._
 import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
+import util.SourceFile
 import annotation.transientParam
 
 object TreePickler {
 
   val sectionName = "ASTs"
 
-  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @transientParam src: SourceInfo) extends tpd.Tree {
+  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @transientParam src: SourceFile) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
@@ -332,8 +333,6 @@ class TreePickler(pickler: TastyPickler) {
       writeByte(SHAREDterm)
       writeRef(addr)
     }
-    //else if (tree.source `ne` ctx.source)
-    //  pickleTree(tree)(ctx.withSource(tree.source))
     else
       try tree match {
         case Ident(name) =>

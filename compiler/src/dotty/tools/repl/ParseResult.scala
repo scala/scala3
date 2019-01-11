@@ -110,8 +110,7 @@ object ParseResult {
 
   private def parseStats(sourceCode: String)(implicit ctx: Context): List[untpd.Tree] = {
     val source = new SourceFile("<console>", sourceCode)
-    val ctx1 = ctx.fresh.setSource(source)
-    val parser = new Parser(source)(ctx1)
+    val parser = new Parser(source)(ctx.withSource(source))
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     stats

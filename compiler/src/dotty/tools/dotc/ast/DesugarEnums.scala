@@ -6,7 +6,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._
 import Decorators._
-import util.Property
+import util.{Property, SourceFile}
 import typer.ErrorReporting._
 
 import scala.annotation.internal.sharable
@@ -73,7 +73,7 @@ object DesugarEnums {
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef
 
-  private def valuesDot(name: String)(implicit src: SourceInfo) =
+  private def valuesDot(name: String)(implicit src: SourceFile) =
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
   private def registerCall(implicit ctx: Context): List[Tree] =
     if (enumClass.typeParams.nonEmpty) Nil

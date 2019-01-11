@@ -38,15 +38,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 object Contexts {
 
-  trait SourceInfo {
-    def source: SourceFile
-  }
-  object SourceInfo {
-    def apply(src: SourceFile) = new SourceInfo {
-      def source = src
-    }
-  }
-
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
   private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
@@ -86,7 +77,6 @@ object Contexts {
                             with Reporting
                             with NamerContextOps
                             with Plugins
-                            with SourceInfo
                             with Cloneable { thiscontext =>
     implicit def ctx: Context = this
 
