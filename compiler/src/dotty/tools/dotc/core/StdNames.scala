@@ -160,6 +160,7 @@ object StdNames {
       scala.List(Byte, Char, Short, Int, Long, Float, Double, Boolean, Unit)
 
     // some types whose companions we utilize
+    final val RefEq: N      = "RefEq"
     final val AnyRef: N     = "AnyRef"
     final val Array: N      = "Array"
     final val List: N       = "List"

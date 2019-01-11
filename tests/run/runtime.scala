@@ -134,7 +134,7 @@ object Test3Test {
         + "found: " + actual1 + " - " + actual1);
 
   def test(args: Array[String]): Unit = {
-    val foo1: AnyRef = null;
+    val foo1: AnyRef|Null = null;
     val foo2: AnyRef = new Foo();
     val foo3: AnyRef = new Foo();
 

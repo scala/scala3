@@ -1,6 +1,6 @@
 /** Test pattern matching and finally, see SI-5929. */
 object Test extends dotty.runtime.LegacyApp {
-  def bar(s1: Object, s2: Object): Unit = {
+  def bar(s1: Object|Null, s2: Object|Null): Unit = {
     s1 match {
       case _ =>
     }

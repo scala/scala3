@@ -459,6 +459,13 @@ object Types {
         val rsym = r.classSymbol
         if (lsym isSubClass rsym) rsym
         else if (rsym isSubClass lsym) lsym
+        else if (this.isNullableUnion) {
+          val OrType(left, _) = this.normalizeNull
+          // If `left` is a reference type, then the class LUB of `left | Null` is `Reference`.
+          // This is another one-of case that keeps this method sound, but not complete.
+          if (left.classSymbol isSubClass defn.ObjectClass) defn.RefEqClass
+          else NoSymbol
+        }
         else NoSymbol
       case _ =>
         NoSymbol

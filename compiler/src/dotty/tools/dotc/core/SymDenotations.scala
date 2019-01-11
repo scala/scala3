@@ -682,7 +682,7 @@ object SymDenotations {
 
     /** Is this symbol a class with nullable values? */
     final def isNullableClass(implicit ctx: Context): Boolean = {
-      if (!ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyRefAlias || symbol == defn.AnyClass
+      if (!ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
     }
 

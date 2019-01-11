@@ -1,10 +1,10 @@
 object nullable {
-  opaque type Nullable[A >: Null <: AnyRef] = A
+  opaque type Nullable[A >: Null <: AnyRef|Null] = A
 
   object Nullable {
-    def apply[A >: Null <: AnyRef](a: A): Nullable[A] = a
+    def apply[A >: Null <: AnyRef|Null](a: A): Nullable[A] = a
 
-    implicit class NullableOps[A >: Null <: AnyRef](na: Nullable[A]) {
+    implicit class NullableOps[A >: Null <: AnyRef|Null](na: Nullable[A]) {
       def exists(p: A => Boolean): Boolean =
         na != null && p(na)
       def filter(p: A => Boolean): Nullable[A] =

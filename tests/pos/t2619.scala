@@ -1,11 +1,11 @@
 abstract class F {
-    final def apply(x: Int): AnyRef = null
+    final def apply(x: Int): AnyRef|Null = null
 }
 abstract class AbstractModule {
     def as: List[AnyRef]
     def ms: List[AbstractModule]
     def fs: List[F] = Nil
-    def rs(x: Int): List[AnyRef] = fs.map(_(x))
+    def rs(x: Int): List[AnyRef|Null] = fs.map(_(x))
 }
 abstract class ModuleType1 extends AbstractModule {}
 abstract class ModuleType2 extends AbstractModule {}

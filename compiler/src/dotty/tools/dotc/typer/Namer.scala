@@ -137,9 +137,11 @@ trait NamerContextOps { this: Context =>
           if (params.isEmpty) (false, false)
           else (params.head is Implicit, params.head is Erased)
         val make = MethodType.maker(isJava, isImplicit, isErased)
+        // Following Scalac, Namer needs to convert Java method parameters
+        // of type j.l.Object|JavaNull to s.Any.
         if (isJava)
           for (param <- params)
-            if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
+            if (param.info.stripNull.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
         make.fromSymbols(params, resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)

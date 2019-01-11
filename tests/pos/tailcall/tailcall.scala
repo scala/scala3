@@ -1,7 +1,7 @@
 class tailcall {
   val shift = 1
   final def fact(x: Int, acc: Int = 1): Int = if (x == 0) acc else fact(x - shift, acc * x)
-  def id[T <: AnyRef](x: T): T = if (x eq null) x else id(x)
+  def id[T <: AnyRef|Null](x: T): T = if (x eq null) x else id(x)
 }
 
 class TypedApply[T2]{

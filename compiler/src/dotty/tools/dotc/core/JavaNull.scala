@@ -142,9 +142,9 @@ object JavaNull {
       tp match {
         case tp: TypeRef =>
           !tp.symbol.isValueClass &&
-            !tp.symbol.derivesFrom(defn.AnnotationClass) &&
-            !tp.isRef(defn.ObjectClass) &&
-            !tp.isRef(defn.AnyClass)
+            !tp.isRef(defn.AnyClass) &&
+            !tp.isRef(defn.RefEqClass) &&
+            !tp.symbol.derivesFrom(defn.AnnotationClass)
         case _ =>
           true
       }

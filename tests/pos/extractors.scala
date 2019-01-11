@@ -3,7 +3,7 @@ object test {
   class Tree
   class Apply(val fun: Tree, val args: List[Tree]) extends Tree
 
-  trait DeconstructorCommon[T >: Null <: AnyRef] {
+  trait DeconstructorCommon[T >: Null <: AnyRef|Null] {
     var field: T = null
     def get: this.type = this
     def isEmpty: Boolean = field eq null

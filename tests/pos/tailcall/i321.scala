@@ -11,7 +11,7 @@ import scala.annotation.tailrec
  * For now decision is such - we will abstract for top-level methods, but will not for inner ones.
  */
 
-class i321[T >: Null <: AnyRef] {
+class i321[T >: Null <: AnyRef|Null] {
 
   def go1(f: T => Int): Int = {
     @tailrec def loop(pending: T): Int = {
@@ -21,6 +21,6 @@ class i321[T >: Null <: AnyRef] {
     loop(null)
   }
 
-  final def go2[U >: Null <: AnyRef](t: i321[U]): Int = t.go2(this)
+  final def go2[U >: Null <: AnyRef|Null](t: i321[U]): Int = t.go2(this)
 
 }
