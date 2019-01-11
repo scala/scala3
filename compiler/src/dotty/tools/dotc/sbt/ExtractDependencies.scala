@@ -235,7 +235,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
           ctx.warning("""|No class, trait or object is defined in the compilation unit.
                          |The incremental compiler cannot record the dependency information in such case.
                          |Some errors like unused import referring to a non-existent class might not be reported.
-                         |""".stripMargin, tree.sourcePos)
+                         |""".stripMargin, tree.pos)
     }
     _responsibleForImports
   }

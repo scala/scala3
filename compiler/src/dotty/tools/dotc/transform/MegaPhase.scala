@@ -170,7 +170,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos)
+          ctx.error(ex.toMessage, tree.pos)
           tree
       }
     def goUnnamed(tree: Tree, start: Int) =
@@ -205,7 +205,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos)
+          ctx.error(ex.toMessage, tree.pos)
           tree
       }
     if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)

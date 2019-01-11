@@ -20,7 +20,7 @@ object ErrorReporting {
     tree.withType(errorType(msg, pos))
 
   def errorTree(tree: untpd.Tree, msg: => Message)(implicit ctx: Context): tpd.Tree =
-    errorTree(tree, msg, tree.sourcePos)
+    errorTree(tree, msg, tree.pos)
 
   def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
     ctx.error(msg, pos)

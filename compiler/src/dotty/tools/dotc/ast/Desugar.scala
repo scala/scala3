@@ -351,10 +351,10 @@ object desugar {
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
-          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withSpan(cdef.nameSpan))
+          ctx.error(CaseClassMissingParamList(cdef), cdef.pos.withSpan(cdef.nameSpan))
         ListOfNil
       } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withSpan(cdef.nameSpan))
+          ctx.error("Case classes should have a non-implicit parameter list", cdef.pos.withSpan(cdef.nameSpan))
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
@@ -433,7 +433,7 @@ object desugar {
         appliedRef(enumClassRef)
       else {
         ctx.error(i"explicit extends clause needed because both enum case and enum class have type parameters"
-            , cdef.sourcePos.startPos)
+            , cdef.pos.startPos)
         appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
       }
 
@@ -637,15 +637,15 @@ object desugar {
       if (!isImplicit)
         Nil
       else if (ctx.owner is Package) {
-        ctx.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
+        ctx.error(TopLevelImplicitClass(cdef), cdef.pos)
         Nil
       }
       else if (isCaseClass) {
-        ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
+        ctx.error(ImplicitCaseClass(cdef), cdef.pos)
         Nil
       }
       else if (arity != 1) {
-        ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
+        ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.pos)
         Nil
       }
       else
@@ -713,7 +713,7 @@ object desugar {
         .withSpan(mdef.span.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
-      if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.sourcePos)
+      if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.pos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
         .withSpan(impl.self.span.orElse(impl.span.startPos))
@@ -740,7 +740,7 @@ object desugar {
    */
   def opaqueAlias(tdef: TypeDef)(implicit ctx: Context): Tree =
     if (tdef.rhs.isInstanceOf[TypeBoundsTree]) {
-      ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.sourcePos)
+      ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.pos)
       tdef.withFlags(tdef.mods.flags &~ Opaque)
     }
     else {
@@ -773,7 +773,7 @@ object desugar {
     val name = mdef.name
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
-      ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
+      ctx.error(em"illegal redefinition of standard $kind $name", mdef.pos)
       name.errorName
     }
     else name
@@ -1369,7 +1369,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
-          ctx.error(IllegalVariableInPatternAlternative(), vble.sourcePos)
+          ctx.error(IllegalVariableInPatternAlternative(), vble.pos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>

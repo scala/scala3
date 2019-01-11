@@ -39,8 +39,8 @@ object VarianceChecker {
           }
           val pos = tree.tparams
             .find(_.name.toTermName == paramName)
-            .map(_.sourcePos)
-            .getOrElse(tree.sourcePos)
+            .map(_.pos)
+            .getOrElse(tree.pos)
           ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
         }
         def apply(x: Boolean, t: Type) = x && {
@@ -181,15 +181,15 @@ class VarianceChecker()(implicit ctx: Context) {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
-          checkVariance(sym, tree.sourcePos)
+          checkVariance(sym, tree.pos)
           tree.rhs match {
             case rhs: Template => traverseChildren(rhs)
             case _ =>
           }
         case tree: ValDef =>
-          checkVariance(sym, tree.sourcePos)
+          checkVariance(sym, tree.pos)
         case DefDef(_, tparams, vparamss, _, _) =>
-          checkVariance(sym, tree.sourcePos)
+          checkVariance(sym, tree.pos)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case _ =>

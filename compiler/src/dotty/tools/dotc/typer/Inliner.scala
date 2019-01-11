@@ -114,7 +114,7 @@ object Inliner {
         i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
             |Maybe this is caused by a recursive inline method?
             |You can use -Xmax-inlines to change the limit.""",
-        (tree :: enclosingInlineds).last.sourcePos
+        (tree :: enclosingInlineds).last.pos
       )
   }
 
@@ -122,7 +122,7 @@ object Inliner {
   def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
-      val inlinedAtPos = inlined.call.sourcePos
+      val inlinedAtPos = inlined.call.pos
       val curSource = ctx.compilationUnit.source
 
       /** Removes all Inlined trees, replacing them with blocks.
@@ -365,7 +365,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       if (inlinedMethod == defn.Typelevel_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
-        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
+        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.pos)
       }
       else if (inlinedMethod == defn.Typelevel_constValueOpt) {
         val constVal = tryConstValue
@@ -454,7 +454,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                     case _ => arg.show
                   }
               }
-              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.sourcePos)
+              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.pos)
             }
             issueInCtx(ctxToReport)
           case _ =>
@@ -714,7 +714,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(ctx.fresh.setTyper(evTyper))
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
-              ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)
+              ctx.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
               true // hard error: return true to stop implicit search here
             case fail: Implicits.SearchFailureType =>
               false
@@ -928,7 +928,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
       val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
-      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
+      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
       res
     }
 

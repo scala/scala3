@@ -28,7 +28,7 @@ abstract class Positioned(implicit @transientParam src: SourceFile) extends Prod
   def uniqueId: Int = myUniqueId
 
   def source: SourceFile = SourceFile.fromId(uniqueId)
-  def sourcePos(implicit ctx: Context): Position = source.atSpan(span)
+  def pos(implicit ctx: Context): Position = source.atSpan(span)
 
   //setId(initialSource(src).nextId)
   setPos(initialSpan(src), source)

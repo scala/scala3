@@ -142,7 +142,7 @@ object Splicer {
     }
 
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Object =
-      throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.sourcePos)
+      throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.pos)
 
     private def loadModule(sym: Symbol): Object = {
       if (sym.owner.is(Package)) {

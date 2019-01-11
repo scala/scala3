@@ -239,7 +239,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          val callTrace = Inliner.inlineCallTrace(call.symbol, call.sourcePos)
+          val callTrace = Inliner.inlineCallTrace(call.symbol, call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
@@ -300,9 +300,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
-              ctx.error(NotAMember(exprTpe, name, "value"), ident.sourcePos)
+              ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
             if (seen(ident.name))
-              ctx.error(ImportRenamedTwice(ident), ident.sourcePos)
+              ctx.error(ImportRenamedTwice(ident), ident.pos)
             seen += ident.name
           }
           selectors.foreach {

@@ -165,8 +165,8 @@ object TypeTestsCasts {
 
           def unreachable(why: => String) =
             if (flagUnrelated)
-              if (inMatch) ctx.error(em"this case is unreachable since $why", expr.sourcePos)
-              else ctx.warning(em"this will always yield false since $why", expr.sourcePos)
+              if (inMatch) ctx.error(em"this case is unreachable since $why", expr.pos)
+              else ctx.warning(em"this will always yield false since $why", expr.pos)
 
           /** Are `foundCls` and `testCls` classes that allow checks
            *  whether a test would be always false?
@@ -186,7 +186,7 @@ object TypeTestsCasts {
           def checkSensical: Boolean =
             if (!isCheckable) true
             else if (foundCls.isPrimitiveValueClass && !testCls.isPrimitiveValueClass) {
-                ctx.error("cannot test if value types are references", tree.sourcePos)
+                ctx.error("cannot test if value types are references", tree.pos)
                 false
               }
             else if (!foundCls.derivesFrom(testCls)) {
@@ -206,7 +206,7 @@ object TypeTestsCasts {
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.sourcePos)
+              ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.pos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
@@ -274,7 +274,7 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           if (!checkable(expr.tpe, argType, tree.span))
-            ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
+            ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.pos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
         else if (sym eq defn.Any_asInstanceOf)

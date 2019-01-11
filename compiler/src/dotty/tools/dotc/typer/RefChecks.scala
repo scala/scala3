@@ -117,7 +117,7 @@ object RefChecks {
       case TypeRef(ref: TermRef, _) =>
         val paramRefs = ref.namedPartsWith(ntp => ntp.symbol.enclosingClass == cls)
         if (paramRefs.nonEmpty)
-          ctx.error("trait parameters cannot be used as parent prefixes", parent.sourcePos)
+          ctx.error("trait parameters cannot be used as parent prefixes", parent.pos)
       case _ =>
     }
 
@@ -853,7 +853,7 @@ object RefChecks {
       if (!concrOvers.isEmpty)
         ctx.deprecationWarning(
           symbol.toString + " overrides concrete, non-deprecated symbol(s):" +
-            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.sourcePos)
+            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.pos)
     }
   }
 
@@ -982,18 +982,18 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   } catch {
     case ex: TypeError =>
-      ctx.error(ex.getMessage, tree.sourcePos)
+      ctx.error(ex.getMessage, tree.pos)
       tree
   }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
-    checkUndesiredProperties(tree.symbol, tree.sourcePos)
+    checkUndesiredProperties(tree.symbol, tree.pos)
     currentLevel.enterReference(tree.symbol, tree.span)
     tree
   }
 
   override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
-    checkUndesiredProperties(tree.symbol, tree.sourcePos)
+    checkUndesiredProperties(tree.symbol, tree.pos)
     tree
   }
 
@@ -1014,7 +1014,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformNew(tree: New)(implicit ctx: Context): New = {
     val tpe = tree.tpe
     val sym = tpe.typeSymbol
-    checkUndesiredProperties(sym, tree.sourcePos)
+    checkUndesiredProperties(sym, tree.pos)
     currentLevel.enterReference(sym, tree.span)
     tpe.dealias.foreachPart {
       case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)

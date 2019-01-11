@@ -33,26 +33,26 @@ class CheckStatic extends MiniPhase {
     for(defn <- defns) {
       if (defn.symbol.hasAnnotation(ctx.definitions.ScalaStaticAnnot)) {
         if(!ctx.owner.is(Module)) {
-          ctx.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.sourcePos)
+          ctx.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.pos)
         }
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField) {
-          ctx.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.sourcePos)
+          ctx.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.pos)
         }
 
         val companion = ctx.owner.companionClass
         def clashes = companion.asClass.membersNamed(defn.name)
 
         if (!companion.exists) {
-          ctx.error(MissingCompanionForStatic(defn.symbol), defn.sourcePos)
+          ctx.error(MissingCompanionForStatic(defn.symbol), defn.pos)
         } else if (clashes.exists) {
-          ctx.error(MemberWithSameNameAsStatic(), defn.sourcePos)
+          ctx.error(MemberWithSameNameAsStatic(), defn.pos)
          } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
-          ctx.error(TraitCompanionWithMutableStatic(), defn.sourcePos)
+          ctx.error(TraitCompanionWithMutableStatic(), defn.pos)
         } else if (defn.symbol.is(Flags.Lazy)) {
-          ctx.error(LazyStaticField(), defn.sourcePos)
+          ctx.error(LazyStaticField(), defn.pos)
         } else if (defn.symbol.allOverriddenSymbols.nonEmpty) {
-          ctx.error(StaticOverridingNonStaticMembers(), defn.sourcePos)
+          ctx.error(StaticOverridingNonStaticMembers(), defn.pos)
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 

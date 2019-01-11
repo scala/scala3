@@ -20,9 +20,9 @@ object NavigateAST {
       case _ =>
         val loosePath = untypedPath(tree, exactMatch = false)
         throw new
-          Error(i"""no untyped tree for $tree, pos = ${tree.sourcePos}
+          Error(i"""no untyped tree for $tree, pos = ${tree.pos}
                    |best matching path =\n$loosePath%\n====\n%
-                   |path positions = ${loosePath.map(_.sourcePos)}""")
+                   |path positions = ${loosePath.map(_.pos)}""")
     }
 
   /** The reverse path of untyped trees starting with a tree that closest matches

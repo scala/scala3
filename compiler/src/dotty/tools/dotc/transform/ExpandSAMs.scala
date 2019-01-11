@@ -161,7 +161,7 @@ class ExpandSAMs extends MiniPhase {
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))
-        ctx.error(TypeMismatch(found, tpe), tree.sourcePos)
+        ctx.error(TypeMismatch(found, tpe), tree.pos)
         tree
     }
   }
@@ -169,7 +169,7 @@ class ExpandSAMs extends MiniPhase {
   private def checkRefinements(tpe: Type, tree: Tree)(implicit ctx: Context): Type = tpe.dealias match {
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
-        ctx.error("Lambda does not define " + name, tree.sourcePos)
+        ctx.error("Lambda does not define " + name, tree.pos)
       checkRefinements(parent, tree)
     case tpe =>
       tpe

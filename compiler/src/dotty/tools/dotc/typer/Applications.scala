@@ -648,15 +648,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] = harmonize(args)
 
-    override def appPos: Position = app.sourcePos
+    override def appPos: Position = app.pos
 
     def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
-      ctx.error(msg, arg.sourcePos)
+      ctx.error(msg, arg.pos)
       ok = false
     }
 
     def fail(msg: => Message): Unit = {
-      ctx.error(msg, app.sourcePos)
+      ctx.error(msg, app.pos)
       ok = false
     }
 
@@ -1066,7 +1066,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< selType))
             errorType(
               ex"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
-              tree.sourcePos)
+              tree.pos)
           }
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
@@ -1077,7 +1077,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case _ => Nil.assertingErrorsReported
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.sourcePos)
+        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
         for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
         val bunchedArgs =
           if (argTypes.nonEmpty && argTypes.last.isRepeatedParam)
@@ -1093,7 +1093,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           else
             args
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.sourcePos)
+          ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
@@ -1679,7 +1679,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
         ctx.addMode(Mode.FixedQualifier))
     if (!app.symbol.is(Extension))
-      ctx.error(em"not an extension method: $methodRef", receiver.sourcePos)
+      ctx.error(em"not an extension method: $methodRef", receiver.pos)
     app
   }
 }

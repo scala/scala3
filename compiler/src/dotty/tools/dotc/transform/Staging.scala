@@ -343,15 +343,15 @@ class Staging extends MacroTransformWithImplicits {
     private def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
       tree match {
         case (_: Ident) | (_: This) =>
-          check(tree.symbol, tree.tpe, tree.sourcePos)
+          check(tree.symbol, tree.tpe, tree.pos)
         case (_: UnApply)  | (_: TypeTree) =>
-          checkType(tree.sourcePos).apply((), tree.tpe)
+          checkType(tree.pos).apply((), tree.tpe)
         case Select(qual, OuterSelectName(_, levels)) =>
-          checkType(tree.sourcePos).apply((), tree.tpe.widen)
+          checkType(tree.pos).apply((), tree.tpe.widen)
         case _: Bind =>
-          checkType(tree.sourcePos).apply((), tree.symbol.info)
+          checkType(tree.pos).apply((), tree.symbol.info)
         case _: Template =>
-          checkType(tree.sourcePos).apply((), tree.symbol.owner.asClass.givenSelfType)
+          checkType(tree.pos).apply((), tree.symbol.owner.asClass.givenSelfType)
         case _ =>
       }
       tree
@@ -386,7 +386,7 @@ class Staging extends MacroTransformWithImplicits {
           if (level == 0 && !ctx.inInlineMethod) {
             val body2 =
               if (body1.isType) body1
-              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
+              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.pos), Nil, body1)
             pickledQuote(body2, splices, body.tpe, isType).withPosOf(quote)
           }
           else {
@@ -454,7 +454,7 @@ class Staging extends MacroTransformWithImplicits {
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
       else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
-        ctx.error(i"splice outside quotes or inline method", splice.sourcePos)
+        ctx.error(i"splice outside quotes or inline method", splice.pos)
         splice
       }
       else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside an inline definition
@@ -464,7 +464,7 @@ class Staging extends MacroTransformWithImplicits {
       else { // level 0 inside an inline definition
         ctx.error(
           "Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or inline.".stripMargin,
-          splice.sourcePos)
+          splice.pos)
         splice
       }
     }
@@ -620,7 +620,7 @@ class Staging extends MacroTransformWithImplicits {
                     |
                     | * The contents of the splice must call a static method
                     | * All arguments must be quoted or inline
-                  """.stripMargin, tree.rhs.sourcePos)
+                  """.stripMargin, tree.rhs.pos)
                 EmptyTree
             }
           case _ =>

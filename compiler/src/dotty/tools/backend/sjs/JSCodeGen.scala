@@ -1608,7 +1608,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     def requireNotSuper(): Unit = {
       if (jsSuperClassValue.isDefined)
-        ctx.error("Illegal super call in Scala.js-defined JS class", tree.sourcePos)
+        ctx.error("Illegal super call in Scala.js-defined JS class", tree.pos)
     }
 
     def requireNotSpread(arg: js.TreeOrJSSpread): js.Tree =
@@ -1984,7 +1984,7 @@ class JSCodeGen()(implicit ctx: Context) {
       if (sym.is(Trait)) {
         ctx.error(
             s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
-            tree.sourcePos)
+            tree.pos)
         js.BooleanLiteral(true)
       } else {
         js.Unbox(js.JSBinaryOp(

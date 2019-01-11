@@ -280,7 +280,7 @@ class Namer { typer: Typer =>
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
         if (!ok)
-          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.sourcePos)
+          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
         adapted
       }
 
@@ -293,7 +293,7 @@ class Namer { typer: Typer =>
 
     def checkNoConflict(name: Name): Name = {
       def errorName(msg: => String) = {
-        ctx.error(msg, tree.sourcePos)
+        ctx.error(msg, tree.pos)
         name.freshened
       }
       def preExisting = ctx.effectiveScope.lookup(name)
@@ -405,7 +405,7 @@ class Namer { typer: Typer =>
       /** If there's already an existing type, then the package is a dup of this type */
       val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
       if (existingType.exists) {
-        ctx.error(PkgDuplicateSymbol(existingType), pid.sourcePos)
+        ctx.error(PkgDuplicateSymbol(existingType), pid.pos)
         ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
       else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
@@ -895,7 +895,7 @@ class Namer { typer: Typer =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            ctx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
+            ctx.error(CyclicInheritance(cls, addendum), parent.pos)
             defn.ObjectType
           }
           else {
@@ -1156,7 +1156,7 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        checkMembersOK(inferredType, mdef.sourcePos)
+        checkMembersOK(inferredType, mdef.pos)
       case DependentTypeTree(tpFun) =>
         val tpe = tpFun(paramss.head)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
@@ -1168,7 +1168,7 @@ class Namer { typer: Typer =>
             val hygienicType = avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                i"it is not a supertype of the hygienic type $hygienicType", mdef.sourcePos)
+                i"it is not a supertype of the hygienic type $hygienicType", mdef.pos)
             //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
