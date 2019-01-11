@@ -809,8 +809,8 @@ object Trees {
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
     override def withPosOf(posd: Positioned): this.type =
       mapElems(_.withPosOf(posd)).asInstanceOf[this.type]
-    override def withSourcePos(sourcePos: Position): this.type =
-      mapElems(_.withSourcePos(sourcePos)).asInstanceOf[this.type]
+    override def withPos(pos: Position): this.type =
+      mapElems(_.withPos(pos)).asInstanceOf[this.type]
   }
 
   class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoSource) {

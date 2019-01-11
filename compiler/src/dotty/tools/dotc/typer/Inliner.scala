@@ -160,7 +160,7 @@ object Inliner {
    *  The trace has enough info to completely reconstruct positions.
    */
   def inlineCallTrace(callSym: Symbol, pos: Position)(implicit ctx: Context): Tree =
-    Ident(callSym.topLevelClass.typeRef).withSourcePos(pos)
+    Ident(callSym.topLevelClass.typeRef).withPos(pos)
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -235,7 +235,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val binding = {
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
       else ValDef(boundSym, arg)
-    }.withSourcePos(boundSym.pos)
+    }.withPos(boundSym.pos)
     boundSym.defTree = binding
     bindingsBuf += binding
     binding
@@ -289,7 +289,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, rhs).withSourcePos(selfSym.pos)
+      val binding = ValDef(selfSym.asTerm, rhs).withPos(selfSym.pos)
       bindingsBuf += binding
       selfSym.defTree = binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
