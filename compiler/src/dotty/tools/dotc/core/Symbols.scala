@@ -661,7 +661,7 @@ object Symbols {
      */
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
-    final def sourcePos(implicit ctx: Context): Position = {
+    final def pos(implicit ctx: Context): Position = {
       val src = source
       (if (src.exists) src else ctx.source).atSpan(span)
     }

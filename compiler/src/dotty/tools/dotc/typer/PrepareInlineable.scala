@@ -243,7 +243,7 @@ object PrepareInlineable {
 
   def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
     if (ctx.outer.inInlineMethod)
-      ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.sourcePos)
+      ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.pos)
     if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
       ctx.warning(
         em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",

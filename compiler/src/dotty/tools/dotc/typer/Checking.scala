@@ -270,7 +270,7 @@ object Checking {
     catch {
       case ex: CyclicReference =>
         if (reportErrors) {
-          errorType(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.sourcePos)
+          errorType(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.pos)
         }
         else info
     }
@@ -357,7 +357,7 @@ object Checking {
 
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(implicit ctx: Context): Unit = {
-    def fail(msg: Message) = ctx.error(msg, sym.sourcePos)
+    def fail(msg: Message) = ctx.error(msg, sym.pos)
 
     def checkWithDeferred(flag: FlagSet) =
       if (sym.is(flag))
@@ -523,13 +523,13 @@ object Checking {
     }
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
-        ctx.error(CannotExtendAnyVal(clazz), clazz.sourcePos)
+        ctx.error(CannotExtendAnyVal(clazz), clazz.pos)
       if (clazz.is(Abstract))
-        ctx.error(ValueClassesMayNotBeAbstract(clazz), clazz.sourcePos)
+        ctx.error(ValueClassesMayNotBeAbstract(clazz), clazz.pos)
       if (!clazz.isStatic)
-        ctx.error(ValueClassesMayNotBeContainted(clazz), clazz.sourcePos)
+        ctx.error(ValueClassesMayNotBeContainted(clazz), clazz.pos)
       if (isCyclic(clazz.asClass))
-        ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.sourcePos)
+        ctx.error(ValueClassesMayNotWrapItself(clazz), clazz.pos)
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
           param.isTerm && !param.is(Flags.Accessor)
@@ -537,17 +537,17 @@ object Checking {
         clParamAccessors match {
           case param :: params =>
             if (param.is(Mutable))
-              ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.sourcePos)
+              ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isInstanceOf[ExprType])
-              ctx.error(ValueClassParameterMayNotBeCallByName(clazz, param), param.sourcePos)
+              ctx.error(ValueClassParameterMayNotBeCallByName(clazz, param), param.pos)
             if (param.is(Erased))
-              ctx.error("value class first parameter cannot be `erased`", param.sourcePos)
+              ctx.error("value class first parameter cannot be `erased`", param.pos)
             else {
               for (p <- params if !p.is(Erased))
-                ctx.error("value class can only have one non `erased` parameter", p.sourcePos)
+                ctx.error("value class can only have one non `erased` parameter", p.pos)
             }
           case Nil =>
-            ctx.error(ValueClassNeedsOneValParam(clazz), clazz.sourcePos)
+            ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)
         }
       }
       stats.foreach(checkValueClassMember)
@@ -614,7 +614,7 @@ trait Checking {
         defn.LanguageModuleClass, nme.implicitConversions,
         i"Definition of implicit conversion $sym",
         ctx.owner.topLevelClass,
-        sym.sourcePos)
+        sym.pos)
     }
 
     sym.info.stripPoly match {
@@ -741,12 +741,12 @@ trait Checking {
         if (decl.matches(other)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
-              ctx.error(DoubleDeclaration(decl, other), decl.sourcePos)
+              ctx.error(DoubleDeclaration(decl, other), decl.pos)
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
         if ((decl is HasDefaultParams) && (other is HasDefaultParams)) {
-          ctx.error(em"two or more overloaded variants of $decl have default arguments", decl.sourcePos)
+          ctx.error(em"two or more overloaded variants of $decl have default arguments", decl.pos)
           decl resetFlag HasDefaultParams
         }
       }

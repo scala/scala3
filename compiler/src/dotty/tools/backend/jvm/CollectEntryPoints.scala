@@ -47,10 +47,10 @@ object CollectEntryPoints{
     def hasJavaMainMethod(sym: Symbol): Boolean =
       (toDenot(sym).info member nme.main).alternatives exists(x => isJavaMainMethod(x.symbol))
 
-    def fail(msg: String, pos: Position = sym.sourcePos) = {
+    def fail(msg: String, pos: Position = sym.pos) = {
       ctx.warning(
         i"""${sym.name} has a main method with parameter type Array[String], but ${sym.fullName} will not be a runnable program.
-           |Reason: $msg""", sym.sourcePos
+           |Reason: $msg""", sym.pos
         // TODO: make this next claim true, if possible
         //   by generating valid main methods as static in module classes
         //   not sure what the jvm allows here
@@ -92,11 +92,11 @@ object CollectEntryPoints{
                 fail("main methods cannot be generic.")
               case MethodTpe(paramNames, paramTypes, resultType) =>
                 if (resultType :: paramTypes exists (_.typeSymbol.isAbstractType))
-                  fail("main methods cannot refer to type parameters or abstract types.", m.symbol.sourcePos)
+                  fail("main methods cannot refer to type parameters or abstract types.", m.symbol.pos)
                 else
-                  isJavaMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.sourcePos)
+                  isJavaMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.pos)
               case tp =>
-                fail(s"don't know what this is: $tp", m.symbol.sourcePos)
+                fail(s"don't know what this is: $tp", m.symbol.pos)
             }
           }
         }

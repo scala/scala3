@@ -108,7 +108,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
                 |$sym1: $info1 in ${sym1.owner} and
                 |$sym2: $info2 in ${sym2.owner}
                 |have same type after erasure: $info""",
-            root.sourcePos)
+            root.pos)
     }
     val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
     while (opc.hasNext) {

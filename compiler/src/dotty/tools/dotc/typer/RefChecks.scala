@@ -59,7 +59,7 @@ object RefChecks {
                 " define default arguments" + (
                   if (owners.forall(_ == clazz)) "."
                   else ".\nThe members with defaults are defined in " + owners.map(_.showLocated).mkString("", " and ", ".")),
-              clazz.sourcePos)
+              clazz.pos)
         }
       }
     }
@@ -68,7 +68,7 @@ object RefChecks {
     if (clazz derivesFrom defn.DynamicClass) {
       for ((_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length)) {
         ctx.error("implementation restriction: applyDynamic cannot be overloaded except by methods with different numbers of type parameters, e.g. applyDynamic[T1](method: String)(arg: T1) and applyDynamic[T1, T2](method: String)(arg1: T1, arg2: T2)",
-          m1.symbol.sourcePos)
+          m1.symbol.pos)
       }
     }
   }
@@ -98,7 +98,7 @@ object RefChecks {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
           ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
-            cls.sourcePos)
+            cls.pos)
       }
       for (parent <- cinfo.classParents)
         checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
@@ -132,7 +132,7 @@ object RefChecks {
 
       val others = cls.owner.linkedClass.info.decls.filter(clashes)
       others.foreach { other =>
-        ctx.error(ClassAndCompanionNameClash(cls, other), cls.sourcePos)
+        ctx.error(ClassAndCompanionNameClash(cls, other), cls.pos)
       }
     }
 
@@ -182,7 +182,7 @@ object RefChecks {
       mixinOverrideErrors.toList match {
         case List() =>
         case List(MixinOverrideError(_, msg)) =>
-          ctx.error(msg, clazz.sourcePos)
+          ctx.error(msg, clazz.pos)
         case MixinOverrideError(member, msg) :: others =>
           val others1 = others.map(_.member).filter(_.name != member.name).distinct
           def othersMsg = {
@@ -192,7 +192,7 @@ object RefChecks {
             if (others1.isEmpty) ""
             else i";\nother members with override errors are:: $others1%, %"
           }
-          ctx.error(msg + othersMsg, clazz.sourcePos)
+          ctx.error(msg + othersMsg, clazz.pos)
       }
     }
 
@@ -244,7 +244,7 @@ object RefChecks {
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
-          if (member.owner == clazz) ctx.error(fullmsg, member.sourcePos)
+          if (member.owner == clazz) ctx.error(fullmsg, member.pos)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
         }
@@ -283,7 +283,7 @@ object RefChecks {
             memberTp.overrides(otherTp,
                 member.matchNullaryLoosely || other.matchNullaryLoosely ||
                 ctx.testScala2Mode(overrideErrorMsg("no longer has compatible type"),
-                   (if (member.owner == clazz) member else clazz).sourcePos))
+                   (if (member.owner == clazz) member else clazz).pos))
         catch {
           case ex: MissingType =>
             // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
@@ -356,7 +356,7 @@ object RefChecks {
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
             other.owner.is(JavaTrait) &&
-            ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
+            ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
@@ -387,7 +387,7 @@ object RefChecks {
       } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
       } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
-                 !ctx.testScala2Mode("may not override a non-lazy value", member.sourcePos)) {
+                 !ctx.testScala2Mode("may not override a non-lazy value", member.pos)) {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
@@ -432,7 +432,7 @@ object RefChecks {
             "\n(Note that having same-named member classes in types of a mixin composition is no longer allowed)"
           case _ => ""
         }
-        ctx.error(ex.getMessage + addendum, clazz.sourcePos)
+        ctx.error(ex.getMessage + addendum, clazz.pos)
     }
     printMixinOverrideErrors()
 
@@ -660,7 +660,7 @@ object RefChecks {
                 em"""${mbr.showLocated} is not a legal implementation of `$name' in $clazz
                     |  its type             $mbrType
                     |  does not conform to  ${mbrd.info}""",
-                (if (mbr.owner == clazz) mbr else clazz).sourcePos)
+                (if (mbr.owner == clazz) mbr else clazz).pos)
           }
         }
       }
@@ -674,14 +674,14 @@ object RefChecks {
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVariance != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                ctx.errorOrMigrationWarning(problem(), clazz.sourcePos)
+                ctx.errorOrMigrationWarning(problem(), clazz.pos)
       }
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
-        ctx.error(abstractErrorMessage, clazz.sourcePos)
+        ctx.error(abstractErrorMessage, clazz.pos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -694,7 +694,7 @@ object RefChecks {
         // override a concrete method in Object. The jvm, however, does not.
         val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
         if (overridden.is(Final))
-          ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.sourcePos)
+          ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.pos)
       }
     }
 
@@ -716,7 +716,7 @@ object RefChecks {
           cls <- clazz.info.baseClasses.tail
           if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
           problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
-        } ctx.error(problem(), clazz.sourcePos)
+        } ctx.error(problem(), clazz.pos)
       }
 
       checkParameterizedTraitsOK()
@@ -795,9 +795,9 @@ object RefChecks {
         val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz)
         nonMatching match {
           case Nil =>
-            ctx.error(OverridesNothing(member), member.sourcePos)
+            ctx.error(OverridesNothing(member), member.pos)
           case ms =>
-            ctx.error(OverridesNothingButNameExists(member, ms), member.sourcePos)
+            ctx.error(OverridesNothingButNameExists(member, ms), member.pos)
         }
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
@@ -952,7 +952,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
-        case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.sourcePos)
+        case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.pos)
         case _ =>
       }
       if (!sym.is(Lazy)) {

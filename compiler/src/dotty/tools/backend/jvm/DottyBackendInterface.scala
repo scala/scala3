@@ -504,7 +504,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
             |signature: $sig
             |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-        """.trim, sym.sourcePos)
+        """.trim, sym.pos)
     }
   }
 

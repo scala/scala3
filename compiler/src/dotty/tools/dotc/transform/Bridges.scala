@@ -42,7 +42,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   private val bridgeTarget = newMutableSymbolMap[Symbol]
 
   def bridgePosFor(member: Symbol): Position =
-    (if (member.owner == root && member.span.exists) member else root).sourcePos
+    (if (member.owner == root && member.span.exists) member else root).pos
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
    *  before erasure, if the following conditions are satisfied.

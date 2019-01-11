@@ -694,7 +694,7 @@ class Namer { typer: Typer =>
   }
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
-    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
+    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
     sym.resetFlag(Implicit)
   }
 
@@ -797,7 +797,7 @@ class Namer { typer: Typer =>
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
-      denot.info = avoidPrivateLeaks(sym, sym.sourcePos)
+      denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
   }
 
@@ -901,9 +901,9 @@ class Namer { typer: Typer =>
           else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
-              ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
+              ctx.error(ExtendFinalClass(cls, pclazz), cls.pos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-              ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
+              ctx.error(UnableToExtendSealedClass(pclazz), cls.pos)
             pt
           }
         }
@@ -971,7 +971,7 @@ class Namer { typer: Typer =>
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
+      cls.info = avoidPrivateLeaks(cls, cls.pos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(Stable)

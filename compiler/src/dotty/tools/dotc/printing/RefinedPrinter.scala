@@ -609,7 +609,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
       if (ctx.settings.YprintPosSyms.value && tree.isDef)
         txt = (txt ~
-          s"@@(${tree.symbol.name}=" ~ tree.symbol.sourcePos.toString ~ ")").close
+          s"@@(${tree.symbol.name}=" ~ tree.symbol.pos.toString ~ ")").close
     }
     if (ctx.settings.YshowTreeIds.value)
       txt = (txt ~ "#" ~ tree.uniqueId.toString).close

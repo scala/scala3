@@ -235,7 +235,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val binding = {
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
       else ValDef(boundSym, arg)
-    }.withSourcePos(boundSym.sourcePos)
+    }.withSourcePos(boundSym.pos)
     boundSym.defTree = binding
     bindingsBuf += binding
     binding
@@ -289,7 +289,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, rhs).withSourcePos(selfSym.sourcePos)
+      val binding = ValDef(selfSym.asTerm, rhs).withSourcePos(selfSym.pos)
       bindingsBuf += binding
       selfSym.defTree = binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")

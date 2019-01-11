@@ -163,7 +163,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
               else (dupClassSym, classSymbol)
             ctx.atPhase(ctx.typerPhase) { implicit ctx =>
               ctx.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
-                "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
+                "Such classes will overwrite one another on case-insensitive filesystems.", cl1.pos)
             }
         }
       }

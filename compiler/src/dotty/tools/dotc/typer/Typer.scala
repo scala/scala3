@@ -1613,7 +1613,7 @@ class Typer extends Namer
           val other = memberInSelfButNotThis(decl)
           if (other.exists) {
             val msg = CannotHaveSameNameAs(decl, other, CannotHaveSameNameAs.DefinedInSelf(self))
-            ctx.error(msg, decl.sourcePos)
+            ctx.error(msg, decl.pos)
           }
           foundRedef || other.exists
         }

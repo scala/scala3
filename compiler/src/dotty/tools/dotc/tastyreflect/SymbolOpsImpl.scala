@@ -26,7 +26,7 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
     def name(implicit ctx: Context): String = symbol.name.toString
     def fullName(implicit ctx: Context): String = symbol.fullName.toString
 
-    def pos(implicit ctx: Context): Position = symbol.sourcePos
+    def pos(implicit ctx: Context): Position = symbol.pos
 
     def owner(implicit ctx: Context): Symbol = symbol.owner
 

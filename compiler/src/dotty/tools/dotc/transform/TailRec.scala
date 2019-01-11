@@ -123,7 +123,7 @@ class TailRec extends MiniPhase {
       // We don't report a new error if failures were reported
       // during the transformation.
       if (mandatory && !failureReported)
-        ctx.error(TailrecNotApplicable(method), method.sourcePos)
+        ctx.error(TailrecNotApplicable(method), method.pos)
 
       tree
     }

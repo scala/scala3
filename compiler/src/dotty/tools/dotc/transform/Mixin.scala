@@ -211,7 +211,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           ctx.error(
               em"""parameterized $mixin is indirectly implemented,
                   |needs to be implemented directly so that arguments can be passed""",
-              cls.sourcePos)
+              cls.pos)
           EmptyTree
       }
 

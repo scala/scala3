@@ -315,11 +315,11 @@ class Staging extends MacroTransformWithImplicits {
               tp
             }
           case tp: NamedType =>
-            check(tp.symbol, tp, tp.symbol.sourcePos)
+            check(tp.symbol, tp, tp.symbol.pos)
             if (!tp.symbol.is(Param))
               foldOver(acc, tp)
           case tp: ThisType =>
-            check(tp.cls, tp, tp.cls.sourcePos)
+            check(tp.cls, tp, tp.cls.pos)
             foldOver(acc, tp)
           case _ =>
             foldOver(acc, tp)
