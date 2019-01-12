@@ -563,7 +563,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("try ") ~ toText(expr) ~ " " ~ keywordStr("catch") ~ " {" ~ toText(handler) ~ "}" ~ optText(finalizer)(keywordStr(" finally ") ~ _)
         }
       case Quote(tree) =>
-        if (tree.isType) "'[" ~ toTextGlobal(tree) ~ "]" else "'(" ~ toTextGlobal(tree) ~ ")"
+        if (tree.isType) keywordStr("'[") ~ toTextGlobal(tree) ~ keywordStr("]") else keywordStr("'{") ~ toTextGlobal(tree) ~ keywordStr("}")
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>
