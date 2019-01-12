@@ -980,11 +980,6 @@ object Trees {
       protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
         postProcess(tree, copied.withPosOf(tree).withAttachmentsFrom(tree))
 
-      protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
-        postProcess(tree, copied.withPosOf(tree).withAttachmentsFrom(tree))
-
-      protected def srcCtx(tree: Tree)(implicit ctx: Context) = ctx.withSource(tree.source)
-
       def Ident(tree: Tree)(name: Name)(implicit ctx: Context): Ident = tree match {
         case tree: BackquotedIdent =>
           if (name == tree.name) tree
