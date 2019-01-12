@@ -11,8 +11,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.FlatName
 import dotty.tools.dotc.core.Names.{Name, TermName}
-import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.StdNames.str.MODULE_INSTANCE_FIELD
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
@@ -22,6 +21,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
@@ -113,14 +113,22 @@ object Splicer {
     }
 
     protected def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
-      val instance = loadModule(moduleClass)
+      val (instance, clazz) =
+        if (moduleClass.name.startsWith(str.REPL_SESSION_LINE)) {
+          (null, loadReplLineClass(moduleClass))
+        } else {
+          val instance = loadModule(moduleClass)
+          (instance, instance.getClass)
+        }
+
       def getDirectName(tp: Type, name: TermName): TermName = tp.widenDealias match {
         case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
           getDirectName(tp.args.last, NameKinds.DirectMethodName(name))
         case _ => name
       }
+
       val name = getDirectName(fn.info.finalResultType, fn.name.asTermName)
-      val method = getMethod(instance.getClass, name, paramsSig(fn))
+      val method = getMethod(clazz, name, paramsSig(fn))
       stopIfRuntimeException(method.invoke(instance, args: _*))
     }
 
@@ -140,12 +148,17 @@ object Splicer {
       if (sym.owner.is(Package)) {
         // is top level object
         val moduleClass = loadClass(sym.fullName)
-        moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
+        moduleClass.getField(str.MODULE_INSTANCE_FIELD).get(null)
       } else {
         // nested object in an object
         val clazz = loadClass(sym.fullNameSeparated(FlatName))
         clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
+    }
+
+    private def loadReplLineClass(moduleClass: Symbol)(implicit env: Env): Class[_] = {
+      val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
+      lineClassloader.loadClass(moduleClass.name.firstPart.toString)
     }
 
     private def loadClass(name: Name): Class[_] = {
