@@ -80,8 +80,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     new Reifier(inQuote = false, null, 0, new LevelInfo, new Embedded, ctx)
 
   private class LevelInfo {
-    /** A map from locally defined symbols to the staging levels of their definitions */
-    val levelOf = new mutable.HashMap[Symbol, Int]
 
     /** Register a reference defined in a quote but used in another quote nested in a splice.
      *  Returns a version of the reference that needs to be used in its place.
@@ -119,9 +117,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new Embedded
       new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded, ctx)
     }
-//
-//    /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
-//    def inSplice: Boolean = outer != null && !inQuote
 
     /** A stack of entered symbols, to be unwound after scope exit */
     var enteredSyms: List[Symbol] = Nil
@@ -130,8 +125,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
       case tree: DefTree =>
         val sym = tree.symbol
-        if ((sym.isClass || !sym.maybeOwner.isType) && !levelOf.contains(sym)) {
-          levelOf(sym) = level
+        if ((sym.isClass || !sym.maybeOwner.isType)) {
           enteredSyms = sym :: enteredSyms
         }
       case _ =>
@@ -311,7 +305,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
     private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean =
-      level == 1 && levelOf.get(sym).contains(1) && capturers.contains(sym)
+      level == 1 && capturers.contains(sym)
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
      *  or splices as a pair, after performing the `addTags` transform.
@@ -335,7 +329,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           try super.transform(tree)
           finally
             while (enteredSyms ne lastEntered) {
-              levelOf -= enteredSyms.head
               enteredSyms = enteredSyms.tail
             }
         tree match {
