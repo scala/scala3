@@ -120,7 +120,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     }
 
     /** A stack of entered symbols, to be unwound after scope exit */
-    var enteredSyms: List[Symbol] = Nil
+    private var enteredSyms: List[Symbol] = Nil
+
+    /** A stack of entered symbols, to be unwound after scope exit */
+    def getEnteredSyms: List[Symbol] = enteredSyms
 
     /** Enter staging level of symbol defined by `tree`, if applicable. */
     def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -296,10 +299,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
-      outer.enteredSyms.foreach(sym => if (!sym.isInlineMethod) capturers.put(sym, captured2))
+      outer.getEnteredSyms.foreach(sym => if (!sym.isInlineMethod) capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
-      capturers --= outer.enteredSyms
+      capturers --= outer.getEnteredSyms
 
       seq(captured.result().valuesIterator.toList, tree2)
     }
