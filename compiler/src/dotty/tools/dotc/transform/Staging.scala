@@ -49,7 +49,7 @@ class Staging extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo, new Embedded, ctx)
+    new Reifier(inQuote = false, null, 0, new LevelInfo, ctx)
 
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -63,18 +63,16 @@ class Staging extends MacroTransformWithImplicits {
    *                     The initial level is 0, a level `l` where `l > 0` implies code has been quoted `l` times
    *                     and `l == -1` is code inside a top level splice (in an inline method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
-   *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
    *  @param  rctx       the contex in the destination lifted lambda
    */
   private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
-                        val embedded: Embedded, val rctx: Context) extends ImplicitsTransformer {
+                        val rctx: Context) extends ImplicitsTransformer {
     import levels._
     assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean)(implicit ctx: Context): Reifier = {
-      val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new Embedded
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded, ctx)
+      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, ctx)
     }
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
@@ -451,39 +449,5 @@ class Staging extends MacroTransformWithImplicits {
 }
 
 object Staging {
-
   val name: String = "staging"
-
-  def toValue(tree: tpd.Tree): Option[Any] = tree match {
-    case Literal(Constant(c)) => Some(c)
-    case Block(Nil, e) => toValue(e)
-    case Inlined(_, Nil, e) => toValue(e)
-    case _ => None
-  }
-
-  class Embedded(trees: mutable.ListBuffer[tpd.Tree] = mutable.ListBuffer.empty, map: mutable.Map[Symbol, tpd.Tree] = mutable.Map.empty) {
-    /** Adds the tree and returns it's index */
-    def addTree(tree: tpd.Tree, liftedSym: Symbol): Int = {
-      trees += tree
-      if (liftedSym ne NoSymbol)
-        map.put(liftedSym, tree)
-      trees.length - 1
-    }
-
-    /** Type used for the hole that will replace this splice */
-    def getHoleType(splice: tpd.Select)(implicit ctx: Context): Type = {
-      // For most expressions the splice.tpe but there are some types that are lost by lifting
-      // that can be recoverd from the original tree. Currently the cases are:
-      //  * Method types: the splice represents a method reference
-      map.get(splice.qualifier.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
-    }
-
-    def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)
-
-    /** Get the list of embedded trees */
-    def getTrees: List[tpd.Tree] = trees.toList
-
-    override def toString: String = s"Embedded($trees, $map)"
-
-  }
 }

@@ -57,7 +57,7 @@ import dotty.tools.dotc.util.SourcePosition
  */
 class ReifyQuotes extends MacroTransformWithImplicits {
   import tpd._
-  import Staging._
+  import ReifyQuotes._
 
   override def phaseName: String = ReifyQuotes.name
 
@@ -199,7 +199,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         else if (body.symbol == defn.DoubleClass) tag("DoubleTag")
         else pickleAsTasty()
       }
-      else Staging.toValue(body) match {
+      else ReifyQuotes.toValue(body) match {
         case Some(value) => pickleAsValue(value)
         case _ => pickleAsTasty()
       }
@@ -386,6 +386,40 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 
 
 object ReifyQuotes {
+
   val name: String = "reifyQuotes"
+
+  def toValue(tree: tpd.Tree): Option[Any] = tree match {
+    case Literal(Constant(c)) => Some(c)
+    case Block(Nil, e) => toValue(e)
+    case Inlined(_, Nil, e) => toValue(e)
+    case _ => None
+  }
+
+  class Embedded(trees: mutable.ListBuffer[tpd.Tree] = mutable.ListBuffer.empty, map: mutable.Map[Symbol, tpd.Tree] = mutable.Map.empty) {
+    /** Adds the tree and returns it's index */
+    def addTree(tree: tpd.Tree, liftedSym: Symbol): Int = {
+      trees += tree
+      if (liftedSym ne NoSymbol)
+        map.put(liftedSym, tree)
+      trees.length - 1
+    }
+
+    /** Type used for the hole that will replace this splice */
+    def getHoleType(splice: tpd.Select)(implicit ctx: Context): Type = {
+      // For most expressions the splice.tpe but there are some types that are lost by lifting
+      // that can be recoverd from the original tree. Currently the cases are:
+      //  * Method types: the splice represents a method reference
+      map.get(splice.qualifier.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
+    }
+
+    def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)
+
+    /** Get the list of embedded trees */
+    def getTrees: List[tpd.Tree] = trees.toList
+
+    override def toString: String = s"Embedded($trees, $map)"
+
+  }
 }
 
