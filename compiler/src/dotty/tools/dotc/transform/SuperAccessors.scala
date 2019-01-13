@@ -88,7 +88,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
           acc
         }
 
-      This(clazz).select(superAcc).withPosOf(sel)
+      This(clazz).select(superAcc).withSpan(sel.span)
     }
 
     /** Check selection `super.f` for conforming to rules. If necessary,

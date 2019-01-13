@@ -113,7 +113,7 @@ object desugar {
   def derivedTypeParam(tdef: TypeDef, suffix: String = "")(implicit ctx: Context): TypeDef =
     cpy.TypeDef(tdef)(
       name = tdef.name ++ suffix,
-      rhs = new DerivedFromParamTree(suffix).withPosOf(tdef.rhs).watching(tdef)
+      rhs = new DerivedFromParamTree(suffix).withSpan(tdef.rhs.span).watching(tdef)
     )
 
   /** A derived type definition watching `sym` */
@@ -123,7 +123,7 @@ object desugar {
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = new DerivedFromParamTree("").withPosOf(vdef.tpt).watching(vdef))
+      tpt = new DerivedFromParamTree("").withSpan(vdef.tpt.span).watching(vdef))
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -564,7 +564,7 @@ object desugar {
         ModuleDef(
           className.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
-      .withPosOf(cdef).toList
+      .withSpan(cdef.span).toList
 
     val companionMembers = defaultGetters ::: eqInstances ::: enumCases
 
@@ -653,7 +653,7 @@ object desugar {
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(className.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
           .withMods(companionMods | Synthetic | Implicit)
-          .withPosOf(cdef) :: Nil
+          .withSpan(cdef.span) :: Nil
 
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
@@ -720,7 +720,7 @@ object desugar {
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
-      Thicket(modul, classDef(cls).withPosOf(mdef))
+      Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
 
@@ -856,7 +856,7 @@ object desugar {
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(implicit ctx: Context): Bind = {
     val Ident(name) = tree
-    Bind(name, Ident(nme.WILDCARD)).withPosOf(tree)
+    Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
@@ -988,7 +988,7 @@ object desugar {
     val vdefs =
       params.zipWithIndex.map{
         case (param, idx) =>
-          DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withPosOf(param)
+          DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withSpan(param.span)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
@@ -1282,7 +1282,7 @@ object desugar {
               finalizer)
         }
     }
-    desugared.withPosOf(tree)
+    desugared.withSpan(tree.span)
   }
 
   /** Create a class definition with the same info as the refined type given by `parent`

@@ -385,7 +385,7 @@ class Staging extends MacroTransformWithImplicits {
             val body2 =
               if (body1.isType) body1
               else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
-            pickledQuote(body2, splices, body.tpe, isType).withPosOf(quote)
+            pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
           }
           else {
             // In top-level splice in an inline def. Keep the tree as it is, it will be transformed at inline site.
@@ -437,7 +437,7 @@ class Staging extends MacroTransformWithImplicits {
       else if (level == 1) {
         val (body1, quotes) = nested(isQuote = false).split(splice.qualifier)
         val tpe = outer.embedded.getHoleType(splice)
-        val hole = makeHole(body1, quotes, tpe).withPosOf(splice)
+        val hole = makeHole(body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
@@ -448,7 +448,7 @@ class Staging extends MacroTransformWithImplicits {
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
         val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.span)
-        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPosOf(splice)
+        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withSpan(splice.span)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
       else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
@@ -577,7 +577,7 @@ class Staging extends MacroTransformWithImplicits {
             quotation(quotedTree, tree)
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
             val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            splice(ref(splicedType).select(tpnme.UNARY_~).withPosOf(tree))
+            splice(ref(splicedType).select(tpnme.UNARY_~).withSpan(tree.span))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
           case tree: RefTree if tree.symbol.is(Inline) && tree.symbol.is(Param) =>

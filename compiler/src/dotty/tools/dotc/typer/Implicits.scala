@@ -1450,7 +1450,7 @@ final class SearchRoot extends SearchHistory {
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
         implicitDictionary.put(tpe, (ref, result.tree))
-        SearchSuccess(tpd.ref(ref).withPosOf(result.tree), result.ref, result.level)(result.tstate, result.gstate)
+        SearchSuccess(tpd.ref(ref).withSpan(result.tree.span), result.ref, result.level)(result.tstate, result.gstate)
       case None => result
     }
   }

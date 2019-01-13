@@ -105,7 +105,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
             parent
           }
           else parent match { // ensure class parent is a constructor
-            case parent: TypeTree => New(parent.tpe, Nil).withPosOf(impl)
+            case parent: TypeTree => New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent
           }
         }
@@ -359,7 +359,7 @@ object ExplicitOuter {
         }
         if (hasOuterParam(cls))
           methPart(fun) match {
-            case Select(receiver, _) => outerArg(receiver).withPosOf(fun) :: Nil
+            case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
           }
         else Nil
       } else Nil

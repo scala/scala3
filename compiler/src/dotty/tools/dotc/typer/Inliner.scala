@@ -71,7 +71,7 @@ object Inliner {
       override def transform(t: Tree)(implicit ctx: Context) = {
         t match {
           case Inlined(t, Nil, expr) if t.isEmpty => expr
-          case _ => super.transform(t.withPosOf(call))
+          case _ => super.transform(t.withSpan(call.span))
         }
       }
     }
@@ -139,7 +139,7 @@ object Inliner {
                 case call :: _ if call.symbol.source != curSource =>
                   // Until we implement JSR-45, we cannot represent in output positions in other source files.
                   // So, reposition inlined code from other files with the call position:
-                  transformed.withPosOf(inlined.call)
+                  transformed.withSpan(inlined.call.span)
                 case _ => transformed
               }
           }
@@ -159,8 +159,10 @@ object Inliner {
    *  in the call field of an Inlined node.
    *  The trace has enough info to completely reconstruct positions.
    */
-  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(implicit ctx: Context): Tree =
-    Ident(callSym.topLevelClass.typeRef).withSourcePos(pos)
+  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(implicit ctx: Context): Tree = {
+    implicit val src = pos.source
+    Ident(callSym.topLevelClass.typeRef).withSpan(pos.span)
+  }
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -235,7 +237,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val binding = {
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
       else ValDef(boundSym, arg)
-    }.withSourcePos(boundSym.sourcePos)
+    }.withSpan(boundSym.span)
     boundSym.defTree = binding
     bindingsBuf += binding
     binding
@@ -289,7 +291,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, rhs).withSourcePos(selfSym.sourcePos)
+      val binding = ValDef(selfSym.asTerm, rhs).withSpan(selfSym.span)
       bindingsBuf += binding
       selfSym.defTree = binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
@@ -348,13 +350,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context): Tree = {
     val result = tree.changeOwner(originalOwner, ctx.owner)
     if (!originalOwner.isContainedIn(inlinedMethod))
-      Inlined(EmptyTree, Nil, result).withPosOf(tree)
+      Inlined(EmptyTree, Nil, result).withSpan(tree.span)
     else result
   }
 
   def tryConstValue: Tree =
     ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
-      case Some(c) => Literal(c).withPosOf(call)
+      case Some(c) => Literal(c).withSpan(call.span)
       case _ => EmptyTree
     }
 
@@ -421,7 +423,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case Some(t) if tree.isTerm && t.isSingleton =>
               singleton(t.dealias)
             case Some(t) if tree.isType =>
-              TypeTree(t).withPosOf(tree)
+              TypeTree(t).withSpan(tree.span)
             case _ => tree
           }
         case tree => tree
@@ -432,7 +434,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion = inliner.transform(rhsToInline).withPosOf(call)
+    val expansion = inliner.transform(rhsToInline).withSpan(call.span)
 
     def issueError() = callValueArgss match {
       case (msgArg :: rest) :: Nil =>
@@ -598,7 +600,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ =>
           binding
       }
-      binding1.withPosOf(call)
+      binding1.withSpan(call.span)
     }
 
     /** An extractor for references to inlineable arguments. These are :

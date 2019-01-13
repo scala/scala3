@@ -1012,7 +1012,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     else {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
-      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withPosOf(tree)
+      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
     }
   }
 
@@ -1201,7 +1201,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // Give a zero-extent position to the qualifier to prevent it from being included several
       // times in results in the language server.
       val noPosExpr = focusPositions(imp.expr)
-      val selectTree = Select(noPosExpr, sym.name).withPosOf(id)
+      val selectTree = Select(noPosExpr, sym.name).withSpan(id.span)
       rename match {
         case None =>
           selectTree :: Nil
@@ -1210,7 +1210,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // node with the new name and the type of the real symbol.
           val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
           val actual = Select(noPosExpr, sym.name)
-          val renameTree = Select(noPosExpr, name).withPosOf(rename).withType(actual.tpe)
+          val renameTree = Select(noPosExpr, name).withSpan(rename.span).withType(actual.tpe)
           selectTree :: renameTree :: Nil
       }
     }

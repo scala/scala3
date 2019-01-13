@@ -144,7 +144,7 @@ trait Dynamic { self: Typer with Applications =>
       // ($qual: Selectable).$selectorName("$name", ..$ctags)
       val base =
         untpd.Apply(
-          untpd.TypedSplice(selectable.select(selectorName)).withPosOf(fun),
+          untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
           (Literal(Constant(name.toString)) :: ctags).map(untpd.TypedSplice(_)))
 
       val scall =

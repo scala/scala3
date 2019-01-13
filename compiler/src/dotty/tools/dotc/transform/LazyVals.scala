@@ -153,7 +153,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Nil))
 
     val holderRef = ref(holderSymbol)
-    val getValue = holderRef.select(lazyNme.value).ensureApplied.withPosOf(x)
+    val getValue = holderRef.select(lazyNme.value).ensureApplied.withSpan(x.span)
     val initialized = holderRef.select(lazyNme.initialized).ensureApplied
 
     // def x$lzycompute(): Int = x$lzy.synchronized {

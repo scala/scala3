@@ -1031,7 +1031,7 @@ class TreeUnpickler(reader: TastyReader,
 
       def readQualId(): (untpd.Ident, TypeRef) = {
         val qual = readTerm().asInstanceOf[untpd.Ident]
-         (untpd.Ident(qual.name).withPosOf(qual), qual.tpe.asInstanceOf[TypeRef])
+         (untpd.Ident(qual.name).withSpan(qual.span), qual.tpe.asInstanceOf[TypeRef])
       }
 
       def accessibleDenot(pre: Type, name: Name, sig: Signature) = {

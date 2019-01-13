@@ -168,7 +168,7 @@ object PrepareInlineable {
           ref(accessor)
             .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
             .appliedToArgss((qual :: Nil) :: argss)
-            .withPosOf(tree)
+            .withSpan(tree.span)
 
             // TODO: Handle references to non-public types.
             // This is quite tricky, as such types can appear anywhere, including as parts
@@ -178,7 +178,7 @@ object PrepareInlineable {
             //
             //  val accessor = accessorSymbol(tree, TypeAlias(tree.tpe)).asType
             //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
-            //  ref(accessor).withPosOf(tree)
+            //  ref(accessor).withSpan(tree.span)
             //
         case _ => tree
       }

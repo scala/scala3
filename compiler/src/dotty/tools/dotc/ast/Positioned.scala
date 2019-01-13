@@ -59,24 +59,6 @@ abstract class Positioned(implicit @transientParam src: SourceFile) extends Prod
     newpd
   }
 
-  def withPosOf(posd: Positioned): this.type = {
-    val ownSpan = this.span
-    val newpd: this.type =
-      if ((posd.source `eq` source) && posd.span == ownSpan || ownSpan.isSynthetic) this
-      else cloneIn(posd.source)
-    newpd.setPos(posd.span, posd.source)
-    newpd
-  }
-
-  def withSourcePos(sourcePos: SourcePosition): this.type = {
-    val ownSpan = this.span
-    val newpd: this.type =
-      if ((sourcePos.source `eq` source) && sourcePos.span == ownSpan || ownSpan.isSynthetic) this
-      else cloneIn(sourcePos.source)
-    newpd.setPos(sourcePos.span, sourcePos.source)
-    newpd
-  }
-
   /** Set span of this tree only, without updating children spans.
    *  Called from Unpickler when entering positions.
    */

@@ -29,7 +29,7 @@ class ExplicitSelf extends MiniPhase {
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
     case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
-      This(tp.cls).withPosOf(tree)
+      This(tp.cls).withSpan(tree.span)
     case _ => tree
   }
 

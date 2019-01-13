@@ -240,7 +240,7 @@ trait FullParameterization {
             ref(vparam.symbol).ensureConforms(paramType)
           }))
       })
-    }).withPosOf(originalDef.rhs)
+    }).withSpan(originalDef.rhs.span)
   }
 }
 

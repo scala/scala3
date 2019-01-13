@@ -89,7 +89,7 @@ class TreeTypeMap(
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
-          ref(id.tpe.asInstanceOf[TermRef]).withPosOf(id)
+          ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
         case ddef @ DefDef(name, tparams, vparamss, tpt, _) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
@@ -122,7 +122,7 @@ class TreeTypeMap(
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
         case Hole(n, args) =>
-          Hole(n, args.mapConserve(transform)).withPosOf(tree).withType(mapType(tree.tpe))
+          Hole(n, args.mapConserve(transform)).withSpan(tree.span).withType(mapType(tree.tpe))
         case tree1 =>
           super.transform(tree1)
       }

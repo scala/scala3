@@ -89,7 +89,7 @@ object Trees {
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
     final def copyAttr[U >: Untyped](from: Tree[U]): ThisTree[T] = {
-      val t1 = this.withPosOf(from)
+      val t1 = this.withSpan(from.span)
       val t2 =
         if (from.myTpe != null) t1.withType(from.myTpe.asInstanceOf[Type])
         else t1
@@ -807,10 +807,6 @@ object Trees {
 
     override def withSpan(span: Span): this.type =
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
-    override def withPosOf(posd: Positioned): this.type =
-      mapElems(_.withPosOf(posd)).asInstanceOf[this.type]
-    override def withSourcePos(sourcePos: SourcePosition): this.type =
-      mapElems(_.withSourcePos(sourcePos)).asInstanceOf[this.type]
   }
 
   class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoSource) {
@@ -978,10 +974,10 @@ object Trees {
       protected def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
       protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
-        postProcess(tree, copied.withPosOf(tree).withAttachmentsFrom(tree))
+        postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
 
       protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
-        postProcess(tree, copied.withPosOf(tree).withAttachmentsFrom(tree))
+        postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
 
       protected def srcCtx(tree: Tree)(implicit ctx: Context) = ctx.withSource(tree.source)
 

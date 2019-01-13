@@ -521,7 +521,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             if (getter.isEmpty) missingArg(n)
             else {
               val substParam = addTyped(
-                  treeToArg(spliceMeth(getter.withPosOf(normalizedFun), normalizedFun)),
+                  treeToArg(spliceMeth(getter.withSpan(normalizedFun.span), normalizedFun)),
                   formal)
               matchArgs(args1, formals1.mapconserve(substParam), n + 1)
             }
@@ -930,7 +930,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
       def newGenericArrayCall =
         ref(defn.DottyArraysModule)
-          .select(defn.newGenericArrayMethod).withPosOf(tree)
+          .select(defn.newGenericArrayMethod).withSpan(tree.span)
           .appliedToTypeTrees(targs).appliedToArgs(args)
 
       if (TypeErasure.isGeneric(targ.tpe))
@@ -958,7 +958,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           ttree.tpe match {
             case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
               companionRef(alias) match {
-                case companion: TermRef => return untpd.ref(companion).withPosOf(tree)
+                case companion: TermRef => return untpd.ref(companion).withSpan(tree.span)
                 case _ =>
               }
             case _ =>
@@ -1086,7 +1086,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 args.init :+ argSeq
               case _ =>
                 val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
-                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withPosOf(tree)
+                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withSpan(tree.span)
             }
           else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
             untpd.Tuple(args) :: Nil

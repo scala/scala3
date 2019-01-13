@@ -225,7 +225,7 @@ object JavaParsers {
     /** Convert (qual)ident to type identifier
       */
     def convertToTypeId(tree: Tree): Tree = convertToTypeName(tree) match {
-      case Some(t)  => t.withPosOf(tree)
+      case Some(t)  => t.withSpan(tree.span)
       case _        => tree match {
         case AppliedTypeTree(_, _) | Select(_, _) =>
           tree

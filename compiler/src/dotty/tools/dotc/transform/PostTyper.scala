@@ -154,7 +154,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
             val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
-            TypeApply(tycon, args1).withPosOf(tree).withType(tree.tpe)
+            TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
         }
@@ -193,7 +193,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: Ident if !tree.isType =>
           handleMeta(tree.symbol)
           tree.tpe match {
-            case tpe: ThisType => This(tpe.cls).withPosOf(tree)
+            case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
             case _ => tree
           }
         case tree @ Select(qual, name) =>

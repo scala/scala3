@@ -107,7 +107,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
       polyDefDef(meth,
-        _ => _ => ref(defn.Sys_errorR).withPosOf(ddef)
+        _ => _ => ref(defn.Sys_errorR).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
 
     }
@@ -133,7 +133,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
    */
   private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
     val binders = collectBinders.apply(Nil, tree)
-    val result: Tree = TypeTree(tree.tpe).withPosOf(tree)
+    val result: Tree = TypeTree(tree.tpe).withSpan(tree.span)
     (result /: binders)(Annotated(_, _))
   }
 

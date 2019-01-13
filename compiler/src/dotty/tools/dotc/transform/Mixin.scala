@@ -256,7 +256,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       constr =
         if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
         else impl.constr,
-      parents = impl.parents.map(p => TypeTree(p.tpe).withPosOf(p)),
+      parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =
         if (cls is Trait) traitDefs(impl.body)
         else {

@@ -472,7 +472,7 @@ object ProtoTypes {
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
       yield {
-        val tt = new TypeVarBinder().withPosOf(owningTree)
+        val tt = new TypeVarBinder().withSpan(owningTree.span)
         val tvar = new TypeVar(paramRef, state)
         state.ownedVars += tvar
         tt.withType(tvar)

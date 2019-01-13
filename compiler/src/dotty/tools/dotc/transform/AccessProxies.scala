@@ -97,7 +97,7 @@ abstract class AccessProxies {
         case Select(qual, _) if qual.tpe.derivesFrom(accessor.owner) => qual.select(accessor)
         case _ => ref(accessor)
       }
-    }.withPosOf(reference)
+    }.withSpan(reference.span)
 
     /** Given a reference to a getter accessor, the corresponding setter reference */
     def useSetter(getterRef: Tree)(implicit ctx: Context): Tree = getterRef match {

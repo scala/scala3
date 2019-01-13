@@ -374,9 +374,9 @@ object Parsers {
     */
     def convertToParam(tree: Tree, mods: Modifiers = Modifiers(), expected: String = "formal parameter"): ValDef = tree match {
       case Ident(name) =>
-        makeParameter(name.asTermName, TypeTree(), mods).withPosOf(tree)
+        makeParameter(name.asTermName, TypeTree(), mods).withSpan(tree.span)
       case Typed(Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt, mods).withPosOf(tree)
+        makeParameter(name.asTermName, tpt, mods).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree, mods)
@@ -2607,11 +2607,11 @@ object Parsers {
         if (in.token == ARROW) {
           first match {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
-              self = makeSelfDef(nme.WILDCARD, tpt).withPosOf(first)
+              self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
             case _ =>
               val ValDef(name, tpt, _) = convertToParam(first, EmptyModifiers, "self type clause")
               if (name != nme.ERROR)
-                self = makeSelfDef(name, tpt).withPosOf(first)
+                self = makeSelfDef(name, tpt).withSpan(first.span)
           }
           in.nextToken()
         } else {

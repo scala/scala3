@@ -92,12 +92,12 @@ class ReplCompiler extends Compiler {
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
         val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
-        val assign = ValDef(assignName, TypeTree(), id).withPosOf(expr)
+        val assign = ValDef(assignName, TypeTree(), id).withSpan(expr.span)
         defs += expr += assign
       case expr if expr.isTerm =>
         val resName = (str.REPL_RES_PREFIX + valIdx).toTermName
         valIdx += 1
-        val vd = ValDef(resName, TypeTree(), expr).withPosOf(expr)
+        val vd = ValDef(resName, TypeTree(), expr).withSpan(expr.span)
         defs += vd
       case other =>
         defs += other

@@ -26,7 +26,7 @@ class GetClass extends MiniPhase {
     import ast.Trees._
     tree match {
       case Apply(Select(qual, nme.getClass_), Nil) if qual.tpe.widen.isPrimitiveValueType =>
-        clsOf(qual.tpe.widen).withPosOf(tree)
+        clsOf(qual.tpe.widen).withSpan(tree.span)
       case _ => tree
     }
   }

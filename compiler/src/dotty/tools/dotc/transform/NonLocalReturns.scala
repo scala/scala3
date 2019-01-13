@@ -86,6 +86,6 @@ class NonLocalReturns extends MiniPhase {
     }
 
   override def transformReturn(tree: Return)(implicit ctx: Context): Tree =
-    if (isNonLocalReturn(tree)) nonLocalReturnThrow(tree.expr, tree.from.symbol).withPosOf(tree)
+    if (isNonLocalReturn(tree)) nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
     else tree
 }

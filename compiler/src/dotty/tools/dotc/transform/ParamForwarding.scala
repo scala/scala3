@@ -70,7 +70,7 @@ class ParamForwarding(thisPhase: DenotTransformer) {
                     val superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
                     typr.println(i"adding param forwarder $superAcc")
-                    DefDef(sym, superAcc.ensureConforms(sym.info.widen)).withPosOf(stat)
+                    DefDef(sym, superAcc.ensureConforms(sym.info.widen)).withSpan(stat.span)
                   }
                   return forwarder(ctx.withPhase(thisPhase.next))
                 }
