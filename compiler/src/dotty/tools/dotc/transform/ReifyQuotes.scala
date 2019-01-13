@@ -77,9 +77,9 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo, new Embedded, ctx)
+    new Reifier(inQuote = false, null, 0, new Info, new Embedded, ctx)
 
-  private class LevelInfo {
+  private class Info {
 
     /** Register a reference defined in a quote but used in another quote nested in a splice.
      *  Returns a version of the reference that needs to be used in its place.
@@ -95,6 +95,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *  See `isCaptured`
      */
     val capturers = new mutable.HashMap[Symbol, Tree => Tree]
+
   }
 
   /** The main transformer class
@@ -105,17 +106,17 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    *                     and `l == -1` is code inside a top level splice (in an inline method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
-   *  @param  rctx       the contex in the destination lifted lambda
+   *  @param  rctx       the context in the destination lifted lambda
    */
-  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
+  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, info: Info,
                         val embedded: Embedded, val rctx: Context) extends ImplicitsTransformer {
-    import levels._
+    import info._
     assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean)(implicit ctx: Context): Reifier = {
       val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new Embedded
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded, ctx)
+      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, info, nestedEmbedded, ctx)
     }
 
     /** A stack of entered symbols, to be unwound after scope exit */
@@ -125,7 +126,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
       case tree: DefTree =>
         val sym = tree.symbol
-        if ((sym.isClass || !sym.maybeOwner.isType)) {
+        if (sym.isClass || !sym.maybeOwner.isType) {
           enteredSyms = sym :: enteredSyms
         }
       case _ =>
@@ -327,10 +328,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       reporting.trace(i"reify $tree at $level", show = true) {
         def mapOverTree(lastEntered: List[Symbol]) =
           try super.transform(tree)
-          finally
-            while (enteredSyms ne lastEntered) {
-              enteredSyms = enteredSyms.tail
-            }
+          finally enteredSyms = lastEntered
         tree match {
           case Quoted(quotedTree) =>
             quotation(quotedTree, tree)
@@ -348,7 +346,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-          case CaseDef(pat, guard, body) =>
+          case CaseDef(pat, _, _) =>
             val last = enteredSyms
             // mark all bindings
             new TreeTraverser {
@@ -363,7 +361,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case tree: DefDef if tree.symbol.is(Macro) && level > 0 =>
             EmptyTree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
-            tree // Do nothin in this phase
+            tree // Do nothing in this phase
           case _ =>
             markDef(tree)
             mapOverTree(enteredSyms)
