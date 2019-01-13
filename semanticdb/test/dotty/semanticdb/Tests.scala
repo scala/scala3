@@ -132,7 +132,7 @@ class Tests {
       val sdbconsumer = new SemanticdbConsumer(scalaFile)
 
       val _ = ConsumeTasty(classpaths.head, classnames, sdbconsumer)
-      sdbconsumer.toSemanticdb(scalac.text)
+      sdbconsumer.toSemanticdb()
     }
   }
 

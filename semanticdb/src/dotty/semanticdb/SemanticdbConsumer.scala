@@ -19,8 +19,8 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
   val semantic: s.TextDocument = s.TextDocument()
   var occurrences: Seq[s.SymbolOccurrence] = Seq()
 
-  def toSemanticdb(text: String): s.TextDocument = {
-    s.TextDocument(text = text, occurrences = occurrences)
+  def toSemanticdb(): s.TextDocument = {
+    s.TextDocument(text = sourceCode, occurrences = occurrences)
   }
   val package_definitions: Set[Tuple2[String, Int]] = Set()
   val symbolsCache: HashMap[(String, s.Range), String] = HashMap()
