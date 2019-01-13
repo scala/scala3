@@ -49,9 +49,9 @@ class TastyInspecter extends TastyConsumer {
 
 class Tests {
 
-  // TODO: update scala-0.10 on version change (or resolve automatically)
+  // TODO: update scala-0.13 on version change (or resolve automatically)
   final def tastyClassDirectory =
-    "out/bootstrap/dotty-semanticdb/scala-0.11/test-classes"
+    "out/bootstrap/dotty-semanticdb/scala-0.12/test-classes"
   val sourceroot = Paths.get("semanticdb", "input").toAbsolutePath
   val sourceDirectory = sourceroot.resolve("src/main/scala")
 
