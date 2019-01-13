@@ -372,13 +372,9 @@ class Staging extends MacroTransformWithImplicits {
      *  are in the body of an inline method.
      */
     private def splice(splice: Select)(implicit ctx: Context): Tree = {
-      if (level > 1) {
+      if (level >= 1) {
         val body1 = nested(isQuote = false).transform(splice.qualifier)
         body1.select(splice.name)
-      }
-      else if (level == 1) {
-        val body1 = nested(isQuote = false).transform(splice.qualifier)
-        cpy.Select(splice)(body1, splice.name)
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
