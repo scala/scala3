@@ -222,30 +222,13 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         val hole = makeHole(body1, quotes, tpe).withPos(splice.pos)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
-        // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions. 
+        // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
         if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
         else Inlined(EmptyTree, Nil, hole)
       }
-      else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
-        assert(false)
-        splice
-      }
-      else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
-//        if (splice.isTerm)
-//          ctx.error(i"splice outside quotes or inline method", splice.pos)
-        // some spliced types might be left as infered aliases to their underlying type
-        splice
-
-      }
-      else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside an inline definition
-        assert(false)
-//        nested(isQuote = false).split(splice.qualifier) // Just check PCP
-        splice
-      }
-      else { // level 0 inside an inline definition
-        assert(false)
-//        ctx.error("Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or inline.".stripMargin, splice.pos)
+      else {
+        assert(level == 0)
         splice
       }
     }
