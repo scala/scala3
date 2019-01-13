@@ -49,7 +49,7 @@ class Staging extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo, ctx)
+    new Reifier(inQuote = false, null, 0, new LevelInfo)
 
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -63,23 +63,15 @@ class Staging extends MacroTransformWithImplicits {
    *                     The initial level is 0, a level `l` where `l > 0` implies code has been quoted `l` times
    *                     and `l == -1` is code inside a top level splice (in an inline method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
-   *  @param  rctx       the contex in the destination lifted lambda
    */
-  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
-                        val rctx: Context) extends ImplicitsTransformer {
+  private class Reifier(inQuote: Boolean, val outer: Reifier, level: Int, levels: LevelInfo) extends ImplicitsTransformer {
     import levels._
     assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean)(implicit ctx: Context): Reifier = {
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, ctx)
+      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels)
     }
-
-    /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
-    def inSplice: Boolean = outer != null && !inQuote
-
-    /** We are not in a `~(...)` or a `'(...)` */
-    def isRoot: Boolean = outer == null
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags` and represent type variables
