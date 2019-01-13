@@ -85,7 +85,7 @@ abstract class Lifter {
           lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
-        args.map(liftArg(defs, _))
+        args.mapConserve(liftArg(defs, _))
     }
 
   /** Lift out function prefix and all arguments from application

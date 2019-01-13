@@ -210,7 +210,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if (methType.isErasedMethod)
               tpd.cpy.Apply(tree)(
                 tree.fun,
-                tree.args.map(arg =>
+                tree.args.mapConserve(arg =>
                   if (methType.isImplicitMethod && arg.pos.isSynthetic) ref(defn.Predef_undefined)
                   else dropInlines.transform(arg)))
             else

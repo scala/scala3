@@ -64,7 +64,7 @@ class SemanticdbConsumer extends TastyConsumer {
 
       implicit class SymbolExtender(symbol: Symbol) {
         def isTypeParameter: Boolean = symbol match {
-          case IsTypeSymbol(_) => symbol.flags.isParam
+          case IsTypeSymbol(_) => symbol.flags.is(Flags.Param)
           case _               => false
         }
 
@@ -83,11 +83,11 @@ class SemanticdbConsumer extends TastyConsumer {
           case _                  => false
         }
 
-        def isObject: Boolean = symbol.flags.isObject
+        def isObject: Boolean = symbol.flags.is(Flags.Object)
 
-        def isTrait: Boolean = symbol.flags.isTrait
+        def isTrait: Boolean = symbol.flags.is(Flags.Trait)
 
-        def isValueParameter: Boolean = symbol.flags.isParam
+        def isValueParameter: Boolean = symbol.flags.is(Flags.Param)
 
         // TODO : implement it
         def isJavaClass: Boolean = false
@@ -95,9 +95,9 @@ class SemanticdbConsumer extends TastyConsumer {
 
       def resolveClass(symbol: ClassSymbol): Symbol =
         (symbol.companionClass, symbol.companionModule) match {
-          case (_, Some(module)) if symbol.flags.isObject => module
-          case (Some(c), _)                               => c
-          case _                                          => symbol
+          case (_, Some(module)) if symbol.flags.is(Flags.Object) => module
+          case (Some(c), _) => c
+          case _ => symbol
         }
 
       def disimbiguate(symbol_path: String, symbol: Symbol): String = {
