@@ -49,7 +49,7 @@ class Staging extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo)
+    new Stager(inQuote = false, null, 0, new LevelInfo)
 
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -64,13 +64,13 @@ class Staging extends MacroTransformWithImplicits {
    *                     and `l == -1` is code inside a top level splice (in an inline method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    */
-  private class Reifier(inQuote: Boolean, val outer: Reifier, level: Int, levels: LevelInfo) extends ImplicitsTransformer {
+  private class Stager(inQuote: Boolean, val outer: Stager, level: Int, levels: LevelInfo) extends ImplicitsTransformer {
     import levels._
     assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
-    def nested(isQuote: Boolean)(implicit ctx: Context): Reifier = {
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels)
+    def nested(isQuote: Boolean)(implicit ctx: Context): Stager = {
+      new Stager(isQuote, this, if (isQuote) level + 1 else level - 1, levels)
     }
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
@@ -272,7 +272,7 @@ class Staging extends MacroTransformWithImplicits {
      *
      *     type T' = ~quoted.Type[T]
      *
-     *  to the quoted text and rename T to T' in it. This is done later in `reify` via
+     *  to the quoted text and rename T to T' in it. This is done later via
      *  `addTags`. `checkLevel` itself only records what needs to be done in the
      *  `typeTagOfRef` field of the current `Splice` structure.
      */
