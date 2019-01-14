@@ -14,133 +14,40 @@ import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 import java.lang.reflect.InvocationTargetException
 
-class TastyInspecter extends TastyConsumer {
-  var source_path: Option[String] = None
-  final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect._
-    object ChildTraverser extends TreeTraverser {
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit =
-        tree match {
-          case IsClassDef(cdef) => {
-            cdef.symbol.annots.foreach { annot =>
-              annot match {
-                case Term.Apply(Term.Select(Term.New(t), _),
-                                List(Term.Literal(Constant.String(path))))
-                    if t.symbol.name == "SourceFile" =>
-                  // we found the path to a file. In this case, we do not need to
-                  // continue traversing the tree
-                  source_path = Some(path)
-                case x => super.traverseTree(tree)
-              }
-              true
-            }
-          }
-          case _ => {
-            if (source_path == None)
-              super.traverseTree(tree)
-            else
-              ()
-          }
-        }
-    }
-    ChildTraverser.traverseTree(root)(reflect.rootContext)
-  }
-}
-
 class Tests {
 
   // TODO: update scala-0.13 on version change (or resolve automatically)
   final def tastyClassDirectory =
-    "out/bootstrap/dotty-semanticdb/scala-0.12/test-classes"
-  val sourceroot = Paths.get("semanticdb", "input").toAbsolutePath
-  val sourceDirectory = sourceroot.resolve("src/main/scala")
+    Paths.get("out/bootstrap/dotty-semanticdb/scala-0.12/test-classes/")
 
+  val sourceroot = Paths.get("semanticdb/input").toAbsolutePath
+  val sourceDirectory = sourceroot.resolve("src/main/scala")
   val semanticdbClassDirectory = sourceroot.resolve("target/scala-2.12/classes")
   val semanticdbLoader =
     new Semanticdbs.Loader(sourceroot, List(semanticdbClassDirectory))
-
-  val source_to_tasty =
-    getTastyFiles(
-      Paths.get("out", "bootstrap", "dotty-semanticdb/").toAbsolutePath)
 
   /** Returns the SemanticDB for this Scala source file. */
   def getScalacSemanticdb(scalaFile: Path): s.TextDocument = {
     semanticdbLoader.resolve(scalaFile).get
   }
 
-  /** List all tasty files occuring in the folder f or one of its subfolders */
-  def recursiveListFiles(f: File): Array[File] = {
-    val pattern = ".*test-classes/example.*\\.tasty".r
-    val files = f.listFiles
-    val folders = files.filter(_.isDirectory)
-    val tastyfiles = files.filter(_.toString match {
-      case pattern(x: _*) => true
-      case _              => false
-    })
-    tastyfiles ++ folders.flatMap(recursiveListFiles)
-  }
+  /** Returns the SemanticDB for this Scala source file. */
+  def getTastySemanticdb(classPath: Path, scalaFile: Path) : s.TextDocument = {
+    val classNames = Utils.getClassNames(classPath, scalaFile, "example/")
+    println(classPath)
+    println(classNames)
+    println(scalaFile)
+    val sdbconsumer = new SemanticdbConsumer(scalaFile)
 
-  /** Returns a mapping from *.scala file to a list of tasty files. */
-  def getTastyFiles(artifactsPath: Path): HashMap[String, List[Path]] = {
-    val source_to_tasty: HashMap[String, List[Path]] = HashMap()
-    val tastyfiles = recursiveListFiles(artifactsPath.toFile())
-    recursiveListFiles(artifactsPath.toFile()).map(tasty_path => {
-      val (classpath, classname) = getClasspathClassname(tasty_path.toPath())
-      // We add an exception here to avoid crashing if we encountered
-      // a bad tasty file
-      try {
-        val inspecter = new TastyInspecter
-        ConsumeTasty(classpath, classname :: Nil, inspecter)
-        inspecter.source_path.foreach(
-          source =>
-            source_to_tasty +=
-              (source -> (tasty_path
-                .toPath() :: source_to_tasty.getOrElse(source, Nil))))
-      } catch {
-        case _: InvocationTargetException => println(tasty_path)
-      }
-    })
-    source_to_tasty
-  }
-
-  /** Infers a tuple (class path, class name) from a given path */
-  def getClasspathClassname(file: Path): (String, String) = {
-    val pat = """(.*)\..*""".r
-    val classpath = file.getParent().getParent().toString()
-    val modulename = file.getParent().getFileName().toString()
-    val sourcename =
-      file.toFile().getName().toString() match {
-        case pat(name) => name
-        case _         => ""
-      }
-    return (classpath, modulename + "." + sourcename)
-  }
-
-  def getTastySemanticdb(scalaFile: Path): s.TextDocument = {
-    val scalac = getScalacSemanticdb(scalaFile)
-
-    val tasty_files = source_to_tasty.getOrElse(
-      sourceDirectory.resolve(scalaFile).toString,
-      Nil)
-
-    val tasty_classes = tasty_files.map(getClasspathClassname)
-    // If we have more than one classpath then something went wrong
-    if (tasty_classes.groupBy((a, _) => a).size != 1) {
-      scalac
-    } else {
-      val (classpaths, classnames) = tasty_classes.unzip
-      val sdbconsumer = new SemanticdbConsumer(scalaFile)
-
-      val _ = ConsumeTasty(classpaths.head, classnames, sdbconsumer)
-      sdbconsumer.toSemanticdb()
-    }
+    val _ = ConsumeTasty(classPath.toString, classNames, sdbconsumer)
+    sdbconsumer.toSemanticdb()
   }
 
   /** Fails the test if the s.TextDocument from tasty and semanticdb-scalac are not the same. */
   def checkFile(filename: String): Unit = {
     val path = sourceDirectory.resolve(filename)
     val scalac = getScalacSemanticdb(path)
-    val tasty = getTastySemanticdb(path)
+    val tasty = getTastySemanticdb(tastyClassDirectory, path)
     println(tasty)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)

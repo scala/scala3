@@ -30,23 +30,23 @@ object Utils {
   }
 
   /** List all tasty files occuring in the folder f or one of its subfolders */
-  def recursiveListFiles(f: File): Array[File] = {
-    val pattern = ".*\\.tasty".r
+  def recursiveListFiles(f: File, prefix : String = ""): Array[File] = {
+    val pattern = (prefix + ".*\\.tasty").r
     val files = f.listFiles
     val folders = files.filter(_.isDirectory)
     val tastyfiles = files.filter(_.toString match {
       case pattern(x: _*) => true
       case _              => false
     })
-    tastyfiles ++ folders.flatMap(recursiveListFiles)
+    tastyfiles ++ folders.flatMap(recursiveListFiles(_, prefix))
   }
 
   /** Returns a mapping from *.scala file to a list of tasty files. */
-  def getTastyFiles(classPath: Path): HashMap[String, List[Path]] = {
-    val source_to_tasty: HashMap[String, List[Path]] = HashMap()
-    val tastyfiles = recursiveListFiles(classPath.toFile())
-    recursiveListFiles(classPath.toFile()).map(tasty_path => {
-      val (classpath, classname) = getClasspathClassname(tasty_path.toPath())
+  def getTastyFiles(classPath: Path, prefix : String = ""): HashMap[String, List[Path]] = {
+    val sourceToTasty: HashMap[String, List[Path]] = HashMap()
+    val tastyfiles = recursiveListFiles(classPath.toFile(), prefix)
+    recursiveListFiles(classPath.toFile()).map(tastyPath => {
+      val (classpath, classname) = getClasspathClassname(tastyPath.toPath())
       // We add an exception here to avoid crashing if we encountered
       // a bad tasty file
       try {
@@ -54,24 +54,24 @@ object Utils {
         ConsumeTasty(classpath, classname :: Nil, inspecter)
         inspecter.sourcePath.foreach(
           source =>
-            source_to_tasty +=
-              (source -> (tasty_path
-                .toPath() :: source_to_tasty.getOrElse(source, Nil))))
+            sourceToTasty +=
+              (source -> (tastyPath
+                .toPath().toAbsolutePath :: sourceToTasty.getOrElse(source, Nil))))
       } catch {
-        case _: InvocationTargetException => println(tasty_path)
+        case _: InvocationTargetException => println(tastyPath)
       }
     })
-    source_to_tasty
+    sourceToTasty
   }
 
   /*
   Returns the list of names of class defined inside the scala file [scalaFile]
   extracted from the compilation artifacts found in [classPath].
   */
-  def getClassNames(classPath: String, scalaFile: String): List[String] = {
+  def getClassNames(classPath: Path, scalaFile: Path, prefix : String = ""): List[String] = {
     val tastyFiles =
-      getTastyFiles(Paths.get(classPath).toAbsolutePath)
-      .getOrElse(Paths.get(scalaFile).toAbsolutePath.toString, Nil)
+      getTastyFiles(classPath.toAbsolutePath, prefix)
+      .getOrElse(scalaFile.toString, Nil)
 
     val tastyClasses = tastyFiles.map(getClasspathClassname)
     val (_, classnames) = tastyClasses.unzip

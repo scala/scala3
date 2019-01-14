@@ -88,8 +88,8 @@ object Main {
           println("Compile error:")
           println(reporter)
         } else {
-          val classNames = Utils.getClassNames(cliArgs("classpath"), cliArgs("input"))
           val scalaFile = Paths.get(cliArgs("input")).toAbsolutePath
+          val classNames = Utils.getClassNames(Paths.get(cliArgs("classpath")), scalaFile)
           val sdbconsumer = new SemanticdbConsumer(scalaFile)
           val _ = ConsumeTasty(cliArgs("classpath"), classNames, sdbconsumer)
           val textDocument = sdbconsumer.toSemanticdb()
