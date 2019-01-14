@@ -119,7 +119,7 @@ object Comments {
   object UseCase {
     def apply(code: String, codePos: Span)(implicit ctx: Context): UseCase = {
       val tree = {
-        val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
+        val tree = new Parser(SourceFile.virtual("<usecase>", code)).localDef(codePos.start)
         tree match {
           case tree: untpd.DefDef =>
             val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)

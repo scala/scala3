@@ -13,7 +13,7 @@ class TypeRenderingTestFromTasty extends TypeRenderingTest with CheckFromTasty
 class TypeRenderingTestFromSource extends TypeRenderingTest with CheckFromSource
 abstract class TypeRenderingTest extends DottyDocTest {
   @Test def renderImplicitFunctionType = {
-    val source = new SourceFile(
+    val source = SourceFile.virtual(
       "ImplicitFunctionType.scala",
       """
       |package scala
