@@ -159,7 +159,7 @@ object SymbolLoaders {
             Nil)
         }
 
-        val unit = new CompilationUnit(ctx.getSource(src.path))
+        val unit = CompilationUnit(ctx.getSource(src.path))
         enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
       }
     }

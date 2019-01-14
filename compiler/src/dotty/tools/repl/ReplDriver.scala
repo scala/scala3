@@ -149,7 +149,7 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Completion)(implicit ctx: Context) = {
+    def makeCandidate(completion: Completion) = {
       val displ = completion.label
       new Candidate(
         /* value    = */ displ,
@@ -166,7 +166,7 @@ class ReplDriver(settings: Array[String],
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
         val file = SourceFile.virtual("<completions>", expr)
-        val unit = new CompilationUnit(file)
+        val unit = CompilationUnit(file)(state.context)
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
