@@ -584,7 +584,7 @@ class Typer extends Namer
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+          constrainPatternType(SkolemType(tpt1.tpe), pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
