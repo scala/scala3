@@ -140,8 +140,8 @@ class ReplCompiler extends Compiler {
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
   }
 
-  private def createUnit(defs: Definitions, sourceCode: String): CompilationUnit = {
-    val unit = new CompilationUnit(SourceFile.virtual(objectName(defs.state).toString, sourceCode))
+  private def createUnit(defs: Definitions, sourceCode: String)(implicit ctx: Context): CompilationUnit = {
+    val unit = CompilationUnit(SourceFile.virtual(objectName(defs.state).toString, sourceCode))
     unit.untpdTree = wrapped(defs)
     unit
   }
@@ -156,7 +156,7 @@ class ReplCompiler extends Compiler {
 
   final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     val defs = definitions(parsed.trees, state)
-    val unit = createUnit(defs, parsed.sourceCode)
+    val unit = createUnit(defs, parsed.sourceCode)(state.context)
     runCompilationUnit(unit, defs.state)
   }
 
@@ -273,7 +273,7 @@ class ReplCompiler extends Compiler {
       .setSetting(state.context.settings.YstopAfter, List("frontend"))
 
     wrapped(expr, src, state).flatMap { pkg =>
-      val unit = new CompilationUnit(src)
+      val unit = CompilationUnit(src)
       unit.untpdTree = pkg
       ctx.run.compileUnits(unit :: Nil, ctx)
 

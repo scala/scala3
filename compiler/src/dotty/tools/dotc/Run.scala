@@ -100,7 +100,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var finalizeActions = mutable.ListBuffer[() => Unit]()
 
   def compile(fileNames: List[String]): Unit = try {
-    val sources = fileNames.map(ctx.getSource)
+    val sources = fileNames.map(ctx.getSource(_))
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
@@ -116,7 +116,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   def compileSources(sources: List[SourceFile]): Unit =
     if (sources forall (_.exists)) {
-      units = sources map (new CompilationUnit(_))
+      units = sources.map(CompilationUnit(_))
       compileUnits()
     }
 
@@ -192,7 +192,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
-      val unit = new CompilationUnit(ctx.getSource(file.path))
+      val unit = CompilationUnit(ctx.getSource(file.path))
       def process()(implicit ctx: Context) = {
         unit.untpdTree =
           if (unit.isJava) new JavaParser(unit.source).parse()

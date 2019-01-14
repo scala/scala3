@@ -775,8 +775,7 @@ object Symbols {
             def sourceFromTopLevel(implicit ctx: Context) =
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match {
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
-                  case Some(Constant(path: String)) =>
-                    ctx.getSource(path)
+                  case Some(Constant(path: String)) => ctx.getSource(path)
                   case none => NoSource
                 }
                 case none => NoSource

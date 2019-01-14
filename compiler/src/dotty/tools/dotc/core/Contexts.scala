@@ -244,19 +244,9 @@ object Contexts {
         source
       case None =>
         val f = new PlainFile(Path(path.toString))
-        if (f.isDirectory) {
-          error(s"expected file, received directory '$path'")
-          NoSource
-        }
-        else if (f.exists) {
-          val src = getSource(f)
-          base.sourceNamed(path) = src
-          src
-        }
-        else {
-          error(s"not found: $path")
-          NoSource
-        }
+        val src = getSource(f)
+        base.sourceNamed(path) = src
+        src
     }
 
     /** Sourcefile with given path, memoized */
