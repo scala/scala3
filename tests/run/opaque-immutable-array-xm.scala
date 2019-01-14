@@ -2,6 +2,7 @@ import scala.reflect.ClassTag
 object Test extends App {
 
   import java.util.Arrays
+  import scala.NonNull.ArrayConversions._
 
   opaque type IArray[A1] = Array[A1]
 
@@ -15,9 +16,9 @@ object Test extends App {
     def (ia: IArray[A]) apply[A] (i: Int): A = (ia: Array[A])(i)
 
     // return a sorted copy of the array
-    def sorted[A <: AnyRef : math.Ordering](ia: IArray[A]): IArray[A] = {
-      val arr = Arrays.copyOf(ia, (ia: Array[A]).length).nn
-      scala.util.Sorting.quickSort(arr)
+    def sorted[A <: AnyRef : math.Ordering](ia: IArray[A|Null]): IArray[A|Null] = {
+      val arr = Arrays.copyOf(ia, ia.length).nn
+      scala.util.Sorting.quickSort(scala.NonNull.ArrayConversions.fromNullable1(arr))
       arr
     }
 

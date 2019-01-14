@@ -58,36 +58,6 @@ object JavaNull {
     }
   }
 
-  /** Adds "| JavaNull" to the relevant places of a Java type to reflect the fact
-   *  that Java types remain nullable by default.
-   */
-  def nullifyType(tpe: Type)(implicit ctx: Context): Type = {
-    val loc = new JavaNullLoc({
-      case tp: OrType => tp
-      case tp => tp.toJavaNullable
-    })
-    loc(tpe)
-  }
-
-  /** Strip any `| Null` from locations where this transform would've inserted them. If `tpe` does not
-   *  contain any nullable unions, then the same reference will be returned.
-   */
-  def stripNullableUnions(tpe: Type)(implicit ctx: Context): Type = {
-    val loc = new JavaNullLoc(_.stripNull)
-    loc(tpe)
-  }
-
-  /** Does `tpe` contain any `| JavaNull` in locations where the transform would've inserted them? */
-  def containsJavaNullableUnions(tpe: Type)(implicit ctx: Context): Boolean = {
-    var hasUnion = false
-    val loc = new JavaNullLoc(tp => {
-      if (tp.isJavaNullableUnion) hasUnion = true
-      tp
-    })
-    loc(tpe)
-    hasUnion
-  }
-
   /** A policy that special cases the handling of some symbol or class of symbols. */
   private sealed trait NullifyPolicy {
     /** Whether the policy applies to `sym`. */
@@ -136,25 +106,33 @@ object JavaNull {
     override def apply(tp: Type): Type = inner(tp)
   }
 
-  /** A type map that applies `op` just to the places where "|JavaNull" could potentially be added. */
-  private class JavaNullLoc(op: Type => Type)(implicit ctx: Context) extends TypeMap {
+  /** Nullifies a Java type by adding `| JavaNull` in the relevant places.
+   *  We need this because Java types remain implicitly nullable.
+   */
+  private def nullifyType(tpe: Type)(implicit ctx: Context): Type = {
+    val nullMap = new JavaNullMap(alreadyNullable = false)
+    nullMap(tpe)
+  }
+
+  /** A type map that adds `| JavaNull`.
+   *  @param alreadyNullable whether the type being mapped is already nullable (at the outermost level)
+   */
+  class JavaNullMap(alreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
+    /** Should we nullify `tp` at the outermost level? */
     def shouldNullify(tp: Type): Boolean = {
-      tp match {
-        case tp: TypeRef =>
-          !tp.symbol.isValueClass &&
-            !tp.isRef(defn.AnyClass) &&
-            !tp.isRef(defn.RefEqClass) &&
-            !tp.symbol.derivesFrom(defn.AnnotationClass)
-        case _ =>
-          true
-      }
+      !alreadyNullable && (tp match {
+        case tp: TypeRef => !tp.symbol.isValueClass && !tp.isRef(defn.AnyClass) && !tp.isRef(defn.RefEqClass)
+        case _ => true
+      })
     }
 
+    /** Should we nullify the arguments to the given generic `tp`?
+     *  We only nullify the inside of Scala-defined constructors.
+     *  This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
+     *  `java.util.List[String|Null]` contain nullable elements.
+     */
     def shouldDescend(tp: AppliedType): Boolean = {
       val AppliedType(tycons, _) = tp
-      // Only nullify the inside of Scala-defined constructors.
-      // This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
-      // `java.util.List[String|Null]` contain nullable elements.
       tycons.widenDealias match {
         case tp: TypeRef if !tp.symbol.is(JavaDefined) => true
         case _ => false
@@ -163,23 +141,20 @@ object JavaNull {
 
     override def apply(tp: Type): Type = {
       tp match {
-        case tp: LambdaType =>
-          mapOver(tp)
-        case tp: TypeAlias =>
-          mapOver(tp)
-        case tp: AndType =>
-          mapOver(tp)
-        case tp: TypeRef if shouldNullify(tp) =>
-          op(tp)
-        case tp: TypeParamRef =>
-          op(tp)
-        case tp: OrType =>
-          op(tp)
-        case appTp@AppliedType(tycons, targs) if shouldNullify(tp) =>
+        case tp: LambdaType => mapOver(tp)
+        case tp: TypeAlias => mapOver(tp)
+        case tp@AndType(tp1, tp2) =>
+          // nullify(A & B) = (nullify(A) & nullify(B)) | Null, but take care not to add
+          // duplicate `Null`s at the outermost level inside `A` and `B`.
+          val newMap = new JavaNullMap(alreadyNullable = true)
+          derivedAndType(tp, newMap(tp1), newMap(tp2)).toJavaNullable
+        case tp: TypeRef if shouldNullify(tp) => tp.toJavaNullable
+        case tp: TypeParamRef if shouldNullify(tp) => tp.toJavaNullable
+        case tp: OrType => tp.toJavaNullable
+        case appTp@AppliedType(tycons, targs) =>
           val targs2 = if (shouldDescend(appTp)) targs map this else targs
-          op(derivedAppliedType(appTp, tycons, targs2))
-        case _ =>
-          tp
+          derivedAppliedType(appTp, tycons, targs2).toJavaNullable
+        case _ => tp
       }
     }
   }
