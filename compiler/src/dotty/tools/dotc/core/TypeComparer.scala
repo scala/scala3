@@ -171,6 +171,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             derefCount += 1
             if (derefCount >= DerefLimit) NoType
             else try mapOver(t.ref) finally derefCount -= 1
+          case tp: TypeVar =>
+            tp
           case _ =>
             mapOver(t)
         }
