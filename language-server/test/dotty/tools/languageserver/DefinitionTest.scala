@@ -344,4 +344,27 @@ class DefinitionTest {
      .definition(m15 to m16, List(m7 to m8))
   }
 
+  @Test def goToBinding: Unit = {
+    withSources(
+      code"""class Foo {
+            |val x = Some(6)
+            |x match {
+            |  case ${m1}x${m2} @ Some(_) => ${m3}x${m4}
+            |}
+            |x match {
+            |  case ${m5}xyz${m6} @ None => ${m7}xyz${m8}
+            |}
+            |val y: Any = ???
+            |y match {
+            |  case ${m9}a${m10} @ Some(${m11}bb${m12} @ Some(${m13}ccc${m14})) =>
+            |    ${m15}a${m16}
+            |    ${m17}bb${m18}
+            |    ${m19}ccc${m20}
+            |}"""
+    ) .definition(m3 to m4, List(m1 to m2))
+      .definition(m7 to m8, List(m5 to m6))
+      .definition(m15 to m16, List(m9 to m10))
+      .definition(m17 to m18, List(m11 to m12))
+      .definition(m19 to m20, List(m13 to m14))
+  }
 }

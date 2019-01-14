@@ -1699,8 +1699,8 @@ object Parsers {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
             migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", startOffset(p))
             atPos(startOffset(p), offset) { Typed(p, pt) }
-          case p =>
-            atPos(startOffset(p), offset) { Bind(name, p) }
+          case pt =>
+            atPos(startOffset(p), 0) { Bind(name, pt) }
         }
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
