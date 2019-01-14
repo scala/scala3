@@ -18,9 +18,9 @@ import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.util.SourcePosition
 
 
-/** Checks that the phase consistency principle (PCP) holds.
+/** Checks that the phase consistency principle (PCP) holds, heals types and expand macros.
  *
- *  TODO
+ *  Type healing consists in transforming a phase inconsistent type `T` into `implicitly[Type[T]].unary_~`.
  *
  *  For macro definitions we assume that we have a single ~ directly as the RHS.
  *  The Splicer is used to check that the RHS will be interpretable (with the `Splicer`) once inlined.
@@ -369,9 +369,6 @@ class Staging extends MacroTransformWithImplicits {
         tree match {
           case Quoted(quotedTree) =>
             quotation(quotedTree, tree)
-          case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
-            val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            splice(ref(splicedType).select(tpnme.UNARY_~).withPos(tree.pos))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
           case tree: RefTree if tree.symbol.is(Inline) && tree.symbol.is(Param) =>
