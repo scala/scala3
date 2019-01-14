@@ -17,7 +17,7 @@ object ModifiersParsingTest {
   implicit val ctx: Context = (new ContextBase).initialCtx
 
   def parse(code: String): Tree = {
-    val (_, stats) = new Parser(new SourceFile("<meta>", code)).templateStatSeq()
+    val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
     stats match { case List(stat) => stat; case stats => Thicket(stats) }
   }
 

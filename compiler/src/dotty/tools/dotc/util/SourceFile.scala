@@ -50,7 +50,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
-  def this(name: String, content: String) = this(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
 
   /** Tab increment; can be overridden */
   def tabInc: Int = 8
@@ -194,6 +193,8 @@ object SourceFile {
   type PathName = TermName
 
   def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
+
+  def virtual(name: String, content: String) = new SourceFile(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
 
   private final val ChunkSizeLog = 10
   private final val ChunkSize = 1 << ChunkSizeLog

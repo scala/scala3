@@ -109,7 +109,7 @@ object ParseResult {
   @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
   private def parseStats(sourceCode: String)(implicit ctx: Context): List[untpd.Tree] = {
-    val source = new SourceFile("<console>", sourceCode)
+    val source = SourceFile.virtual("<console>", sourceCode)
     val parser = new Parser(source)(ctx.withSource(source))
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)

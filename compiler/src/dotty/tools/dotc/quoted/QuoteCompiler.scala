@@ -51,12 +51,12 @@ class QuoteCompiler extends Compiler {
           val tree =
             if (putInClass) inClass(exprUnit.expr)
             else PickledQuotes.quotedExprToTree(exprUnit.expr)
-          val source = new SourceFile("", "")
+          val source = SourceFile.virtual("<quoted.Expr>", "")
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
         case typeUnit: TypeCompilationUnit =>
           assert(!putInClass)
           val tree = PickledQuotes.quotedTypeToTree(typeUnit.tpe)
-          val source = new SourceFile("", "")
+          val source = SourceFile.virtual("<quoted.Type>", "")
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
       }
     }

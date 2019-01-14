@@ -33,7 +33,7 @@ object SyntaxHighlighting {
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
       implicit val ctx = freshCtx
-      val source = new SourceFile("<highlighting>", in)
+      val source = SourceFile.virtual("<highlighting>", in)
       val colorAt = Array.fill(in.length)(NoColor)
 
       def highlightRange(from: Int, to: Int, color: String) =

@@ -141,7 +141,7 @@ class ReplCompiler extends Compiler {
   }
 
   private def createUnit(defs: Definitions, sourceCode: String): CompilationUnit = {
-    val unit = new CompilationUnit(new SourceFile(objectName(defs.state).toString, sourceCode))
+    val unit = new CompilationUnit(SourceFile.virtual(objectName(defs.state).toString, sourceCode))
     unit.untpdTree = wrapped(defs)
     unit
   }
@@ -267,7 +267,7 @@ class ReplCompiler extends Compiler {
     }
 
 
-    val src = new SourceFile("<typecheck>", expr)
+    val src = SourceFile.virtual("<typecheck>", expr)
     implicit val ctx: Context = state.context.fresh
       .setReporter(newStoreReporter)
       .setSetting(state.context.settings.YstopAfter, List("frontend"))
