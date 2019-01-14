@@ -68,7 +68,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
-  val length: Int = content().length
+  def length: Int = content().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
