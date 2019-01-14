@@ -550,8 +550,14 @@ object Parsers {
       }
 
     /** Accept identifier and return Ident with its name as a term name. */
-    def termIdent(): Ident = atSpan(in.offset) {
-      makeIdent(in.token, ident())
+    def termIdent(): Ident = {
+      val lastOffset = in.lastOffset
+      val id = atSpan(in.offset) {
+        makeIdent(in.token, ident())
+      }
+      // Make sure that even trees with parsing errors have a offset that is within the offset
+      if (id.name == nme.ERROR && id.span == NoSpan) atSpan(lastOffset - 1)(id)
+      else id
     }
 
     /** Accept identifier and return Ident with its name as a type name. */
