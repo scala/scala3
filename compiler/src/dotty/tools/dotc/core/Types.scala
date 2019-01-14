@@ -938,24 +938,14 @@ object Types {
       ctx.typeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
     }
 
-    /** This is the same as `matches` except that
-     *    (1) it also matches => T with T and vice versa
-     *    (2) it ignores "| JavaNull" unions embedded in the types
+    /** This is the same as `matches` except that it also matches => T with T and
+     *  vice versa.
      */
     def matchesLoosely(that: Type)(implicit ctx: Context): Boolean =
       (this matches that) || {
         var thisResult = this.widenExpr
         var thatResult = that.widenExpr
-        // If either of the types contains a `| JavaNull` union, then we want to get right of _all_ nullable
-        // unions that appear in places where Java code could have a `JavaNull`.
-        // e.g. we want `String|Null => String` to `String|JavaNull => String|JavaNull`.
-        if (JavaNull.containsJavaNullableUnions(thisResult) || JavaNull.containsJavaNullableUnions(thatResult)) {
-          thisResult = JavaNull.stripNullableUnions(thisResult)
-          thatResult = JavaNull.stripNullableUnions(thatResult)
-        }
-        // TODO(abeln): was the requirement that only of the types changes just an optimization?
-        // (this eq thisResult) != (that eq thatResult) && thisResult.matchesLoosely(thatResult)
-        ((this ne thisResult) || (that ne thatResult)) && thisResult.matchesLoosely(thatResult)
+        (this eq thisResult) != (that eq thatResult) && thisResult.matchesLoosely(thatResult)
       }
 
     /** The basetype of this type with given class symbol, NoType if `base` is not a class. */

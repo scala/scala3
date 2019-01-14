@@ -4,7 +4,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.JavaDefined
 import dotty.tools.dotc.core.StdNames.{jnme, nme}
 import dotty.tools.dotc.core.Symbols.{Symbol, defn, _}
-import dotty.tools.dotc.core.Types.{AppliedType, LambdaType, MethodType, OrType, PolyType, Type, TypeAlias, TypeMap, TypeParamRef, TypeRef}
+import dotty.tools.dotc.core.Types.{AndType, AppliedType, LambdaType, MethodType, OrType, PolyType, Type, TypeAlias, TypeMap, TypeParamRef, TypeRef}
 
 /** Transformation from Java (nullable) to Scala (non-nullable) types */
 object JavaNull {
@@ -166,6 +166,8 @@ object JavaNull {
         case tp: LambdaType =>
           mapOver(tp)
         case tp: TypeAlias =>
+          mapOver(tp)
+        case tp: AndType =>
           mapOver(tp)
         case tp: TypeRef if shouldNullify(tp) =>
           op(tp)

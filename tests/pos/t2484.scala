@@ -8,7 +8,7 @@ class Admin extends javax.swing.JApplet {
       //scala.concurrent.ops.spawn {someFunction ()}
       jScrollPane.addComponentListener {
         class nested extends java.awt.event.ComponentAdapter {
-          override def componentShown (e: java.awt.event.ComponentEvent) = {
+          override def componentShown (e: java.awt.event.ComponentEvent|Null) = {
             someFunction ();
             jScrollPane.removeComponentListener (this)
           }
@@ -26,7 +26,7 @@ class Admin2 extends javax.swing.JApplet {
     scala.concurrent.Future {jScrollPane.synchronized {
       def someFunction () = {}
       //scala.concurrent.ops.spawn {someFunction ()}
-      jScrollPane.addComponentListener (new java.awt.event.ComponentAdapter {override def componentShown (e: java.awt.event.ComponentEvent) = {
+      jScrollPane.addComponentListener (new java.awt.event.ComponentAdapter {override def componentShown (e: java.awt.event.ComponentEvent|Null) = {
         someFunction (); jScrollPane.removeComponentListener (this)}})
     }}
   }
