@@ -90,4 +90,10 @@ class TabcompleteTests extends ReplTest {
       val expected = List("Renamed")
       assertEquals(expected, tabComplete("val foo: Rena"))
     }
+
+  @Test def importScala = fromInitialState { implicit s =>
+    val comp = tabComplete("import scala.")
+    // check that there are no special symbols leaked: <byname>, <special-ops>, ...
+    assertEquals(comp.find(_.startsWith("<")), None)
+  }
 }

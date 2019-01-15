@@ -140,7 +140,7 @@ object Completion {
     private[this] val completions = new RenameAwareScope
 
     /**
-     * Return the list of symbols that shoudl be included in completion results.
+     * Return the list of symbols that should be included in completion results.
      *
      * If several symbols share the same name, the type symbols appear before term symbols inside
      * the same `Completion`.
@@ -252,7 +252,10 @@ object Completion {
       (
            (mode.is(Mode.Term) && sym.isTerm)
         || (mode.is(Mode.Type) && (sym.isType || sym.isStable))
-      )
+      ) &&
+      (sym ne defn.RepeatedParamClass) &&
+      (sym ne defn.ByNameParamClass2x) &&
+      (sym ne defn.EqualsPatternClass)
 
     /**
      * Find all the members of `site` that are accessible and which should be included in `info`.
