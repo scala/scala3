@@ -167,6 +167,11 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/repeatedArgs213.scala", defaultOptions.and("-Ynew-collections"))
   }.checkExpectedErrors()
 
+  @Test def fuzzyAll: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("compileFuzzy")
+    compileFilesInDir("tests/fuzzy", defaultOptions)
+  }.checkNoCrash()
+
   // Run tests -----------------------------------------------------------------
 
   @Test def runAll: Unit = {
