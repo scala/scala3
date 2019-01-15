@@ -336,6 +336,9 @@ class Definitions {
   def NothingType: TypeRef = NothingClass.typeRef
   lazy val RuntimeNothingModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Nothing")
 
+  /** `RefEq` is the trait defining the reference equality operators.
+   *  It's just a marker trait and there's no corresponding class file, since it gets erased to `Object`.
+   */
   lazy val RefEqClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.RefEq, Trait, AnyClass.typeRef :: Nil)
   def RefEqType: TypeRef = RefEqClass.typeRef
@@ -350,20 +353,25 @@ class Definitions {
   def NullType: TypeRef = NullClass.typeRef
   lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
 
+  /** An alias for null values that originate in Java code.
+   *  This type gets special treatment in the Typer. Specifically, `JavaNull` can be selected through:
+   *  e.g.
+   *  ```
+   *  // x: String|Null
+   *  x.length // error: `Null` has no `length` field
+   *  // x2: String|JavaNull
+   *  x2.length // allowed by the Typer, but unsound (might throw NPE)
+   *  `
+   */
+  lazy val JavaNull = enterAliasType(tpnme.JavaNull, NullType)
+  def JavaNullType = JavaNull.typeRef
+
   lazy val ImplicitScrutineeTypeSym =
     newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
 
-  /** Marker for null values that originate in Java.
-   *  Equivalently defined as `type JavaNull = Null @JavaNull`
-   */
-  lazy val JavaNull = enterAliasType(tpnme.JavaNull, AnnotatedType.make(NullType, List(Annotation(JavaNullAnnot))))
-  def JavaNullType = JavaNull.typeRef
-
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
-
-  def nullable(tp: Type) = OrType(tp, NullType)
 
     lazy val Predef_ConformsR: TypeRef = ScalaPredefModule.requiredClass("<:<").typeRef
     def Predef_Conforms(implicit ctx: Context): Symbol = Predef_ConformsR.symbol
@@ -834,8 +842,6 @@ class Definitions {
   def SetterMetaAnnot(implicit ctx: Context): ClassSymbol = SetterMetaAnnotType.symbol.asClass
   lazy val ShowAsInfixAnotType: TypeRef = ctx.requiredClassRef("scala.annotation.showAsInfix")
   def ShowAsInfixAnnot(implicit ctx: Context): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
-  lazy val JavaNullAnnotType = ctx.requiredClassRef("scala.annotation.internal.JavaNullAnnot")
-  def JavaNullAnnot(implicit ctx: Context) = JavaNullAnnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)

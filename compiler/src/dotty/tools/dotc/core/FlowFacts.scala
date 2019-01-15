@@ -12,19 +12,18 @@ import scala.annotation.internal.sharable
 /** Operations on flow-sensitive type information */
 object FlowFacts {
 
-  /** A set of `TermRef`s known to be non-nullable at the current program point */
+  /** A set of `TermRef`s known to be non-null at the current program point */
   type NonNullSet = Set[TermRef]
 
   /** The initial state where no `TermRef`s are known to be non-null */
   @sharable val emptyNonNullSet = Set.empty[TermRef]
-
 
   /** Is `tref` non-null (even if its info says it isn't)? */
   def isNonNull(nnSet: NonNullSet, tref: TermRef): Boolean = {
     nnSet.contains(tref)
   }
 
-  /** Tries to improve de "precision" of `tpe` using flow-sensitive type information. */
+  /** Try to improve the precision of `tpe` using flow-sensitive type information. */
   def refineType(tpe: Type)(implicit ctx: Context): Type = tpe match {
     case tref: TermRef if isNonNull(ctx.nonNullFacts, tref) =>
       NonNullTermRef.fromTermRef(tref)
@@ -32,16 +31,16 @@ object FlowFacts {
   }
 
   /** Nullability facts inferred from a condition.
-   *  `ifTrue` are the terms known to be non-null if the condition is true.
-   *  `ifFalse` are the terms known to be non-null if the condition is false.
+   *  @param ifTrue are the terms known to be non-null if the condition is true.
+   *  @param ifFalse are the terms known to be non-null if the condition is false.
    */
   case class Inferred(ifTrue: NonNullSet, ifFalse: NonNullSet) {
-    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculates the inferred facts for
+    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculate the inferred facts for
      *  (short-circuited) `e1 && e2` using De Morgan's laws.
      */
     def combineAnd(other: Inferred): Inferred = Inferred(ifTrue.union(other.ifTrue), ifFalse.intersect(other.ifFalse))
 
-    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculates the inferred facts for
+    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculate the inferred facts for
      *  (short-circuited) `e1 || e2` using De Morgan's laws.
      */
     def combineOr(other: Inferred): Inferred = Inferred(ifTrue.intersect(other.ifTrue), ifFalse.union(other.ifFalse))
