@@ -9,7 +9,7 @@ object Empty {
 object Test {
   val a: Maybe[Int] = Just(2)
   def main(args: Array[String]): Unit = a match {
-    case Just(2) => true
+    case Just(2) =>
     case Empty() =>
   }
 }
