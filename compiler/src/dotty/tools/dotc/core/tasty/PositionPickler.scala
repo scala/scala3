@@ -72,7 +72,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
     def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
-          val sourceChange = x.source `ne` current
+          val sourceChange = x.source != current
           val needsPos = x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)
           addrOfTree(x) match {
             case Some(addr)

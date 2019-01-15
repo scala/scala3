@@ -60,10 +60,14 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def pathName: PathName = file.absolutePath.toTermName
 
-  override def equals(that : Any): Boolean = that match {
-    case that : SourceFile => file == that.file && start == that.start
-    case _ => false
-  }
+  override def equals(that: Any): Boolean =
+    (this `eq` that.asInstanceOf[AnyRef]) || {
+      that match {
+        case that : SourceFile => file == that.file && start == that.start
+        case _ => false
+      }
+    }
+
   override def hashCode: Int = file.hashCode * 41 + start.hashCode
 
   def apply(idx: Int): Char = content().apply(idx)

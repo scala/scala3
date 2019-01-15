@@ -75,7 +75,7 @@ abstract class Positioned(implicit @transientParam src: SourceFile) extends Prod
     case _ =>
       def include(span: Span, x: Any): Span = x match {
         case p: Positioned =>
-          if (p.source `ne` src) span
+          if (p.source != src) span
           else if (p.span.exists) span.union(p.span)
           else if (span.exists) {
             if (span.end != MaxOffset)
