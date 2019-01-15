@@ -73,9 +73,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
       case x: untpd.Tree =>
         if (x.span.exists) {
           val sourceChange = x.source `ne` current
-          val needsPos =
-            x.span.toSynthetic != x.envelope(x.source, ignoreTypeTrees = true) ||
-            alwaysNeedsPos(x)
+          val needsPos = x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)
           addrOfTree(x) match {
             case Some(addr)
             if needsPos && !pickledIndices.contains(addr.index) || sourceChange =>

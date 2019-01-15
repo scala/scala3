@@ -68,27 +68,18 @@ abstract class Positioned(implicit @transientParam src: SourceFile) extends Prod
    *  node have their span set to the end position of the envelope of all children to
    *  the left, or, if that one does not exist, to the start position of the envelope
    *  of all children to the right.
-   *
-   *  @param ignoreTypeTrees    If true, don't count type trees in the union.
-   *                            This is used to decide whether we need to pickle a position for a tree.
-   *                            TypeTreesare pickled as types and therefore contribute nothing to the span union.
    */
-  def envelope(src: SourceFile, startSpan: Span = NoSpan, ignoreTypeTrees: Boolean = false): Span = this match {
+  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = this match {
     case Trees.Inlined(call, _, _) =>
-      //println(s"envelope of $this # $uniqueId = ${call.span}")
       call.span
     case _ =>
       def include(span: Span, x: Any): Span = x match {
-        case p: Trees.TypeTree[_] if ignoreTypeTrees =>
-          span
-        case core.tasty.TreePickler.Hole if ignoreTypeTrees =>
-          span
         case p: Positioned =>
           if (p.source `ne` src) span
           else if (p.span.exists) span.union(p.span)
           else if (span.exists) {
             if (span.end != MaxOffset)
-              p.span = p.envelope(src, span.endPos, ignoreTypeTrees)
+              p.span = p.envelope(src, span.endPos)
             span
           }
           else // No span available to assign yet, signal this by returning a span with MaxOffset end
