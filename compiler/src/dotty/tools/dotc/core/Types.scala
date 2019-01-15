@@ -943,9 +943,9 @@ object Types {
      */
     def matchesLoosely(that: Type)(implicit ctx: Context): Boolean =
       (this matches that) || {
-        var thisResult = this.widenExpr
-        var thatResult = that.widenExpr
-        (this eq thisResult) != (that eq thatResult) && thisResult.matchesLoosely(thatResult)
+        val thisResult = this.widenExpr
+        val thatResult = that.widenExpr
+        (this eq thisResult) != (that eq thatResult) && (thisResult matchesLoosely thatResult)
       }
 
     /** The basetype of this type with given class symbol, NoType if `base` is not a class. */

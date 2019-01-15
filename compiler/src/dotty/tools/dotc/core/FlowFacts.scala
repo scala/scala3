@@ -124,7 +124,7 @@ object FlowFacts {
 
       trefOpt match {
         case Some(tref) =>
-          // If `isEq`, then the condition is of the form e.g. `lhs == null`,
+          // If `isEq`, then the condition is of the form `lhs == null`,
           // in which case we know `lhs` is non-null if the condition is false.
           Inferred(tref, ifTrue = !isEq)
         case _ => emptyFacts
