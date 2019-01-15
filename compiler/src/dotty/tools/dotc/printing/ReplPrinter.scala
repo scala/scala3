@@ -29,6 +29,7 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     else Str(const.value.toString)
 
   override def dclText(sym: Symbol): Text = {
+    ("lazy": Text).provided(sym.is(Lazy)) ~~
     toText(sym) ~ {
       if (sym.is(Method)) toText(sym.info)
       else if (sym.isType && sym.info.isTypeAlias) toText(sym.info)
