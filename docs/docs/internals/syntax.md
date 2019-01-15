@@ -101,8 +101,10 @@ true      try       type      val       var       while     with      yield
 
 ### Soft keywords
 
+```
 derives   inline    opaque
 ~         *         |         &         +         -
+```
 
 ## Context-free Syntax
 

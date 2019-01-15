@@ -841,7 +841,7 @@ class Namer { typer: Typer =>
           else if (!cls.is(ChildrenQueried))
             addChild(cls, child)
           else
-            ctx.error(em"""children of ${cls} were already queried before $sym was discovered.
+            ctx.error(em"""children of $cls were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $cls.""",
                       child.pos)
         }
@@ -947,11 +947,11 @@ class Namer { typer: Typer =>
           }
         }
 
-      /* Check parent type tree `parent` for the following well-formedness conditions:
-       * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
-       * (2) If may not derive from itself
-       * (3) The class is not final
-       * (4) If the class is sealed, it is defined in the same compilation unit as the current class
+      /** Check parent type tree `parent` for the following well-formedness conditions:
+       *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
+       *  (2) If may not derive from itself
+       *  (3) The class is not final
+       *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
         val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots

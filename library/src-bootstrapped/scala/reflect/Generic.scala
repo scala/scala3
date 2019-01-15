@@ -1,8 +1,8 @@
 package scala.reflect
 
 /** A class for mapping between an ADT value and
-  *  the case mirror that represents the value.
-  */
+ *  the case mirror that represents the value.
+ */
 abstract class Generic[T] {
 
   type Shape <: scala.compiletime.Shape

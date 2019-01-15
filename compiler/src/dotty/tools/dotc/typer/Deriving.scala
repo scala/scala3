@@ -32,7 +32,7 @@ trait Deriving { this: Typer =>
     private var synthetics = new mutable.ListBuffer[Symbol]
 
     /** the children of `cls` ordered by textual occurrence */
-    lazy val children = cls.children
+    lazy val children: List[Symbol] = cls.children
 
     private def shapeError(explanation: => String): Unit =
       ctx.error(i"cannot take shape of $cls\n$explanation", codePos)
@@ -115,7 +115,7 @@ trait Deriving { this: Typer =>
     /** Create a synthetic symbol owned by current owner */
     private def newSymbol(name: Name, info: Type,
                           pos: Position = ctx.owner.pos,
-                          flags: FlagSet = EmptyFlags)(implicit ctx: Context) =
+                          flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol =
       ctx.newSymbol(ctx.owner, name, flags | Synthetic, info, coord = pos)
 
     /** Create a synthetic method owned by current owner */
@@ -145,24 +145,24 @@ trait Deriving { this: Typer =>
       else add(newMethod(instanceName, info, pos, Implicit))
     }
 
-    /* Check derived type tree `derived` for the following well-formedness conditions:
-      * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
-      * (2) It must have exactly one type parameter
-      * If it passes the checks, enter a typeclass instance for it in the current scope.
-      * Given
-      *
-      *    class C[Ts] .... derives ... D ...
-      *
-      * where `T_1, ..., T_n` are the first-kinded type parameters in `Ts`,
-      * the typeclass instance has the form
-      *
-      *     implicit def derived$D(implicit ev_1: D[T1], ..., ev_n: D[T_n]): D[C[Ts]] = D.derived
-      *
-      * See test run/typeclass-derivation2 for examples that spell out what would be generated.
-      * Note that the name of the derived method containd the name in the derives clause, not
-      * the underlying class name. This allows one to disambiguate derivations of type classes
-      * that have the same name but different prefixes through selective aliasing.
-      */
+    /** Check derived type tree `derived` for the following well-formedness conditions:
+     *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
+     *  (2) It must have exactly one type parameter
+     *  If it passes the checks, enter a typeclass instance for it in the current scope.
+     *  Given
+     *
+     *     class C[Ts] .... derives ... D ...
+     *
+     *  where `T_1, ..., T_n` are the first-kinded type parameters in `Ts`,
+     *  the typeclass instance has the form
+     *
+     *      implicit def derived$D(implicit ev_1: D[T_1], ..., ev_n: D[T_n]): D[C[Ts]] = D.derived
+     *
+     *  See test run/typeclass-derivation2 for examples that spell out what would be generated.
+     *  Note that the name of the derived method containd the name in the derives clause, not
+     *  the underlying class name. This allows one to disambiguate derivations of type classes
+     *  that have the same name but different prefixes through selective aliasing.
+     */
     private def processDerivedInstance(derived: untpd.Tree): Unit = {
       val originalType = typedAheadType(derived, AnyTypeConstructorProto).tpe
       val underlyingType = underlyingClassRef(originalType)
@@ -237,7 +237,7 @@ trait Deriving { this: Typer =>
     }
 
     /** Extractor for the `pattern` and `elements` in a `Shaped.Case(pattern, elements)` shape */
-    private object ShapeCase  {
+    private object ShapeCase {
       def unapply(shape: Type): Option[(Type, List[Type])] = shape match {
         case AppliedType(fn, pat :: elems :: Nil) if fn.classSymbol == defn.ShapeCaseClass =>
           Some((pat, tupleElems(elems)))
@@ -383,7 +383,7 @@ trait Deriving { this: Typer =>
       }
 
       /** The type class instance definition with symbol `sym` */
-      private def typeclassInstance(sym: Symbol)(implicit ctx: Context) =
+      private def typeclassInstance(sym: Symbol)(implicit ctx: Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) =
         (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) => {
           val tparams = tparamRefs.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)

@@ -155,7 +155,7 @@ object Implicits {
 
         def valueTypeCandidateKind(tpw: Type): Candidate.Kind = tpw.stripPoly match {
           case tpw: MethodType =>
-          	if (tpw.isImplicitMethod) Candidate.Value else Candidate.None
+            if (tpw.isImplicitMethod) Candidate.Value else Candidate.None
           case _ =>
             Candidate.Value
         }
@@ -195,7 +195,7 @@ object Implicits {
             else ref
           val refNorm = normalize(refAdjusted, pt)
           if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
-          	ckind = Candidate.None
+            ckind = Candidate.None
         }
         ckind
       }
@@ -384,10 +384,10 @@ object Implicits {
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty) extends SearchFailureType {
 
-  	/** Replace all type parameters in constraint by their bounds, to make it clearer
-  	 *  what was expected
-  	 */
-    override def clarify(tp: Type)(implicit ctx: Context) = {
+    /** Replace all type parameters in constraint by their bounds, to make it clearer
+     *  what was expected
+     */
+    override def clarify(tp: Type)(implicit ctx: Context): Type = {
       val map = new TypeMap {
         def apply(t: Type): Type = t match {
           case t: TypeParamRef =>
