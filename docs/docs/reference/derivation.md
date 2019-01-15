@@ -176,7 +176,7 @@ class Mirror(val adtClass: GenericClass, val ordinal: Int, val elems: Product) {
   def caseLabel: String = adtClass.label(ordinal)(0)
 
   /** The label of the `n`'th element of the case reflected by this mirror */
-  def elementLabel(n: Int) = adtClass.label(ordinal)(n + 1)
+  def elementLabel(n: Int): String = adtClass.label(ordinal)(n + 1)
 }
 ```
 
@@ -207,6 +207,7 @@ class GenericClass(val runtimeClass: Class[_], labelsStr: String) {
    *  Each row of the array contains a case label, followed by the labels of the elements of that case.
    */
   val label: Array[Array[String]] = ...
+}
 ```
 
 The class provides four overloaded methods to create mirrors. The first of these is invoked by the `reify` method that maps an ADT instance to its mirror. It simply passes the
@@ -216,7 +217,7 @@ a mirror over that array, and finally uses the `reify` method in `Reflected` to 
 ### How to Write Generic Typeclasses
 
 Based on the machinery developed so far it becomes possible to define type classes generically. This means that the `derived` method will compute a type class instance for any ADT that has a `Generic` instance, recursively.
-The implementation of these methods typically uses three new typelevel constructs in Dotty: inline methods, inline matches and implicit matches. As an example, here is one possible implementation of a generic `Eq` type class, with explanations. Let's assume `Eq` is defined by the following trait:
+The implementation of these methods typically uses three new type-level constructs in Dotty: inline methods, inline matches, and implicit matches. As an example, here is one possible implementation of a generic `Eq` type class, with explanations. Let's assume `Eq` is defined by the following trait:
 ```scala
 trait Eq[T] {
   def eql(x: T, y: T): Boolean
@@ -239,11 +240,11 @@ there exists evidence of type `Generic[T]`. Here's a possible solution:
     }
   }
 ```
-The implementation of the inline method `derived` creates an instance of `Eq[T]` and implements its `eql` method. The right hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
+The implementation of the inline method `derived` creates an instance of `Eq[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
 `(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
   1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` evidence `(1)`, `(2)`.
-  2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, buy we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
+  2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, but we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
   3. If `ev.Shape` is of the form `Cases[alts]` for some tuple `alts` of alternative types, the equality test consists of comparing the ordinal values of the two mirrors `(3)` and, if they are equal, comparing the elements of the case indicated by that ordinal value. That second step is performed by code that results from the compile-time expansion of the `eqlCases` call `[4]`.
   4. If `ev.Shape` is of the form `Case[elems]` for some tuple `elems` for element types, the elements of the case are compared by code that results from the compile-time expansion of the `eqlElems` call `[5]`.
 
@@ -260,7 +261,7 @@ Here is a possible implementation of `eqlCases`:
         throw new MatchError(mx.ordinal)        // (9)
     }
 ```
-The inline method `eqlCases` takes as type arguments the alternatives of the ADT that remain to be tested. It takes as value arguments mirrors of the two instances `x` and `y` to be compared and an integer `n` that indicates the ordinal number of the case that is tested next. Its produces an expression that compares these two values.
+The inline method `eqlCases` takes as type arguments the alternatives of the ADT that remain to be tested. It takes as value arguments mirrors of the two instances `x` and `y` to be compared and an integer `n` that indicates the ordinal number of the case that is tested next. It produces an expression that compares these two values.
 
 If the list of alternatives `Alts` consists of a case of type `Case[_, elems]`, possibly followed by further cases in `alts1`, we generate the following code:
 
@@ -291,7 +292,7 @@ implementation:
         true                                    // (14)
     }
 ```
-`eqlElems` takes as arguments the two mirrors of the elements to compare and a compile-time index `n`, indicating the index of the next element to test. It is defined in terms of an another compile-time match, this time over the tuple type `Elems` of all element types that remain to be tested. If that type is
+`eqlElems` takes as arguments the two mirrors of the elements to compare and a compile-time index `n`, indicating the index of the next element to test. It is defined in terms of another compile-time match, this time over the tuple type `Elems` of all element types that remain to be tested. If that type is
 non-empty, say of form `elem *: elems1`, the following code is produced:
 
  1. Access the `n`'th elements of both mirrors and cast them to the current element type `elem`
@@ -314,10 +315,10 @@ The last, and in a sense most interesting part of the derivation is the comparis
   }
 ```
 `tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `inline match` that tries to find an implicit instance of `Eq[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
-this signals a compilation error: the user tried a generic derivation of `Eq` for a class with an element type that does not support an `Eq` instance itself. The error is signalled by
+this signals a compilation error: the user tried a generic derivation of `Eq` for a class with an element type that does not support an `Eq` instance itself. The error is signaled by
 calling the `error` method defined in `scala.compiletime`.
 
-**Note:** At the moment our error diagnostics for meta programming does not support yet interpolated string arguments for the `scala.compiletime.error` method that is called in the second case above. As an alternative, one can simply leave off the second case, then a missing typeclass would result in a "failure to reduce match" error.
+**Note:** At the moment our error diagnostics for metaprogramming does not support yet interpolated string arguments for the `scala.compiletime.error` method that is called in the second case above. As an alternative, one can simply leave off the second case, then a missing typeclass would result in a "failure to reduce match" error.
 
 **Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eq` instance of class `Tree`.
 
@@ -346,7 +347,7 @@ One important difference between this approach and Scala-2 typeclass derivation 
 ### Derived Instances Elsewhere
 
 Sometimes one would like to derive a typeclass instance for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
-To do this, simply define an instance with the `derived` method of the typeclass as right hand side. E.g, to implement `Ordering` for `Option`, define:
+To do this, simply define an instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
 ```scala
 implicit def myOptionOrdering[T: Ordering]: Ordering[Option[T]] = Ordering.derived
 ```
