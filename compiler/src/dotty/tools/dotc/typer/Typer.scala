@@ -1593,11 +1593,9 @@ class Typer extends Namer
     val seenParents = mutable.Set[Symbol]()
 
     def typedParent(tree: untpd.Tree): Tree = {
-      @tailrec
       def isTreeType(t: untpd.Tree): Boolean = t match {
-        case _: untpd.Function => true
-        case untpd.Parens(t1) => isTreeType(t1)
-        case _ => tree.isType
+        case _: untpd.Apply => false
+        case _ => true
       }
       var result = if (isTreeType(tree)) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.dealias.typeSymbol
