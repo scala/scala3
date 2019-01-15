@@ -11,9 +11,10 @@ object ia {
 
     // return a sorted copy of the array
     def sorted[A <: AnyRef : math.Ordering](ia: IArray[A]): IArray[A] = {
-      val arr = Arrays.copyOf(scala.NonNull.ArrayConversions.toNullable1(ia), ia.length).nn
-      scala.util.Sorting.quickSort(scala.NonNull.ArrayConversions.fromNullable1(arr))
-      scala.NonNull.ArrayConversions.fromNullable1(arr)
+      import scala.NonNull.ArrayConversions._
+      val arr: Array[A] = Arrays.copyOf(ia, ia.length).nn
+      scala.util.Sorting.quickSort(arr)
+      arr
     }
 
     // use a standard java method to search a sorted IArray.
