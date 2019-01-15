@@ -240,7 +240,9 @@ object Completion {
      *   4. have an existing source symbol,
      *   5. are the module class in case of packages,
      *   6. are mutable accessors, to exclude setters for `var`,
-     *   7. have same term/type kind as name prefix given so far
+     *   7. symbol is not a package object
+     *   8. symbol is not an atifact of the compiler
+     *   9. have same term/type kind as name prefix given so far
      */
     private def include(sym: Symbol, nameInScope: Name)(implicit ctx: Context): Boolean =
       nameInScope.startsWith(prefix) &&
@@ -249,12 +251,12 @@ object Completion {
       sym.sourceSymbol.exists &&
       (!sym.is(Package) || !sym.moduleClass.exists) &&
       !sym.is(allOf(Mutable, Accessor)) &&
+      !sym.isPackageObject &&
+      !sym.is(Artifact) &&
       (
            (mode.is(Mode.Term) && sym.isTerm)
         || (mode.is(Mode.Type) && (sym.isType || sym.isStable))
-      ) &&
-      !sym.isPackageObject &&
-      !sym.is(Artifact)
+      )
 
     /**
      * Find all the members of `site` that are accessible and which should be included in `info`.
