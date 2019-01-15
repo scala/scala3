@@ -2064,9 +2064,7 @@ class Typer extends Namer
         traverse(stats ++ rest)
       case stat :: rest =>
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
-        if (!ctx.isAfterTyper && isPureExpr(stat1) &&
-            !stat1.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(stat1))
-          ctx.warning(PureExpressionInStatementPosition(stat, exprOwner), stat.pos)
+        checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
         traverse(rest)
       case nil =>
@@ -2607,10 +2605,13 @@ class Typer extends Namer
       val folded = ConstFold(tree, pt)
       if (folded ne tree) return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
       // drop type if prototype is Unit
-      if (pt isRef defn.UnitClass)
+      if (pt isRef defn.UnitClass) {
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
-        return tpd.Block(adapt(tree, WildcardType, locked) :: Nil, Literal(Constant(())))
+        val tree1 = adapt(tree, WildcardType, locked)
+        checkStatementPurity(tree1)(tree, ctx.owner)
+        return tpd.Block(tree1 :: Nil, Literal(Constant(())))
+      }
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
@@ -2769,5 +2770,10 @@ class Typer extends Namer
         typedExpr(cmp, defn.BooleanType)
       case _ =>
     }
+  }
+
+  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(implicit ctx: Context): Unit = {
+    if (!ctx.isAfterTyper && isPureExpr(tree) && !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
+      ctx.warning(PureExpressionInStatementPosition(original, exprOwner), original.pos)
   }
 }
