@@ -148,9 +148,11 @@ object JavaNull {
           // duplicate `Null`s at the outermost level inside `A` and `B`.
           val newMap = new JavaNullMap(alreadyNullable = true)
           derivedAndType(tp, newMap(tp1), newMap(tp2)).toJavaNullable
+        case tp@OrType(tp1, tp2) if !tp.isJavaNullableUnion =>
+          val newMap = new JavaNullMap(alreadyNullable = true)
+          derivedOrType(tp, newMap(tp1), newMap(tp2)).toJavaNullable
         case tp: TypeRef if shouldNullify(tp) => tp.toJavaNullable
         case tp: TypeParamRef if shouldNullify(tp) => tp.toJavaNullable
-        case tp: OrType => tp.toJavaNullable
         case appTp@AppliedType(tycons, targs) =>
           val targs2 = if (shouldDescend(appTp)) targs map this else targs
           derivedAppliedType(appTp, tycons, targs2).toJavaNullable
