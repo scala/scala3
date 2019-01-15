@@ -813,6 +813,32 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
+  private final class NoCrashTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+    extends Test(testSources, times, threadLimit, suppressAllOutput) {
+    protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
+      def checkTestSource(): Unit = tryCompile(testSource) {
+        def fail(msg: String): Nothing = {
+          echo(msg)
+          failTestSource(testSource)
+          ???
+        }
+        testSource match {
+          case testSource@JointCompilationSource(_, files, flags, outDir, fromTasty, decompilation) =>
+            val sourceFiles = testSource.sourceFiles
+            val reporter =
+              try compile(sourceFiles, flags, true, outDir)
+              catch {
+                case ex: Throwable => fail(s"Fatal compiler crash when compiling: ${testSource.title}")
+              }
+            if (reporter.compilerCrashed)
+              fail(s"Compiler crashed when compiling: ${testSource.title}")
+          case testSource@SeparateCompilationSource(_, dir, flags, outDir) => unsupported("NoCrashTest - SeparateCompilationSource")
+        }
+        registerCompletion()
+      }
+    }
+  }
+
   /** The `CompilationTest` is the main interface to `ParallelTesting`, it
    *  can be instantiated via one of the following methods:
    *
@@ -988,6 +1014,19 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         fail(s"Neg test shouldn't have failed, but did. Reasons:\n${ reasonsForFailure(test) }")
       }
       else if (!shouldFail && test.didFail) {
+        fail("Neg test should have failed, but did not")
+      }
+
+      this
+    }
+
+    /** Creates a "fuzzy" test run, which makes sure that each test compiles (or not) without crashing */
+    def checkNoCrash()(implicit summaryReport: SummaryReporting): this.type = {
+      val test = new NoCrashTest(targets, times, threadLimit, shouldSuppressOutput).executeTestSuite()
+
+      cleanup()
+
+      if (test.didFail) {
         fail("Neg test should have failed, but did not")
       }
 
