@@ -80,7 +80,7 @@ class Definitions {
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, paramDecls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer).entered
+    newClassSymbol(ScalaPackageClass, name, Artifact, completer).entered
   }
 
   /** The trait FunctionN, ImplicitFunctionN, ErasedFunctionN or ErasedImplicitFunction, for some N

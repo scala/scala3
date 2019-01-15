@@ -254,9 +254,7 @@ object Completion {
         || (mode.is(Mode.Type) && (sym.isType || sym.isStable))
       ) &&
       !sym.isPackageObject &&
-      (sym ne defn.RepeatedParamClass) &&
-      (sym ne defn.ByNameParamClass2x) &&
-      (sym ne defn.EqualsPatternClass)
+      !sym.is(Artifact)
 
     /**
      * Find all the members of `site` that are accessible and which should be included in `info`.
