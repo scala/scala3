@@ -241,7 +241,7 @@ object Completion {
      *   5. are the module class in case of packages,
      *   6. are mutable accessors, to exclude setters for `var`,
      *   7. symbol is not a package object
-     *   8. symbol is not an atifact of the compiler
+     *   8. symbol is not an artifact of the compiler
      *   9. have same term/type kind as name prefix given so far
      */
     private def include(sym: Symbol, nameInScope: Name)(implicit ctx: Context): Boolean =
