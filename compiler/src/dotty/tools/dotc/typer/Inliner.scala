@@ -131,7 +131,9 @@ object Inliner {
        */
       class Reposition extends TreeMap {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-          tree match {
+          if (tree.source != ctx.source && tree.source.exists)
+            transform(tree)(ctx.withSource(tree.source))
+          else tree match {
             case tree: Inlined => transformInline(tree)
             case _ =>
               val transformed = super.transform(tree)
@@ -413,7 +415,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           tree.tpe match {
             case thistpe: ThisType =>
               thisProxy.get(thistpe.cls) match {
-                case Some(t) => ref(t)
+                case Some(t) => ref(t).withSpan(tree.span)
                 case None => tree
               }
             case _ => tree
@@ -421,7 +423,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              singleton(t.dealias)
+              singleton(t.dealias).withSpan(tree.span)
             case Some(t) if tree.isType =>
               TypeTree(t).withSpan(tree.span)
             case _ => tree

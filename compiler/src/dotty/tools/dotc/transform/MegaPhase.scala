@@ -388,8 +388,12 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goOther(tree, start)
     }
 
-    if (tree.isInstanceOf[NameTree]) transformNamed(tree, start, ctx)
-    else transformUnnamed(tree, start, ctx)
+    if (tree.source != ctx.source && tree.source.exists)
+      transformTree(tree, start)(ctx.withSource(tree.source))
+    else if (tree.isInstanceOf[NameTree])
+      transformNamed(tree, start, ctx)
+    else
+      transformUnnamed(tree, start, ctx)
   }
 
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(implicit ctx: Context): T =

@@ -443,7 +443,7 @@ class Staging extends MacroTransformWithImplicits {
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
         if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
-        else Inlined(EmptyTree, Nil, hole)
+        else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
@@ -515,7 +515,8 @@ class Staging extends MacroTransformWithImplicits {
                 captured.put(tree.symbol, capturedArg)
                 capturedArg
               }
-              ref(captured.getOrElseUpdate(tree.symbol, newCapture).symbol)
+              val refSym = captured.getOrElseUpdate(tree.symbol, newCapture).symbol
+              ref(refSym).withSpan(tree.span)
             }
           }
         )

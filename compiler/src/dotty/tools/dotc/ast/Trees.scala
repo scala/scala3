@@ -602,7 +602,6 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @transientParam src: SourceFile)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
-    override def relevantElemCount = 1 // only consider call when computing span
   }
 
   /** A type tree that represents an existing or inferred type */
@@ -776,7 +775,7 @@ object Trees {
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
     override def withTypeUnchecked(tpe: Type): ThisTree[Type] = this.asInstanceOf[ThisTree[Type]]
     override def span: Span = NoSpan
-    override def setPos(span: Span, src: SourceFile): Unit = {}
+    override def span_=(span: Span): Unit = {}
   }
 
   /** Temporary class that results from translation of ModuleDefs

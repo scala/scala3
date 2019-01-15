@@ -58,7 +58,7 @@ object Typer {
   /** Assert tree has a position, unless it is empty or a typed splice */
   def assertPositioned(tree: untpd.Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
-      assert(tree.span.exists, s"position not set for $tree # ${tree.uniqueId} in ${tree.source}")
+      assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of class ${tree.getClass} in ${tree.source}")
 
   /** A context property that indicates the owner of any expressions to be typed in the context
    *  if that owner is different from the context's owner. Typically, a context with a class
@@ -1626,7 +1626,7 @@ class Typer extends Namer
     val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    if (cls.isOpaqueCompanion) {
+    if (cls.isOpaqueCompanion && !ctx.isAfterTyper) {
       // this is necessary to ensure selftype is correctly pickled
       self1 = tpd.cpy.ValDef(self1)(tpt = TypeTree(cls.classInfo.selfType))
     }
@@ -2024,15 +2024,18 @@ class Typer extends Namer
       record(s"typed $getClass")
       record("typed total")
       assertPositioned(tree)
-      try adapt(typedUnadapted(tree, pt, locked), pt, locked)
-      catch {
-        case ex: TypeError =>
-          errorTree(tree, ex.toMessage, tree.sourcePos.focus)
-          // This uses tree.span.focus instead of the default tree.span, because:
-          // - since tree can be a top-level definition, tree.span can point to the whole definition
-          // - that would in turn hide all other type errors inside tree.
-          // TODO: might be even better to store positions inside TypeErrors.
-      }
+      if (tree.source != ctx.source && tree.source.exists)
+        typed(tree, pt, locked)(ctx.withSource(tree.source))
+      else
+        try adapt(typedUnadapted(tree, pt, locked), pt, locked)
+        catch {
+          case ex: TypeError =>
+            errorTree(tree, ex.toMessage, tree.sourcePos.focus)
+            // This uses tree.span.focus instead of the default tree.span, because:
+            // - since tree can be a top-level definition, tree.span can point to the whole definition
+            // - that would in turn hide all other type errors inside tree.
+            // TODO: might be even better to store positions inside TypeErrors.
+        }
     }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =

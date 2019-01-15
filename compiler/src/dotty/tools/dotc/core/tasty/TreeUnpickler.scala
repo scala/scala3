@@ -854,7 +854,7 @@ class TreeUnpickler(reader: TastyReader,
         // Note: Once the inline PR with its changes to positions is in, this should be
         // no longer necessary.
       goto(end)
-      setPos(start, tree)
+      setSpan(start, tree)
       if (!sym.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
         sym.info = ta.avoidPrivateLeaks(sym, tree.sourcePos)
       }
@@ -918,7 +918,7 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
-      setPos(start,
+      setSpan(start,
         untpd.Template(constr, mappedParents, self, lazyStats)
           .withType(localDummy.termRef))
     }
@@ -953,7 +953,7 @@ class TreeUnpickler(reader: TastyReader,
       case PACKAGE =>
         val start = currentAddr
         processPackage { (pid, end) => implicit ctx =>
-          setPos(start, PackageDef(pid, readIndexedStats(exprOwner, end)(ctx)))
+          setSpan(start, PackageDef(pid, readIndexedStats(exprOwner, end)(ctx)))
         }
       case _ =>
         readTerm()(ctx.withOwner(exprOwner))
@@ -965,7 +965,7 @@ class TreeUnpickler(reader: TastyReader,
       readByte()
       readEnd()
       val expr = readTerm()
-      setPos(start, Import(expr, readSelectors()))
+      setSpan(start, Import(expr, readSelectors()))
     }
 
     def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {
@@ -973,12 +973,12 @@ class TreeUnpickler(reader: TastyReader,
         val start = currentAddr
         assert(sourcePathAt(start).isEmpty)
         readByte()
-        val from = setPos(start, untpd.Ident(readName()))
+        val from = setSpan(start, untpd.Ident(readName()))
         nextByte match {
           case RENAMED =>
             val start2 = currentAddr
             readByte()
-            val to = setPos(start2, untpd.Ident(readName()))
+            val to = setSpan(start2, untpd.Ident(readName()))
             untpd.Thicket(from, to) :: readSelectors()
           case _ =>
             from :: readSelectors()
@@ -1209,11 +1209,14 @@ class TreeUnpickler(reader: TastyReader,
       val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
       if (!tree.isInstanceOf[TypTree]) // FIXME: Necessary to avoid self-type cyclic reference in tasty_tools
         tree.overwriteType(tree.tpe.simplified)
-      setPos(start, tree)
+      setSpan(start, tree)
     }
 
     def readTpt()(implicit ctx: Context): Tree = {
-      nextByte match {
+      val sctx = sourceChangeContext()
+      if (sctx `ne` ctx) return readTpt()(sctx)
+      val start = currentAddr
+      val tree = nextByte match {
         case SHAREDterm =>
           readByte()
           forkAt(readAddr()).readTpt()
@@ -1234,9 +1237,10 @@ class TreeUnpickler(reader: TastyReader,
           else {
             val start = currentAddr
             val tp = readType()
-            if (tp.exists) setPos(start, TypeTree(tp)) else EmptyTree
+            if (tp.exists) setSpan(start, TypeTree(tp)) else EmptyTree
           }
       }
+      setSpan(start, tree)
     }
 
     def readCases(end: Addr)(implicit ctx: Context): List[CaseDef] =
@@ -1257,7 +1261,7 @@ class TreeUnpickler(reader: TastyReader,
       val pat = readTerm()
       val rhs = readTerm()
       val guard = ifBefore(end)(readTerm(), EmptyTree)
-      setPos(start, CaseDef(pat, guard, rhs))
+      setSpan(start, CaseDef(pat, guard, rhs))
     }
 
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Trees.Lazy[T] =
@@ -1277,27 +1281,42 @@ class TreeUnpickler(reader: TastyReader,
         if (arg.isTerm) new TastyTreeExpr(arg)
         else new TreeType(arg)
       val reifiedArgs = args.map(wrap)
-      if (isType) {
+      var filled = if (isType) {
         val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
         PickledQuotes.quotedTypeToTree(quotedType)
       } else {
         val quotedExpr = splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](reifiedArgs)
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
+      // We need to make sure a hole is created with the source file of the surrounding context, even if
+      // it filled with contents a different source file. Otherwise nodes containing holes might end
+      // up without a position. TODO: It would probably more systematic to always create an Inlined argument node
+      // at the position of the hole.
+      if (filled.source == ctx.source) filled
+      else filled.cloneIn(ctx.source)
     }
 
 // ------ Setting positions ------------------------------------------------
 
-    /** Pickled position for `addr`. */
-    def posAt(addr: Addr)(implicit ctx: Context): Span =
+    /** Pickled span for `addr`. */
+    def spanAt(addr: Addr)(implicit ctx: Context): Span =
       if (ctx.mode.is(Mode.ReadPositions)) {
         posUnpicklerOpt match {
           case Some(posUnpickler) =>
-            posUnpickler.posAt(addr)
+            posUnpickler.spanAt(addr)
           case _  =>
             NoSpan
         }
       } else NoSpan
+
+    /** Coordinate for the symbol at `addr`. */
+    def coordAt(addr: Addr)(implicit ctx: Context): Coord = {
+      val span = spanAt(addr)
+      if (span.exists)
+        spanCoord(span)
+      else
+        indexCoord(addr.index)
+    }
 
     /** Pickled source path at `addr`. */
     def sourcePathAt(addr: Addr)(implicit ctx: Context): String =
@@ -1322,19 +1341,10 @@ class TreeUnpickler(reader: TastyReader,
       else ctx
     }
 
-    /** Coordinate for the symbol at `addr`. */
-    def coordAt(addr: Addr)(implicit ctx: Context): Coord = {
-      val pos = posAt(addr)
-      if (pos.exists)
-        spanCoord(pos)
-      else
-        indexCoord(addr.index)
-    }
-
     /** Set position of `tree` at given `addr`. */
-    def setPos[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type = {
-      val pos = posAt(addr)
-      if (pos.exists) tree.setOnePos(pos, ctx.source)
+    def setSpan[T <: untpd.Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type = {
+      val span = spanAt(addr)
+      if (span.exists) tree.span = span
       tree
     }
   }

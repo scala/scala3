@@ -46,26 +46,29 @@ abstract class MacroTransform extends Phase {
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      try
-        tree match {
-          case EmptyValDef =>
+      if (tree.source != ctx.source && tree.source.exists)
+        transform(tree)(ctx.withSource(tree.source))
+      else
+        try
+          tree match {
+            case EmptyValDef =>
+              tree
+            case _: PackageDef | _: MemberDef =>
+              super.transform(tree)(localCtx(tree))
+            case impl @ Template(constr, parents, self, _) =>
+              cpy.Template(tree)(
+                transformSub(constr),
+                transform(parents)(ctx.superCallContext),
+                transformSelf(self),
+                transformStats(impl.body, tree.symbol))
+            case _ =>
+              super.transform(tree)
+          }
+        catch {
+          case ex: TypeError =>
+            ctx.error(ex.toMessage, tree.sourcePos)
             tree
-          case _: PackageDef | _: MemberDef =>
-            super.transform(tree)(localCtx(tree))
-          case impl @ Template(constr, parents, self, _) =>
-            cpy.Template(tree)(
-              transformSub(constr),
-              transform(parents)(ctx.superCallContext),
-              transformSelf(self),
-              transformStats(impl.body, tree.symbol))
-          case _ =>
-            super.transform(tree)
         }
-      catch {
-        case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos)
-          tree
-      }
 
     def transformSelf(vd: ValDef)(implicit ctx: Context): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))

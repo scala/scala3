@@ -20,7 +20,7 @@ object Spans {
   private final val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
   /** The maximal representable offset in a span */
-  private final val MaxOffset = StartEndMask
+  final val MaxOffset = StartEndMask.toInt
 
   /** Convert offset `x` to an integer by sign extending the original
    *  field of `StartEndBits` width.

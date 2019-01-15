@@ -13,13 +13,13 @@ import Names.TermName
 class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   import reader._
 
-  private var myPositions: mutable.HashMap[Addr, Span] = _
+  private var mySpans: mutable.HashMap[Addr, Span] = _
   private var mySourcePaths: mutable.HashMap[Addr, String] = _
   private var isDefined = false
 
   def ensureDefined(): Unit =
     if (!isDefined) {
-      myPositions = new mutable.HashMap[Addr, Span]
+      mySpans = new mutable.HashMap[Addr, Span]
       mySourcePaths = new mutable.HashMap[Addr, String]
       var curIndex = 0
       var curStart = 0
@@ -39,7 +39,7 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
           assert(curIndex >= 0)
           if (hasStart) curStart += readInt()
           if (hasEnd) curEnd += readInt()
-          myPositions(Addr(curIndex)) =
+          mySpans(Addr(curIndex)) =
             if (hasPoint) Span(curStart, curEnd, curStart + readInt())
             else Span(curStart, curEnd)
           }
@@ -47,9 +47,9 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
       isDefined = true
     }
 
-  private[tasty] def positions: Map[Addr, Span] = {
+  private[tasty] def spans: Map[Addr, Span] = {
     ensureDefined()
-    myPositions
+    mySpans
   }
 
   private[tasty] def sourcePaths: Map[Addr, String] = {
@@ -57,7 +57,7 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
     mySourcePaths
   }
 
-  def posAt(addr: Addr): Span = positions.getOrElse(addr, NoSpan)
+  def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)
   def sourcePathAt(addr: Addr): String = sourcePaths.getOrElse(addr, "")
 }
 

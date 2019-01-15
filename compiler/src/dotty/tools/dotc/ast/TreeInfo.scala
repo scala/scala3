@@ -500,11 +500,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val tree1 = ConstFold(tree)
     tree1.tpe.widenTermRefExpr match {
       case ConstantType(value) =>
-        if (isIdempotentExpr(tree1)) Literal(value)
+        if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
         else tree1 match {
           case Select(qual, _) if tree1.tpe.isInstanceOf[ConstantType] =>
             // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-            Block(qual :: Nil, Literal(value))
+            Block(qual :: Nil, Literal(value)).withSpan(tree.span)
           case _ =>
             tree1
         }
