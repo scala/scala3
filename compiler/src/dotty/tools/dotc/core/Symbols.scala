@@ -624,7 +624,7 @@ object Symbols {
     type DontUseSymbolOnSymbol
 
     final def source(implicit ctx: Context): SourceFile =
-      if (!defTree.isEmpty) defTree.source
+      if (!defTree.isEmpty && !ctx.erasedTypes) defTree.source
       else this match {
         case cls: ClassSymbol => cls.sourceOfClass
         case _ =>
