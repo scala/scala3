@@ -361,7 +361,7 @@ class Definitions {
    *  x.length // error: `Null` has no `length` field
    *  // x2: String|JavaNull
    *  x2.length // allowed by the Typer, but unsound (might throw NPE)
-   *  `
+   *  ```
    */
   lazy val JavaNull = enterAliasType(tpnme.JavaNull, NullType)
   def JavaNullType = JavaNull.typeRef
