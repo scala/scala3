@@ -1,4 +1,4 @@
-trait T extends Array { // error
+trait T extends Array { // error // error
   def t1(as: String*): Array[String] = { varargs1(as: _*) } // error
   def t2(as: String*): Array[String] = { super.varargs1(as: _*) } // error
 }
