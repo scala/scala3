@@ -2126,7 +2126,7 @@ object messages {
            |""".stripMargin
   }
 
-  case class CaseClassCannotExtendEnum(cls: Symbol, parent: Symbol)(implicit ctx: Context) extends Message(CaseClassCannotExtendEnumID) {
+  case class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(implicit ctx: Context) extends Message(ClassCannotExtendEnumID) {
     override def kind: String = "Syntax"
     override def msg: String = hl"""Normal case class cannot extend an enum. case $cls in ${cls.owner} is extending enum ${parent.name}."""
     override def explanation: String = ""
