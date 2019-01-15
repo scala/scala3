@@ -908,7 +908,12 @@ trait Checking {
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
     if (!cdef.mods.isEnumCase && !isEnumAnonCls) {
-      if (cls.is(Case))
+      // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
+      // parent.
+      //
+      // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
+      // see enum-List-control.scala.
+      if (cls.is(Case) || firstParent.is(Enum))
         ctx.error(ClassCannotExtendEnum(cls, firstParent), cdef.sourcePos)
     }
   }
