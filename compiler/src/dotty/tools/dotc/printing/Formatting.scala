@@ -80,9 +80,8 @@ object Formatting {
           hl.show
         case hb: HighlightBuffer =>
           hb.toString
-        case str: String =>
-          SyntaxHighlighting.highlight(str)
-        case _ => super.showArg(arg)
+        case _ =>
+          SyntaxHighlighting.highlight(super.showArg(arg))
       }
   }
 
