@@ -62,7 +62,10 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
           | _: Trees.DefTree[_]
 
           // package defs might be split into several Tasty files
-          | _: Trees.PackageDef[_] => true
+          | _: Trees.PackageDef[_]
+          // holes can change source files when filled, which means
+          // they might lose their position
+          | _: TreePickler.Hole => true
       case _ => false
     }
 

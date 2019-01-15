@@ -1290,10 +1290,14 @@ class TreeUnpickler(reader: TastyReader,
       }
       // We need to make sure a hole is created with the source file of the surrounding context, even if
       // it filled with contents a different source file. Otherwise nodes containing holes might end
-      // up without a position. TODO: It would probably more systematic to always create an Inlined argument node
-      // at the position of the hole.
+      // up without a position. PositionPickler makes sure that holes always get spans assigned,
+      // so we can just return the filler tree with the new source and no span here.
       if (filled.source == ctx.source) filled
-      else filled.cloneIn(ctx.source)
+      else {
+        val filled1 = filled.cloneIn(ctx.source)
+        filled1.span = NoSpan
+        filled1
+      }
     }
 
 // ------ Setting positions ------------------------------------------------
