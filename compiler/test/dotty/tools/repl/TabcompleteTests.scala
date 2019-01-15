@@ -95,5 +95,6 @@ class TabcompleteTests extends ReplTest {
     val comp = tabComplete("import scala.")
     // check that there are no special symbols leaked: <byname>, <special-ops>, ...
     assertEquals(comp.find(_.startsWith("<")), None)
+    assert(!comp.contains("package"))
   }
 }

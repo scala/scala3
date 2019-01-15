@@ -253,6 +253,7 @@ object Completion {
            (mode.is(Mode.Term) && sym.isTerm)
         || (mode.is(Mode.Type) && (sym.isType || sym.isStable))
       ) &&
+      !sym.isPackageObject &&
       (sym ne defn.RepeatedParamClass) &&
       (sym ne defn.ByNameParamClass2x) &&
       (sym ne defn.EqualsPatternClass)
