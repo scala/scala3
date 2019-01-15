@@ -35,14 +35,19 @@ object FlowFacts {
    *  @param ifFalse are the terms known to be non-null if the condition is false.
    */
   case class Inferred(ifTrue: NonNullSet, ifFalse: NonNullSet) {
-    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculate the inferred facts for
-     *  (short-circuited) `e1 && e2` using De Morgan's laws.
-     */
+    // Let `NN(e, true/false)` be the set of terms that are non-null if `e` evaluates to `true/false`.
+    // We can use De Morgan's laws to underapproximate `NN` via `Inferred`.
+    // e.g. say `e = e1 && e2`. Then if `e` is `false`, we know that either `!e1` or `!e2`.
+    // Let `t` be a term that is in both `NN(e1, false)` and `NN(e2, false)`.
+    // Then it follows that `t` must be in `NN(e, false)`. This means that if we set
+    // `Inferred(e1 && e2, false) = Inferred(e1, false) ∩ Inferred(e2, false)`, we'll have
+    // `Inferred(e1 && e2, false) ⊂ NN(e1 && e2, false)` (formally, we'd do a structural induction on `e`).
+    // This means that when we infer something we do so soundly. The methods below use this approach.
+
+    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculate the inferred facts for `e1 && e2`. */
     def combineAnd(other: Inferred): Inferred = Inferred(ifTrue.union(other.ifTrue), ifFalse.intersect(other.ifFalse))
 
-    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculate the inferred facts for
-     *  (short-circuited) `e1 || e2` using De Morgan's laws.
-     */
+    /** If `this` corresponds to a condition `e1` and `other` to `e2`, calculate the inferred facts for `e1 || e2`. */
     def combineOr(other: Inferred): Inferred = Inferred(ifTrue.intersect(other.ifTrue), ifFalse.union(other.ifFalse))
 
     /** The inferred facts for the negation of this condition. */
