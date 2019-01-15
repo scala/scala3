@@ -92,11 +92,10 @@ class Tests {
   @Test def testExample2(): Unit = checkFile("example/Example2.scala")
   @Test def testExclude(): Unit = checkFile("example/Exclude.scala")
   @Test def testFlags(): Unit = checkFile("example/Flags.scala")
-  @Test def testImports(): Unit = checkFile("example/Imports.scala")
   @Test def testIssue1749(): Unit = checkFile("example/Issue1749.scala")
   @Test def testLocalFile(): Unit = checkFile("example/local-file.scala")
   @Test def testLocals(): Unit = checkFile("example/Locals.scala")
-  @Test def testMacroAnnotations(): Unit = checkFile("example/MacroAnnotations.scala")
+  //deactivated @Test def testMacroAnnotations(): Unit = checkFile("example/MacroAnnotations.scala")
   @Test def testMethods(): Unit = checkFile("example/Methods.scala")
   @Test def testMultiArguments(): Unit = checkFile("example/MultiArguments.scala")
   @Test def testObjects(): Unit = checkFile("example/Objects.scala")
@@ -106,6 +105,7 @@ class Tests {
   @Test def testSelfUse(): Unit = checkFile("example/SelfUse.scala")
   @Test def testTraits(): Unit = checkFile("example/Traits.scala")
   @Test def testTypes(): Unit = checkFile("example/Types.scala")
+  @Test def testTypesAnnotations() : Unit = checkFile("example/TypesAnnotations.scala") // Crash, has to deal with init symbols
   @Test def testVals(): Unit = checkFile("example/Vals.scala")
   @Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
   @Test def testNew(): Unit = checkFile("example/New.scala")
@@ -114,13 +114,10 @@ class Tests {
   @Test def testApply(): Unit = checkFile("example/Apply.scala")
   @Test def testMethodUsages(): Unit = checkFile("example/MethodUsages.scala")
   @Test def testSuper(): Unit = checkFile("example/Super.scala")
-  @Test def testTypeBug(): Unit = checkFile("example/TypeBug.scala")*/
-  //@Test def testTraits(): Unit = checkFile("example/Traits.scala")
+  @Test def testTypeBug(): Unit = checkFile("example/TypeBug.scala")
   @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
-  //@Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
-  //@Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
+  @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala") // Failure
   @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
-  @Test def testCase(): Unit = checkFile("example/Case.scala")
+  */
 
-
- }
+}
