@@ -423,7 +423,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             symbolToSymbolString(symbol)
         }
 
-        println(symbol_path)
+        println(symbol_path + " : " + range)
         // We want to add symbols coming from our file
         // if (symbol.pos.sourceFile != sourceFile) return
         if (symbol_path == "" || symbol.isUselessOccurrence) return
@@ -533,10 +533,26 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         val len =
           if (name == "<init>") 0
           else name.length
-        return s.Range(range.endLine,
-                       range.endColumn - len,
-                       range.endLine,
-                       range.endColumn)
+        /* The position of a select is the position of the whole select expression,
+        from the start to the end.
+        To get the position of only the selected operand, we distinguish two cases:
+        - either we are selecting an operator ending with a ':' (for those the execution
+          order is reversed), so the selected expression is at the start.
+          Ex: A #:: B -> the position of the select is the range "#:: B", so we pick the range "#::"
+        - either the select is in normal order, in this case we select the end of it.
+          Ex: A + B -> the position of the select is the range "A +", so we pick the range "+"
+        */
+        if (name.endsWith(":")) {
+          return s.Range(range.startLine,
+                        range.startColumn,
+                        range.startLine,
+                        range.startColumn + len)
+        } else {
+          return s.Range(range.endLine,
+                        range.endColumn - len,
+                        range.endLine,
+                        range.endColumn)
+        }
       }
 
       def getImportPath(path_term: Term): String = {
@@ -831,7 +847,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             }
 
           case Term.Select(qualifier, _) => {
-            println("SELECT =>  " + tree)
             val range = {
               val r = rangeSelect(tree.symbol.trueName, tree.pos)
               if (tree.symbol.trueName == "<init>")
@@ -841,6 +856,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                         r.endCharacter + 1)
               else r
             }
+            println("SELECT =>  " + tree + tree.pos.start + ":" + tree.pos.end)
             addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range, forceAddBecauseParents)
             super.traverseTree(tree)
           }

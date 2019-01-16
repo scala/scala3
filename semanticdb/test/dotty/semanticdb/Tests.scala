@@ -116,8 +116,8 @@ class Tests {
   @Test def testSuper(): Unit = checkFile("example/Super.scala")
   @Test def testTypeBug(): Unit = checkFile("example/TypeBug.scala")
   @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
-  @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala") // Failure
+  @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
   @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
   */
-
+  @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
 }
