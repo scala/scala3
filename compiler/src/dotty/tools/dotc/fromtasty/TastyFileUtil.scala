@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Names.SimpleName
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.tasty.{TastyUnpickler, TreePickler}
+import dotty.tools.dotc.core.StdNames.nme.EMPTY_PACKAGE
 
 object TastyFileUtil {
 
@@ -27,7 +28,10 @@ object TastyFileUtil {
     val bytes = Files.readAllBytes(path)
     val names = new core.tasty.TastyClassName(bytes).readName()
     names.map { case (packageName, className) =>
-      val fullName = s"$packageName.${className.lastPart}"
+      val fullName = packageName match {
+        case EMPTY_PACKAGE => s"${className.lastPart}"
+        case _ => s"$packageName.${className.lastPart}"
+      }
       val classInPath = fullName.replace(".", io.File.separator) + ".tasty"
       val classpath = path.toString.replace(classInPath, "")
       (classpath, fullName)
