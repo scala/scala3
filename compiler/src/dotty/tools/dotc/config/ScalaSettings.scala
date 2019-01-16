@@ -149,6 +149,8 @@ class ScalaSettings extends Settings.SettingGroup {
 
   val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting("-Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
 
+  val YinstrumentClosures: Setting[Boolean] = BooleanSetting("-Yinstrument-closures", "Add instrumentation code that counts closure creations.")
+
   /** Dottydoc specific settings */
   val siteRoot: Setting[String] = StringSetting(
     "-siteroot",

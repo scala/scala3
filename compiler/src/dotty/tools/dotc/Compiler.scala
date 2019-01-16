@@ -97,6 +97,7 @@ class Compiler {
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
+         new InstrumentClosures,     // Count closure allocations under -Yinstrument-closures
          new GetClass) ::            // Rewrites getClass calls on primitive types.
     List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
          new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
