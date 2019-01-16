@@ -94,6 +94,8 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def TypeSymbolDeco(symbol: TypeSymbol): TypeSymbolAPI = new TypeSymbolAPI {
     def tree(implicit ctx: Context): TypeDef = FromSymbol.typeDefFromSym(symbol)
+
+    def isTypeParam(implicit ctx: Context): Boolean = symbol.isTypeParam
   }
 
   object ClassSymbol extends ClassSymbolModule {

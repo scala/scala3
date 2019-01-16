@@ -123,6 +123,8 @@ trait SymbolOps extends Core {
   trait TypeSymbolAPI {
     /** TypeDef tree of this defintion. */
     def tree(implicit ctx: Context): TypeDef
+
+    def isTypeParam(implicit ctx: Context): Boolean
   }
   implicit def TypeSymbolDeco(symbol: TypeSymbol): TypeSymbolAPI
 
