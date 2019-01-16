@@ -606,7 +606,6 @@ trait Printers
               printTypeTree(parent)
             case IsTerm(Term.TypeApply(fun, targs)) =>
               printParent(fun)
-              inSquare(printTypeOrBoundsTrees(targs, ", "))
             case IsTerm(Term.Apply(fun, args)) =>
               printParent(fun)
               inParens(printTrees(args, ", "))
@@ -690,6 +689,7 @@ trait Printers
           val flags = vdef.symbol.flags
           if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
           if (flags.is(Flags.Override)) this += highlightKeyword("override ", color)
+          if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ", color)
 
           printProtectedOrPrivate(vdef)
 
@@ -739,6 +739,7 @@ trait Printers
           if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
           if (flags.is(Flags.Inline)) this += highlightKeyword("inline ", color)
           if (flags.is(Flags.Override)) this += highlightKeyword("override ", color)
+          if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ", color)
 
           printProtectedOrPrivate(ddef)
 
@@ -758,6 +759,9 @@ trait Printers
             case None =>
           }
           this
+
+        case Term.Ident("_") =>
+          this += "_"
 
         case IsTerm(tree @ Term.Ident(_)) =>
           printType(tree.tpe)
