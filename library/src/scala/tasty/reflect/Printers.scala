@@ -606,7 +606,6 @@ trait Printers
               printTypeTree(parent)
             case IsTerm(Term.TypeApply(fun, targs)) =>
               printParent(fun)
-              inSquare(printTypeOrBoundsTrees(targs, ", "))
             case IsTerm(Term.Apply(fun, args)) =>
               printParent(fun)
               inParens(printTrees(args, ", "))
