@@ -105,6 +105,13 @@ object Parsers {
     def sourcePos(off: Int = in.offset): SourcePosition =
       source atPos Position(off)
 
+    /** in.offset, except if this is at a new line, in which case `lastOffset` is preferred. */
+    def expectedOffset: Int = {
+      val current = sourcePos(in.offset)
+      val last = sourcePos(in.lastOffset)
+      if (current.line != last.line) in.lastOffset else in.offset
+    }
+
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
       *  safepoint occurred afterwards, the offset of the safe point.
@@ -116,7 +123,7 @@ object Parsers {
       */
     def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
-        val length = if (in.name != null) in.name.show.length else 0
+        val length = if (offset == in.offset && in.name != null) in.name.show.length else 0
         syntaxError(msg, Position(offset, offset + length))
         lastErrorOffset = in.offset
       }
@@ -275,13 +282,13 @@ object Parsers {
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-    def syntaxErrorOrIncomplete(msg: => Message): Unit =
+    def syntaxErrorOrIncomplete(msg: => Message, offset: Int = in.offset): Unit =
       if (in.token == EOF) incompleteInputError(msg)
       else {
-        syntaxError(msg)
+        syntaxError(msg, offset)
         skip()
         lastErrorOffset = in.offset
-      } // DEBUG
+      }
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -1456,7 +1463,7 @@ object Parsers {
         case _ =>
           if (isLiteral) literal()
           else {
-            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)))
+            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)), expectedOffset)
             errorTermTree
           }
       }
@@ -1748,7 +1755,7 @@ object Parsers {
       case _ =>
         if (isLiteral) literal(inPattern = true)
         else {
-          syntaxErrorOrIncomplete(IllegalStartOfSimplePattern())
+          syntaxErrorOrIncomplete(IllegalStartOfSimplePattern(), expectedOffset)
           errorTermTree
         }
     }
