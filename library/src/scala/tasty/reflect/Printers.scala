@@ -690,6 +690,7 @@ trait Printers
           val flags = vdef.symbol.flags
           if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
           if (flags.is(Flags.Override)) this += highlightKeyword("override ", color)
+          if (flags.is(Flags.Final)) this += highlightKeyword("final", color)
 
           printProtectedOrPrivate(vdef)
 
@@ -739,6 +740,7 @@ trait Printers
           if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ", color)
           if (flags.is(Flags.Inline)) this += highlightKeyword("inline ", color)
           if (flags.is(Flags.Override)) this += highlightKeyword("override ", color)
+          if (flags.is(Flags.Final)) this += highlightKeyword("final", color)
 
           printProtectedOrPrivate(ddef)
 
