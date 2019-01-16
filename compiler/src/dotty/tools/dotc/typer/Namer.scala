@@ -505,7 +505,7 @@ class Namer { typer: Typer =>
    *  @pre `child` must have a position.
    */
   final def addChild(cls: Symbol, child: Symbol)(implicit ctx: Context): Unit = {
-    val childStart = child.pos.start
+    val childStart = if (child.pos.exists) child.pos.start else -1
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(_.symbol == defn.ChildAnnot) match {
         case Some(Annotation.Child(other)) if other.pos.exists && childStart <= other.pos.start =>
