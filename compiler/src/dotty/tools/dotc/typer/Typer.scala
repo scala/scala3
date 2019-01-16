@@ -1768,8 +1768,19 @@ class Typer extends Namer
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
     else {
+      val arg2 = arg1 match {
+        case Typed(arg2, tpt: TypeTree) =>
+          tpt.tpe match {
+            case _: AnnotatedType =>
+              // Avoid creating a Typed tree for each type annotation that is added.
+              // Drop the outer Typed tree and use its type with the addition all annotation.
+              arg2
+            case _ => arg1
+          }
+        case _ => arg1
+      }
       val tpt = TypeTree(AnnotatedType(arg1.tpe.widenIfUnstable, Annotation(annot1)))
-      assignType(cpy.Typed(tree)(arg1, tpt), tpt)
+      assignType(cpy.Typed(tree)(arg2, tpt), tpt)
     }
   }
 
