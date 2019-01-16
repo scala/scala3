@@ -88,13 +88,18 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
           }
         }
         x match {
-          case x: untpd.MemberDef @unchecked =>
-            for (ann <- x.symbol.annotations) traverse(ann.tree, x.source)
+          case x: untpd.MemberDef @unchecked => traverse(x.symbol.annotations, x.source)
           case _ =>
         }
-        traverse(x.productIterator, x.source)
-      case xs: TraversableOnce[_] =>
-        xs.foreach(traverse(_, current))
+        val limit = x.productArity
+        var n = 0
+        while (n < limit) {
+          traverse(x.productElement(n), x.source)
+          n += 1
+        }
+      case y :: ys =>
+        traverse(y, current)
+        traverse(ys, current)
       case x: Annotation =>
         traverse(x.tree, current)
       case _ =>
