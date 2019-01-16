@@ -13,7 +13,7 @@ case class Cat(name: String, friend: Either[Cat, Dog])
 sealed trait HList extends Product with Serializable
 final case class ::[+H, +T <: HList](head: H, tail: T) extends HList
 sealed trait HNil extends HList
-final case object HNil extends HNil
+case object HNil extends HNil
 
 sealed trait Coproduct extends Product with Serializable
 sealed trait :+:[+H, +T <: Coproduct] extends Coproduct

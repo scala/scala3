@@ -13,8 +13,8 @@ object App {
     }
 
     sealed abstract class K[A]
-    final case object KAge extends K[Age]
-    final case object KInt extends K[Int]
+    case object KAge extends K[Age]
+    case object KInt extends K[Int]
 
     val kint: K[Age] = Age.subst[K](KInt)
     def get(k: K[Age]): String = k match {

@@ -93,7 +93,7 @@ object Test {
   sealed trait HList
   final case class ::[+H, +T <: HList](head : H, tail : T) extends HList
   sealed trait HNil extends HList
-  final case object HNil extends HNil
+  case object HNil extends HNil
 
   object New {
     // The Kind Polymorphic List
