@@ -68,6 +68,7 @@ class CheckRealizable(implicit ctx: Context) {
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
       val sym = tp.symbol
+      lazy val tpInfoRealizable = realizability(tp.info)
       if (sym.is(Stable)) realizability(tp.prefix)
       else {
         val r =
@@ -80,10 +81,12 @@ class CheckRealizable(implicit ctx: Context) {
           else
             // otherwise we need to look at the info to determine realizability
             // roughly: it's realizable if the info does not have bad bounds
-            realizability(tp.info).mapError(r => new ProblemInUnderlying(tp, r))
+            tpInfoRealizable.mapError(r => new ProblemInUnderlying(tp, r))
         r andAlso {
           if (sym.isStable) sym.setFlag(Stable) // it's known to be stable and realizable
           realizability(tp.prefix)
+        } mapError { r =>
+          if (tp.info.isStable && tpInfoRealizable == Realizable) Realizable else r
         }
       }
     case _: SingletonType | NoPrefix =>
