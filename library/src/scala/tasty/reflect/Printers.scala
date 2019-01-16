@@ -1576,7 +1576,10 @@ trait Printers
         val Annotation(ref, args) = annot
         this += "@"
         printTypeTree(ref)
-        inParens(printTrees(args, ", "))
+        if (args.isEmpty)
+          this
+        else
+          inParens(printTrees(args, ", "))
       }
 
       def printDefAnnotations(definition: Definition): Buffer = {
