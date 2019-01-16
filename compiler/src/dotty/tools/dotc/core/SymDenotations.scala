@@ -608,7 +608,16 @@ object SymDenotations {
          }
       )
 
-    /** Is this a denotation of a stable term (or an arbitrary type)? */
+    /** Is this a denotation of a stable term (or an arbitrary type)?
+      * Terms are stable if they are idempotent (as in TreeInfo.Idempotent): that is, they always return the same value,
+      * if any.
+      *
+      * A *member* is stable, basically, if it behaves like a field projection: that is, it projects a constant result
+      * out of its owner.
+      *
+      * However, a stable member might not yet be initialized (if it is an object or anyhow lazy).
+      * So the first call to a stable member might fail and/or produce side effects.
+      */
     final def isStableMember(implicit ctx: Context): Boolean = {
       def isUnstableValue = is(UnstableValue) || info.isInstanceOf[ExprType]
       isType || is(StableRealizable) || !isUnstableValue

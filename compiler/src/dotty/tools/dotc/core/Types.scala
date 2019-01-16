@@ -147,7 +147,11 @@ object Types {
     /** Is this a value type or a wildcard? */
     final def isValueTypeOrWildcard: Boolean = isValueType || this.isInstanceOf[WildcardType]
 
-    /** Does this type denote a stable reference (i.e. singleton type)? */
+    /** Does this type denote a stable reference (i.e. singleton type)?
+      *
+      * Like in isStableMember, "stability" means idempotence.
+      * Rationale: If an expression has a stable type, the expression must be idempotent, so stable types
+      * must be singleton types of stable expressions. */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
       case tp: TermRef => tp.symbol.isStableMember && tp.prefix.isStable || tp.info.isStable
       case _: SingletonType | NoPrefix => true
@@ -2200,6 +2204,8 @@ object Types {
     def underlyingRef: TermRef
   }
 
+  /** The singleton type for path prefix#myDesignator.
+    */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
     extends NamedType with SingletonType with ImplicitRef {
