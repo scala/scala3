@@ -174,7 +174,7 @@ object Applications {
     def productArity: Int = app.productArity
     def productElement(n: Int): Any = app.productElement(n)
   }
-  
+
   /** The unapply method of this extractor also recognizes ExtMethodApplys in closure blocks.
    *  This is necessary to deal with closures as left arguments of extension method applications.
    *  A test case is i5606.scala
@@ -1517,7 +1517,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
-        alts filter (normalizedCompatible(_, pt))
+        val compat = alts.filter(normalizedCompatible(_, pt))
+        if (compat.isEmpty)
+          /*
+           * the case should not be moved to the enclosing match
+           * since SAM type must be considered only if there are no candidates
+           * For example, the second f should be chosen for the following code:
+           *   def f(x: String): Unit = ???
+           *   def f: java.io.OutputStream = ???
+           *   new java.io.ObjectOutputStream(f)
+           */
+          pt match {
+            case SAMType(mtp) => narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+            case _ => compat
+          }
+        else compat
     }
     val found = narrowMostSpecific(candidates)
     if (found.length <= 1) found
