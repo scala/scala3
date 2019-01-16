@@ -142,9 +142,9 @@ object desugar {
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
       // I don't see a problem with that but if there is one we can avoid it by making a copy here.
-      val setterParam = makeSyntheticParameter(tpt = (new SetterParamTree).watching(vdef))
+      val setterParam = makeSyntheticParameter(tpt = (new SetterParamTree).watching(vdef)).withSpan(vdef.span)
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
-      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
+      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral.withSpan(vdef.rhs.span)
       val setter = cpy.DefDef(vdef)(
         name     = name.setterName,
         tparams  = Nil,
@@ -500,7 +500,7 @@ object desugar {
         } :+ defaultCase
         val body = Match(paramRef, patternMatchCases)
         DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
-          .withFlags(if (defn.isNewCollections) Override | Synthetic else Synthetic)
+          .withFlags(if (defn.isNewCollections) Override | Synthetic else Synthetic).withSpan(cdef.span)
       }
 
       if (isCaseClass)
@@ -514,7 +514,7 @@ object desugar {
     if (isEnumCase && parents.isEmpty)
       parents1 = enumClassTypeRef :: Nil
     if (isCaseClass | isCaseObject)
-      parents1 = parents1 :+ scalaDot(str.Product.toTypeName)
+      parents1 = parents1 :+ scalaDot(str.Product.toTypeName).withSpan(cdef.span)
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumType)
 
@@ -719,7 +719,7 @@ object desugar {
         .withSpan(impl.self.span.orElse(impl.span.startPos))
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
-        .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
+        .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags).withSpan(mdef.span)
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
@@ -830,7 +830,7 @@ object desugar {
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
         if (forallResults(rhs, isMatchingTuple)) rhs
-        else Match(rhsUnchecked, caseDef :: Nil)
+        else Match(rhsUnchecked, caseDef :: Nil).withSpan(original.span)
       vars match {
         case Nil =>
           matchExpr
