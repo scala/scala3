@@ -1026,7 +1026,7 @@ class Typer extends Namer
     val accu = new TypeAccumulator[Set[Symbol]] {
       def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
         val tsyms1 = t match {
-          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm =>
             tsyms + tr.symbol
           case _ =>
             tsyms
@@ -1041,7 +1041,11 @@ class Typer extends Namer
   def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context): Context = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
-      if (!gadtCtx.gadt.contains(sym)) gadtCtx.gadt.addEmptyBounds(sym)
+      if (!gadtCtx.gadt.contains(sym)) {
+        val TypeBounds(lo, hi) = sym.info.bounds
+        gadtCtx.gadt.addBound(sym, lo, isUpper = false)
+        gadtCtx.gadt.addBound(sym, hi, isUpper = true)
+      }
     gadtCtx
   }
 
