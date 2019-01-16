@@ -208,7 +208,10 @@ class ReplDriver(settings: Array[String],
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
       ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
-    implicit val state = newRun(istate)
+    implicit val state = {
+      val state0 = newRun(istate)
+      state0.copy(context = state0.context.withSource(parsed.source))
+    }
     compiler
       .compile(parsed)
       .fold(

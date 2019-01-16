@@ -64,9 +64,6 @@ class ReplCompiler extends Compiler {
   }
 
   private[this] val objectNames = mutable.Map.empty[Int, TermName]
-  private def objectName(state: State) =
-    objectNames.getOrElseUpdate(state.objectIndex,
-      (str.REPL_SESSION_LINE + state.objectIndex).toTermName)
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 
@@ -126,7 +123,7 @@ class ReplCompiler extends Compiler {
    *  }
    *  ```
    */
-  private def wrapped(defs: Definitions): untpd.PackageDef = {
+  private def wrapped(defs: Definitions, objectTermName: TermName): untpd.PackageDef = {
     import untpd._
 
     assert(defs.stats.nonEmpty)
@@ -134,15 +131,20 @@ class ReplCompiler extends Compiler {
     implicit val ctx: Context = defs.state.context
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
-    val module = ModuleDef(objectName(defs.state), tmpl)
+    val module = ModuleDef(objectTermName, tmpl)
       .withSpan(Span(0, defs.stats.last.span.end))
 
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
   }
 
-  private def createUnit(defs: Definitions, sourceCode: String)(implicit ctx: Context): CompilationUnit = {
-    val unit = CompilationUnit(SourceFile.virtual(objectName(defs.state).toString, sourceCode))
-    unit.untpdTree = wrapped(defs)
+  private def createUnit(defs: Definitions)(implicit ctx: Context): CompilationUnit = {
+    val objectName = ctx.source.file.toString
+    assert(objectName.startsWith(str.REPL_SESSION_LINE))
+    val objectTermName = ctx.source.file.toString.toTermName
+    objectNames.update(defs.state.objectIndex, objectTermName)
+
+    val unit = CompilationUnit(ctx.source)
+    unit.untpdTree = wrapped(defs, objectTermName)
     unit
   }
 
@@ -156,7 +158,7 @@ class ReplCompiler extends Compiler {
 
   final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     val defs = definitions(parsed.trees, state)
-    val unit = createUnit(defs, parsed.sourceCode)(state.context)
+    val unit = createUnit(defs)(state.context)
     runCompilationUnit(unit, defs.state)
   }
 

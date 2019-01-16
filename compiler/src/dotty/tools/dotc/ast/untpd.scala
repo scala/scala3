@@ -25,7 +25,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol)(implicit @transientParam src: SourceFile) extends ProxyTree {
     def forwardTo: tpd.Tree = splice
-    span = splice.span
   }
 
   object TypedSplice {
