@@ -1730,7 +1730,7 @@ class Typer extends Namer
   def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(implicit ctx: Context): List[Tree] = {
     val firstParent :: otherParents = parents
     if (firstParent.isType && !(cls is Trait) && !cls.is(JavaDefined))
-      typed(untpd.New(untpd.TypedSplice(firstParent).withSpan(firstParent.span), Nil)) :: otherParents
+      typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
     else parents
   }
 
