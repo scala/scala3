@@ -157,7 +157,7 @@ object ParseResult {
       case _ => {
         val reporter = newStoreReporter
         var needsMore = false
-        reporter.withIncompleteHandler(_ => _ => needsMore = true) {
+        reporter.withIncompleteHandler((_, _) => needsMore = true) {
           parseStats(sourceCode)(ctx.fresh.setReporter(reporter))
           !reporter.hasErrors && needsMore
         }
