@@ -2416,14 +2416,14 @@ object Parsers {
     def objectDefRest(start: Offset, mods: Modifiers, name: TermName): ModuleDef = {
       val template = templateOpt(emptyConstructor)
 
-      def flagPos(flag: FlagSet) = mods.mods.find(_.flags == flag).get.pos
+      def flagSpan(flag: FlagSet) = mods.mods.find(_.flags == flag).get.span
       if (mods is Abstract)
-        syntaxError(hl"""${Abstract} modifier cannot be used for objects""", flagPos(Abstract))
+        syntaxError(hl"""${Abstract} modifier cannot be used for objects""", flagSpan(Abstract))
       if (mods is Sealed)
-        syntaxError(hl"""${Sealed} modifier is redundant for objects""", flagPos(Sealed))
+        syntaxError(hl"""${Sealed} modifier is redundant for objects""", flagSpan(Sealed))
       // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
       if (mods is Final)
-        warning(hl"""${Final} modifier is redundant for objects""", source atPos flagPos(Final))
+        warning(hl"""${Final} modifier is redundant for objects""", source atSpan flagSpan(Final))
 
       finalizeDef(ModuleDef(name, template), mods, start)
     }

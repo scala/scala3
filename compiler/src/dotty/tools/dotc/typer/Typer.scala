@@ -2499,7 +2499,7 @@ class Typer extends Namer
         if (!defn.isFunctionType(pt))
           pt match {
             case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
-              ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.pos)
+              ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.sourcePos)
             case _ =>
           }
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
