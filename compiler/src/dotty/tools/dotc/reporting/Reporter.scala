@@ -190,15 +190,16 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   def reportNewFeatureUseSite(featureTrait: Symbol): Unit = reportedFeaturesUseSites += featureTrait
 
-  val unreportedWarnings: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
-    override def default(key: String) = 0
-  }
+  var unreportedWarnings: Map[String, Int] = Map.empty
 
   def report(m: MessageContainer)(implicit ctx: Context): Unit =
     if (!isHidden(m)) {
       doReport(m)(ctx.addMode(Mode.Printing))
       m match {
-        case m: ConditionalWarning if !m.enablingOption.value => unreportedWarnings(m.enablingOption.name) += 1
+        case m: ConditionalWarning if !m.enablingOption.value =>
+          val key = m.enablingOption.name
+          unreportedWarnings =
+            unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
         case m: Warning => _warningCount += 1
         case m: Error =>
           errors = m :: errors
