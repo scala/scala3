@@ -1,9 +1,9 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.tasty */
 package foo {
   case object Foo {
     override def hashCode(): scala.Int = 1045991777
     override def toString(): java.lang.String = "Foo"
-    override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[foo.Foo.type @scala.unchecked()]
+    override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[foo.Foo.type @scala.unchecked]
     override def productArity: scala.Int = 0
     override def productPrefix: java.lang.String = "Foo"
     override def productElement(n: scala.Int): scala.Any = n match {

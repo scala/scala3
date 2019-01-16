@@ -1,18 +1,18 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleSuper/foo/A.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleSuper/foo/A.tasty */
 package foo {
   class A() {
     def foo: scala.Int = 1
   }
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleSuper/foo/B.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleSuper/foo/B.tasty */
 package foo {
   trait B() extends java.lang.Object {
     def foo: scala.Int = 2
   }
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleSuper/foo/C.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleSuper/foo/C.tasty */
 package foo {
-  class C() extends foo.A() with foo.B {
+  class C() extends foo.A with foo.B {
     override def foo: scala.Int = super.foo.+(super[B].foo)
   }
 }

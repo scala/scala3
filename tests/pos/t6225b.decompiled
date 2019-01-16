@@ -1,10 +1,10 @@
-/** Decompiled from out/posTestFromTasty/pos/t6225b/library/x/X.class */
+/** Decompiled from out/posTestFromTasty/pos/t6225b/library/x/X.tasty */
 package library.x {
   class X() {
     class Foo()
   }
 }
-/** Decompiled from out/posTestFromTasty/pos/t6225b/library/y/package.class */
+/** Decompiled from out/posTestFromTasty/pos/t6225b/library/y/package.tasty */
 package library {
-  package object y extends library.x.X()
+  package object y extends library.x.X
 }
