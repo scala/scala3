@@ -701,6 +701,17 @@ object desugar {
     val impl = mdef.impl
     val mods = mdef.mods
     def isEnumCase = mods.isEnumCase
+
+    def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
+
+    if (mods.is(Abstract))
+      ctx.error(hl"""$Abstract modifier cannot be used for objects""", flagSourcePos(Abstract))
+    if (mods.is(Sealed))
+      ctx.error(hl"""$Sealed modifier is redundant for objects""", flagSourcePos(Sealed))
+    // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
+    if (mods.is(Final) && !mods.is(Synthetic))
+      ctx.warning(hl"""$Final modifier is redundant for objects""", flagSourcePos(Final))
+
     if (mods is Package)
       PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else if (isEnumCase)
