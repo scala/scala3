@@ -1056,7 +1056,7 @@ class Namer { typer: Typer =>
       cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
-      if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(Stable)
+      if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
     }
   }
 

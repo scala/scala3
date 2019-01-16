@@ -218,7 +218,7 @@ object PickleBuffer {
       LOCAL -> Local,
       JAVA -> JavaDefined,
       SYNTHETIC -> Synthetic,
-      STABLE -> Stable,
+      STABLE -> StableRealizable,
       STATIC -> JavaStatic,
       CASEACCESSOR -> CaseAccessor,
       DEFAULTPARAM -> (DefaultParameterized, Trait),

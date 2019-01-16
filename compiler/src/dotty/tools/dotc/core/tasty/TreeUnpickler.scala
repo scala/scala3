@@ -626,7 +626,7 @@ class TreeUnpickler(reader: TastyReader,
           case CONTRAVARIANT => addFlag(Contravariant)
           case SCALA2X => addFlag(Scala2x)
           case DEFAULTparameterized => addFlag(DefaultParameterized)
-          case STABLE => addFlag(Stable)
+          case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
           case PARAMsetter =>
             addFlag(ParamAccessor)

@@ -542,7 +542,7 @@ object Types {
         case tp: TermRef =>
           go (tp.underlying match {
             case mt: MethodType
-            if mt.paramInfos.isEmpty && (tp.symbol is Stable) => mt.resultType
+            if mt.paramInfos.isEmpty && (tp.symbol is StableRealizable) => mt.resultType
             case tp1 => tp1
           })
         case tp: TypeRef =>
