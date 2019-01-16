@@ -761,6 +761,9 @@ trait Printers
           }
           this
 
+        case Term.Ident("_") =>
+          this += "_"
+
         case IsTerm(tree @ Term.Ident(_)) =>
           printType(tree.tpe)
 
