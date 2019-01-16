@@ -113,7 +113,7 @@ class ReplDriver(settings: Array[String],
       implicit val ctx = state.context
       try {
         val line = terminal.readLine(completer)
-        ParseResult(line)
+        ParseResult(line)(state)
       } catch {
         case _: EndOfFileException |
             _: UserInterruptException => // Ctrl+D or Ctrl+C
@@ -132,7 +132,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
-    val parsed = ParseResult(input)(state.context)
+    val parsed = ParseResult(input)(state)
     interpret(parsed)
   }
 

@@ -115,10 +115,8 @@ object ParseResult {
     stats
   }
 
-  private[this] var replSessionNumber = 0
-
   /** Extract a `ParseResult` from the string `sourceCode` */
-  def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
+  def apply(sourceCode: String)(implicit state: State): ParseResult =
     sourceCode match {
       case "" => Newline
       case CommandExtract(cmd, arg) => cmd match {
@@ -132,11 +130,12 @@ object ParseResult {
         case _ => UnknownCommand(cmd)
       }
       case _ =>
-        replSessionNumber += 1
-        val source = SourceFile.virtual(str.REPL_SESSION_LINE + replSessionNumber, sourceCode)
+        implicit val ctx: Context = state.context
+
+        val source = SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode)
 
         val reporter = newStoreReporter
-        val stats = parseStats(sourceCode)(ctx.fresh.setReporter(reporter).withSource(source))
+        val stats = parseStats(sourceCode)(state.context.fresh.setReporter(reporter).withSource(source))
 
         if (reporter.hasErrors)
           SyntaxErrors(

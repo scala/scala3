@@ -140,6 +140,7 @@ class ReplCompiler extends Compiler {
   private def createUnit(defs: Definitions)(implicit ctx: Context): CompilationUnit = {
     val objectName = ctx.source.file.toString
     assert(objectName.startsWith(str.REPL_SESSION_LINE))
+    assert(objectName.endsWith(defs.state.objectIndex.toString))
     val objectTermName = ctx.source.file.toString.toTermName
     objectNames.update(defs.state.objectIndex, objectTermName)
 
@@ -236,7 +237,7 @@ class ReplCompiler extends Compiler {
         PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 
-      ParseResult(expr) match {
+      ParseResult(expr)(state) match {
         case Parsed(_, trees) =>
           wrap(trees).result
         case SyntaxErrors(_, reported, trees) =>
