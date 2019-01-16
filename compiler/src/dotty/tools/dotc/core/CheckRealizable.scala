@@ -72,7 +72,7 @@ class CheckRealizable(implicit ctx: Context) {
       if (sym.is(StableRealizable)) realizability(tp.prefix)
       else {
         val r =
-          if (sym.isStable && !isLateInitialized(sym))
+          if (sym.isStableMember && !isLateInitialized(sym))
             // it's realizable because we know that a value of type `tp` has been created at run-time
             Realizable
           else if (!sym.isEffectivelyFinal)
@@ -83,7 +83,7 @@ class CheckRealizable(implicit ctx: Context) {
             // roughly: it's realizable if the info does not have bad bounds
             tpInfoRealizable.mapError(r => new ProblemInUnderlying(tp, r))
         r andAlso {
-          if (sym.isStable) sym.setFlag(StableRealizable) // it's known to be stable and realizable
+          if (sym.isStableMember) sym.setFlag(StableRealizable) // it's known to be stable and realizable
           realizability(tp.prefix)
         } mapError { r =>
           if (tp.info.isStable && tpInfoRealizable == Realizable) Realizable else r

@@ -59,7 +59,7 @@ object PrepareInlineable {
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
-        !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
+        !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree

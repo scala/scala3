@@ -382,7 +382,7 @@ object RefChecks {
         intersectionIsEmpty(member.extendedOverriddenSymbols, other.extendedOverriddenSymbols)) {
         overrideError("cannot override a concrete member without a third member that's overridden by both " +
           "(this rule is designed to prevent ``accidental overrides'')")
-      } else if (other.isStable && !member.isStable) { // (1.4)
+      } else if (other.isStableMember && !member.isStableMember) { // (1.4)
         overrideError("needs to be a stable, immutable value")
       } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")

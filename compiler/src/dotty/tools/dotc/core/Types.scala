@@ -149,7 +149,7 @@ object Types {
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
-      case tp: TermRef => tp.symbol.isStable && tp.prefix.isStable || tp.info.isStable
+      case tp: TermRef => tp.symbol.isStableMember && tp.prefix.isStable || tp.info.isStable
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
@@ -1005,7 +1005,7 @@ object Types {
     /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
-      case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
+      case tp: TermRef if !tp.symbol.isStableMember => tp.underlying.widenIfUnstable
       case _ => this
     }
 
