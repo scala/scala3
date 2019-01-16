@@ -151,18 +151,21 @@ object Decorators {
    *  exact meaning of "contains" here.
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
-    def containsPhase(phase: Phase): Boolean = phase match {
-      case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
-      case _ =>
-        names exists { name =>
-          name == "all" || {
-            val strippedName = name.stripSuffix("+")
-            val logNextPhase = name != strippedName
-            phase.phaseName.startsWith(strippedName) ||
-              (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
-          }
+    def containsPhase(phase: Phase): Boolean =
+      names.nonEmpty && {
+        phase match {
+          case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
+          case _ =>
+            names exists { name =>
+              name == "all" || {
+                val strippedName = name.stripSuffix("+")
+                val logNextPhase = name != strippedName
+                phase.phaseName.startsWith(strippedName) ||
+                  (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
+              }
+            }
         }
-    }
+      }
   }
 
   implicit class genericDeco[T](val x: T) extends AnyVal {
