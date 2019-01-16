@@ -978,7 +978,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
-    def tpes: List[Type] = xs map (_.tpe)
+    def tpes: List[Type] = xs match {
+      case x :: xs1 => x.tpe :: xs1.tpes
+      case nil => Nil
+    }
   }
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
