@@ -477,7 +477,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // unrelated change.
        ctx.base.settings.YnoGenericSig.value
     || sym.is(Flags.Artifact)
-    || sym.is(Flags.allOf(Flags.Method, Flags.Lifted))
+    || sym.is(Flags.LiftedMethod)
     || sym.is(Flags.Bridge)
   )
 
