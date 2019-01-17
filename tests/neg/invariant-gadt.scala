@@ -17,4 +17,11 @@ object `invariant-gadt` {
         0 // error
     }
   }
+
+  def unsoundTwice[T](t: T): T = Invariant(t) match {
+    case Invariant(_: Int) => Invariant(t) match {
+      case Invariant(_: Int) =>
+        0 // error
+    }
+  }
 }

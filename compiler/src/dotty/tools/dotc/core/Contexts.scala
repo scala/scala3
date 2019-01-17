@@ -779,6 +779,21 @@ object Contexts {
         }, gadts)
       }
 
+      // avoid recording skolems in lower bounds
+      // recording two skolem bounds results in an union, which is then simplified
+      // T >: Sko(U) | Sko(U) is simplified to T >: U, which is simply wrong
+      // instead, we only ensure that new bounds would be satisfiable
+      // TODO: this likely causes unsoundness
+      // TODO: it should be removed after we added support for singleton type unions
+      if (!isUpper) bound match {
+        case _: SkolemType =>
+          val TypeBounds(lo, hi) = bounds(sym)
+          val newLo = lo | bound
+          gadts.println(i"replacing skolem bound  $sym <:< $bound  with  $newLo <:< $hi")
+          return newLo <:< hi
+        case _ => ;
+      }
+
       val symTvar: TypeVar = stripInternalTypeVar(tvar(sym)) match {
         case tv: TypeVar => tv
         case inst =>
