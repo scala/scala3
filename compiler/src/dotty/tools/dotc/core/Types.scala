@@ -3704,7 +3704,12 @@ object Types {
 
   // ----- Skolem types -----------------------------------------------
 
-  /** A skolem type reference with underlying type `info` */
+  /** A skolem type reference with underlying type `info`.
+   *
+   * For Dotty, a skolem type is a singleton type of some unknown value of type `info`.
+   * Note that care is needed when creating them, since not all types need to be inhabited.
+   * A skolem is equal to itself and no other type.
+   */
   case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
     def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =

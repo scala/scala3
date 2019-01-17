@@ -604,7 +604,7 @@ class Typer extends Namer
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+          constrainPatternType(tpt1.tpe, pt, termPattern = true)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -1104,7 +1104,7 @@ class Typer extends Namer
     def caseRest(implicit ctx: Context) = {
       val pat1 = checkSimpleKinded(typedType(cdef.pat)(ctx.addMode(Mode.Pattern)))
       if (!ctx.isAfterTyper)
-        constrainPatternType(pat1.tpe, selType)(ctx.addMode(Mode.GADTflexible))
+        constrainPatternType(pat1.tpe, selType, termPattern = false)(ctx.addMode(Mode.GADTflexible))
       val pat2 = indexPattern(cdef).transform(pat1)
       val body1 = typedType(cdef.body, pt)
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
