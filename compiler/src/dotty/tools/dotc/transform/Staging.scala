@@ -174,8 +174,6 @@ class Staging extends MacroTransformWithImplicits {
         val rhs = transform(tag.select(tpnme.UNARY_~))
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
 
-        val original = typeRef.symbol.asType
-
         val local = ctx.newSymbol(
           owner = ctx.owner,
           name = UniqueName.fresh("T".toTermName).toTypeName,

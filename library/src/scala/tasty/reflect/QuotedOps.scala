@@ -21,4 +21,9 @@ trait QuotedOps extends Core {
   }
   implicit def TermToQuoteDeco(term: Term): TermToQuotedAPI
 
+  trait TypeToQuotedAPI {
+    /** Convert `Type` to an `quoted.Type[T]` */
+    def seal(implicit ctx: Context): scala.quoted.Type[_]
+  }
+  implicit def TypeToQuoteDeco(tpe: Type): TypeToQuotedAPI
 }
