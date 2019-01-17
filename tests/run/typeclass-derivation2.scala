@@ -1,6 +1,14 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
+object _typelevel {
+  final abstract class Type[-A, +B]
+  type Subtype[t] = Type[_, t]
+  type Supertype[t] = Type[t, _]
+  type Exactly[t] = Type[t, t]
+  erased def typeOf[T]: Type[T, T] = ???
+}
+
 trait Deriving {
   import Deriving._
 
@@ -177,6 +185,7 @@ trait Eq[T] {
 object Eq {
   import scala.typelevel._
   import Deriving._
+  import _typelevel._
 
   inline def tryEql[T](x: T, y: T) = implicit match {
     case eq: Eq[T] => eq.eql(x, y)
@@ -197,14 +206,19 @@ object Eq {
   inline def eqlCases[T, Alts <: Tuple](r: Reflected[T], x: T, y: T): Boolean =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
-        x match {
-          case x: `alt` =>
-            y match {
-              case y: `alt` => eqlCase[T, elems](r, x, y)
-              case _ => false
+        inline typeOf[alt] match {
+          case _: Subtype[T] =>
+            x match {
+              case x: `alt` =>
+                y match {
+                  case y: `alt` => eqlCase[T, elems](r, x, y)
+                  case _ => false
+                }
+              case _ => eqlCases[T, alts1](r, x, y)
             }
-          case _ => eqlCases[T, alts1](r, x, y)
-      }
+          case _ =>
+            error("invalid call to eqlCases: one of Alts is not a subtype of T")
+        }
     case _: Unit =>
       false
   }
@@ -232,6 +246,7 @@ trait Pickler[T] {
 object Pickler {
   import scala.typelevel._
   import Deriving._
+  import _typelevel._
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -253,12 +268,17 @@ object Pickler {
   inline def pickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
-        x match {
-          case x: `alt` =>
-            buf += n
-            pickleCase[T, elems](r, buf, x)
+        inline typeOf[alt] match {
+          case _: Subtype[T] =>
+            x match {
+              case x: `alt` =>
+                buf += n
+                pickleCase[T, elems](r, buf, x)
+              case _ =>
+                pickleCases[T, alts1](r, buf, x, n + 1)
+            }
           case _ =>
-            pickleCases[T, alts1](r, buf, x, n + 1)
+            error("invalid pickleCases call: one of Alts is not a subtype of T")
         }
       case _: Unit =>
     }
@@ -323,6 +343,7 @@ trait Show[T] {
 object Show {
   import scala.typelevel._
   import Deriving._
+  import _typelevel._
 
   inline def tryShow[T](x: T): String = implicit match {
     case s: Show[T] => s.show(x)
@@ -347,9 +368,14 @@ object Show {
   inline def showCases[T, Alts <: Tuple](r: Reflected[T], x: T): String =
     inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
-        x match {
-          case x: `alt` => showCase[T, elems](r, x)
-          case _ => showCases[T, alts1](r, x)
+        inline typeOf[alt] match {
+          case _: Subtype[T] =>
+            x match {
+              case x: `alt` => showCase[T, elems](r, x)
+              case _ => showCases[T, alts1](r, x)
+            }
+          case _ =>
+            error("invalid call to showCases: one of Alts is not a subtype of T")
         }
       case _: Unit =>
         throw new MatchError(x)

@@ -584,7 +584,7 @@ class Typer extends Namer
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+          constrainPatternType(SkolemType(tpt1.tpe), pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -1017,16 +1017,12 @@ class Typer extends Namer
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
 
-  /** gadtSyms = "all type parameters of enclosing methods that appear
-    *              non-variantly in the selector type" todo: should typevars
-    *              which appear with variances +1 and -1 (in different
-    *              places) be considered as well?
-    */
+  /** gadtSyms = "all type parameters of enclosing methods appearing in selector type" */
   def gadtSyms(selType: Type)(implicit ctx: Context): Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
     val accu = new TypeAccumulator[Set[Symbol]] {
       def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
         val tsyms1 = t match {
-          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm =>
             tsyms + tr.symbol
           case _ =>
             tsyms
@@ -1041,7 +1037,11 @@ class Typer extends Namer
   def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context): Context = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
-      if (!gadtCtx.gadt.contains(sym)) gadtCtx.gadt.addEmptyBounds(sym)
+      if (!gadtCtx.gadt.contains(sym)) {
+        val TypeBounds(lo, hi) = sym.info.bounds
+        gadtCtx.gadt.addBound(sym, lo, isUpper = false)
+        gadtCtx.gadt.addBound(sym, hi, isUpper = true)
+      }
     gadtCtx
   }
 
