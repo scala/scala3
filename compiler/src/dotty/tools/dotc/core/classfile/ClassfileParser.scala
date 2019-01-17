@@ -661,7 +661,7 @@ class ClassfileParser(
           val constr = ctx.newSymbol(
             owner = classRoot.symbol,
             name = nme.CONSTRUCTOR,
-            flags = Flags.Synthetic | Flags.JavaDefined,
+            flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
             info = constrType
           ).entered
           for ((attr, i) <- attrs.zipWithIndex)
