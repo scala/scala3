@@ -143,7 +143,7 @@ object PickledQuotes {
           treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
         ).transform(ddef.rhs)
       case Block(stats, expr) =>
-        seq(stats, rec(expr))
+        seq(stats, rec(expr)).withSpan(fn.span)
       case _ =>
         fn.select(nme.apply).appliedToArgs(argRefs())
     }
