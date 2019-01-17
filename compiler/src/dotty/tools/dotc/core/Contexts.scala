@@ -779,6 +779,13 @@ object Contexts {
         }, gadts)
       }
 
+      bound match {
+        case _: SkolemType =>
+          val TypeBounds(lo, hi) = bounds(sym)
+          return if (isUpper) lo <:< (hi & bound) else (lo | bound) <:< hi
+        case _ => ;
+      }
+
       val symTvar: TypeVar = stripInternalTypeVar(tvar(sym)) match {
         case tv: TypeVar => tv
         case inst =>
