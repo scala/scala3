@@ -598,6 +598,7 @@ trait Printers
           val parents1 = parents.filter {
             case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
             case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Product")) => false
+            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Serializable")) => false
             case _ => true
           }
           if (parents1.nonEmpty)
