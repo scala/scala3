@@ -50,6 +50,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
+        // JavaNull is already special-cased in the Typer, but needs to be handled here as well.
         val qualTpe = if (qual.tpe.isJavaNullableUnion) qual.tpe.stripJavaNull else qual.tpe
         assert(
           qualTpe.derivesFrom(tree.symbol.owner) ||

@@ -264,12 +264,6 @@ class ClassfileParser(
           addConstructorTypeParams(denot)
         }
 
-        def nullifyTpe(): Unit = {
-          val old = denot.info
-          denot.info = JavaNull.nullifyMember(denot.symbol, denot.info)
-          Printers.nullability.println(s"nullified member type from classfile for ${denot.symbol.name.show} from ${old.show} into ${denot.info.show}")
-        }
-
         denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
@@ -278,7 +272,11 @@ class ClassfileParser(
         if (isConstructor) normalizeConstructorInfo()
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)
-        nullifyTpe()
+
+        val old = denot.info
+        denot.info = JavaNull.nullifyMember(denot.symbol, denot.info)
+        Printers.nullability.println(s"nullified member type from classfile for ${denot.symbol.name.show} from ${old.show} into ${denot.info.show}")
+
         // seal java enums
         if (isEnum) {
           val enumClass = sym.owner.linkedClass

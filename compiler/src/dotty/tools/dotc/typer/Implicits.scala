@@ -608,6 +608,10 @@ trait Implicits { self: Typer =>
         val to1 = adjust(to)
         inferImplicit(to1, from, from.pos) match {
           case err: SearchFailure if !err.isAmbiguous && from.tpe.isJavaNullableUnion =>
+            // TODO(abeln): is this worth keeping?
+            // When looking for an implicit conversion from A|JavaNull -> B, if we
+            // can't find it, then also look for an implicit conversion from A -> B.
+            // This is done to ease Java interop.
             val from1 =  from.ensureConforms(from.tpe.stripJavaNull)
             inferImplicit(to1, from1, from.pos)
           case res => res

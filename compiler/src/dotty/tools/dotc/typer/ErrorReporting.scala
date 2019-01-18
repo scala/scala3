@@ -80,7 +80,6 @@ object ErrorReporting {
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
       else {
-//        println(s"tree.tpe.widen = ${tree.tpe.widen.show}")
         i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
       }
 

@@ -461,7 +461,7 @@ object Types {
         else if (rsym isSubClass lsym) lsym
         else if (this.isNullableUnion) {
           val OrType(left, _) = this.normalizeNull
-          // If `left` is a reference type, then the class LUB of `left | Null` is `Reference`.
+          // If `left` is a reference type, then the class LUB of `left | Null` is `RefEq`.
           // This is another one-of case that keeps this method sound, but not complete.
           if (left.classSymbol isSubClass defn.ObjectClass) defn.RefEqClass
           else NoSymbol
@@ -625,6 +625,8 @@ object Types {
           goAnd(l, r)
         case tp: OrType =>
           if (tp.isJavaNullableUnion) {
+            // Selecting `name` from a type `T|JavaNull` is like selecting name` from `T`.
+            // This can throw at runtime, but we trade soundness for usability.
             // We need to strip JavaNull from both the type and the prefix so that
             // `pre <: tp` continues to hold.
             tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
@@ -1023,8 +1025,9 @@ object Types {
       case _ => this
     }
 
-    /** Converts types of the form `Null | T` to `T | Null`. Does not do any widening or dealiasing. */
+    /** Converts types of the form `Null | T` to `T | Null`. Does not d o any widening or dealiasing. */
     def normalizeNull(implicit ctx: Context): Type = {
+      // TODO(abeln): make normalization more robust (e.g. so it can handle nested unions).
       this match {
         case OrType(left, right) if left.isRefToNull => OrType(right, left)
         case _ => this
@@ -1048,12 +1051,10 @@ object Types {
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
-    final def widenSingleton(implicit ctx: Context): Type = {
-      stripTypeVar.stripAnnots match {
-        case tp: SingletonType if !tp.isOverloaded =>
-          tp.underlying.widenSingleton
-        case _ => this
-      }
+    final def widenSingleton(implicit ctx: Context): Type = stripTypeVar.stripAnnots match {
+      case tp: SingletonType if !tp.isOverloaded =>
+        tp.underlying.widenSingleton
+      case _ => this
     }
 
     /** Widen from TermRef to its underlying non-termref
