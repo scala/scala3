@@ -139,6 +139,7 @@ object SimpleIdentityMap {
     private def value(i: Int): V = bindings(i + 1).asInstanceOf[V]
 
     def size: Int = bindings.length / 2
+    Stats.record(s"SimpleIdentityMap/$size")
 
     def apply(k: K): V = {
       var i = 0
