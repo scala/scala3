@@ -13,8 +13,7 @@ class PackageStructureFromTastyTest extends PackageStructureBase with CheckFromT
 abstract class PackageStructureBase extends DottyDocTest {
 
   @Test def sourceFileAnnotIsStripped = {
-    val source = new SourceFile(
-      "A.scala",
+    val source = SourceUtil.makeTemp(
       """package scala
         |
         |/** Some doc */
@@ -33,8 +32,7 @@ abstract class PackageStructureBase extends DottyDocTest {
   }
 
   @Test def multipleCompilationUnits = {
-    val source1 = new SourceFile(
-      "TraitA.scala",
+    val source1 = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -42,8 +40,7 @@ abstract class PackageStructureBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val source2 = new SourceFile(
-      "TraitB.scala",
+    val source2 = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -67,8 +64,7 @@ abstract class PackageStructureBase extends DottyDocTest {
 
 
   @Test def multiplePackages = {
-    val source1 = new SourceFile(
-      "TraitA.scala",
+    val source1 = SourceUtil.makeTemp(
       """
       |package scala
       |package collection
@@ -76,8 +72,7 @@ abstract class PackageStructureBase extends DottyDocTest {
       |trait A
       """.stripMargin)
 
-    val source2 = new SourceFile(
-      "TraitB.scala",
+    val source2 = SourceUtil.makeTemp(
       """
       |package scala
       |package collection

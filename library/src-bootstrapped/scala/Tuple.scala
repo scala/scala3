@@ -183,7 +183,7 @@ object Tuple {
   def $consArray[H](x: H, elems: Array[Object]): Array[Object] = {
     val elems1 = new Array[Object](elems.length + 1)
     elems1(0) = x.asInstanceOf[Object]
-    Array.copy(elems, 0, elems1, 1, elems.length)
+    System.arraycopy(elems, 0, elems1, 1, elems.length)
     elems1
   }
 

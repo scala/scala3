@@ -7,7 +7,7 @@ import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
+import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.mutable
@@ -204,7 +204,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
-    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
+    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
 
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
@@ -314,7 +314,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
     val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        coord = fns.map(_.pos).reduceLeft(_ union _))
+        coord = fns.map(_.span).reduceLeft(_ union _))
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
@@ -401,16 +401,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `elemTpe`. No type arguments or
    *  `length` arguments are given.
    */
-  def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
+  def newArray(elemTpe: Type, returnTpe: Type, span: Span, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
     val elemClass = elemTpe.classSymbol
     def newArr =
-      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withPos(pos)
+      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(span)
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
     } else  // after erasure
-      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
   }
 
   /** The wrapped array method name for an array of type elemtp */
@@ -1012,7 +1012,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     else {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
-      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
+      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
     }
   }
 
@@ -1134,10 +1134,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined
    */
-  def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = {
-    val file = call.symbol.sourceFile
-    if (file != null && file.exists) ctx.getSource(file) else NoSource
-  }
+  def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = call.symbol.source
 
   /** Desugar identifier into a select node. Return the tree itself if not possible */
   def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {
@@ -1204,7 +1201,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // Give a zero-extent position to the qualifier to prevent it from being included several
       // times in results in the language server.
       val noPosExpr = focusPositions(imp.expr)
-      val selectTree = Select(noPosExpr, sym.name).withPos(id.pos)
+      val selectTree = Select(noPosExpr, sym.name).withSpan(id.span)
       rename match {
         case None =>
           selectTree :: Nil
@@ -1213,7 +1210,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // node with the new name and the type of the real symbol.
           val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
           val actual = Select(noPosExpr, sym.name)
-          val renameTree = Select(noPosExpr, name).withPos(rename.pos).withType(actual.tpe)
+          val renameTree = Select(noPosExpr, name).withSpan(rename.span).withType(actual.tpe)
           selectTree :: renameTree :: Nil
       }
     }
@@ -1236,7 +1233,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private def focusPositions(tree: Tree)(implicit ctx: Context): Tree = {
     val transformer = new tpd.TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-        super.transform(tree).withPos(tree.pos.focus)
+        super.transform(tree).withSpan(tree.span.focus)
       }
     }
     transformer.transform(tree)

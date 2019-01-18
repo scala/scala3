@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
-import util.Positions._
+import util.Spans._
 import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
@@ -28,13 +28,13 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     res
   }
 
-  def superRef(target: Symbol, pos: Position = cls.pos): Tree = {
+  def superRef(target: Symbol, span: Span = cls.span): Tree = {
     val sup = if (target.isConstructor && !target.owner.is(Trait))
       Super(This(cls), tpnme.EMPTY, true)
     else
       Super(This(cls), target.owner.name.asTypeName, false, target.owner)
     //println(i"super ref $target on $sup")
-    ast.untpd.Select(sup.withPos(pos), target.name)
+    ast.untpd.Select(sup.withSpan(span), target.name)
       .withType(NamedType(sup.tpe, target))
     //sup.select(target)
   }

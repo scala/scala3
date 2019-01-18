@@ -17,7 +17,7 @@ object ModifiersParsingTest {
   implicit val ctx: Context = (new ContextBase).initialCtx
 
   def parse(code: String): Tree = {
-    val (_, stats) = new Parser(new SourceFile("<meta>", code)).templateStatSeq()
+    val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
     stats match { case List(stat) => stat; case stats => Thicket(stats) }
   }
 
@@ -137,7 +137,7 @@ class ModifiersParsingTest {
 
     source = parse("def f(implicit a: Int, b: Int) = ???")
     assert(source.defParam(0).modifiers == List(Mod.Implicit()))
-    assert(source.defParam(1).modifiers == List(Mod.Implicit()))
+    assert(source.defParam(1).modifiers == List())
 
     source = parse("def f(x: Int, y: Int)(implicit a: Int, b: Int) = ???")
     assert(source.defParam(0, 0).modifiers == List())

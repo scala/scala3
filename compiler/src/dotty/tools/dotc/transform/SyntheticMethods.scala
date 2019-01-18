@@ -94,7 +94,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         case nme.productElement => vrefss => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
-      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic))).withPos(ctx.owner.pos.focus)
+      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic))).withSpan(ctx.owner.span.focus)
     }
 
     /** The class
@@ -158,7 +158,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
-      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
+      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
       val comparisons = accessors map { accessor =>
@@ -213,7 +213,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
     def caseHashCodeBody(implicit ctx: Context): Tree = {
       val seed = clazz.fullName.toString.hashCode
       if (accessors.nonEmpty) {
-        val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
+        val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
         val accDef = ValDef(acc, Literal(Constant(seed)))
         val mixes = for (accessor <- accessors) yield
           Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))

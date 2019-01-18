@@ -50,7 +50,7 @@ class IsInstanceOfEvaluator extends MiniPhase {
       if (!scrutineeSubSelector && inMatch) {
         ctx.error(
           s"this case is unreachable due to `${selector.show}` not being a subclass of `${scrutinee.show}`",
-          Position(pos.start - 5, pos.end - 5)
+          Span(pos.start - 5, pos.end - 5)
         )
         rewrite(qualifier, to = false)
       } else if (!scrutineeSubSelector && !inMatch) {
@@ -73,7 +73,7 @@ class IsInstanceOfEvaluator extends MiniPhase {
       if (inMatch) {
         ctx.error(
           s"will never match since `${selector.show}` is not a subclass of `${scrutinee.show}`",
-          Position(qualifier.pos.start - 5, qualifier.pos.end - 5) // WHY 5?
+          Span(qualifier.pos.start - 5, qualifier.pos.end - 5) // WHY 5?
         )
         rewrite(qualifier, to = false)
       } else {

@@ -70,19 +70,19 @@ object SymbolLoaders {
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.YtermConflict.isDefault)
-        throw new TypeError(
-          i"""$owner contains object and package with same name: $pname
-             |one of them needs to be removed from classpath""")
-      else if (ctx.settings.YtermConflict.value == "package") {
+      if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
-      } else {
+      } else if (ctx.settings.YtermConflict.value == "object") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
+      else
+        throw new TypeError(
+          i"""$owner contains object and package with same name: $pname
+             |one of them needs to be removed from classpath""")
     }
     ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered
@@ -134,7 +134,7 @@ object SymbolLoaders {
               ctx.warning(i"""$what ${tree.name} is in the wrong directory.
                               |It was declared to be in package ${path.reverse.mkString(".")}
                               |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
-                          tree.pos)
+                          tree.sourcePos)
             ok
           }
 
@@ -159,7 +159,7 @@ object SymbolLoaders {
             Nil)
         }
 
-        val unit = new CompilationUnit(ctx.run.getSource(src.path))
+        val unit = CompilationUnit(ctx.getSource(src.path))
         enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
       }
     }

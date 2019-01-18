@@ -59,7 +59,7 @@ class TastyBuffer(initialSize: Int) {
   /** Write the first `n` bytes of `data`. */
   def writeBytes(data: Array[Byte], n: Int): Unit = {
     while (bytes.length < length + n) bytes = dble(bytes)
-    Array.copy(data, 0, bytes, length, n)
+    System.arraycopy(data, 0, bytes, length, n)
     length += n
   }
 

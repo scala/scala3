@@ -7,7 +7,7 @@ import Names.{Name, TermName}
 import StdNames.nme
 import TastyUnpickler._
 import TastyBuffer.NameRef
-import util.Positions.offsetToInt
+import util.Spans.offsetToInt
 import printing.Highlighting._
 
 /** Reads the package and class name of the class contained in this TASTy */

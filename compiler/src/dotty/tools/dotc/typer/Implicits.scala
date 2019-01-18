@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast.{Trees, TreeTypeMap, untpd, tpd}
-import util.Positions._
+import util.Spans._
 import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
 import printing.Texts._
@@ -28,7 +28,7 @@ import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
-import util.Property
+import util.{Property, SourceFile, NoSource}
 import config.Config
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
@@ -40,13 +40,6 @@ import scala.annotation.internal.sharable
 /** Implicit resolution */
 object Implicits {
   import tpd._
-
-  /** A flag indicating that this an application of an extension method
-   *  with the given name
-   */
-  case class ExtMethodResult(app: Tree) extends tpd.Tree {
-    override def pos = app.pos
-  }
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
@@ -355,7 +348,7 @@ object Implicits {
   }
 
   object SearchFailure {
-    def apply(tpe: SearchFailureType): SearchFailure = {
+    def apply(tpe: SearchFailureType)(implicit src: SourceFile): SearchFailure = {
       val id =
         if (tpe.isInstanceOf[AmbiguousImplicits]) "/* ambiguous */"
         else "/* missing */"
@@ -394,7 +387,7 @@ object Implicits {
   @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
-    SearchFailure(NoMatchingImplicits)
+    SearchFailure(NoMatchingImplicits)(NoSource)
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
@@ -604,7 +597,7 @@ trait Implicits { self: Typer =>
           SelectionProto(name, memberProto, compat, privateOK = false)
         case tp => tp
       }
-      try inferImplicit(adjust(to), from, from.pos)
+      try inferImplicit(adjust(to), from, from.span)
       catch {
         case ex: AssertionError =>
           implicits.println(s"view $from ==> $to")
@@ -618,27 +611,26 @@ trait Implicits { self: Typer =>
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree = {
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
      */
     def synthesizedClassTag(formal: Type): Tree = formal.argInfos match {
       case arg :: Nil =>
-        fullyDefinedType(arg, "ClassTag argument", pos) match {
+        fullyDefinedType(arg, "ClassTag argument", span) match {
           case defn.ArrayOf(elemTp) =>
-            val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), pos)
+            val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), span)
             if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
             val sym = tp.typeSymbol
-            if (sym == defn.UnitClass || sym == defn.AnyClass || sym == defn.AnyValClass)
-              ref(defn.ClassTagModule).select(sym.name.toTermName).withPos(pos)
-            else
-              ref(defn.ClassTagModule)
-                .select(nme.apply)
-                .appliedToType(tp)
-                .appliedTo(clsOf(erasure(tp)))
-                .withPos(pos)
+            val classTag = ref(defn.ClassTagModule)
+            val tag =
+              if (sym == defn.UnitClass || sym == defn.AnyClass || sym == defn.AnyValClass)
+                classTag.select(sym.name.toTermName)
+              else
+                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
+              tag.withSpan(span)
           case tp =>
             EmptyTree
         }
@@ -652,7 +644,7 @@ trait Implicits { self: Typer =>
           var ok = true
           def apply(t: Type) = t match {
             case t @ TypeRef(NoPrefix, _) =>
-              inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, pos) match {
+              inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, span) match {
                 case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
                   tag.tpe.select(defn.QuotedType_~)
                 case _ =>
@@ -684,7 +676,7 @@ trait Implicits { self: Typer =>
         case args @ (arg1 :: arg2 :: Nil)
         if !ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality) &&
            ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)) =>
-          ref(defn.Eq_eqAny).appliedToTypes(args).withPos(pos)
+          ref(defn.Eq_eqAny).appliedToTypes(args).withSpan(span)
         case _ =>
           EmptyTree
       }
@@ -694,11 +686,11 @@ trait Implicits { self: Typer =>
       * An EmptyTree is returned if materialization fails.
       */
     def synthesizedValueOf(formal: Type)(implicit ctx: Context): Tree = {
-      def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withPos(pos)
+      def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
       formal.argTypes match {
         case arg :: Nil =>
-          fullyDefinedType(arg.dealias, "ValueOf argument", pos) match {
+          fullyDefinedType(arg.dealias, "ValueOf argument", span) match {
             case ConstantType(c: Constant) =>
               success(Literal(c))
             case TypeRef(_, sym) if sym == defn.UnitClass =>
@@ -714,14 +706,14 @@ trait Implicits { self: Typer =>
     }
 
     def hasEq(tp: Type): Boolean =
-      inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).isSuccess
+      inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, span).isSuccess
 
     def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-      List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
+      List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", span))
       assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
 
-    inferImplicit(formal, EmptyTree, pos)(ctx) match {
+    inferImplicit(formal, EmptyTree, span)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
@@ -743,9 +735,10 @@ trait Implicits { self: Typer =>
   }
 
   /** Search an implicit argument and report error if not found */
-  def implicitArgTree(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
-    val arg = inferImplicitArg(formal, pos)
-    if (arg.tpe.isInstanceOf[SearchFailureType]) ctx.error(missingArgMsg(arg, formal, ""), pos)
+  def implicitArgTree(formal: Type, span: Span)(implicit ctx: Context): Tree = {
+    val arg = inferImplicitArg(formal, span)
+    if (arg.tpe.isInstanceOf[SearchFailureType])
+      ctx.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(span))
     arg
   }
 
@@ -794,7 +787,7 @@ trait Implicits { self: Typer =>
             case _           => Nil
           }
           def resolveTypes(targs: List[Tree])(implicit ctx: Context) =
-            targs.map(a => fullyDefinedType(a.tpe, "type argument", a.pos))
+            targs.map(a => fullyDefinedType(a.tpe, "type argument", a.span))
 
           // We can extract type arguments from:
           //   - a function call:
@@ -874,9 +867,9 @@ trait Implicits { self: Typer =>
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =
+  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
-      val res = implicitArgTree(defn.EqType.appliedTo(ltp, rtp), pos)
+      val res = implicitArgTree(defn.EqType.appliedTo(ltp, rtp), span)
       implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
@@ -884,16 +877,16 @@ trait Implicits { self: Typer =>
    *  @param pt              The expected type of the parameter or conversion.
    *  @param argument        If an implicit conversion is searched, the argument to which
    *                         it should be applied, EmptyTree otherwise.
-   *  @param pos             The position where errors should be reported.
+   *  @param span            The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
+  def inferImplicit(pt: Type, argument: Tree, span: Span)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     assert(ctx.phase.allowsImplicitSearch,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       val result0 =
         try {
-          new ImplicitSearch(pt, argument, pos).bestImplicit(contextual = true)
+          new ImplicitSearch(pt, argument, span).bestImplicit(contextual = true)
         } catch {
           case ce: CyclicReference =>
             ce.inImplicitSearch = true
@@ -910,13 +903,13 @@ trait Implicits { self: Typer =>
             result
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
-            if (deepPt ne pt) inferImplicit(deepPt, argument, pos)
+            if (deepPt ne pt) inferImplicit(deepPt, argument, span)
             else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution)) {
-              inferImplicit(pt, argument, pos)(ctx.addMode(Mode.OldOverloadingResolution)) match {
+              inferImplicit(pt, argument, span)(ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
                     s"According to new implicit resolution rules, this will be ambiguous:\n${result.reason.explanation}",
-                    pos)
+                    ctx.source.atSpan(span))
                   altResult
                 case _ =>
                   result
@@ -927,12 +920,12 @@ trait Implicits { self: Typer =>
             result0
         }
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
-      ctx.searchHistory.emitDictionary(pos, result)
+      ctx.searchHistory.emitDictionary(span, result)
     }
   }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(implicit ctx: Context) {
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
@@ -961,7 +954,7 @@ trait Implicits { self: Typer =>
     /** Try to typecheck an implicit reference */
     def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
       val ref = cand.ref
-      var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
+      var generated: Tree = tpd.ref(ref).withSpan(span.startPos)
       val locked = ctx.typerState.ownedVars
       val generated1 =
         if (argument.isEmpty)
@@ -986,7 +979,7 @@ trait Implicits { self: Typer =>
           else tryConversion
         }
       lazy val shadowing =
-        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
+        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName).withSpan(span.toSynthetic))(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
 
       /** Is candidate reference the same as the `shadowing` reference? (i.e.
@@ -1159,7 +1152,8 @@ trait Implicits { self: Typer =>
              |According to the new implicit resolution rules this is no longer possible;
              |the search will fail with a global ambiguity error instead.
              |
-             |Consider using the scala.implicits.Not class to implement similar functionality.""", pos)
+             |Consider using the scala.implicits.Not class to implement similar functionality.""",
+             ctx.source.atSpan(span))
 
       /** A relation that imfluences the order in which implicits are tried.
        *  We prefer (in order of importance)
@@ -1216,7 +1210,7 @@ trait Implicits { self: Typer =>
       // other candidates need to be considered.
       ctx.searchHistory.recursiveRef(pt) match {
         case ref: TermRef =>
-          SearchSuccess(tpd.ref(ref).withPos(pos.startPos), ref, 0)(ctx.typerState, ctx.gadt)
+          SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
         case _ =>
           val eligible =
             if (contextual) ctx.implicits.eligible(wildProto)
@@ -1386,7 +1380,7 @@ abstract class SearchHistory { outer =>
   def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = root.defineBynameImplicit(tpe, result)
 
   // This is NOOP unless at the root of this search history.
-  def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = result
+  def emitDictionary(span: Span, result: SearchResult)(implicit ctx: Context): SearchResult = result
 
   override def toString: String = s"SearchHistory(open = $open, byname = $byname)"
 }
@@ -1456,7 +1450,7 @@ final class SearchRoot extends SearchHistory {
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
         implicitDictionary.put(tpe, (ref, result.tree))
-        SearchSuccess(tpd.ref(ref).withPos(result.tree.pos), result.ref, result.level)(result.tstate, result.gstate)
+        SearchSuccess(tpd.ref(ref).withSpan(result.tree.span), result.ref, result.level)(result.tstate, result.gstate)
       case None => result
     }
   }
@@ -1464,12 +1458,12 @@ final class SearchRoot extends SearchHistory {
   /**
    * Emit the implicit dictionary at the completion of an implicit search.
    *
-   * @param pos    The position at which the search is elaborated.
+   * @param span   The position at which the search is elaborated.
    * @param result The result of the search prior to substitution of recursive references.
    * @result       The elaborated result, comprising the implicit dictionary and a result tree
    *               substituted with references into the dictionary.
    */
-  override def emitDictionary(pos: Position, result: SearchResult)(implicit ctx: Context): SearchResult = {
+  override def emitDictionary(span: Span, result: SearchResult)(implicit ctx: Context): SearchResult = {
     if (implicitDictionary == null || implicitDictionary.isEmpty) result
     else {
       result match {
@@ -1522,9 +1516,9 @@ final class SearchRoot extends SearchHistory {
             // }
 
             val parents = List(defn.ObjectType, defn.SerializableType)
-            val classSym = ctx.newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = pos)
+            val classSym = ctx.newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = span)
             val vsyms = pruned.map(_._1.symbol)
-            val nsyms = vsyms.map(vsym => ctx.newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = pos).entered)
+            val nsyms = vsyms.map(vsym => ctx.newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap
 
             val rhss = pruned.map(_._2)
@@ -1543,7 +1537,7 @@ final class SearchRoot extends SearchHistory {
             val constr = ctx.newConstructor(classSym, Synthetic, Nil, Nil).entered
             val classDef = ClassDef(classSym, DefDef(constr), vdefs)
 
-            val valSym = ctx.newLazyImplicit(classSym.typeRef, pos)
+            val valSym = ctx.newLazyImplicit(classSym.typeRef, span)
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
 
             // Substitute dictionary references into outermost result term.

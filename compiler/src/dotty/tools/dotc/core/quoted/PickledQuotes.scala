@@ -80,7 +80,7 @@ object PickledQuotes {
     treePkl.compactify()
     pickler.addrOfTree = treePkl.buf.addrOfTree
     pickler.addrOfSym = treePkl.addrOfSym
-    if (tree.pos.exists)
+    if (tree.span.exists)
       new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
     if (quotePickling ne noPrinter)
@@ -128,7 +128,7 @@ object PickledQuotes {
   }
 
   private def functionAppliedTo(fn: Tree, args: List[Tree])(implicit ctx: Context): Tree = {
-    val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg))
+    val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span))
     def argRefs() = argVals.map(argVal => ref(argVal.symbol))
     def rec(fn: Tree): Tree = fn match {
       case Inlined(call, bindings, expansion) =>
@@ -140,10 +140,10 @@ object PickledQuotes {
         new TreeTypeMap(
           oldOwners = ddef.symbol :: Nil,
           newOwners = ctx.owner :: Nil,
-          treeMap = tree => paramToVals.get(tree.symbol).map(_.withPos(tree.pos)).getOrElse(tree)
+          treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
         ).transform(ddef.rhs)
       case Block(stats, expr) =>
-        seq(stats, rec(expr))
+        seq(stats, rec(expr)).withSpan(fn.span)
       case _ =>
         fn.select(nme.apply).appliedToArgs(argRefs())
     }

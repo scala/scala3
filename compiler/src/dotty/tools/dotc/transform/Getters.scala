@@ -78,10 +78,10 @@ class Getters extends MiniPhase with SymTransformer {
   private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
-    if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs).withPos(tree.pos) else tree
+    if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs).withSpan(tree.span) else tree
 
   override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
-    if (tree.lhs.symbol is Method) tree.lhs.becomes(tree.rhs).withPos(tree.pos) else tree
+    if (tree.lhs.symbol is Method) tree.lhs.becomes(tree.rhs).withSpan(tree.span) else tree
 }
 
 object Getters {

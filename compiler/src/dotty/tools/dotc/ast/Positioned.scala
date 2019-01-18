@@ -1,151 +1,135 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package ast
 
-import util.Positions._
+import util.Spans._
+import util.{SourceFile, NoSource, SourcePosition}
 import core.Contexts.Context
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
+import annotation.constructorOnly
+import annotation.internal.sharable
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned extends Product {
+abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Product with Cloneable {
 
-  private[this] var curPos: Position = _
+  private[this] var myUniqueId: Int = _
+  private[this] var mySpan: Span = _
 
-  setPos(initialPos)
-
-  /** The item's position.
+  /** A unique identifier. Among other things, used for determining the source file
+   *  component of the position.
    */
-  def pos: Position = curPos
+  def uniqueId: Int = myUniqueId
 
- /** Destructively update `curPos` to given position. Also, set any missing
-   *  positions in children.
-   */
-  protected def setPos(pos: Position): Unit = {
-    setPosUnchecked(pos)
-    if (pos.exists) setChildPositions(pos.toSynthetic)
+  def uniqueId_=(id: Int): Unit = {
+    //assert(id != 2523, this)
+    myUniqueId = id
   }
 
-  /** A positioned item like this one with the position set to `pos`.
-   *  if the positioned item is source-derived, a clone is returned.
+  /** The span part of the item's position */
+  def span: Span = mySpan
+
+  def span_=(span: Span): Unit = {
+    mySpan = span
+  }
+
+  uniqueId = src.nextId
+  span = envelope(src)
+
+  def source: SourceFile = SourceFile.fromId(uniqueId)
+  def sourcePos(implicit ctx: Context): SourcePosition = source.atSpan(span)
+
+  /** A positioned item like this one with given `span`.
+   *  If the positioned item is source-derived, a clone is returned.
    *  If the positioned item is synthetic, the position is updated
    *  destructively and the item itself is returned.
    */
-  def withPos(pos: Position): this.type = {
-    val newpd = (if (pos == curPos || curPos.isSynthetic) this else clone.asInstanceOf[Positioned])
-    newpd.setPos(pos)
-    newpd.asInstanceOf[this.type]
-  }
-
-  def withPos(posd: Positioned): this.type =
-    if (posd == null) this else withPos(posd.pos)
-
-  /** This item with a position that's the union of the given `pos` and the
-   *  current position.
-   */
-  def addPos(pos: Position): this.type = withPos(pos union this.pos)
-
-  /** Set position of this tree only, without performing
-   *  any checks of consistency with - or updates of - other positions.
-   *  Called from Unpickler when entering positions.
-   */
-  private[dotc] def setPosUnchecked(pos: Position): Unit = curPos = pos
-
-  /** If any children of this node do not have positions,
-   *  fit their positions between the positions of the known subtrees
-   *  and transitively visit their children.
-   *  The method is likely time-critical because it is invoked on any node
-   *  we create, so we want to avoid object allocations in the common case.
-   *  The method is naturally expressed as two mutually (tail-)recursive
-   *  functions, one which computes the next element to consider or terminates if there
-   *  is none and the other which propagates the position information to that element.
-   *  But since mutual tail recursion is not supported in Scala, we express it instead
-   *  as a while loop with a termination by return in the middle.
-   */
-  private def setChildPositions(pos: Position): Unit = {
-    var n = productArity                    // subnodes are analyzed right to left
-    var elems: List[Any] = Nil              // children in lists still to be considered, from right to left
-    var end = pos.end                       // the last defined offset, fill in positions up to this offset
-    var outstanding: List[Positioned] = Nil // nodes that need their positions filled once a start position
-                                            // is known, from left to right.
-    def fillIn(ps: List[Positioned], start: Int, end: Int): Unit = ps match {
-      case p :: ps1 =>
-        // If a tree has no position or a zero-extent position, it should be
-        // synthetic. We can preserve this invariant by always setting a
-        // zero-extent position for these trees here.
-        if (!p.pos.exists || p.pos.isZeroExtent) {
-          p.setPos(Position(start, start))
-          fillIn(ps1, start, end)
-        } else {
-          p.setPos(Position(start, end))
-          fillIn(ps1, end, end)
+  def withSpan(span: Span): this.type =
+    if (span == mySpan) this
+    else {
+      val newpd: this.type =
+        if (mySpan.isSynthetic) {
+          if (!mySpan.exists && span.exists)
+            envelope(source, span.startPos) // fill in children spans
+          this
         }
-      case nil =>
+        else cloneIn(source)
+      newpd.span = span
+      newpd
     }
-    while (true) {
-      var nextChild: Any = null // the next child to be considered
-      if (elems.nonEmpty) {
-        nextChild = elems.head
-        elems = elems.tail
-      }
-      else if (n > 0) {
-        n = n - 1
-        nextChild = productElement(n)
-      }
-      else {
-        fillIn(outstanding, pos.start, end)
-        return
-      }
-      nextChild match {
-        case p: Positioned =>
-          if (p.pos.exists) {
-            fillIn(outstanding, p.pos.end, end)
-            outstanding = Nil
-            end = p.pos.start
-          }
-          else outstanding = p :: outstanding
-        case xs: List[_] =>
-          elems = elems ::: xs.reverse
-        case _ =>
-      }
-    }
-  }
 
-  /** The initial, synthetic position. This is usually the union of all positioned children's positions.
+  /** The union of startSpan and the spans of all positioned children that
+   *  have the same source as this node, except that Inlined nodes only
+   *  consider their `call` child.
+   *
+   *  Side effect: Any descendants without spans have but with the same source as this
+   *  node have their span set to the end position of the envelope of all children to
+   *  the left, or, if that one does not exist, to the start position of the envelope
+   *  of all children to the right.
    */
-  def initialPos: Position = {
-    var n = productArity
-    var pos = NoPosition
-    while (n > 0) {
-      n -= 1
-      productElement(n) match {
-        case p: Positioned => pos = pos union p.pos
-        case xs: List[_] => pos = unionPos(pos, xs)
-        case _ =>
+  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = this match {
+    case Trees.Inlined(call, _, _) =>
+      call.span
+    case _ =>
+      def include(span: Span, x: Any): Span = x match {
+        case p: Positioned =>
+          if (p.source != src) span
+          else if (p.span.exists) span.union(p.span)
+          else if (span.exists) {
+            if (span.end != MaxOffset)
+              p.span = p.envelope(src, span.endPos)
+            span
+          }
+          else // No span available to assign yet, signal this by returning a span with MaxOffset end
+            Span(MaxOffset, MaxOffset)
+        case m: untpd.Modifiers =>
+          include(include(span, m.mods), m.annotations)
+        case y :: ys =>
+          include(include(span, y), ys)
+        case _ => span
       }
-    }
-    pos.toSynthetic
+      val limit = productArity
+      def includeChildren(span: Span, n: Int): Span =
+        if (n < limit) includeChildren(include(span, productElement(n)), n + 1)
+        else span
+      val span1 = includeChildren(startSpan, 0)
+      val span2 =
+        if (!span1.exists || span1.end != MaxOffset)
+          span1
+        else if (span1.start == MaxOffset)
+          // No positioned child was found
+          NoSpan
+        else {
+          ///println(s"revisit $uniqueId with $span1")
+          // We have some children left whose span could not be assigned.
+          // Go through it again with the known start position.
+          includeChildren(span1.startPos, 0)
+        }
+      span2.toSynthetic
   }
 
-  private def unionPos(pos: Position, xs: List[_]): Position = xs match {
-    case (p: Positioned) :: xs1 => unionPos(pos union p.pos, xs1)
-    case (xs0: List[_]) :: xs1 => unionPos(unionPos(pos, xs0), xs1)
-    case _ :: xs1 => unionPos(pos, xs1)
-    case _ => pos
+  /** Clone this node but assign it a fresh id which marks it as a node in `file`. */
+  def cloneIn(src: SourceFile): this.type = {
+    val newpd: this.type = clone.asInstanceOf[this.type]
+    newpd.uniqueId = src.nextId
+    newpd
   }
 
   def contains(that: Positioned): Boolean = {
     def isParent(x: Any): Boolean = x match {
       case x: Positioned =>
-        x contains that
+        x.contains(that)
+      case m: untpd.Modifiers =>
+        m.mods.exists(isParent) || m.annotations.exists(isParent)
       case xs: List[_] =>
-        xs exists isParent
+        xs.exists(isParent)
       case _ =>
         false
     }
     (this eq that) ||
-      (this.pos contains that.pos) && {
+      (this.span contains that.span) && {
         var n = productArity
         var found = false
         while (!found && n > 0) {
@@ -157,24 +141,24 @@ abstract class Positioned extends Product {
   }
 
   /** Check that all positioned items in this tree satisfy the following conditions:
-   *  - Parent positions contain child positions
+   *  - Parent spans contain child spans
    *  - If item is a non-empty tree, it has a position
    */
   def checkPos(nonOverlapping: Boolean)(implicit ctx: Context): Unit = try {
     import untpd._
     var lastPositioned: Positioned = null
-    var lastPos = NoPosition
+    var lastSpan = NoSpan
     def check(p: Any): Unit = p match {
       case p: Positioned =>
-        assert(pos contains p.pos,
-          s"""position error, parent position does not contain child position
-             |parent          = $this,
-             |parent position = $pos,
-             |child           = $p,
-             |child position  = ${p.pos}""".stripMargin)
+        assert(span contains p.span,
+          i"""position error, parent span does not contain child span
+             |parent      = $this # $uniqueId,
+             |parent span = $span,
+             |child       = $p # ${p.uniqueId},
+             |child span  = ${p.span}""".stripMargin)
         p match {
           case tree: Tree if !tree.isEmpty =>
-            assert(tree.pos.exists,
+            assert(tree.span.exists,
               s"position error: position not set for $tree # ${tree.uniqueId}")
           case _ =>
         }
@@ -186,18 +170,21 @@ abstract class Positioned extends Product {
             if lastPositioned.isInstanceOf[ValDef] && !p.isInstanceOf[ValDef] =>
               // ignore transition from last wildcard parameter to body
             case _ =>
-              assert(!lastPos.exists || !p.pos.exists || lastPos.end <= p.pos.start,
-                s"""position error, child positions overlap or in wrong order
-                   |parent             = $this
-                   |1st child          = $lastPositioned
-                   |1st child position = $lastPos
-                   |2nd child          = $p
-                   |2nd child position = ${p.pos}""".stripMargin)
+              assert(!lastSpan.exists || !p.span.exists || lastSpan.end <= p.span.start,
+                i"""position error, child positions overlap or in wrong order
+                   |parent         = $this
+                   |1st child      = $lastPositioned
+                   |1st child span = $lastSpan
+                   |2nd child      = $p
+                   |2nd child span = ${p.span}""".stripMargin)
           }
           lastPositioned = p
-          lastPos = p.pos
+          lastSpan = p.span
         }
         p.checkPos(nonOverlapping)
+      case m: untpd.Modifiers =>
+        m.annotations.foreach(check)
+        m.mods.foreach(check)
       case xs: List[_] =>
         xs.foreach(check)
       case _ =>

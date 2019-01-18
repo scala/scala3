@@ -170,7 +170,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.pos)
+          ctx.error(ex.toMessage, tree.sourcePos)
           tree
       }
     def goUnnamed(tree: Tree, start: Int) =
@@ -205,7 +205,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.pos)
+          ctx.error(ex.toMessage, tree.sourcePos)
           tree
       }
     if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
@@ -388,8 +388,12 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goOther(tree, start)
     }
 
-    if (tree.isInstanceOf[NameTree]) transformNamed(tree, start, ctx)
-    else transformUnnamed(tree, start, ctx)
+    if (tree.source != ctx.source && tree.source.exists)
+      transformTree(tree, start)(ctx.withSource(tree.source))
+    else if (tree.isInstanceOf[NameTree])
+      transformNamed(tree, start, ctx)
+    else
+      transformUnnamed(tree, start, ctx)
   }
 
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(implicit ctx: Context): T =

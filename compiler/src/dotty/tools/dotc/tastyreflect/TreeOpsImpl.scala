@@ -10,7 +10,7 @@ import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFr
 trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers {
 
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
-    def pos(implicit ctx: Context): Position = tree.pos
+    def pos(implicit ctx: Context): Position = tree.sourcePos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
   }
 
@@ -353,7 +353,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   def TermDeco(term: Term): TermAPI = new TermAPI {
     import tpd._
-    def pos(implicit ctx: Context): Position = term.pos
+    def pos(implicit ctx: Context): Position = term.sourcePos
     def tpe(implicit ctx: Context): Type = term.tpe
     def underlyingArgument(implicit ctx: Context): Term = term.underlyingArgument
     def underlying(implicit ctx: Context): Term = term.underlying
@@ -444,7 +444,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       def apply(cls: ClassSymbol)(implicit ctx: Context): This =
         tpd.This(cls)
 
-      def copy(original: Tree)(qual: Option[Id]): This =
+      def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =
         tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
       def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]] = x match {
@@ -555,7 +555,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol)
 
-      def copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
+      def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
 
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])] = x match {

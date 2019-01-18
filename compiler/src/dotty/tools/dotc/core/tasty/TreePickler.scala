@@ -14,12 +14,14 @@ import TastyBuffer._
 import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
+import util.SourceFile
+import annotation.constructorOnly
 
 object TreePickler {
 
   val sectionName = "ASTs"
 
-  case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.Tree {
+  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
@@ -63,7 +65,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+  def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
   private def pickleNameAndSig(name: Name, sig: Signature): Unit =
     pickleName(
@@ -78,7 +80,7 @@ class TreePickler(pickler: TastyPickler) {
       // I believe it's a bug in typer: the type of an implicit argument refers
       // to a closure parameter outside the closure itself. TODO: track this down, so that we
       // can eliminate this case.
-      ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.pos)
+      ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.sourcePos)
       pickleForwardSymRef(sym)
   }
 

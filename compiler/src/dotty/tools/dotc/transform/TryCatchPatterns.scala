@@ -9,7 +9,7 @@ import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.
  *
@@ -59,7 +59,7 @@ class TryCatchPatterns extends MiniPhase {
 
   override def transformTry(tree: Try)(implicit ctx: Context): Tree = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
-    val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.pos)
+    val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.span)
     cpy.Try(tree)(cases = tryCases ++ fallbackCase)
   }
 
@@ -81,17 +81,17 @@ class TryCatchPatterns extends MiniPhase {
       false
   }
 
-  private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], pos: Position)(
+  private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], span: Span)(
       implicit ctx: Context): Option[CaseDef] = {
     if (patternMatchCases.isEmpty) None
     else {
       val exName = ExceptionBinderName.fresh()
       val fallbackSelector =
-        ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = pos)
-      val sel = Ident(fallbackSelector.termRef).withPos(pos)
+        ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = span)
+      val sel = Ident(fallbackSelector.termRef).withSpan(span)
       val rethrow = CaseDef(EmptyTree, EmptyTree, Throw(ref(fallbackSelector)))
       Some(CaseDef(
-          Bind(fallbackSelector, Underscore(fallbackSelector.info).withPos(pos)),
+          Bind(fallbackSelector, Underscore(fallbackSelector.info).withSpan(span)),
           EmptyTree,
           transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
       )

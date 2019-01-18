@@ -172,7 +172,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.pos).appliedToArgs(callArgs), initArgs)
+        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), initArgs)
     }
 
     val superCallsAndArgs = (
@@ -211,7 +211,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           ctx.error(
               em"""parameterized $mixin is indirectly implemented,
                   |needs to be implemented directly so that arguments can be passed""",
-              cls.pos)
+              cls.sourcePos)
           EmptyTree
       }
 
@@ -250,13 +250,13 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !was(setr, Deferred)))
-        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos)))
+        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     cpy.Template(impl)(
       constr =
         if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
         else impl.constr,
-      parents = impl.parents.map(p => TypeTree(p.tpe).withPos(p.pos)),
+      parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =
         if (cls is Trait) traitDefs(impl.body)
         else {

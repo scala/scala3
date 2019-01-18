@@ -8,9 +8,10 @@ import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
 import scala.tasty.util.Chars.SU
 import Parsers._
-import util.Positions._
+import util.Spans._
 import core._
 import Constants._
+import util.SourceFile
 import Utility._
 
 
@@ -46,11 +47,11 @@ object MarkupParsers {
     override def getMessage: String = "input ended while parsing XML"
   }
 
-  class MarkupParser(parser: Parser, final val preserveWS: Boolean) extends MarkupParserCommon {
+  class MarkupParser(parser: Parser, final val preserveWS: Boolean)(implicit src: SourceFile) extends MarkupParserCommon {
 
     import Tokens.{ LBRACE, RBRACE }
 
-    type PositionType = Position
+    type PositionType = Span
     type InputType    = CharArrayReader
     type ElementType  = Tree
     type AttributesType = mutable.Map[String, Tree]
@@ -72,7 +73,7 @@ object MarkupParsers {
     import parser.{ symbXMLBuilder => handle }
 
     def curOffset : Int = input.charOffset - 1
-    var tmppos : Position = NoPosition
+    var tmppos : Span = NoSpan
     def ch: Char = input.ch
     /** this method assign the next character to ch and advances in input */
     def nextch(): Unit = { input.nextChar() }
@@ -81,7 +82,7 @@ object MarkupParsers {
       val result = ch; input.nextChar(); result
     }
 
-    def mkProcInstr(position: Position, name: String, text: String): ElementType =
+    def mkProcInstr(position: Span, name: String, text: String): ElementType =
       parser.symbXMLBuilder.procInstr(position, name, text)
 
     var xEmbeddedBlock: Boolean = false
@@ -127,7 +128,7 @@ object MarkupParsers {
           case '"' | '\'' =>
             val tmp = xAttributeValue(ch_returning_nextch)
 
-            try handle.parseAttribute(Position(start, curOffset, mid), tmp)
+            try handle.parseAttribute(Span(start, curOffset, mid), tmp)
             catch {
               case e: RuntimeException =>
                 errorAndResult("error parsing attribute value", parser.errorTermTree)
@@ -160,12 +161,12 @@ object MarkupParsers {
       val start = curOffset
       xToken("[CDATA[")
       val mid = curOffset
-      xTakeUntil(handle.charData, () => Position(start, curOffset, mid), "]]>")
+      xTakeUntil(handle.charData, () => Span(start, curOffset, mid), "]]>")
     }
 
     def xUnparsed: Tree = {
       val start = curOffset
-      xTakeUntil(handle.unparsed, () => Position(start, curOffset, start), "</xml:unparsed>")
+      xTakeUntil(handle.unparsed, () => Span(start, curOffset, start), "</xml:unparsed>")
     }
 
     /** Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
@@ -175,11 +176,11 @@ object MarkupParsers {
     def xComment: Tree = {
       val start = curOffset - 2   // Rewinding to include "<!"
       xToken("--")
-      xTakeUntil(handle.comment, () => Position(start, curOffset, start), "-->")
+      xTakeUntil(handle.comment, () => Span(start, curOffset, start), "-->")
     }
 
-    def appendText(pos: Position, ts: Buffer[Tree], txt: String): Unit = {
-      def append(t: String) = ts append handle.text(pos, t)
+    def appendText(span: Span, ts: Buffer[Tree], txt: String): Unit = {
+      def append(t: String) = ts append handle.text(span, t)
 
       if (preserveWS) append(txt)
       else {
@@ -219,7 +220,7 @@ object MarkupParsers {
      *  @precond ch == '{'
      *  @postcond: xEmbeddedBlock == false!
      */
-    def content_BRACE(p: Position, ts: ArrayBuffer[Tree]): Unit =
+    def content_BRACE(p: Span, ts: ArrayBuffer[Tree]): Unit =
       if (xCheckEmbeddedBlock) ts append xEmbeddedExpr
       else appendText(p, ts, xText)
 
@@ -249,7 +250,7 @@ object MarkupParsers {
         if (xEmbeddedBlock)
           ts append xEmbeddedExpr
         else {
-          tmppos = Position(curOffset)
+          tmppos = Span(curOffset)
           ch match {
             // end tag, cdata, comment, pi or child node
             case '<'  => nextch() ; if (content_LT(ts)) return ts
@@ -274,7 +275,7 @@ object MarkupParsers {
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
-        handle.element(Position(start, curOffset, start), qname, attrMap, true, new ListBuffer[Tree])
+        handle.element(Span(start, curOffset, start), qname, attrMap, true, new ListBuffer[Tree])
       }
       else { // handle content
         xToken('>')
@@ -285,10 +286,10 @@ object MarkupParsers {
         val ts = content
         xEndTag(qname)
         debugLastStartElement = debugLastStartElement.tail
-        val pos = Position(start, curOffset, start)
+        val span = Span(start, curOffset, start)
         qname match {
-          case "xml:group" => handle.group(pos, ts)
-          case _ => handle.element(pos, qname, attrMap, false, ts)
+          case "xml:group" => handle.group(span, ts)
+          case _ => handle.element(span, qname, attrMap, false, ts)
         }
       }
     }
@@ -355,7 +356,7 @@ object MarkupParsers {
 
         val ts = new ArrayBuffer[Tree]
         val start = curOffset
-        tmppos = Position(curOffset)    // Iuli: added this line, as it seems content_LT uses tmppos when creating trees
+        tmppos = Span(curOffset)    // Iuli: added this line, as it seems content_LT uses tmppos when creating trees
         content_LT(ts)
 
         // parse more XML ?
@@ -366,7 +367,7 @@ object MarkupParsers {
             ts append element
             xSpaceOpt()
           }
-          handle.makeXMLseq(Position(start, curOffset, start), ts)
+          handle.makeXMLseq(Span(start, curOffset, start), ts)
         }
         else {
           assert(ts.length == 1)
@@ -410,7 +411,7 @@ object MarkupParsers {
      */
     def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
 
-    def reportSyntaxError(pos: Int, str: String): Unit = parser.syntaxError(str, pos)
+    def reportSyntaxError(offset: Int, str: String): Unit = parser.syntaxError(str, offset)
     def reportSyntaxError(str: String): Unit = {
       reportSyntaxError(curOffset, "in XML literal: " + str)
       nextch()
@@ -453,7 +454,7 @@ object MarkupParsers {
               throw TruncatedXMLControl
 
             case _    => // text
-              appendText(Position(start1, curOffset, start1), ts, xText)
+              appendText(Span(start1, curOffset, start1), ts, xText)
               // here xEmbeddedBlock might be true:
               // if (xEmbeddedBlock) throw new ApplicationError("after:" + text); // assert
           }
@@ -465,7 +466,7 @@ object MarkupParsers {
         debugLastStartElement = debugLastStartElement.tail
       }
 
-      handle.makeXMLpat(Position(start, curOffset, start), qname, ts)
+      handle.makeXMLpat(Span(start, curOffset, start), qname, ts)
     }
   } /* class MarkupParser */
 }

@@ -7,7 +7,7 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.util.SourceFile
 import dotc.ast.untpd
-
+import dotty.tools.dotc.core.StdNames.str
 
 import scala.annotation.internal.sharable
 
@@ -15,7 +15,7 @@ import scala.annotation.internal.sharable
 sealed trait ParseResult
 
 /** An error free parsing resulting in a list of untyped trees */
-case class Parsed(sourceCode: String, trees: List[untpd.Tree]) extends ParseResult
+case class Parsed(source: SourceFile, trees: List[untpd.Tree]) extends ParseResult
 
 /** A parsing result containing syntax `errors` */
 case class SyntaxErrors(sourceCode: String,
@@ -109,15 +109,14 @@ object ParseResult {
   @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
   private def parseStats(sourceCode: String)(implicit ctx: Context): List[untpd.Tree] = {
-    val source = new SourceFile("<console>", sourceCode)
-    val parser = new Parser(source)
+    val parser = new Parser(ctx.source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     stats
   }
 
   /** Extract a `ParseResult` from the string `sourceCode` */
-  def apply(sourceCode: String)(implicit ctx: Context): ParseResult =
+  def apply(sourceCode: String)(implicit state: State): ParseResult =
     sourceCode match {
       case "" => Newline
       case CommandExtract(cmd, arg) => cmd match {
@@ -131,8 +130,12 @@ object ParseResult {
         case _ => UnknownCommand(cmd)
       }
       case _ =>
+        implicit val ctx: Context = state.context
+
+        val source = SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode)
+
         val reporter = newStoreReporter
-        val stats = parseStats(sourceCode)(ctx.fresh.setReporter(reporter))
+        val stats = parseStats(sourceCode)(state.context.fresh.setReporter(reporter).withSource(source))
 
         if (reporter.hasErrors)
           SyntaxErrors(
@@ -140,7 +143,7 @@ object ParseResult {
             reporter.removeBufferedMessages,
             stats)
         else
-          Parsed(sourceCode, stats)
+          Parsed(source, stats)
     }
 
   /** Check if the input is incomplete

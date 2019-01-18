@@ -6,7 +6,8 @@ import ast._
 import core._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._
-import util.Positions._
+import util.Spans._
+import util.SourcePosition
 import java.util.regex.Matcher.quoteReplacement
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
@@ -15,18 +16,18 @@ object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: untpd.Tree, msg: => Message, pos: Position)(implicit ctx: Context): tpd.Tree =
-    tree withType errorType(msg, pos)
+  def errorTree(tree: untpd.Tree, msg: => Message, pos: SourcePosition)(implicit ctx: Context): tpd.Tree =
+    tree.withType(errorType(msg, pos))
 
   def errorTree(tree: untpd.Tree, msg: => Message)(implicit ctx: Context): tpd.Tree =
-    errorTree(tree, msg, tree.pos)
+    errorTree(tree, msg, tree.sourcePos)
 
-  def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
+  def errorType(msg: => Message, pos: SourcePosition)(implicit ctx: Context): ErrorType = {
     ctx.error(msg, pos)
     ErrorType(msg)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 
   class Errors(implicit ctx: Context) {
@@ -79,8 +80,10 @@ object ErrorReporting {
     def takesNoParamsStr(tree: Tree, kind: String): String =
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
-      else
+      else {
+        new FatalError("").printStackTrace()
         i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
+      }
 
     def patternConstrStr(tree: Tree): String = ???
 

@@ -9,7 +9,7 @@ import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Fla
 import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar._
 import ProtoTypes._
-import util.Positions._
+import util.Spans._
 import util.Property
 import collection.mutable
 import tpd.ListOfTreeDecorator
@@ -243,11 +243,12 @@ class Namer { typer: Typer =>
   }
 
   /** The enclosing class with given name; error if none exists */
-  def enclosingClassNamed(name: TypeName, pos: Position)(implicit ctx: Context): Symbol = {
+  def enclosingClassNamed(name: TypeName, span: Span)(implicit ctx: Context): Symbol = {
     if (name.isEmpty) NoSymbol
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
-      if (!cls.exists) ctx.error(s"no enclosing class or object is named $name", pos)
+      if (!cls.exists)
+        ctx.error(s"no enclosing class or object is named $name", ctx.source.atSpan(span))
       cls
     }
   }
@@ -265,7 +266,7 @@ class Namer { typer: Typer =>
   def createSymbol(tree: Tree)(implicit ctx: Context): Symbol = {
 
     def privateWithinClass(mods: Modifiers) =
-      enclosingClassNamed(mods.privateWithin, mods.pos)
+      enclosingClassNamed(mods.privateWithin, tree.span)
 
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
@@ -279,7 +280,7 @@ class Namer { typer: Typer =>
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
         if (!ok)
-          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
+          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.sourcePos)
         adapted
       }
 
@@ -292,7 +293,7 @@ class Namer { typer: Typer =>
 
     def checkNoConflict(name: Name): Name = {
       def errorName(msg: => String) = {
-        ctx.error(msg, tree.pos)
+        ctx.error(msg, tree.sourcePos)
         name.freshened
       }
       def preExisting = ctx.effectiveScope.lookup(name)
@@ -331,7 +332,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.namePos, ctx.source.file))
+            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -363,9 +364,9 @@ class Namer { typer: Typer =>
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
           _ => info,
-          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.namePos))
+          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
-        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.pos), tree)
+        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.span), tree)
       case _ =>
         NoSymbol
     }
@@ -404,7 +405,7 @@ class Namer { typer: Typer =>
       /** If there's already an existing type, then the package is a dup of this type */
       val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
       if (existingType.exists) {
-        ctx.error(PkgDuplicateSymbol(existingType), pid.pos)
+        ctx.error(PkgDuplicateSymbol(existingType), pid.sourcePos)
         ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
       else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
@@ -693,7 +694,7 @@ class Namer { typer: Typer =>
   }
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
-    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.pos)
+    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
     sym.resetFlag(Implicit)
   }
 
@@ -796,7 +797,7 @@ class Namer { typer: Typer =>
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
-      denot.info = avoidPrivateLeaks(sym, sym.pos)
+      denot.info = avoidPrivateLeaks(sym, sym.sourcePos)
     }
   }
 
@@ -869,7 +870,7 @@ class Namer { typer: Typer =>
               else {
                 if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
                   missingType(denot.symbol, "parent ")(creationContext)
-                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
               }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
@@ -886,7 +887,7 @@ class Namer { typer: Typer =>
         val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.pos,
+          val pt = checkClassType(ptype, parent.posd,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
@@ -894,15 +895,15 @@ class Namer { typer: Typer =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            ctx.error(CyclicInheritance(cls, addendum), parent.pos)
+            ctx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
             defn.ObjectType
           }
           else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
-              ctx.error(ExtendFinalClass(cls, pclazz), cls.pos)
+              ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-              ctx.error(UnableToExtendSealedClass(pclazz), cls.pos)
+              ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
             pt
           }
         }
@@ -916,7 +917,7 @@ class Namer { typer: Typer =>
           val moduleType = cls.owner.thisType select sourceModule
           if (self.name == nme.WILDCARD) moduleType
           else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
             self)
         }
         else createSymbol(self)
@@ -935,7 +936,7 @@ class Namer { typer: Typer =>
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
-        ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos))
+        ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
       val finalSelfInfo: TypeOrSymbol =
@@ -970,7 +971,7 @@ class Namer { typer: Typer =>
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.info = avoidPrivateLeaks(cls, cls.pos)
+      cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(Stable)
@@ -1129,7 +1130,7 @@ class Namer { typer: Typer =>
       }
 
       def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
-      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
+      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
       if (inherited.exists) {
         if (sym.is(Final, butNot = Method)) {
@@ -1155,7 +1156,7 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        checkMembersOK(inferredType, mdef.pos)
+        checkMembersOK(inferredType, mdef.sourcePos)
       case DependentTypeTree(tpFun) =>
         val tpe = tpFun(paramss.head)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
@@ -1167,7 +1168,7 @@ class Namer { typer: Typer =>
             val hygienicType = avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                i"it is not a supertype of the hygienic type $hygienicType", mdef.pos)
+                i"it is not a supertype of the hygienic type $hygienicType", mdef.sourcePos)
             //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>

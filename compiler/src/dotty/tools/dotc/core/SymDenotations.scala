@@ -2108,7 +2108,7 @@ object SymDenotations {
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
       def errMsg = BadSymbolicReference(denot)
-      ctx.error(errMsg, sym.pos)
+      ctx.error(errMsg, sym.sourcePos)
       if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)
     }
@@ -2302,7 +2302,7 @@ object SymDenotations {
 
     private def resize(size: Int) = {
       val classIds1 = new Array[Int](size)
-      Array.copy(classIds, 0, classIds1, 0, classIds.length min size)
+      System.arraycopy(classIds, 0, classIds1, 0, classIds.length min size)
       classIds = classIds1
     }
 

@@ -5,7 +5,8 @@ import core._
 import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
-import util.Positions._
+import util.Spans._
+import util.SourcePosition
 import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
@@ -255,14 +256,14 @@ class Staging extends MacroTransformWithImplicits {
      *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
      *                    to be added to the "inconsistent phase" message.
      */
-    def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
+    def tryHeal(tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == -1) {
           assert(ctx.inInlineMethod)
           None
         } else {
           val reqType = defn.QuotedTypeType.appliedTo(tp)
-          val tag = ctx.typer.inferImplicitArg(reqType, pos)
+          val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
             case fail: SearchFailureType =>
               Some(i"""
@@ -281,7 +282,7 @@ class Staging extends MacroTransformWithImplicits {
     /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
      *  by which we refer to `sym`.
      */
-    def check(sym: Symbol, tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    def check(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = {
       val isThis = tp.isInstanceOf[ThisType]
       def symStr =
         if (!isThis) sym.show
@@ -299,7 +300,7 @@ class Staging extends MacroTransformWithImplicits {
     }
 
     /** Check all named types and this-types in a given type for phase consistency. */
-    def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
+    def checkType(pos: SourcePosition)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
       def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
         tp match {
           case tp: TypeRef if tp.symbol.isSplice =>
@@ -312,11 +313,11 @@ class Staging extends MacroTransformWithImplicits {
               tp
             }
           case tp: NamedType =>
-            check(tp.symbol, tp, pos)
+            check(tp.symbol, tp, tp.symbol.sourcePos)
             if (!tp.symbol.is(Param))
               foldOver(acc, tp)
           case tp: ThisType =>
-            check(tp.cls, tp, pos)
+            check(tp.cls, tp, tp.cls.sourcePos)
             foldOver(acc, tp)
           case _ =>
             foldOver(acc, tp)
@@ -340,15 +341,15 @@ class Staging extends MacroTransformWithImplicits {
     private def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
       tree match {
         case (_: Ident) | (_: This) =>
-          check(tree.symbol, tree.tpe, tree.pos)
+          check(tree.symbol, tree.tpe, tree.sourcePos)
         case (_: UnApply)  | (_: TypeTree) =>
-          checkType(tree.pos).apply((), tree.tpe)
+          checkType(tree.sourcePos).apply((), tree.tpe)
         case Select(qual, OuterSelectName(_, levels)) =>
-          checkType(tree.pos).apply((), tree.tpe.widen)
+          checkType(tree.sourcePos).apply((), tree.tpe.widen)
         case _: Bind =>
-          checkType(tree.pos).apply((), tree.symbol.info)
+          checkType(tree.sourcePos).apply((), tree.symbol.info)
         case _: Template =>
-          checkType(tree.pos).apply((), tree.symbol.owner.asClass.givenSelfType)
+          checkType(tree.sourcePos).apply((), tree.symbol.owner.asClass.givenSelfType)
         case _ =>
       }
       tree
@@ -383,8 +384,8 @@ class Staging extends MacroTransformWithImplicits {
           if (level == 0 && !ctx.inInlineMethod) {
             val body2 =
               if (body1.isType) body1
-              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.pos), Nil, body1)
-            pickledQuote(body2, splices, body.tpe, isType).withPos(quote.pos)
+              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
+            pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
           }
           else {
             // In top-level splice in an inline def. Keep the tree as it is, it will be transformed at inline site.
@@ -436,22 +437,22 @@ class Staging extends MacroTransformWithImplicits {
       else if (level == 1) {
         val (body1, quotes) = nested(isQuote = false).split(splice.qualifier)
         val tpe = outer.embedded.getHoleType(splice)
-        val hole = makeHole(body1, quotes, tpe).withPos(splice.pos)
+        val hole = makeHole(body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
-        // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions. 
+        // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
         if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
-        else Inlined(EmptyTree, Nil, hole)
+        else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
-        val pos: SourcePosition = Decorators.sourcePos(enclosingInlineds.head.pos)(spliceCtx)
-        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
+        val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.span)
+        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withSpan(splice.span)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
       else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
-        ctx.error(i"splice outside quotes or inline method", splice.pos)
+        ctx.error(i"splice outside quotes or inline method", splice.sourcePos)
         splice
       }
       else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside an inline definition
@@ -459,7 +460,9 @@ class Staging extends MacroTransformWithImplicits {
         splice
       }
       else { // level 0 inside an inline definition
-        ctx.error("Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or inline.".stripMargin, splice.pos)
+        ctx.error(
+          "Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or inline.".stripMargin,
+          splice.sourcePos)
         splice
       }
     }
@@ -512,7 +515,8 @@ class Staging extends MacroTransformWithImplicits {
                 captured.put(tree.symbol, capturedArg)
                 capturedArg
               }
-              ref(captured.getOrElseUpdate(tree.symbol, newCapture).symbol)
+              val refSym = captured.getOrElseUpdate(tree.symbol, newCapture).symbol
+              ref(refSym).withSpan(tree.span)
             }
           }
         )
@@ -574,7 +578,7 @@ class Staging extends MacroTransformWithImplicits {
             quotation(quotedTree, tree)
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
             val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            splice(ref(splicedType).select(tpnme.UNARY_~).withPos(tree.pos))
+            splice(ref(splicedType).select(tpnme.UNARY_~).withSpan(tree.span))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
           case tree: RefTree if tree.symbol.is(Inline) && tree.symbol.is(Param) =>
@@ -615,7 +619,7 @@ class Staging extends MacroTransformWithImplicits {
                     |
                     | * The contents of the splice must call a static method
                     | * All arguments must be quoted or inline
-                  """.stripMargin, tree.rhs.pos)
+                  """.stripMargin, tree.rhs.sourcePos)
                 EmptyTree
             }
           case _ =>
