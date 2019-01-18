@@ -36,6 +36,10 @@ object TypTest {
     def n: Int = ???
   }
 
+  class B {
+    def x:Int = 4
+  }
+
   class C extends M {
     val p = new TypP
     val x = p.x
@@ -71,7 +75,7 @@ object TypTest {
     typeLambda1[({ type L[T] = List[T] })#L]
 
     object ClassInfoType1
-    class ClassInfoType2 extends B { def x = 42 }
+    class ClassInfoType2 extends B { override def x = 42 }
     trait ClassInfoType3[T]
 
     object MethodType {
