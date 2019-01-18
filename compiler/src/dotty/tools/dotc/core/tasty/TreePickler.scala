@@ -15,13 +15,13 @@ import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
 import util.SourceFile
-import annotation.transientParam
+import annotation.constructorOnly
 
 object TreePickler {
 
   val sectionName = "ASTs"
 
-  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @transientParam src: SourceFile) extends tpd.Tree {
+  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }

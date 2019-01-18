@@ -8,12 +8,12 @@ import core.Contexts.Context
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
-import annotation.transientParam
+import annotation.constructorOnly
 import annotation.internal.sharable
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @transientParam src: SourceFile) extends Product with Cloneable {
+abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Product with Cloneable {
 
   private[this] var myUniqueId: Int = _
   private[this] var mySpan: Span = _

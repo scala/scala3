@@ -35,7 +35,7 @@ import core.quoted.PickledQuotes
 import scala.quoted
 import scala.quoted.Types.TreeType
 import scala.quoted.Exprs.TastyTreeExpr
-import scala.annotation.transientParam
+import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 
 /** Unpickler for typed trees
@@ -106,7 +106,7 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class Completer(reader: TastyReader)(implicit @transientParam ctx: Context) extends LazyType {
+  class Completer(reader: TastyReader)(implicit @constructorOnly ctx: Context) extends LazyType {
     import reader._
     val owner = ctx.owner
     val source = ctx.source

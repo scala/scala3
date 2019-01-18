@@ -13,8 +13,8 @@ import scala.annotation.meta._
 /** An annotation that goes on parameters of classes or traits. It asserts
  *  that the parameter is used only for initialization and is not kept in
  *  the class as a field. Violations of this assertion are flagged as
- *  compile errors. The annotatoon is particularly useful for implicit
+ *  compile errors. The annotation is particularly useful for implicit
  *  parameters since for these a textual scan is not sufficient to know
  *  where they are used.
  */
-@param class transientParam extends scala.annotation.StaticAnnotation
+@param class constructorOnly extends scala.annotation.StaticAnnotation
