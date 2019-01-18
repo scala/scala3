@@ -754,6 +754,10 @@ object Contexts {
     override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
     override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
 
+    override protected def typeLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+      ctx.typeComparer.lub(tp1, tp2, admitSingletons = true)
+    }
+
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
@@ -777,21 +781,6 @@ object Contexts {
           val descr = i"$externalizedTp1 frozen_${if (isSubtype) "<:<" else ">:>"} $externalizedTp2"
           i"$descr = $res"
         }, gadts)
-      }
-
-      // avoid recording skolems in lower bounds
-      // recording two skolem bounds results in an union, which is then simplified
-      // T >: Sko(U) | Sko(U) is simplified to T >: U, which is simply wrong
-      // instead, we only ensure that new bounds would be satisfiable
-      // TODO: this likely causes unsoundness
-      // TODO: it should be removed after we added support for singleton type unions
-      if (!isUpper) bound match {
-        case _: SkolemType =>
-          val TypeBounds(lo, hi) = bounds(sym)
-          val newLo = lo | bound
-          gadts.println(i"replacing skolem bound  $sym <:< $bound  with  $newLo <:< $hi")
-          return newLo <:< hi
-        case _ => ;
       }
 
       val symTvar: TypeVar = stripInternalTypeVar(tvar(sym)) match {

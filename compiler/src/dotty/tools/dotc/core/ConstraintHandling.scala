@@ -27,6 +27,7 @@ trait ConstraintHandling[AbstractContext] {
 
   protected def isSubType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
   protected def isSameType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
+  protected def typeLub(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Type
 
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
@@ -102,7 +103,7 @@ trait ConstraintHandling[AbstractContext] {
           homogenizeArgs = Config.alignArgsInAnd
           try
             if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
-            else oldBounds.derivedTypeBounds(lo | bound, hi)
+            else oldBounds.derivedTypeBounds(typeLub(lo, bound), hi)
           finally homogenizeArgs = saved
         }
         val c1 = constraint.updateEntry(param, narrowedBounds)
