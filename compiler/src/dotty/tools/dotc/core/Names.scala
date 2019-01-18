@@ -376,7 +376,7 @@ object Names {
 
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
-      Array.copy(chrs, start, cs, 0, length)
+      System.arraycopy(chrs, start, cs, 0, length)
       for (i <- 0 until length) {
         if (cs(i) == from) cs(i) = to
       }

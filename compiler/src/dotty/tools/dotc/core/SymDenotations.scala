@@ -2302,7 +2302,7 @@ object SymDenotations {
 
     private def resize(size: Int) = {
       val classIds1 = new Array[Int](size)
-      Array.copy(classIds, 0, classIds1, 0, classIds.length min size)
+      System.arraycopy(classIds, 0, classIds1, 0, classIds.length min size)
       classIds = classIds1
     }
 

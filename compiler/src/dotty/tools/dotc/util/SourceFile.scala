@@ -180,7 +180,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     val id = chunks << ChunkSizeLog
     if (chunks == sourceOfChunk.length) {
       val a = new Array[SourceFile](chunks * 2)
-      Array.copy(sourceOfChunk, 0, a, 0, chunks)
+      System.arraycopy(sourceOfChunk, 0, a, 0, chunks)
       sourceOfChunk = a
     }
     sourceOfChunk(chunks) = this

@@ -34,7 +34,7 @@ object Rewrites {
       @tailrec def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
         def copy(upTo: Int): Int = {
           val untouched = upTo - inIdx
-          Array.copy(cs, inIdx, ds, outIdx, untouched)
+          System.arraycopy(cs, inIdx, ds, outIdx, untouched)
           outIdx + untouched
         }
         ps match {

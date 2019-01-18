@@ -137,7 +137,7 @@ class TreeBuffer extends TastyBuffer(50000) {
     var i = 0
     var wasted = 0
     def shift(end: Int) =
-      Array.copy(bytes, start, bytes, start - lastDelta, end - start)
+      System.arraycopy(bytes, start, bytes, start - lastDelta, end - start)
     while (i < numOffsets) {
       val next = offsets(i)
       shift(next)
