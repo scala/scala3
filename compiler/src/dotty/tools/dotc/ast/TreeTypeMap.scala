@@ -162,7 +162,7 @@ class TreeTypeMap(
       assert(!to.exists(substFrom contains _))
       assert(!from.exists(newOwners contains _))
       assert(!to.exists(oldOwners contains _))
-      new TreeTypeMap(
+      newTreeTypeMap(
         typeMap,
         treeMap,
         from ++ oldOwners,
@@ -170,6 +170,11 @@ class TreeTypeMap(
         from ++ substFrom,
         to ++ substTo)
     }
+
+  protected def newTreeTypeMap(typeMap: Type => Type, treeMap: tpd.Tree => tpd.Tree,
+      oldOwners: List[Symbol], newOwners: List[Symbol], substFrom: List[Symbol], substTo: List[Symbol]) = {
+    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+  }
 
   /** Apply `typeMap` and `ownerMap` to given symbols `syms`
    *  and return a treemap that contains the substitution

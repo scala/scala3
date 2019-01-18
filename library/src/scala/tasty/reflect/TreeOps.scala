@@ -637,7 +637,7 @@ trait TreeOps extends Core {
 
     /** Scala local `return` */
     val Return: ReturnModule
-    abstract class ReturnModule {
+    abstract class ReturnModule { // TODO should we expose explicitly the returns `from`?
 
       /** Creates `return <expr: Term>` */
       def apply(expr: Term)(implicit ctx: Context): Return

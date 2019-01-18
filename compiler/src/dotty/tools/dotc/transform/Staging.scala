@@ -1,21 +1,24 @@
-package dotty.tools.dotc
-package transform
+package dotty.tools.dotc.transform
 
-import core._
-import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
-import ast.Trees._
-import ast.{TreeTypeMap, untpd}
-import util.Positions._
-import tasty.TreePickler.Hole
-import SymUtils._
-import NameKinds._
-import dotty.tools.dotc.ast.tpd
-import typer.Implicits.SearchFailureType
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
+import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.tasty.TreePickler.Hole
+import dotty.tools.dotc.reporting
+import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.typer.Implicits.SearchFailureType
+import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
-import dotty.tools.dotc.util.SourcePosition
 
 
 /** Checks that the phase consistency principle (PCP) holds, heals types and expand macros.
@@ -83,7 +86,7 @@ class Staging extends MacroTransformWithImplicits {
       * These will be turned into splices using `addTags` and represent types spliced
       * explicitly.
       */
-    val explicitTags = new mutable.LinkedHashSet[TypeRef]()
+    val explicitTags = new mutable.LinkedHashSet[(TypeRef, Position)]()
 
     /** A stack of entered symbols, to be unwound after scope exit */
     var enteredSyms: List[Symbol] = Nil
@@ -111,7 +114,8 @@ class Staging extends MacroTransformWithImplicits {
           name = UniqueName.fresh("T".toTermName).toTypeName,
           flags = Synthetic,
           info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)),
-          coord = typeRef.prefix.termSymbol.coord).asType
+          coord = alias.pos
+        ).asType
 
         ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
       }
@@ -126,11 +130,11 @@ class Staging extends MacroTransformWithImplicits {
         importedTags.clear()
 
         // The tree of the tag for each tag comes from a type ref e.g., ~t
-        val explicitTypeDefs = for (tref <- explicitTags) yield {
-          val tag = ref(tref.prefix.termSymbol)
+        val explicitTypeDefs = for ((tref, pos) <- explicitTags) yield {
+          val tag = ref(tref.prefix.termSymbol).withPos(pos)
           mkTagSymbolAndAssignType(tref, tag)
         }
-        val tagsExplicitTypeDefsPairs = explicitTags.zip(explicitTypeDefs)
+        val tagsExplicitTypeDefsPairs = explicitTags.map(_._1).zip(explicitTypeDefs)
         explicitTags.clear()
 
         // Maps type splices to type references of tags e.g., ~t -> some type T$1
@@ -150,8 +154,52 @@ class Staging extends MacroTransformWithImplicits {
           }
         }
 
+        /** Type tree map that does not tag type at level 0 */
+        class QuoteTreeTypeMap(
+            typeMap: Type => Type = IdentityTypeMap,
+            treeMap: tpd.Tree => tpd.Tree = identity _,
+            oldOwners: List[Symbol] = Nil,
+            newOwners: List[Symbol] = Nil,
+            substFrom: List[Symbol] = Nil,
+            substTo: List[Symbol] = Nil
+        )(implicit ctx: Context) extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) { self =>
+
+          protected var level = 1 // TODO use context to keep track of the level
+
+          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+            if (level == 0) {
+              // Keep transforming but do not replace insert the taged types. Types in nested quotes are also not taged.
+              val (sFrom, sTo) = substFrom.zip(substTo).filterNot(_._2.is(Synthetic)).unzip // TODO Syntetic is probably not enugh to distinguish added types
+              new TreeTypeMap(typeMap, treeMap,
+                oldOwners, newOwners,
+                sFrom, sTo
+              ).transform(tree)
+            }
+            else if (tree.symbol.isSplice) {
+              level -= 1
+              try super.transform(tree)
+              finally level += 1
+            } else if (tree.symbol.isQuote) {
+              level += 1
+              try super.transform(tree)
+              finally level -= 1
+            }
+            else super.transform(tree)
+
+          }
+
+          protected override def newTreeTypeMap(typeMap: Type => Type, treeMap: tpd.Tree => tpd.Tree,
+                                                oldOwners: List[Symbol], newOwners: List[Symbol],
+                                                substFrom: List[Symbol], substTo: List[Symbol]) = {
+            new QuoteTreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) {
+              level = self.level
+            }
+          }
+
+        }
+
         Block(typeDefs ++ explicitTypeDefs,
-          new TreeTypeMap(
+          new QuoteTreeTypeMap(
             treeMap = trMap,
             typeMap = tpMap,
             substFrom = itags.map(_._1.symbol),
@@ -243,7 +291,7 @@ class Staging extends MacroTransformWithImplicits {
         tp match {
           case tp: TypeRef if tp.symbol.isSplice =>
             if (inQuote) {
-              explicitTags += tp
+              explicitTags += Tuple2(tp, pos)
               outer.checkType(pos).foldOver(acc, tp)
             }
             else {
@@ -333,7 +381,7 @@ class Staging extends MacroTransformWithImplicits {
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
-        val pos: SourcePosition = Decorators.sourcePos(enclosingInlineds.head.pos)(spliceCtx)
+        val pos: SourcePosition = sourcePos(enclosingInlineds.head.pos)(spliceCtx)
         val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
@@ -396,7 +444,7 @@ class Staging extends MacroTransformWithImplicits {
             tree.rhs match {
               case InlineSplice(_) =>
                 mapOverTree(enteredSyms) // Ignore output, only check PCP
-                cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
+                tree
               case _ =>
                 ctx.error(
                   """Malformed macro.
