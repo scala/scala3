@@ -128,7 +128,7 @@ object PickledQuotes {
   }
 
   private def functionAppliedTo(fn: Tree, args: List[Tree])(implicit ctx: Context): Tree = {
-    val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg))
+    val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span))
     def argRefs() = argVals.map(argVal => ref(argVal.symbol))
     def rec(fn: Tree): Tree = fn match {
       case Inlined(call, bindings, expansion) =>
