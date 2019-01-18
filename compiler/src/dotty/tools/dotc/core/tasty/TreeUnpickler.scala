@@ -111,16 +111,9 @@ class TreeUnpickler(reader: TastyReader,
     val owner = ctx.owner
     val source = ctx.source
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
-      val sourceToUse = if (source.exists) source else ctx.source
-        // TODO: remove. This is a hack to get pickling tests (notable tuple-cons-2.scala
-        // to pass. The problem is that without a bootstrapped library some unpicked
-        // files are lacking a source, and if these are completed from Definitions
-        // there's also no external source given in `context`. In that case we switch
-        // late and pick the calling context's source. We can drop this hack once
-        // all Tasty trees have a SOURCE entry, which will determine the context source
       treeAtAddr(currentAddr) =
         new TreeReader(reader).readIndexedDef()(
-          ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withSource(sourceToUse))
+          ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withSource(source))
     }
   }
 
