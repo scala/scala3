@@ -69,7 +69,7 @@ object Parsers {
     /* ------------- POSITIONS ------------------------------------------- */
 
     /** Positions tree.
-     *  If `t` does not have a position yet, set its position to the given one.
+     *  If `t` does not have a span yet, set its span to the given one.
      */
     def atSpan[T <: Positioned](span: Span)(t: T): T =
       if (t.span.isSourceDerived) t else t.withSpan(span)
@@ -77,11 +77,11 @@ object Parsers {
     def atSpan[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atSpan(Span(start, end, point))(t)
 
-    /** If the last read offset is strictly greater than `start`, position tree
-     *  to position spanning from `start` to last read offset, with given point.
+    /** If the last read offset is strictly greater than `start`, assign tree
+     *  the span from `start` to last read offset, with given point.
      *  If the last offset is less than or equal to start, the tree `t` did not
-     *  consume any source for its construction. In this case, don't position it yet,
-     *  but wait for its position to be determined by `setChildSpans` when the
+     *  consume any source for its construction. In this case, don't assign a span yet,
+     *  but wait for its span to be determined by `setChildSpans` when the
      *  parent node is positioned.
      */
     def atSpan[T <: Positioned](start: Offset, point: Offset)(t: T): T =
@@ -128,9 +128,9 @@ object Parsers {
         lastErrorOffset = in.offset
       }
 
-    /** Unconditionally issue an error at given position, without
-      *  updating lastErrorOffset.
-      */
+    /** Unconditionally issue an error at given span, without
+     *  updating lastErrorOffset.
+     */
     def syntaxError(msg: => Message, span: Span): Unit =
       ctx.error(msg, source.atSpan(span))
   }
@@ -1559,7 +1559,7 @@ object Parsers {
     }
 
     /** Block ::= BlockStatSeq
-     *  @note  Return tree does not carry source position.
+     *  @note  Return tree does not have a defined span.
      */
     def block(): Tree = {
       val stats = blockStatSeq()
@@ -1892,7 +1892,7 @@ object Parsers {
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)
 
-    /** Adjust start of annotation or constructor to position of preceding @ or new */
+    /** Adjust start of annotation or constructor to offset of preceding @ or new */
     def adjustStart(start: Offset)(tree: Tree): Tree = {
       val tree1 = tree match {
         case Apply(fn, args) => cpy.Apply(tree)(adjustStart(start)(fn), args)
@@ -2101,7 +2101,7 @@ object Parsers {
       val offset = accept(IMPORT)
       commaSeparated(importExpr) match {
         case t :: rest =>
-          // The first import should start at the position of the keyword.
+          // The first import should start at the start offset of the keyword.
           val firstPos =
             if (t.span.exists) t.span.withStart(offset)
             else Span(offset, in.lastOffset)
@@ -2155,8 +2155,8 @@ object Parsers {
           val to = termIdentOrWildcard()
           val toWithPos =
             if (to.name == nme.ERROR)
-              // error identifiers don't consume any characters, so atSpan(start)(id) wouldn't set a position.
-              // Some testcases would then fail in Positioned.checkPos. Set a position anyway!
+              // error identifiers don't consume any characters, so atSpan(start)(id) wouldn't set a span.
+              // Some testcases would then fail in Positioned.checkPos. Set a span anyway!
               atSpan(start, start, in.lastOffset)(to)
             else
               to
