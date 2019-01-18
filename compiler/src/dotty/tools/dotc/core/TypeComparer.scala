@@ -1603,13 +1603,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
    */
   final def orType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type = {
-    if (isErased) {
-      // After erasure, C | Null is just C, if C is a reference type.
-      // This is because types are nullable for the JVM, no matter what
-      // our non-nullable type system says.
-      if (tp1.widenDealias == defn.NullType && tp2.derivesFrom(defn.ObjectClass)) return tp2
-      if (tp2.widenDealias == defn.NullType && tp1.derivesFrom(defn.ObjectClass)) return tp1
-    }
     val t1 = distributeOr(tp1, tp2)
     if (t1.exists) t1
     else {
