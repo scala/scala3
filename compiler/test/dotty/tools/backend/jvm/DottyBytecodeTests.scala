@@ -565,4 +565,62 @@ class TestBCode extends DottyBytecodeTest {
       assertEquals(14, instructionsFromMethod(method).size)
     }
   }
+
+  /* Test that objects compile to *final* classes. */
+
+  def checkFinalClass(outputClassName: String, source: String) = {
+    checkBCode(source) {
+      dir =>
+        val moduleIn   = dir.lookupName(outputClassName, directory = false)
+        val moduleNode = loadClassNode(moduleIn.input)
+        assert((moduleNode.access & Opcodes.ACC_FINAL) != 0)
+    }
+  }
+
+  @Test def objectsAreFinal =
+    checkFinalClass("Foo$.class", "object Foo")
+
+  @Test def objectsInClassAreFinal =
+    checkFinalClass("Test$Foo$.class",
+      """class Test {
+        |  object Foo
+        |}
+      """.stripMargin)
+
+  @Test def objectsInObjsAreFinal =
+    checkFinalClass("Test$Foo$.class",
+      """object Test {
+        |  object Foo
+        |}
+      """.stripMargin)
+
+  @Test def objectsInObjDefAreFinal =
+    checkFinalClass("Test$Foo$1$.class",
+      """
+        |object Test {
+        |  def bar() = {
+        |    object Foo
+        |  }
+        |}
+      """.stripMargin)
+
+  @Test def objectsInClassDefAreFinal =
+    checkFinalClass("Test$Foo$1$.class",
+      """
+        |class Test {
+        |  def bar() = {
+        |    object Foo
+        |  }
+        |}
+      """.stripMargin)
+
+  @Test def objectsInObjValAreFinal =
+    checkFinalClass("Test$Foo$1$.class",
+      """
+        |class Test {
+        |  val bar = {
+        |    object Foo
+        |  }
+        |}
+      """.stripMargin)
 }
