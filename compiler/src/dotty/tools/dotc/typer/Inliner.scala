@@ -130,21 +130,17 @@ object Inliner {
        *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
        */
       class Reposition extends TreeMap {
-        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-          if (tree.source != ctx.source && tree.source.exists)
-            transform(tree)(ctx.withSource(tree.source))
-          else tree match {
-            case tree: Inlined => transformInline(tree)
-            case _ =>
-              val transformed = super.transform(tree)
-              enclosingInlineds match {
-                case call :: _ if call.symbol.source != curSource =>
-                  // Until we implement JSR-45, we cannot represent in output positions in other source files.
-                  // So, reposition inlined code from other files with the call position:
-                  transformed.withSpan(inlined.call.span)
-                case _ => transformed
-              }
-          }
+        override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+          case tree: Inlined => transformInline(tree)
+          case _ =>
+            val transformed = super.transform(tree)
+            enclosingInlineds match {
+              case call :: _ if call.symbol.source != curSource =>
+                // Until we implement JSR-45, we cannot represent in output positions in other source files.
+                // So, reposition inlined code from other files with the call position:
+                transformed.withSpan(inlined.call.span)
+              case _ => transformed
+            }
         }
         def transformInline(tree: Inlined)(implicit ctx: Context): Tree = {
           tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))
