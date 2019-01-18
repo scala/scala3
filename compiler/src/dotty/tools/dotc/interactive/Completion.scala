@@ -150,7 +150,9 @@ object Completion {
       nameToSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
         val desc = description(typesFirst)
-        Completion(name.toString, desc, typesFirst)
+        val strName = name.toString
+        val label = if (strName == "$u2192") "→" else strName // TODO fix name.decode and use it
+        Completion(label, desc, typesFirst)
       }
     }
 
@@ -207,11 +209,17 @@ object Completion {
      * considered.
      */
     def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit = {
-      addAccessibleMembers(qual.tpe)
-      if (!mode.is(Mode.Import)) {
-        // Implicit conversions do not kick in when importing
-        implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
-          .foreach(addAccessibleMembers)
+      if (qual.tpe =:= defn.NothingType)
+        ()
+      else if (qual.tpe =:= defn.NullType)
+        addAccessibleMembers(defn.AnyRefType)
+      else {
+        addAccessibleMembers(qual.tpe)
+        if (!mode.is(Mode.Import)) {
+          // Implicit conversions do not kick in when importing
+          implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
+            .foreach(addAccessibleMembers)
+        }
       }
     }
 
