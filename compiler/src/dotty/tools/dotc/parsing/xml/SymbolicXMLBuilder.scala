@@ -28,7 +28,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   import Constants.Constant
   import untpd._
 
-  import parser.atPos
+  import parser.atSpan
 
   private[parsing] var isPattern: Boolean = _
 
@@ -105,25 +105,25 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     def pat    = Apply(_scala_xml__Elem, List(pre, label, wild, wild) ::: convertToTextPat(children))
     def nonpat = New(_scala_xml_Elem, List(List(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ::: starArgs))
 
-    atPos(span) { if (isPattern) pat else nonpat }
+    atSpan(span) { if (isPattern) pat else nonpat }
   }
 
   final def entityRef(span: Span, n: String): Tree =
-    atPos(span)( New(_scala_xml_EntityRef, LL(const(n))) )
+    atSpan(span)( New(_scala_xml_EntityRef, LL(const(n))) )
 
   // create scala.xml.Text here <: scala.xml.Node
-  final def text(span: Span, txt: String): Tree = atPos(span) {
+  final def text(span: Span, txt: String): Tree = atSpan(span) {
     if (isPattern) makeTextPat(const(txt))
     else makeText1(const(txt))
   }
 
   def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
   def makeText1(txt: Tree): Tree                  = New(_scala_xml_Text, LL(txt))
-  def comment(span: Span, text: String): Tree  = atPos(span)( Comment(const(text)) )
-  def charData(span: Span, txt: String): Tree  = atPos(span)( makeText1(const(txt)) )
+  def comment(span: Span, text: String): Tree  = atSpan(span)( Comment(const(text)) )
+  def charData(span: Span, txt: String): Tree  = atSpan(span)( makeText1(const(txt)) )
 
   def procInstr(span: Span, target: String, txt: String): Tree =
-    atPos(span)( ProcInstr(const(target), const(txt)) )
+    atSpan(span)( ProcInstr(const(target), const(txt)) )
 
   protected def Comment(txt: Tree): Tree                  = New(_scala_xml_Comment, LL(txt))
   protected def ProcInstr(target: Tree, txt: Tree): Tree  = New(_scala_xml_ProcInstr, LL(target, txt))
@@ -163,7 +163,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
-    atPos(span)( Block(buffer :: applies.toList, Ident(_buf)) )
+    atSpan(span)( Block(buffer :: applies.toList, Ident(_buf)) )
   }
 
   /** Returns (Some(prefix) | None, rest) based on position of ':' */
@@ -174,10 +174,10 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
 
   /** Various node constructions. */
   def group(span: Span, args: Seq[Tree]): Tree =
-    atPos(span)( New(_scala_xml_Group, LL(makeXMLseq(span, args))) )
+    atSpan(span)( New(_scala_xml_Group, LL(makeXMLseq(span, args))) )
 
   def unparsed(span: Span, str: String): Tree =
-    atPos(span)( New(_scala_xml_Unparsed, LL(const(str))) )
+    atSpan(span)( New(_scala_xml_Unparsed, LL(const(str))) )
 
   def element(span: Span, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree]): Tree = {
     def handleNamespaceBinding(pre: String, z: String): Tree = {
@@ -210,7 +210,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
       case (None, x)    => (null, x)
     }
 
-    def mkAttributeTree(pre: String, key: String, value: Tree) = atPos(span.toSynthetic) {
+    def mkAttributeTree(pre: String, key: String, value: Tree) = atSpan(span.toSynthetic) {
       // XXX this is where we'd like to put Select(value, nme.toString_) for #1787
       // after we resolve the Some(foo) situation.
       val baseArgs = List(const(key), value, Ident(_md))
@@ -254,6 +254,6 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
       args
     )
 
-    atPos(span.toSynthetic)(new XMLBlock(nsResult, new XMLBlock(attrResult, body)))
+    atSpan(span.toSynthetic)(new XMLBlock(nsResult, new XMLBlock(attrResult, body)))
   }
 }
