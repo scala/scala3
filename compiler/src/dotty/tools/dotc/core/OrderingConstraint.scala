@@ -200,7 +200,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     (nonParamBounds(param).hi /: minUpper(param))(_ & _)
 
   def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
-    nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
+    nonParamBounds(param)// .derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
   def typeVarOfParam(param: TypeParamRef): Type = {
     val entries = boundsMap(param.binder)
