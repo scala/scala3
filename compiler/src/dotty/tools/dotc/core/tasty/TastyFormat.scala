@@ -228,7 +228,9 @@ Standard Section: "Positions" Assoc*
                                             // offset_Deltas give difference of start/end offset wrt to the
                                             // same offset in the previously recorded node (or 0 for the first recorded node)
   Delta         = Int                       // Difference between consecutive offsets,
-  SOURCE        = 4                         // Impossible as header
+  SOURCE        = 4                         // Impossible as header, since addr_Delta = 0 implies that we refer to the
+                                            // same treeas the previous one, but then hasStartDiff = 1 implies that
+                                            // the tree's range starts later than the range of itself.
 
 All elements of a position section are serialized as Ints
 

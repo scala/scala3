@@ -190,7 +190,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 }
 object SourceFile {
-  implicit def eqSurce: Eq[SourceFile, SourceFile] = Eq
+  implicit def eqSource: Eq[SourceFile, SourceFile] = Eq
 
   implicit def fromContext(implicit ctx: Context): SourceFile = ctx.source
 
@@ -202,6 +202,8 @@ object SourceFile {
 
   private final val ChunkSizeLog = 10
   private final val ChunkSize = 1 << ChunkSizeLog
+
+  // These two vars are sharable because they're only used in the synchronized block in newChunk
   @sharable private var chunks: Int = 0
   @sharable private var sourceOfChunk: Array[SourceFile] = new Array[SourceFile](2000)
 }

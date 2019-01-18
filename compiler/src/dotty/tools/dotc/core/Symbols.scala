@@ -655,9 +655,6 @@ object Symbols {
 
     /** The position of this symbol, or NoSpan if the symbol was not loaded
      *  from source or from TASTY. This is always a zero-extent position.
-     *
-     *  NOTE: If the symbol was not loaded from the current compilation unit,
-     *  the implicit conversion `sourcePos` will return the wrong result, careful!
      */
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
