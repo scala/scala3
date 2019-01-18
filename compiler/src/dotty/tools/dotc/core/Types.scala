@@ -247,7 +247,7 @@ object Types {
     def isRefToNull(implicit ctx: Context): Boolean = this.isRef(defn.NullClass)
 
     /** Is this (after widening and dealiasing) a type of the form `T | Null`? */
-    def isNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
+    def isNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normNullableUnion match {
       case OrType(_, right) => right.isRefToNull
       case _ => false
     }
@@ -272,7 +272,7 @@ object Types {
     }
 
     /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
-    def isJavaNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normalizeNull match {
+    def isJavaNullableUnion(implicit ctx: Context): Boolean = this.widenDealias.normNullableUnion match {
       case OrType(_, right) => right.isJavaNullType
       case _ => false
     }
@@ -460,7 +460,7 @@ object Types {
         if (lsym isSubClass rsym) rsym
         else if (rsym isSubClass lsym) lsym
         else if (this.isNullableUnion) {
-          val OrType(left, _) = this.normalizeNull
+          val OrType(left, _) = this.normNullableUnion
           // If `left` is a reference type, then the class LUB of `left | Null` is `RefEq`.
           // This is another one-of case that keeps this method sound, but not complete.
           if (left.classSymbol isSubClass defn.ObjectClass) defn.RefEqClass
@@ -1014,19 +1014,19 @@ object Types {
     }
 
     /** Strips the nullability from a type: `T | Null` goes to `T` */
-    def stripNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
+    def stripNull(implicit ctx: Context): Type = this.widenDealias.normNullableUnion match {
       case OrType(left, right) if right.isRefToNull => left.stripNull
       case _ => this
     }
 
-    /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
-    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeNull match {
+    /** Strips the Java nullability from a type: `T | JavaNull` goes to `T` */
+    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normNullableUnion match {
       case OrType(left, right) if right.isJavaNullType => left.stripJavaNull
       case _ => this
     }
 
-    /** Converts types of the form `Null | T` to `T | Null`. Does not d o any widening or dealiasing. */
-    def normalizeNull(implicit ctx: Context): Type = {
+    /** Normalizes nullable unions so that `Null` is the last operand (e.g. `Null|T` goes to `T|Null`) */
+    def normNullableUnion(implicit ctx: Context): Type = {
       // TODO(abeln): make normalization more robust (e.g. so it can handle nested unions).
       this match {
         case OrType(left, right) if left.isRefToNull => OrType(right, left)
@@ -1052,8 +1052,7 @@ object Types {
      *  base type by applying one or more `underlying` dereferences.
      */
     final def widenSingleton(implicit ctx: Context): Type = stripTypeVar.stripAnnots match {
-      case tp: SingletonType if !tp.isOverloaded =>
-        tp.underlying.widenSingleton
+      case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
 
@@ -1102,10 +1101,8 @@ object Types {
     def widenUnion(implicit ctx: Context): Type = this match {
       case OrType(tp1, tp2) =>
         if (isNullableUnion) {
-          normalizeNull match {
-            case OrType(leftTpe, nullTpe) => OrType(leftTpe.widenUnion, nullTpe)
-            case tpe => assert(false, s"Expected a union type, but got ${tpe.show}"); tpe
-          }
+          val OrType(leftTpe, nullTpe) = normNullableUnion
+          OrType(leftTpe.widenUnion, nullTpe)
         } else {
           ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
             case union: OrType => union.join
@@ -1780,7 +1777,7 @@ object Types {
     // This is a hack to detect whether `this` is an instance of `NonNullTermRef`, and adjust
     // the denotation accordingly. The "adjustment" happens in `computeDenot`, which is currently
     // marked as private.
-    // Figure out a different code structure.
+    // Overriden in `NonNullTermRef`.
     protected val isNonNull: Boolean = false
 
     // Invariants:
@@ -2379,7 +2376,6 @@ object Types {
       // We need to set the non-null denotation directly because normally the "non-nullable" denotations
       // are created in `computeDenot`, but they _won't_ be computed if the original `tref` _already_ had
       // a cached denotation.
-      // This is brittle, since `This`
       nn.withDenot(denot)
     }
   }
@@ -4344,7 +4340,7 @@ object Types {
       case _ =>
         NoType
     }
-
+    
     def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = zeroParamClass(tp) match {
       case cinfo: ClassInfo =>
         val selfType = cinfo.selfType.asSeenFrom(tp, cinfo.cls)
