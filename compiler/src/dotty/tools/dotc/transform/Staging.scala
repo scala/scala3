@@ -102,6 +102,9 @@ class Staging extends MacroTransformWithImplicits {
      *  references to `TypeI` in `expr` are rewired to point to the locally
      *  defined versions. As a side effect, prepend the expressions `tag1, ..., `tagN`
      *  as splices to `embedded`.
+     *
+     *  `TypeI` is replaced everywere in <expr> exept in the contents of a splice that
+     *   is at level 1 (i.e. a nested tree at level zero).
      */
     private def addTags(expr: Tree)(implicit ctx: Context): Tree = {
 
@@ -155,51 +158,61 @@ class Staging extends MacroTransformWithImplicits {
         }
 
         /** Type tree map that does not tag type at level 0 */
-        class QuoteTreeTypeMap(
-            typeMap: Type => Type = IdentityTypeMap,
-            treeMap: tpd.Tree => tpd.Tree = identity _,
-            oldOwners: List[Symbol] = Nil,
-            newOwners: List[Symbol] = Nil,
-            substFrom: List[Symbol] = Nil,
-            substTo: List[Symbol] = Nil
-        )(implicit ctx: Context) extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) { self =>
-
-          protected var level = 1 // TODO use context to keep track of the level
-
-          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-            if (level == 0) {
-              // Keep transforming but do not replace insert the taged types. Types in nested quotes are also not taged.
-              val (sFrom, sTo) = substFrom.zip(substTo).filterNot(_._2.is(Synthetic)).unzip // TODO Syntetic is probably not enugh to distinguish added types
-              new TreeTypeMap(typeMap, treeMap,
-                oldOwners, newOwners,
-                sFrom, sTo
-              ).transform(tree)
-            }
-            else if (tree.symbol.isSplice) {
-              level -= 1
-              try super.transform(tree)
-              finally level += 1
-            } else if (tree.symbol.isQuote) {
-              level += 1
-              try super.transform(tree)
-              finally level -= 1
-            }
-            else super.transform(tree)
-
-          }
-
-          protected override def newTreeTypeMap(typeMap: Type => Type, treeMap: tpd.Tree => tpd.Tree,
-                                                oldOwners: List[Symbol], newOwners: List[Symbol],
-                                                substFrom: List[Symbol], substTo: List[Symbol]) = {
-            new QuoteTreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) {
-              level = self.level
-            }
-          }
-
-        }
+//        class QuoteTreeTypeMap(
+//            typeMap: Type => Type = IdentityTypeMap,
+//            treeMap: tpd.Tree => tpd.Tree = identity _,
+//            oldOwners: List[Symbol] = Nil,
+//            newOwners: List[Symbol] = Nil,
+//            substFrom: List[Symbol] = Nil,
+//            substTo: List[Symbol] = Nil
+//        )(implicit ctx: Context) extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) { self =>
+//
+//          protected var level = 1 // TODO use context to keep track of the level
+//
+//          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+//            if (level == 0) {
+//              // Keep transforming but do not replace insert the taged types. Types in nested quotes are also not taged.
+//              val (sFrom, sTo) = substFrom.zip(substTo).filterNot(_._2.is(Synthetic)).unzip // TODO Syntetic is probably not enugh to distinguish added types
+//              new TreeTypeMap(
+//                oldOwners = oldOwners, newOwners = newOwners,
+//                substFrom = sFrom, substTo = sTo
+//              ).transform(tree)
+//            }
+//            else if (tree.symbol.isSplice) {
+//              level -= 1
+//              try {
+//                val tr = super.transform(tree)
+//                if (tr.isType) tr
+//                else {
+//                  // Make sure that the tags are not used inside the splice
+//                  // and that the non aliased type does not escape the splice
+//                  val wtp = tr.tpe.widenTermRefExpr
+//                  val tp = tpMap(wtp)
+//                  val tp1 = if (wtp == tp) tr.tpe else tp
+//                  tr.withType(tree.tpe).asInstance(tp1)
+//                }
+//              } finally level += 1
+//            } else if (tree.symbol.isQuote) {
+//              level += 1
+//              try super.transform(tree)
+//              finally level -= 1
+//            }
+//            else super.transform(tree)
+//
+//          }
+//
+//          protected override def newTreeTypeMap(typeMap: Type => Type, treeMap: tpd.Tree => tpd.Tree,
+//                                                oldOwners: List[Symbol], newOwners: List[Symbol],
+//                                                substFrom: List[Symbol], substTo: List[Symbol]) = {
+//            new QuoteTreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) {
+//              level = self.level
+//            }
+//          }
+//
+//        }
 
         Block(typeDefs ++ explicitTypeDefs,
-          new QuoteTreeTypeMap(
+          new /*Quote*/TreeTypeMap(
             treeMap = trMap,
             typeMap = tpMap,
             substFrom = itags.map(_._1.symbol),
