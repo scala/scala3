@@ -39,7 +39,7 @@ object ExposedValues extends AutoPlugin {
 object Build {
   val scalacVersion = "2.12.8"
 
-  val baseVersion = "0.12.0"
+  val baseVersion = "0.12.0-RC1"
   val baseSbtDottyVersion = "0.2.7"
 
   // Versions used by the vscode extension to create a new project
