@@ -82,7 +82,7 @@ object Semanticdbs {
   def printTextDocument(doc: s.TextDocument): String = {
     val sb = new StringBuilder
     val occurrences = doc.occurrences.sorted
-    val sourceFile = new SourceFile(doc.uri, doc.text)
+    val sourceFile = SourceFile.virtual(doc.uri, doc.text)
     var offset = 0
     occurrences.foreach { occ =>
       val range = occ.range.get
