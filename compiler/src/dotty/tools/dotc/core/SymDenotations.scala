@@ -1530,11 +1530,16 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents)
-        p.classSymbol match {
-          case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-          case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
-        }
+      def traverse(parents: List[Type]): Unit = parents match {
+        case p :: parents1 =>
+          p.classSymbol match {
+            case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+            case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+          }
+          traverse(parents1)
+        case nil =>
+      }
+      traverse(classParents)
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 

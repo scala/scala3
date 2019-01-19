@@ -127,6 +127,9 @@ object Spans {
       else
         s"${left}no position${right}"
     }
+
+    def ==(that: Span): Boolean = this.coords == that.coords
+    def !=(that: Span): Boolean = this.coords != that.coords
   }
 
   private def fromOffsets(start: Int, end: Int, pointDelta: Int) = {

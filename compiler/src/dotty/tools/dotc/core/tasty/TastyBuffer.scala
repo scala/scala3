@@ -20,6 +20,9 @@ object TastyBuffer {
     def + (delta: Int): Addr = Addr(this.index + delta)
 
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
+
+    def ==(that: Addr): Boolean = this.index == that.index
+    def !=(that: Addr): Boolean = this.index != that.index
   }
 
   val NoAddr: Addr = Addr(-1)

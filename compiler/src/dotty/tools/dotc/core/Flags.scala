@@ -701,6 +701,8 @@ object Flags {
   /** Labeled protected[this] */
   final val ProtectedLocal: FlagConjunction = allOf(Protected, Local)
 
+  final val LiftedMethod: FlagConjunction = allOf(Lifted, Method)
+
   /** Java symbol which is `protected` and `static` */
   final val StaticProtected: FlagConjunction = allOf(JavaDefined, Protected, JavaStatic)
 

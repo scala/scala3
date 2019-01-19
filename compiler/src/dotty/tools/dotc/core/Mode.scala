@@ -12,6 +12,9 @@ case class Mode(val bits: Int) extends AnyVal {
 
   override def toString: String =
     (0 until 31).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
+
+  def ==(that: Mode): Boolean = this.bits == that.bits
+  def !=(that: Mode): Boolean = this.bits != that.bits
 }
 
 object Mode {

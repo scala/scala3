@@ -123,6 +123,9 @@ object Periods {
           this.lastPhaseId max that.lastPhaseId)
 
     override def toString: String = s"Period($firstPhaseId..$lastPhaseId, run = $runId)"
+
+    def ==(that: Period): Boolean = this.code == that.code
+    def !=(that: Period): Boolean = this.code != that.code
   }
 
   object Period {

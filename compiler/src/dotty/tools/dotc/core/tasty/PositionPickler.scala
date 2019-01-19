@@ -14,7 +14,7 @@ import TastyBuffer._
 import util.Spans._
 import TastyFormat.SOURCE
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Addr]) {
+class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
   import ast.tpd._
@@ -72,29 +72,33 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
     def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
-          val sourceChange = x.source != current
-          val needsPos = x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)
-          addrOfTree(x) match {
-            case Some(addr)
-            if needsPos && !pickledIndices.contains(addr.index) || sourceChange =>
-                // we currently do not share trees when unpickling, so if one path to a tree contains
-                // a source change while another does not, we have to record the position of the tree twice
-                // in order not to miss the source change. Test case is t3232a.scala.
-              //println(i"pickling $x with $span at $addr")
+          val addr = addrOfTree(x)
+          if (addr != NoAddr) {
+            if (x.source != current) {
+              // we currently do not share trees when unpickling, so if one path to a tree contains
+              // a source change while another does not, we have to record the position of the tree twice
+              // in order not to miss the source change. Test case is t3232a.scala.
               pickleDeltas(addr.index, x.span)
-              if (sourceChange) pickleSource(x.source)
-            case _ =>
-              //println(i"no address for $x")
+              pickleSource(x.source)
+            }
+            else if (!pickledIndices.contains(addr.index) &&
+                     (x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)))
+              pickleDeltas(addr.index, x.span)
           }
         }
         x match {
-          case x: untpd.MemberDef @unchecked =>
-            for (ann <- x.symbol.annotations) traverse(ann.tree, x.source)
+          case x: untpd.MemberDef @unchecked => traverse(x.symbol.annotations, x.source)
           case _ =>
         }
-        traverse(x.productIterator, x.source)
-      case xs: TraversableOnce[_] =>
-        xs.foreach(traverse(_, current))
+        val limit = x.productArity
+        var n = 0
+        while (n < limit) {
+          traverse(x.productElement(n), x.source)
+          n += 1
+        }
+      case y :: ys =>
+        traverse(y, current)
+        traverse(ys, current)
       case x: Annotation =>
         traverse(x.tree, current)
       case _ =>

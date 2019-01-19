@@ -92,23 +92,26 @@ object Implicits {
 
         def viewCandidateKind(tpw: Type, argType: Type, resType: Type): Candidate.Kind = {
 
-          def methodCandidateKind(mt: MethodType, formal: => Type) =
+          def methodCandidateKind(mt: MethodType, approx: Boolean) =
             if (!mt.isImplicitMethod &&
-                mt.paramInfos.lengthCompare(1) == 0 &&
-                ctx.test(implicit ctx => argType relaxed_<:< formal))
+                mt.paramInfos.lengthCompare(1) == 0 && {
+                  var formal = widenSingleton(mt.paramInfos.head)
+                  if (approx) formal = wildApprox(formal)
+                  ctx.test(implicit ctx => argType relaxed_<:< formal)
+                })
               Candidate.Conversion
             else
               Candidate.None
 
           tpw match {
             case mt: MethodType =>
-              methodCandidateKind(mt, widenSingleton(mt.paramInfos.head))
+              methodCandidateKind(mt, approx = false)
             case poly: PolyType =>
               // We do not need to call ProtoTypes#constrained on `poly` because
               // `candidateKind` is always called with mode TypevarsMissContext enabled.
               poly.resultType match {
                 case mt: MethodType =>
-                  methodCandidateKind(mt, wildApprox(widenSingleton(mt.paramInfos.head)))
+                  methodCandidateKind(mt, approx = true)
                 case rtp =>
                   viewCandidateKind(wildApprox(rtp), argType, resType)
               }
@@ -140,7 +143,7 @@ object Implicits {
                   tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
               val hasExtensions = resType match {
                 case SelectionProto(name, _, _, _) =>
-                  tpw.memberBasedOnFlags(name, required = allOf(ExtensionMethod)).exists
+                  tpw.memberBasedOnFlags(name, required = ExtensionMethod).exists
                 case _ => false
               }
               val conversionKind =
