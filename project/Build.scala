@@ -226,17 +226,9 @@ object Build {
     version := dottyVersion,
     scalaVersion := dottyNonBootstrappedVersion,
 
-    // Avoid having to run `dotty-sbt-bridge/publishLocal` before compiling a bootstrapped project
-    scalaCompilerBridgeSource :=
-      (dottyOrganization %% "dotty-sbt-bridge" % dottyVersion)
-      .artifacts(Artifact.sources("dotty-sbt-bridge").withUrl(
-        // We cannot use the `packageSrc` task because a setting cannot depend
-        // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
-        Some((artifactPath in (`dotty-sbt-bridge`, Compile, packageSrc)).value.toURI.toURL))),
-    compile in Compile := (compile in Compile)
-      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile))
-      .dependsOn(compile in (`dotty-sbt-bridge`, Compile))
-      .value,
+    scalaCompilerBridgeBinaryJar := {
+      Some((packageBin in (`dotty-sbt-bridge`, Compile)).value)
+    },
 
     // Use the same name as the non-bootstrapped projects for the artifacts
     moduleName ~= { _.stripSuffix("-bootstrapped") },
@@ -830,12 +822,10 @@ object Build {
       Dependencies.`compiler-interface` % Provided,
       (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
     ),
-    // The sources should be published with crossPaths := false since they
-    // need to be compiled by the project using the bridge.
-    crossPaths := false,
 
-    // Don't publish any binaries for the bridge because of the above
-    publishArtifact in (Compile, packageBin) := false,
+    // sources are Java-only, tests are in Scala
+    crossPaths in Compile := false,
+    autoScalaLibrary in Compile := false,
 
     fork in Test := true,
     parallelExecution in Test := false
