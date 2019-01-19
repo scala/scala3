@@ -270,7 +270,7 @@ class Namer { typer: Typer =>
 
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
-     *  A more complete check is done in checkWellformed.
+     *  A more complete check is done in checkWellFormed.
      */
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
