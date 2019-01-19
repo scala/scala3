@@ -302,7 +302,7 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
-    val impl @ Template(constr0, parents, self, _) = cdef.rhs
+    val impl @ Template(constr0, _, self, _) = cdef.rhs
     val className = normalizeClassName(cdef, impl)
     val parents = impl.parents
     val mods = cdef.mods

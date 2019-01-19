@@ -2562,7 +2562,7 @@ object Parsers {
       var mods1 = addMod(mods, instanceMod)
       val wdef =
         if (in.token == LBRACE) {
-          val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, isEnum = false)
+          val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil, isEnum = false)
           if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
         }
