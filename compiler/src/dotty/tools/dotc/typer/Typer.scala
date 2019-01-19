@@ -2580,7 +2580,7 @@ class Typer extends Namer
           readaptSimplified(tree.withType(wtp.resultType))
         case wtp: MethodType if wtp.isImplicitMethod &&
           ({ resMatch = resultMatch; resMatch } || !functionExpected) =>
-           if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
+          if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
           else {
             // Don't proceed with implicit search if result type cannot match - the search
             // will likely be under-constrained, which means that an unbounded number of alternatives
