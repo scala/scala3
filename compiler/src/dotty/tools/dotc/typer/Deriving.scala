@@ -8,7 +8,8 @@ import ast.Trees._
 import StdNames._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ProtoTypes._
-import util.Positions._
+import util.Spans._
+import util.SourcePosition
 import collection.mutable
 import Constants.Constant
 import config.Printers.derive
@@ -26,7 +27,7 @@ trait Deriving { this: Typer =>
    *                   synthesized infrastructure code that is not connected with a
    *                   `derives` instance.
    */
-  class Deriver(cls: ClassSymbol, codePos: Position)(implicit ctx: Context) {
+  class Deriver(cls: ClassSymbol, codePos: SourcePosition)(implicit ctx: Context) {
 
     /** A buffer for synthesized symbols */
     private var synthetics = new mutable.ListBuffer[Symbol]
@@ -114,15 +115,15 @@ trait Deriving { this: Typer =>
 
     /** Create a synthetic symbol owned by current owner */
     private def newSymbol(name: Name, info: Type,
-                          pos: Position = ctx.owner.pos,
+                          span: Span = ctx.owner.span,
                           flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol =
-      ctx.newSymbol(ctx.owner, name, flags | Synthetic, info, coord = pos)
+      ctx.newSymbol(ctx.owner, name, flags | Synthetic, info, coord = span)
 
     /** Create a synthetic method owned by current owner */
     private def newMethod(name: TermName, info: Type,
-                          pos: Position = ctx.owner.pos,
+                          span: Span = ctx.owner.span,
                           flags: FlagSet = EmptyFlags)(implicit ctx: Context): TermSymbol =
-      newSymbol(name, info, pos, flags | Method).asTerm
+      newSymbol(name, info, span, flags | Method).asTerm
 
     /** A version of Type#underlyingClassRef that works also for higher-kinded types */
     private def underlyingClassRef(tp: Type): Type = tp match {
@@ -137,12 +138,12 @@ trait Deriving { this: Typer =>
      *  an instance with the same name does not exist already.
      *  @param  reportErrors  Report an error if an instance with the same name exists already
      */
-    private def addDerivedInstance(clsName: Name, info: Type, pos: Position, reportErrors: Boolean) = {
+    private def addDerivedInstance(clsName: Name, info: Type, pos: SourcePosition, reportErrors: Boolean) = {
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists) {
         if (reportErrors) ctx.error(i"duplicate typeclass derivation for $clsName", pos)
       }
-      else add(newMethod(instanceName, info, pos, Implicit))
+      else add(newMethod(instanceName, info, pos.span, Implicit))
     }
 
     /** Check derived type tree `derived` for the following well-formedness conditions:
@@ -166,7 +167,7 @@ trait Deriving { this: Typer =>
     private def processDerivedInstance(derived: untpd.Tree): Unit = {
       val originalType = typedAheadType(derived, AnyTypeConstructorProto).tpe
       val underlyingType = underlyingClassRef(originalType)
-      val derivedType = checkClassType(underlyingType, derived.pos, traitReq = false, stablePrefixReq = true)
+      val derivedType = checkClassType(underlyingType, derived.sourcePos, traitReq = false, stablePrefixReq = true)
       val nparams = derivedType.classSymbol.typeParams.length
       if (derivedType.isRef(defn.GenericClass))
         () // do nothing, a Generic instance will be created anyway by `addGeneric`
@@ -179,12 +180,12 @@ trait Deriving { this: Typer =>
         val instanceInfo =
           if (cls.typeParams.isEmpty) ExprType(resultType)
           else PolyType.fromParams(cls.typeParams, ImplicitMethodType(evidenceParamInfos, resultType))
-        addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.pos, reportErrors = true)
+        addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.sourcePos, reportErrors = true)
       }
       else
         ctx.error(
           i"derived class $derivedType should have one type paramater but has $nparams",
-          derived.pos)
+          derived.sourcePos)
     }
 
     /** Add value corresponding to `val genericClass = new GenericClass(...)`
@@ -192,7 +193,7 @@ trait Deriving { this: Typer =>
      */
     private def addGenericClass(): Unit =
       if (!ctx.denotNamed(nme.genericClass).exists) {
-        add(newSymbol(nme.genericClass, defn.GenericClassType, codePos))
+        add(newSymbol(nme.genericClass, defn.GenericClassType, codePos.span))
       }
 
     private def addGeneric(): Unit = {
@@ -305,7 +306,7 @@ trait Deriving { this: Typer =>
         val shape = shapeArg.dealias
 
         val implClassSym = ctx.newNormalizedClassSymbol(
-          ctx.owner, tpnme.ANON_CLASS, EmptyFlags, genericInstance :: Nil, coord = codePos)
+          ctx.owner, tpnme.ANON_CLASS, EmptyFlags, genericInstance :: Nil, coord = codePos.span)
         val implClassCtx = ctx.withOwner(implClassSym)
         val implClassConstr =
           newMethod(nme.CONSTRUCTOR, MethodType(Nil, implClassSym.typeRef))(implClassCtx).entered
@@ -330,7 +331,7 @@ trait Deriving { this: Typer =>
                 case ShapeCases(cases) =>
                   val clauses = cases.zipWithIndex.map {
                     case (ShapeCase(pat, elems), idx) =>
-                      val patVar = newSymbol(nme.syntheticParamName(0), pat, meth.pos)
+                      val patVar = newSymbol(nme.syntheticParamName(0), pat, meth.span)
                       CaseDef(
                         Bind(patVar, Typed(untpd.Ident(nme.WILDCARD).withType(pat), TypeTree(pat))),
                         EmptyTree,
@@ -405,7 +406,7 @@ trait Deriving { this: Typer =>
           if (typeCls == defn.GenericClass)
             genericRHS(resultType, ref(genericClass))
           else {
-            val module = untpd.ref(companionRef).withPos(sym.pos)
+            val module = untpd.ref(companionRef).withSpan(sym.span)
             val rhs = untpd.Select(module, nme.derived)
             typed(rhs, resultType)
           }

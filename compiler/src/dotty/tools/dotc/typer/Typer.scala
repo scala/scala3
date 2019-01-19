@@ -434,7 +434,7 @@ class Typer extends Namer
             case _ => app
           }
         case qual1 =>
-          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.posd)
+          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.sourcePos)
           val select = typedSelect(tree, pt, qual1)
           if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
           else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
@@ -517,7 +517,7 @@ class Typer extends Namer
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        if (checkClassType(tpt1.tpe, tpt1.posd, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
+        if (checkClassType(tpt1.tpe, tpt1.sourcePos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
           tpt1 = TypeTree(defn.ObjectType).withSpan(tpt1.span)
 
         tpt1 match {
@@ -1242,7 +1242,7 @@ class Typer extends Namer
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.posd)
+    checkStable(ref1.tpe, tree.sourcePos)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
@@ -1748,7 +1748,7 @@ class Typer extends Namer
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkStable(expr1.tpe, imp.expr.posd)
+    checkStable(expr1.tpe, imp.expr.sourcePos)
     if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.posd)
     assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
   }

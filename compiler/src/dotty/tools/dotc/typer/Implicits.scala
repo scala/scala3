@@ -745,14 +745,15 @@ trait Implicits { self: Typer =>
     def synthesizedGeneric(formal: Type): Tree =
       formal.argTypes match {
         case arg :: Nil =>
-          val arg1 = fullyDefinedType(arg, "Generic argument", pos)
+          val pos = ctx.source.atSpan(span)
+          val arg1 = fullyDefinedType(arg, "Generic argument", span)
           val clsType = checkClassType(arg1, pos, traitReq = false, stablePrefixReq = true)
           new Deriver(clsType.classSymbol.asClass, pos).genericInstance(clsType)
         case _ =>
           EmptyTree
       }
 
-    inferImplicit(formal, EmptyTree, pos)(ctx) match {
+    inferImplicit(formal, EmptyTree, span)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
         def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {

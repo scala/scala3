@@ -8,7 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
-import util.{Property, SourceFile}
+import util.{Property, SourceFile, SourcePosition}
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -29,7 +29,7 @@ object desugar {
    *  The position value indicates the start position of the template of the
    *  deriving class.
    */
-  val DerivingCompanion: Property.Key[Position] = new Property.Key
+  val DerivingCompanion: Property.Key[SourcePosition] = new Property.Key
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -578,7 +578,7 @@ object desugar {
         .withSpan(cdef.span).toList
       if (companionDerived.nonEmpty)
         for (modClsDef @ TypeDef(_, _) <- mdefs)
-          modClsDef.putAttachment(DerivingCompanion, impl.pos.startPos)
+          modClsDef.putAttachment(DerivingCompanion, impl.sourcePos.startPos)
       mdefs
     }
 

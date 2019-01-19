@@ -505,14 +505,14 @@ class Namer { typer: Typer =>
    *  @pre `child` must have a position.
    */
   final def addChild(cls: Symbol, child: Symbol)(implicit ctx: Context): Unit = {
-    val childStart = if (child.pos.exists) child.pos.start else -1
+    val childStart = if (child.span.exists) child.span.start else -1
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(_.symbol == defn.ChildAnnot) match {
-        case Some(Annotation.Child(other)) if other.pos.exists && childStart <= other.pos.start =>
+        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
-            assert(childStart != other.pos.start, i"duplicate child annotation $child / $other")
+            assert(childStart != other.span.start, i"duplicate child annotation $child / $other")
             val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
             prefix ::: otherAnnot :: insertInto(rest)
           }
@@ -573,8 +573,8 @@ class Namer { typer: Typer =>
               body = fromTempl.body ++ modTempl.body))
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
-              ctx.error(em"a class and its companion cannot both have `derives' clauses", mdef.pos)
-            res.putAttachment(desugar.DerivingCompanion, fromTempl.pos.startPos)
+              ctx.error(em"a class and its companion cannot both have `derives' clauses", mdef.sourcePos)
+            res.putAttachment(desugar.DerivingCompanion, fromTempl.sourcePos.startPos)
           }
           res
         }
@@ -843,7 +843,7 @@ class Namer { typer: Typer =>
           else
             ctx.error(em"""children of $cls were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $cls.""",
-                      child.pos)
+                      child.sourcePos)
         }
       }
 
@@ -957,7 +957,7 @@ class Namer { typer: Typer =>
         val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.posd,
+          val pt = checkClassType(ptype, parent.sourcePos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
@@ -1014,7 +1014,7 @@ class Namer { typer: Typer =>
       if (impl.derived.nonEmpty) {
         val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
           case Some(pos) => (cls.companionClass.asClass, pos)
-          case None => (cls, impl.pos.startPos)
+          case None => (cls, impl.sourcePos.startPos)
         }
         val deriver = new Deriver(derivingClass, derivePos)(localCtx)
         deriver.enterDerived(impl.derived)
