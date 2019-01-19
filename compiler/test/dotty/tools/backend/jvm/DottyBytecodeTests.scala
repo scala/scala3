@@ -568,7 +568,7 @@ class TestBCode extends DottyBytecodeTest {
 
   /* Test that objects compile to *final* classes. */
 
-  def checkFinalClass(outputClassName: String, source: String) = {
+  private def checkFinalClass(outputClassName: String, source: String) = {
     checkBCode(source) {
       dir =>
         val moduleIn   = dir.lookupName(outputClassName, directory = false)
@@ -623,4 +623,30 @@ class TestBCode extends DottyBytecodeTest {
         |  }
         |}
       """.stripMargin)
+
+  @Test def i5750 = {
+    val source =
+      """class Test {
+        |  def foo: String = ""
+        |  def test(cond: Boolean): Int = {
+        |    if (cond) foo
+        |    1
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method  = getMethod(clsNode, "test")
+
+      val boxUnit = instructionsFromMethod(method).exists {
+        case Field(Opcodes.GETSTATIC, "scala/runtime/BoxedUnit", _, _) =>
+          true
+        case _ =>
+          false
+      }
+      assertFalse(boxUnit)
+    }
+  }
 }
