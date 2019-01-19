@@ -115,7 +115,7 @@ object DesugarEnums {
     val toStringDef =
       DefDef(nme.toString_, Nil, Nil, TypeTree(), Ident(nme.name))
         .withFlags(Override)
-    def creator = New(Template(emptyConstructor, enumClassRef :: Nil, EmptyValDef,
+    def creator = New(Template(emptyConstructor, enumClassRef :: Nil, Nil, EmptyValDef,
         List(enumTagDef, toStringDef) ++ registerCall))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
@@ -216,7 +216,7 @@ object DesugarEnums {
     if (!enumClass.exists) EmptyTree
     else if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(span)
-      val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, Nil)
+      val impl = Template(emptyConstructor, parent :: Nil, Nil, EmptyValDef, Nil)
       expandEnumModule(name, impl, mods, span)
     }
     else {

@@ -1057,7 +1057,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val parents = times(readNat(), () => readTreeRef())
         val self = readValDefRef()
         val body = until(end, () => readTreeRef())
-        untpd.Template(???, parents, self, body) // !!! TODO: pull out primary constructor
+        untpd.Template(???, parents, Nil, self, body) // !!! TODO: pull out primary constructor
           .withType(symbol.namedType)
 
       case BLOCKtree =>

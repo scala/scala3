@@ -18,6 +18,8 @@ import config.Printers.typr
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
+import transform.TypeUtils._
+import transform.SymUtils._
 import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>
@@ -194,6 +196,7 @@ class Namer { typer: Typer =>
   val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
   val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
   val SymOfTree: Property.Key[Symbol] = new Property.Key
+  val Deriver: Property.Key[typer.Deriver] = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -496,12 +499,35 @@ class Namer { typer: Typer =>
     vd.mods.is(JavaEnumValue) // && ownerHasEnumFlag
   }
 
+  /** Add child annotation for `child` to annotations of `cls`. The annotation
+   *  is added at the correct insertion point, so that Child annotations appear
+   *  in reverse order of their start positions.
+   *  @pre `child` must have a position.
+   */
+  final def addChild(cls: Symbol, child: Symbol)(implicit ctx: Context): Unit = {
+    val childStart = if (child.span.exists) child.span.start else -1
+    def insertInto(annots: List[Annotation]): List[Annotation] =
+      annots.find(_.symbol == defn.ChildAnnot) match {
+        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
+          if (child == other)
+            annots // can happen if a class has several inaccessible children
+          else {
+            assert(childStart != other.span.start, i"duplicate child annotation $child / $other")
+            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
+            prefix ::: otherAnnot :: insertInto(rest)
+          }
+        case _ =>
+          Annotation.Child(child) :: annots
+      }
+    cls.annotations = insertInto(cls.annotations)
+  }
+
   /** Add java enum constants */
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
       if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-      enumClass.addAnnotation(Annotation.Child(sym))
+      addChild(enumClass, sym)
     case _ =>
   }
 
@@ -531,14 +557,25 @@ class Namer { typer: Typer =>
       to.putAttachment(References, fromRefs ++ toRefs)
     }
 
-    /** Merge the module class `modCls` in the expanded tree of `mdef` with the given stats */
-    def mergeModuleClass(mdef: Tree, modCls: TypeDef, stats: List[Tree]): TypeDef = {
+    /** Merge the module class `modCls` in the expanded tree of `mdef` with the
+     *  body and derived clause of the synthetic module class `fromCls`.
+     */
+    def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
       var res: TypeDef = null
       val Thicket(trees) = expanded(mdef)
       val merged = trees.map { tree =>
         if (tree == modCls) {
-          val impl = modCls.rhs.asInstanceOf[Template]
-          res = cpy.TypeDef(modCls)(rhs = cpy.Template(impl)(body = stats ++ impl.body))
+          val fromTempl = fromCls.rhs.asInstanceOf[Template]
+          val modTempl = modCls.rhs.asInstanceOf[Template]
+          res = cpy.TypeDef(modCls)(
+            rhs = cpy.Template(modTempl)(
+              derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
+              body = fromTempl.body ++ modTempl.body))
+          if (fromTempl.derived.nonEmpty) {
+            if (modTempl.derived.nonEmpty)
+              ctx.error(em"a class and its companion cannot both have `derives' clauses", mdef.sourcePos)
+            res.putAttachment(desugar.DerivingCompanion, fromTempl.sourcePos.startPos)
+          }
           res
         }
         else tree
@@ -559,7 +596,7 @@ class Namer { typer: Typer =>
     def mergeIfSynthetic(fromStat: Tree, fromCls: TypeDef, toStat: Tree, toCls: TypeDef): Unit =
       if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic)) {
         removeInExpanded(fromStat, fromCls)
-        val mcls = mergeModuleClass(toStat, toCls, fromCls.rhs.asInstanceOf[Template].body)
+        val mcls = mergeModuleClass(toStat, toCls, fromCls)
         mcls.setMods(toCls.mods | (fromCls.mods.flags & RetainedSyntheticCompanionFlags))
         moduleClsDef(fromCls.name) = (toStat, mcls)
       }
@@ -739,7 +776,10 @@ class Namer { typer: Typer =>
         assert(ctx.mode.is(Mode.Interactive), s"completing $denot in wrong run ${ctx.runId}, was created in ${creationContext.runId}")
         denot.info = UnspecifiedErrorType
       }
-      else completeInCreationContext(denot)
+      else {
+        completeInCreationContext(denot)
+        if (denot.isCompleted) registerIfChild(denot)
+      }
     }
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
@@ -785,6 +825,35 @@ class Namer { typer: Typer =>
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
         denot.info = NoType
       }
+    }
+
+    /** If completed symbol is an enum value or a named class, register it as a child
+     *  in all direct parent classes which are sealed.
+     */
+    def registerIfChild(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      val sym = denot.symbol
+
+      def register(child: Symbol, parent: Type) = {
+        val cls = parent.classSymbol
+        if (cls.is(Sealed)) {
+          if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
+            addChild(cls, cls)
+          else if (!cls.is(ChildrenQueried))
+            addChild(cls, child)
+          else
+            ctx.error(em"""children of $cls were already queried before $sym was discovered.
+                          |As a remedy, you could move $sym on the same nesting level as $cls.""",
+                      child.sourcePos)
+        }
+      }
+
+      if (denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass)
+        denot.asClass.classParents.foreach { parent =>
+          val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
+          register(child, parent)
+        }
+      else if (denot.is(CaseVal, butNot = Method | Module))
+        register(denot.symbol, denot.info)
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need
@@ -838,7 +907,7 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
+    val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods is Param
@@ -850,6 +919,7 @@ class Namer { typer: Typer =>
 
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
+      val parents = impl.parents
 
       /* The type of a parent constructor. Types constructor arguments
        * only if parent type contains uninstantiated type parameters.
@@ -877,17 +947,17 @@ class Namer { typer: Typer =>
           }
         }
 
-      /* Check parent type tree `parent` for the following well-formedness conditions:
-       * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
-       * (2) If may not derive from itself
-       * (3) The class is not final
-       * (4) If the class is sealed, it is defined in the same compilation unit as the current class
+      /** Check parent type tree `parent` for the following well-formedness conditions:
+       *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
+       *  (2) If may not derive from itself
+       *  (3) The class is not final
+       *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
         val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.posd,
+          val pt = checkClassType(ptype, parent.sourcePos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
@@ -926,18 +996,30 @@ class Namer { typer: Typer =>
       val tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
       denot.info = tempInfo
 
+      val localCtx = ctx.inClassContext(selfInfo)
+
       // Ensure constructor is completed so that any parameter accessors
       // which have type trees deriving from its parameters can be
       // completed in turn. Note that parent types access such parameter
       // accessors, that's why the constructor needs to be completed before
       // the parent types are elaborated.
       index(constr)
-      index(rest)(ctx.inClassContext(selfInfo))
+      index(rest)(localCtx)
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
+
+      if (impl.derived.nonEmpty) {
+        val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
+          case Some(pos) => (cls.companionClass.asClass, pos)
+          case None => (cls, impl.sourcePos.startPos)
+        }
+        val deriver = new Deriver(derivingClass, derivePos)(localCtx)
+        deriver.enterDerived(impl.derived)
+        original.putAttachment(Deriver, deriver)
+      }
 
       val finalSelfInfo: TypeOrSymbol =
         if (cls.isOpaqueCompanion) {

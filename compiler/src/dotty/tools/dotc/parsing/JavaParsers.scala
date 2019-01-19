@@ -125,7 +125,7 @@ object JavaParsers {
         stats1 = constr1 :: stats1
         constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
       }
-      Template(constr1.asInstanceOf[DefDef], parents, EmptyValDef, stats1)
+      Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
     }
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
@@ -623,8 +623,8 @@ object JavaParsers {
         else {
           val template = cdef.rhs.asInstanceOf[Template]
           cpy.TypeDef(cdef)(cdef.name,
-            cpy.Template(template)(template.constr, template.parents, template.self,
-              importCompanionObject(cdef) :: template.body)).withMods(cdef.mods)
+            cpy.Template(template)(body = importCompanionObject(cdef) :: template.body))
+              .withMods(cdef.mods)
         }
 
       List(makeCompanionObject(cdefNew, statics), cdefNew)

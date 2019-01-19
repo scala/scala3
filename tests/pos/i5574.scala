@@ -1,4 +1,4 @@
-import scala.typelevel._
+import scala.compiletime._
 
 object i5574 {
   class Box[F[_]]

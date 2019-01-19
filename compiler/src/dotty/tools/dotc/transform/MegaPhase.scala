@@ -337,7 +337,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         val parents = transformTrees(tree.parents, start)(ctx.superCallContext)
         val self = transformSpecificTree(tree.self, start)
         val body = transformStats(tree.body, tree.symbol, start)
-        goTemplate(cpy.Template(tree)(constr, parents, self, body), start)
+        goTemplate(cpy.Template(tree)(constr, parents, Nil, self, body), start)
       case tree: Match =>
         implicit val ctx = prepMatch(tree, start)(outerCtx)
         val selector = transformTree(tree.selector, start)

@@ -155,7 +155,7 @@ object Implicits {
 
         def valueTypeCandidateKind(tpw: Type): Candidate.Kind = tpw.stripPoly match {
           case tpw: MethodType =>
-          	if (tpw.isImplicitMethod) Candidate.Value else Candidate.None
+            if (tpw.isImplicitMethod) Candidate.Value else Candidate.None
           case _ =>
             Candidate.Value
         }
@@ -195,7 +195,7 @@ object Implicits {
             else ref
           val refNorm = normalize(refAdjusted, pt)
           if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
-          	ckind = Candidate.None
+            ckind = Candidate.None
         }
         ckind
       }
@@ -360,10 +360,13 @@ object Implicits {
     def expectedType: Type
     protected def argument: Tree
 
+    /** A "massaging" function for displayed types to give better info in error diagnostics */
+    def clarify(tp: Type)(implicit ctx: Context): Type = tp
+
     final protected def qualify(implicit ctx: Context): String =
       if (expectedType.exists)
-        if (argument.isEmpty) em"match type $expectedType"
-        else em"convert from ${argument.tpe} to $expectedType"
+        if (argument.isEmpty) em"match type ${clarify(expectedType)}"
+        else em"convert from ${argument.tpe} to ${clarify(expectedType)}"
       else
         if (argument.isEmpty) em"match expected type"
         else em"convert from ${argument.tpe} to expected type"
@@ -379,12 +382,35 @@ object Implicits {
     def whyNoConversion(implicit ctx: Context): String = ""
   }
 
-  class NoMatchingImplicits(val expectedType: Type, val argument: Tree) extends SearchFailureType {
+  class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty) extends SearchFailureType {
+
+    /** Replace all type parameters in constraint by their bounds, to make it clearer
+     *  what was expected
+     */
+    override def clarify(tp: Type)(implicit ctx: Context): Type = {
+      val map = new TypeMap {
+        def apply(t: Type): Type = t match {
+          case t: TypeParamRef =>
+            constraint.entry(t) match {
+              case NoType => t
+              case bounds: TypeBounds => constraint.fullBounds(t)
+              case t1 => t1
+            }
+          case t: TypeVar =>
+            t.instanceOpt.orElse(apply(t.origin))
+          case _ =>
+            mapOver(t)
+        }
+      }
+      map(tp)
+    }
+
     def explanation(implicit ctx: Context): String =
       em"no implicit values were found that $qualify"
+    override def toString = s"NoMatchingImplicits($expectedType, $argument)"
   }
 
-  @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree)
+  @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
     SearchFailure(NoMatchingImplicits)(NoSource)
@@ -713,6 +739,20 @@ trait Implicits { self: Typer =>
       assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
 
+    /** If `formal` is of the form `scala.reflect.Generic[T]` for some class type `T`,
+     *  synthesize an instance for it.
+     */
+    def synthesizedGeneric(formal: Type): Tree =
+      formal.argTypes match {
+        case arg :: Nil =>
+          val pos = ctx.source.atSpan(span)
+          val arg1 = fullyDefinedType(arg, "Generic argument", span)
+          val clsType = checkClassType(arg1, pos, traitReq = false, stablePrefixReq = true)
+          new Deriver(clsType.classSymbol.asClass, pos).genericInstance(clsType)
+        case _ =>
+          EmptyTree
+      }
+
     inferImplicit(formal, EmptyTree, span)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
@@ -728,9 +768,10 @@ trait Implicits { self: Typer =>
         else
           trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
-              trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
-                trySpecialCase(defn.EqClass, synthesizedEq,
-                  trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))
+              trySpecialCase(defn.GenericClass, synthesizedGeneric,
+                trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
+                  trySpecialCase(defn.EqClass, synthesizedEq,
+                    trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
     }
   }
 
@@ -916,6 +957,8 @@ trait Implicits { self: Typer =>
               }
             }
             else result
+          case NoMatchingImplicitsFailure =>
+            SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint))
           case _ =>
             result0
         }

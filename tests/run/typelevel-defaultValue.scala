@@ -1,11 +1,11 @@
 
-object typelevel {
+object compiletime {
   erased def erasedValue[T]: T = ???
 }
 
 object Test extends App {
 
-  inline def defaultValue[T] <: Option[Any] = inline typelevel.erasedValue[T] match {
+  inline def defaultValue[T] <: Option[Any] = inline compiletime.erasedValue[T] match {
     case _: Byte => Some(0: Byte)
     case c: Char => Some(0: Char)
     case d @ (_: Short) => Some(0: Short)

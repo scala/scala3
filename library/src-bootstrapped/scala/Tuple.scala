@@ -1,6 +1,6 @@
 package scala
 import annotation.showAsInfix
-import typelevel._
+import compiletime._
 import scala.StagedTuple
 
 sealed trait Tuple extends Any {
@@ -307,7 +307,7 @@ object Tuple {
   }
 }
 
-abstract sealed class NonEmptyTuple extends Tuple {
+sealed trait NonEmptyTuple extends Tuple {
   import Tuple._
   import NonEmptyTuple._
 

@@ -43,6 +43,8 @@ sidebar:
               url: docs/reference/enums/desugarEnums.html
         - title: Other New Features
           subsection:
+            - title: Typeclass Derivation
+              url: docs/reference/derivation.html
             - title: Multiversal Equality
               url: docs/reference/other-new-features/multiversal-equality.html
             - title: Trait Parameters

@@ -506,7 +506,6 @@ object Trees {
   /** selector match { cases } */
   case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
-    assert(cases.nonEmpty)
     type ThisTree[-T >: Untyped] = Match[T]
     def isInline = false
   }
@@ -739,15 +738,23 @@ object Trees {
     def isClassDef: Boolean = rhs.isInstanceOf[Template[_]]
   }
 
-  /** extends parents { self => body } */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)(implicit @constructorOnly src: SourceFile)
+  /** extends parents { self => body }
+   *  @param parentsOrDerived   A list of parents followed by a list of derived classes,
+   *                            if this is of class untpd.DerivingTemplate.
+   *                            Typed templates only have parents.
+   */
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)(implicit @constructorOnly src: SourceFile)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
     def unforcedBody: LazyTreeList = unforced
     def unforced: LazyTreeList = preBody
     protected def force(x: AnyRef): Unit = preBody = x
     def body(implicit ctx: Context): List[Tree[T]] = forceIfLazy
+
+    def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
+    def derived: List[untpd.Tree] = Nil           // overridden by DerivingTemplate
   }
+
 
   /** import expr.selectors
    *  where a selector is either an untyped `Ident`, `name` or
@@ -1143,9 +1150,9 @@ object Trees {
         case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) => tree
         case _ => finalize(tree, untpd.TypeDef(name, rhs)(tree.source))
       }
-      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList)(implicit ctx: Context): Template = tree match {
-        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
-        case _ => finalize(tree, untpd.Template(constr, parents, self, body)(tree.source))
+      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], derived: List[untpd.Tree], self: ValDef, body: LazyTreeList)(implicit ctx: Context): Template = tree match {
+        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
+        case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(tree.source))
       }
       def Import(tree: Tree)(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
         case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
@@ -1182,8 +1189,8 @@ object Trees {
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(implicit ctx: Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
-      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(implicit ctx: Context): Template =
-        Template(tree: Tree)(constr, parents, self, body)
+      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(implicit ctx: Context): Template =
+        Template(tree: Tree)(constr, parents, derived, self, body)
     }
 
     /** Hook to indicate that a transform of some subtree should be skipped */
@@ -1292,8 +1299,8 @@ object Trees {
             case tree @ TypeDef(name, rhs) =>
               implicit val ctx = localCtx
               cpy.TypeDef(tree)(name, transform(rhs))
-            case tree @ Template(constr, parents, self, _) =>
-              cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(tree.body))
+            case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
+              cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
             case Import(expr, selectors) =>
               cpy.Import(tree)(transform(expr), selectors)
             case PackageDef(pid, stats) =>
@@ -1416,7 +1423,7 @@ object Trees {
             case TypeDef(name, rhs) =>
               implicit val ctx = localCtx
               this(x, rhs)
-            case tree @ Template(constr, parents, self, _) =>
+            case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
             case Import(expr, selectors) =>
               this(x, expr)

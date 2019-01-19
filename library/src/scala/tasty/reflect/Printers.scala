@@ -186,9 +186,11 @@ trait Printers
           this += "DefDef(\"" += name += "\", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
         case TypeDef(name, rhs) =>
           this += "TypeDef(\"" += name += "\", " += rhs += ")"
-        case ClassDef(name, constr, parents, self, body) =>
+        case ClassDef(name, constr, parents, derived, self, body) =>
           this += "ClassDef(\"" += name += "\", " += constr += ", "
           visitList[TermOrTypeTree](parents, visitTermOrTypeTree)
+          this += ", "
+          visitList[TypeTree](derived, visitTypeTree)
           this += ", " += self += ", " ++= body += ")"
         case PackageDef(name, owner) =>
           this += "PackageDef(\"" += name += "\", " += owner += ")"
@@ -569,7 +571,7 @@ trait Printers
           this += "."
           printImportSelectors(selectors)
 
-        case IsClassDef(cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats)) =>
+        case IsClassDef(cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, derived, self, stats)) =>
           printDefAnnotations(cdef)
 
           val flags = cdef.symbol.flags
@@ -624,6 +626,11 @@ trait Printers
               printSeparated(xs)
           }
           printSeparated(parents1)
+
+          if (derived.nonEmpty) {
+            this += highlightKeyword(" derives ", color)
+            printTypeTrees(derived, ", ")
+          }
 
           def keepDefinition(d: Definition): Boolean = {
             val flags = d.symbol.flags
@@ -1004,18 +1011,24 @@ trait Printers
         printSeparated(stats)
       }
 
-      def printTrees(trees: List[Tree], sep: String): Buffer = {
-        def printSeparated(list: List[Tree]): Unit = list match {
+      def printList[T](xs: List[T], sep: String, print: T => Buffer): Buffer = {
+        def printSeparated(list: List[T]): Unit = list match {
           case Nil =>
-          case x :: Nil => printTree(x)
+          case x :: Nil => print(x)
           case x :: xs =>
-            printTree(x)
+            print(x)
             this += sep
             printSeparated(xs)
         }
-        printSeparated(trees)
+        printSeparated(xs)
         this
       }
+
+      def printTrees(trees: List[Tree], sep: String): Buffer =
+        printList(trees, sep, printTree)
+
+      def printTypeTrees(trees: List[TypeTree], sep: String): Buffer =
+        printList(trees, sep, printTypeTree)
 
       def printTypes(trees: List[Type], sep: String): Buffer = {
         def printSeparated(list: List[Type]): Unit = list match {
@@ -1201,7 +1214,7 @@ trait Printers
         val name = arg.name
         arg.symbol.owner match {
           case IsDefSymbol(sym) if sym.name == "<init>" =>
-            val ClassDef(_, _, _, _, body) = sym.owner.asClass.tree
+            val ClassDef(_, _, _, _, _, body) = sym.owner.asClass.tree
             body.collectFirst {
               case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
                 if (!vdef.symbol.flags.is(Flags.Local)) {
@@ -1552,7 +1565,7 @@ trait Printers
       def printDefinitionName(sym: Definition): Buffer = sym match {
         case ValDef(name, _, _) => this += highlightValDef(name, color)
         case DefDef(name, _, _, _, _) => this += highlightValDef(name, color)
-        case ClassDef(name, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"), color)
+        case ClassDef(name, _, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"), color)
         case TypeDef(name, _) => this += highlightTypeDef(name, color)
         case PackageDef(name, _) => this += highlightTypeDef(name, color)
       }

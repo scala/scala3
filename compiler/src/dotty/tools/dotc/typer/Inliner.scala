@@ -362,12 +362,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def inlined(pt: Type): Tree = {
 
     if (callTypeArgs.length == 1)
-      if (inlinedMethod == defn.Typelevel_constValue) {
+      if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
         ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
       }
-      else if (inlinedMethod == defn.Typelevel_constValueOpt) {
+      else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
         return (
           if (constVal.isEmpty) ref(defn.NoneModuleRef)
@@ -479,7 +479,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       // Drop unused bindings
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList, expansion1)
 
-      if (inlinedMethod == defn.Typelevel_error) issueError()
+      if (inlinedMethod == defn.Compiletime_error) issueError()
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.

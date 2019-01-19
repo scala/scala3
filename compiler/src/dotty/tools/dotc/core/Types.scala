@@ -3407,7 +3407,7 @@ object Types {
           case _ =>
             NoType
         }
-        if (defn.isTypelevel_S(tycon.symbol) && args.length == 1) {
+        if (defn.isCompiletime_S(tycon.symbol) && args.length == 1) {
           trace(i"normalize S $this", typr, show = true) {
             args.head.normalized match {
               case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))

@@ -54,7 +54,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
           } else newBody
 
         val oldTemplate = orig.rhs.asInstanceOf[Template]
-        cpy.TypeDef(orig)(rhs = cpy.Template(orig.rhs)(oldTemplate.constr, oldTemplate.parents, oldTemplate.self, newBodyWithStaticConstr))
+        cpy.TypeDef(orig)(rhs = cpy.Template(oldTemplate)(body = newBodyWithStaticConstr))
       }
 
       def move(module: TypeDef, companion: TypeDef): List[Tree] = {

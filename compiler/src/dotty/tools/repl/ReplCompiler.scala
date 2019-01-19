@@ -130,7 +130,7 @@ class ReplCompiler extends Compiler {
 
     implicit val ctx: Context = defs.state.context
 
-    val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
+    val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectTermName, tmpl)
       .withSpan(Span(0, defs.stats.last.span.end))
 
@@ -229,8 +229,9 @@ class ReplCompiler extends Compiler {
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
+
         val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral).withSpan(Span(0, expr.length)))
-        val tmpl = Template(emptyConstructor, Nil, EmptyValDef, List(valdef))
+        val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
           .withSpan(Span(0, expr.length))

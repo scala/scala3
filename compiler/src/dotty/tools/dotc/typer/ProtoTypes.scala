@@ -457,7 +457,7 @@ object ProtoTypes {
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.
    *  Return either the original type lambda, or the copy, if one was made.
-   *  Also, if `owningTree` is non-empty ot `alwaysAddTypeVars` is true, add a type variable
+   *  Also, if `owningTree` is non-empty or `alwaysAddTypeVars` is true, add a type variable
    *  for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */

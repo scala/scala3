@@ -8,6 +8,7 @@ import util.SourceFile
 import java.lang.Character.isDigit
 import scala.tasty.util.Chars._
 import util.NameTransformer.avoidIllegalChars
+import util.Spans.Span
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
@@ -249,6 +250,11 @@ object Scanners {
       if (isScala2Mode) ctx.migrationWarning(msg, source.atSpan(span))
       isScala2Mode
     }
+
+    /** A migration warning if in Scala-2 mode, an error otherwise */
+    def errorOrMigrationWarning(msg: String, span: Span = Span(offset)): Unit =
+      if (isScala2Mode) ctx.migrationWarning(msg, source.atSpan(span))
+      else ctx.error(msg, source.atSpan(span))
 
 // Get next token ------------------------------------------------------------
 

@@ -83,7 +83,8 @@ class Typer extends Namer
                with Implicits
                with Inferencing
                with Dynamic
-               with Checking {
+               with Checking
+               with Deriving {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -433,7 +434,7 @@ class Typer extends Namer
             case _ => app
           }
         case qual1 =>
-          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.posd)
+          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.sourcePos)
           val select = typedSelect(tree, pt, qual1)
           if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
           else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
@@ -516,7 +517,7 @@ class Typer extends Namer
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        if (checkClassType(tpt1.tpe, tpt1.posd, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
+        if (checkClassType(tpt1.tpe, tpt1.sourcePos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
           tpt1 = TypeTree(defn.ObjectType).withSpan(tpt1.span)
 
         tpt1 match {
@@ -1241,7 +1242,7 @@ class Typer extends Namer
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.posd)
+    checkStable(ref1.tpe, tree.sourcePos)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
@@ -1556,7 +1557,8 @@ class Typer extends Namer
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context): Tree = track("typedClassDef") {
     if (!cls.info.isInstanceOf[ClassInfo]) return EmptyTree.assertingErrorsReported
 
-    val TypeDef(name, impl @ Template(constr, parents, self, _)) = cdef
+    val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef
+    val parents = impl.parents
     val superCtx = ctx.superCallContext
 
     /** If `ref` is an implicitly parameterized trait, pass an implicit argument list.
@@ -1625,6 +1627,7 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
+
     var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (cls.isOpaqueCompanion && !ctx.isAfterTyper) {
       // this is necessary to ensure selftype is correctly pickled
@@ -1639,7 +1642,7 @@ class Typer extends Namer
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
 
       checkNoDoubleDeclaration(cls)
-      val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
+      val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
@@ -1671,6 +1674,9 @@ class Typer extends Namer
       // information in the IDE in case we never reach `SetRootTree`.
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
         cls.rootTreeOrProvider = cdef1
+
+      for (deriver <- cdef.removeAttachment(Deriver))
+        cdef1.putAttachment(Deriver, deriver)
 
       cdef1
 
@@ -1742,7 +1748,7 @@ class Typer extends Namer
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkStable(expr1.tpe, imp.expr.posd)
+    checkStable(expr1.tpe, imp.expr.sourcePos)
     if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.posd)
     assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
   }
@@ -2089,7 +2095,18 @@ class Typer extends Namer
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
       ctx.withProperty(ExprOwner, exprOwnerOpt)
     }
-    checkEnumCompanions(traverse(stats)(localCtx), enumContexts)
+    def finalize(stat: Tree)(implicit ctx: Context): Tree = stat match {
+      case stat: TypeDef if stat.symbol.is(Module) =>
+        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
+          checkEnumCaseRefsLegal(stat, enumContext)
+        stat.removeAttachment(Deriver) match {
+          case Some(deriver) => deriver.finalize(stat)
+          case None => stat
+        }
+      case _ =>
+        stat
+    }
+    traverse(stats)(localCtx).mapConserve(finalize)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body

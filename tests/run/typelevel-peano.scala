@@ -1,5 +1,5 @@
 
-import typelevel._
+import compiletime._
 
 object Test extends App {
 

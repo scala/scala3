@@ -1,1 +1,1 @@
-15: Pattern Match Exhaustivity: LetF, LetC, LetP, LetL(UnitLit), LetL(BooleanLit), LetL(IntLit)
+15: Pattern Match Exhaustivity: LetL(IntLit), LetL(BooleanLit), LetL(UnitLit), LetP, LetC, LetF

@@ -8,6 +8,7 @@ import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
+import util.SimpleIdentityMap
 
 object Definitions {
 
@@ -214,14 +215,14 @@ class Definitions {
     lazy val Sys_errorR: TermRef = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context): Symbol = Sys_errorR.symbol
 
-  lazy val TypelevelPackageObjectRef: TermRef = ctx.requiredModuleRef("scala.typelevel.package")
-  lazy val TypelevelPackageObject: Symbol = TypelevelPackageObjectRef.symbol.moduleClass
-    lazy val Typelevel_errorR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef(nme.error)
-    def Typelevel_error(implicit ctx: Context): Symbol = Typelevel_errorR.symbol
-    lazy val Typelevel_constValueR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValue")
-    def Typelevel_constValue(implicit ctx: Context): Symbol = Typelevel_constValueR.symbol
-    lazy val Typelevel_constValueOptR: TermRef = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValueOpt")
-    def Typelevel_constValueOpt(implicit ctx: Context): Symbol = Typelevel_constValueOptR.symbol
+  lazy val CompiletimePackageObjectRef: TermRef = ctx.requiredModuleRef("scala.compiletime.package")
+  lazy val CompiletimePackageObject: Symbol = CompiletimePackageObjectRef.symbol.moduleClass
+    lazy val Compiletime_errorR: TermRef = CompiletimePackageObjectRef.symbol.requiredMethodRef(nme.error)
+    def Compiletime_error(implicit ctx: Context): Symbol = Compiletime_errorR.symbol
+    lazy val Compiletime_constValueR: TermRef = CompiletimePackageObjectRef.symbol.requiredMethodRef("constValue")
+    def Compiletime_constValue(implicit ctx: Context): Symbol = Compiletime_constValueR.symbol
+    lazy val Compiletime_constValueOptR: TermRef = CompiletimePackageObjectRef.symbol.requiredMethodRef("constValueOpt")
+    def Compiletime_constValueOpt(implicit ctx: Context): Symbol = Compiletime_constValueOptR.symbol
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -648,6 +649,18 @@ class Definitions {
     def Product_productElement(implicit ctx: Context): Symbol = Product_productElementR.symbol
     lazy val Product_productPrefixR: TermRef = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context): Symbol = Product_productPrefixR.symbol
+
+  lazy val GenericType: TypeRef                = ctx.requiredClassRef("scala.reflect.Generic")
+  def GenericClass(implicit ctx: Context): ClassSymbol    = GenericType.symbol.asClass
+  lazy val ShapeType: TypeRef                  = ctx.requiredClassRef("scala.compiletime.Shape")
+  def ShapeClass(implicit ctx: Context): ClassSymbol      = ShapeType.symbol.asClass
+  lazy val ShapeCaseType: TypeRef              = ctx.requiredClassRef("scala.compiletime.Shape.Case")
+  def ShapeCaseClass(implicit ctx: Context): ClassSymbol  = ShapeCaseType.symbol.asClass
+  lazy val ShapeCasesType: TypeRef             = ctx.requiredClassRef("scala.compiletime.Shape.Cases")
+  def ShapeCasesClass(implicit ctx: Context): ClassSymbol = ShapeCasesType.symbol.asClass
+  lazy val MirrorType: TypeRef                 = ctx.requiredClassRef("scala.reflect.Mirror")
+  lazy val GenericClassType: TypeRef           = ctx.requiredClassRef("scala.reflect.GenericClass")
+
   lazy val LanguageModuleRef: TermSymbol = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context): ClassSymbol = LanguageModuleRef.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
@@ -905,8 +918,8 @@ class Definitions {
     }
   }
 
-  final def isTypelevel_S(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name == tpnme.S && sym.owner == TypelevelPackageObject
+  final def isCompiletime_S(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.name == tpnme.S && sym.owner == CompiletimePackageObject
 
   // ----- Symbol sets ---------------------------------------------------
 
@@ -1261,7 +1274,13 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  lazy val erasedToObject: Set[Symbol] = Set(AnyClass, AnyValClass, TupleClass, NonEmptyTupleClass, SingletonClass)
+  lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
+    SimpleIdentityMap.Empty[Symbol]
+      .updated(AnyClass, ObjectClass)
+      .updated(AnyValClass, ObjectClass)
+      .updated(SingletonClass, ObjectClass)
+      .updated(TupleClass, ObjectClass)
+      .updated(NonEmptyTupleClass, ProductClass)
 
   // ----- Initialization ---------------------------------------------------
 

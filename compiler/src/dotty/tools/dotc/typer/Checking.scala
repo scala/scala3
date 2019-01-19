@@ -578,8 +578,8 @@ trait Checking {
   }
 
   /** Check that type `tp` is stable. */
-  def checkStable(tp: Type, posd: Positioned)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(ex"$tp is not stable", posd.sourcePos)
+  def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit =
+    if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
@@ -594,14 +594,14 @@ trait Checking {
   *   check that class prefix is stable.
    *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
-  def checkClassType(tp: Type, posd: Positioned, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
+  def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(TraitIsExpected(tref.symbol), posd.sourcePos)
-        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, posd)
+        if (traitReq && !(tref.symbol is Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
+        if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         tp
       case _ =>
-        ctx.error(ex"$tp is not a class type", posd.sourcePos)
+        ctx.error(ex"$tp is not a class type", pos)
         defn.ObjectType
     }
 
@@ -916,7 +916,7 @@ trait Checking {
    *  @param  cdef     the enum companion object class
    *  @param  enumCtx  the context immediately enclosing the corresponding enum
    */
-  private def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
+  def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
 
     def checkCaseOrDefault(stat: Tree, caseCtx: Context) = {
 
@@ -971,24 +971,13 @@ trait Checking {
       case _ =>
     }
   }
-
-  /** Check all enum cases in all enum companions in `stats` for legal accesses.
-   *  @param  enumContexts  a map from`enum` symbols to the contexts enclosing their definitions
-   */
-  def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = {
-    for (stat @ TypeDef(_, _) <- stats)
-      if (stat.symbol.is(Module))
-        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
-          checkEnumCaseRefsLegal(stat, enumContext)
-    stats
-  }
 }
 
 trait ReChecking extends Checking {
   import tpd._
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
-  override def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = stats
+  override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
@@ -996,8 +985,8 @@ trait NoChecking extends ReChecking {
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  override def checkStable(tp: Type, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkClassType(tp: Type, posd: Positioned, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
+  override def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(implicit ctx: Context): Type = tp
