@@ -122,8 +122,9 @@ class Tests {
   */
   //@Test def testTypesAnnotations() : Unit = checkFile("example/TypesAnnotations.scala") // Crash, has to deal with init symbols
   //@Test def testNew(): Unit = checkFile("example/New.scala")
-  @Test def testClasses(): Unit = checkFile("example/Classes.scala")
+  //@Test def testClasses(): Unit = checkFile("example/Classes.scala")
 
   //@Test def testSemanticDoc(): Unit = checkFile("example/SemanticDoc.scala")
+  @Test def testAccess(): Unit = checkFile("example/Access.scala")
   //@Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
 }
