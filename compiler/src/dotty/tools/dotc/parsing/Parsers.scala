@@ -2546,7 +2546,7 @@ object Parsers {
      *                   |  id ‘=’ Expr
      *  InstanceParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
      */
-    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atPos(start, nameStart) {
+    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val vparamss = paramClauses(ofInstance = true)

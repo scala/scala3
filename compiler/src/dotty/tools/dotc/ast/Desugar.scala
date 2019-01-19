@@ -829,7 +829,7 @@ object desugar {
         case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
           s"${name}_of_${inventTypeName(vparam.tpt)}"
         case _ =>
-          ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.pos)
+          ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.sourcePos)
           nme.ERROR.toString
       }
     else
@@ -1015,7 +1015,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isContextual: Boolean)(implicit ctx: Context): Block = {
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean)(implicit ctx: Context): Block = {
     val span = params.headOption.fold(body.span)(_.span.union(body.span))
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
