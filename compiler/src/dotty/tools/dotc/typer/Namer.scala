@@ -416,17 +416,22 @@ class Namer { typer: Typer =>
   }
 
   /** Expand tree and store in `expandedTree` */
-  def expand(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case mdef: DefTree =>
-      val expanded = desugar.defTree(mdef)
-      typr.println(i"Expansion: $mdef expands to $expanded")
-      if (expanded ne mdef) mdef.pushAttachment(ExpandedTree, expanded)
-    case _ =>
+  def expand(tree: Tree)(implicit ctx: Context): Unit = {
+    def record(expanded: Tree) =
+      if (expanded `ne` tree) {
+        typr.println(i"Expansion: $tree expands to $expanded")
+        tree.pushAttachment(ExpandedTree, expanded)
+      }
+    tree match {
+      case tree: DefTree => record(desugar.defTree(tree))
+      case tree: PackageDef => record(desugar.packageDef(tree))
+      case _ =>
+    }
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case ddef: DefTree => ddef.attachmentOrElse(ExpandedTree, ddef)
+    case _: DefTree | _: PackageDef => tree.attachmentOrElse(ExpandedTree, tree)
     case _ => tree
   }
 

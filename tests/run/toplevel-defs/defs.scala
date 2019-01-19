@@ -1,0 +1,1 @@
+def hello(name: String) = s"hello, $name"
