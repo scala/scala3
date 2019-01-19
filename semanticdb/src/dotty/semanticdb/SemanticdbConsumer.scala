@@ -341,7 +341,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         }
       }
 
-      def iterateParent(symbol: Symbol): String = {
+      def iterateParent(symbol: Symbol, isMutableAssignement:Boolean=false): String = {
         if (symbol.name == "<none>" || symbol.name == "<root>") then {
           // TODO had a "NoDenotation" test to avoid
           // relying on the name itself
@@ -359,30 +359,32 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
 
           val isdef = symbol match {case IsDefSymbol(_) => true case _ => false}
+          val symbolName = if (isMutableAssignement) symbol.trueName + "_=" else symbol.trueName
+          println("=>", symbolName)
           val next_atom =
             if (symbol.isPackage) {
-              d.Package(symbol.trueName)
+              d.Package(symbolName)
             } else if (symbol.isObject) {
               symbol match {
                 case IsClassSymbol(classsymbol) =>
                   d.Term(resolveClass(classsymbol).trueName)
                 case _ =>
-                  d.Term(symbol.trueName)
+                  d.Term(symbolName)
               }
             } else if (symbol.isValMethod && !symbol.isVarAccessor) {
-              d.Term(symbol.trueName)
+              d.Term(symbolName)
             } else if (symbol.isMethod || symbol.isUsefulField || symbol.isVarAccessor) {
               println("METHOD", symbol.isMethod, symbol.isUsefulField)
-              d.Method(symbol.trueName,
-                       disimbiguate(previous_symbol + symbol.trueName, symbol))
+              d.Method(symbolName,
+                       disimbiguate(previous_symbol + symbolName, symbol))
             } else if (symbol.isTypeParameter) {
-              d.TypeParameter(symbol.trueName)
+              d.TypeParameter(symbolName)
             } else if (symbol.isValueParameter) {
-              d.Parameter(symbol.trueName)
+              d.Parameter(symbolName)
             } else if (symbol.isType || symbol.isTrait) {
-              d.Type(symbol.trueName)
+              d.Type(symbolName)
             } else {
-              d.Term(symbol.trueName)
+              d.Term(symbolName)
             }
 
           Symbols.Global(previous_symbol, next_atom)
@@ -411,32 +413,33 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             )
       }
 
-      def symbolToSymbolString(symbol: Symbol): (String, Boolean) = {
+      def symbolToSymbolString(symbol: Symbol, isMutableAssignement:Boolean = false): (String, Boolean) = {
         if (symbol.isSemanticdbLocal) {
           var localsymbol = Symbols.Local(local_offset.toString)
           local_offset += 1
           (localsymbol, false)
         } else {
-          (iterateParent(symbol), true)
+          (iterateParent(symbol, isMutableAssignement), true)
         }
       }
 
       def addOccurence(symbol: Symbol,
                        type_symbol: s.SymbolOccurrence.Role,
-                       range: s.Range): Unit = {
+                       range: s.Range,
+                       isMutableAssignement:Boolean = false): Unit = {
         if (symbol.name == "<none>") return
 
 
           println("===> ", symbol, symbol.flags)
-
+        val symbolName = if (isMutableAssignement) symbol.trueName + "_=" else symbol.trueName
         val (symbol_path, is_global) = posToRange(symbol.pos) match {
           case Some(keyRange)
-              if symbolsCache.contains((symbol.trueName, keyRange)) => {
+              if symbolsCache.contains((symbolName, keyRange)) => {
                 println("already found")
-            (symbolsCache((symbol.trueName, keyRange)), symbol.isSemanticdbLocal)}
+            (symbolsCache((symbolName, keyRange)), symbol.isSemanticdbLocal)}
           case Some(keyRange) => {
-            val (sp, ig) = symbolToSymbolString(symbol)
-            symbolsCache += ((symbol.trueName, keyRange) -> sp)
+            val (sp, ig) = symbolToSymbolString(symbol, isMutableAssignement)
+            symbolsCache += ((symbolName, keyRange) -> sp)
             (sp, ig)
           }
           case _ =>
@@ -476,11 +479,12 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       def addOccurenceTree(tree: Tree,
                            type_symbol: s.SymbolOccurrence.Role,
                            range: s.Range,
-                           force_add: Boolean = false): Unit = {
-        println("coming from tree")
+                           force_add: Boolean = false,
+                           isMutableAssignement: Boolean = false): Unit = {
+        println("coming from tree", isMutableAssignement)
         if (tree.symbol.isUseful && (tree.isUserCreated || (force_add && !(!tree.isUserCreated && iterateParent(
               tree.symbol) == "java/lang/Object#`<init>`().")))) {
-          addOccurence(tree.symbol, type_symbol, range)
+          addOccurence(tree.symbol, type_symbol, range, isMutableAssignement)
         }
       }
       def addOccurenceTypeTree(typetree: TypeTree,
@@ -750,6 +754,8 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         )
       }
 
+      var isAssignedTerm = false
+
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case Import(path, selectors) =>
@@ -894,10 +900,12 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             typeparams.foreach(traverseTree)
           }
 
-          /*case Term.Assign(lhs, rhs) => {
+          case Term.Assign(lhs, rhs) => {
             println("ASSIGN:", lhs.symbol, lhs.symbol.flags, rhs.symbol, rhs.symbol.flags)
+            isAssignedTerm = true
             super.traverseTree(tree)
-          }*/
+            isAssignedTerm = false
+          }
 
           case IsDefinition(cdef) => {
 
@@ -983,9 +991,13 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                 shouldForceAdd = qualifier.isUserCreated
               }
             }
-            println("SELECT =>  " + tree + tree.pos.start + ":" + tree.pos.end)
+            println("SELECT =>  " + tree + tree.symbol.flags)
+            println("acc", isAssignedTerm && tree.symbol.flags.is(Flags.Mutable))
+            val temp = isAssignedTerm
+            isAssignedTerm = false
             super.traverseTree(tree)
-            addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range, shouldForceAdd)
+            isAssignedTerm = temp
+            addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range, shouldForceAdd, isAssignedTerm && tree.symbol.flags.is(Flags.Mutable))
           }
 
           case Term.Ident(name) => {
