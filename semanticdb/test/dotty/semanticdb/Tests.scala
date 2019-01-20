@@ -14,7 +14,73 @@ import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 import java.lang.reflect.InvocationTargetException
 
+import dotty.semanticdb.Scala._
+
+
 class Tests {
+
+  def min(a: Int, b: Int) : Int = if (a > b) b else a
+  def max(a: Int, b: Int) : Int = if (a > b) a else b
+  def abs(a: Int, b: Int) : Int = max(a, b) - min(a, b)
+  def distance(r1 : s.Range, offsets : Array[Int])(r2 : s.Range) : Int = {
+    val s1 = offsets(max(r1.startLine, 0)) + r1.startCharacter
+    val s2 = offsets(max(r2.startLine, 0)) + r2.startCharacter
+    val e1 = offsets(max(r1.endLine, 0)) + r1.endCharacter
+    val e2 = offsets(max(r2.endLine, 0)) + r2.endCharacter
+    max(abs(s1, s2), abs(e1, e2))
+  }
+
+  def compareOccurences(tastyOccurences : Seq[s.SymbolOccurrence],
+    scalaOccurences : Seq[s.SymbolOccurrence],
+    sourceCode : String)
+    : Boolean= {
+      val lineToByte = sourceCode.split("\n").scanLeft(0)((o, l) => o + l.length + 1)
+      val symbols = tastyOccurences.groupBy(_.symbol)
+      val localTastyToScala = HashMap[String, String]()
+      val localScalaToTasty = HashMap[String, String]()
+      val translator = HashMap[(s.Range, String), s.SymbolOccurrence]()
+
+      // from is in tasty space, to in scala space
+      def checkIfTranslatableSymbol(from : String, to : String) : Boolean = {
+        if (from.isLocal != to.isLocal) {
+          false
+        } else {
+          if (from.isLocal) {
+            if(localTastyToScala.getOrElse(from, to) == to &&
+              localScalaToTasty.getOrElse(to, from) == from) {
+            localTastyToScala += (from -> to)
+            localScalaToTasty += (to -> from)
+              true
+            } else {
+              false
+            }
+          } else {
+            true
+          }
+        }
+      }
+
+      if (tastyOccurences.length != scalaOccurences.length) {
+        false
+      } else {
+        scalaOccurences.forall(occurence => {
+          if (symbols.contains(localScalaToTasty.getOrElse(occurence.symbol, occurence.symbol))) {
+            val siblings = symbols(occurence.symbol)
+            val nearest = siblings.minBy((c : s.SymbolOccurrence) => distance(occurence.range.get, lineToByte)(c.range.get))
+            if (!checkIfTranslatableSymbol(nearest.symbol, occurence.symbol) ||
+               translator.contains((nearest.range.get, nearest.symbol)) ||
+               distance(occurence.range.get, lineToByte)(nearest.range.get) > 5) {
+              false
+            } else {
+              translator += ((nearest.range.get, nearest.symbol) -> occurence)
+              true
+            }
+          } else {
+            false
+          }
+        })
+      }
+  }
 
   // TODO: update scala-0.13 on version change (or resolve automatically)
   final def tastyClassDirectory =
@@ -34,9 +100,6 @@ class Tests {
   /** Returns the SemanticDB for this Scala source file. */
   def getTastySemanticdb(classPath: Path, scalaFile: Path) : s.TextDocument = {
     val classNames = Utils.getClassNames(classPath, scalaFile, "example/")
-    println(classPath)
-    println(classNames)
-    println(scalaFile)
     val sdbconsumer = new SemanticdbConsumer(scalaFile)
 
     val _ = ConsumeTasty(classPath.toString, classNames, sdbconsumer)
@@ -48,11 +111,10 @@ class Tests {
     val path = sourceDirectory.resolve(filename)
     val scalac = getScalacSemanticdb(path)
     val tasty = getTastySemanticdb(tastyClassDirectory, path)
-    println(tasty)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)
-    print("X=>",scalac.occurrences)
-    assertNoDiff(obtained, expected)
+    if (!compareOccurences(tasty.occurrences, scalac.occurrences, scalac.text))
+      assertNoDiff(obtained, expected)
   }
 
   /** Fails the test with a pretty diff if there obtained is not the same as expected */
@@ -83,7 +145,7 @@ class Tests {
   }
 
 
-  /*@Test def testAccess(): Unit = checkFile("example/Access.scala")
+  @Test def testAccess(): Unit = checkFile("example/Access.scala")
   @Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
   @Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
   @Test def testClasses(): Unit = checkFile("example/Classes.scala")
@@ -119,12 +181,5 @@ class Tests {
   @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
   @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
-  */
-  //@Test def testTypesAnnotations() : Unit = checkFile("example/TypesAnnotations.scala") // Crash, has to deal with init symbols
-  //@Test def testNew(): Unit = checkFile("example/New.scala")
-  //@Test def testClasses(): Unit = checkFile("example/Classes.scala")
 
-  //@Test def testSemanticDoc(): Unit = checkFile("example/SemanticDoc.scala")
-  @Test def testAccess(): Unit = checkFile("example/Access.scala")
-  //@Test def testDependantModule(): Unit = checkFile("example/DependantModule.scala")
 }
