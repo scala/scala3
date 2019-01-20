@@ -565,7 +565,8 @@ object Parsers {
         else Ident(name)
 
       // Make sure that even trees with parsing errors have a offset that is within the offset
-      if (tree.name == nme.ERROR && tree.span == NoSpan) tree.withSpan(Span(in.lastOffset - 1, in.lastOffset - 1))
+      val errorOffset = in.offset min (in.lastOffset - 1)
+      if (tree.name == nme.ERROR && tree.span == NoSpan) tree.withSpan(Span(errorOffset, errorOffset))
       else tree
     }
 
