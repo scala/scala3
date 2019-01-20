@@ -31,10 +31,10 @@ object Utils {
 
   /** List all tasty files occuring in the folder f or one of its subfolders */
   def recursiveListFiles(f: File, prefix : String = ""): Array[File] = {
-    val pattern = (prefix + ".*\\.tasty").r
+    val pattern = (".*" + prefix + ".*\\.tasty").r
     val files = f.listFiles
     val folders = files.filter(_.isDirectory)
-    val tastyfiles = files.filter(_.toString match {
+    val tastyfiles = files.filter(_.toPath.toString match {
       case pattern(x: _*) => true
       case _              => false
     })
@@ -45,7 +45,7 @@ object Utils {
   def getTastyFiles(classPath: Path, prefix : String = ""): HashMap[String, List[Path]] = {
     val sourceToTasty: HashMap[String, List[Path]] = HashMap()
     val tastyfiles = recursiveListFiles(classPath.toFile(), prefix)
-    recursiveListFiles(classPath.toFile()).map(tastyPath => {
+    tastyfiles.map(tastyPath => {
       val (classpath, classname) = getClasspathClassname(tastyPath.toPath())
       // We add an exception here to avoid crashing if we encountered
       // a bad tasty file
@@ -58,7 +58,7 @@ object Utils {
               (source -> (tastyPath
                 .toPath().toAbsolutePath :: sourceToTasty.getOrElse(source, Nil))))
       } catch {
-        case _: InvocationTargetException => println(tastyPath)
+        case _: InvocationTargetException => ()
       }
     })
     sourceToTasty
@@ -69,8 +69,13 @@ object Utils {
   extracted from the compilation artifacts found in [classPath].
   */
   def getClassNames(classPath: Path, scalaFile: Path, prefix : String = ""): List[String] = {
+    val tastyFiles = getTastyFiles(classPath.toAbsolutePath, prefix)
+    getClassNamesCached(scalaFile, tastyFiles)
+  }
+
+  def getClassNamesCached(scalaFile: Path, allFiles : HashMap[String, List[Path]]): List[String] = {
     val tastyFiles =
-      getTastyFiles(classPath.toAbsolutePath, prefix)
+      allFiles
       .getOrElse(scalaFile.toString, Nil)
 
     val tastyClasses = tastyFiles.map(getClasspathClassname)

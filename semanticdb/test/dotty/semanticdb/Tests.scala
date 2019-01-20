@@ -82,9 +82,15 @@ class Tests {
       }
   }
 
-  // TODO: update scala-0.13 on version change (or resolve automatically)
-  final def tastyClassDirectory =
-    Paths.get("out/bootstrap/dotty-semanticdb/scala-0.12/test-classes/")
+  final def tastyClassDirectory = {
+    val root = "out/bootstrap/dotty-semanticdb/"
+    val files = Paths.get(root).toFile().listFiles
+    val scalaFolderReg = """scala-(\d+)\.(\d+)""".r
+    val (_, _, path) = files.collect(file => file.getName match {
+      case scalaFolderReg(major, minor) => (major, minor, file.getName)
+     }).max
+    Paths.get(root, path, "test-classes")
+  }
 
   val sourceroot = Paths.get("semanticdb/input").toAbsolutePath
   val sourceDirectory = sourceroot.resolve("src/main/scala")
@@ -97,9 +103,11 @@ class Tests {
     semanticdbLoader.resolve(scalaFile).get
   }
 
+  final def allTastyFiles = Utils.getTastyFiles(tastyClassDirectory, "example")
+
   /** Returns the SemanticDB for this Scala source file. */
   def getTastySemanticdb(classPath: Path, scalaFile: Path) : s.TextDocument = {
-    val classNames = Utils.getClassNames(classPath, scalaFile, "example/")
+    val classNames = Utils.getClassNamesCached(scalaFile, allTastyFiles)
     val sdbconsumer = new SemanticdbConsumer(scalaFile)
 
     val _ = ConsumeTasty(classPath.toString, classNames, sdbconsumer)
@@ -144,7 +152,6 @@ class Tests {
     }
   }
 
-
   @Test def testAccess(): Unit = checkFile("example/Access.scala")
   @Test def testAdvanced(): Unit = checkFile("example/Advanced.scala")
   @Test def testAnonymous(): Unit = checkFile("example/Anonymous.scala")
@@ -181,5 +188,4 @@ class Tests {
   @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
   @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
-
 }

@@ -61,13 +61,19 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       }
     }
 
+    def arePositionEqual(p1 : Position, p2 : Position) : Boolean = {
+      p1.start == p2.start &&
+      p1.end == p2.end &&
+      p1.sourceFile == p2.sourceFile
+    }
+
     object Traverser extends TreeTraverser {
       implicit class TreeExtender(tree: Tree) {
         def isUserCreated: Boolean = {
           val children: List[Position] =
             ChildTraverser.getChildren(tree)(reflect.rootContext).map(_.pos)
-          return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
-            .exists(_ == tree.pos))
+          return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) ||
+            children.exists(arePositionEqual(tree.pos, _)))
         }
       }
 
@@ -76,8 +82,8 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           val children: List[Position] =
             ChildTraverser.getChildrenType(tree)(reflect.rootContext).collect(_ match {
             case IsTypeTree(tt) => tt.pos})
-          return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) || children
-            .exists(_ == tree.pos))
+          return !((tree.pos.exists && tree.pos.start == tree.pos.end && children == Nil) ||
+            children.exists(arePositionEqual(tree.pos, _)))
         }
       }
 
@@ -457,7 +463,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         // dotty will generate a ValDef for the x, but the x will also
         // be present in the constructor, thus making a double definition
         if (symbolPathsMap.contains(key)) return
-
         symbolPathsMap += key
         occurrences =
           occurrences :+
@@ -508,7 +513,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       def addOccurencePatternTree(tree: Pattern,
                                   type_symbol: s.SymbolOccurrence.Role,
                                   range: s.Range): Unit = {
-        if (tree.isUserCreated) {
+        if (tree.symbol.isUseful && tree.isUserCreated) {
           addOccurence(tree.symbol, type_symbol, range)
         }
       }
@@ -780,7 +785,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           case Term.Apply(_, _) => {
             super.traverseTree(tree)
           }
-          case cl @ ClassDef(classname, constr, parents, selfopt, statements) => {
+          case ClassDef(classname, constr, parents, derived, selfopt, statements) => {
             // we first add the class to the symbol list
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.DEFINITION,
@@ -798,26 +803,11 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
               val rightmost = typesParameters.reverse.head.pos.end
               val end_ = nextCharacterSkipComments(sourceCode, rightmost) + 1
               fittedInitClassRange = Some(
-                s.Range(tree.symbol.pos.startLine,
+                s.Range(0,
                         end_,
-                        tree.symbol.pos.startLine,
+                        0,
                         end_))
             }
-
-/*s
-            if (!constr.isUserCreated) {
-              fittedInitClassRange = Some(
-                s.Range(tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn + classname.length + 1,
-                        tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn + classname.length + 1))
-            } else {
-              fittedInitClassRange = Some(
-                s.Range(constr.symbol.pos.startLine,
-                        constr.symbol.pos.startColumn,
-                        constr.symbol.pos.endLine,
-                        constr.symbol.pos.endColumn))
-            }*/
 
             disableConstrParamTraversal = true
               traverseTree(constr)
@@ -864,6 +854,8 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
               }
               case _ =>
             }
+
+            derived.foreach(traverseTypeTree)
 
             classStacks = tree.symbol :: classStacks
 
@@ -1058,7 +1050,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       }
 
     }
-
     Traverser.traverseTree(root)(reflect.rootContext)
   }
 
