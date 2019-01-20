@@ -6,10 +6,10 @@ import scala.annotation.tailrec
 import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
-import core._, core.Decorators.{sourcePos => _, _}
+import core._, core.Decorators._
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils.decorateSymbol
-import util.Positions._, util.SourceFile, util.SourcePosition
+import util.Spans._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
@@ -121,10 +121,10 @@ object Interactive {
         List(select.symbol)
 
       case (_: Thicket) :: (imp: Import) :: _ =>
-        importedSymbols(imp, _.pos.contains(pos.pos))
+        importedSymbols(imp, _.span.contains(pos.span))
 
       case (imp: Import) :: _ =>
-        importedSymbols(imp, _.pos.contains(pos.pos))
+        importedSymbols(imp, _.span.contains(pos.span))
 
       case _ =>
         List(enclosingTree(path).symbol)
@@ -186,8 +186,8 @@ object Interactive {
           if (tree.symbol.exists
                && !tree.symbol.is(Synthetic)
                && !tree.symbol.isPrimaryConstructor
-               && tree.pos.exists
-               && !tree.pos.isZeroExtent
+               && tree.span.exists
+               && !tree.span.isZeroExtent
                && (include.isReferences || isDefinition(tree))
                && treePredicate(tree))
             buf += SourceTree(tree, source)
@@ -252,13 +252,13 @@ object Interactive {
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): List[Tree] =
     trees.find(_.pos.contains(pos)) match {
-      case Some(tree) => pathTo(tree.tree, pos.pos)
+      case Some(tree) => pathTo(tree.tree, pos.span)
       case None => Nil
     }
 
-  def pathTo(tree: Tree, pos: Position)(implicit ctx: Context): List[Tree] =
-    if (tree.pos.contains(pos))
-      NavigateAST.pathTo(pos, tree, skipZeroExtent = true)
+  def pathTo(tree: Tree, span: Span)(implicit ctx: Context): List[Tree] =
+    if (tree.span.contains(span))
+      NavigateAST.pathTo(span, tree, skipZeroExtent = true)
         .collect { case t: untpd.Tree => t }
         .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
     else Nil

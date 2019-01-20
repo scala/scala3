@@ -1,5 +1,5 @@
 object Deriving {
-  import scala.typelevel._
+  import scala.compiletime._
 
   sealed trait Shape
 

@@ -4,7 +4,8 @@ package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
-import util.Positions._
+import util.Spans._
+import util.SourcePosition
 import NameKinds.DepParamName
 import Decorators._
 import StdNames._
@@ -320,7 +321,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled: Boolean =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: => Message, pos: Position, replace: => Unit = ()): Boolean = {
+  def testScala2Mode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
     if (scala2Mode) {
       migrationWarning(msg, pos)
       replace

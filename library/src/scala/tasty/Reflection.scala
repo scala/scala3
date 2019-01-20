@@ -21,10 +21,14 @@ abstract class Reflection
     with TreeOps
     with TreeUtils
     with TypeOrBoundsTreeOps
-    with TypeOrBoundsOps {
+    with TypeOrBoundsOps { self =>
 
   def typeOf[T: scala.quoted.Type]: Type =
     implicitly[scala.quoted.Type[T]].unseal.tpe
+
+  val util: reflect.utils.TreeUtils { val reflect: self.type } = new reflect.utils.TreeUtils {
+    val reflect: self.type = self
+  }
 }
 
 object Reflection {

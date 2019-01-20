@@ -180,8 +180,7 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context): Tree =
-      (if (isPureExpr(tree)) const else Block(tree :: Nil, const))
-        .withPos(tree.pos)
+      (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
@@ -322,7 +321,7 @@ object Erasure {
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
       if (tree.symbol.isEffectivelyErased && !ctx.mode.is(Mode.Type))
-        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.pos)
+        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
       tree
     }
 
@@ -398,9 +397,9 @@ object Erasure {
 
       def mapOwner(sym: Symbol): Symbol = {
         def recur(owner: Symbol): Symbol =
-          if (defn.erasedToObject.contains(owner)) {
+          if (defn.specialErasure.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.ObjectClass
+            defn.specialErasure(owner)
           } else if (defn.isSyntheticFunctionClass(owner))
             defn.erasedFunctionClass(owner)
           else
@@ -559,7 +558,7 @@ object Erasure {
       if (sym.isEffectivelyErased) erasedDef(sym)
       else
         super.typedValDef(untpd.cpy.ValDef(vdef)(
-          tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
+          tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
@@ -592,7 +591,7 @@ object Erasure {
         val ddef1 = untpd.cpy.DefDef(ddef)(
           tparams = Nil,
           vparamss = vparamss1,
-          tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+          tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)
       }

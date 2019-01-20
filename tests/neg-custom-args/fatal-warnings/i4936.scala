@@ -1,0 +1,1 @@
+final object Foo // error

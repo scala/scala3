@@ -10,7 +10,7 @@ import Definitions._
 
 object NameOps {
 
-  final object compactify {
+  object compactify {
     lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
 
     /** COMPACTIFY

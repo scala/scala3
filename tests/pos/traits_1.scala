@@ -17,7 +17,7 @@ object Test {
       case _ => false
     }
   }
-  trait BorderedColoredShape extends Shape with Bordered with Colored {
+  trait BorderedColoredShape extends Shape, Bordered, Colored {
     override def equals(other: Any) = other match {
       case that: BorderedColoredShape => (
         super.equals(that) &&

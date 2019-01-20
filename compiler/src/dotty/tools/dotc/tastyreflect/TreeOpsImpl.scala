@@ -10,7 +10,7 @@ import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFr
 trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers {
 
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
-    def pos(implicit ctx: Context): Position = tree.pos
+    def pos(implicit ctx: Context): Position = tree.sourcePos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
   }
 
@@ -32,6 +32,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     private def rhs = cdef.rhs.asInstanceOf[tpd.Template]
     def constructor(implicit ctx: Context): DefDef = rhs.constr
     def parents(implicit ctx: Context): List[TermOrTypeTree] = rhs.parents
+    def derived(implicit ctx: Context): List[TypeTree] = rhs.derived.asInstanceOf[List[TypeTree]]
     def self(implicit ctx: Context): Option[tpd.ValDef] = optional(rhs.self)
     def body(implicit ctx: Context): List[Statement] = rhs.body
     def symbol(implicit ctx: Context): ClassSymbol = cdef.symbol.asClass
@@ -250,14 +251,14 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   object ClassDef extends ClassDefModule {
 
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
+    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
       val Trees.TypeDef(_, originalImpl: tpd.Template) = original
-      tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, selfOpt.getOrElse(tpd.EmptyValDef), body))
+      tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
     }
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree],  Option[ValDef], List[Statement])] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] = tree match {
       case Trees.TypeDef(name, impl: tpd.Template) =>
-        Some((name.toString, impl.constr, impl.parents, optional(impl.self), impl.body))
+        Some((name.toString, impl.constr, impl.parents, impl.derived.asInstanceOf[List[TypeTree]], optional(impl.self), impl.body))
       case _ => None
     }
   }
@@ -353,7 +354,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   def TermDeco(term: Term): TermAPI = new TermAPI {
     import tpd._
-    def pos(implicit ctx: Context): Position = term.pos
+    def pos(implicit ctx: Context): Position = term.sourcePos
     def tpe(implicit ctx: Context): Type = term.tpe
     def underlyingArgument(implicit ctx: Context): Term = term.underlyingArgument
     def underlying(implicit ctx: Context): Term = term.underlying
@@ -444,7 +445,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       def apply(cls: ClassSymbol)(implicit ctx: Context): This =
         tpd.This(cls)
 
-      def copy(original: Tree)(qual: Option[Id]): This =
+      def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =
         tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
       def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]] = x match {
@@ -555,7 +556,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
       def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol)
 
-      def copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
+      def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
 
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])] = x match {

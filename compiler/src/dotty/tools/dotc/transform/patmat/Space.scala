@@ -924,7 +924,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
 
     if (uncovered.nonEmpty)
-      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.pos)
+      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.sourcePos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
@@ -973,14 +973,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (covered == Empty) covered = curr
 
         if (isSubspace(covered, prevs)) {
-          ctx.warning(MatchCaseUnreachable(), pat.pos)
+          ctx.warning(MatchCaseUnreachable(), pat.sourcePos)
         }
 
         // if last case is `_` and only matches `null`, produce a warning
         if (i == cases.length - 1 && !isNull(pat) ) {
           simplify(minus(covered, prevs)) match {
             case Typ(`nullType`, _) =>
-              ctx.warning(MatchCaseOnlyNullWarning(), pat.pos)
+              ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
           }
 

@@ -149,11 +149,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     // val x$lzy = new scala.runtime.LazyInt()
     val holderName = LazyLocalName.fresh(xname)
     val holderImpl = defn.LazyHolder()(ctx)(tpe.typeSymbol)
-    val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.pos)
+    val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.span)
     val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Nil))
 
     val holderRef = ref(holderSymbol)
-    val getValue = holderRef.select(lazyNme.value).ensureApplied.withPos(x.pos)
+    val getValue = holderRef.select(lazyNme.value).ensureApplied.withSpan(x.span)
     val initialized = holderRef.select(lazyNme.initialized).ensureApplied
 
     // def x$lzycompute(): Int = x$lzy.synchronized {
@@ -161,7 +161,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     //   else x$lzy.initialize(<RHS>)
     // }
     val initName = LazyLocalInitName.fresh(xname)
-    val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
+    val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.span)
     val rhs = x.rhs.changeOwnerAfter(x.symbol, initSymbol, this)
     val initialize = holderRef.select(lazyNme.initialize).appliedTo(rhs)
     val initBody = holderRef

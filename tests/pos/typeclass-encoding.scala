@@ -65,7 +65,7 @@ object semiGroups {
     type StaticPart[X] = MonoidStatic[X]
   }
 
-  implicit object extend_Int_Monoid extends MonoidStatic[Int] with Implementation[Int] {
+  implicit object extend_Int_Monoid extends MonoidStatic[Int], Implementation[Int] {
     type Implemented = Monoid
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
@@ -74,7 +74,7 @@ object semiGroups {
     }
   }
 
-  implicit object extend_String_Monoid extends MonoidStatic[String] with Implementation[String] {
+  implicit object extend_String_Monoid extends MonoidStatic[String], Implementation[String] {
     type Implemented = Monoid
     def unit = ""
     def inject($this: String): Monoid { type This = String } =

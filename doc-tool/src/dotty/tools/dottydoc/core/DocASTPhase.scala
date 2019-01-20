@@ -129,7 +129,7 @@ class DocASTPhase extends Phase {
         ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe), kind) :: Nil
 
       case x => {
-        ctx.docbase.debug(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
+        ctx.docbase.debug(s"Found unwanted entity: $x (${x.span},\n${x.show}")
         Nil
       }
     }

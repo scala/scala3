@@ -4,7 +4,7 @@ package core
 import annotation.tailrec
 import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
-import util.Positions.Position, util.SourcePosition
+import util.Spans.Span, util.SourcePosition
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._
@@ -151,28 +151,21 @@ object Decorators {
    *  exact meaning of "contains" here.
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
-    def containsPhase(phase: Phase): Boolean = phase match {
-      case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
-      case _ =>
-        names exists { name =>
-          name == "all" || {
-            val strippedName = name.stripSuffix("+")
-            val logNextPhase = name != strippedName
-            phase.phaseName.startsWith(strippedName) ||
-              (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
-          }
+    def containsPhase(phase: Phase): Boolean =
+      names.nonEmpty && {
+        phase match {
+          case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
+          case _ =>
+            names exists { name =>
+              name == "all" || {
+                val strippedName = name.stripSuffix("+")
+                val logNextPhase = name != strippedName
+                phase.phaseName.startsWith(strippedName) ||
+                  (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
+              }
+            }
         }
-    }
-  }
-
-  implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
-    def recur(inlinedCalls: List[Tree], pos: Position): SourcePosition = inlinedCalls match {
-      case inlinedCall :: rest =>
-        sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
-      case empty =>
-        ctx.source.atPos(pos)
-    }
-    recur(enclosingInlineds, pos)
+      }
   }
 
   implicit class genericDeco[T](val x: T) extends AnyVal {

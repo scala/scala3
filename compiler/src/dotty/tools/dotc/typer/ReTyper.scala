@@ -10,7 +10,7 @@ import Decorators._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import scala.util.control.NonFatal
-import util.Positions.Position
+import util.Spans.Span
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -120,7 +120,7 @@ class ReTyper extends Typer with ReChecking {
   override def checkVariance(tree: Tree)(implicit ctx: Context): Unit = ()
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
-  override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = ()
   override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context): Unit = ()
 }

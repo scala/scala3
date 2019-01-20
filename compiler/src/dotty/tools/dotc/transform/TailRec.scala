@@ -117,13 +117,13 @@ class TailRec extends MiniPhase {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TailrecAnnot)
     def noTailTransform(failureReported: Boolean) = {
-      // FIXME: want to report this error on `tree.namePos`, but
-      // because of extension method getting a weird pos, it is
+      // FIXME: want to report this error on `tree.nameSpan`, but
+      // because of extension method getting a weird position, it is
       // better to report on method symbol so there's no overlap.
       // We don't report a new error if failures were reported
       // during the transformation.
       if (mandatory && !failureReported)
-        ctx.error(TailrecNotApplicable(method), method.pos)
+        ctx.error(TailrecNotApplicable(method), method.sourcePos)
 
       tree
     }
@@ -282,10 +282,10 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            ctx.error(s"Cannot rewrite recursive call: $reason", tree.pos)
+            ctx.error(s"Cannot rewrite recursive call: $reason", tree.sourcePos)
           }
           else
-            tailrec.println("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)
+            tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)
           continue
         }
 
@@ -303,7 +303,7 @@ class TailRec extends MiniPhase {
 
         if (isRecursiveCall) {
           if (inTailPosition) {
-            tailrec.println("Rewriting tail recursive call:  " + tree.pos)
+            tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
 
             val assignParamPairs = for {
@@ -330,7 +330,7 @@ class TailRec extends MiniPhase {
               case _ :: _ =>
                 val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
                   val temp = ctx.newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
-                  (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withPos(tree.pos))
+                  (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withSpan(tree.span))
                 }).unzip
                 tempValDefs ::: assigns
               case nil =>
@@ -342,7 +342,7 @@ class TailRec extends MiniPhase {
              * which can cause Ycheck errors.
              */
             val tpt = TypeTree(method.info.resultType)
-            seq(assignments, Typed(Return(unitLiteral.withPos(tree.pos), continueLabel), tpt))
+            seq(assignments, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
           }
           else fail("it is not in tail position")
         }

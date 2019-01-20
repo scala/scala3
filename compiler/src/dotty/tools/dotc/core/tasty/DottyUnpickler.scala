@@ -23,7 +23,7 @@ object DottyUnpickler {
 
   class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): PositionUnpickler =
-      new PositionUnpickler(reader)
+      new PositionUnpickler(reader, nameAtRef)
   }
 
   class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler]("Comments") {
@@ -50,9 +50,6 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
    */
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enter(roots)
-
-  def unpickleTypeTree()(implicit ctx: Context): Tree =
-    treeUnpickler.unpickleTypeTree()
 
   protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler = {
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)

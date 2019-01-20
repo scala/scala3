@@ -14,8 +14,7 @@ class ConstructorsFromTastyTest extends ConstructorsBase with CheckFromTasty
 
 abstract class ConstructorsBase extends DottyDocTest {
   @Test def singleClassConstructor = {
-    val source = new SourceFile (
-      "Class.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -38,8 +37,7 @@ abstract class ConstructorsBase extends DottyDocTest {
   }
 
   @Test def constructorPlusImplicitArgList = {
-    val source = new SourceFile (
-      "Class.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -65,8 +63,7 @@ abstract class ConstructorsBase extends DottyDocTest {
   }
 
   @Test def multipleArgumentListsForConstructor = {
-    val source = new SourceFile (
-      "Class.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -93,8 +90,7 @@ abstract class ConstructorsBase extends DottyDocTest {
   }
 
   @Test def multipleConstructors = {
-    val source = new SourceFile (
-      "Class.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -133,8 +129,7 @@ abstract class ConstructorsBase extends DottyDocTest {
   }
 
   @Test def multipleConstructorsCC = {
-    val source = new SourceFile (
-      "Class.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |
@@ -174,8 +169,7 @@ abstract class ConstructorsBase extends DottyDocTest {
   }
 
   @Test def traitParameters = {
-    val source = new SourceFile (
-      "Trait.scala",
+    val source = SourceUtil.makeTemp(
       """
       |package scala
       |

@@ -109,13 +109,14 @@ trait TreeOps extends Core {
   val ClassDef: ClassDefModule
   abstract class ClassDefModule {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], Option[ValDef], List[Statement])]
+    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])]
   }
 
   trait ClassDefAPI {
     def constructor(implicit ctx: Context): DefDef
     def parents(implicit ctx: Context): List[TermOrTypeTree]
+    def derived(implicit ctx: Context): List[TypeTree]
     def self(implicit ctx: Context): Option[ValDef]
     def body(implicit ctx: Context): List[Statement]
 
@@ -320,7 +321,7 @@ trait TreeOps extends Core {
       /** Create a `this[<id: Id]>` */
       def apply(cls: ClassSymbol)(implicit ctx: Context): This
 
-      def copy(original: Tree)(qual: Option[Id]): This
+      def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This
 
       /** Matches `this[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]]
@@ -444,7 +445,7 @@ trait TreeOps extends Core {
       /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
       def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
 
-      def copy(original: Tree)(qual: Term, mix: Option[Id]): Super
+      def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
 
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])]

@@ -5,7 +5,7 @@ package parsing
 import core._
 import Flags._, Trees._, TypedTrees._, UntypedTrees._, Names._, StdNames._, NameOps._, Contexts._
 import scala.collection.mutable.ListBuffer
-import util.Positions._, Symbols._, Decorators._, Flags._, Constants._
+import util.Spans._, Symbols._, Decorators._, Flags._, Constants._
 import TreeInfo._
 
 /** Methods for building trees, used in the parser.  All the trees
@@ -42,7 +42,7 @@ class TreeBuilder(implicit ctx: Context) {
       case Ident(name) if isVarPattern(tree) && name != nme.WILDCARD =>
         Bind(
           name, Ident(nme.WILDCARD).withPos(tree.pos.focus)
-        ).withPos(tree.pos)
+        ).withSpan(tree.span)
       case Typed(id @ Ident(name), tpt) if isVarPattern(id) && name != nme.WILDCARD =>
         Bind(
           name,

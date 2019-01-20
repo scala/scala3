@@ -400,10 +400,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
       if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
-          || fn.symbol.isStable
+          || (fn.symbol.isStable && !fn.symbol.is(Lazy))
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else if (fn.symbol.is(Erased)) Pure
+      else if (fn.symbol.isStable /* && fn.symbol.is(Lazy) */)
+        minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
       else Impure
     case Typed(expr, _) =>
       exprPurity(expr)
@@ -498,11 +500,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val tree1 = ConstFold(tree)
     tree1.tpe.widenTermRefExpr match {
       case ConstantType(value) =>
-        if (isIdempotentExpr(tree1)) Literal(value)
+        if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
         else tree1 match {
           case Select(qual, _) if tree1.tpe.isInstanceOf[ConstantType] =>
             // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-            Block(qual :: Nil, Literal(value))
+            Block(qual :: Nil, Literal(value)).withSpan(tree.span)
           case _ =>
             tree1
         }
@@ -553,7 +555,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  apply of a function class?
    */
   def isSyntheticApply(tree: Tree): Boolean = tree match {
-    case Select(qual, nme.apply) => tree.pos.end == qual.pos.end
+    case Select(qual, nme.apply) => tree.span.end == qual.span.end
     case _ => false
   }
 
@@ -663,11 +665,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  if no such path exists.
    *  Pre: `sym` must have a position.
    */
-  def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = trace.onDebug(s"defpath($sym with position ${sym.pos}, ${root.show})") {
-    require(sym.pos.exists)
+  def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = trace.onDebug(s"defpath($sym with position ${sym.span}, ${root.show})") {
+    require(sym.span.exists)
     object accum extends TreeAccumulator[List[Tree]] {
       def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
-        if (tree.pos.contains(sym.pos))
+        if (tree.span.contains(sym.span))
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)
@@ -716,7 +718,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  tree must be reachable from come tree stored in an enclosing context.
    */
   def definingStats(sym: Symbol)(implicit ctx: Context): List[Tree] =
-    if (!sym.pos.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
+    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
     else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
         def verify(stats: List[Tree]) =

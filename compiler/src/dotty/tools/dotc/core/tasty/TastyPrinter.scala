@@ -5,8 +5,8 @@ package tasty
 import Contexts._, Decorators._
 import Names.Name
 import TastyUnpickler._
-import TastyBuffer.NameRef
-import util.Positions.offsetToInt
+import TastyBuffer.{Addr, NameRef}
+import util.Spans.offsetToInt
 import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
@@ -129,9 +129,9 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
-      val positions = new PositionUnpickler(reader).positions
+      val spans = new PositionUnpickler(reader, tastyName).spans
       sb.append(s" position bytes:\n")
-      val sorted = positions.toSeq.sortBy(_._1.index)
+      val sorted = spans.toSeq.sortBy(_._1.index)
       for ((addr, pos) <- sorted) {
         sb.append(treeColor("%10d".format(addr.index)))
         sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")

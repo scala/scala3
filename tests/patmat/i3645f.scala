@@ -23,8 +23,8 @@ object App {
     type Foo = Module.Foo.Type
 
     sealed abstract class K[F]
-    final case object K1 extends K[Int]
-    final case object K2 extends K[Foo]
+    case object K1 extends K[Int]
+    case object K2 extends K[Foo]
 
     val kv: K[Foo] = Module.Foo.subst[K](K1)
     def test(k: K[Foo]): Unit = k match {

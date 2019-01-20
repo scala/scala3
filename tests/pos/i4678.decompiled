@@ -1,0 +1,14 @@
+/** Decompiled from out/posTestFromTasty/pos/i4678/Foo.tasty */
+class Foo() {
+  val x: scala.Int = (1: @annot1() @annot2() @annot3() @annot4() @annot5())
+}
+/** Decompiled from out/posTestFromTasty/pos/i4678/annot1.tasty */
+class annot1() extends scala.annotation.Annotation()
+/** Decompiled from out/posTestFromTasty/pos/i4678/annot2.tasty */
+class annot2() extends scala.annotation.Annotation()
+/** Decompiled from out/posTestFromTasty/pos/i4678/annot3.tasty */
+class annot3() extends scala.annotation.Annotation()
+/** Decompiled from out/posTestFromTasty/pos/i4678/annot4.tasty */
+class annot4() extends scala.annotation.Annotation()
+/** Decompiled from out/posTestFromTasty/pos/i4678/annot5.tasty */
+class annot5() extends scala.annotation.Annotation()

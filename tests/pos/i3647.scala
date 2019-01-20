@@ -10,8 +10,8 @@ object App {
       type T = String
       type Bar[A] = J[A]
       sealed abstract class J[A]
-      final case object JName extends J[T]
-      final case object JInt extends J[Int]
+      case object JName extends J[T]
+      case object JInt extends J[Int]
 
       def get(k: J[T]): String = k match {
         case JName => "Age"

@@ -1,4 +1,4 @@
-ClassDef("Foo", DefDef("<init>", Nil, List(Nil), TypeTree.Inferred(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Inferred()), "<init>"), Nil)), None, List(ValDef("foo", TypeTree.Ident("Int"), Some(Term.Literal(Constant.Int(2)))), DefDef("bar", Nil, List(List(ValDef("i", TypeTree.Ident("Int"), None))), TypeTree.Ident("Int"), Some(Term.Literal(Constant.Int(3))))))
+ClassDef("Foo", DefDef("<init>", Nil, List(Nil), TypeTree.Inferred(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("foo", TypeTree.Ident("Int"), Some(Term.Literal(Constant.Int(2)))), DefDef("bar", Nil, List(List(ValDef("i", TypeTree.Ident("Int"), None))), TypeTree.Ident("Int"), Some(Term.Literal(Constant.Int(3))))))
 DefDef("<init>", Nil, List(Nil), TypeTree.Inferred(), None)
 ValDef("foo", TypeTree.Ident("Int"), Some(Term.Literal(Constant.Int(2))))
 DefDef("bar", Nil, List(List(ValDef("i", TypeTree.Ident("Int"), None))), TypeTree.Ident("Int"), Some(Term.Literal(Constant.Int(3))))

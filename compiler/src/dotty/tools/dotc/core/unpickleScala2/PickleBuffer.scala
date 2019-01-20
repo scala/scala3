@@ -20,7 +20,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   /** Double bytes array */
   private def dble(): Unit = {
     val bytes1 = new Array[Byte](bytes.length * 2)
-    Array.copy(bytes, 0, bytes1, 0, writeIndex)
+    System.arraycopy(bytes, 0, bytes1, 0, writeIndex)
     bytes = bytes1
   }
 
@@ -69,7 +69,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   def patchNat(pos: Int, x: Int): Unit = {
     def patchNatPrefix(x: Int): Unit = {
       writeByte(0)
-      Array.copy(bytes, pos, bytes, pos + 1, writeIndex - (pos + 1))
+      System.arraycopy(bytes, pos, bytes, pos + 1, writeIndex - (pos + 1))
       bytes(pos) = ((x & 0x7f) | 0x80).toByte
       val y = x >>> 7
       if (y != 0) patchNatPrefix(y)

@@ -12,6 +12,7 @@ import util.{Stats, SimpleIdentityMap}
 import Decorators._
 import Uniques._
 import config.Printers.typr
+import util.SourceFile
 
 import scala.annotation.internal.sharable
 
@@ -410,7 +411,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType)(typer)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -456,7 +457,7 @@ object ProtoTypes {
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.
    *  Return either the original type lambda, or the copy, if one was made.
-   *  Also, if `owningTree` is non-empty ot `alwaysAddTypeVars` is true, add a type variable
+   *  Also, if `owningTree` is non-empty or `alwaysAddTypeVars` is true, add a type variable
    *  for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */
@@ -471,7 +472,7 @@ object ProtoTypes {
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
       yield {
-        val tt = new TypeVarBinder().withPos(owningTree.pos)
+        val tt = new TypeVarBinder().withSpan(owningTree.span)
         val tvar = new TypeVar(paramRef, state)
         state.ownedVars += tvar
         tt.withType(tvar)
@@ -652,7 +653,7 @@ object ProtoTypes {
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    def apply(tp: Type): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
+    def apply(tp: Type)(implicit src: SourceFile): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: untpd.Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None

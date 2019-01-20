@@ -3,7 +3,7 @@ package dotty.tools.languageserver.worksheet
 import dotty.tools.dotc.ast.tpd.{DefTree, Template, Tree, TypeDef}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.SourceTree
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 
 import dotty.tools.dotc.core.Flags.Synthetic
@@ -40,7 +40,7 @@ object Worksheet {
                 template.body.flatMap {
                   case statement: DefTree if statement.symbol.is(Synthetic) =>
                     None
-                  case statement if seen.add(bounds(statement.pos)) =>
+                  case statement if seen.add(bounds(statement.span)) =>
                     Some(query(statement, tree.source))
                   case _ =>
                     None
@@ -66,12 +66,12 @@ object Worksheet {
    * @param sourcefile The sourcefile of the worksheet.
    */
   private def query(tree: Tree, sourcefile: SourceFile): (Int, String) = {
-    val line = sourcefile.offsetToLine(tree.pos.end)
-    val source = sourcefile.content.slice(tree.pos.start, tree.pos.end).mkString
+    val line = sourcefile.offsetToLine(tree.span.end)
+    val source = sourcefile.content.slice(tree.span.start, tree.span.end).mkString
     (line, source)
   }
 
-  private def bounds(pos: Position): (Int, Int) = (pos.start, pos.end)
+  private def bounds(span: Span): (Int, Int) = (span.start, span.end)
 
 }
 

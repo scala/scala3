@@ -61,7 +61,7 @@ class Pickler extends Phase {
       treePkl.compactify()
       pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
-      if (tree.pos.exists)
+      if (tree.span.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
       if (!ctx.settings.YdropComments.value)
@@ -78,7 +78,7 @@ class Pickler extends Phase {
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (pickling ne noPrinter) {
         println(i"**** pickled info of $cls")
-        new TastyPrinter(pickler.assembleParts()).printContents()
+        println(new TastyPrinter(pickler.assembleParts()).printContents())
       }
     }
   }
@@ -116,7 +116,7 @@ class Pickler extends Phase {
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for $cls in ${cls.sourceFile}, for details:
+      ctx.error(s"""pickling difference for $cls in ${cls.source}, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }

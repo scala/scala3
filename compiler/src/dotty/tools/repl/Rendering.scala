@@ -76,11 +76,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     val dcl = d.symbol.showUser
 
     try {
-      val resultValue =
-        if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
-        else valueOf(d.symbol)
-
-      resultValue.map(value => s"$dcl = $value")
+      if (d.symbol.is(Flags.Lazy)) Some(dcl)
+      else valueOf(d.symbol).map(value => s"$dcl = $value")
     }
     catch { case ex: InvocationTargetException => Some(renderError(ex)) }
   }

@@ -48,7 +48,7 @@ object TypeErasure {
       val sym = tp.symbol
       sym.isClass &&
       !erasureDependsOnArgs(sym) &&
-      !defn.erasedToObject.contains(sym) &&
+      !defn.specialErasure.contains(sym) &&
       !defn.isSyntheticFunctionClass(sym)
     case _: TermRef =>
       true
@@ -441,7 +441,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
           else parents.mapConserve(eraseParent) match {
             case tr :: trs1 =>
-              assert(!tr.classSymbol.is(Trait), cls)
+              assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
               val tr1 = if (cls is Trait) defn.ObjectType else tr
               tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
             case nil => nil
@@ -467,7 +467,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def erasePair(tp: Type)(implicit ctx: Context): Type = {
     val arity = tp.tupleArity
-    if (arity < 0) defn.ObjectType
+    if (arity < 0) defn.ProductType
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
     else defn.TupleXXLType
   }
@@ -524,8 +524,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
-      if (defn.erasedToObject.contains(cls))
-        return defn.ObjectClass
+      if (defn.specialErasure.contains(cls))
+        return defn.specialErasure(cls)
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }

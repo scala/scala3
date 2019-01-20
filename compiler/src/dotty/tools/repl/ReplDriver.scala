@@ -17,7 +17,7 @@ import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.io._
@@ -113,7 +113,7 @@ class ReplDriver(settings: Array[String],
       implicit val ctx = state.context
       try {
         val line = terminal.readLine(completer)
-        ParseResult(line)
+        ParseResult(line)(state)
       } catch {
         case _: EndOfFileException |
             _: UserInterruptException => // Ctrl+D or Ctrl+C
@@ -132,7 +132,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
-    val parsed = ParseResult(input)(state.context)
+    val parsed = ParseResult(input)(state)
     interpret(parsed)
   }
 
@@ -149,7 +149,7 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Completion)(implicit ctx: Context) = {
+    def makeCandidate(completion: Completion) = {
       val displ = completion.label
       new Candidate(
         /* value    = */ displ,
@@ -165,11 +165,11 @@ class ReplDriver(settings: Array[String],
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
-        val file = new SourceFile("<completions>", expr)
-        val unit = new CompilationUnit(file)
+        val file = SourceFile.virtual("<completions>", expr)
+        val unit = CompilationUnit(file)(state.context)
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
-        val srcPos = SourcePosition(file, Position(cursor))
+        val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
       }
@@ -208,7 +208,10 @@ class ReplDriver(settings: Array[String],
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
       ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
-    implicit val state = newRun(istate)
+    implicit val state = {
+      val state0 = newRun(istate)
+      state0.copy(context = state0.context.withSource(parsed.source))
+    }
     compiler
       .compile(parsed)
       .fold(

@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.Implicit
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.core.Types.{ErrorType, MethodType, PolyType}
 import dotty.tools.dotc.reporting.diagnostic.messages
 
@@ -44,15 +44,15 @@ object Signatures {
    * Extract (current parameter index, function index, functions) out of a method call.
    *
    * @param path The path to the function application
-   * @param pos  The position of the cursor
+   * @param span The position of the cursor
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
-  def callInfo(path: List[tpd.Tree], pos: Position)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) = {
+  def callInfo(path: List[tpd.Tree], span: Span)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) = {
     path match {
       case Apply(fun, params) :: _ =>
         val alreadyAppliedCount = Signatures.countParams(fun)
-        val paramIndex = params.indexWhere(_.pos.contains(pos)) match {
+        val paramIndex = params.indexWhere(_.span.contains(span)) match {
           case -1 => (params.length - 1 max 0) + alreadyAppliedCount
           case n => n + alreadyAppliedCount
         }
@@ -170,7 +170,7 @@ object Signatures {
       // `null` parameter: `foo(bar, null)`. This may influence what's the "best"
       // alternative, so we discard it.
       val userParams = params match {
-        case xs :+ (nul @ Literal(Constant(null))) if nul.pos.isZeroExtent => xs
+        case xs :+ (nul @ Literal(Constant(null))) if nul.span.isZeroExtent => xs
         case _ => params
       }
       val userParamsTypes = userParams.map(_.tpe)

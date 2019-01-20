@@ -105,7 +105,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
             parent
           }
           else parent match { // ensure class parent is a constructor
-            case parent: TypeTree => New(parent.tpe, Nil).withPos(impl.pos)
+            case parent: TypeTree => New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent
           }
         }
@@ -118,7 +118,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
-        ctx.error("Not a single abstract method type, requires an outer pointer", tree.pos)
+        ctx.error("Not a single abstract method type, requires an outer pointer", tree.sourcePos)
     }
     tree
   }
@@ -359,7 +359,7 @@ object ExplicitOuter {
         }
         if (hasOuterParam(cls))
           methPart(fun) match {
-            case Select(receiver, _) => outerArg(receiver).withPos(fun.pos) :: Nil
+            case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
           }
         else Nil
       } else Nil

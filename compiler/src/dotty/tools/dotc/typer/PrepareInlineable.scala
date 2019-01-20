@@ -84,7 +84,7 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            ctx.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.pos)
+            ctx.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.sourcePos)
             tree // TODO: create a proper accessor for the private constructor
           }
           else useAccessor(tree)
@@ -168,7 +168,7 @@ object PrepareInlineable {
           ref(accessor)
             .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
             .appliedToArgss((qual :: Nil) :: argss)
-            .withPos(tree.pos)
+            .withSpan(tree.span)
 
             // TODO: Handle references to non-public types.
             // This is quite tricky, as such types can appear anywhere, including as parts
@@ -178,7 +178,7 @@ object PrepareInlineable {
             //
             //  val accessor = accessorSymbol(tree, TypeAlias(tree.tpe)).asType
             //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
-            //  ref(accessor).withPos(tree.pos)
+            //  ref(accessor).withSpan(tree.span)
             //
         case _ => tree
       }
@@ -243,10 +243,10 @@ object PrepareInlineable {
 
   def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
     if (ctx.outer.inInlineMethod)
-      ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.pos)
+      ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.sourcePos)
     if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
       ctx.warning(
         em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
-        body.pos)
+        body.sourcePos)
   }
 }

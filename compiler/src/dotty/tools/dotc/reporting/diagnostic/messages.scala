@@ -569,19 +569,9 @@ object messages {
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
   extends Message(IllegalStartSimpleExprID) {
     val kind: String = "Syntax"
-    val msg: String = "Illegal start of simple expression"
+    val msg: String = "expression expected"
     val explanation: String = {
-      hl"""|An expression yields a value. In the case of the simple expression, this error
-           |commonly occurs when there's a missing parenthesis or brace. The reason being
-           |that a simple expression is one of the following:
-           |
-           |- Block
-           |- Expression in parenthesis
-           |- Identifier
-           |- Object creation
-           |- Literal
-           |
-           |which cannot start with ${Red(illegalToken)}."""
+      hl"""|An expression cannot start with ${Red(illegalToken)}."""
     }
   }
 
@@ -932,7 +922,7 @@ object messages {
   case class IllegalStartOfSimplePattern()(implicit ctx: Context)
   extends Message(IllegalStartOfSimplePatternID) {
     val kind: String = "Syntax"
-    val msg: String = "Illegal start of simple pattern"
+    val msg: String = "pattern expected"
     val explanation: String = {
       val sipCode =
         """def f(x: Int, y: Int) = x match {
@@ -2103,7 +2093,7 @@ object messages {
           case _ /* Signature.FullMatch */ => "\nThe definitions have matching type signatures after erasure."
         }
       } else ""
-      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} ${if (previousDecl.pos.exists) s"at line ${previousDecl.pos.line + 1}" else ""}." + details
+      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} ${if (previousDecl.span.exists) s"at line ${previousDecl.sourcePos.line + 1}" else ""}." + details
     }
     val explanation: String = ""
   }

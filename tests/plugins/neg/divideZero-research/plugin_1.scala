@@ -30,7 +30,7 @@ class DivideZero extends MiniPhase with ResearchPlugin {
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = tree match {
     case tpd.Apply(fun, tpd.Literal(Constants.Constant(v)) :: Nil) if isNumericDivide(fun.symbol) && v == 0 =>
-      ctx.error("divide by zero", tree.pos)
+      ctx.error("divide by zero", tree.sourcePos)
       tree
     case _ =>
       tree

@@ -3,7 +3,7 @@ package model
 package comment
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.config.Printers.dottydoc
 import util.MemberLookup
@@ -21,7 +21,7 @@ private[comment] final class WikiParser(
   entity: Entity,
   packages: Map[String, Package],
   val buffer: String,
-  pos: Position,
+  span: Span,
   site: Symbol
 ) extends CharReader(buffer) with MemberLookup { wiki =>
   var summaryParsed = false
@@ -110,7 +110,7 @@ private[comment] final class WikiParser(
     jump("{{{")
     val str = readUntil("}}}")
     if (char == endOfText)
-      reportError(pos, "unclosed code block")
+      reportError(span, "unclosed code block")
     else
       jump("}}}")
     blockEnded("code block")
@@ -124,7 +124,7 @@ private[comment] final class WikiParser(
     val text = getInline(check("=" * inLevel))
     val outLevel = repeatJump('=', inLevel)
     if (inLevel != outLevel)
-      reportError(pos, "unbalanced or unclosed heading")
+      reportError(span, "unbalanced or unclosed heading")
     blockEnded("heading")
     Title(text, inLevel)
   }
@@ -344,7 +344,7 @@ private[comment] final class WikiParser(
   /** {{{ eol ::= { whitespace } '\n' }}} */
   def blockEnded(blockType: String): Unit = {
     if (char != endOfLine && char != endOfText) {
-      reportError(pos, "no additional content on same line after " + blockType)
+      reportError(span, "no additional content on same line after " + blockType)
       jumpUntil(endOfLine)
     }
     while (char == endOfLine)
@@ -402,8 +402,8 @@ private[comment] final class WikiParser(
     }
   }
 
-  def reportError(pos: Position, message: String) =
-    dottydoc.println(s"$pos: $message")
+  def reportError(span: Span, message: String) =
+    dottydoc.println(s"$span: $message")
 }
 
 sealed class CharReader(buffer: String) { reader =>

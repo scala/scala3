@@ -79,16 +79,25 @@ object Phases {
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
     final def squashPhases(phasess: List[List[Phase]],
-                             phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
+                           phasesToSkip: List[String],
+                           stopBeforePhases: List[String],
+                           stopAfterPhases: List[String],
+                           YCheckAfter: List[String])(implicit ctx: Context): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
 
       var stop = false
+
+      def isEnabled(p: Phase): Boolean =
+        !stop &&
+        !stopBeforePhases.contains(p.phaseName) &&
+        !phasesToSkip.contains(p.phaseName) &&
+        p.isEnabled
+
       val filteredPhases = phasess.map(_.filter { p =>
-        val pstop = stop
-        stop = stop | stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
-        !(pstop || stopBeforePhases.contains(p.phaseName) || phasesToSkip.contains(p.phaseName))
+        try isEnabled(p)
+        finally stop |= stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
       })
 
       var i = 0
@@ -322,6 +331,8 @@ object Phases {
 
     /** Can this transform change the base types of a type? */
     def changesBaseTypes: Boolean = changesParents
+
+    def isEnabled(implicit ctx: Context): Boolean = true
 
     def exists: Boolean = true
 

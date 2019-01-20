@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.{Contexts, Types}
 trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with CoreImpl {
 
   def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
-    def pos(implicit ctx: Context): Position = tpt.pos
+    def pos(implicit ctx: Context): Position = tpt.sourcePos
     def symbol(implicit ctx: Context): Symbol = tpt.symbol
     def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }
@@ -407,7 +407,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
         // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
         x.tpe match {
           case tpe: Types.TypeBounds =>
-            Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withPos(x.pos), tpd.TypeTree(tpe.hi).withPos(x.pos)))
+            Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withSpan(x.span), tpd.TypeTree(tpe.hi).withSpan(x.span)))
           case _ => None
         }
       case _ => None

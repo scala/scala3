@@ -21,7 +21,7 @@ import Decorators._
 import StdNames._
 import dotty.tools.dotc.reporting.diagnostic.messages.IdentifierExpected
 import dotty.tools.dotc.util.SourceFile
-import util.Positions._
+import util.Spans._
 import scala.collection.mutable.ListBuffer
 
 object JavaParsers {
@@ -77,9 +77,9 @@ object JavaParsers {
       syntaxError(in.offset, msg, skipIt)
     }
 
-    def syntaxError(pos: Int, msg: String, skipIt: Boolean): Unit = {
-      if (pos > lastErrorOffset) {
-        syntaxError(msg, pos)
+    def syntaxError(offset: Int, msg: String, skipIt: Boolean): Unit = {
+      if (offset > lastErrorOffset) {
+        syntaxError(msg, offset)
         // no more errors on this token.
         lastErrorOffset = in.offset
       }
@@ -87,7 +87,7 @@ object JavaParsers {
         skip()
     }
 
-    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType) withPos Position(in.offset)
+    def errorTypeTree: TypeTree = TypeTree().withType(UnspecifiedErrorType).withSpan(Span(in.offset))
 
     // --------- tree building -----------------------------
 
@@ -125,7 +125,7 @@ object JavaParsers {
         stats1 = constr1 :: stats1
         constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
       }
-      Template(constr1.asInstanceOf[DefDef], parents, EmptyValDef, stats1)
+      Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
     }
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
@@ -225,12 +225,12 @@ object JavaParsers {
     /** Convert (qual)ident to type identifier
       */
     def convertToTypeId(tree: Tree): Tree = convertToTypeName(tree) match {
-      case Some(t)  => t withPos tree.pos
+      case Some(t)  => t.withSpan(tree.span)
       case _        => tree match {
         case AppliedTypeTree(_, _) | Select(_, _) =>
           tree
         case _ =>
-          syntaxError(IdentifierExpected(tree.show), tree.pos)
+          syntaxError(IdentifierExpected(tree.show), tree.span)
           errorTypeTree
       }
     }
@@ -245,24 +245,24 @@ object JavaParsers {
     // -------------------- specific parsing routines ------------------
 
     def qualId(): RefTree = {
-      var t: RefTree = atPos(in.offset) { Ident(ident()) }
+      var t: RefTree = atSpan(in.offset) { Ident(ident()) }
       while (in.token == DOT) {
         in.nextToken()
-        t = atPos(t.pos.start, in.offset) { Select(t, ident()) }
+        t = atSpan(t.span.start, in.offset) { Select(t, ident()) }
       }
       t
     }
 
     def optArrayBrackets(tpt: Tree): Tree =
       if (in.token == LBRACKET) {
-        val tpt1 = atPos(tpt.pos.start, in.offset) { arrayOf(tpt) }
+        val tpt1 = atSpan(tpt.span.start, in.offset) { arrayOf(tpt) }
         in.nextToken()
         accept(RBRACKET)
         optArrayBrackets(tpt1)
       } else tpt
 
     def basicType(): Tree =
-      atPos(in.offset) {
+      atSpan(in.offset) {
         in.token match {
           case BYTE    => in.nextToken(); TypeTree(ByteType)
           case SHORT   => in.nextToken(); TypeTree(ShortType)
@@ -280,7 +280,7 @@ object JavaParsers {
       optArrayBrackets {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
-          var t = typeArgs(atPos(in.offset)(Ident(ident())))
+          var t = typeArgs(atSpan(in.offset)(Ident(ident())))
           // typeSelect generates Select nodes if the lhs is an Ident or Select,
           // For other nodes it always assumes that the selected item is a type.
           def typeSelect(t: Tree, name: Name) = t match {
@@ -289,7 +289,7 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
-            t = typeArgs(atPos(t.pos.start, in.offset)(typeSelect(t, ident())))
+            t = typeArgs(atSpan(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
         } else {
@@ -305,7 +305,7 @@ object JavaParsers {
           in.nextToken()
           val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else EmptyTree
           val lo = if (in.token == SUPER)   { in.nextToken() ; typ() } else EmptyTree
-          atPos(offset) {
+          atSpan(offset) {
             /*
             TypeDef(
               Modifiers(Flags.JavaDefined | Flags.Deferred),
@@ -323,7 +323,7 @@ object JavaParsers {
         val t1 = convertToTypeId(t)
         val args = repsep(() => typeArg(), COMMA)
         acceptClosingAngle()
-        atPos(t1.pos.start) {
+        atSpan(t1.span.start) {
           AppliedTypeTree(t1, args)
         }
       } else t
@@ -352,7 +352,7 @@ object JavaParsers {
       var isPackageAccess = true
       var annots: List[Tree] = Nil
       def addAnnot(sym: ClassSymbol) =
-        annots :+= atPos(in.offset) {
+        annots :+= atSpan(in.offset) {
           in.nextToken()
           New(TypeTree(sym.typeRef))
         }
@@ -413,14 +413,14 @@ object JavaParsers {
       } else List()
 
     def typeParam(flags: FlagSet): TypeDef =
-      atPos(in.offset) {
+      atSpan(in.offset) {
         val name = identForType()
         val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else EmptyTree
         TypeDef(name, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))
       }
 
     def bound(): Tree =
-      atPos(in.offset) {
+      atSpan(in.offset) {
         val buf = ListBuffer[Tree](typ())
         while (in.token == AMP) {
           in.nextToken()
@@ -445,11 +445,11 @@ object JavaParsers {
       var t = typ()
       if (in.token == DOTDOTDOT) {
         in.nextToken()
-        t = atPos(t.pos.start) {
+        t = atSpan(t.span.start) {
           PostfixOp(t, Ident(tpnme.raw.STAR))
         }
       }
-      atPos(start, in.offset) {
+      atSpan(start, in.offset) {
         varDecl(Modifiers(Flags.JavaDefined | Flags.Param), t, ident().toTermName)
       }
     }
@@ -461,7 +461,7 @@ object JavaParsers {
       }
     }
 
-    def methodBody(): Tree = atPos(in.offset) {
+    def methodBody(): Tree = atSpan(in.offset) {
       skipAhead()
       accept(RBRACE) // skip block
       unimplementedExpr
@@ -475,7 +475,7 @@ object JavaParsers {
       val isVoid = in.token == VOID
       var rtpt =
         if (isVoid)
-          atPos(in.offset) {
+          atSpan(in.offset) {
             in.nextToken()
             TypeTree(UnitType)
           }
@@ -490,7 +490,7 @@ object JavaParsers {
         val vparams = formalParams()
         optThrows()
         List {
-          atPos(start) {
+          atSpan(start) {
             DefDef(nme.CONSTRUCTOR, parentTParams,
                 List(vparams), TypeTree(), methodBody()).withMods(mods)
           }
@@ -512,7 +512,7 @@ object JavaParsers {
             } else {
               if (parentToken == AT && in.token == DEFAULT) {
                 val annot =
-                  atPos(nameOffset) {
+                  atSpan(nameOffset) {
                     New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Nil)
                   }
                 mods1 = mods1 withAddedAnnotation annot
@@ -527,7 +527,7 @@ object JavaParsers {
             }
           //if (inInterface) mods1 |= Flags.Deferred
           List {
-            atPos(start, nameOffset) {
+            atSpan(start, nameOffset) {
               DefDef(name.toTermName, tparams, List(vparams), rtpt, body).withMods(mods1 | Flags.Method)
             }
           }
@@ -551,7 +551,7 @@ object JavaParsers {
       */
     def fieldDecls(start: Offset, firstNameOffset: Offset, mods: Modifiers, tpt: Tree, name: Name): List[Tree] = {
       val buf = ListBuffer[Tree](
-          atPos(start, firstNameOffset) { varDecl(mods, tpt, name.toTermName) })
+          atSpan(start, firstNameOffset) { varDecl(mods, tpt, name.toTermName) })
       val maybe = new ListBuffer[Tree] // potential variable definitions.
       while (in.token == COMMA) {
         in.nextToken()
@@ -560,10 +560,10 @@ object JavaParsers {
         val name = ident()
           if (in.token == EQUALS || in.token == SEMI) { // ... followed by a `=` or `;`, we know it's a real variable definition
             buf ++= maybe
-            buf += atPos(start, nextNameOffset) { varDecl(mods, tpt, name.toTermName) }
+            buf += atSpan(start, nextNameOffset) { varDecl(mods, tpt, name.toTermName) }
             maybe.clear()
           } else if (in.token == COMMA) { // ... if there's a comma after the ident, it could be a real vardef or not.
-            maybe += atPos(start, nextNameOffset) { varDecl(mods, tpt, name.toTermName) }
+            maybe += atSpan(start, nextNameOffset) { varDecl(mods, tpt, name.toTermName) }
           } else { // ... if there's something else we were still in the initializer of the
             // previous var def; skip to next comma or semicolon.
             skipTo(COMMA, SEMI)
@@ -596,14 +596,14 @@ object JavaParsers {
     }
 
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
-      atPos(cdef.pos) {
-        assert(cdef.pos.exists)
+      atSpan(cdef.span) {
+        assert(cdef.span.exists)
         ModuleDef(cdef.name.toTermName,
           makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }
 
     def importCompanionObject(cdef: TypeDef): Tree =
-      Import(Ident(cdef.name.toTermName).withPos(NoPosition), Ident(nme.WILDCARD) :: Nil)
+      Import(Ident(cdef.name.toTermName).withSpan(NoSpan), Ident(nme.WILDCARD) :: Nil)
 
     // Importing the companion object members cannot be done uncritically: see
     // ticket #2377 wherein a class contains two static inner classes, each of which
@@ -623,8 +623,8 @@ object JavaParsers {
         else {
           val template = cdef.rhs.asInstanceOf[Template]
           cpy.TypeDef(cdef)(cdef.name,
-            cpy.Template(template)(template.constr, template.parents, template.self,
-              importCompanionObject(cdef) :: template.body)).withMods(cdef.mods)
+            cpy.Template(template)(body = importCompanionObject(cdef) :: template.body))
+              .withMods(cdef.mods)
         }
 
       List(makeCompanionObject(cdefNew, statics), cdefNew)
@@ -660,12 +660,12 @@ object JavaParsers {
       } else {
         val qual = ((Ident(names.head): Tree) /: names.tail.init) (Select(_, _))
         val lastname = names.last
-        val ident = Ident(lastname) withPos Position(lastnameOffset)
+        val ident = Ident(lastname).withSpan(Span(lastnameOffset))
 //        val selector = lastname match {
-//          case nme.WILDCARD => Pair(ident, Ident(null) withPos Position(-1))
+//          case nme.WILDCARD => Pair(ident, Ident(null) withPos Span(-1))
 //          case _            => Pair(ident, ident)
 //        }
-        val imp = atPos(start) { Import(qual, List(ident)) }
+        val imp = atSpan(start) { Import(qual, List(ident)) }
         imp :: Nil
       }
     }
@@ -692,7 +692,7 @@ object JavaParsers {
         }
       val interfaces = interfacesOpt()
       val (statics, body) = typeBody(CLASS, name, tparams)
-      val cls = atPos(start, nameOffset) {
+      val cls = atSpan(start, nameOffset) {
         TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, true)).withMods(mods)
       }
       addCompanionObject(statics, cls)
@@ -711,7 +711,7 @@ object JavaParsers {
           List(javaLangObject())
         }
       val (statics, body) = typeBody(INTERFACE, name, tparams)
-      val iface = atPos(start, nameOffset) {
+      val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
           makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
@@ -732,7 +732,7 @@ object JavaParsers {
       val members = new ListBuffer[Tree]
       while (in.token != RBRACE && in.token != EOF) {
         val start = in.offset
-        var mods = atPos(start) { modifiers(inInterface) }
+        var mods = modifiers(inInterface)
         if (in.token == LBRACE) {
           skipAhead() // skip init block, we just assume we have seen only static
           accept(RBRACE)
@@ -786,7 +786,7 @@ object JavaParsers {
       val constr = DefDef(nme.CONSTRUCTOR,
         List(), List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
       val templ = makeTemplate(annotationParents, constr :: body, List(), true)
-      val annot = atPos(start, nameOffset) {
+      val annot = atSpan(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.Abstract)
       }
       addCompanionObject(statics, annot)
@@ -837,7 +837,7 @@ object JavaParsers {
       val superclazz = Apply(TypeApply(
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)),
         List(Literal(Constant(null)),Literal(Constant(0))))
-      val enumclazz = atPos(start, nameOffset) {
+      val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
       }
@@ -846,7 +846,7 @@ object JavaParsers {
 
     def enumConst(enumType: Tree): ValDef = {
       annotations()
-      atPos(in.offset) {
+      atSpan(in.offset) {
         val name = ident()
         if (in.token == LPAREN) {
           // skip arguments
@@ -895,11 +895,11 @@ object JavaParsers {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {
           val start = in.offset
-          val mods = atPos(start) { modifiers(inInterface = false) }
+          val mods = modifiers(inInterface = false)
           buf ++= typeDecl(start, mods)
         }
       }
-      val unit = atPos(start) { PackageDef(pkg, buf.toList) }
+      val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
       unit
     }

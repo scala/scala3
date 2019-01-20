@@ -9,7 +9,6 @@ import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
 import NameOps._
 import ast.Trees.Tree
-import CompilationUnit.mkCompilationUnit
 import Phases.Phase
 
 
@@ -44,7 +43,7 @@ class ReadTasty extends Phase {
             case unpickler: tasty.DottyUnpickler =>
               if (cls.rootTree.isEmpty) None
               else {
-                val unit = mkCompilationUnit(cls, cls.rootTree, forceTrees = true)
+                val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
                 unit.pickled += (cls -> unpickler.unpickler.bytes)
                 Some(unit)
               }

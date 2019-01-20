@@ -8,7 +8,7 @@ class TabcompleteTests extends ReplTest {
 
   /** Returns the `(<instance completions>, <companion completions>)`*/
   private[this] def tabComplete(src: String)(implicit state: State): List[String] =
-    completions(src.length, src, state).map(_.value)
+    completions(src.length, src, state).map(_.value).sorted
 
   @Test def tabCompleteList = fromInitialState { implicit s =>
     val comp = tabComplete("List.r")
@@ -17,7 +17,7 @@ class TabcompleteTests extends ReplTest {
 
   @Test def tabCompleteListInstance = fromInitialState { implicit s =>
     val comp = tabComplete("(null: List[Int]).sli")
-    assertEquals(List("slice", "sliding"), comp.distinct.sorted)
+    assertEquals(List("slice", "sliding"), comp.distinct)
   }
 
   @Test def tabCompleteModule = fromInitialState{ implicit s =>
@@ -36,7 +36,7 @@ class TabcompleteTests extends ReplTest {
 
     fromInitialState { implicit state =>
       val comp = tabComplete(src1)
-      assertEquals(List("map", "mapConserve"), comp.sorted)
+      assertEquals(List("map", "mapConserve"), comp)
       state
     }
     .andThen { implicit state =>
@@ -58,7 +58,7 @@ class TabcompleteTests extends ReplTest {
     }
     .andThen { implicit state =>
       val expected = List("comp1", "comp2", "comp3")
-      assertEquals(expected, tabComplete("(new Foo).comp").sorted)
+      assertEquals(expected, tabComplete("(new Foo).comp"))
     }
 
   @Test def completeFromPreviousState2 =
@@ -90,4 +90,17 @@ class TabcompleteTests extends ReplTest {
       val expected = List("Renamed")
       assertEquals(expected, tabComplete("val foo: Rena"))
     }
+
+  @Test def tabClosureComplete = fromInitialState { implicit s =>
+    assertEquals(List("map", "mapConserve"), tabComplete("Nil.map"))
+    assertEquals(List("map", "mapConserve"), tabComplete("(x: Int => Int) => Nil.map"))
+    assertEquals(List("apply"), tabComplete("(x: Int => Int) => x.ap"))
+  }
+
+  @Test def importScala = fromInitialState { implicit s =>
+    val comp = tabComplete("import scala.")
+    // check that there are no special symbols leaked: <byname>, <special-ops>, ...
+    assertEquals(comp.find(_.startsWith("<")), None)
+    assert(!comp.contains("package"))
+  }
 }

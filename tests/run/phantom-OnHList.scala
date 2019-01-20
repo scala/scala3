@@ -24,7 +24,7 @@ sealed trait HNil extends HList
 
 // HList values -----------------------------------------------------------------------------------
 
-final case object HNil extends HNil {
+case object HNil extends HNil {
   val underlying: Array[Any] = Array.empty[Any]
   override def toString(): String = "()"
 }

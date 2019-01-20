@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.transform.Staging
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
 
@@ -51,13 +51,13 @@ class QuoteCompiler extends Compiler {
           val tree =
             if (putInClass) inClass(exprUnit.expr)
             else PickledQuotes.quotedExprToTree(exprUnit.expr)
-          val source = new SourceFile("", "")
-          CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
+          val source = SourceFile.virtual("<quoted.Expr>", "")
+          CompilationUnit(source, tree, forceTrees = true)
         case typeUnit: TypeCompilationUnit =>
           assert(!putInClass)
           val tree = PickledQuotes.quotedTypeToTree(typeUnit.tpe)
-          val source = new SourceFile("", "")
-          CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
+          val source = SourceFile.virtual("<quoted.Type>", "")
+          CompilationUnit(source, tree, forceTrees = true)
       }
     }
 
@@ -66,7 +66,7 @@ class QuoteCompiler extends Compiler {
       *  `package __root__ { class ' { def apply: Any = <expr> } }`
       */
     private def inClass(expr: Expr[_])(implicit ctx: Context): Tree = {
-      val pos = Position(0)
+      val pos = Span(0)
       val assocFile = new VirtualFile("<quote>")
 
       val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
@@ -78,7 +78,7 @@ class QuoteCompiler extends Compiler {
 
       val run = DefDef(meth, quoted)
       val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
-      PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withPos(pos)
+      PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withSpan(pos)
     }
 
     def run(implicit ctx: Context): Unit = unsupported("run")

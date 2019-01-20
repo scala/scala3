@@ -4,7 +4,7 @@ package core
 package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
-import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
+import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
 import NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
 import ast.tpd._
@@ -661,7 +661,7 @@ class ClassfileParser(
           val constr = ctx.newSymbol(
             owner = classRoot.symbol,
             name = nme.CONSTRUCTOR,
-            flags = Flags.Synthetic | Flags.JavaDefined,
+            flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
             info = constrType
           ).entered
           for ((attr, i) <- attrs.zipWithIndex)

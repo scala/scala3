@@ -174,4 +174,18 @@ class HoverTest {
           |}""".withSource
       .hover(m1 to m2, hoverContent("Int", "hello"))
   }
+
+  @Test def i4678: Unit = {
+    code"""class Foo {
+          |  val x: Int = (${m1}1:${m2} ${m3}@annot1 @annot2 @annot3 @annot4 @annot5${m4})
+          |}
+          |class annot1 extends scala.annotation.Annotation
+          |class annot2 extends scala.annotation.Annotation
+          |class annot3 extends scala.annotation.Annotation
+          |class annot4 extends scala.annotation.Annotation
+          |class annot5 extends scala.annotation.Annotation
+          |""".withSource
+      .hover(m1 to m2, hoverContent("Int(1)"))
+      .hover(m3 to m4, hoverContent("Int(1) @annot1 @annot2 @annot3 @annot4 @annot5"))
+  }
 }

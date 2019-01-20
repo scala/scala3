@@ -83,7 +83,7 @@ object SimpleIdentitySet {
     def size = xs.length
     def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] = {
       val xs1 = new Array[AnyRef](size + 1)
-      Array.copy(xs, 0, xs1, 0, size)
+      System.arraycopy(xs, 0, xs1, 0, size)
       xs1(size) = x
       new SetN[E](xs1)
     }
@@ -98,8 +98,8 @@ object SimpleIdentitySet {
         else new Set3(xs(0), xs(1), xs(2))
       else {
         val xs1 = new Array[AnyRef](size - 1)
-        Array.copy(xs, 0, xs1, 0, i)
-        Array.copy(xs, i + 1, xs1, i, size - (i + 1))
+        System.arraycopy(xs, 0, xs1, 0, i)
+        System.arraycopy(xs, i + 1, xs1, i, size - (i + 1))
         new SetN(xs1)
       }
     }
