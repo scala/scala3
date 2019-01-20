@@ -55,6 +55,29 @@ object NameTransformer {
     else name
   }
 
+  /** Decode expanded characters starting with `$u`, followed by the character's unicode expansion. */
+  def decodeIllegalChars(name: String): String = {
+    if (name.contains("$u")) {
+      val sb = new mutable.StringBuilder()
+      var i = 0
+      while (i < name.length - 5) {
+        if (name(i) == '$' && name(i + 1) == 'u') {
+          sb.append(Integer.valueOf(name.substring(i + 2, i + 6), 16).toChar)
+          i += 6
+        } else {
+          sb.append(name(i))
+          i += 1
+        }
+      }
+      while (i < name.length) {
+        sb.append(name(i))
+        i += 1
+      }
+      sb.result()
+    }
+    else name
+  }
+
   /** Replace operator symbols by corresponding expansion strings.
    *
    *  @param name the string to encode
