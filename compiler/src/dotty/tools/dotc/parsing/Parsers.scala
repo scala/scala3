@@ -550,24 +550,22 @@ object Parsers {
       }
 
     /** Accept identifier and return Ident with its name as a term name. */
-    def termIdent(): Ident = atSpan(in.offset) {
-      makeIdent(in.token, ident())
-    }
+    def termIdent(): Ident =
+      makeIdent(in.token, in.offset, ident())
 
     /** Accept identifier and return Ident with its name as a type name. */
-    def typeIdent(): Ident = atSpan(in.offset) {
-      makeIdent(in.token, ident().toTypeName)
-    }
+    def typeIdent(): Ident =
+      makeIdent(in.token, in.offset, ident().toTypeName)
 
-    private def makeIdent(tok: Token, name: Name) = {
+    private def makeIdent(tok: Token, offset: Offset, name: Name) = {
       val tree =
         if (tok == BACKQUOTED_IDENT) BackquotedIdent(name)
         else Ident(name)
 
       // Make sure that even trees with parsing errors have a offset that is within the offset
-      val errorOffset = in.offset min (in.lastOffset - 1)
+      val errorOffset = offset min (in.lastOffset - 1)
       if (tree.name == nme.ERROR && tree.span == NoSpan) tree.withSpan(Span(errorOffset, errorOffset))
-      else tree
+      else atSpan(offset)(tree)
     }
 
     def wildcardIdent(): Ident =
