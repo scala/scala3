@@ -53,9 +53,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
         if (mySpan.isSynthetic) {
           if (!mySpan.exists && span.exists) {
             envelope(source, span.startPos) // fill in children spans
-            () // Note: the `()` is there to prevent some inefficient code from being generated.
-               // Without it we get an allocation of a span here since the result type of the `if`
-               // is `Any`, the lub of `Span` and `Unit`.
           }
           this
         }

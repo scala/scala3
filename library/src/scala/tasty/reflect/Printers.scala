@@ -1226,7 +1226,6 @@ trait Printers
                   printedPrefix  |= printProtectedOrPrivate(vdef)
                   if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightValDef("var ", color)
                   else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAcessor)) this += highlightValDef("val ", color)
-                  else this // val not explicitly needed
                 }
             }
           case _ =>

@@ -261,7 +261,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-            tree
           }
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
