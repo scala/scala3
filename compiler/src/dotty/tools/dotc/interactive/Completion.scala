@@ -209,7 +209,7 @@ object Completion {
      * considered.
      */
     def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit = {
-      if (qual.tpe.isRef(defn.NothingClass))
+      if (qual.tpe =:= defn.NothingType)
         ()
       else if (qual.tpe.isRef(defn.NullClass))
         addAccessibleMembers(defn.AnyRefType)
