@@ -256,7 +256,7 @@ class Typer extends Namer
           // the opposite: the last context before the package changes. This distinction
           // is made so that top-level imports following a package clause are
           // logically nested in that package clause. Finally, for the root package
-          // we switch back to the original test. This means that rop-level packages in
+          // we switch back to the original test. This means that top-level packages in
           // the root package take priority over root imports. For instance,
           // a top-level io package takes priority over scala.io.
           // It would be nice if we could drop all this complication, and

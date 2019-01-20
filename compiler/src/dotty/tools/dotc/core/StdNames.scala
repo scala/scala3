@@ -20,7 +20,7 @@ object StdNames {
     final val INITIALIZER_PREFIX       = "initial$"
     final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
     final val MODULE_SUFFIX            = "$"
-    final val TOPLEVEL_SUFFIX          = "$object"
+    final val TOPLEVEL_SUFFIX          = "__object"
     final val NAME_JOIN                = "$"
     final val DEFAULT_GETTER           = "$default$"
     final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks

@@ -87,6 +87,15 @@ object NameOps {
         false
     }
 
+    def isPackageObjectName: Boolean = name match {
+      case name: TermName => name == nme.PACKAGE || name.endsWith(str.TOPLEVEL_SUFFIX)
+      case name: TypeName =>
+        name.toTermName match {
+          case ModuleClassName(original) => original.isPackageObjectName
+          case _ => false
+        }
+    }
+
     /** Convert this module name to corresponding module class name */
     def moduleClassName: TypeName = name.derived(ModuleClassName).toTypeName
 
