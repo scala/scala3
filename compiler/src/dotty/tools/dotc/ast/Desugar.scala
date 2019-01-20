@@ -1023,7 +1023,7 @@ object desugar {
   }
 
   /** Group all patterm, value and method definitions and all non-class type definitions
-   *  in an object named `<source>$object` where `<source>` is the name of the source file.
+   *  in an object named `<source>#object` where `<source>` is the name of the source file.
    */
   def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
     def needsObject(stat: Tree) = stat match {
@@ -1036,8 +1036,7 @@ object desugar {
     else {
       val sourceName = ctx.source.file.name.takeWhile(_ != '.')
       val groupName = (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
-      val templ = Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats)
-      val grouped = ModuleDef(groupName, templ)
+      val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
       cpy.PackageDef(pdef)(pdef.pid, grouped :: topStats)
     }
   }

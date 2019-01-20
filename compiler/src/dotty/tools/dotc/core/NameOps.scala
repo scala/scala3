@@ -87,6 +87,7 @@ object NameOps {
         false
     }
 
+    /** is this the name of an object enclosing packagel-level definitions? */
     def isPackageObjectName: Boolean = name match {
       case name: TermName => name == nme.PACKAGE || name.endsWith(str.TOPLEVEL_SUFFIX)
       case name: TypeName =>
