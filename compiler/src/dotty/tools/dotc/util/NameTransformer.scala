@@ -60,18 +60,14 @@ object NameTransformer {
     if (name.contains("$u")) {
       val sb = new mutable.StringBuilder()
       var i = 0
-      while (i < name.length - 5) {
-        if (name(i) == '$' && name(i + 1) == 'u') {
+      while (i < name.length) {
+        if (i < name.length - 5 && name(i) == '$' && name(i + 1) == 'u') {
           sb.append(Integer.valueOf(name.substring(i + 2, i + 6), 16).toChar)
           i += 6
         } else {
           sb.append(name(i))
           i += 1
         }
-      }
-      while (i < name.length) {
-        sb.append(name(i))
-        i += 1
       }
       sb.result()
     }

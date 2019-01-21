@@ -214,6 +214,7 @@ object Completion {
         addAccessibleMembers(qual.tpe)
         if (!mode.is(Mode.Import) && !qual.tpe.isRef(defn.NullClass)) {
           // Implicit conversions do not kick in when importing
+          // and for `NullClass` they produce unapplicable completions (for unclear reasons)
           implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
             .foreach(addAccessibleMembers)
         }
