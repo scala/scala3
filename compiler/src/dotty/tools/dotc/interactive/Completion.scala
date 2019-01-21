@@ -210,13 +210,9 @@ object Completion {
      * considered.
      */
     def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit = {
-      if (qual.tpe =:= defn.NothingType)
-        ()
-      else if (qual.tpe.isRef(defn.NullClass))
-        addAccessibleMembers(defn.AnyRefType)
-      else {
+      if (!qual.tpe.widenDealias.isBottomType) {
         addAccessibleMembers(qual.tpe)
-        if (!mode.is(Mode.Import)) {
+        if (!mode.is(Mode.Import) && !qual.tpe.isRef(defn.NullClass)) {
           // Implicit conversions do not kick in when importing
           implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
             .foreach(addAccessibleMembers)
