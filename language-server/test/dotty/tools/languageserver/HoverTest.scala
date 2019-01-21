@@ -188,4 +188,16 @@ class HoverTest {
       .hover(m1 to m2, hoverContent("Int(1)"))
       .hover(m3 to m4, hoverContent("Int(1) @annot1 @annot2 @annot3 @annot4 @annot5"))
   }
+
+  @Test def unicodeChar: Unit = {
+    code"""object Test {
+          |  type →
+          |  type `🤪`
+          |  def ${m1}bar${m2}: → = ???
+          |  def ${m3}baz${m4}: `🤪` = ???
+          |}""".withSource
+      .hover(m1 to m2, hoverContent("Test.→"))
+      .hover(m3 to m4, hoverContent("Test.🤪"))
+
+  }
 }

@@ -24,7 +24,7 @@ import scala.tasty.util.Chars.isOperatorPart
 import transform.TypeUtils._
 
 import language.implicitConversions
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{NameTransformer, SourcePosition}
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -75,7 +75,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }.toCommonFlags
 
   override def nameString(name: Name): String =
-    if (ctx.settings.YdebugNames.value) name.debugString else name.toString
+    if (ctx.settings.YdebugNames.value) name.debugString else NameTransformer.decodeIllegalChars(name.toString)
 
   override protected def simpleNameString(sym: Symbol): String =
     nameString(if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name)
