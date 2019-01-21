@@ -649,4 +649,50 @@ class TestBCode extends DottyBytecodeTest {
       assertFalse(boxUnit)
     }
   }
+
+  @Test def i3271 = {
+    val source =
+      """class Test {
+        |  def test = {
+        |    var x = 0
+        |    while(x <= 5) {
+        |      println(x)
+        |      x += 1
+        |    }
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method  = getMethod(clsNode, "test")
+
+      val instructions = instructionsFromMethod(method)
+
+      val expected = List(
+        Op(Opcodes.ICONST_0),
+        VarOp(Opcodes.ISTORE, 1),
+        Label(2),
+        FrameEntry(1, List(1), List()),
+        VarOp(Opcodes.ILOAD, 1),
+        Op(Opcodes.ICONST_5),
+        Jump(Opcodes.IF_ICMPGT, Label(16)),
+        Field(Opcodes.GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+        VarOp(Opcodes.ILOAD, 1),
+        Invoke(Opcodes.INVOKESTATIC, "scala/runtime/BoxesRunTime", "boxToInteger", "(I)Ljava/lang/Integer;", false),
+        Invoke(Opcodes.INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+        VarOp(Opcodes.ILOAD, 1),
+        Op(Opcodes.ICONST_1),
+        Op(Opcodes.IADD),
+        VarOp(Opcodes.ISTORE, 1),
+        Jump(Opcodes.GOTO, Label(2)),
+        Label(16),
+        FrameEntry(3, List(), List()),
+        Op(Opcodes.RETURN))
+
+      assert(instructions == expected,
+        "`test` was not properly generated\n" + diffInstructions(instructions, expected))
+    }
+  }
 }
