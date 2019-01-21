@@ -15,6 +15,7 @@ import scala.tasty.file.TastyConsumer
 import java.lang.reflect.InvocationTargetException
 
 import dotty.semanticdb.Scala._
+import dotty.tools.dotc.util.SourceFile
 
 
 class Tests {
@@ -22,20 +23,20 @@ class Tests {
   def min(a: Int, b: Int) : Int = if (a > b) b else a
   def max(a: Int, b: Int) : Int = if (a > b) a else b
   def abs(a: Int, b: Int) : Int = max(a, b) - min(a, b)
-  def distance(r1 : s.Range, offsets : Array[Int])(r2 : s.Range) : Int = {
-    val s1 = offsets(max(r1.startLine, 0)) + r1.startCharacter
-    val s2 = offsets(max(r2.startLine, 0)) + r2.startCharacter
-    val e1 = offsets(max(r1.endLine, 0)) + r1.endCharacter
-    val e2 = offsets(max(r2.endLine, 0)) + r2.endCharacter
+  def distance(r1 : s.Range, sourceFile : SourceFile)(r2 : s.Range) : Int = {
+    val s1 = sourceFile.lineToOffset(max(r1.startLine, 0)) + r1.startCharacter
+    val s2 = sourceFile.lineToOffset(max(r2.startLine, 0)) + r2.startCharacter
+    val e1 = sourceFile.lineToOffset(max(r1.endLine, 0)) + r1.endCharacter
+    val e2 = sourceFile.lineToOffset(max(r2.endLine, 0)) + r2.endCharacter
     max(abs(s1, s2), abs(e1, e2))
   }
 
-  def compareOccurences(tastyOccurences : Seq[s.SymbolOccurrence],
-    scalaOccurences : Seq[s.SymbolOccurrence],
+  def compareOccurrences(tastyOccurrences : Seq[s.SymbolOccurrence],
+    scalaOccurrences : Seq[s.SymbolOccurrence],
     sourceCode : String)
     : Boolean= {
-      val lineToByte = sourceCode.split("\n").scanLeft(0)((o, l) => o + l.length + 1)
-      val symbols = tastyOccurences.groupBy(_.symbol)
+      val sourceFile = SourceFile.virtual("", sourceCode)
+      val symbols = tastyOccurrences.groupBy(_.symbol)
       val localTastyToScala = HashMap[String, String]()
       val localScalaToTasty = HashMap[String, String]()
       val translator = HashMap[(s.Range, String), s.SymbolOccurrence]()
@@ -60,19 +61,26 @@ class Tests {
         }
       }
 
-      if (tastyOccurences.length != scalaOccurences.length) {
+      if (tastyOccurrences.length != scalaOccurrences.length) {
         false
       } else {
-        scalaOccurences.forall(occurence => {
-          if (symbols.contains(localScalaToTasty.getOrElse(occurence.symbol, occurence.symbol))) {
-            val siblings = symbols(occurence.symbol)
-            val nearest = siblings.minBy((c : s.SymbolOccurrence) => distance(occurence.range.get, lineToByte)(c.range.get))
-            if (!checkIfTranslatableSymbol(nearest.symbol, occurence.symbol) ||
+        scalaOccurrences.forall(occurrence => {
+          if (occurrence.symbol.isLocal ||
+              symbols.contains(localScalaToTasty.getOrElse(occurrence.symbol, occurrence.symbol))) {
+            val siblings =
+              if (occurrence.symbol.isLocal) tastyOccurrences
+              else symbols(occurrence.symbol)
+
+            val nearest = siblings.minBy(c => distance(occurrence.range.get, sourceFile)(c.range.get))
+
+            if (!checkIfTranslatableSymbol(nearest.symbol, occurrence.symbol) ||
                translator.contains((nearest.range.get, nearest.symbol)) ||
-               distance(occurence.range.get, lineToByte)(nearest.range.get) > 5) {
+               distance(occurrence.range.get, sourceFile)(nearest.range.get) > 5) {
+                 println(checkIfTranslatableSymbol(nearest.symbol, occurrence.symbol))
               false
             } else {
-              translator += ((nearest.range.get, nearest.symbol) -> occurence)
+              if (!occurrence.symbol.isLocal)
+                translator += ((nearest.range.get, nearest.symbol) -> occurrence)
               true
             }
           } else {
@@ -121,7 +129,7 @@ class Tests {
     val tasty = getTastySemanticdb(tastyClassDirectory, path)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)
-    if (!compareOccurences(tasty.occurrences, scalac.occurrences, scalac.text))
+    if (!compareOccurrences(tasty.occurrences, scalac.occurrences, scalac.text))
       assertNoDiff(obtained, expected)
   }
 
@@ -188,4 +196,5 @@ class Tests {
   @Test def testSynthetic(): Unit = checkFile("example/Synthetic.scala")
   @Test def testBinaryOp(): Unit = checkFile("example/BinaryOp.scala")
   @Test def testDottyPredef(): Unit = checkFile("example/DottyPredef.scala")
+
 }

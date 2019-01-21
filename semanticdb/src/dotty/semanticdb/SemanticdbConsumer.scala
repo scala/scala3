@@ -11,22 +11,21 @@ import scala.meta.internal.{semanticdb => s}
 import dotty.semanticdb.Scala.{Descriptor => d}
 import dotty.semanticdb.Scala._
 
-import scala.io.Source
 
-class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
+class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsumer {
   var stack: List[String] = Nil
 
   val semantic: s.TextDocument = s.TextDocument()
   var occurrences: Seq[s.SymbolOccurrence] = Seq()
 
   def toSemanticdb(): s.TextDocument = {
-    s.TextDocument(text = sourceCode, occurrences = occurrences)
+    s.TextDocument(text = sourceCode.content(), occurrences = occurrences)
   }
   val package_definitions: Set[Tuple2[String, Int]] = Set()
   val symbolsCache: HashMap[(Any, s.Range), String] = HashMap()
   var local_offset: Int = 0
 
-  val sourceCode = Source.fromFile(sourceFile.toFile).mkString
+  val sourceCode = new SourceFile(sourceFilePath)
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -94,6 +93,23 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
       }
 
       implicit class SymbolExtender(symbol: Symbol) {
+        /* Return true if symbol represents the definition of a var setter, false otherwise.
+        We return true if the extract of source code corresponding to the position of the symbol is the same as the symbol name.
+        Ex:
+        var m = ???
+        -> there is a defdef for `m_=` with position "m =". As "m =" != "m_=", we return false
+        */
+        def isMutableSetterExplicit(role : s.SymbolOccurrence.Role) = {
+          if (role == s.SymbolOccurrence.Role.DEFINITION &&
+              symbol.pos.exists &&
+              symbol.flags.is(Flags.Mutable) && symbol.isMethod  &&
+              symbol.trueName.endsWith("_="))
+            (sourceCode.peek(symbol.pos.start, symbol.pos.end) == symbol.trueName)
+          else
+            true
+        }
+
+
         def trueName: String = {
         val prohibitedChars = '.' :: ';' :: '[' :: '/' :: '<' :: '>' :: Nil
               //val prohibitedHashMap = prohibitedChars.map(x => x -> "$u%04X".format(x.toInt)).toMap
@@ -352,15 +368,13 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
       def iterateParent(symbol: Symbol, isMutableAssignement:Boolean=false): String = {
         if (symbol.name == "<none>" || symbol.name == "<root>") then {
-          // TODO had a "NoDenotation" test to avoid
-          // relying on the name itself
           ""
         } else {
           val previous_symbol =
             /* When we consider snipper of the form: `abstract class DepAdvD[CC[X[C] <: B], X[Z], C] extends DepTemp`,
               The symbol for C will be something like example/DepAdvD#`<init>`().[CC].[X].[C].
               This is illogic: a init method can't have any child. Thus, when the current symbol is
-              a typeparameter (or anything), and the owner is an init, we can just "jump" over the init. */
+              a typeparameter, and the owner is an init, we can just "jump" over the init. */
             if (symbol.owner.name == "<init>" && symbol.isType)
               iterateParent(symbol.owner.owner)
             else
@@ -398,28 +412,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         }
       }
 
-      def addOccurencePredef(parent: String, name: String, range: s.Range): Unit = {
-        occurrences =
-          occurrences :+
-            s.SymbolOccurrence(
-              Some(range),
-              parent + name + "().",
-              s.SymbolOccurrence.Role.DEFINITION
-            )
-      }
-      def addSelfDefinition(name: String, range: s.Range): Unit = {
-        var localsymbol = Symbols.Local(local_offset.toString)
-        local_offset += 1
-        symbolsCache += ((name, range) -> localsymbol)
-        occurrences =
-          occurrences :+
-            s.SymbolOccurrence(
-              Some(range),
-              localsymbol,
-              s.SymbolOccurrence.Role.DEFINITION
-            )
-      }
-
       def symbolToSymbolString(symbol: Symbol, isMutableAssignement:Boolean = false): (String, Boolean) = {
         if (symbol.isSemanticdbLocal) {
           var localsymbol = Symbols.Local(local_offset.toString)
@@ -437,69 +429,70 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         if (symbol.name == "<none>") return
 
         val symbolName = if (isMutableAssignement) symbol.trueName + "_=" else symbol.trueName
-        val (symbol_path, is_global) = posToRange(symbol.pos) match {
-          case Some(keyRange)
-              if symbolsCache.contains((symbolName, keyRange)) => {
-            (symbolsCache((symbolName, keyRange)), symbol.isSemanticdbLocal)}
-          case Some(keyRange) => {
-            val (sp, ig) = symbolToSymbolString(symbol, isMutableAssignement)
-            symbolsCache += ((symbolName, keyRange) -> sp)
-            (sp, ig)
-          }
-          case _ =>
+        val (symbol_path, is_global) =
+          if (symbol.pos.exists) {
+            val keyRange = createRange(symbol.pos)
+            if (symbolsCache.contains((symbolName, keyRange)))
+              (symbolsCache((symbolName, keyRange)), symbol.isSemanticdbLocal)
+            else {
+              val (sp, ig) = symbolToSymbolString(symbol, isMutableAssignement)
+              symbolsCache += ((symbolName, keyRange) -> sp)
+              (sp, ig)
+            }
+          } else {
             symbolToSymbolString(symbol)
-        }
+          }
 
-        // We want to add symbols coming from our file
-        // if (symbol.pos.sourceFile != sourceFile) return
-        if (symbol_path == "" /*|| symbol.isUselessOccurrence*/) return
+        if (symbol_path == "") return
         if (symbol.flags.is(Flags.Synthetic) && type_symbol == s.SymbolOccurrence.Role.DEFINITION) return
 
-        val key = (symbol_path, range)
-        // TODO: refactor the following
-
-        // this is to avoid duplicates symbols
+        val key = (symbol_path, range)        // this is to avoid duplicates symbols
         // For example, when we define a class as: `class foo(x: Int)`,
         // dotty will generate a ValDef for the x, but the x will also
         // be present in the constructor, thus making a double definition
-        if (symbolPathsMap.contains(key)) return
-        symbolPathsMap += key
+        if (!symbolPathsMap.contains(key)) {
+          symbolPathsMap += key
+          occurrences =
+            occurrences :+
+              s.SymbolOccurrence(
+                Some(range),
+                symbol_path,
+                type_symbol
+              )
+        }
+      }
+
+      def addOccurencePredef(parent: String, name: String, range: s.Range): Unit = {
         occurrences =
           occurrences :+
             s.SymbolOccurrence(
               Some(range),
-              symbol_path,
-              type_symbol
+              parent + name + "().",
+              s.SymbolOccurrence.Role.DEFINITION
             )
       }
 
-
-      /* Return true if symbol represents the definition of a var setter, false otherwise.
-      We return true if the extract of source code corresponding to the position of the symbol is the same as the symbol name.
-      Ex:
-      var m = ???
-      -> there is a defdef for `m_=` with position "m =". As "m =" != "m_=", we return false
-      */
-      def isMutableSetterExplicit(symbol : Symbol, role : s.SymbolOccurrence.Role) = {
-        if (role == s.SymbolOccurrence.Role.DEFINITION &&
-            symbol.pos.exists &&
-            symbol.flags.is(Flags.Mutable) && symbol.isMethod  &&
-            symbol.trueName.endsWith("_="))
-          (sourceCode.substring(symbol.pos.start, symbol.pos.end) == symbol.trueName)
-        else
-          true
+      def addSelfDefinition(name: String, range: s.Range): Unit = {
+        var localsymbol = Symbols.Local(local_offset.toString)
+        local_offset += 1
+        symbolsCache += ((name, range) -> localsymbol)
+        occurrences =
+          occurrences :+
+            s.SymbolOccurrence(
+              Some(range),
+              localsymbol,
+              s.SymbolOccurrence.Role.DEFINITION
+            )
       }
 
-      val reservedFunctions: List[String] = Nil
       def addOccurenceTree(tree: Tree,
                            typeSymbol: s.SymbolOccurrence.Role,
                            range: s.Range,
                            force_add: Boolean = false,
                            isMutableAssignement: Boolean = false): Unit = {
         if (tree.symbol.isUseful &&
-          isMutableSetterExplicit(tree.symbol, typeSymbol) &&
-          (tree.isUserCreated ||
-            (force_add /*&& !(!tree.isUserCreated && iterateParent(tree.symbol) == "java/lang/Object#`<init>`().")*/))) {
+          tree.symbol.isMutableSetterExplicit(typeSymbol) &&
+          (tree.isUserCreated || force_add)) {
           addOccurence(tree.symbol, typeSymbol, range, isMutableAssignement)
         }
       }
@@ -517,56 +510,48 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           addOccurence(tree.symbol, type_symbol, range)
         }
       }
+
       def addOccurenceId(parent_path: String, id: Id): Unit = {
         val symbol_path = Symbols.Global(parent_path, d.Term(id.name))
         occurrences =
           occurrences :+
             s.SymbolOccurrence(
-              Some(
-                s.Range(id.pos.startLine,
-                        id.pos.startColumn,
-                        id.pos.startLine,
-                        id.pos.endColumn)),
+              Some(createRange(id.pos)),
               symbol_path,
               s.SymbolOccurrence.Role.REFERENCE
             )
       }
 
-      def posToRange(pos: Position): Option[s.Range] = {
-        if (pos.exists) {
-          Some(
-            s.Range(pos.startLine,
-                    pos.startColumn,
-                    pos.startLine,
-                    pos.endColumn))
-        } else {
-          None
-        }
+      def createRange(pos: Position): s.Range =
+      createRange(pos.startLine, pos.startColumn, pos.endLine, pos.endColumn)
+
+      def createRange(startLine : Int, startColumn : Int, length : Int) : s.Range = {
+        createRange(startLine, startColumn, startLine, startColumn + length)
       }
 
-      def range(tree: Tree, pos: Position, name: String): s.Range = {
-        val offset = tree match {
-          case IsPackageClause(tree)                          => "package ".length
-          case IsClassDef(tree) if tree.symbol.flags.is(Flags.Object) => -1
-          case _                                              => 0
+      def createRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int): s.Range = {
+        def aux(l : Int, c : Int) : (Int, Int) = {
+          if (l == 0) {
+            val line = sourceCode.offsetToLine(l)
+            (line, c - sourceCode.lineToOffset(line))
+          } else {
+            (l, c)
+          }
         }
 
-        val range_end_column =
-          if (name == "<init>") {
-            pos.endColumn
-          } else {
-            pos.startColumn + name.length
-          }
+        val (sl, sc) = aux(startLine, startColumn)
+        val (el, ec) = aux(endLine, endColumn)
+        s.Range(sl, sc, el, ec)
+      }
 
-        s.Range(pos.startLine,
-                pos.startColumn + offset,
-                pos.startLine,
-                range_end_column + offset)
+      /* Create a "point range" (a range refering to a point position) */
+      def createRange(line: Int, column: Int) : s.Range = {
+        createRange(line, column, line, column)
       }
 
       def rangeSelect(name: String, range: Position): s.Range = {
         if (name == "<init>") {
-          return posToRange(range).get
+          return createRange(range)
         } else
         /* The position of a select is the position of the whole select expression,
         from the start to the end.
@@ -578,36 +563,26 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           Ex: A + B -> the position of the select is the range "A +", so we pick the range "+"
         */
         if (name.endsWith(":")) {
-          return s.Range(range.startLine,
-                        range.startColumn,
-                        range.startLine,
-                        range.startColumn + name.length)
+          return createRange(range.startLine, range.startColumn, name.length)
         } else {
-          return s.Range(range.endLine,
-                        range.endColumn - name.length,
-                        range.endLine,
-                        range.endColumn)
+          return createRange(range.endLine, range.endColumn - name.length, name.length)
         }
       }
 
-      def getImportPath(path_term: Term): String = {
-        path_term match {
+      def getImportPath(pathTerm: Term): String = {
+        val range = pathTerm match {
           case Term.Select(qualifier, selected) => {
             getImportPath(qualifier)
-            val range = rangeSelect(selected, path_term.pos)
-            addOccurenceTree(path_term,
-                             s.SymbolOccurrence.Role.REFERENCE,
-                             range)
-            iterateParent(path_term.symbol)
+            rangeSelect(selected, pathTerm.pos)
           }
           case Term.Ident(x) => {
-            val range_x = range(path_term, path_term.pos, path_term.symbol.trueName)
-            addOccurenceTree(path_term,
-                             s.SymbolOccurrence.Role.REFERENCE,
-                             range_x)
-            iterateParent(path_term.symbol)
+            createRange(pathTerm.pos.startLine, pathTerm.pos.startColumn, pathTerm.symbol.trueName.length)
           }
         }
+        addOccurenceTree(pathTerm,
+          s.SymbolOccurrence.Role.REFERENCE,
+          range)
+        iterateParent(pathTerm.symbol)
       }
 
       def getImportSelectors(parent_path: String,
@@ -638,10 +613,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             val typetree = extractTypeTree(tree)
             addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
-                                 s.Range(typetree.pos.startLine,
-                                         typetree.pos.startColumn,
-                                         typetree.pos.startLine,
-                                         typetree.pos.endColumn))
+                                 createRange(typetree.pos))
           }
           case TypeTree.Select(qualifier, _) => {
             val typetree = extractTypeTree(tree)
@@ -686,11 +658,10 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             val typetree = extractTypeTree(tree)
             val start = typetree.pos.start
             val end = typetree.pos.end
-            if (end < sourceCode.length
-              && sourceCode.substring(start, end) == typetree.symbol.name) {
+            if (sourceCode.peek(start, end) == typetree.symbol.name) {
               addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
-                                 posToRange(typetree.pos).get)
+                                 createRange(typetree.pos))
             }
           }
 
@@ -706,10 +677,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             addOccurencePatternTree(
               tree,
               s.SymbolOccurrence.Role.REFERENCE,
-              s.Range(tree.symbol.pos.startLine,
-                      tree.symbol.pos.startColumn,
-                      tree.symbol.pos.endLine,
-                      tree.symbol.pos.startColumn + name.length)
+              createRange(tree.symbol.pos.startLine, tree.symbol.pos.startColumn, name.length)
             )
             super.traversePattern(tree)
           }
@@ -730,32 +698,6 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         }
       }
 
-      def nextCharacterSkipComments(s : String, start : Int): Int = {
-        def aux(start : Int) : Int = {
-          var i = start
-          if (i+2 <= s.length && s.substring(i, i+2) == "//") {
-            while (i < s.length && s(i) != '\n')
-              i += 1
-            return i+1
-          } else if (i+2 <= s.length && s.substring(i, i+2) == "/*") {
-            while (i + 2 <= s.length && s.substring(i, i+2) != "*/")
-              i += 1
-            return i+2
-          } else {
-            while (i < s.length && s(i).isWhitespace)
-              i += 1
-            return i
-          }
-        }
-        var previous = start
-        var next = aux(previous)
-        while (previous != next) {
-          previous = next
-          next = aux(previous)
-        }
-        return previous
-      }
-
       var disableConstrParamTraversal = false
 
       def generateParamsPosMapping(cdef: DefDef)(implicit ctx: Context): Map[String, s.Range] = {
@@ -763,7 +705,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
         val start = Map[String, s.Range]()
         params.foldLeft(start)((old, statements) => {
           statements.foldLeft(old)((old, cval) => {
-            old + (cval.name -> range(cval, cval.symbol.pos, cval.symbol.trueName))
+            old + (cval.name -> createRange(cval.symbol.pos.startLine, cval.symbol.pos.startColumn, cval.symbol.trueName.length))
           })
         }
         )
@@ -786,27 +728,26 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             super.traverseTree(tree)
           }
           case ClassDef(classname, constr, parents, derived, selfopt, statements) => {
+
+
+        val offsetSymbolClass =
+          if(tree.symbol.flags.is(Flags.Object)) -1
+          else 0
             // we first add the class to the symbol list
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.DEFINITION,
-                             range(tree, tree.symbol.pos, tree.symbol.trueName))
+                             createRange(tree.symbol.pos.startLine, tree.symbol.pos.startColumn + offsetSymbolClass, tree.symbol.trueName.length))
             // then the constructor
 
             val DefDef(_, typesParameters, _, _, _) = constr
             if (typesParameters.isEmpty) {
               fittedInitClassRange = Some(
-                s.Range(tree.symbol.pos.startLine,
-                        tree.symbol.pos.startColumn + classname.length,
-                        tree.symbol.pos.startLine,
+                createRange(tree.symbol.pos.startLine,
                         tree.symbol.pos.startColumn + classname.length))
             } else {
               val rightmost = typesParameters.reverse.head.pos.end
-              val end_ = nextCharacterSkipComments(sourceCode, rightmost) + 1
-              fittedInitClassRange = Some(
-                s.Range(0,
-                        end_,
-                        0,
-                        end_))
+              val end_ = sourceCode.nextCharacterSkipComments(rightmost) + 1
+              fittedInitClassRange = Some(createRange(0, end_))
             }
 
             disableConstrParamTraversal = true
@@ -840,15 +781,12 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                         case IsTerm(t) if t.pos.end < old => t.pos.end
                         case _                                  => old
                     })
-                  var posColumn = sourceCode.indexOf("{", if (startPosSearch == tree.pos.end) tree.pos.start else startPosSearch)
 
-                  while (posColumn < sourceCode.length && !sourceCode(posColumn).isLetter) posColumn += 1
+                  var posColumn = if (startPosSearch == tree.pos.end) tree.pos.start else startPosSearch
+                  posColumn = sourceCode.firstOccurrenceLetter('{', posColumn)
+                  posColumn = sourceCode.nextCharacterSkipComments(posColumn+1)
 
-                  addSelfDefinition(name,
-                                    s.Range(0,
-                                            posColumn,
-                                            0,
-                                            posColumn + name.length))
+                  addSelfDefinition(name, createRange(0, posColumn, name.length))
                 }
                 traverseTypeTree(type_)
               }
@@ -887,6 +825,9 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             typeparams.foreach(traverseTree)
           }
 
+          case DefDef("<init>", _, _, _, _) if tree.symbol.owner.flags.is(Flags.Object) => {
+          }
+
           case Term.Assign(lhs, rhs) => {
             isAssignedTerm = true
             traverseTree(lhs)
@@ -902,10 +843,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                   addOccurence(
                     within.typeSymbol,
                     s.SymbolOccurrence.Role.REFERENCE,
-                    s.Range(cdef.pos.startLine,
-                            startColumn,
-                            cdef.pos.startLine,
-                            startColumn + within.typeSymbol.trueName.length)
+                    createRange(cdef.pos.startLine, startColumn, within.typeSymbol.trueName.length)
                   )
                 }
                 case _ =>
@@ -917,10 +855,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
                   addOccurence(
                     within.typeSymbol,
                     s.SymbolOccurrence.Role.REFERENCE,
-                    s.Range(cdef.pos.startLine,
-                            startColumn,
-                            cdef.pos.startLine,
-                            startColumn + within.typeSymbol.trueName.length)
+                    createRange(cdef.pos.startLine, startColumn, within.typeSymbol.trueName.length)
                   )
                 }
                 case _ =>
@@ -928,24 +863,15 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             }
             if (tree.symbol.trueName != "<none>") {
               val pos = tree.symbol.pos
-              var rangeSymbol = range(tree, pos, tree.symbol.trueName)
+              var rangeSymbol = createRange(pos.startLine, pos.startColumn, tree.symbol.trueName.length)
 
-              if (tree.symbol.trueName == "<init>" && pos.start + 4 < sourceCode.length
-                 && sourceCode.substring(pos.start, pos.start + 4) == "this") {
-                rangeSymbol = s.Range(pos.startLine, pos.startColumn, pos.startLine, pos.startColumn + 4)
+              if (tree.symbol.trueName == "<init>" && sourceCode.peek(pos.start, pos.start + 4) == "this") {
+                rangeSymbol = createRange(pos.startLine, pos.startColumn, pos.startColumn + 4)
               }
-
-              if (tree.symbol.trueName == "<init>" && tree.symbol.owner != NoSymbol && tree.symbol.owner.flags.is(Flags.Object)) {
-              } else if (tree.symbol.trueName == "<init>" && fittedInitClassRange != None) {
-                addOccurenceTree(tree,
-                                 s.SymbolOccurrence.Role.DEFINITION,
-                                 fittedInitClassRange.get,
-                                 true)
-              } else {
                 addOccurenceTree(tree,
                                  s.SymbolOccurrence.Role.DEFINITION,
                                  rangeSymbol)
-              }
+
             }
             //if (!disableConstrParamTraversal)
             super.traverseTree(cdef)
@@ -959,9 +885,9 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             Distinguishing between the two is easy. If the sourcecode between [pos.start; pos.end] ends
             with a 'this', then we're in the first case, otherwise the second
             */
-            var rangeThis = posToRange(tree.pos).get
-            if (sourceCode.substring(tree.pos.start, tree.pos.end).endsWith("this")) {
-              rangeThis = range(tree, tree.pos, tree.symbol.trueName)
+            var rangeThis = createRange(tree.pos)
+            if (sourceCode.peek(tree.pos.start, tree.pos.end).endsWith("this")) {
+              rangeThis = createRange(tree.pos.startLine, tree.pos.startColumn, tree.symbol.trueName.length)
             }
             /*range = s.Range(tree.pos.startLine, tree.pos.startColumn,
             tree.pos.endLine,
@@ -975,7 +901,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             {
               addOccurence(classStacks.head,
                 s.SymbolOccurrence.Role.DEFINITION,
-                posToRange(id.pos).get)
+                createRange(id.pos))
               super.traverseTree(tree)
             }
 
@@ -984,11 +910,11 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
 
             var shouldForceAdd = false
             if (tree.symbol.trueName == "<init>") {
-              if (tree.pos.start == tree.pos.end && 5 <= tree.pos.start && sourceCode.substring(tree.pos.start - 5, tree.pos.start - 1) == "this") {
-                range = s.Range(tree.pos.startLine, tree.pos.start - 5, tree.pos.startLine, tree.pos.start - 1)
+              if (tree.pos.start == tree.pos.end && sourceCode.peek(tree.pos.start - 5, tree.pos.start - 1) == "this") {
+                range = createRange(tree.pos.startLine, tree.pos.start - 5, tree.pos.startLine, 4)
                 shouldForceAdd = true
               } else {
-                range = s.Range(tree.pos.endLine, tree.pos.endColumn, tree.pos.endLine, tree.pos.endColumn)
+                range = createRange(tree.pos.endLine, tree.pos.endColumn, tree.pos.endLine, tree.pos.endColumn)
                 shouldForceAdd = qualifier.isUserCreated
               }
             }
@@ -1002,7 +928,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
           case Term.Ident(name) => {
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.REFERENCE,
-                             range(tree, tree.pos, tree.symbol.trueName))
+                             createRange(tree.pos.startLine, tree.pos.startColumn, tree.symbol.trueName.length))
 
             super.traverseTree(tree)
           }
@@ -1017,17 +943,17 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
               case IsTypeTree(t) => t.symbol
             }
             def getPredefFunction(pos: Int): String = {
-              sourceCode(pos) match {
-                case 'l' => "locally"
-                case 'i' => "implicitly"
-                case 'a' => "assert"
+              sourceCode.peek(pos, pos+1) match {
+                case "l" => "locally"
+                case "i" => "implicitly"
+                case "a" => "assert"
               }
             }
             val parentSymbol = iterateParent(extractSymbol(c))
             if (parentSymbol == "dotty/DottyPredef.") {
               val pos = extractPos(c)
               val function = getPredefFunction(pos.start)
-              val range = s.Range(pos.startLine, pos.startColumn, pos.startLine, pos.startColumn + function.length)
+              val range = createRange(pos.startLine, pos.startColumn, pos.startLine, function.length)
               addOccurencePredef(parentSymbol, function, range)
             }
 
@@ -1039,7 +965,7 @@ class SemanticdbConsumer(sourceFile: java.nio.file.Path) extends TastyConsumer {
             if (!package_definitions(key)) {
               addOccurenceTree(tree,
                                s.SymbolOccurrence.Role.DEFINITION,
-                               range(tree, tree.pos, tree.symbol.trueName))
+                               createRange(tree.pos.startLine, tree.pos.startColumn + "package ".length, tree.symbol.trueName.length))
               package_definitions += key
             }
             super.traverseTree(tree)
