@@ -730,6 +730,28 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (from == to) tree else loop(from, Nil, to :: Nil)
     }
 
+    /**
+     * Set the owner of every definition in this tree which is not itself contained in this
+     * tree to be `newowner`
+     */
+    def changeNonLocalOwners(newowner: Symbol)(implicit ctx: Context): Tree = {
+      val localOwners = mutable.HashSet[Symbol]()
+      val traverser = new TreeTraverser {
+
+        def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+          tree match {
+            case _: DefTree => if(tree.symbol ne NoSymbol) localOwners += tree.symbol
+            case _ =>
+          }
+          traverseChildren(tree)
+        }
+      }
+      traverser.traverse(tree)
+      val nonLocalOwners = localOwners.filter(sym => !localOwners.contains(sym.owner)).toList.map(_.owner)
+      val newOwners = nonLocalOwners.map(_ => newowner)
+      new TreeTypeMap(oldOwners = nonLocalOwners, newOwners = newOwners).apply(tree)
+    }
+
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
      *  owner by `from` to `to`.
      */
