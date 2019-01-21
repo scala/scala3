@@ -1,5 +1,7 @@
 package dotty.tools.dotc.interactive
 
+import java.nio.charset.Charset
+
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts.{Context, NoContext}
@@ -10,13 +12,13 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps.NameDecorator
-import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Scopes
 import dotty.tools.dotc.core.StdNames.{nme, tpnme}
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{NameFilter, NamedType, Type, NoType}
+import dotty.tools.dotc.core.Types.{NameFilter, NamedType, NoType, Type}
 import dotty.tools.dotc.printing.Texts._
-import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
+import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
 
 import scala.collection.mutable
 
@@ -150,7 +152,8 @@ object Completion {
       nameToSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
         val desc = description(typesFirst)
-        Completion(name.toString, desc, typesFirst)
+        val label = NameTransformer.decodeIllegalChars(name.toString)
+        Completion(label, desc, typesFirst)
       }
     }
 
@@ -207,11 +210,14 @@ object Completion {
      * considered.
      */
     def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit = {
-      addAccessibleMembers(qual.tpe)
-      if (!mode.is(Mode.Import)) {
-        // Implicit conversions do not kick in when importing
-        implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
-          .foreach(addAccessibleMembers)
+      if (!qual.tpe.widenDealias.isBottomType) {
+        addAccessibleMembers(qual.tpe)
+        if (!mode.is(Mode.Import) && !qual.tpe.isRef(defn.NullClass)) {
+          // Implicit conversions do not kick in when importing
+          // and for `NullClass` they produce unapplicable completions (for unclear reasons)
+          implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
+            .foreach(addAccessibleMembers)
+        }
       }
     }
 
