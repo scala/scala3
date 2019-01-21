@@ -473,6 +473,7 @@ object Contexts {
     def typerPhase: Phase                  = base.typerPhase
     def sbtExtractDependenciesPhase: Phase = base.sbtExtractDependenciesPhase
     def picklerPhase: Phase                = base.picklerPhase
+    def reifyQuotesPhase: Phase            = base.reifyQuotesPhase
     def refchecksPhase: Phase              = base.refchecksPhase
     def patmatPhase: Phase                 = base.patmatPhase
     def elimRepeatedPhase: Phase           = base.elimRepeatedPhase

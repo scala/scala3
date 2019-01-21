@@ -10,7 +10,7 @@ import dotty.tools.dotc.transform.SymUtils._
 object Quoted {
 
   /** Extracts the content of a quoted tree.
-   *  The result can be the contents of a term ot type quote, which
+   *  The result can be the contents of a term or type quote, which
    *  will return a term or type tree respectively.
    */
   def unapply(tree: tpd.Tree)(implicit ctx: Context): Option[tpd.Tree] = tree match {

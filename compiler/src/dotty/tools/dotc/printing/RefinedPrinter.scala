@@ -251,8 +251,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     ("{" ~ toText(trees, "\n") ~ "}").close
 
-  protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text =
-    toTextLocal(tree.fun) ~ "[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+  protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
+    if (tree.fun.hasType && tree.fun.symbol == defn.QuotedType_apply)
+      keywordStr("'[") ~ toTextGlobal(tree.args, ", ") ~ keywordStr("]")
+    else
+      toTextLocal(tree.fun) ~ "[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+  }
 
   protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
     import untpd.{modsDeco => _, _}
@@ -320,7 +324,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (tree.hasType && tree.symbol == defn.QuotedExpr_~ || tree.symbol == defn.QuotedType_~) keywordStr("~(") ~ toTextLocal(qual) ~ keywordStr(")")
+        if (tree.hasType && tree.symbol == defn.QuotedExpr_~) keywordStr("~(") ~ toTextLocal(qual) ~ keywordStr(")")
+        else if (tree.hasType && tree.symbol == defn.QuotedType_~) typeText("~(") ~ toTextLocal(qual) ~ typeText(")")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case tree: This =>
@@ -334,8 +339,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         else if (fun.hasType && fun.symbol == defn.QuotedExpr_apply)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (fun.hasType && fun.symbol == defn.QuotedType_apply)
-          keywordStr("'[") ~ toTextGlobal(args, ", ") ~ keywordStr("]")
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
       case tree: TypeApply =>

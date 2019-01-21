@@ -99,7 +99,7 @@ object MVmult {
     }
   }
 
-  def initRows[T](a: Array[Array[Int]])(cont: Array[Expr[Array[Int]]] => Expr[T]): Expr[T] = {
+  def initRows[T: Type](a: Array[Array[Int]])(cont: Array[Expr[Array[Int]]] => Expr[T]): Expr[T] = {
     import Lifters._
     def loop(i: Int, acc: List[Expr[Array[Int]]]): Expr[T] = {
       if (i >= a.length) cont(acc.toArray.reverse)

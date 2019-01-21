@@ -13,7 +13,7 @@ object Test {
   }
 
   object Var {
-    def apply[T: Type, U](init: Expr[T])(body: Var[T] => Expr[U]): Expr[U] = '{
+    def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]): Expr[U] = '{
       var x = ~init
       ~body(
         new Var[T] {
