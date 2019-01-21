@@ -57,7 +57,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     def isSynthetic(parent: Tree): Boolean = {
       val sym = parent.symbol
       sym.maybeOwner == defn.ObjectClass ||
-      (sym == defn.ProductClass && impl.symbol.owner.is(Case))
+      (sym == defn.ProductClass && impl.symbol.owner.is(Case)) ||
+      (sym == defn.SerializableClass && impl.symbol.owner.is(Case))
     }
     val parents = impl.parents.filterNot(isSynthetic)
     val body = impl.body.filterNot(_.symbol.is(ParamAccessor))
