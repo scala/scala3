@@ -2,9 +2,9 @@ object Test1 {
   val day: Day = ???
 
   day match {
-    case Day.MONDAY => true
-    case Day.TUESDAY => true
-    case Day.WEDNESDAY => true
+    case Day.MONDAY => ()
+    case Day.TUESDAY => ()
+    case Day.WEDNESDAY => ()
   }
 }
 
@@ -13,9 +13,9 @@ object Test2 {
   val day: Day = ???
 
   day match {
-    case MONDAY => true
-    case TUESDAY => true
-    case WEDNESDAY => true
-    case SUNDAY => true
+    case MONDAY => ()
+    case TUESDAY => ()
+    case WEDNESDAY => ()
+    case SUNDAY => ()
   }
 }

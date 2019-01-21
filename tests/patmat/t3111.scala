@@ -2,12 +2,12 @@ object Test {
   val bool: Boolean = false
 
   bool match {
-    case true => "true!"
+    case true => ()
   }
 
   bool match {
-    case true => "true!"
-    case false => "false!"
-    case _ => "cats and dogs living together... mass hysteria!"
+    case true => ()
+    case false => ()
+    case _ => ()
   }
 }

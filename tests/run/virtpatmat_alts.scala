@@ -3,7 +3,7 @@
  */
 object Test extends dotty.runtime.LegacyApp {
   (true, true) match {
-    case (true, true) | (false, false) => 1
+    case (true, true) | (false, false) => ()
   }
 
   List(5) match {

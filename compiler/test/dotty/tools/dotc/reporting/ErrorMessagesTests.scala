@@ -1367,7 +1367,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |  val z = Boo(1, "foo")
         |
         |  z match {
-        |    case Boo(a, b, c) => a
+        |    case Boo(a, b, c) => ()
         |  }
         |}
       """.stripMargin

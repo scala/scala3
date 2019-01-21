@@ -2,7 +2,7 @@
 object Test extends dotty.runtime.LegacyApp() {
   scala.Tuple2.apply[scala.Boolean, scala.Boolean](true, true) match {
     case (scala.Tuple2(true, true) | scala.Tuple2(false, false)) =>
-      1
+      ()
   }
   scala.List.apply[scala.Int](5) match {
     case (scala.::(1, scala.Nil) | scala.::(2, scala.Nil)) =>

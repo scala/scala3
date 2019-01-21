@@ -728,17 +728,11 @@ class Typer extends Namer
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     if (tree.isInline) checkInInlineContext("inline if", tree.posd)
     val cond1 = typed(tree.cond, defn.BooleanType)
-
-    if (tree.elsep.isEmpty) {
-      val thenp1 = typed(tree.thenp, defn.UnitType)
-      val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
-      cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
+    val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
+      val elsep = tree.elsep.orElse(untpd.unitLiteral.withSpan(tree.span.endPos))
+      (tree.thenp :: elsep :: Nil).map(typed(_, pt.notApplied))
     }
-    else {
-      val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt)(
-        (tree.thenp :: tree.elsep :: Nil).map(typed(_, pt.notApplied)))
-      assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
-    }
+    assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
   }
 
   /** Decompose function prototype into a list of parameter prototypes and a result prototype
@@ -2089,7 +2083,15 @@ class Typer extends Namer
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
+        val pt = stat match {
+          case _: untpd.If | _: untpd.Match =>
+            // Typing `if` and `match` statement with `Unit` as expected
+            // type produces more efficient code (see #5750).
+            defn.UnitType
+          case _ =>
+            WildcardType
+        }
+        val stat1 = typed(stat, pt)(ctx.exprContext(stat, exprOwner))
         checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
         traverse(rest)

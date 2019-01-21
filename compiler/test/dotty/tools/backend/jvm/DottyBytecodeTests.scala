@@ -627,9 +627,12 @@ class TestBCode extends DottyBytecodeTest {
   @Test def i5750 = {
     val source =
       """class Test {
-        |  def foo: String = ""
+        |  def foo(): String = ""
         |  def test(cond: Boolean): Int = {
-        |    if (cond) foo
+        |    if (cond) foo()
+        |    if (cond) () else foo()
+        |    if (cond) foo() else ()
+        |    cond match { case true => foo(); case _ => () }
         |    1
         |  }
         |}
