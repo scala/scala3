@@ -20,5 +20,4 @@ Package objects are no longer needed since all kinds of definitions and statemen
 ```
 There may be several source files in a package containing such toplevel definitions, and source files can freely mix toplevel value, method, and tyoe definitions with classes and objects.
 
-The compiler generates synthetic objects that wrap toplevel statements that are not imports, or class or object definitions. If a source file `src.scala` contains such toplevel statements, they will be put in a synthetic object named `src#object`. The wrapping is transparent, however. The definitions in `f` can still be accessed
-as members of the enclosing package.
+The compiler generates synthetic objects that wrap toplevel statements that are not imports, or class or object definitions. If a source file `src.scala` contains such toplevel statements, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `f` can still be accessed as members of the enclosing package.
