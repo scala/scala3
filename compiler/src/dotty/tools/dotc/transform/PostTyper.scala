@@ -58,6 +58,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
   /** the following two members override abstract members in Transform */
   override def phaseName: String = PostTyper.name
 
+  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+    case tree: ValOrDefDef =>
+      assert(!tree.symbol.signature.isUnderDefined)
+    case _ =>
+  }
+
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic methods
 
   override def transformPhase(implicit ctx: Context): Phase = thisPhase.next
@@ -261,7 +267,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-            tree
           }
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>

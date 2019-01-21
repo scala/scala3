@@ -728,12 +728,17 @@ class Typer extends Namer
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     if (tree.isInline) checkInInlineContext("inline if", tree.posd)
     val cond1 = typed(tree.cond, defn.BooleanType)
-    val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
-      val thenp1 = typed(tree.thenp, pt.notApplied)
-      val elsep1 = typed(tree.elsep.orElse(untpd.unitLiteral.withSpan(tree.span)), pt.notApplied)
-      thenp1 :: elsep1 :: Nil
+
+    if (tree.elsep.isEmpty) {
+      val thenp1 = typed(tree.thenp, defn.UnitType)
+      val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
+      cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
     }
-    assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
+    else {
+      val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt)(
+        (tree.thenp :: tree.elsep :: Nil).map(typed(_, pt.notApplied)))
+      assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
+    }
   }
 
   /** Decompose function prototype into a list of parameter prototypes and a result prototype
