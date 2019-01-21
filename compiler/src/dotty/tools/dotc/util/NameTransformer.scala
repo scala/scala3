@@ -62,7 +62,12 @@ object NameTransformer {
       var i = 0
       while (i < name.length) {
         if (i < name.length - 5 && name(i) == '$' && name(i + 1) == 'u') {
-          sb.append(Integer.valueOf(name.substring(i + 2, i + 6), 16).toChar)
+          val numbers = name.substring(i + 2, i + 6)
+          try sb.append(Integer.valueOf(name.substring(i + 2, i + 6), 16).toChar)
+          catch {
+            case _: java.lang.NumberFormatException =>
+              sb.append("$u").append(numbers)
+          }
           i += 6
         } else {
           sb.append(name(i))

@@ -152,8 +152,7 @@ object Completion {
       nameToSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
         val desc = description(typesFirst)
-        val label = NameTransformer.decodeIllegalChars(name.toString)
-        Completion(label, desc, typesFirst)
+        Completion(name.show, desc, typesFirst)
       }
     }
 
