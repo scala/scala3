@@ -31,14 +31,28 @@ class SourceFile(path: java.nio.file.Path) {
 
   def nextCharacterSkipComments(start : Int): Int = {
     def aux(start : Int) : Int = {
-      var i = start
+        var i = start
         if (i+2 <= sourceCode.length && sourceCode.substring(i, i+2) == "//") {
           while (i < sourceCode.length && sourceCode(i) != '\n')
-           i += 1
+            i += 1
           return i+1
         } else if (i+2 <= sourceCode.length && sourceCode.substring(i, i+2) == "/*") {
-          while (i + 2 <= sourceCode.length && sourceCode.substring(i, i+2) != "*/")
+          var nestedCount = 0
+          i += 2
+          while (i + 2 <= sourceCode.length &&
+                 !(sourceCode.substring(i, i+2) == "*/" &&
+                 nestedCount == 0)) {
+            val s = sourceCode.substring(i, i+2)
+            if (s == "/*") {
+              nestedCount += 1
+              i += 1
+            }
+            if (s == "*/") {
+              nestedCount -= 1
+              i += 1
+            }
             i += 1
+          }
           return i+2
         } else {
           while (i < sourceCode.length && sourceCode(i).isWhitespace)

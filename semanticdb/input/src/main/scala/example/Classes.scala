@@ -1,7 +1,8 @@
 package example
 
 class CDep[X]
-class CDependenat[X](var x1: CDep[X])
+class CDependenat[X /* This is a comment /* and a nested comment
+*/*/](var x1: CDep[X])
 class CVarArg(var x1 : Int)
 
 
