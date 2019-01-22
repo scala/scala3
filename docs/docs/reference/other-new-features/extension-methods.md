@@ -199,7 +199,7 @@ extension methods apply everywhere their enclosing object is available as an imp
 
 As another example, consider implementations of an `Ord` type class with a `minimum` value:
 ```scala
-  trait Ord[T]
+  trait Ord[T] {
     def (x: T) compareTo (y: T): Int
     def (x: T) < (y: T) = x.compareTo(y) < 0
     def (x: T) > (y: T) = x.compareTo(y) > 0
@@ -213,7 +213,7 @@ As another example, consider implementations of an `Ord` type class with a `mini
   }
 
   class ListOrd[T: Ord] extends Ord[List[T]] {
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
+    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
