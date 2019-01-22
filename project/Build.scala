@@ -134,7 +134,7 @@ object Build {
       "-language:existentials,higherKinds,implicitConversions"
     ),
 
-    javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
+    javacOptions in (Compile, compile) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
     // Change this to true if you want to bootstrap using a published non-bootstrapped compiler
     bootstrapFromPublishedJars := false,
@@ -209,10 +209,14 @@ object Build {
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v")
   )
 
-  // Settings used for projects compiled only with Scala 2
-  lazy val commonScala2Settings = commonSettings ++ Seq(
+  // Settings used for projects compiled only with Java
+  lazy val commonJavaSettings = commonSettings ++ Seq(
     version := dottyVersion,
-    scalaVersion := scalacVersion
+    scalaVersion := scalacVersion,
+    // Do not append Scala versions to the generated artifacts
+    crossPaths := false,
+    // Do not depend on the Scala library
+    autoScalaLibrary := false
   )
 
   // Settings used when compiling dotty using Scala 2
@@ -351,13 +355,6 @@ object Build {
   // currently refers to dotty in its scripted task and "aggregate" does not take by-name
   // parameters: https://github.com/sbt/sbt/issues/2200
   lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
-  // Same thing for the bootstrapped version
-  lazy val dottySbtBridgeBootstrappedRef = LocalProject("dotty-sbt-bridge-bootstrapped")
-
-  def dottySbtBridgeReference(implicit mode: Mode): LocalProject = mode match {
-    case NonBootstrapped => dottySbtBridgeRef
-    case _ => dottySbtBridgeBootstrappedRef
-  }
 
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
@@ -367,15 +364,7 @@ object Build {
   lazy val `dotty-bootstrapped` = project.asDottyRoot(Bootstrapped)
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
-    settings(commonScala2Settings). // Java-only project, so this is fine
-    settings(
-      // Do not append Scala versions to the generated artifacts
-      crossPaths := false,
-      // Do not depend on the Scala library
-      autoScalaLibrary := false,
-      //Remove javac invalid options in Compile doc
-      javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    )
+    settings(commonJavaSettings)
 
   private lazy val dottydocClasspath = Def.task {
     val jars = (packageAll in `dotty-compiler`).value
@@ -790,18 +779,6 @@ object Build {
     case Bootstrapped => `dotty-library-bootstrapped`
   }
 
-  // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
-  lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
-
-  def cleanSbtBridgeImpl(): Unit = {
-    val home = System.getProperty("user.home")
-    val sbtOrg = "org.scala-sbt"
-    val bridgePattern = s"*dotty-sbt-bridge*$dottyVersion*"
-
-    IO.delete((file(home) / ".sbt" / "1.0" / "zinc" / sbtOrg * bridgePattern).get)
-    IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgePattern).get)
-  }
-
   lazy val dottySbtBridgeSettings = Seq(
     cleanSbtBridge := {
       cleanSbtBridgeImpl()
@@ -831,24 +808,44 @@ object Build {
     parallelExecution in Test := false
   )
 
-  lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).asDottySbtBridge(NonBootstrapped)
-  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).asDottySbtBridge(Bootstrapped)
-    .settings(
-      // Tweak -Yscala2-unpickler to allow some sbt dependencies used in tests
-      /*
-      scalacOptions in Test := {
-        val oldOptions = (scalacOptions in Test).value
-        val i = oldOptions.indexOf("-Yscala2-unpickler")
-        assert(i != -1)
-        val oldValue = oldOptions(i + 1)
+  // Needed until https://github.com/sbt/sbt/issues/2402 is fixed.
+  lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
-        val attList = (dependencyClasspath in Test).value
-        val sbtIo = findLib(attList, "org.scala-sbt/io")
-        val zincApiInfo = findLib(attList, "zinc-apiinfo")
+  def cleanSbtBridgeImpl(): Unit = {
+    val home = System.getProperty("user.home")
+    val sbtOrg = "org.scala-sbt"
+    val bridgePattern = s"*dotty-sbt-bridge*$dottyVersion*"
 
-        oldOptions.updated(i + 1, s"$sbtIo:$zincApiInfo:$oldValue")
-      }
-      */
+    IO.delete((file(home) / ".sbt" / "1.0" / "zinc" / sbtOrg * bridgePattern).get)
+    IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgePattern).get)
+  }
+
+  lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
+    dependsOn(dottyCompiler(NonBootstrapped) % Provided).
+    dependsOn(dottyDoc(NonBootstrapped) % Provided).
+    settings(commonJavaSettings).
+    settings(
+      cleanSbtBridge := {
+        cleanSbtBridgeImpl()
+      },
+      compile in Compile := {
+        val log = streams.value.log
+        val prev = (previousCompile in Compile).value.analysis.orElse(null)
+        val cur = (compile in Compile).value
+        if (prev != cur) {
+          log.info("Cleaning the dotty-sbt-bridge cache because it was recompiled.")
+          cleanSbtBridgeImpl()
+        }
+        cur
+      },
+      description := "sbt compiler bridge for Dotty",
+      libraryDependencies ++= Seq(
+        Dependencies.`compiler-interface` % Provided,
+        (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
+      ),
+
+      fork in Test := true,
+      parallelExecution in Test := false
     )
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
@@ -1007,7 +1004,7 @@ object Build {
       scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
       scriptedBufferLog := true,
       scripted := scripted.dependsOn(
-        publishLocal in `dotty-sbt-bridge-bootstrapped`,
+        publishLocal in `dotty-sbt-bridge`,
         publishLocal in `dotty-interfaces`,
         publishLocal in `dotty-compiler-bootstrapped`,
         publishLocal in `dotty-library-bootstrapped`,
@@ -1275,7 +1272,7 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, dottyDoc, dottySbtBridgeReference).
+      aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, dottyDoc, `dotty-sbt-bridge`).
       bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap, `dotty-language-server`).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -1298,11 +1295,6 @@ object Build {
     def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
       settings(dottyDocSettings)
-
-    def asDottySbtBridge(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyCompiler % Provided).
-      dependsOn(dottyDoc % Provided).
-      settings(dottySbtBridgeSettings)
 
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
