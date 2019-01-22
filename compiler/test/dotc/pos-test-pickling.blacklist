@@ -13,4 +13,6 @@ typelevel0.scala
 Transactions.scala
 explicit-null-flow.scala
 explicit-null-flow2.scala
+explicit-null-flow3.scala
+explicit-null-flow4.scala
 t1107a.scala

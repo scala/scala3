@@ -1,8 +1,10 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.dotc.ast.Trees.{Apply, Literal, Select}
 import dotty.tools.dotc.ast.tpd._
 import StdNames.nme
+import dotty.tools.dotc.ast.Trees.{Tree => _, _}
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Types.{NonNullTermRef, TermRef, Type}
@@ -78,8 +80,6 @@ object FlowFacts {
    * TODO(abeln): add longer description of the algorithm
    */
   def inferNonNull(cond: Tree)(implicit ctx: Context): Inferred = {
-    val emptyFacts = Inferred(emptyNonNullSet, emptyNonNullSet)
-
     /** Combine two sets of facts according to `op`. */
     def combine(lhs: Inferred, op: Name, rhs: Inferred): Inferred = {
       op match {
@@ -88,15 +88,24 @@ object FlowFacts {
       }
     }
 
+    val emptyFacts = Inferred(emptyNonNullSet, emptyNonNullSet)
+    val nullLit = tpd.Literal(Constant(null))
+
     /** Recurse over a conditional to extract flow facts. */
     def recur(tree: Tree): Inferred = {
       tree match {
         case Apply(Select(lhs, op), List(rhs)) =>
           if (op == nme.ZAND || op == nme.ZOR) combine(recur(lhs), op, recur(rhs))
-          else if (op == nme.EQ || op == nme.NE) newFact(lhs, isEq = op == nme.EQ, rhs)
+          else if (op == nme.EQ || op == nme.NE || op == nme.eq || op == nme.ne) newFact(lhs, isEq = (op == nme.EQ || op == nme.eq), rhs)
           else emptyFacts
-        case Select(lhs, neg) if neg == nme.UNARY_! =>
-          recur(lhs).negate
+        case TypeApply(Select(lhs, op), List(targ)) if op == nme.isInstanceOf_ && targ.tpe.isRefToNull =>
+          // TODO(abeln): handle type test with argument that's not a subtype of `Null`.
+          // We could infer "non-null" in that case: e.g. `if (x.isInstanceOf[String]) { // x can't be null }`
+          newFact(lhs, isEq = true, nullLit)
+        case Select(lhs, neg) if neg == nme.UNARY_! => recur(lhs).negate
+        case Block(_, expr) => recur(expr)
+        case Inlined(_, _, expansion) => recur(expansion)
+        case Typed(expr, _) => recur(expr) // TODO(abeln): check that the type is `Boolean`?
         case _ => emptyFacts
       }
     }
