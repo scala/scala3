@@ -11,6 +11,7 @@ abstract class Reflection
     with IdOps
     with ImportSelectorOps
     with QuotedOps
+    with NameOps
     with PatternOps
     with PositionOps
     with Printers

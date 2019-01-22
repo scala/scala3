@@ -13,6 +13,7 @@ trait Printers
   with FlagsOps
   with IdOps
   with ImportSelectorOps
+  with NameOps
   with PatternOps
   with PositionOps
   with SettingsOps
@@ -139,9 +140,9 @@ trait Printers
 
       def visitTree(x: Tree): Buffer = x match {
         case Term.Ident(name) =>
-          this += "Term.Ident(\"" += name += "\")"
+          this += "Term.Ident(\"" += name.toString += "\")"
         case Term.Select(qualifier, name) =>
-          this += "Term.Select(" += qualifier += ", \"" += name += "\")"
+          this += "Term.Select(" += qualifier += ", \"" += name.toString += "\")"
         case Term.This(qual) =>
           this += "Term.This(" += qual += ")"
         case Term.Super(qual, mix) =>
@@ -157,7 +158,7 @@ trait Printers
         case Term.Typed(expr, tpt) =>
           this += "Term.Typed(" += expr += ", "  += tpt += ")"
         case Term.NamedArg(name, arg) =>
-          this += "Term.NamedArg(\"" += name += "\", " += arg += ")"
+          this += "Term.NamedArg(\"" += name.toString += "\", " += arg += ")"
         case Term.Assign(lhs, rhs) =>
           this += "Term.Assign(" += lhs += ", " += rhs += ")"
         case Term.Block(stats, expr) =>
@@ -181,19 +182,19 @@ trait Printers
           visitOption(call, visitTermOrTypeTree)
           this += ", " ++= bindings += ", " += expansion += ")"
         case ValDef(name, tpt, rhs) =>
-          this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
+          this += "ValDef(\"" += name.toString += "\", " += tpt += ", " += rhs += ")"
         case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
-          this += "DefDef(\"" += name += "\", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
+          this += "DefDef(\"" += name.toString += "\", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
         case TypeDef(name, rhs) =>
-          this += "TypeDef(\"" += name += "\", " += rhs += ")"
+          this += "TypeDef(\"" += name.toString += "\", " += rhs += ")"
         case ClassDef(name, constr, parents, derived, self, body) =>
-          this += "ClassDef(\"" += name += "\", " += constr += ", "
+          this += "ClassDef(\"" += name.toString += "\", " += constr += ", "
           visitList[TermOrTypeTree](parents, visitTermOrTypeTree)
           this += ", "
           visitList[TypeTree](derived, visitTypeTree)
           this += ", " += self += ", " ++= body += ")"
         case PackageDef(name, owner) =>
-          this += "PackageDef(\"" += name += "\", " += owner += ")"
+          this += "PackageDef(\"" += name.toString += "\", " += owner += ")"
         case Import(expr, selectors) =>
           this += "Import(" += expr += ", " ++= selectors += ")"
         case PackageClause(pid, stats) =>
@@ -557,7 +558,7 @@ trait Printers
             case stat @ Import(_, _) => stat
           }
           name match {
-            case Term.Ident("<empty>") =>
+            case Term.Ident(TermName("<empty>")) =>
               printTrees(stats1, lineBreak())
             case _ =>
               this += "package "
@@ -581,12 +582,12 @@ trait Printers
           if (flags.is(Flags.Case)) this += highlightKeyword("case ", color)
 
           if (name == "package$") {
-            this += highlightKeyword("package object ", color) += highlightTypeDef(cdef.symbol.owner.name.stripSuffix("$"), color)
+            this += highlightKeyword("package object ", color) += highlightTypeDef(cdef.symbol.owner.name.toString.stripSuffix("$"), color)
           }
-          else if (flags.is(Flags.Object)) this += highlightKeyword("object ", color) += highlightTypeDef(name.stripSuffix("$"), color)
-          else if (flags.is(Flags.Trait)) this += highlightKeyword("trait ", color) += highlightTypeDef(name, color)
-          else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ", color) += highlightTypeDef(name, color)
-          else this += highlightKeyword("class ", color) += highlightTypeDef(name, color)
+          else if (flags.is(Flags.Object)) this += highlightKeyword("object ", color) += highlightTypeDef(name.toString.stripSuffix("$"), color)
+          else if (flags.is(Flags.Trait)) this += highlightKeyword("trait ", color) += highlightTypeDef(name.toString, color)
+          else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ", color) += highlightTypeDef(name.toString, color)
+          else this += highlightKeyword("class ", color) += highlightTypeDef(name.toString, color)
 
           if (!flags.is(Flags.Object)) {
             printTargsDefs(targs)
@@ -597,8 +598,8 @@ trait Printers
 
           val parents1 = parents.filter {
             case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
-            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Product")) => false
-            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Serializable")) => false
+            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident(TermName("_root_")), TermName("scala")), "Product")) => false
+            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident(TermName("_root_")), TermName("scala")), "Serializable")) => false
             case _ => true
           }
           if (parents1.nonEmpty)
@@ -639,8 +640,8 @@ trait Printers
               // Currently the compiler does not allow overriding some of the methods generated for case classes
               d.symbol.flags.is(Flags.Synthetic) &&
               (d match {
-                case DefDef("apply" | "unapply", _, _, _, _) if d.symbol.owner.flags.is(Flags.Object) => true
-                case DefDef(n, _, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
+                case DefDef(TermName("apply" | "unapply"), _, _, _, _) if d.symbol.owner.flags.is(Flags.Object) => true
+                case DefDef(TermName(n), _, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
                   n == "copy" ||
                   n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
                   n.matches("_[1-9][0-9]*") || // Getters from Product
@@ -661,10 +662,10 @@ trait Printers
             this += " {"
             indented {
               if (printSelf) {
-                val Some(ValDef(name, tpt, _)) = self
+                val Some(ValDef(TermName(name), tpt, _)) = self
                 indented {
                   val name1 = if (name == "_") "this" else name
-                  this += " " += highlightValDef(name1, color) += ": "
+                  this += " " += highlightValDef(name1.toString, color) += ": "
                   printTypeTree(tpt)
                   this += " =>"
                 }
@@ -705,7 +706,7 @@ trait Printers
           if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightKeyword("var ", color)
           else this += highlightKeyword("val ", color)
 
-          this += highlightValDef(name, color) += ": "
+          this += highlightValDef(name.toString, color) += ": "
           printTypeTree(tpt)
           rhs match {
             case Some(tree) =>
@@ -727,7 +728,7 @@ trait Printers
               printTree(body)
           }
 
-        case IsDefDef(ddef @ DefDef(name, targs, argss, _, rhsOpt)) if name.startsWith("$anonfun") =>
+        case IsDefDef(ddef @ DefDef(name, targs, argss, _, rhsOpt)) if name.toString.startsWith("$anonfun") =>
           // Decompile lambda definition
           assert(targs.isEmpty)
           val args :: Nil = argss
@@ -738,7 +739,7 @@ trait Printers
             printTree(rhs)
           }
 
-        case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
+        case IsDefDef(ddef @ DefDef(TermName(name), targs, argss, tpt, rhs)) =>
           printDefAnnotations(ddef)
 
           val isConstructor = name == "<init>"
@@ -751,7 +752,7 @@ trait Printers
 
           printProtectedOrPrivate(ddef)
 
-          this += highlightKeyword("def ", color) += highlightValDef((if (isConstructor) "this" else name), color)
+          this += highlightKeyword("def ", color) += highlightValDef(if (isConstructor) "this" else name, color)
           printTargsDefs(targs)
           val it = argss.iterator
           while (it.hasNext)
@@ -768,13 +769,13 @@ trait Printers
           }
           this
 
-        case Term.Ident("_") =>
+        case Term.Ident(TermName("_")) =>
           this += "_"
 
         case IsTerm(tree @ Term.Ident(_)) =>
           printType(tree.tpe)
 
-        case Term.Select(qual, name) =>
+        case Term.Select(qual, TermName(name)) =>
           printTree(qual)
           if (name != "<init>" && name != "package")
             this += "." += name
@@ -795,7 +796,7 @@ trait Printers
           this += "new "
           printTypeTree(tpt)
 
-        case Term.NamedArg(name, arg) =>
+        case Term.NamedArg(TermName(name), arg) =>
           this += name += " = "
           printTree(arg)
 
@@ -805,7 +806,7 @@ trait Printers
 
         case Term.Apply(fn, args) =>
           fn match {
-            case Term.Select(Term.This(_), "<init>") => this += "this" // call to constructor inside a constructor
+            case Term.Select(Term.This(_), TermName("<init>")) => this += "this" // call to constructor inside a constructor
             case _ => printTree(fn)
           }
           val args1 = args match {
@@ -818,7 +819,7 @@ trait Printers
         case Term.TypeApply(fn, args) =>
           printTree(fn)
           fn match {
-            case Term.Select(Term.New(TypeTree.Applied(_, _)), "<init>") =>
+            case Term.Select(Term.New(TypeTree.Applied(_, _)), TermName("<init>")) =>
               // type bounds already printed in `fn`
               this
             case _ =>
@@ -1139,7 +1140,7 @@ trait Printers
       }
 
       def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
-        this += arg.name
+        this += arg.name.toString
         arg.rhs match {
           case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
           case rhs @ WildcardTypeTree() =>
@@ -1152,10 +1153,10 @@ trait Printers
             def printSeparated(list: List[TypeDef]): Unit = list match {
               case Nil =>
               case x :: Nil =>
-                this += x.name
+                this += x.name.toString
                 printParam(x.rhs)
               case x :: xs =>
-                this += x.name
+                this += x.name.toString
                 printParam(x.rhs)
                 this += ", "
                 printSeparated(xs)
@@ -1232,7 +1233,7 @@ trait Printers
           case _ =>
         }
 
-        this += highlightValDef(name, color) += ": "
+        this += highlightValDef(name.toString, color) += ": "
         printTypeTree(arg.tpt)
       }
 
@@ -1269,11 +1270,11 @@ trait Printers
       def printPattern(pattern: Pattern): Buffer = pattern match {
         case Pattern.Value(v) =>
           v match {
-            case Term.Ident("_") => this += "_"
+            case Term.Ident(TermName("_")) => this += "_"
             case _ => printTree(v)
           }
 
-        case Pattern.Bind(name, Pattern.Value(Term.Ident("_"))) =>
+        case Pattern.Bind(name, Pattern.Value(Term.Ident(TermName("_")))) =>
           this += name
 
         case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>
@@ -1286,8 +1287,8 @@ trait Printers
 
         case Pattern.Unapply(fun, implicits, patterns) =>
           fun match {
-            case Term.Select(extractor, "unapply" | "unapplySeq") => printTree(extractor)
-            case Term.TypeApply(Term.Select(extractor, "unapply" | "unapplySeq"), _) => printTree(extractor)
+            case Term.Select(extractor, TermName("unapply" | "unapplySeq")) => printTree(extractor)
+            case Term.TypeApply(Term.Select(extractor, TermName("unapply" | "unapplySeq")), _) => printTree(extractor)
             case _ => throw new MatchError(fun.show)
           }
           inParens(printPatterns(patterns, ", "))
@@ -1563,11 +1564,11 @@ trait Printers
       }
 
       def printDefinitionName(sym: Definition): Buffer = sym match {
-        case ValDef(name, _, _) => this += highlightValDef(name, color)
-        case DefDef(name, _, _, _, _) => this += highlightValDef(name, color)
-        case ClassDef(name, _, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"), color)
-        case TypeDef(name, _) => this += highlightTypeDef(name, color)
-        case PackageDef(name, _) => this += highlightTypeDef(name, color)
+        case ValDef(TermName(name), _, _) => this += highlightValDef(name, color)
+        case DefDef(TermName(name), _, _, _, _) => this += highlightValDef(name, color)
+        case ClassDef(TypeName(name), _, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"), color)
+        case TypeDef(TypeName(name), _) => this += highlightTypeDef(name, color)
+        case PackageDef(TypeName(name), _) => this += highlightTypeDef(name, color)
       }
 
       def printAnnotation(annot: Term): Buffer = {
@@ -1746,7 +1747,7 @@ trait Printers
         case IsTerm(arg @ Term.Apply(fn, args)) =>
           fn.tpe match {
             case Type.SymRef(IsDefSymbol(sym), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
-              Some((sym.tree.name, args))
+              Some((sym.tree.name.toString, args))
             case _ => None
           }
         case _ => None
@@ -1756,8 +1757,8 @@ trait Printers
     private object Annotation {
       def unapply(arg: Tree)(implicit ctx: Context): Option[(TypeTree, List[Term])] = arg match {
         case Term.New(annot) => Some((annot, Nil))
-        case Term.Apply(Term.Select(Term.New(annot), "<init>"), args) => Some((annot, args))
-        case Term.Apply(Term.TypeApply(Term.Select(Term.New(annot), "<init>"), targs), args) => Some((annot, args))
+        case Term.Apply(Term.Select(Term.New(annot), TermName("<init>")), args) => Some((annot, args))
+        case Term.Apply(Term.TypeApply(Term.Select(Term.New(annot), TermName("<init>")), targs), args) => Some((annot, args))
         case _ => None
       }
     }
@@ -1824,7 +1825,7 @@ trait Printers
 
     object PackageObject {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-        case PackageClause(_, ValDef("package", _, _) :: body :: Nil) => Some(body)
+        case PackageClause(_, ValDef(TermName("package"), _, _) :: body :: Nil) => Some(body)
         case _ => None
       }
     }

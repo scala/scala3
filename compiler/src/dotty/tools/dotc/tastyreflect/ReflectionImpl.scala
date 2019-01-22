@@ -12,6 +12,7 @@ class ReflectionImpl(val rootContext: Contexts.Context)
     with IdOpsImpl
     with ImportSelectorOpsImpl
     with QuotedOpsImpl
+    with NameOpsImpl
     with PatternOpsImpl
     with PositionOpsImpl
     with PrintersImpl

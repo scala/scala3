@@ -109,6 +109,9 @@ package scala.tasty.reflect
  *              +- BindSymbol
  *              +- NoSymbol
  *
+ *  +- TermName
+ *  +- TypeName
+ *
  *  +- Flags
  *
  *  Aliases:
@@ -446,6 +449,16 @@ trait Core {
 
     /** No symbol available. */
     type NoSymbol <: Symbol
+
+
+  /** Semantic name */
+  type Name <: AnyRef
+
+    /** Semantic name of a term */
+    type TermName <: Name
+
+    /** Semantic name of a type */
+    type TypeName <: Name
 
   /** FlagSet of a Symbol */
   type Flags

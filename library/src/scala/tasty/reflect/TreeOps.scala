@@ -96,7 +96,7 @@ trait TreeOps extends Core {
   }
 
   trait DefinitionAPI {
-    def name(implicit ctx: Context): String
+    def name(implicit ctx: Context): Name
   }
 
   // ClassDef
@@ -108,12 +108,13 @@ trait TreeOps extends Core {
 
   val ClassDef: ClassDefModule
   abstract class ClassDefModule {
-    // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])]
+    // TODO def apply(name: TypeName, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
+    def copy(original: ClassDef)(name: TypeName, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeName, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])]
   }
 
   trait ClassDefAPI {
+    def name(implicit ctx: Context): TypeName
     def constructor(implicit ctx: Context): DefDef
     def parents(implicit ctx: Context): List[TermOrTypeTree]
     def derived(implicit ctx: Context): List[TypeTree]
@@ -133,11 +134,12 @@ trait TreeOps extends Core {
   val DefDef: DefDefModule
   abstract class DefDefModule {
     def apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef
-    def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
+    def copy(original: DefDef)(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
 
   trait DefDefAPI {
+    def name(implicit ctx: Context): TermName
     def typeParams(implicit ctx: Context): List[TypeDef]
     def paramss(implicit ctx: Context): List[List[ValDef]]
     def returnTpt(implicit ctx: Context): TypeTree
@@ -156,11 +158,12 @@ trait TreeOps extends Core {
   val ValDef: ValDefModule
   abstract class ValDefModule {
     def apply(sym: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef
-    def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
+    def copy(original: ValDef)(name: TermName, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TermName, TypeTree, Option[Term])]
   }
 
   trait ValDefAPI {
+    def name(implicit ctx: Context): TermName
     def tpt(implicit ctx: Context): TypeTree
     def rhs(implicit ctx: Context): Option[Term]
 
@@ -177,11 +180,12 @@ trait TreeOps extends Core {
   val TypeDef: TypeDefModule
   abstract class TypeDefModule {
     def apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef
-    def copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
+    def copy(original: TypeDef)(name: TypeName, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeName, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
   }
 
   trait TypeDefAPI {
+    def name(implicit ctx: Context): TypeName
     def rhs(implicit ctx: Context): TypeOrBoundsTree
     def symbol(implicit ctx: Context): TypeSymbol
   }
@@ -201,7 +205,7 @@ trait TreeOps extends Core {
 
   val PackageDef: PackageDefModule
   abstract class PackageDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeName, PackageDef)]
   }
 
   // ----- Terms ----------------------------------------------------
@@ -232,7 +236,7 @@ trait TreeOps extends Core {
     }
 
     trait IdentAPI {
-      def name(implicit ctx: Context): String
+      def name(implicit ctx: Context): TermName
     }
 
     val Ref: RefModule
@@ -241,7 +245,7 @@ trait TreeOps extends Core {
       /** Create a reference tree */
       def apply(sym: Symbol)(implicit ctx: Context): Ref
 
-      // TODO def copy(original: Tree)(name: String)(implicit ctx: Context): Ref
+      // TODO def copy(original: Tree)(name: TermName)(implicit ctx: Context): Ref
 
     }
 
@@ -249,10 +253,10 @@ trait TreeOps extends Core {
     val Ident: IdentModule
     abstract class IdentModule {
 
-      def copy(original: Tree)(name: String)(implicit ctx: Context): Ident
+      def copy(original: Tree)(name: TermName)(implicit ctx: Context): Ident
 
       /** Matches a term identifier and returns its name */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[String]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TermName]
 
     }
 
@@ -264,7 +268,7 @@ trait TreeOps extends Core {
 
     trait SelectAPI {
       def qualifier(implicit ctx: Context): Term
-      def name(implicit ctx: Context): String
+      def name(implicit ctx: Context): TermName
       def signature(implicit ctx: Context): Option[Signature]
     }
 
@@ -272,12 +276,12 @@ trait TreeOps extends Core {
     val Select: SelectModule
     abstract class SelectModule {
 
-      // TODO def apply(qualifier: Term, name: String, signature: Option[Signature])(implicit ctx: Context): Select
+      // TODO def apply(qualifier: Term, name: TermName, signature: Option[Signature])(implicit ctx: Context): Select
 
-      def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select
+      def copy(original: Tree)(qualifier: Term, name: TermName)(implicit ctx: Context): Select
 
-      /** Matches `<qual: Term>.<name: String>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)]
+      /** Matches `<qual: Term>.<name: TermName>` */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, TermName)]
     }
 
     val IsLiteral: IsLiteralModule
@@ -359,7 +363,7 @@ trait TreeOps extends Core {
     }
 
     trait NamedArgAPI {
-      def name(implicit ctx: Context): String
+      def name(implicit ctx: Context): TermName
       def value(implicit ctx: Context): Term
     }
 
@@ -367,13 +371,13 @@ trait TreeOps extends Core {
     val NamedArg: NamedArgModule
     abstract class NamedArgModule {
 
-      /** Create a named argument `<name: String> = <value: Term>` */
-      def apply(name: String, arg: Term)(implicit ctx: Context): NamedArg
+      /** Create a named argument `<name: TermName> = <value: Term>` */
+      def apply(name: TermName, arg: Term)(implicit ctx: Context): NamedArg
 
-      def copy(tree: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg
+      def copy(tree: NamedArg)(name: TermName, arg: Term)(implicit ctx: Context): NamedArg
 
-      /** Matches a named argument `<name: String> = <value: Term>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Term)]
+      /** Matches a named argument `<name: TermName> = <value: Term>` */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(TermName, Term)]
 
     }
 
@@ -710,9 +714,9 @@ trait TreeOps extends Core {
     val SelectOuter: SelectOuterModule
     abstract class SelectOuterModule {
 
-      def apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter
+      def apply(qualifier: Term, name: TermName, levels: Int)(implicit ctx: Context): SelectOuter
 
-      def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter
+      def copy(original: Tree)(qualifier: Term, name: TermName, levels: Int)(implicit ctx: Context): SelectOuter
 
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)]
 

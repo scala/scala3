@@ -25,11 +25,12 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   def DefinitionDeco(definition: Definition): DefinitionAPI = new DefinitionAPI {
-    def name(implicit ctx: Context): String = definition.symbol.name.toString
+    def name(implicit ctx: Context): Name = definition.symbol.name
   }
 
   def ClassDefDeco(cdef: ClassDef): ClassDefAPI = new ClassDefAPI {
     private def rhs = cdef.rhs.asInstanceOf[tpd.Template]
+    def name(implicit ctx: Contexts.Context): TypeName = cdef.name
     def constructor(implicit ctx: Context): DefDef = rhs.constr
     def parents(implicit ctx: Context): List[TermOrTypeTree] = rhs.parents
     def derived(implicit ctx: Context): List[TypeTree] = rhs.derived.asInstanceOf[List[TypeTree]]
@@ -39,6 +40,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   def DefDefDeco(ddef: DefDef): DefDefAPI = new DefDefAPI {
+    def name(implicit ctx: Contexts.Context): TermName = ddef.name
     def typeParams(implicit ctx: Context): List[TypeDef] = ddef.tparams
     def paramss(implicit ctx: Context): List[List[ValDef]] = ddef.vparamss
     def returnTpt(implicit ctx: Context): TypeTree = ddef.tpt
@@ -47,11 +49,13 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   def ValDefDeco(vdef: ValDef): ValDefAPI = new ValDefAPI {
+    def name(implicit ctx: Contexts.Context): TermName = vdef.name
     def tpt(implicit ctx: Context): TypeTree = vdef.tpt
     def rhs(implicit ctx: Context): Option[Tree] = optional(vdef.rhs)
     def symbol(implicit ctx: Context): ValSymbol = vdef.symbol.asTerm
   }
   def TypeDefDeco(tdef: TypeDef): TypeDefAPI = new TypeDefAPI {
+    def name(implicit ctx: Contexts.Context): TypeName = tdef.name
     def rhs(implicit ctx: Context): TypeOrBoundsTree = tdef.rhs
     def symbol(implicit ctx: Context): TypeSymbol = tdef.symbol.asType
   }
@@ -69,12 +73,12 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   def IdentDeco(x: Term.Ident): Term.IdentAPI = new Term.IdentAPI {
-    def name(implicit ctx: Context): String = x.name.show
+    def name(implicit ctx: Context): TermName = x.name.asTermName
   }
 
   def SelectDeco(x: Term.Select): Term.SelectAPI = new Term.SelectAPI {
     def qualifier(implicit ctx: Context): Term = x.qualifier
-    def name(implicit ctx: Context): String = x.name.toString
+    def name(implicit ctx: Context): TermName = x.name.asTermName
     def signature(implicit ctx: Context): Option[Signature] =
       if (x.symbol.signature == core.Signature.NotAMethod) None
       else Some(x.symbol.signature)
@@ -93,7 +97,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   def NamedArgDeco(x: Term.NamedArg): Term.NamedArgAPI = new Term.NamedArgAPI {
-    def name(implicit ctx: Context): String = x.name.toString
+    def name(implicit ctx: Context): TermName = x.name.asTermName
     def value(implicit ctx: Context): Term = x.arg
   }
 
@@ -251,14 +255,14 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   object ClassDef extends ClassDefModule {
 
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
+    def copy(original: ClassDef)(name: TypeName, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
       val Trees.TypeDef(_, originalImpl: tpd.Template) = original
-      tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
+      tpd.cpy.TypeDef(original)(name, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
     }
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeName, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] = tree match {
       case Trees.TypeDef(name, impl: tpd.Template) =>
-        Some((name.toString, impl.constr, impl.parents, impl.derived.asInstanceOf[List[TypeTree]], optional(impl.self), impl.body))
+        Some((name.asTypeName, impl.constr, impl.parents, impl.derived.asInstanceOf[List[TypeTree]], optional(impl.self), impl.body))
       case _ => None
     }
   }
@@ -277,12 +281,12 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     def apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
       tpd.polyDefDef(symbol, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree))
 
-    def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef =
-      tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
+    def copy(original: DefDef)(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef =
+      tpd.cpy.DefDef(original)(name, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = tree match {
       case x: tpd.DefDef =>
-        Some((x.name.toString, x.tparams, x.vparamss, x.tpt, optional(x.rhs)))
+        Some((x.name.asTermName, x.tparams, x.vparamss, x.tpt, optional(x.rhs)))
       case _ => None
     }
   }
@@ -301,12 +305,12 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     def apply(symbol: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
       tpd.ValDef(symbol, rhs.getOrElse(tpd.EmptyTree))
 
-    def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef =
-      tpd.cpy.ValDef(original)(name.toTermName, tpt, rhs.getOrElse(tpd.EmptyTree))
+    def copy(original: ValDef)(name: TermName, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef =
+      tpd.cpy.ValDef(original)(name, tpt, rhs.getOrElse(tpd.EmptyTree))
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TermName, TypeTree, Option[Term])] = tree match {
       case x: tpd.ValDef =>
-        Some((x.name.toString, x.tpt, optional(x.rhs)))
+        Some((x.name.asTermName, x.tpt, optional(x.rhs)))
       case _ => None
     }
   }
@@ -323,10 +327,10 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
   object TypeDef extends TypeDefModule {
     def apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef = tpd.TypeDef(symbol)
-    def copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef =
-      tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] = tree match {
-      case x: tpd.TypeDef if !x.symbol.isClass => Some((x.name.toString, x.rhs))
+    def copy(original: TypeDef)(name: TypeName, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef =
+      tpd.cpy.TypeDef(original)(name, rhs)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeName, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] = tree match {
+      case x: tpd.TypeDef if !x.symbol.isClass => Some((x.name.asTypeName, x.rhs))
       case _ => None
     }
   }
@@ -343,9 +347,9 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   object PackageDef extends PackageDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeName, PackageDef)] = tree match {
       case x: PackageDefinition =>
-        Some((x.symbol.name.toString, packageDefFromSym(x.symbol.owner)))
+        Some((x.symbol.name.asTypeName, packageDefFromSym(x.symbol.owner)))
       case _ => None
     }
   }
@@ -382,11 +386,11 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     }
 
     object Ident extends IdentModule {
-      def copy(original: Tree)(name: String)(implicit ctx: Context): Ident =
-        tpd.cpy.Ident(original)(name.toTermName)
+      def copy(original: Tree)(name: TermName)(implicit ctx: Context): Ident =
+        tpd.cpy.Ident(original)(name)
 
-      def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
-        case x: tpd.Ident if x.isTerm => Some(x.name.show)
+      def unapply(x: Term)(implicit ctx: Context): Option[TermName] = x match {
+        case x: tpd.Ident if x.isTerm => Some(x.name.asTermName)
         case _ => None
       }
     }
@@ -400,11 +404,11 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
 
     object Select extends SelectModule {
-      def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select =
-        tpd.cpy.Select(original)(qualifier, name.toTermName)
+      def copy(original: Tree)(qualifier: Term, name: TermName)(implicit ctx: Context): Select =
+        tpd.cpy.Select(original)(qualifier, name)
 
-      def unapply(x: Term)(implicit ctx: Context): Option[(Term, String)] = x match {
-        case x: tpd.Select if x.isTerm => Some((x.qualifier, x.name.toString))
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, TermName)] = x match {
+        case x: tpd.Select if x.isTerm => Some((x.qualifier, x.name.asTermName))
         case _ => None
       }
     }
@@ -475,7 +479,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
     }
 
     def NamedArgDeco(x: Term.NamedArg): Term.NamedArgAPI = new Term.NamedArgAPI {
-      def name(implicit ctx: Context): String = x.name.toString
+      def name(implicit ctx: Context): TermName = x.name.asTermName
       def value(implicit ctx: Context): Term = x.arg
     }
 
@@ -488,14 +492,14 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
     object NamedArg extends NamedArgModule {
 
-      def apply(name: String, arg: Term)(implicit ctx: Context): NamedArg =
-        tpd.NamedArg(name.toTermName, arg)
+      def apply(name: TermName, arg: Term)(implicit ctx: Context): NamedArg =
+        tpd.NamedArg(name, arg)
 
-      def copy(tree: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg =
-        tpd.cpy.NamedArg(tree)(name.toTermName, arg)
+      def copy(tree: NamedArg)(name: TermName, arg: Term)(implicit ctx: Context): NamedArg =
+        tpd.cpy.NamedArg(tree)(name, arg)
 
-      def unapply(x: Term)(implicit ctx: Context): Option[(String, Term)] = x match {
-        case x: tpd.NamedArg if x.name.isInstanceOf[Names.TermName] => Some((x.name.toString, x.arg))
+      def unapply(x: Term)(implicit ctx: Context): Option[(TermName, Term)] = x match {
+        case x: tpd.NamedArg if x.name.isInstanceOf[Names.TermName] => Some((x.name.asTermName, x.arg))
         case _ => None
       }
     }
@@ -819,11 +823,11 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
 
     object SelectOuter extends SelectOuterModule {
 
-      def apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter =
-        tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
+      def apply(qualifier: Term, name: TermName, levels: Int)(implicit ctx: Context): SelectOuter =
+        tpd.Select(qualifier, NameKinds.OuterSelectName(name, levels))
 
-      def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter =
-        tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
+      def copy(original: Tree)(qualifier: Term, name: TermName, levels: Int)(implicit ctx: Context): SelectOuter =
+        tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name, levels))
 
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Int, Type)] = x match {
         case x: tpd.Select =>
