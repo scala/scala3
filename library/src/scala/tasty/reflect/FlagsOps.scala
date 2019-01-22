@@ -54,6 +54,9 @@ trait FlagsOps extends Core {
     /** Is this symbol marked as static. Mapped to static Java member */
     def Static: Flags
 
+    /** Is this symbol defined in a Java class */
+    def JavaDefined: Flags
+
     /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
     def Object: Flags
 
