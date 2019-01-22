@@ -35,11 +35,9 @@ This is our 12th scheduled release according to our
 ### Extension Methods
 
 We are excited to announce that extension methods are now offered through dedicated language support!
-Extension methods allow one to add methods to a type after the type is defined and up until now they were encoded through the powerful mechanism of implicits. 
-Previously, one had to place the desired method in the trait with the receiver object to extend, as part of the parameter list. 
-The infix-ness of the method was being restored by manually writing the implicit class, resolving `implicitly` that extended object. 
-
-Now, in Dotty we can express an extension method by writing the method and prepending its name with the type to be extended. 
+Extension methods allow one to add methods to a type after the type is defined.
+This is done by writing a method with a parameter for the type to be extended
+_on the left-hand side_ of the method name:
 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
@@ -47,7 +45,34 @@ case class Circle(x: Double, y: Double, radius: Double)
 def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 ```
 
-Read the [relevant documentation](https://dotty.epfl.ch/docs/reference/other-new-features/extension-methods.html) about generic extension methods, higher-kinded extension methods and more.
+Extension methods are enabled when they are syntactically in scope (as above),
+or when their enclosing instance is present in the implicit scope of the type that they extend,
+as we exemplify below.
+
+Extension methods were previously encoded in a rather roundabout way via the implicit class pattern.
+Such encoding required a lot of boilerplate, especially when defining type classes.
+In Dotty, this is no longer the case,
+and type classes with infix syntax become very straightforward to define!
+For example, consider:
+
+```scala
+trait Semigroup[T] {
+  def (x: T) combine (y: T): T
+}
+implicit val IntSemigroup: Semigroup[Int] = new {
+   def (x: Int) combine (y: Int): Int = x + y
+}
+implicit def ListSemigroup[T]: Semigroup[List[T]] = new {
+   def (x: List[T]) combine (y: List[T]): List[T] = x ::: y
+}
+1.combine(2) // == 3
+List(1,2).combine(List(3,4)) // == List(1,2,3,4)
+```
+
+This works because the `combine` extension methods of `IntSemigroup` and `ListSemigroup` are available
+from the relevant implicit scopes.
+
+Read the [full documentation](https://dotty.epfl.ch/docs/reference/other-new-features/extension-methods.html) about generic extension methods, higher-kinded extension methods, and more.
 
 ### TASTy Reflect goodies
 
