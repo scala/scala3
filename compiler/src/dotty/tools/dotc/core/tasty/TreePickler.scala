@@ -653,7 +653,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Accessor) writeByte(FIELDaccessor)
       if (flags is CaseAccessor) writeByte(CASEaccessor)
       if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
-      if (flags is Stable) writeByte(STABLE)
+      if (flags is StableRealizable) writeByte(STABLE)
       if (flags is Extension) writeByte(EXTENSION)
       if (flags is ParamAccessor) writeByte(PARAMsetter)
       assert(!(flags is Label))

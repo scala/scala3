@@ -176,7 +176,7 @@ object ExplicitOuter {
     val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
-      Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
+      Final | Method | StableRealizable | outerAccIfOwn | deferredIfTrait)
   }
 
   private def outerAccName(cls: ClassSymbol)(implicit ctx: Context): TermName =

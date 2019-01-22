@@ -10,7 +10,7 @@ import collection.mutable
 /** Realizability status */
 object CheckRealizable {
 
-  abstract class Realizability(val msg: String) {
+  sealed abstract class Realizability(val msg: String) {
     def andAlso(other: => Realizability): Realizability =
       if (this == Realizable) other else this
     def mapError(f: Realizability => Realizability): Realizability =
@@ -47,10 +47,18 @@ object CheckRealizable {
   def boundsRealizability(tp: Type)(implicit ctx: Context): Realizability =
     new CheckRealizable().boundsRealizability(tp)
 
-  private val LateInitialized = Lazy | Erased,
+  private val LateInitialized = Lazy | Erased
 }
 
-/** Compute realizability status */
+/** Compute realizability status.
+  *
+  * A type T is realizable iff it is inhabited by non-null values. This ensures that its type members have good bounds
+  * (in the sense from DOT papers). A type projection T#L is legal if T is realizable, and can be understood as
+  * Scala 2's `v.L forSome { val v: T }`.
+  *
+  * In general, a realizable type can have multiple inhabitants, hence it need not be stable (in the sense of
+  * Type.isStable).
+  */
 class CheckRealizable(implicit ctx: Context) {
   import CheckRealizable._
 
@@ -66,13 +74,22 @@ class CheckRealizable(implicit ctx: Context) {
 
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
+    /*
+     * A `TermRef` for a path `p` is realizable if
+     * - `p`'s type is stable and realizable, or
+     * - its underlying path is idempotent (that is, *stable*), total, and not null.
+     * We don't check yet the "not null" clause: that will require null-safety checking.
+     *
+     * We assume that stability of tp.prefix is checked elsewhere, since that's necessary for the path to be legal in
+     * the first place.
+     */
     case tp: TermRef =>
       val sym = tp.symbol
       lazy val tpInfoRealizable = realizability(tp.info)
-      if (sym.is(Stable)) realizability(tp.prefix)
+      if (sym.is(StableRealizable)) realizability(tp.prefix)
       else {
         val r =
-          if (sym.isStable && !isLateInitialized(sym))
+          if (sym.isStableMember && !isLateInitialized(sym))
             // it's realizable because we know that a value of type `tp` has been created at run-time
             Realizable
           else if (!sym.isEffectivelyFinal)
@@ -83,10 +100,14 @@ class CheckRealizable(implicit ctx: Context) {
             // roughly: it's realizable if the info does not have bad bounds
             tpInfoRealizable.mapError(r => new ProblemInUnderlying(tp, r))
         r andAlso {
-          if (sym.isStable) sym.setFlag(Stable) // it's known to be stable and realizable
+          if (sym.isStableMember) sym.setFlag(StableRealizable) // it's known to be stable and realizable
           realizability(tp.prefix)
         } mapError { r =>
-          if (tp.info.isStable && tpInfoRealizable == Realizable) Realizable else r
+          // A mutable path is in fact stable and realizable if it has a realizable singleton type.
+          if (tp.info.isStable && tpInfoRealizable == Realizable) {
+            sym.setFlag(StableRealizable)
+            Realizable
+          } else r
         }
       }
     case _: SingletonType | NoPrefix =>
