@@ -179,7 +179,7 @@ object Pair {
   implicit def derived$Show[T: Show]: Show[Pair[T]] = Show.derived
 }
 
-sealed trait Either[+L, +R] extends Product // derives Eq, Pickler, Show
+sealed trait Either[+L, +R] extends Product with Serializable // derives Eq, Pickler, Show
 case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 

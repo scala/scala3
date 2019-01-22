@@ -168,38 +168,65 @@ that problem, it is recommended that the name of an extension method is
 preceded by a space and is also followed by a space if there are more parameters
 to come.
 
-### Extension Methods and TypeClasses
+### Extension Methods and Type Classes
 
-The rules for expanding extension methods make sure that they work seamlessly with typeclasses. For instance, consider `SemiGroup` and `Monoid`.
+The rules for expanding extension methods make sure that they work seamlessly with type classes. For instance, consider `SemiGroup` and `Monoid`.
 ```scala
-  // Two typeclasses:
+  // Two type classes:
   trait SemiGroup[T] {
     def (x: T) combine(y: T): T
   }
   trait Monoid[T] extends SemiGroup[T] {
     def unit: T
   }
-
-  // An instance declaration:
-  implicit object StringMonoid extends Monoid[String] {
-    def (x: String) combine (y: String): String = x.concat(y)
-    def unit: String = ""
+  object Monoid {
+    // An instance declaration:
+    implicit object StringMonoid extends Monoid[String] {
+      def (x: String) combine (y: String): String = x.concat(y)
+      def unit: String = ""
+    }
   }
 
   // Abstracting over a typeclass with a context bound:
   def sum[T: Monoid](xs: List[T]): T =
     xs.foldLeft(implicitly[Monoid[T]].unit)(_.combine(_))
 ```
+
 In the last line, the call to `_.combine(_)` expands to `(x1, x2) => x1.combine(x2)`,
 which expands in turn to `(x1, x2) => ev.combine(x1, x2)` where `ev` is the implicit
 evidence parameter summoned by the context bound `[T: Monoid]`. This works since
 extension methods apply everywhere their enclosing object is available as an implicit.
 
+To avoid having to write `implicitly[Monoid[T]].unit` to access the `unit` method in `Monoid[T]`,
+we can make `unit` itself an extension method on the `Monoid` _companion object_,
+as shown below:
+
+```scala
+  trait Monoid[T] extends SemiGroup[T] {
+    def (self: Monoid.type) unit: T
+  }
+  object Monoid {
+    implicit object StringMonoid extends Monoid[String] {
+      def (x: String) combine (y: String): String = x.concat(y)
+      def (self: Monoid.type) unit: String = ""
+    }
+  }
+```
+
+This allows us to write `Monoid.unit` instead of `implicitly[Monoid[T]].unit`,
+letting the expected type distinguish which instance we want to use:
+
+```scala
+  def sum[T: Monoid](xs: List[T]): T =
+    xs.foldLeft(Monoid.unit)(_.combine(_))
+```
+
+
 ### Generic Extension Classes
 
 As another example, consider implementations of an `Ord` type class with a `minimum` value:
 ```scala
-  trait Ord[T]
+  trait Ord[T] {
     def (x: T) compareTo (y: T): Int
     def (x: T) < (y: T) = x.compareTo(y) < 0
     def (x: T) > (y: T) = x.compareTo(y) > 0
@@ -213,7 +240,7 @@ As another example, consider implementations of an `Ord` type class with a `mini
   }
 
   class ListOrd[T: Ord] extends Ord[List[T]] {
-    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match
+    def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
