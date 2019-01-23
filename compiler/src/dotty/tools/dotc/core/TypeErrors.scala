@@ -169,7 +169,15 @@ class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Typ
   }
 
   protected def addendum(implicit ctx: Context): String =
-    if (prefix `eq` NoPrefix) "" else i"\nas members of type $prefix"
+    if (prefix `eq` NoPrefix) ""
+    else {
+      val owner = prefix match {
+        case prefix: ThisType => prefix.cls.show
+        case prefix: TermRef => prefix.symbol.show
+        case _ => i"type $prefix"
+      }
+      s"\nas members of $owner"
+    }
 
   override def toMessage(implicit ctx: Context): Message = {
     if (ctx.debug) printStackTrace()
