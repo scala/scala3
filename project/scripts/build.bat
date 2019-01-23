@@ -113,7 +113,7 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else if /i "%__ARG%"=="sbt-only" (
     set _SBT=1
 ) else (
-    echo Error: Unknown subcommand %__ARG% 1>&2
+    echo [91mError[0m: Unknown subcommand %__ARG% 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -201,7 +201,7 @@ echo sbt compile and sbt test
 if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";compile ;test"
 call "%_SBT_CMD%" ";compile ;test"
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to build Dotty 1>&2
+    echo [91mError[0m: Failed to run sbt command ";compile ;test" 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -210,7 +210,7 @@ rem see shell script project/scripts/cmdTests
 if %_DEBUG%==1 echo [%_BASENAME%] call %_SCRIPTS_DIR%\cmdTests.bat
 call %_SCRIPTS_DIR%\cmdTests.bat
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to run cmdTest.bat 1>&2
+    echo [91mError[0m: Failed to run cmdTest.bat 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -220,7 +220,7 @@ goto :eof
 if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
 call "%_SBT_CMD%" ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to bootstrap Dotty 1>&2
+    echo [91mError[0m: Failed to run sbt command ";dotty-bootstrapped/compile ;dotty-bootstrapped/test" 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -229,7 +229,7 @@ rem see shell script project/scripts/bootstrapCmdTests
 if %_DEBUG%==1 echo [%_BASENAME%] call %_SCRIPTS_DIR%\bootstrapCmdTests.bat
 call %_SCRIPTS_DIR%\bootstrapCmdTests.bat
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to run bootstrapCmdTests.bat 1>&2
+    echo [91mError[0m: Failed to run bootstrapCmdTests.bat 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -239,7 +239,7 @@ goto :eof
 if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" sbt-dotty/scripted
 call "%_SBT_CMD%" sbt-dotty/scripted
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to test sbt-dotty 1>&2
+    echo [91mError[0m: Failed to run sbt command sbt-dotty/scripted 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -250,6 +250,7 @@ rem see shell script project/scripts/genDocs
 if %_DEBUG%==1 echo [%_BASENAME%] call %_SCRIPTS_DIR%\genDocs.bat
 call %_SCRIPTS_DIR%\genDocs.bat
 if not %ERRORLEVEL%==0 (
+    echo [91mError[0m: Failed to run genDocs.bat 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -261,7 +262,7 @@ call "%_SBT_CMD%" dist-bootstrapped/packArchive
 rem output directory for gz/zip archives
 set __TARGET_DIR=%_ROOT_DIR%\dist-bootstrapped\target
 if not exist "%__TARGET_DIR%\" (
-    echo Error: Directory target not found 1>&2
+    echo [91mError[0m: Directory target not found 1>&2
     set _EXITCODE=1
     goto :eof
 )
