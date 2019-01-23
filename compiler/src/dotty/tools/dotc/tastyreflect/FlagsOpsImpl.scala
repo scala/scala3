@@ -27,6 +27,7 @@ trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
     def Inline: Flags = core.Flags.Inline
     def Macro: Flags = core.Flags.Macro
     def Static: Flags = core.Flags.JavaStatic
+    def JavaDefined: Flags = core.Flags.JavaDefined
     def Object: Flags = core.Flags.Module
     def Trait: Flags = core.Flags.Trait
     def Local: Flags = core.Flags.Local
@@ -39,7 +40,7 @@ trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
     def Contravariant: Flags = core.Flags.Contravariant
     def Scala2X: Flags = core.Flags.Scala2x
     def DefaultParameterized: Flags = core.Flags.DefaultParameterized
-    def Stable: Flags = core.Flags.Stable
+    def Stable: Flags = core.Flags.StableRealizable
     def Param: Flags = core.Flags.Param
     def ParamAccessor: Flags = core.Flags.ParamAccessor
   }

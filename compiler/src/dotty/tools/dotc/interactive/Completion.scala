@@ -260,7 +260,7 @@ object Completion {
       !sym.is(Artifact) &&
       (
            (mode.is(Mode.Term) && sym.isTerm)
-        || (mode.is(Mode.Type) && (sym.isType || sym.isStable))
+        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember))
       )
 
     /**

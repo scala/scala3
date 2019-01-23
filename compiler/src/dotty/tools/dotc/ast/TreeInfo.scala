@@ -400,11 +400,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
       if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
-          || (fn.symbol.isStable && !fn.symbol.is(Lazy))
+          || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else if (fn.symbol.is(Erased)) Pure
-      else if (fn.symbol.isStable /* && fn.symbol.is(Lazy) */)
+      else if (fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */)
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
       else Impure
     case Typed(expr, _) =>
@@ -439,7 +439,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val sym = tree.symbol
     if (!tree.hasType) Impure
     else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) SimplyPure
-    else if (!sym.isStable) Impure
+    else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
     else if (sym.is(Lazy)) Idempotent
@@ -521,7 +521,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case tpe: PolyType => maybeGetterType(tpe.resultType)
       case _ => false
     }
-    sym.owner.isClass && !sym.isStable && maybeGetterType(sym.info)
+    sym.owner.isClass && !sym.isStableMember && maybeGetterType(sym.info)
   }
 
   /** Is tree a reference to a mutable variable, or to a potential getter
