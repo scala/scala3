@@ -81,12 +81,14 @@ object SimpleIdentitySet {
 
   private class SetN[+Elem <: AnyRef](xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
     def size = xs.length
-    def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] = {
-      val xs1 = new Array[AnyRef](size + 1)
-      System.arraycopy(xs, 0, xs1, 0, size)
-      xs1(size) = x
-      new SetN[E](xs1)
-    }
+    def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] =
+      if (contains(x)) this
+      else {
+        val xs1 = new Array[AnyRef](size + 1)
+        System.arraycopy(xs, 0, xs1, 0, size)
+        xs1(size) = x
+        new SetN[E](xs1)
+      }
     def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem] = {
       var i = 0
       while (i < size && (xs(i) `ne` x)) i += 1
