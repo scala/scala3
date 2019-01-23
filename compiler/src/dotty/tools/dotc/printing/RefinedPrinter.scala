@@ -807,7 +807,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     if (sym.is(ModuleClass)) {
       val name =
-        if (sym.isPackageObject && sym.name == tpnme.PACKAGE) sym.owner.name
+        if (sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE) sym.owner.name
         else sym.name.stripModuleClassSuffix
       kindString(sym) ~~ (nameString(name) + idString(sym))
     }
