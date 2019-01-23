@@ -1028,7 +1028,8 @@ object desugar {
   def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
     def needsObject(stat: Tree) = stat match {
       case _: ValDef | _: PatDef | _: DefDef => true
-      case stat: TypeDef => !stat.isClassDef
+      case stat: ModuleDef => stat.mods.is(Implicit)
+      case stat: TypeDef => !stat.isClassDef || stat.mods.is(Implicit)
       case _ => false
     }
     val (nestedStats, topStats) = pdef.stats.partition(needsObject)
