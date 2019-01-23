@@ -129,6 +129,11 @@ trait Printers
       if (flags.is(Flags.StableRealizable)) flagList += "Flags.StableRealizable"
       if (flags.is(Flags.Param)) flagList += "Flags.Param"
       if (flags.is(Flags.ParamAccessor)) flagList += "Flags.ParamAccessor"
+      if (flags.is(Flags.Enum)) flagList += "Flags.Enum"
+      if (flags.is(Flags.ModuleClass)) flagList += "Flags.ModuleClass"
+      if (flags.is(Flags.PrivateLocal)) flagList += "Flags.PrivateLocal"
+      if (flags.is(Flags.Package)) flagList += "Flags.Package"
+      if (flags.is(Flags.ImplClass)) flagList += "Flags.ImplClass"
       flagList.result().mkString(" | ")
     }
 
@@ -504,6 +509,11 @@ trait Printers
       if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
       if (flags.is(Flags.Param)) flagList += "param"
       if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"
+      if (flags.is(Flags.Enum)) flagList += "enum"
+      if (flags.is(Flags.ModuleClass)) flagList += "moduleClass"
+      if (flags.is(Flags.PrivateLocal)) flagList += "private[this]"
+      if (flags.is(Flags.Package)) flagList += "package"
+      if (flags.is(Flags.ImplClass)) flagList += "implClass"
       flagList.result().mkString("/*", " ", "*/")
     }
 
