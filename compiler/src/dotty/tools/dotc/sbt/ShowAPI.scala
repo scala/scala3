@@ -1,3 +1,12 @@
+/*
+ * Dotty (https://dotty.epfl.ch/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ */
+
 // This file is copied straight from
 // https://github.com/sbt/sbt/blob/0.13/compile/api/src/main/scala/xsbt/api/ShowAPI.scala
 // It is convenient to be able to pretty-print the API from Dotty itself to test

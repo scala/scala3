@@ -1,3 +1,12 @@
+/*
+ * Dotty (https://dotty.epfl.ch/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ */
+
 package dotty.tools.dotc.interfaces;
 
 /** Set of callbacks called in response to events during the compilation process.

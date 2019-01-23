@@ -16,3 +16,5 @@ addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.10.1")
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.2")
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.9.0")
+
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")

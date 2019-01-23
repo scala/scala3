@@ -26,7 +26,7 @@ pipeline:
     image: lampepfl/dotty:2018-12-12
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt ";compile ;test"
+      - ./project/scripts/sbt "headerCheck; ;compile ;test"
       - ./project/scripts/cmdTests
 
   test_bootstrapped:

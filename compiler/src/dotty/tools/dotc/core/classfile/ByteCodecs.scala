@@ -1,10 +1,12 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2011, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Dotty (https://dotty.epfl.ch/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ */
+
 package dotty.tools.dotc.core.classfile
 
 object ByteCodecs {

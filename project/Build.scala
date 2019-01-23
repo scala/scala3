@@ -25,6 +25,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
+import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
+
 import scala.util.Properties.isJavaAtLeast
 
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
@@ -52,7 +54,6 @@ object Build {
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
-
 
   val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
 
@@ -206,7 +207,21 @@ object Build {
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
     // enable verbose exception messages for JUnit
-    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v")
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
+
+    // Definition of the license header, used by the sbt-header plugin
+    homepage := Some(url("https://dotty.epfl.ch/")),
+    organizationName := "EPFL",
+    licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+    headerLicense := Some(HeaderLicense.Custom(
+      s"""Dotty (${homepage.value.get})
+         |
+         |Copyright EPFL.
+         |
+         |Licensed under Apache License 2.0
+         |(https://www.apache.org/licenses/LICENSE-2.0).
+         |""".stripMargin
+    ))
   )
 
   // Settings used for projects compiled only with Scala 2
@@ -1096,8 +1111,6 @@ object Build {
     ),
     publishArtifact in Test := false,
     homepage := Some(url(dottyGithubUrl)),
-    licenses += ("BSD New",
-      url(s"$dottyGithubUrl/blob/master/LICENSE.md")),
     scmInfo := Some(
       ScmInfo(
         url(dottyGithubUrl),
