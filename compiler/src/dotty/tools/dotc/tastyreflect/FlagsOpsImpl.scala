@@ -43,7 +43,6 @@ trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
     def StableRealizable: Flags = core.Flags.StableRealizable
     def Param: Flags = core.Flags.Param
     def ParamAccessor: Flags = core.Flags.ParamAccessor
-    def JavaDefined: Flags = core.Flags.JavaDefined
     def Enum: Flags = core.Flags.Enum
     def ModuleClass: Flags = core.Flags.ModuleClass
     def PrivateLocal: Flags = core.Flags.PrivateLocal
