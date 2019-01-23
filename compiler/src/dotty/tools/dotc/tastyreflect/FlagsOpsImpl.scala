@@ -27,6 +27,7 @@ trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
     def Inline: Flags = core.Flags.Inline
     def Macro: Flags = core.Flags.Macro
     def Static: Flags = core.Flags.JavaStatic
+    def JavaDefined: Flags = core.Flags.JavaDefined
     def Object: Flags = core.Flags.Module
     def Trait: Flags = core.Flags.Trait
     def Local: Flags = core.Flags.Local
