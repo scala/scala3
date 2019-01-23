@@ -695,4 +695,41 @@ class TestBCode extends DottyBytecodeTest {
         "`test` was not properly generated\n" + diffInstructions(instructions, expected))
     }
   }
+
+  @Test def i521: Unit = {
+    val source =
+      """import scala.annotation.tailrec
+        |
+        |class M(val underlying: Int) extends AnyVal {
+        |  @tailrec def foo: Unit = foo
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("M$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method = getMethod(clsNode, "foo$extension")
+
+      val instructions = instructionsFromMethod(method)
+
+      val expected = List( // Expect not to load `this`
+        Label(0),
+        FrameEntry(3, List(), List()),
+        Jump(Opcodes.GOTO, Label(6)),
+        Label(3),
+        FrameEntry(0, List(), List("java/lang/Throwable")),
+        Op(Opcodes.ATHROW),
+        Label(6),
+        FrameEntry(1, List("M$", 1), List()),
+        Jump(Opcodes.GOTO, Label(0)),
+        Label(9),
+        FrameEntry(0, List(), List("java/lang/Throwable")),
+        Op(Opcodes.NOP),
+        Op(Opcodes.ATHROW))
+
+      assert(instructions == expected,
+        "`test` was not properly generated\n" + diffInstructions(instructions, expected) + instructions)
+    }
+  }
+
 }
