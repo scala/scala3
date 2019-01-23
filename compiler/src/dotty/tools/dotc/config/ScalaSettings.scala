@@ -11,45 +11,45 @@ class ScalaSettings extends Settings.SettingGroup {
   protected def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
   /** Path related settings */
-  val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath)
-  val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs)
-  val javabootclasspath: Setting[String] = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath)
-  val javaextdirs: Setting[String] = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
-  val sourcepath: Setting[String] = PathSetting("-sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath)
-  val scansource: Setting[Boolean] = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name")
+  val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath) withAbbreviation "--boot-class-path"
+  val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs) withAbbreviation "--extension-directories"
+  val javabootclasspath: Setting[String] = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath) withAbbreviation "--java-boot-class-path"
+  val javaextdirs: Setting[String] = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs) withAbbreviation "--java-extension-directories"
+  val sourcepath: Setting[String] = PathSetting("-sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath) withAbbreviation "--source-path"
+  val scansource: Setting[Boolean] = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name") withAbbreviation "--scan-source"
 
-  val classpath: Setting[String] = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
+  val classpath: Setting[String] = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp" withAbbreviation "--class-path"
   val outputDir: Setting[AbstractFile] = OutputSetting("-d", "directory|jar", "destination for generated classfiles.",
     new PlainDirectory(Directory(".")))
-  val priorityclasspath: Setting[String] = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
+  val priorityclasspath: Setting[String] = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "") withAbbreviation "--priority-class-path"
 
   /** Other settings */
-  val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.")
-  val migration: Setting[Boolean] = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.")
-  val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding)
-  val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail.")
-  val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.")
-  val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.")
-  val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options")
-  val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/)
+  val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.") withAbbreviation "--deprecation"
+  val migration: Setting[Boolean] = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.") withAbbreviation "--migration"
+  val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding) withAbbreviation "--encoding"
+  val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail.") withAbbreviation "--explain-types"
+  val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.") withAbbreviation "--explain"
+  val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.") withAbbreviation "--feature"
+  val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options") withAbbreviation "--help"
+  val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/) withAbbreviation "--color"
   val target: Setting[String] = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
-    List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"), "jvm-1.8")
-  val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).")
-  val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.")
-  val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.")
-  val usejavacp: Setting[Boolean] = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.")
-  val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.")
-  val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.")
-  val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80)
-  val strict: Setting[Boolean] = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.")
-  val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.")
-  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
-  val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.")
-  val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
+    List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"), "jvm-1.8") withAbbreviation "--target"
+  val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).") withAbbreviation "--scalajs"
+  val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.") withAbbreviation "--unchecked"
+  val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.") withAbbreviation "--unique-id"
+  val usejavacp: Setting[Boolean] = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.") withAbbreviation "--use-java-class-path"
+  val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.") withAbbreviation "--verbose"
+  val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.") withAbbreviation "--version"
+  val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80) withAbbreviation "--page-width"
+  val strict: Setting[Boolean] = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.") withAbbreviation "--strict"
+  val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.") withAbbreviation "--language"
+  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax") withAbbreviation "--rewrite"
+  val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.") withAbbreviation "--no-warnings"
+  val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.") withAbbreviation "--from-tasty"
 
   /** Decompiler settings */
-  val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.")
-  val printLines: Setting[Boolean] = BooleanSetting("-print-lines", "Show source code line numbers.")
+  val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.") withAbbreviation "--print-tasty"
+  val printLines: Setting[Boolean] = BooleanSetting("-print-lines", "Show source code line numbers.") withAbbreviation "--print-lines"
 
   /** Plugin-related setting */
   val plugin: Setting[List[String]]             = MultiStringSetting  ("-Xplugin", "paths", "Load a plugin from each classpath.")
