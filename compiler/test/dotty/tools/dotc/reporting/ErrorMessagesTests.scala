@@ -966,7 +966,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
       val err :: Nil = messages
-      assertEquals(err, ExpectedClassOrObjectDef())
+      assertEquals(err, ExpectedToplevelDef())
     }
 
   @Test def implicitClassPrimaryConstructorArity =

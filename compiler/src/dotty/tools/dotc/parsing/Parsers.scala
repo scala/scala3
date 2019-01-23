@@ -2701,7 +2701,7 @@ object Parsers {
           if (in.token == CASE)
             syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
           else
-            syntaxErrorOrIncomplete(ExpectedClassOrObjectDef())
+            syntaxErrorOrIncomplete(ExpectedToplevelDef())
         }
         acceptStatSepUnlessAtEnd()
       }

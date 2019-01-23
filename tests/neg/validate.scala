@@ -4,7 +4,7 @@ trait X {
   abstract def y: Y // error: abstract term
 }
 
-implicit object Z { // error: implicit at toplevel
+implicit object Z { // now ok: implicit at top level
   implicit case class C() // error: implicit classes may not be case classes
   implicit type T = Int // error: implicit modifier cannot be used for types or traits
   implicit trait U // error: implicit modifier cannot be used for types or traits
