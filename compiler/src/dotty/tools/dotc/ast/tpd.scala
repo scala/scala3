@@ -741,9 +741,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def traverse(tree: Tree)(implicit ctx: Context): Unit = {
           tree match {
             case _: DefTree => if(tree.symbol ne NoSymbol) localOwners += tree.symbol
-            case _ =>
+            case _ =>          traverseChildren(tree)
           }
-          traverseChildren(tree)
         }
       }
       traverser.traverse(tree)
