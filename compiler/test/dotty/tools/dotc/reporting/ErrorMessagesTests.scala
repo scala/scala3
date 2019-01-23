@@ -705,20 +705,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("final", flags.toString)
     }
 
-  @Test def topLevelCantBeImplicit =
-    checkMessagesAfter(FrontEnd.name) {
-      """package Foo {
-        |  implicit object S
-        |}
-        |""".stripMargin
-    }
-    .expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-      assertMessageCount(1, messages)
-      val TopLevelCantBeImplicit(symbol) :: Nil = messages
-      assertEquals("object S", symbol.show)
-    }
-
   @Test def typesAndTraitsCantBeImplicit =
     checkMessagesAfter(FrontEnd.name) {
       """class Foo {
