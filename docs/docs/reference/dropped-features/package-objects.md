@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Instance Definitions"
+title: "Dropped: Package Objects"
 ---
 
 Package objects
@@ -40,3 +40,20 @@ If a source file `src.scala` contains such toplevel definitions, they will be pu
 **Note 2:** A toplevel main method `def main(args: Array[String]): Unit = ...` is wrapped as any other method. If it appears
 in a source file `src.scala`, it could be invoked from the command line using a command like `scala src$package`. Since the
 "program name" is mangled it is recommended to always put `main` methods in explicitly named objects.
+
+### Private toplevel definitions
+
+If a private toplevel definition is wrapped in a synthetic object, it is visible only
+in definitions in the same source file. By contrast, a package-private definition is visible in the whole containing package. Example:
+
+```scala
+// file 1:
+package p
+private val x = 1
+private[p] val y = 2
+
+// file 2:
+package p
+val xx = x  // error: not found: x
+val yy = y  // ok
+```
