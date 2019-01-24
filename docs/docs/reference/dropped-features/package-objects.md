@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Package Objects
+title: "Instance Definitions"
 ---
 
 Package objects
@@ -34,3 +34,9 @@ The compiler generates synthetic objects that wrap toplevel definitions falling 
  - companion objects of opaque types.
 
 If a source file `src.scala` contains such toplevel definitions, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `src` can still be accessed as members of the enclosing package.
+
+**Note 1:** This means that the name of a source file containing wrapped toplevel definitions is relevant for binary compatibility. If the name changes, so does the name of the generated object and its class.
+
+**Note 2:** A toplevel main method `def main(args: Array[String]): Unit = ...` is wrapped as any other method. If it appears
+in a source file `src.scala`, it could be invoked from the command line using a command like `scala src$package`. Since the
+"program name" is mangled it is recommended to always put `main` methods in explicitly named objects.
