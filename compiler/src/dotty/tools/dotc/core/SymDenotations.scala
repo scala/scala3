@@ -1991,7 +1991,9 @@ object SymDenotations {
           if (pcls.isCompleting) recur(pobjs1, acc)
           else recur(pobjs1, acc.union(pcls.computeNPMembersNamed(name)))
         case nil =>
-          if (acc.exists) acc else super.computeNPMembersNamed(name)
+          val directMembers = super.computeNPMembersNamed(name)
+          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))
+          else directMembers
       }
       if (symbol `eq` defn.ScalaPackageClass) {
         val denots = super.computeNPMembersNamed(name)
