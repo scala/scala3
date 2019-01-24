@@ -3,99 +3,54 @@ layout: doc-page
 title: "Replacing Implicits"
 ---
 
-The previous two pages proposed high-level syntax for implicit definitions and a new syntax for implicit parameters.
+The previous pages describe a new, high-level syntax for implicit definitions, parameters, function literals, and function types. With the exception of context parameters
 
-This addresses all the issues mentioned in the [Motivation](./motivation.md), but it leaves us with two related constructs: new style instance definitions and context parameters and traditional implicits. This page discusses what would be needed to get rid of `implicit` entirely.
+These idioms can by-and-large be mapped to existing implicits. The only exception concerns context parameters which give genuinely more freedom in the way parameters can be organized. The new idioms are preferable to existing implicits since they are both more concise and better behaved. The better expressiveness comes at a price, however, since it leaves us with two related constructs: new style instance definitions and context parameters and traditional implicits. This page discusses what would be needed to get rid of `implicit` entirely.
 
-## Abstract and Alias Instances
+The contents of this page are more tentative than the ones of the previous pages. The concepts described in the previous pages are useful independently whether the changes on this page are adopted.
 
-Instance definitions can be abstract.
-As an example of an abstract instance, consider the following fragment that's derived from Scala's Tasty extractor framework:
-```scala
-trait TastyAPI {
-  type Symbol
-  trait SymDeco {
-    def (sym: Symbol) name: Name
-    def (sym: Symbol) tpe: Type
-  }
-  instance symDeco: SymDeco
-}
-```
-Here, `symDeco` is available as a instance of the `SymDeco` trait but its actual implementation
-is deferred to subclasses of the `TastyAPI` trait.
+The current Dotty implementation implements the new concepts described on this page (implicit as a modifier and the summon method), but it does not remove any of the old-style implicit constructs. It cannot do this since support
+for old-style implicits is an essential part of the common language subset of Scala 2 and Scala 3.0. Any deprecation and subsequent removal of these constructs would have to come later, in a version following 3.0. The `implicit` modifier can be removed from the language at the end of this development, if it happens.
 
-An example of an alias instance would be an implementation of `symDeco` in terms of some internal compiler structure:
-```scala
-trait TastyImpl extends TastyAPI {
-  instance symDeco: SymDeco = compilerSymOps
-}
-```
-Note that the result type of an abstract or alias instance is introduced with a colon instead of an `of`. This seems more natural since it evokes the similarity to implicit parameters, whose type is also given following a `:`. It also avoids the syntactic ambiguity with an instance definition of a class that does not add any new definitions. I.e.
-```scala
-instance a of C   // concrete instance of class C, no definitions added
-instance b: C     // abstract instance of class C
-```
-Further examples of alias instances:
-```scala
-instance ctx = outer.ctx
-instance ctx: Context = outer.ctx
-instance byNameCtx with (): Context = outer.ctx
-instance f[T]: C[T] = new C[T]
-instance g with (ctx: Context): D = new D(ctx)
-```
-As another example, if one had already defined classes `IntOrd` and `ListOrd`, instances for them could be defined as follows:
-```scala
-class IntOrd extends Ord[Int] { ... }
-class ListOrd[T: Ord] extends Ord[List[T]] { ... }
+## `instance` As A Modifier.
 
-instance intOrd: Ord[Int] = new IntOrd
-instance listOrd[T: Ord]: Ord[List[T]] = new ListOrd[T]
-```
-The result type of a alias instance is mandatory unless the instance definition
-occurs as a statement in a block and lacks any type or value parameters. This corresponds to the same restriction for implicit vals in Dotty.
-
-Abstract instances are equivalent to abstract implicit defs. Alias instances are equivalent to implicit defs if they are parameterized or to implicit vals otherwise. For instance, the instances defined so far in this section are equivalent to:
+`instance` can be used as a modifier for `val` and `def` definitions. Examples:
 ```scala
-implicit def symDeco: SymDeco
-implicit val symDeco: SymDeco = compilerSymOps
-
-implicit val ctx = outer.ctx
-implicit val ctx: Context = outer.ctx
-implicit def byNameCtx: Ctx = outer.ctx
-implicit def f[T]: C[T] = new C[T]
-implicit def g(implicit ctx: Context): D = new D(ctx)
-
-implicit val intOrd: Ord[Int] = new IntOrd
-implicit def listOrd(implicit ev: Ord[T]): Ord[List[T]] = new ListOrd[T]
-```
-The `lazy` modifier is applicable to unparameterized alias instances. If present, the resulting implicit val is lazy. For instance,
-```scala
-lazy instance intOrd2: Ord[Int] = new IntOrd
-```
-would be equivalent to
-```scala
-lazy implicit val intOrd2: Ord[Int] = new IntOrd
+instance val symDeco: SymDeco
+instance val symDeco: SymDeco = compilerSymOps
+instance val ctx = localCtx
+instance def f[T]: C[T] = new C[T]
+instance def g with (ctx: Context): D = new D(ctx)
 ```
 
-## Implicit Conversions and Classes
+When used as a modifier, `instance` generally has the same meaning as the current `implicit` modifier, with the following exceptions:
 
-The only use cases that are not yet covered by the proposal are implicit conversions and implicit classes. We do not propose to use `instance` in place of `implicit` for these, since that would bring back the uncomfortable similarity between implicit conversions and parameterized implicit aliases. However, there is a way to drop implicit conversions entirely. Scala 3 already [defines](https://github.com/lampepfl/dotty/pull/2065) a class `ImplicitConversion` whose instances are available as implicit conversions.
+ 1. `instance def` definitions can only have context parameters in `with` clauses. Old style `implicit` parameters are not supported.
+ 2. `instance` cannot be used to define an implicit conversion or an implicit class.
+
+
+## Replaced: Implicit Conversions
+
+Implicit conversions using the `implicit def` syntax are no longer needed, since they
+can be expressed as instances of the `scala.Conversion` class: This class is defined in package `scala` as follows:
 ```scala
-  abstract class ImplicitConversion[-T, +U] extends Function1[T, U]
+abstract class Conversion[-T, +U] extends (T => U)
 ```
-One can define all implicit conversions as instances of this class. E.g.
+For example, here is an implicit conversion from `String` to `Token`:
 ```scala
-instance StringToToken of ImplicitConversion[String, Token] {
+instance of Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
 The fact that this syntax is more verbose than simple implicit defs could be a welcome side effect since it might dampen any over-enthusiasm for defining implicit conversions.
 
-That leaves implicit classes. Most use cases of implicit classes are probably already covered by extension methods. For the others, one could always fall back to a pair of a regular class and an `ImplicitConversion` instance. It would be good to do a survey to find out how many classes would be affected.
+## Dropped: Implicit Classes
+
+Most use cases of implicit classes are already covered by extension methods. For the others, one can always fall back to a pair of a regular class and a `Conversion` instance.
 
 ## Summoning an Instance
 
-Besides `implicit`, there is also `implicitly`, a method defined in `Predef` that computes an implicit value for a given type. A possible replacement could be `instanceOf`. Or, keeping with common usage, one could introduce the name `summon` for this operation. So `summon[T]` summons an instance of `T`, in the same way as `implicitly[T]` did. The definition of `summon` is straightforward:
+Besides `implicit`, there is also `implicitly`, a method defined in `Predef` that computes an implicit value for a given type. We propose to rename this operation to `summon`. So `summon[T]` summons an instance of `T`, in the same way as `implicitly[T]` did. The definition of `summon` is straightforward:
 ```scala
 def summon[T] with (x: T) = x
 ```
@@ -104,8 +59,11 @@ def summon[T] with (x: T) = x
 
 The syntax changes for this page are summarized as follows:
 ```
-InstanceDef     ::=  ...
-                  |  id InstanceParams ‘:’ Type ‘=’ Expr
-                  |  id ‘=’ Expr
+LocalModifier   ::=  ...
+                  |  ‘instance’
 ```
 In addition, the `implicit` modifier is removed together with all [productions]((http://dotty.epfl.ch/docs/internals/syntax.html) that reference it.
+
+## Further Reading
+
+Here is the [original proposal](./discussion/motivation.html) that makes the case for the changes described in these pages.

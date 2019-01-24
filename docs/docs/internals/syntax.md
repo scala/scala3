@@ -289,7 +289,8 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
                        TypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause}
-ClsParamClause    ::=  [nl | ‘with’] ‘(’ [[FunArgMods] ClsParams] ‘)’
+ClsParamClause    ::=  [nl] ‘(’ [[FunArgMods] ClsParams] ‘)’
+                    |  ‘with’ (‘(’ ([[FunArgMods] ClsParams] ‘)’ | ParamTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -297,9 +298,11 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
-DefParamClause    ::=  [nl | ‘with’] ‘(’ [DefParams] ‘)’
+DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’ | InstParamClause
+InstParamClause   ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ParamTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+ParamTypes        ::=  InfixType {‘,’ InfixType}
 ```
 
 ### Bindings and Imports
@@ -369,10 +372,7 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 InstanceDef       ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
-                    |  id InstanceParams ‘:’ Type ‘=’ Expr
-                    |  id ‘:’ ‘=>’ Type ‘=’ Expr
-                    |  id ‘=’ Expr
-InstanceParams    ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)'}
+InstanceParams    ::=  [DefTypeParamClause] {InstParamClause}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

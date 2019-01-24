@@ -39,6 +39,7 @@ The next sections elaborate such an alternative design. It consists of three pro
 
  - A proposal to replace implicit _definitions_ by [instance definitions](./instance-defs.html).
  - A proposal for a [new syntax](./context-params.html) of implicit _parameters_ and their _arguments_.
- - A proposal to [replace all remaining usages](./replacing-implicits) of `implicit` in the language.
+ - A proposal to [replace all remaining usages](./replacing-implicits.html) of `implicit` in the language.
 
 The first two proposals are independent of each other. The last one would work only if the first two are adopted.
+A [discussion page](./discussion.html) summarizes and evaluates the proposal.
