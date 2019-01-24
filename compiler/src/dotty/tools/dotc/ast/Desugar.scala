@@ -1022,13 +1022,23 @@ object desugar {
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
-  /** Group all patterm, value and method definitions and all non-class type definitions
-   *  in an object named `<source>#object` where `<source>` is the name of the source file.
+  /** Group all definitions that can't be at the toplebel in
+   *  an object named `<source>#object` where `<source>` is the name of the source file.
+   *  Definitions that can't be at the toplevel are:
+   *
+   *   - all pattern, value and method definitions
+   *   - non-class type definitions
+   *   - implicit classes and objects
+   *   - companion objects of opaque types
    */
   def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
+    val opaqueNames = pdef.stats.collect {
+      case stat: TypeDef if stat.mods.is(Opaque) => stat.name
+    }
     def needsObject(stat: Tree) = stat match {
       case _: ValDef | _: PatDef | _: DefDef => true
-      case stat: ModuleDef => stat.mods.is(Implicit)
+      case stat: ModuleDef =>
+        stat.mods.is(Implicit) || opaqueNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
       case stat: TypeDef => !stat.isClassDef || stat.mods.is(Implicit)
       case _ => false
     }
