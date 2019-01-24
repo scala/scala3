@@ -10,7 +10,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
-import collection.mutable
+import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
@@ -734,21 +734,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      * Set the owner of every definition in this tree which is not itself contained in this
      * tree to be `newowner`
      */
-    def changeNonLocalOwners(newowner: Symbol)(implicit ctx: Context): Tree = {
-      val localOwners = mutable.HashSet[Symbol]()
-      val traverser = new TreeTraverser {
-
-        def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-          tree match {
-            case _: DefTree => if(tree.symbol ne NoSymbol) localOwners += tree.symbol
-            case _ =>          traverseChildren(tree)
-          }
+    def changeNonLocalOwners(newOwner: Symbol)(implicit ctx: Context): Tree = {
+      val ownerAcc = new TreeAccumulator[immutable.Set[Symbol]] {
+        def apply(ss: immutable.Set[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
+          case tree: DefTree =>
+            if (tree.symbol.exists) ss + tree.symbol.owner
+            else ss
+          case _ =>
+            foldOver(ss, tree)
         }
       }
-      traverser.traverse(tree)
-      val nonLocalOwners = localOwners.filter(sym => !localOwners.contains(sym.owner)).toList.map(_.owner)
-      val newOwners = nonLocalOwners.map(_ => newowner)
-      new TreeTypeMap(oldOwners = nonLocalOwners, newOwners = newOwners).apply(tree)
+      val owners = ownerAcc(immutable.Set.empty[Symbol], tree).toList
+      val newOwners = List.fill(owners.size)(newOwner)
+      new TreeTypeMap(oldOwners = owners, newOwners = newOwners).apply(tree)
     }
 
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
