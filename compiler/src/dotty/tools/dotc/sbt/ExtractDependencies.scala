@@ -54,6 +54,9 @@ class ExtractDependencies extends Phase {
     super.isRunnable && (ctx.sbtCallback != null || forceRun)
   }
 
+  // Check no needed. Does not transform trees
+  override def isCheckable: Boolean = false
+
   // This phase should be run directly after `Frontend`, if it is run after
   // `PostTyper`, some dependencies will be lost because trees get simplified.
   // See the scripted test `constants` for an example where this matters.
