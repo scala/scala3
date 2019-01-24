@@ -1,1 +1,2 @@
-type A = B
+type A = B  // error: illegal cyclic reference
+
