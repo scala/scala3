@@ -1047,8 +1047,14 @@ object desugar {
     else {
       val sourceName = ctx.source.file.name.takeWhile(_ != '.')
       val groupName = (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
-      val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
-      cpy.PackageDef(pdef)(pdef.pid, grouped :: topStats)
+      val widenedStats = nestedStats.map {
+        case stat: MemberDef if stat.mods.is(Private) =>
+          stat.withMods((stat.mods &~ Private).withPrivateWithin(pdef.pid.name.toTypeName))
+        case stat =>
+          stat
+      }
+      val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, widenedStats))
+      cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
   }
 
