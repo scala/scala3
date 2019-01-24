@@ -39,9 +39,6 @@ object scalatest {
             }
           }
         }.seal[Unit]
-
-      case _ =>
-        '{ scala.Predef.assert(~cond) }
     }
   }
 
