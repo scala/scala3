@@ -13,3 +13,10 @@ class D {
 implicit class Ddeco(x: D) {
   def pair(y: D) = (x, y)
 }
+
+trait TC[X]
+
+implicit def toC(x: String): C = new C()
+implicit def listTC[X: TC]: TC[List[X]] = null
+implicit val intTC: TC[Int] = null
+

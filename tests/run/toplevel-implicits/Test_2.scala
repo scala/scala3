@@ -8,4 +8,7 @@ object Test extends App {
   val d = new D
   val d2 = d.pair(d)
   println(d2)
+
+  val ci: C = "abc"
+  implicitly[TC[List[Int]]]
 }
