@@ -205,7 +205,7 @@ class Tests {
   @Test def testTraits(): Unit = checkFile("example/Traits.scala")
   @Test def testTypes(): Unit = checkFile("example/Types.scala")
   @Test def testTypesAnnotations(): Unit =
-    checkFile("example/TypesAnnotations.scala") // Crash, has to deal with init symbols
+    checkFile("example/TypesAnnotations.scala")
   @Test def testVals(): Unit = checkFile("example/Vals.scala")
   @Test def testDependantModule(): Unit =
     checkFile("example/DependantModule.scala")

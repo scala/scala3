@@ -119,6 +119,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       }
 
       implicit class SymbolExtender(symbol: Symbol) {
+        def exists = !(symbol.name == "<none>" || symbol == NoSymbol)
         /* Return true if symbol represents the definition of a var setter, false otherwise.
         We return true if the extract of source code corresponding to the position of the symbol is the same as the symbol name.
         Ex:
@@ -192,15 +193,15 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
         def isValueParameter: Boolean = symbol.isParameter && !symbol.isType && !symbol.flags.is(Flags.ParamAccessor)
 
-        def isJavaClass: Boolean = symbol.isClass && symbol.flags.is(Flags.JavaDefined)
+        def isJavaClass: Boolean = (symbol.isClass || symbol.isObject) && symbol.flags.is(Flags.JavaDefined)
 
         def isSelfParameter(implicit ctx: Context): Boolean =
-          symbol != NoSymbol && symbol.owner == symbol
+          symbol.exists && symbol.owner == symbol
 
         def isSemanticdbLocal(implicit ctx: Context): Boolean = {
           def definitelyGlobal = symbol.isPackage
           def definitelyLocal =
-            symbol == NoSymbol ||
+            !symbol.exists ||
               (symbol.owner.isTerm && !symbol.isParameter) ||
               ((symbol.owner.isAliasType || symbol.owner.isAbstractType) && !symbol.isParameter) ||
               symbol.isSelfParameter ||
@@ -217,7 +218,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           symbol.name == "<init>"
 
         def isSyntheticConstructor(implicit ctx: Context): Boolean = {
-          val isObjectConstructor = symbol.isConstructor && symbol.owner != NoSymbol && symbol.owner.flags.is(Flags.Object)
+          val isObjectConstructor = symbol.isConstructor && symbol.owner.exists && symbol.owner.flags.is(Flags.Object)
           val isModuleConstructor = symbol.isConstructor && symbol.owner.isClass
           val isTraitConstructor = symbol.isConstructor && symbol.owner.isTrait
           val isInterfaceConstructor = symbol.isConstructor && symbol.owner.flags.is(Flags.JavaDefined)  && symbol.owner.isTrait
@@ -268,7 +269,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           (/*isFieldForPrivateThis ||*/ isFieldForOther) && !isJavaDefined
         }
         def isUselessField(implicit ctx: Context): Boolean = {
-          symbol.isScalacField && symbol.owner != NoSymbol
+          symbol.isScalacField && symbol.owner.exists
         }
         def isUsefulField(implicit ctx: Context): Boolean = {
           symbol.isScalacField && !symbol.isUselessField
@@ -277,7 +278,11 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           symbol.flags.is(Flags.CaseAcessor) && symbol.trueName.contains("$")
         }
         def isSyntheticJavaModule(implicit ctx: Context): Boolean = {
-          !symbol.flags.is(Flags.Package)  && symbol.flags.is(Flags.JavaDefined)  && symbol.flags.is(Flags.Object)
+          val resolved = symbol match {
+          case IsClassSymbol(c) => resolveClass(c)
+          case _ => symbol
+          }
+          !resolved.flags.is(Flags.Package)  && resolved.flags.is(Flags.JavaDefined)  && resolved.flags.is(Flags.Object)
         }
         def isAnonymousClassConstructor(implicit ctx: Context): Boolean = {
           symbol.isConstructor && symbol.owner.isAnonymousClass
@@ -299,7 +304,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           }
         }
         def isStaticMember(implicit ctx: Context): Boolean =
-          (symbol == NoSymbol) &&
+          symbol.exists &&
             (symbol.flags.is(Flags.Static)  || symbol.owner.flags.is(Flags.ImplClass)  ||
               /*symbol.annots.find(_ == ctx.definitions.ScalaStaticAnnot)*/ false)
 
@@ -308,8 +313,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
 
         def isInitChild(implicit ctx: Context): Boolean = {
-          if (!(symbol.name == "<none>" || symbol == NoSymbol)
-              && symbol.owner != NoSymbol) {
+          if (symbol.exists && symbol.owner.exists) {
             return symbol.owner.name == "<init>" || symbol.owner.isInitChild
           } else {
             return false
@@ -322,13 +326,13 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
 
         def isAnonymousInit(implicit ctx: Context): Boolean = {
-          return symbol.owner != NoSymbol &&
+          return symbol.exists && symbol.owner.exists &&
           (symbol.owner.isAnonymousFunction || symbol.owner.isAnonymousClass) &&
           symbol.name == "<init>"
         }
 
         def isUseless(implicit ctx: Context): Boolean = {
-          (symbol.name == "<none>" || symbol == NoSymbol) ||
+          !symbol.exists ||
           symbol.isReservedName ||
           symbol.isAnonymousInit ||
           symbol.isDefaultGetter ||
@@ -343,9 +347,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           symbol.isSyntheticCaseAccessor ||
           symbol.isRefinementClass ||
           symbol.isSyntheticJavaModule
-          // isSyntheticJavaModule disable the symbol Class in
-          // Class.forName(???) to be recorded as Class is considered to
-          // be a class in dotty, not a typed.
         }
         def isUseful(implicit ctx: Context): Boolean = !symbol.isUseless
         def isUselessOccurrence(implicit ctx: Context): Boolean = {
@@ -392,42 +393,41 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       }
 
       def iterateParent(symbol: Symbol, isMutableAssignement:Boolean=false): String = {
-        if (symbol.name == "<none>" || symbol.name == "<root>") then {
+        if (!symbol.exists || symbol.name == "<root>") then {
           ""
         } else {
+          val rsymbol = symbol match {
+            case IsClassSymbol(c) => resolveClass(c)
+            case _ => symbol
+          }
           val previous_symbol =
             /* When we consider snipper of the form: `abstract class DepAdvD[CC[X[C] <: B], X[Z], C] extends DepTemp`,
               The symbol for C will be something like example/DepAdvD#`<init>`().[CC].[X].[C].
               This is illogic: a init method can't have any child. Thus, when the current symbol is
               a typeparameter, and the owner is an init, we can just "jump" over the init. */
-            if (symbol.owner.name == "<init>" && symbol.isType)
-              iterateParent(symbol.owner.owner)
+            if (rsymbol.owner.name == "<init>" && rsymbol.isType)
+              iterateParent(rsymbol.owner.owner)
             else
-              iterateParent(symbol.owner)
+              iterateParent(rsymbol.owner)
 
 
-          val isdef = symbol match {case IsDefSymbol(_) => true case _ => false}
-          val symbolName = if (isMutableAssignement) symbol.trueName + "_=" else symbol.trueName
+          val isdef = rsymbol match {case IsDefSymbol(_) => true case _ => false}
+          val symbolName = if (isMutableAssignement) rsymbol.trueName + "_=" else rsymbol.trueName
           val next_atom =
-            if (symbol.isPackage) {
+            if (rsymbol.isPackage) {
               d.Package(symbolName)
-            } else if (symbol.isObject) {
-              symbol match {
-                case IsClassSymbol(classsymbol) =>
-                  d.Term(resolveClass(classsymbol).trueName)
-                case _ =>
-                  d.Term(symbolName)
-              }
-            } else if (symbol.isValMethod && !symbol.isVarAccessor) {
+            } else if (rsymbol.isObject && !rsymbol.isJavaClass) {
               d.Term(symbolName)
-            } else if (symbol.isMethod || symbol.isUsefulField || symbol.isVarAccessor) {
+            } else if (rsymbol.isValMethod && !rsymbol.isVarAccessor) {
+              d.Term(symbolName)
+            } else if (rsymbol.isMethod || rsymbol.isUsefulField || rsymbol.isVarAccessor) {
               d.Method(symbolName,
-                       disimbiguate(previous_symbol + symbolName, symbol))
-            } else if (symbol.isTypeParameter) {
+                       disimbiguate(previous_symbol + symbolName, rsymbol))
+            } else if (rsymbol.isTypeParameter) {
               d.TypeParameter(symbolName)
-            } else if (symbol.isValueParameter) {
+            } else if (rsymbol.isValueParameter) {
               d.Parameter(symbolName)
-            } else if (symbol.isType || symbol.isTrait) {
+            } else if (rsymbol.isType || rsymbol.isJavaClass) {
               d.Type(symbolName)
             } else {
               d.Term(symbolName)
@@ -451,7 +451,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
                        typeSymbol: s.SymbolOccurrence.Role,
                        range: s.Range,
                        isMutableAssignement:Boolean = false): Unit = {
-        if (symbol.name == "<none>") return
+        if (!symbol.exists) return
 
         val symbolName = if (isMutableAssignement) symbol.trueName + "_=" else symbol.trueName
         val (symbolPath, isGlobal) =
@@ -515,7 +515,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
                            range: s.Range,
                            forceAdd: Boolean = false,
                            isMutableAssignement: Boolean = false): Unit = {
-        if (tree.symbol.isUseful &&
+        if (!tree.symbol.isUselessOccurrence &&
           tree.symbol.isMutableSetterExplicit(typeSymbol) &&
           (tree.isUserCreated || forceAdd)) {
           addOccurence(tree.symbol, typeSymbol, range, isMutableAssignement)
@@ -525,7 +525,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       def addOccurenceTypeTree(typetree: TypeTree,
                                typeSymbol: s.SymbolOccurrence.Role,
                                range: s.Range): Unit = {
-        if (typetree.symbol.isUseful && typetree.isUserCreated) {
+        if (!typetree.symbol.isUselessOccurrence && typetree.isUserCreated) {
           addOccurence(typetree.symbol, typeSymbol, range)
         }
       }
@@ -533,7 +533,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       def addOccurencePatternTree(tree: Pattern,
                                   typeSymbol: s.SymbolOccurrence.Role,
                                   range: s.Range): Unit = {
-        if (tree.symbol.isUseful && tree.isUserCreated) {
+        if (!tree.symbol.isUselessOccurrence && tree.isUserCreated) {
           addOccurence(tree.symbol, typeSymbol, range)
         }
       }
@@ -920,7 +920,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
               }
             }
 
-            if (tree.symbol.trueName != "<none>") {
+            if (tree.symbol.exists) {
               val pos = tree.symbol.pos
               var rangeSymbol = createRange(pos.startLine, pos.startColumn, tree.symbol.trueName.length)
 
