@@ -708,11 +708,11 @@ class Namer { typer: Typer =>
           val classSym = ctx.effectiveScope.lookup(className.encode)
           if (classSym.isDefinedInCurrentRun) {
             val moduleName = className.toTermName
-            val moduleSym = ctx.effectiveScope.lookup(moduleName.encode)
-            if (!moduleSym.isDefinedInCurrentRun) {
-              val absentModuleSymbol = ctx.newModuleSymbol(ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
-              enterSymbol(absentModuleSymbol)
-            }
+            for (moduleSym <- ctx.effectiveScope.lookupAll(moduleName.encode))
+              if (moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun) {
+                val absentModuleSymbol = ctx.newModuleSymbol(ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
+                enterSymbol(absentModuleSymbol)
+              }
           }
         }
       }
