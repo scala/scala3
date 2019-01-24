@@ -25,6 +25,12 @@ Package objects are no longer needed since all kinds of definitions can now be w
       def (x: C) pair (y: C) = (x, y)
     }
 ```
-There may be several source files in a package containing such toplevel definitions, and source files can freely mix toplevel value, method, and tyoe definitions with classes and objects.
+There may be several source files in a package containing such toplevel definitions, and source files can freely mix toplevel value, method, and type definitions with classes and objects.
 
-The compiler generates synthetic objects that wrap toplevel statements that are not imports, or class or object definitions. If a source file `src.scala` contains such toplevel statements, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `f` can still be accessed as members of the enclosing package.
+The compiler generates synthetic objects that wrap toplevel definitions falling into one of the following categories:
+
+ - all pattern, value, method, and type definitions,
+ - implicit classes and objects,
+ - companion objects of opaque types.
+
+If a source file `src.scala` contains such toplevel definitions, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `src` can still be accessed as members of the enclosing package.
