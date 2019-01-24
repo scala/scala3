@@ -1,10 +1,10 @@
-package p22
+package p
 
 private val x = 10
 
 val y = x
 
-private[p22] val xx = 10
+private[p] val xx = 10
 
 val yy = xx
 

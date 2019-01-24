@@ -310,6 +310,15 @@ class Namer { typer: Typer =>
         else name
     }
 
+    /** If effective owner is a package `p`, widen `private` to `private[p]` */
+    def widenToplevelPrivate(sym: Symbol): Unit = {
+      var owner = sym.effectiveOwner
+      if (owner.is(Package)) {
+        sym.resetFlag(Private)
+        sym.privateWithin = owner
+      }
+    }
+
     /** Create new symbol or redefine existing symbol under lateCompile. */
     def createOrRefine[S <: Symbol](
         tree: MemberDef, name: Name, flags: FlagSet, infoFn: S => Type,
@@ -325,6 +334,8 @@ class Namer { typer: Typer =>
           prev
         }
         else symFn(flags, infoFn, privateWithinClass(tree.mods))
+      if (sym.is(Private))
+        widenToplevelPrivate(sym)
       recordSym(sym, tree)
     }
 
