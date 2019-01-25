@@ -123,6 +123,60 @@ object GenericSignatures {
       builder.append('L').append(name)
     }
 
+    def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+      def argSig(tp: Type): Unit =
+        tp match {
+          case bounds: TypeBounds =>
+            if (!(defn.AnyType <:< bounds.hi)) {
+              builder.append('+')
+              boxedSig(bounds.hi)
+            }
+            else if (!(bounds.lo <:< defn.NothingType)) {
+              builder.append('-')
+              boxedSig(bounds.lo)
+            }
+            else builder.append('*')
+          case PolyType(_, res) =>
+            builder.append('*') // scala/bug#7932
+          case _: HKTypeLambda =>
+            fullNameInSig(tp.typeSymbol)
+            builder.append(';')
+          case _ =>
+            boxedSig(tp)
+        }
+
+      if (pre.exists) {
+        val preRebound = pre.baseType(sym.owner) // #2585
+        if (needsJavaSig(preRebound, Nil)) {
+          val i = builder.length()
+          jsig(preRebound)
+          if (builder.charAt(i) == 'L') {
+            builder.delete(builder.length() - 1, builder.length())// delete ';'
+                                                                  // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
+                                                                  // are separated by a single '$' in the filename: `object o { object i }` is o$i$.
+            if (preRebound.typeSymbol.is(ModuleClass))
+              builder.delete(builder.length() - 1, builder.length())
+
+            // Ensure every '.' in the generated signature immediately follows
+            // a close angle bracket '>'.  Any which do not are replaced with '$'.
+            // This arises due to multiply nested classes in the face of the
+            // rewriting explained at rebindInnerClass.
+
+            // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
+            val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
+            builder.append(delimiter).append(sanitizeName(sym.name.asSimpleName))
+          } else fullNameInSig(sym)
+        } else fullNameInSig(sym)
+      } else fullNameInSig(sym)
+
+      if (args.nonEmpty) {
+        builder.append('<')
+        args foreach argSig
+        builder.append('>')
+      }
+      builder.append(';')
+    }
+
     @noinline
     def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
 
@@ -133,57 +187,6 @@ object GenericSignatures {
           typeParamSig(ref.paramName.lastPart)
 
         case RefOrAppliedType(sym, pre, args) =>
-          def argSig(tp: Type): Unit =
-            tp match {
-              case bounds: TypeBounds =>
-                if (!(defn.AnyType <:< bounds.hi)) {
-                  builder.append('+')
-                  boxedSig(bounds.hi)
-                }
-                else if (!(bounds.lo <:< defn.NothingType)) {
-                  builder.append('-')
-                  boxedSig(bounds.lo)
-                }
-                else builder.append('*')
-              case PolyType(_, res) =>
-                builder.append('*') // scala/bug#7932
-              case _: HKTypeLambda =>
-                fullNameInSig(tp.typeSymbol)
-                builder.append(';')
-              case _ =>
-                boxedSig(tp)
-            }
-          def classSig: Unit = {
-            val preRebound = pre.baseType(sym.owner) // #2585
-            if (needsJavaSig(preRebound, Nil)) {
-              val i = builder.length()
-              jsig(preRebound)
-              if (builder.charAt(i) == 'L') {
-                builder.delete(builder.length() - 1, builder.length())// delete ';'
-                // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
-                // are separated by a single '$' in the filename: `object o { object i }` is o$i$.
-                if (preRebound.typeSymbol.is(ModuleClass))
-                  builder.delete(builder.length() - 1, builder.length())
-
-                // Ensure every '.' in the generated signature immediately follows
-                // a close angle bracket '>'.  Any which do not are replaced with '$'.
-                // This arises due to multiply nested classes in the face of the
-                // rewriting explained at rebindInnerClass.
-
-                // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
-                val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-                builder.append(delimiter).append(sanitizeName(sym.name.asSimpleName))
-              } else fullNameInSig(sym)
-            } else fullNameInSig(sym)
-
-            if (args.nonEmpty) {
-              builder.append('<')
-              args foreach argSig
-              builder.append('>')
-            }
-            builder.append(';')
-          }
-
           // If args isEmpty, Array is being used as a type constructor
           if (sym == defn.ArrayClass && args.nonEmpty) {
             if (unboundedGenericArrayLevel(tp) == 1) jsig(defn.ObjectType)
@@ -215,14 +218,14 @@ object GenericSignatures {
             val unboxed     = ValueClasses.valueClassUnbox(sym.asClass).info.finalResultType
             val unboxedSeen = tp.memberInfo(ValueClasses.valueClassUnbox(sym.asClass)).finalResultType
             if (unboxedSeen.isPrimitiveValueType && !primitiveOK)
-              classSig
+              classSig(sym, pre, args)
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
           else if (defn.isXXLFunctionClass(sym))
-            jsig(defn.FunctionXXLType, toplevel, primitiveOK)
+            classSig(defn.FunctionXXLClass)
           else if (sym.isClass)
-            classSig
+            classSig(sym, pre, args)
           else
             jsig(erasure(tp), toplevel, primitiveOK)
 

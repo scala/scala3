@@ -183,9 +183,9 @@ object NameOps {
         if (n == 0) -1 else n
       }
 
-    /** Is a function name, i.e one of FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
+    /** Is a function name, i.e one of FunctionXXL, FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
      */
-    def isFunction: Boolean = functionArity >= 0
+    def isFunction: Boolean = (name eq tpnme.FunctionXXL) || functionArity >= 0
 
     /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */
