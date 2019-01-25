@@ -1606,6 +1606,11 @@ class Typer extends Namer
       var result = if (isTreeType(tree)) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.dealias.typeSymbol
       if (seenParents.contains(psym) && !cls.isRefinementClass) {
+        // Desugaring can adds parents to classes, but we don't want to emit an
+        // error if the same parent was explicitly added in user code.
+        if (!tree.span.isSourceDerived)
+          return EmptyTree
+
         if (!ctx.isAfterTyper) ctx.error(i"$psym is extended twice", tree.sourcePos)
       }
       else seenParents += psym
@@ -1640,7 +1645,7 @@ class Typer extends Namer
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.nameSpan)
+    val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
 
     var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
