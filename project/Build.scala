@@ -780,19 +780,6 @@ object Build {
   }
 
   lazy val dottySbtBridgeSettings = Seq(
-    cleanSbtBridge := {
-      cleanSbtBridgeImpl()
-    },
-    compile in Compile := {
-      val log = streams.value.log
-      val prev = (previousCompile in Compile).value.analysis.orElse(null)
-      val cur = (compile in Compile).value
-      if (prev != cur) {
-        log.info("Cleaning the dotty-sbt-bridge cache because it was recompiled.")
-        cleanSbtBridgeImpl()
-      }
-      cur
-    },
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
@@ -808,36 +795,11 @@ object Build {
     parallelExecution in Test := false
   )
 
-  // Needed until https://github.com/sbt/sbt/issues/2402 is fixed.
-  lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
-
-  def cleanSbtBridgeImpl(): Unit = {
-    val home = System.getProperty("user.home")
-    val sbtOrg = "org.scala-sbt"
-    val bridgePattern = s"*dotty-sbt-bridge*$dottyVersion*"
-
-    IO.delete((file(home) / ".sbt" / "1.0" / "zinc" / sbtOrg * bridgePattern).get)
-    IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgePattern).get)
-  }
-
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(dottyCompiler(NonBootstrapped) % Provided).
     dependsOn(dottyDoc(NonBootstrapped) % Provided).
     settings(commonJavaSettings).
     settings(
-      cleanSbtBridge := {
-        cleanSbtBridgeImpl()
-      },
-      compile in Compile := {
-        val log = streams.value.log
-        val prev = (previousCompile in Compile).value.analysis.orElse(null)
-        val cur = (compile in Compile).value
-        if (prev != cur) {
-          log.info("Cleaning the dotty-sbt-bridge cache because it was recompiled.")
-          cleanSbtBridgeImpl()
-        }
-        cur
-      },
       description := "sbt compiler bridge for Dotty",
       libraryDependencies ++= Seq(
         Dependencies.`compiler-interface` % Provided,
