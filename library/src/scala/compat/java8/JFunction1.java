@@ -6,7 +6,7 @@
 package scala.compat.java8;
 
 @FunctionalInterface
-public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
+public interface JFunction1<T1, R> extends scala.Function1<T1, R>, java.io.Serializable {
     default void $init$() {
     };
 

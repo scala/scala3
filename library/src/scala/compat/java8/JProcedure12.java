@@ -8,7 +8,7 @@ package scala.compat.java8;
 import scala.runtime.BoxedUnit;
 
 @FunctionalInterface
-public interface JProcedure12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> extends JFunction12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, BoxedUnit> {
+public interface JProcedure12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> extends JFunction12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, BoxedUnit>, java.io.Serializable {
     default void $init$() {
     }
 
