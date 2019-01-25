@@ -104,11 +104,11 @@ object Instances extends Common {
     trait SymDeco {
       def (sym: Symbol) name: String
     }
-    instance symDeco: SymDeco
+    instance def symDeco: SymDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
-    instance symDeco: SymDeco = new SymDeco {
+    instance val symDeco: SymDeco = new SymDeco {
       def (sym: Symbol) name = sym
     }
   }
@@ -118,27 +118,27 @@ object Instances extends Common {
   class C with (ctx: Context) {
     def f() = {
       locally {
-        instance ctx = this.ctx
+        instance val ctx = this.ctx
         println(summon[Context].value)
       }
       locally {
-        lazy instance ctx = this.ctx
+        lazy instance val ctx = this.ctx
         println(summon[Context].value)
       }
       locally {
-        instance ctx: Context = this.ctx
+        instance val ctx: Context = this.ctx
         println(summon[Context].value)
       }
       locally {
-        instance ctx with (): Context = this.ctx
+        instance def ctx: Context = this.ctx
         println(summon[Context].value)
       }
       locally {
-        instance f[T]: D[T] = new D[T]
+        instance def f[T]: D[T] = new D[T]
         println(summon[D[Int]])
       }
       locally {
-        instance g with (ctx: Context): D[Int] = new D[Int]
+        instance def g with (ctx: Context): D[Int] = new D[Int]
         println(summon[D[Int]])
       }
     }

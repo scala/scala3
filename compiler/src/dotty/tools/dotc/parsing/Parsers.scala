@@ -2292,8 +2292,9 @@ object Parsers {
       }
     }
 
-    /** DefDef ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
-     *           | this ParamClause ParamClauses `=' ConstrExpr
+    /** DefDef         ::= MethodDef | ConstructorDef
+     *  MethodDef      ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
+     *  ConstructorDef ::= this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] ParamClauses
      */
@@ -2307,7 +2308,8 @@ object Parsers {
           true
         }
       }
-      if (in.token == THIS) {
+      val isInstance = mods.hasMod(Predef.classOf[Mod.Instance])
+      if (!isInstance && in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses()
         if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.is(Implicit)))
@@ -2331,7 +2333,7 @@ object Parsers {
         val mods1 = addFlag(mods, flags)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses() match {
+        val vparamss = paramClauses(ofInstance = isInstance) match {
           case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(name) =>
             rparams :: leadingParamss ::: rparamss
           case rparamss =>
@@ -2540,46 +2542,38 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** InstanceDef    ::=  [id] InstanceParams [‘for’ ConstrApps] [TemplateBody]
-     *                   |  id InstanceParams ‘:’ Type ‘=’ Expr
-     *                   |  id ‘:’ ‘=>’ Type ‘=’ Expr
-     *                   |  id ‘=’ Expr
+    /** InstanceDef    ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
+     *                   |  ‘val’ PatDef
+     *                   |  ‘def’ MethodDef
      *  InstanceParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
      */
-    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
-      val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
-      val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val vparamss = paramClauses(ofInstance = true)
-      val parents =
-        if (isIdent(nme.of)) {
-          in.nextToken()
-          tokenSeparated(WITH, constrApp)
-        }
-        else Nil
-      newLineOptWhenFollowedBy(LBRACE)
-      if (name.isEmpty && in.token != LBRACE)
-        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
-      var mods1 = addMod(mods, instanceMod)
-      val wdef =
-        if (in.token == LBRACE) {
-          val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil, isEnum = false)
+    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = {
+      val mods1 = addMod(mods, instanceMod)
+      if (in.token == VAL) {
+        in.nextToken()
+        patDefOrDcl(start, mods1)
+      }
+      else if (in.token == DEF) {
+        in.nextToken()
+        defDefOrDcl(start, mods1)
+      }
+      else atSpan(start, nameStart) {
+        val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
+        val tparams = typeParamClauseOpt(ParamOwner.Def)
+        val vparamss = paramClauses(ofInstance = true)
+        val parents =
+          if (isIdent(nme.of)) {
+            in.nextToken()
+            tokenSeparated(WITH, constrApp)
+          }
+          else Nil
+        newLineOptWhenFollowedBy(LBRACE)
+        val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil, isEnum = false)
+        val instDef =
           if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
-        }
-        else {
-          val tpt = typedOpt()
-          if (tpt.isEmpty && in.token != EQUALS)
-            syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
-          val rhs =
-            if (in.token == EQUALS) {
-              in.nextToken()
-              expr()
-            }
-            else EmptyTree
-          if (tparams.isEmpty && vparamss.isEmpty) ValDef(name, tpt, rhs)
-          else DefDef(name, tparams, vparamss, tpt, rhs)
-        }
-      finalizeDef(wdef, mods1, start)
+        finalizeDef(instDef, mods1, start)
+      }
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

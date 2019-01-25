@@ -352,14 +352,16 @@ Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef
                     |  ‘def’ DefDef
                     |  ‘type’ {nl} TypeDcl
+                    |  ‘instance’ {nl} InstanceDef
                     |  TmplDef
                     |  INT
 PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr              PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
-DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
+DefDef            ::=  MethodDef | ConstructorDef
+MethodDef         ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                      DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  DefSig [nl] ‘{’ Block ‘}’                                DefDef(_, name, tparams, vparamss, tpe, Block)
-                    |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
+ConstructorDef    ::= ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
@@ -372,6 +374,8 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 InstanceDef       ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
+                    |  ‘val’ PatDef
+                    |  ‘def’ MethodDef
 InstanceParams    ::=  [DefTypeParamClause] {InstParamClause}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

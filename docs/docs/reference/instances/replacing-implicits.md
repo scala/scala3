@@ -22,7 +22,7 @@ instance val ctx = localCtx
 instance def f[T]: C[T] = new C[T]
 instance def g with (ctx: Context): D = new D(ctx)
 ```
-
+The `instance` modifier must be followed directly by `val` or `def`; no other intervening modifiers are permitted.
 When used as a modifier, `instance` generally has the same meaning as the current `implicit` modifier, with the following exceptions:
 
  1. `instance def` definitions can only have context parameters in `with` clauses. Old style `implicit` parameters are not supported.
@@ -59,8 +59,9 @@ def summon[T] with (x: T) = x
 
 The syntax changes for this page are summarized as follows:
 ```
-LocalModifier   ::=  ...
-                  |  ‘instance’
+InstanceDef     ::=  ...
+                  |  ‘val’ PatDef
+                  |  ‘def’ MethodDef
 ```
 In addition, the `implicit` modifier is removed together with all [productions]((http://dotty.epfl.ch/docs/internals/syntax.html) that reference it.
 
