@@ -109,7 +109,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (isOmittable(tp.cls)) return ""
       case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
-        if (sym.isPackageObject) return toTextPrefix(pre)
+        if (sym.isPackageObject && !homogenizedView) return toTextPrefix(pre)
         if (isOmittable(sym)) return ""
       case _ =>
     }
