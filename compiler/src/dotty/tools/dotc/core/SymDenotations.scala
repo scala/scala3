@@ -755,9 +755,7 @@ object SymDenotations {
              (  !(this is Local)
              || (owner is ImplClass) // allow private local accesses to impl class members
              || isCorrectThisType(pre)
-             ) &&
-             (!(this.is(Private) && owner.is(Package)) ||
-              owner == ctx.owner.enclosingPackageClass)
+             )
         || (this is Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
