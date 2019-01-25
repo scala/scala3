@@ -2037,7 +2037,9 @@ object Parsers {
     /** ClsParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
-     *  DefParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [DefParams] ')'
+     *  DefParamClause    ::=  [nl] `(' [FunArgMods] [DefParams] ')' | InstParamClause
+     *  InstParamClause   ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+     *  ContextTypes      ::=  RefinedType {`,' RefinedType}
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
@@ -2128,21 +2130,25 @@ object Parsers {
 
     /** ClsParamClauses   ::=  {ClsParamClause}
      *  DefParamClauses   ::=  {DefParamClause}
+     *  InstParamClauses  ::=  {InstParamClause}
      *
      *  @return  The parameter definitions
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] = {
-      def recur(firstClause: Boolean): List[List[ValDef]] = {
+      def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] = {
         val initialMods =
           if (in.token == WITH) {
             in.nextToken()
             Modifiers(Contextual | Implicit)
           }
           else EmptyModifiers
+        val isContextual = initialMods.is(Contextual)
         newLineOptWhenFollowedBy(LPAREN)
-        if (initialMods.is(Contextual) || in.token == LPAREN && !ofInstance) {
+        if (in.token == LPAREN) {
+          if (ofInstance && !isContextual)
+            syntaxError(em"parameters of instance definitions must come after `with'")
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
@@ -2150,11 +2156,16 @@ object Parsers {
               initialMods = initialMods)
           val lastClause =
             params.nonEmpty && params.head.mods.flags.is(Implicit, butNot = Contextual)
-          params :: (if (lastClause) Nil else recur(firstClause = false))
+          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length))
+        }
+        else if (isContextual) {
+          val tps = commaSeparated(refinedType)
+          val params = tps.map(makeSyntheticParameter(nparams + 1, _, Contextual | Implicit))
+          params :: recur(firstClause = false, nparams + params.length)
         }
         else Nil
       }
-      recur(firstClause = true)
+      recur(firstClause = true, 0)
     }
 
 /* -------- DEFS ------------------------------------------- */
@@ -2545,7 +2556,7 @@ object Parsers {
     /** InstanceDef    ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
      *                   |  ‘val’ PatDef
      *                   |  ‘def’ MethodDef
-     *  InstanceParams ::=  [DefTypeParamClause] {‘with’ ‘(’ [DefParams] ‘)}
+     *  InstanceParams ::=  [DefTypeParamClause] {InstParamClause}
      */
     def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = {
       val mods1 = addMod(mods, instanceMod)

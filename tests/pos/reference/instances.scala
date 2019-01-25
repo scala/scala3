@@ -37,7 +37,7 @@ object Instances extends Common {
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  instance ListOrd[T] with (ord: Ord[T]) of Ord[List[T]] {
+  instance ListOrd[T] with Ord[T] of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -73,14 +73,14 @@ object Instances extends Common {
       ctx => x
   }
 
-  def maximum[T](xs: List[T]) with (cmp: Ord[T]): T =
+  def maximum[T](xs: List[T]) with Ord[T]: T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T] with (asc: Ord[T]): Ord[T] = new Ord[T] {
     def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
   }
 
-  def minimum[T](xs: List[T]) with (cmp: Ord[T]) =
+  def minimum[T](xs: List[T]) with Ord[T] =
     maximum(xs) with descending
 
   def test(): Unit = {
@@ -138,7 +138,7 @@ object Instances extends Common {
         println(summon[D[Int]])
       }
       locally {
-        instance def g with (ctx: Context): D[Int] = new D[Int]
+        instance def g with Context: D[Int] = new D[Int]
         println(summon[D[Int]])
       }
     }

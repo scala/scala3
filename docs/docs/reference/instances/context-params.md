@@ -65,13 +65,15 @@ f("abc")
 f("abc") with ctx
 (f with global)("abc") with ctx
 ```
+Context parameters may be given either as a normal parameter list `(...)`
+or as a sequence of types. To distinguish the two, a leading `(` always indicates a parameter list.
 
 ## Syntax
 
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
 ClsParamClause    ::=  ...
-                    |  ‘with’ (‘(’ [ClsParams] ‘)’ | ParamTypes)
+                    |  ‘with’ (‘(’ [ClsParams] ‘)’ | ContextTypes)
 DefParamClause    ::=  ...
                     |  InstParamClause
 InfixExpr         ::=  ...

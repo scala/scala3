@@ -170,7 +170,7 @@ TmplDef          ::=  ...
                   |  ‘instance’ InstanceDef
 InstanceDef      ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
 InstanceParams   ::=  [DefTypeParamClause] {InstParamClause}
-InstParamClause  ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ParamTypes)
-ParamTypes       ::=  InfixType {‘,’ InfixType}
+InstParamClause  ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+ContextTypes     ::=  RefinedType {‘,’ RefinedType}
 ```
 The identifier `id` can be omitted only if either the `of` part or the template body is present. If the `of` part is missing, the template body must define at least one extension method.
