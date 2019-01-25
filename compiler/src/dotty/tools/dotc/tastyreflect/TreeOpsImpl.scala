@@ -401,6 +401,15 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
 
     object Select extends SelectModule {
+      def unique(qualifier: Term, name: String)(implicit ctx: Context): Select = {
+        val denot = qualifier.tpe.member(name.toTermName)
+        assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
+        tpd.Select(qualifier, name.toTermName)
+      }
+
+      def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply =
+        tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply]
+
       def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
 

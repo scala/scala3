@@ -272,8 +272,9 @@ trait TreeOps extends Core {
     /** Scala term selection */
     val Select: SelectModule
     abstract class SelectModule {
+      def unique(qualifier: Term, name: String)(implicit ctx: Context): Select
 
-      // TODO def apply(qualifier: Term, name: String, signature: Option[Signature])(implicit ctx: Context): Select
+      def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply
 
       def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select
 
