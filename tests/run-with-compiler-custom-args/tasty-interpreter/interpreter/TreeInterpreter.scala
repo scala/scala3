@@ -67,8 +67,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case ValDef(name, tpt, Some(rhs)) =>
         def evalRhs = eval(rhs)(accEnv)
         val evalRef: LocalValue =
-          if (stat.symbol.flags.isLazy) LocalValue.lazyValFrom(evalRhs)
-          else if (stat.symbol.flags.isMutable) LocalValue.varFrom(evalRhs)
+          if (stat.symbol.flags.is(Flags.Lazy)) LocalValue.lazyValFrom(evalRhs)
+          else if (stat.symbol.flags.is(Flags.Mutable)) LocalValue.varFrom(evalRhs)
           else LocalValue.valFrom(evalRhs)
 
         accEnv.updated(stat.symbol, evalRef)

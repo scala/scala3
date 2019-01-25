@@ -155,6 +155,8 @@ trait SymbolOps extends Core {
 
     /** The class symbol of the companion module class */
     def moduleClass(implicit ctx: Context): Option[ClassSymbol]
+
+    def companionClass(implicit ctx: Context): Option[ClassSymbol]
   }
   implicit def ValSymbolDeco(symbol: ValSymbol): ValSymbolAPI
 

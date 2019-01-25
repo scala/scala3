@@ -77,7 +77,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
           // FIXME not necesarly static
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
-          if (fn.symbol.flags.isObject)
+          if (fn.symbol.flags.is(Flags.Object))
             jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)

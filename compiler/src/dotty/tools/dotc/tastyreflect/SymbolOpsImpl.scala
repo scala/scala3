@@ -193,6 +193,11 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
       val sym = symbol.moduleClass
       if (sym.exists) Some(sym.asClass) else None
     }
+
+    def companionClass(implicit ctx: Context): Option[ClassSymbol] = {
+      val sym = symbol.companionClass
+      if (sym.exists) Some(sym.asClass) else None
+    }
   }
 
   object IsBindSymbol extends IsBindSymbolModule {
