@@ -1,3 +1,4 @@
 package top
 
-def hello(b: Boolean) = b.toString
+def hello(b: Boolean): String = if (b) "yes" else "no"
+

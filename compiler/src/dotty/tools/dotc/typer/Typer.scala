@@ -265,7 +265,12 @@ class Typer extends Namer
           // with the exact list of files given).
           val isNewDefScope =
             if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
-            else (ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)
+            else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) &&
+              !curOwner.isPackageObject
+              // Package objects are never searched directly. We wait until we
+              // hit the enclosing package. That way we make sure we consider
+              // all overloaded altrenatives of a definition, even if they are
+              // in different source files.
 
           if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name, required)
