@@ -887,7 +887,8 @@ object Trees {
 
   // ----- Generic Tree Instances, inherited from `tpt` and `untpd`.
 
-  abstract class Instance[T >: Untyped <: Type] { inst =>
+  // FIXME: Work around cyclic reference by writing `Types.Type` instead of `Type`
+  abstract class Instance[T >: Untyped <: Types.Type] { inst =>
 
     type Tree = Trees.Tree[T]
     type TypTree = Trees.TypTree[T]
