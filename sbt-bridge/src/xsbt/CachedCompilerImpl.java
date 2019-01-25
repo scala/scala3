@@ -66,8 +66,6 @@ public class CachedCompilerImpl implements CachedCompiler {
       .setSbtCallback(callback)
       .setReporter(new DelegatingReporter(delegate));
 
-    URLClassLoader cl = (URLClassLoader) this.getClass().getClassLoader();
-
     dotty.tools.dotc.reporting.Reporter reporter = Main.process(commandArguments(sources), ctx);
     if (reporter.hasErrors()) {
       throw new InterfaceCompileFailed(args, new Problem[0]);
