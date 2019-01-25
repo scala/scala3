@@ -389,9 +389,6 @@ class Definitions {
 
   def DottyPredefModule(implicit ctx: Context): Symbol = DottyPredefModuleRef.symbol
 
-    lazy val Predef_ImplicitConversionR: TypeRef = DottyPredefModule.requiredClass("ImplicitConversion").typeRef
-    def Predef_ImplicitConversion(implicit ctx: Context): Symbol = Predef_ImplicitConversionR.symbol
-
   lazy val DottyArraysModuleRef: TermRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context): Symbol = DottyArraysModuleRef.symbol
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
@@ -592,6 +589,8 @@ class Definitions {
   def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
   lazy val MatchErrorType: TypeRef         = ctx.requiredClassRef("scala.MatchError")
   def MatchErrorClass(implicit ctx: Context): ClassSymbol = MatchErrorType.symbol.asClass
+  lazy val ConversionType: TypeRef = ctx.requiredClass("scala.Conversion").typeRef
+  def ConversionClass(implicit ctx: Context): ClassSymbol = ConversionType.symbol.asClass
 
   lazy val StringAddType: TypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
   def StringAddClass(implicit ctx: Context): ClassSymbol = StringAddType.symbol.asClass

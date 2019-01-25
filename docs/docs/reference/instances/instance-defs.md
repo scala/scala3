@@ -29,7 +29,7 @@ instance ListOrd[T: Ord] for Ord[List[T]] {
 }
 ```
 
-Instance can be seen as shorthands for what is currently expressed with implicit object and method definitions.
+Instance definitions can be seen as shorthands for what is currently expressed with implicit object and method definitions.
 For instance, the definition of instance `IntOrd` above defines an implicit value of type `Ord[Int]`. It is hence equivalent
 to the following implicit object definition:
 ```scala

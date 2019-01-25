@@ -622,7 +622,7 @@ trait Checking {
       if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
         check()
       case AppliedType(tycon, _)
-      if tycon.derivesFrom(defn.Predef_ImplicitConversion) && !sym.is(Synthetic) =>
+      if tycon.derivesFrom(defn.ConversionClass) && !sym.is(Synthetic) =>
         check()
       case _ =>
     }

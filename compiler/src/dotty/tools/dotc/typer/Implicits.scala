@@ -126,9 +126,9 @@ object Implicits {
               // this in Predef:
               //
               //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
-              //    implicit def convertIfConverter[A, B](x: A)(implicit ev: ImplicitConversion[A, B]): B = ev(a)
+              //    implicit def convertIfConverter[A, B](x: A)(implicit ev: Conversion[A, B]): B = ev(a)
               //
-              // (Once `<:<` inherits from `ImplicitConversion` we only need the 2nd one.)
+              // (Once `<:<` inherits from `Conversion` we only need the 2nd one.)
               // But clauses like this currently slow down implicit search a lot, because
               // they are eligible for all pairs of types, and therefore are tried too often.
               // We emulate instead these conversions directly in the search.
@@ -138,7 +138,7 @@ object Implicits {
               // We keep the old behavior under -language:Scala2.
               val isFunctionInS2 =
                 ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
-              val isImplicitConversion = tpw.derivesFrom(defn.Predef_ImplicitConversion)
+              val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
                   tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
               val hasExtensions = resType match {

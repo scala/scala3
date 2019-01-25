@@ -146,7 +146,7 @@ object Instances extends Common {
 
   class Token(str: String)
 
-  instance StringToToken of ImplicitConversion[String, Token] {
+  instance StringToToken of Conversion[String, Token] {
     def apply(str: String): Token = new Token(str)
   }
 
