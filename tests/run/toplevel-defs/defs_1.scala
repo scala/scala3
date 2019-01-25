@@ -7,7 +7,7 @@ val her = {
 
 type Labelled[T] = (String, T)
 
-def showLabelled[T](x: Labelled[T]) = s"${x(0)} : ${x(1)}"
+final def showLabelled[T](x: Labelled[T]) = s"${x(0)} : ${x(1)}"
 
 object O {
   def hi = hello("Bob")
