@@ -779,22 +779,6 @@ object Build {
     case Bootstrapped => `dotty-library-bootstrapped`
   }
 
-  lazy val dottySbtBridgeSettings = Seq(
-    description := "sbt compiler bridge for Dotty",
-    resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
-    libraryDependencies ++= Seq(
-      Dependencies.`compiler-interface` % Provided,
-      (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
-    ),
-
-    // sources are Java-only, tests are in Scala
-    crossPaths in Compile := false,
-    autoScalaLibrary in Compile := false,
-
-    fork in Test := true,
-    parallelExecution in Test := false
-  )
-
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(dottyCompiler(NonBootstrapped) % Provided).
     dependsOn(dottyDoc(NonBootstrapped) % Provided).
