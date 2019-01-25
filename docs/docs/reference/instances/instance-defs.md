@@ -17,7 +17,7 @@ instance IntOrd of Ord[Int] {
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-instance ListOrd[T: Ord] for Ord[List[T]] {
+instance ListOrd[T: Ord] of Ord[List[T]] {
   def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
