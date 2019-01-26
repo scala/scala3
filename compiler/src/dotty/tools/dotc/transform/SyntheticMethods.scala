@@ -264,7 +264,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
   /** If this is a serializable static object `Foo`, add the method:
    *
    *      private def writeReplace(): AnyRef =
-   *        new scala.runtime.ModuleSerializationProxy(classOf[Foo$])
+   *        new scala.runtime.ModuleSerializationProxy(classOf[Foo.type])
    *
    *  unless an implementation already exists, otherwise do nothing.
    */
@@ -280,7 +280,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         DefDef(writeReplace,
           _ => New(defn.ModuleSerializationProxyType,
                    defn.ModuleSerializationProxyConstructor,
-                   List(Literal(Constant(clazz.typeRef)))))
+                   List(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
     }
     else
