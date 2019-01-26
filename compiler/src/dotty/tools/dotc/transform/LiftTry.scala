@@ -30,8 +30,10 @@ import util.Store
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  /** the following two members override abstract members in Transform */
   val phaseName: String = "liftTry"
+
+  // See tests/run/t2333.scala for an example where running after the group of LazyVals matters
+  override def runsAfterGroupsOf: Set[String] = Set(LazyVals.name)
 
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
