@@ -211,15 +211,17 @@ object Build {
 
     // Definition of the license header, used by the sbt-header plugin
     homepage := Some(url("https://dotty.epfl.ch/")),
-    organizationName := "EPFL",
     licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
     headerLicense := Some(HeaderLicense.Custom(
       s"""Dotty (${homepage.value.get})
          |
-         |Copyright EPFL.
+         |Copyright EPFL and Lightbend, Inc.
          |
          |Licensed under Apache License 2.0
          |(https://www.apache.org/licenses/LICENSE-2.0).
+         |
+         |See the NOTICE file distributed with this work for
+         |additional information regarding copyright ownership.
          |""".stripMargin
     ))
   )
