@@ -2572,8 +2572,8 @@ object Parsers {
       }
       else atSpan(start, nameStart) {
         val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(ofInstance = true)
+        val tparams = typeParamClauseOpt(ParamOwner.Class)
+        val vparamss = paramClauses(ofClass = true, ofInstance = true)
         val parents =
           if (isIdent(nme.of)) {
             in.nextToken()
