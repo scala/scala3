@@ -168,7 +168,7 @@ Here is the new syntax of instance definitions, seen as a delta from the [standa
 ```
 TmplDef          ::=  ...
                   |  ‘instance’ InstanceDef
-InstanceDef      ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
+InstanceDef      ::=  [id] InstanceParams [‘of’ ConstrApp {‘,’ ConstrApp}] [TemplateBody]
 InstanceParams   ::=  [DefTypeParamClause] {InstParamClause}
 InstParamClause  ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
 ContextTypes     ::=  RefinedType {‘,’ RefinedType}

@@ -373,7 +373,8 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-InstanceDef       ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
+InstanceDef       ::=  [id] InstanceParams [‘of’ ConstrApp {‘,’ ConstrApp}]
+                       [TemplateBody]
                     |  ‘val’ PatDef
                     |  ‘def’ MethodDef
 InstanceParams    ::=  [DefTypeParamClause] {InstParamClause}

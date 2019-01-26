@@ -2555,7 +2555,7 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** InstanceDef    ::=  [id] InstanceParams [‘of’ ConstrApps] [TemplateBody]
+    /** InstanceDef    ::=  [id] InstanceParams [‘of’ ConstrApp {‘,’ ConstrApp}] [TemplateBody]
      *                   |  ‘val’ PatDef
      *                   |  ‘def’ MethodDef
      *  InstanceParams ::=  [DefTypeParamClause] {InstParamClause}
@@ -2577,7 +2577,7 @@ object Parsers {
         val parents =
           if (isIdent(nme.of)) {
             in.nextToken()
-            tokenSeparated(WITH, constrApp)
+            tokenSeparated(COMMA, constrApp)
           }
           else Nil
         newLineOptWhenFollowedBy(LBRACE)

@@ -80,7 +80,7 @@ object Test extends App {
   }
   import Tree._
 
-  instance of Exp[Tree] with Mult[Tree] {
+  instance of Exp[Tree], Mult[Tree] {
     def lit(i: Int): Tree = Node("Lit", Leaf(i.toString))
     def neg(t: Tree): Tree = Node("Neg", t)
     def add(l: Tree, r: Tree): Tree = Node("Add", l , r)
