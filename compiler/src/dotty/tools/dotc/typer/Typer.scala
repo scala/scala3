@@ -756,7 +756,7 @@ class Typer extends Namer
       case _ => untpd.TypeTree(tp)
     }
     pt.stripTypeVar.dealias.followSyntheticOpaque match {
-      case pt1 if defn.isNonDepFunctionType(pt1) =>
+      case pt1 if defn.isNonRefinedFunction(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
@@ -2528,7 +2528,7 @@ class Typer extends Namer
               ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.sourcePos)
             case _ =>
           }
-        simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
+          simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       } else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)

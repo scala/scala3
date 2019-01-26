@@ -1121,15 +1121,19 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN
    *  instance?
    */
-  def isNonDepFunctionType(tp: Type)(implicit ctx: Context): Boolean = {
+  def isNonRefinedFunction(tp: Type)(implicit ctx: Context): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
-    arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol)
+
+    arity >= 0 &&
+      isFunctionClass(sym) &&
+      tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol) &&
+      !tp.isInstanceOf[RefinedType]
   }
 
   /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
   def isFunctionType(tp: Type)(implicit ctx: Context): Boolean =
-    isNonDepFunctionType(tp.dropDependentRefinement)
+    isNonRefinedFunction(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
   lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
@@ -1169,7 +1173,7 @@ class Definitions {
         false
     })
 
-  def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dealias.argInfos.length - 1
+  def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 
   /** Return underlying immplicit function type (i.e. instance of an ImplicitFunctionN class)
    *  or NoType if none exists. The following types are considered as underlying types:
