@@ -16,3 +16,5 @@ Node(Add,WrappedArray(Node(Lit,WrappedArray(Leaf(8))), Node(Neg,WrappedArray(Nod
 (8 + ((-1) + (-2)))
 (8 + ((-1) + (-2)))
 (8 + ((-1) + (-2)))
+(7 + 1 * (-2))
+7 * (8 + ((-1) + (-2)))

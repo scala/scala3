@@ -99,8 +99,8 @@ object Test extends App {
     private class Exc(msg: String) extends Exception(msg)
     def _throw(msg: String) with CanThrow: Nothing = throw new Exc(msg)
     def _try[T](op: CanThrow |=> T)(handler: String => T): T = {
-      val ct = new CanThrow()
-      try op with ct
+      instance of CanThrow
+      try op
       catch {
         case ex: Exception => handler(ex.getMessage)
       }
@@ -185,7 +185,7 @@ object Test extends App {
 
   enum NCtx { case Pos, Neg }
 
-  instance NegExp[T] with (e: Exp[T]) of Exp[NCtx => T] {
+  instance [T] with (e: Exp[T]) of Exp[NCtx => T] {
     import NCtx._
     def lit(i: Int) = {
       case Pos => e.lit(i)
@@ -202,9 +202,38 @@ object Test extends App {
   println(tf1[NCtx => String](NCtx.Pos))
 
   def pushNeg[T](e: NCtx => T): T = e(NCtx.Pos)
-
   println(pushNeg(tf1[NCtx => String]))
-
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
+  instance [T] with (e: Mult[T]) of Mult[NCtx => T] {
+    import NCtx._
+    def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
+      case Pos => e.mul(l(Pos), r(Pos))
+      case Neg => e.mul(l(Pos), r(Neg))
+    }
+  }
+
+  println(pushNeg(tfm1[NCtx => String]))
+  println(pushNeg(tfm2[NCtx => String]))
+
+  import IExp._
+
+  // Going from type class encoding to ADT encoding
+  instance initialize of Exp[IExp] {
+    def lit(i: Int): IExp = Lit(i)
+    def neg(t: IExp): IExp = Neg(t)
+    def add(l: IExp, r: IExp): IExp = Add(l, r)
+  }
+
+  // Going from ADT encoding to type class encoding
+  def finalize[T](i: IExp) with (e: Exp[T]): T = i match {
+    case Lit(l) => e.lit(l)
+    case Neg(n) => e.neg(finalize[T](n))
+    case Add(l, r) => e.add(finalize[T](l), finalize[T](r))
+  }
+
+  type Ring[T] = Exp[T] |=> Mult[T] |=> T
+
+  def tfm1a[T]: Ring[T] = add(lit(7), neg(mul(lit(1), lit(2))))
+  def tfm2a[T]: Ring[T] = mul(lit(7), tf1)
 }
