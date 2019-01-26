@@ -652,6 +652,7 @@ trait Printers
                   n == "copy" ||
                   n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
                   n.matches("_[1-9][0-9]*") || // Getters from Product
+                  n == "writeReplace" || // Case class serialization
                   n == "productElementName"
                 case _ => false
               })
