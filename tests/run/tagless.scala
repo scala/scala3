@@ -1,3 +1,7 @@
+// A rewrite of Olivier Blanvillain's [adaptation](https://gist.github.com/OlivierBlanvillain/48bb5c66dbb0557da50465809564ee80)
+// of Oleg Kislyov's [lecture notes](http://okmij.org/ftp/tagless-final/course/lecture.pdf)
+// on tagless final interpreters.
+// Main win: Replace Either by an "algebraic effect" using an implicit function type.
 object Test extends App {
 
   // Explicit ADT
@@ -12,16 +16,18 @@ object Test extends App {
     Add(Lit(8), Neg(Add(Lit(1), Lit(2))))
   }
 
-  // Base algebra
+  // Base trait for type classes
   trait Exp[T] {
     def lit(i: Int): T
     def neg(t: T): T
     def add(l: T, r: T): T
   }
 
+  // An example tree
   def tf0[T] with (e: Exp[T]): T =
     e.add(e.lit(8), e.neg(e.add(e.lit(1), e.lit(2))))
 
+  // Typeclass-style Exp syntax
   object ExpSyntax {
     def lit[T](i: Int)     with (e: Exp[T]): T = e.lit(i)
     def neg[T](t: T)       with (e: Exp[T]): T = e.neg(t)
@@ -29,6 +35,7 @@ object Test extends App {
   }
   import ExpSyntax._ // It's safe to always have these in scope
 
+  // Another tree
   def tf1[T] with Exp[T]: T =
     add(lit(8), neg(add(lit(1), lit(2))))
 
@@ -73,7 +80,7 @@ object Test extends App {
   println(tfm2[Int])
   println(tfm2[String])
 
-  // Added operation: Deserialization
+  // Added operation: serialization
   enum Tree {
     case Leaf(s: String)
     case Node(s: String, ts: Tree*)
@@ -93,6 +100,8 @@ object Test extends App {
   println(s"tf1Tree = $tf1Tree")
   println(s"tfm1Tree = $tfm1Tree")
 
+  // CanThrow infrastructure
+  // At some point this will be supported in language and stdlib
   class CanThrow private ()
 
   object CanThrow {
@@ -122,6 +131,7 @@ object Test extends App {
       msg => assert(false, s"thrown: $msg")
     }
 
+  // Added operation: deserialization
   def readInt(str: String): Maybe[Int] =
     _try(str.toInt)(_ => _throw(s"""Not a number: "$str""""))
 
@@ -183,6 +193,7 @@ object Test extends App {
   assertEquals(fromTree3[String](tf1[Tree]), tf1[String])
   assertEquals(fromTree3[String](tfm1[Tree]), tfm1[String])
 
+  // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
   instance [T] with (e: Exp[T]) of Exp[NCtx => T] {
@@ -232,6 +243,7 @@ object Test extends App {
     case Add(l, r) => e.add(finalize[T](l), finalize[T](r))
   }
 
+  // Abstracting over multiple typeclasses
   type Ring[T] = Exp[T] |=> Mult[T] |=> T
 
   def tfm1a[T]: Ring[T] = add(lit(7), neg(mul(lit(1), lit(2))))
