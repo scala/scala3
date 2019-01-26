@@ -2160,7 +2160,9 @@ object Parsers {
         }
         else if (isContextual) {
           val tps = commaSeparated(refinedType)
-          val params = tps.map(makeSyntheticParameter(nparams + 1, _, Contextual | Implicit))
+          var counter = nparams
+          def nextIdx = { counter += 1; counter }
+          val params = tps.map(makeSyntheticParameter(nextIdx, _, Contextual | Implicit))
           params :: recur(firstClause = false, nparams + params.length)
         }
         else Nil
