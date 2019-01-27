@@ -132,7 +132,7 @@ public enum ErrorMessageID {
     ImportRenamedTwiceID,
     TypeTestAlwaysSucceedsID,
     TermMemberNeedsNeedsResultTypeForImplicitSearchID,
-    CaseClassCannotExtendEnumID,
+    ClassCannotExtendEnumID,
     ValueClassParameterMayNotBeCallByNameID,
     NotAnExtractorID,
     MemberWithSameNameAsStaticID,
