@@ -673,12 +673,19 @@ object desugar {
         ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
         Nil
       }
-      else
+      else {
+        val defParamss = constrVparamss match {
+          case Nil :: paramss =>
+            paramss // drop leading () that got inserted by class
+                    // TODO: drop this once we do not silently insert empty class parameters anymore
+          case paramss => paramss
+        }
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
-        DefDef(className.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
+        DefDef(className.toTermName, constrTparams, defParamss, classTypeRef, creatorExpr)
           .withMods(companionMods | Synthetic | Implicit)
           .withSpan(cdef.span) :: Nil
+      }
 
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
