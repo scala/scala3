@@ -67,7 +67,7 @@ public class DottydocRunner {
         }
         return msg.toString();
       });
-      args = retained.toArray(args0);
+      args = retained.toArray(new String[retained.size()]);
     } else {
       args = args0;
     }
