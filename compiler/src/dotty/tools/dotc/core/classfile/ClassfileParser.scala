@@ -171,8 +171,8 @@ class ClassfileParser(
       classRoot.registerCompanion(moduleRoot.symbol)
       moduleRoot.registerCompanion(classRoot.symbol)
 
-      setClassInfo(classRoot, classInfo)
-      setClassInfo(moduleRoot, staticInfo)
+      setClassInfo(classRoot, classInfo, fromScala2 = false)
+      setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
     } else if (result == Some(NoEmbedded)) {
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
