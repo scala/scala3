@@ -2559,6 +2559,7 @@ object Parsers {
      *                   |  ‘of’ Type ‘=’ Expr
      */
     def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
+      var mods1 = addMod(mods, instanceMod)
       val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val vparamss = paramClauses(ofInstance = true)
@@ -2571,6 +2572,7 @@ object Parsers {
       val instDef =
         if (in.token == EQUALS && parents.length == 1 && parents.head.isType) {
           in.nextToken()
+          mods1 |= Final
           DefDef(name, tparams, vparamss, parents.head, expr())
         }
         else {
@@ -2582,7 +2584,7 @@ object Parsers {
           if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
         }
-      finalizeDef(instDef, addMod(mods, instanceMod), start)
+      finalizeDef(instDef, mods1, start)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

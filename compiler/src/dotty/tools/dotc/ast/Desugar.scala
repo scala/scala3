@@ -685,7 +685,7 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(className.toTermName, constrTparams, defParamss, classTypeRef, creatorExpr)
-          .withMods(companionMods | Synthetic | Implicit)
+          .withMods(companionMods | Synthetic | Implicit | Final)
           .withSpan(cdef.span) :: Nil
       }
 
