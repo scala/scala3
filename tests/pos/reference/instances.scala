@@ -104,11 +104,12 @@ object Instances extends Common {
     trait SymDeco {
       def (sym: Symbol) name: String
     }
-    instance def symDeco: SymDeco
+    def symDeco: SymDeco
+    instance of SymDeco = symDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
-    instance val symDeco: SymDeco = new SymDeco {
+    val symDeco = new SymDeco {
       def (sym: Symbol) name = sym
     }
   }
@@ -118,27 +119,20 @@ object Instances extends Common {
   class C with (ctx: Context) {
     def f() = {
       locally {
-        instance val ctx = this.ctx
+        instance of Context = this.ctx
         println(summon[Context].value)
       }
       locally {
-        lazy instance val ctx = this.ctx
+        lazy val ctx1 = this.ctx
+        instance of Context = ctx1
         println(summon[Context].value)
       }
       locally {
-        instance val ctx: Context = this.ctx
-        println(summon[Context].value)
-      }
-      locally {
-        instance def ctx: Context = this.ctx
-        println(summon[Context].value)
-      }
-      locally {
-        instance def f[T]: D[T] = new D[T]
+        instance d[T] of D[T]
         println(summon[D[Int]])
       }
       locally {
-        instance def g with Context: D[Int] = new D[Int]
+        instance with Context of D[Int]
         println(summon[D[Int]])
       }
     }
@@ -255,4 +249,36 @@ object Test extends App {
   import PostConditions._
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
+}
+
+object Completions {
+
+  class Future[T]
+  class HttpResponse
+  class StatusCode
+
+  // The argument "magnet" type
+  enum CompletionArg {
+    case Error(s: String)
+    case Response(f: Future[HttpResponse])
+    case Status(code: Future[StatusCode])
+  }
+  import CompletionArg._
+
+  def complete[T](arg: CompletionArg) = arg match {
+    case Error(s) => ???
+    case Response(f) => ???
+    case Status(code) => ???
+  }
+
+  // conversions defining the possible arguments to pass to `complete`
+  instance stringArg of Conversion[String, CompletionArg] {
+    def apply(s: String) = CompletionArg.Error(s)
+  }
+  instance responseArg of Conversion[Future[HttpResponse], CompletionArg] {
+    def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
+  }
+  instance statusArg of Conversion[Future[StatusCode], CompletionArg] {
+    def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
+  }
 }

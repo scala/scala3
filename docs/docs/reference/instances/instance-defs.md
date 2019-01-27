@@ -161,6 +161,23 @@ instance ReaderMonad[Ctx] of Monad[[X] => Ctx => X] {
     ctx => x
 }
 ```
+## Alias Instances
+
+An alias instance creates an instance that is equal to some expression. E.g.,
+```
+instance ctx of ExecutionContext = currentThreadPool().context
+```
+Here, we create an instance `ctx` of type `ExecutionContext` that resolves to the
+right hand side `currentThreadPool().context`. Each time an instance of `ExecutionContext`
+is demanded, the result of evaluating the right-hand side expression is returned. The instance definition is equivalent to the following implicit definition:
+```
+final implicit def ctx: ExecutionContext = currentThreadPool().context
+```
+Alias instances may be anonymous, e.g.
+```
+instance of Position = enclosingTree.position
+```
+An alias instance can have type and context parameters just like any other instance definition, but it can only implement a single type.
 
 ## Syntax
 
@@ -168,9 +185,11 @@ Here is the new syntax of instance definitions, seen as a delta from the [standa
 ```
 TmplDef          ::=  ...
                   |  ‘instance’ InstanceDef
-InstanceDef      ::=  [id] InstanceParams [‘of’ ConstrApp {‘,’ ConstrApp}] [TemplateBody]
+InstanceDef      ::=  [id] InstanceParams InstanceBody
 InstanceParams   ::=  [DefTypeParamClause] {InstParamClause}
 InstParamClause  ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+InstanceBody     ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+                   |  ‘of’ Type ‘=’ Expr
 ContextTypes     ::=  RefinedType {‘,’ RefinedType}
 ```
 The identifier `id` can be omitted only if either the `of` part or the template body is present. If the `of` part is missing, the template body must define at least one extension method.

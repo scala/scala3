@@ -3,7 +3,7 @@ object Test {
 
   class Context {
     inline def assumeIn[T](op: => Context |=> T) = {
-      instance def ctx: Context = this
+      instance of Context = this
       op
     }
   }

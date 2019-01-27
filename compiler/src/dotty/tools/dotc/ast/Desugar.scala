@@ -197,7 +197,8 @@ object desugar {
    *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
    */
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
-    val DefDef(name, tparams, vparamss, tpt, rhs) = meth
+    val DefDef(_, tparams, vparamss, tpt, rhs) = meth
+    val methName = normalizeName(meth, tpt).asTermName
     val mods = meth.mods
     val epbuf = new ListBuffer[ValDef]
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
@@ -213,7 +214,8 @@ object desugar {
       cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
 
-    var meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+    var meth1 = addEvidenceParams(
+      cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
 
     if (meth1.mods.is(Inline))
       meth1.tpt match {
@@ -245,7 +247,7 @@ object desugar {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
-            name = DefaultGetterName(meth.name, n),
+            name = DefaultGetterName(methName, n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
@@ -303,7 +305,7 @@ object desugar {
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
     val impl @ Template(constr0, _, self, _) = cdef.rhs
-    val className = normalizeClassName(cdef, impl)
+    val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
     val mods = cdef.mods
     val companionMods = mods
@@ -731,7 +733,7 @@ object desugar {
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
     val impl = mdef.impl
     val mods = mdef.mods
-    val moduleName = normalizeClassName(mdef, impl).toTermName
+    val moduleName = normalizeName(mdef, impl).asTermName
     def isEnumCase = mods.isEnumCase
 
     def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
@@ -814,10 +816,10 @@ object desugar {
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
    *   2. If the name is missing (this can be the case for instance definitions), invent one instead.
    */
-  def normalizeClassName(mdef: MemberDef, impl: Template)(implicit ctx: Context): TypeName = {
-    var name = mdef.name.toTypeName
-    if (name.isEmpty) name = s"${inventName(impl)}_instance".toTypeName
-    if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name)) {
+  def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
+    var name = mdef.name
+    if (name.isEmpty) name = name.likeSpaced(s"${inventName(impl)}_instance".toTermName)
+    if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
       name = name.errorName
@@ -827,20 +829,24 @@ object desugar {
 
   /** Invent a name for an anonymous instance with template `impl`.
    */
-  private def inventName(impl: Template)(implicit ctx: Context): String =
-    if (impl.parents.isEmpty)
-      impl.body.find {
-        case dd: DefDef if dd.mods.is(Extension) => true
-        case _ => false
-      } match {
-        case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
-          s"${name}_of_${inventTypeName(vparam.tpt)}"
-        case _ =>
-          ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.sourcePos)
-          nme.ERROR.toString
-      }
-    else
-      impl.parents.map(inventTypeName(_)).mkString("_")
+  private def inventName(impl: Tree)(implicit ctx: Context): String = impl match {
+    case impl: Template =>
+      if (impl.parents.isEmpty)
+        impl.body.find {
+          case dd: DefDef if dd.mods.is(Extension) => true
+          case _ => false
+        } match {
+          case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
+            s"${name}_of_${inventTypeName(vparam.tpt)}"
+          case _ =>
+            ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.sourcePos)
+            nme.ERROR.toString
+        }
+      else
+        impl.parents.map(inventTypeName(_)).mkString("_")
+    case impl: Tree =>
+      inventTypeName(impl)
+  }
 
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
     private def extractArgs(args: List[Tree])(implicit ctx: Context): String =

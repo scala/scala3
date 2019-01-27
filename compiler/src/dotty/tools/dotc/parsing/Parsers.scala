@@ -2305,9 +2305,8 @@ object Parsers {
       }
     }
 
-    /** DefDef         ::= MethodDef | ConstructorDef
-     *  MethodDef      ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
-     *  ConstructorDef ::= this ParamClause ParamClauses `=' ConstrExpr
+    /** DefDef ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
+     *           | this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] ParamClauses
      */
@@ -2321,8 +2320,7 @@ object Parsers {
           true
         }
       }
-      val isInstance = mods.hasMod(Predef.classOf[Mod.Instance])
-      if (!isInstance && in.token == THIS) {
+      if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses()
         if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.is(Implicit)))
@@ -2346,7 +2344,7 @@ object Parsers {
         val mods1 = addFlag(mods, flags)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(ofInstance = isInstance) match {
+        val vparamss = paramClauses() match {
           case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(name) =>
             rparams :: leadingParamss ::: rparamss
           case rparamss =>
@@ -2555,38 +2553,36 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** InstanceDef    ::=  [id] InstanceParams [‘of’ ConstrApp {‘,’ ConstrApp}] [TemplateBody]
-     *                   |  ‘val’ PatDef
-     *                   |  ‘def’ MethodDef
+    /** InstanceDef    ::=  [id] InstanceParams InstanceBody
      *  InstanceParams ::=  [DefTypeParamClause] {InstParamClause}
+     *  InstanceBody   ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+     *                   |  ‘of’ Type ‘=’ Expr
      */
-    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = {
-      val mods1 = addMod(mods, instanceMod)
-      if (in.token == VAL) {
-        in.nextToken()
-        patDefOrDcl(start, mods1)
-      }
-      else if (in.token == DEF) {
-        in.nextToken()
-        defDefOrDcl(start, mods1)
-      }
-      else atSpan(start, nameStart) {
-        val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
-        val tparams = typeParamClauseOpt(ParamOwner.Class)
-        val vparamss = paramClauses(ofClass = true, ofInstance = true)
-        val parents =
-          if (isIdent(nme.of)) {
-            in.nextToken()
-            tokenSeparated(COMMA, constrApp)
-          }
-          else Nil
-        newLineOptWhenFollowedBy(LBRACE)
-        val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil, isEnum = false)
-        val instDef =
+    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
+      val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
+      val tparams = typeParamClauseOpt(ParamOwner.Def)
+      val vparamss = paramClauses(ofInstance = true)
+      val parents =
+        if (isIdent(nme.of)) {
+          in.nextToken()
+          tokenSeparated(COMMA, constrApp)
+        }
+        else Nil
+      val instDef =
+        if (in.token == EQUALS && parents.length == 1 && parents.head.isType) {
+          in.nextToken()
+          DefDef(name, tparams, vparamss, parents.head, expr())
+        }
+        else {
+          newLineOptWhenFollowedBy(LBRACE)
+          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+          val vparamss1 = vparamss.map(_.map(vparam =>
+            vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil, isEnum = false)
           if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
-        finalizeDef(instDef, mods1, start)
-      }
+        }
+      finalizeDef(instDef, addMod(mods, instanceMod), start)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

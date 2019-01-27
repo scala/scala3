@@ -68,6 +68,14 @@ f("abc") with ctx
 Context parameters may be given either as a normal parameter list `(...)`
 or as a sequence of types. To distinguish the two, a leading `(` always indicates a parameter list.
 
+## Summoning an Instance
+
+A method `summon` in `Predef` creates an implicit instance value for a given type, analogously to what `implicitly[T]` did. The only difference between the two is that
+`summon` takes a context parameter, where `implicitly` took an old-style implicit parameter:
+```scala
+def summon[T] with (x: T) = x
+```
+
 ## Syntax
 
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).

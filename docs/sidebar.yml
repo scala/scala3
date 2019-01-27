@@ -73,7 +73,9 @@ sidebar:
             - title: Context Parameters
               url: docs/reference/instances/context-params.html
             - title: Implicit Function Types
-              url: docs/reference/new-types/implicit-function-types.html
+              url: docs/reference/instances/implicit-function-types.html
+            - title: Implicit Conversions
+              url: docs/reference/instances/implicit-conversions.html
             - title: Replacing Implicits
               url: docs/reference/instances/replacing-implicits.html
             - title: Discussion

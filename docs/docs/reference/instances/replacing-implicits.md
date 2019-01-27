@@ -9,25 +9,26 @@ These idioms can by-and-large be mapped to existing implicits. The only exceptio
 
 The contents of this page are more tentative than the ones of the previous pages. The concepts described in the previous pages are useful independently whether the changes on this page are adopted.
 
-The current Dotty implementation implements the new concepts described on this page (implicit as a modifier and the summon method), but it does not remove any of the old-style implicit constructs. It cannot do this since support
+The current Dotty implementation implements the new concepts described on this page (alias instances and the summon method), but it does not remove any of the old-style implicit constructs. It cannot do this since support
 for old-style implicits is an essential part of the common language subset of Scala 2 and Scala 3.0. Any deprecation and subsequent removal of these constructs would have to come later, in a version following 3.0. The `implicit` modifier can be removed from the language at the end of this development, if it happens.
 
-## `instance` As A Modifier.
+## Alias Instances
 
-`instance` can be used as a modifier for `val` and `def` definitions. Examples:
-```scala
-instance val symDeco: SymDeco
-instance val symDeco: SymDeco = compilerSymOps
-instance val ctx = localCtx
-instance def f[T]: C[T] = new C[T]
-instance def g with (ctx: Context): D = new D(ctx)
+An alias instance creates an instance that is equal to some expression.
 ```
-The `instance` modifier must be followed directly by `val` or `def`; no other intervening modifiers are permitted.
-When used as a modifier, `instance` generally has the same meaning as the current `implicit` modifier, with the following exceptions:
-
- 1. `instance def` definitions can only have context parameters in `with` clauses. Old style `implicit` parameters are not supported.
- 2. `instance` cannot be used to define an implicit conversion or an implicit class.
-
+instance ctx of ExecutionContext = currentThreadPool().context
+```
+Here, we create an instance `ctx` of type `ExecutionContext` that resolves to the
+right hand side `currentThreadPool().context`. Each time an instance of `ExecutionContext`
+is demanded, the result of evaluating the right-hand side expression is returned. The instance definition is equivalent to the following implicit definition:
+```
+final implicit def ctx: ExecutionContext = currentThreadPool().context
+```
+Alias instances may be anonymous, e.g.
+```
+instance of Position = enclosingTree.position
+```
+An alias instance can have type and context parameters just like any other instance definition, but it can only implement a single type.
 
 ## Replaced: Implicit Conversions
 
@@ -59,9 +60,8 @@ def summon[T] with (x: T) = x
 
 The syntax changes for this page are summarized as follows:
 ```
-InstanceDef     ::=  ...
-                  |  ‘val’ PatDef
-                  |  ‘def’ MethodDef
+InstanceBody     ::=  ...
+                   |  ‘of’ Type ‘=’ Expr
 ```
 In addition, the `implicit` modifier is removed together with all [productions]((http://dotty.epfl.ch/docs/internals/syntax.html) that reference it.
 

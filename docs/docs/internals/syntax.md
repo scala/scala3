@@ -358,10 +358,9 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr              PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
-DefDef            ::=  MethodDef | ConstructorDef
-MethodDef         ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                      DefDef(_, name, tparams, vparamss, tpe, expr)
+DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                      DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  DefSig [nl] ‘{’ Block ‘}’                                DefDef(_, name, tparams, vparamss, tpe, Block)
-ConstructorDef    ::= ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
+                    |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
@@ -373,11 +372,10 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-InstanceDef       ::=  [id] InstanceParams [‘of’ ConstrApp {‘,’ ConstrApp}]
-                       [TemplateBody]
-                    |  ‘val’ PatDef
-                    |  ‘def’ MethodDef
+InstanceDef       ::=  [id] InstanceParams InstanceBody
 InstanceParams    ::=  [DefTypeParamClause] {InstParamClause}
+InstanceBody      ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+                    |  ‘of’ Type ‘=’ Expr
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
