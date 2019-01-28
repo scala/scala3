@@ -347,15 +347,18 @@ class Definitions {
 
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
-
-    lazy val Predef_ConformsR: TypeRef = ScalaPredefModule.requiredClass("<:<").typeRef
-    def Predef_Conforms(implicit ctx: Context): Symbol = Predef_ConformsR.symbol
     lazy val Predef_conformsR: TermRef = ScalaPredefModule.requiredMethodRef(nme.conforms_)
     def Predef_conforms(implicit ctx: Context): Symbol = Predef_conformsR.symbol
     lazy val Predef_classOfR: TermRef = ScalaPredefModule.requiredMethodRef(nme.classOf)
     def Predef_classOf(implicit ctx: Context): Symbol = Predef_classOfR.symbol
     lazy val Predef_undefinedR: TermRef = ScalaPredefModule.requiredMethodRef(nme.???)
     def Predef_undefined(implicit ctx: Context): Symbol = Predef_undefinedR.symbol
+
+  def SubTypeClass(implicit ctx: Context): Symbol =
+    if (isNewCollections)
+      ctx.requiredClass("scala.<:<")
+    else
+      ScalaPredefModule.requiredClass("<:<")
 
   lazy val ScalaRuntimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context): Symbol = ScalaRuntimeModuleRef.symbol
@@ -397,8 +400,7 @@ class Definitions {
     def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   // TODO: Remove once we drop support for 2.12 standard library
-  lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value ||
-    ctx.base.staticRef("scala.collection.IterableOnce".toTypeName).exists
+  lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value
 
   def getWrapVarargsArrayModule: Symbol = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
 
@@ -585,7 +587,11 @@ class Definitions {
 
   lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
   def ThrowableClass(implicit ctx: Context): ClassSymbol = ThrowableType.symbol.asClass
-  lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
+  lazy val SerializableType: TypeRef       =
+    if (isNewCollections)
+      JavaSerializableClass.typeRef
+    else
+      ctx.requiredClassRef("scala.Serializable")
   def SerializableClass(implicit ctx: Context): ClassSymbol = SerializableType.symbol.asClass
   lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
   def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
