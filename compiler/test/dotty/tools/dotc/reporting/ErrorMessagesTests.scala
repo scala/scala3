@@ -1380,6 +1380,46 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
       }
 
+  @Test def unapplyInvalidReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class A(val i: Int)
+        |
+        |object A {
+        |  def unapply(a: A): Int = a.i
+        |  def test(a: A) = a match {
+        |    case A() => 1
+        |  }
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val UnapplyInvalidReturnType(unapplyResult, unapplyName) :: Nil = messages
+      assertEquals("Int", unapplyResult.show)
+      assertEquals("unapply", unapplyName.show)
+    }
+
+  @Test def unapplySeqInvalidReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class A(val i: Int)
+        |
+        |object A {
+        |  def unapplySeq(a: A): Int = a.i
+        |  def test(a: A) = a match {
+        |    case A() => 1
+        |  }
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val UnapplyInvalidReturnType(unapplyResult, unapplyName) :: Nil = messages
+      assertEquals("Int", unapplyResult.show)
+      assertEquals("unapplySeq", unapplyName.show)
+    }
+
   @Test def staticOnlyAllowedInsideObjects =
     checkMessagesAfter(CheckStatic.name) {
       """

@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.typer.ErrorReporting.Errors
 import scala.util.control.NonFatal
+import StdNames.nme
 
 object messages {
 
@@ -1917,6 +1918,61 @@ object messages {
           |
         |where subsequent arguments would have following types: ($argTypes%, %).
         |""".stripMargin
+  }
+
+  case class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Symbol#ThisName)(implicit ctx: Context)
+    extends Message(UnapplyInvalidReturnTypeID) {
+    val kind = "Type Mismatch"
+    val addendum =
+      if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
+        "\nYou might want to try to rewrite the extractor to use `unapply` instead."
+      else ""
+    val msg = hl"""| ${Red(i"$unapplyResult")} is not a valid result type of an $unapplyName method of an ${Magenta("extractor")}.$addendum"""
+    val explanation = if (unapplyName.show == "unapply")
+      hl"""
+          |To be used as an extractor, an unapply method has to return a type that either:
+          | - has members ${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} (usually an ${Green("Option[S]")})
+          | - is a ${Green("Boolean")}
+          | - is a ${Green("Product")} (like a ${Magenta("Tuple2[T1, T2]")})
+          |
+          |class A(val i: Int)
+          |
+          |object B {
+          |  def unapply(a: A): ${Green("Option[Int]")} = Some(a.i)
+          |}
+          |
+          |object C {
+          |  def unapply(a: A): ${Green("Boolean")} = a.i == 2
+          |}
+          |
+          |object D {
+          |  def unapply(a: A): ${Green("(Int, Int)")} = (a.i, a.i)
+          |}
+          |
+          |object Test {
+          |  def test(a: A) = a match {
+          |    ${Magenta("case B(1)")} => 1
+          |    ${Magenta("case a @ C()")} => 2
+          |    ${Magenta("case D(3, 3)")} => 3
+          |  }
+          |}
+        """.stripMargin
+    else
+      hl"""
+          |To be used as an extractor, an unapplySeq method has to return a type which has members
+          |${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} where ${Magenta("S <: Seq[V]")} (usually an ${Green("Option[Seq[V]]")}):
+          |
+          |object CharList {
+          |  def unapplySeq(s: String): ${Green("Option[Seq[Char]")} = Some(s.toList)
+          |
+          |  "example" match {
+          |    ${Magenta("case CharList(c1, c2, c3, c4, _, _, _)")} =>
+          |      println(s"$$c1,$$c2,$$c3,$$c4")
+          |    case _ =>
+          |      println("Expected *exactly* 7 characters!")
+          |  }
+          |}
+        """.stripMargin
   }
 
   case class StaticFieldsOnlyAllowedInObjects(member: Symbol)(implicit ctx: Context) extends Message(StaticFieldsOnlyAllowedInObjectsID) {

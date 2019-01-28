@@ -116,6 +116,7 @@ public enum ErrorMessageID {
     TraitRedefinedFinalMethodFromAnyRefID,
     PackageNameAlreadyDefinedID,
     UnapplyInvalidNumberOfArgumentsID,
+    UnapplyInvalidReturnTypeID,
     StaticFieldsOnlyAllowedInObjectsID,
     CyclicInheritanceID,
     BadSymbolicReferenceID,
