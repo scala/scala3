@@ -647,7 +647,7 @@ trait Printers
               // Currently the compiler does not allow overriding some of the methods generated for case classes
               d.symbol.flags.is(Flags.Synthetic) &&
               (d match {
-                case DefDef("apply" | "unapply", _, _, _, _) if d.symbol.owner.flags.is(Flags.Object) => true
+                case DefDef("apply" | "unapply" | "writeReplace", _, _, _, _) if d.symbol.owner.flags.is(Flags.Object) => true
                 case DefDef(n, _, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
                   n == "copy" ||
                   n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
