@@ -643,7 +643,7 @@ trait Printers
 
           def keepDefinition(d: Definition): Boolean = {
             val flags = d.symbol.flags
-            def isCaseClassUnOverridableMethod: Boolean = {
+            def isUndecompilableCaseClassMethod: Boolean = {
               // Currently the compiler does not allow overriding some of the methods generated for case classes
               d.symbol.flags.is(Flags.Synthetic) &&
               (d match {
@@ -658,7 +658,7 @@ trait Printers
               })
             }
             def isInnerModuleObject = d.symbol.flags.is(Flags.Lazy) && d.symbol.flags.is(Flags.Object)
-            !flags.is(Flags.Param) && !flags.is(Flags.ParamAccessor) && !flags.is(Flags.FieldAccessor) && !isCaseClassUnOverridableMethod && !isInnerModuleObject
+            !flags.is(Flags.Param) && !flags.is(Flags.ParamAccessor) && !flags.is(Flags.FieldAccessor) && !isUndecompilableCaseClassMethod && !isInnerModuleObject
           }
           val stats1 = stats.collect {
             case IsDefinition(stat) if keepDefinition(stat) => stat
