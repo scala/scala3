@@ -28,7 +28,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   class OffsetInfo(var defs: List[Tree], var ord:Int)
   private[this] val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
 
-  override def phaseName: String = "lazyVals"
+  override def phaseName: String = LazyVals.name
 
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
@@ -435,6 +435,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 }
 
 object LazyVals {
+  val name: String = "lazyVals"
+
   object lazyNme {
     import Names.TermName
     object RLazyVals {
