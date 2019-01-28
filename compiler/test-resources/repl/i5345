@@ -1,0 +1,2 @@
+scala>  def x[A, B]: ImplicitConverter[A, B] = _ => ???
+def x[A, B] => ImplicitConverter[A, B]
