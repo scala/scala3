@@ -1,6 +1,7 @@
 package dotty
 
 import scala.forceInline
+import scala.collection.generic.IsTraversableLike
 
 object DottyPredef {
 
@@ -55,4 +56,14 @@ object DottyPredef {
    * @group utilities
    */
   @forceInline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
+
+  /**
+    * Add an `empty` operation to all collection instances, returning an empty collection
+    * of the same type.
+    */
+  implicit class EmptyOperation[C](c: C)(implicit isTraversable: IsTraversableLike[C]) {
+    // Ideally we would use `withFilter`, but it is not defined on `GenTraversableLike`.
+    def empty: C = isTraversable.conversion(c).filter(_ => false)
+  }
+
 }
