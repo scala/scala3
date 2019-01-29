@@ -83,3 +83,15 @@ community-build/sbt-dotty-sbt
 
 # Vulpix output files
 *.check.out
+
+tastydoc/report/report\.aux
+
+tastydoc/report/report\.fdb_latexmk
+
+tastydoc/report/report\.fls
+
+tastydoc/report/report\.out
+
+tastydoc/report/report\.synctex\.gz
+
+tastydoc/report/report\.toc
