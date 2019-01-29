@@ -68,6 +68,7 @@ sidebar:
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
         - title: New Implicits
+          subsection:
             - title: Instance Definitions
               url: docs/reference/instances/instance-defs.html
             - title: Context Parameters
