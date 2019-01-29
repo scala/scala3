@@ -62,7 +62,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
 
     def printOutput(prefix: String, output: String): Unit = {
       val bytes = output.getBytes
-	  println(prefix+
+      println(prefix+
         " (#chars="+output.length+
         ", #CR="+(bytes.count(_ == 13))+
         ", #LF="+(bytes.count(_ == 10))+
