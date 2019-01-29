@@ -13,19 +13,19 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   /** Representation of objects and values in the interpreter */
   type AbstractAny
 
-  type Result = implicit Env => AbstractAny
+  type Result = Env |=> AbstractAny
 
   def localValue(sym: Symbol)(implicit env: Env): LocalValue = env(sym)
 
-  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: implicit Env => T)(implicit env: Env): T =
-    in(env.updated(sym, value))
+  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: Env |=> T)(implicit env: Env): T =
+    in with env.updated(sym, value)
 
-  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: implicit Env => T)(implicit env: Env): T =
-    in(env ++ syms.zip(values))
+  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: Env |=> T)(implicit env: Env): T =
+    in with (env ++ syms.zip(values))
 
-  def interpretCall(instance: AbstractAny, sym: DefSymbol, args: List[AbstractAny]): Result = {
+  def interpretCall(inst: AbstractAny, sym: DefSymbol, args: List[AbstractAny]): Result = {
     // TODO
-    // withLocalValue(`this`, instance) {
+    // withLocalValue(`this`, inst) {
       val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
       withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
         eval(sym.tree.rhs.get)
@@ -65,7 +65,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretBlock(stats: List[Statement], expr: Term): Result = {
     val newEnv = stats.foldLeft(implicitly[Env])((accEnv, stat) => stat match {
       case ValDef(name, tpt, Some(rhs)) =>
-        def evalRhs = eval(rhs)(accEnv)
+        def evalRhs = eval(rhs) with accEnv
         val evalRef: LocalValue =
           if (stat.symbol.flags.is(Flags.Lazy)) LocalValue.lazyValFrom(evalRhs)
           else if (stat.symbol.flags.is(Flags.Mutable)) LocalValue.varFrom(evalRhs)
@@ -76,10 +76,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
         // TODO: record the environment for closure purposes
         accEnv
       case stat =>
-        eval(stat)(accEnv)
+        eval(stat) with accEnv
         accEnv
     })
-    eval(expr)(newEnv)
+    eval(expr) with newEnv
   }
 
   def interpretUnit(): AbstractAny
