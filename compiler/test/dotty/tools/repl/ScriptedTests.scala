@@ -60,6 +60,16 @@ class ScriptedTests extends ReplTest with MessageRendering {
         case nonEmptyLine => nonEmptyLine :: Nil
       }
 
+    def printOutput(prefix: String, output: String): Unit = {
+      val bytes = output.getBytes
+	  println(prefix+
+        " (#chars="+output.length+
+        ", #CR="+(bytes.count(_ == 13))+
+        ", #LF="+(bytes.count(_ == 10))+
+        ") ========>"+EOL+
+        output.replaceAll("\r", "<CR>").replaceAll("\n", "<LF>"+EOL))
+    }
+ 
     val expectedOutput =
       Source.fromFile(f, "UTF-8").getLines().flatMap(filterEmpties).mkString(EOL)
     val actualOutput = {
@@ -79,10 +89,8 @@ class ScriptedTests extends ReplTest with MessageRendering {
     }
 
     if (expectedOutput != actualOutput) {
-      println("expected =========>")
-      println(expectedOutput)
-      println("actual ===========>")
-      println(actualOutput)
+      printOutput("expected", expectedOutput)
+      printOutput("actual", actualOutput)
 
       fail(s"Error in file $f, expected output did not match actual")
     }
