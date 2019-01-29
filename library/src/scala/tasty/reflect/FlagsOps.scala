@@ -93,8 +93,8 @@ trait FlagsOps extends Core {
     /** Is this symbol a method with default parameters */
     def DefaultParameterized: Flags
 
-    /** Is this symbol member that is assumed to be stable */
-    def Stable: Flags
+    /** Is this symbol member that is assumed to be stable and realizable */
+    def StableRealizable: Flags
 
     /** Is this symbol a parameter */
     def Param: Flags

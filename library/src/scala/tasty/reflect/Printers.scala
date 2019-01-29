@@ -126,7 +126,7 @@ trait Printers
       if (flags.is(Flags.Contravariant)) flagList += "Flags.Contravariant"
       if (flags.is(Flags.Scala2X)) flagList += "Flags.Scala2X"
       if (flags.is(Flags.DefaultParameterized)) flagList += "Flags.DefaultParameterized"
-      if (flags.is(Flags.Stable)) flagList += "Flags.Stable"
+      if (flags.is(Flags.StableRealizable)) flagList += "Flags.StableRealizable"
       if (flags.is(Flags.Param)) flagList += "Flags.Param"
       if (flags.is(Flags.ParamAccessor)) flagList += "Flags.ParamAccessor"
       flagList.result().mkString(" | ")
@@ -501,7 +501,7 @@ trait Printers
       if (flags.is(Flags.Contravariant)) flagList += "contravariant"
       if (flags.is(Flags.Scala2X)) flagList += "scala2x"
       if (flags.is(Flags.DefaultParameterized)) flagList += "defaultParameterized"
-      if (flags.is(Flags.Stable)) flagList += "stable"
+      if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
       if (flags.is(Flags.Param)) flagList += "param"
       if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"
       flagList.result().mkString("/*", " ", "*/")

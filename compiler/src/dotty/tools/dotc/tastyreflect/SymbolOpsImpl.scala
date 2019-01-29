@@ -76,6 +76,10 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
       }
     }
 
+    def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
+      symbol.topLevelClass.asClass.isDefinedInCurrentRun
+    }
+
   }
 
   object IsPackageSymbol extends IsPackageSymbolModule {
@@ -171,6 +175,10 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def DefSymbolDeco(symbol: DefSymbol): DefSymbolAPI = new DefSymbolAPI {
     def tree(implicit ctx: Context): DefDef = FromSymbol.defDefFromSym(symbol)
+
+    def signature(implicit ctx: Context): Signature = {
+      symbol.signature
+    }
   }
 
   object IsValSymbol extends IsValSymbolModule {
@@ -180,6 +188,11 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   def ValSymbolDeco(symbol: ValSymbol): ValSymbolAPI = new ValSymbolAPI {
     def tree(implicit ctx: Context): ValDef = FromSymbol.valDefFromSym(symbol)
+
+    def moduleClass(implicit ctx: Context): Option[ClassSymbol] = {
+      val sym = symbol.moduleClass
+      if (sym.exists) Some(sym.asClass) else None
+    }
 
     def companionClass(implicit ctx: Context): Option[ClassSymbol] = {
       val sym = symbol.companionClass

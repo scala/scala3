@@ -51,6 +51,7 @@ trait SymbolOps extends Core {
     /** Annotations attached to this symbol */
     def annots(implicit ctx: Context): List[Term]
 
+    def isDefinedInCurrentRun(implicit ctx: Context): Boolean
   }
   implicit def SymbolDeco(symbol: Symbol): SymbolAPI
 
@@ -121,7 +122,7 @@ trait SymbolOps extends Core {
   }
 
   trait TypeSymbolAPI {
-    /** TypeDef tree of this defintion. */
+    /** TypeDef tree of this definition. */
     def tree(implicit ctx: Context): TypeDef
   }
   implicit def TypeSymbolDeco(symbol: TypeSymbol): TypeSymbolAPI
@@ -136,6 +137,8 @@ trait SymbolOps extends Core {
   trait DefSymbolAPI {
     /** DefDef tree of this defintion. */
     def tree(implicit ctx: Context): DefDef
+
+    def signature(implicit ctx: Context): Signature
   }
   implicit def DefSymbolDeco(symbol: DefSymbol): DefSymbolAPI
 
@@ -151,8 +154,9 @@ trait SymbolOps extends Core {
     def tree(implicit ctx: Context): ValDef
 
     /** The class symbol of the companion module class */
-    def companionClass(implicit ctx: Context): Option[ClassSymbol]
+    def moduleClass(implicit ctx: Context): Option[ClassSymbol]
 
+    def companionClass(implicit ctx: Context): Option[ClassSymbol]
   }
   implicit def ValSymbolDeco(symbol: ValSymbol): ValSymbolAPI
 
