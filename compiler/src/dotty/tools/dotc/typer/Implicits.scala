@@ -1577,7 +1577,7 @@ final class SearchRoot extends SearchHistory {
             val nrhss = rhss.map(rhsMap(_))
 
             val vdefs = (nsyms zip nrhss) map {
-              case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs)
+              case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
             }
 
             val constr = ctx.newConstructor(classSym, Synthetic, Nil, Nil).entered
