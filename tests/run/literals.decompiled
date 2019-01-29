@@ -1,4 +1,4 @@
-/** Decompiled from out/runTestFromTasty/run/literals/Test.class */
+/** Decompiled from out/runTestFromTasty/run/literals/Test.tasty */
 object Test {
   def αρετη: java.lang.String = "alpha rho epsilon tau eta"
   case class GGG(i: scala.Int) {
@@ -9,13 +9,13 @@ object Test {
       scala.runtime.Statics.finalizeHash(acc, 1)
     }
     override def equals(x$0: scala.Any): scala.Boolean = GGG.this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
-      case x$0: Test.GGG @scala.unchecked() =>
+      case x$0: Test.GGG @scala.unchecked =>
         GGG.this.i.==(x$0.i)
       case _ =>
         false
     })
     override def toString(): java.lang.String = scala.runtime.ScalaRunTime._toString(GGG.this)
-    override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[Test.GGG @scala.unchecked()]
+    override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[Test.GGG @scala.unchecked]
     override def productArity: scala.Int = 1
     override def productPrefix: java.lang.String = "GGG"
     override def productElement(n: scala.Int): scala.Any = n match {
