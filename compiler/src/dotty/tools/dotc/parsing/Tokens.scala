@@ -112,7 +112,8 @@ abstract class TokensCommon {
   //final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   //final val HASH = 82;             enter(HASH, "#")
   final val AT = 83;               enter(AT, "@")
-  //final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
+  //final val CARROW = 84;
+  //final val VIEWBOUND = 85;        enter(VIEWBOUND, "<%") // TODO: deprecate
 
   val keywords: TokenSet
 
@@ -178,6 +179,7 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
+  final val INSTANCE = 64;         enter(INSTANCE, "instance")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -190,15 +192,16 @@ object Tokens extends TokensCommon {
   final val SUBTYPE = 80;          enter(SUBTYPE, "<:")
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
-  final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
-  final val QPAREN = 85;           enter(QPAREN, "'(")
-  final val QBRACE = 86;           enter(QBRACE, "'{")
-  final val QBRACKET = 87;         enter(QBRACKET, "'[")
+  final val CARROW = 84;           enter(CARROW, "|=>")
+  final val VIEWBOUND = 85;        enter(VIEWBOUND, "<%") // TODO: deprecate
+  final val QPAREN = 86;           enter(QPAREN, "'(")
+  final val QBRACE = 87;           enter(QBRACE, "'{")
+  final val QBRACKET = 88;         enter(QBRACKET, "'[")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, ERASED)
+  final val alphaKeywords: TokenSet = tokenRange(IF, INSTANCE)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens: TokenSet = tokenRange(COMMA, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
@@ -221,7 +224,7 @@ object Tokens extends TokensCommon {
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
-  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE)
+  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, INSTANCE)
 
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 

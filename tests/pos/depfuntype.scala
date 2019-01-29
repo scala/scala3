@@ -19,15 +19,15 @@ object Test {
   // Reproduced here because the one from DottyPredef is lacking a parameter dependency of the return type `ev.type`
   inline final def implicitly[T](implicit ev: T): ev.type = ev
 
-  type IDF = implicit (x: C) => x.M
+  type IDF = (x: C) |=> x.M
 
   implicit val ic: C = ???
 
   val ifun: IDF = implicitly[C].m
 
-  val u = ifun(c)
+  val u = ifun with c
   val u1: Int = u
 
-  val v = ifun(d)
+  val v = ifun with d
   val v1: d.M = v
 }

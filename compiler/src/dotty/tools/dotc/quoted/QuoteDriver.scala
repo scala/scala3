@@ -36,9 +36,9 @@ class QuoteDriver extends Driver {
 
     val clazz = classLoader.loadClass(driver.outputClassName.toString)
     val method = clazz.getMethod("apply")
-    val instance = clazz.getConstructor().newInstance()
+    val inst = clazz.getConstructor().newInstance()
 
-    method.invoke(instance).asInstanceOf[T]
+    method.invoke(inst).asInstanceOf[T]
   }
 
   def show(expr: Expr[_], settings: Toolbox.Settings): String = {

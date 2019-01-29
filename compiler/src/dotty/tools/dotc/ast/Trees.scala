@@ -430,6 +430,8 @@ object Trees {
   case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
+
+    def isContextual = getAttachment(untpd.WithApply).nonEmpty
   }
 
   /** fun[args] */
@@ -951,7 +953,7 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val ImplicitEmptyTree: Thicket = new EmptyTree // an empty tree marking an implicit closure
+    @sharable val ContextualEmptyTree: Thicket = new EmptyTree // an empty tree marking a contextual closure
 
     // ----- Auxiliary creation methods ------------------
 

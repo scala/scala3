@@ -123,4 +123,5 @@ class ReTyper extends Typer with ReChecking {
   override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = ()
   override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context): Unit = ()
+  override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean = true
 }

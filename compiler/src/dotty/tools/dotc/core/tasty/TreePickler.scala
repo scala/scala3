@@ -259,7 +259,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      pickleMethodic(methodType(isImplicit = tpe.isImplicitMethod, isErased = tpe.isErasedMethod), tpe)
+      pickleMethodic(methodType(tpe.isContextual, tpe.isImplicitMethod, tpe.isErasedMethod), tpe)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
@@ -655,6 +655,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
       if (flags is StableRealizable) writeByte(STABLE)
       if (flags is Extension) writeByte(EXTENSION)
+      if (flags is Contextual) writeByte(CONTEXTUAL)
       if (flags is ParamAccessor) writeByte(PARAMsetter)
       assert(!(flags is Label))
     } else {

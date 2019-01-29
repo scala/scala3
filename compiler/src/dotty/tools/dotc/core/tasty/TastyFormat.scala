@@ -203,6 +203,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
                   EXTENSION                           // An extension method
+                  CONTEXTUAL                          // new style implicit parameters, introduced with `with`
                   PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
                   Annotation
 
@@ -322,7 +323,8 @@ object TastyFormat {
   final val ERASED = 34
   final val OPAQUE = 35
   final val EXTENSION = 36
-  final val PARAMsetter = 37
+  final val CONTEXTUAL = 37
+  final val PARAMsetter = 38
 
   // Cat. 2:    tag Nat
 
@@ -427,21 +429,23 @@ object TastyFormat {
   final val TYPEREFin = 175
   final val OBJECTDEF = 176
 
-  // In binary: 101101EI
-  // I = implicit method type
-  // E = erased method type
   final val METHODtype = 180
-  final val IMPLICITMETHODtype = 181
-  final val ERASEDMETHODtype = 182
-  final val ERASEDIMPLICITMETHODtype = 183
+  final val ERASEDMETHODtype = 181
+  final val CONTEXTUALMETHODtype = 182
+  final val ERASEDCONTEXTUALMETHODtype = 183
+  final val IMPLICITMETHODtype = 184
+  final val ERASEDIMPLICITMETHODtype = 185
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
 
-  def methodType(isImplicit: Boolean = false, isErased: Boolean = false): Int = {
-    val implicitOffset = if (isImplicit) 1 else 0
-    val erasedOffset = if (isErased) 2 else 0
-    METHODtype + implicitOffset + erasedOffset
+  def methodType(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
+    val implicitOffset =
+      if (isContextual) 2
+      else if (isImplicit) 4
+      else 0
+    val erasedOffset = if (isErased) 1 else 0
+    METHODtype + erasedOffset + implicitOffset
   }
 
   final val HOLE = 255
@@ -493,6 +497,7 @@ object TastyFormat {
        | DEFAULTparameterized
        | STABLE
        | EXTENSION
+       | CONTEXTUAL
        | PARAMsetter
        | ANNOTATION
        | PRIVATEqualified
@@ -553,6 +558,7 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
     case EXTENSION => "EXTENSION"
+    case CONTEXTUAL => "CONTEXTUAL"
     case PARAMsetter => "PARAMsetter"
 
     case SHAREDterm => "SHAREDterm"
@@ -644,8 +650,10 @@ object TastyFormat {
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
     case METHODtype => "METHODtype"
-    case IMPLICITMETHODtype => "IMPLICITMETHODtype"
     case ERASEDMETHODtype => "ERASEDMETHODtype"
+    case CONTEXTUALMETHODtype => "CONTEXTUALMETHODtype"
+    case ERASEDCONTEXTUALMETHODtype => "ERASEDCONTEXTUALMETHODtype"
+    case IMPLICITMETHODtype => "IMPLICITMETHODtype"
     case ERASEDIMPLICITMETHODtype => "ERASEDIMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
@@ -665,8 +673,10 @@ object TastyFormat {
     case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
-    case POLYtype | METHODtype | IMPLICITMETHODtype | ERASEDMETHODtype | ERASEDIMPLICITMETHODtype |
-         TYPELAMBDAtype => -1
+    case POLYtype | TYPELAMBDAtype |
+         METHODtype | ERASEDMETHODtype |
+         CONTEXTUALMETHODtype | ERASEDCONTEXTUALMETHODtype |
+         IMPLICITMETHODtype | ERASEDIMPLICITMETHODtype => -1
     case _ => 0
   }
 }

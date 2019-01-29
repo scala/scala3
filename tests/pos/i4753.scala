@@ -1,13 +1,13 @@
 class A
 
 trait Foo {
-  def foo: implicit A => Int
+  def foo: A |=> Int
 }
 
 class Test {
-  new FooI{}
+  println(new FooI{})
 }
 
 class FooI extends Foo {
-  def foo: implicit A => Int = 3
+  def foo: A |=> Int = 3
 }

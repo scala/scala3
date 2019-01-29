@@ -237,7 +237,7 @@ class CodeTester(projects: List[Project]) {
 
   private def doAction(action: Action): this.type = {
     try {
-      action.execute()(testServer, testServer.client, positions)
+      action.execute() with (testServer, testServer.client, positions)
     } catch {
       case ex: AssertionError =>
         val sourcesStr =
@@ -252,7 +252,7 @@ class CodeTester(projects: List[Project]) {
             |
             |$sourcesStr
             |
-            |while executing action: ${action.show(positions)}
+            |while executing action: ${action.show with positions}
             |
           """.stripMargin
         val assertionError = new AssertionError(msg + ex.getMessage)

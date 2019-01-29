@@ -19,7 +19,7 @@
       }
 
       def sum[T: Monoid](xs: List[T]): T =
-        (instance[T, Monoid].unit /: xs)(_ `add` _)
+        (inst[T, Monoid].unit /: xs)(_ `add` _)
 
 */
 object runtime {
@@ -37,7 +37,7 @@ object runtime {
 
   class CompanionOf[T] { type StaticPart[_] }
 
-  def instance[From, To <: TypeClass](
+  def inst[From, To <: TypeClass](
       implicit ev1: Implementation[From] { type Implemented = To },
       ev2: CompanionOf[To]): Implementation[From] { type Implemented = To } & ev2.StaticPart[From] =
     ev1.asInstanceOf  // can we avoid the cast?
@@ -85,7 +85,7 @@ object semiGroups {
   }
 
   def sum[T](xs: List[T])(implicit $ev: Implementation[T] { type Implemented = Monoid } ) = {
-    (instance[T, Monoid].unit /: xs)((x, y) => inject(x) `add` y)
-    (instance[T, Monoid].unit /: xs)((x, y) => x `add` y)  // fails in scalac and previous dotc.
+    (inst[T, Monoid].unit /: xs)((x, y) => inject(x) `add` y)
+    (inst[T, Monoid].unit /: xs)((x, y) => x `add` y)  // fails in scalac and previous dotc.
   }
 }
