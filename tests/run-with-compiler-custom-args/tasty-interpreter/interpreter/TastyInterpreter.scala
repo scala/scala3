@@ -14,7 +14,7 @@ class TastyInterpreter extends TastyConsumer {
         case DefDef("main", _, _, _, Some(rhs)) =>
           val interpreter = new jvm.Interpreter(reflect)
 
-          interpreter.eval(rhs)(Map.empty)
+          interpreter.eval(rhs) with Map.empty
         // TODO: recurse only for PackageDef, ClassDef
         case tree =>
           super.traverseTree(tree)
