@@ -3,14 +3,14 @@ layout: doc-page
 title: "Implicit Conversions"
 ---
 
-Implicit conversions are defined by instances of the `scala.Conversion` class.
+Implicit conversions are defined by inferred instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
 abstract class Conversion[-T, +U] extends (T => U)
 ```
 For example, here is an implicit conversion from `String` to `Token`:
 ```scala
-instance of Conversion[String, Token] {
+inferred for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
@@ -33,7 +33,7 @@ If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-instance int2Integer of Conversion[Int, java.lang.Integer] {
+inferred int2Integer for Conversion[Int, java.lang.Integer] {
   def apply(x: Int) = new java.lang.Integer(x)
 }
 ```
@@ -56,13 +56,13 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    instance from of Conversion[String, CompletionArg] {
+    inferred from for Conversion[String, CompletionArg] {
       def apply(s: String) = CompletionArg.Error(s)
     }
-    instance from of Conversion[Future[HttpResponse], CompletionArg] {
+    inferred from for Conversion[Future[HttpResponse], CompletionArg] {
       def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
     }
-    instance from of Conversion[Future[StatusCode], CompletionArg] {
+    inferred from for Conversion[Future[StatusCode], CompletionArg] {
       def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
     }
   }

@@ -3,31 +3,31 @@ layout: doc-page
 title: "Implicit Function Types and Closures"
 ---
 
-An implicit function type describes functions with implicit (context) parameters. Example:
+An implicit function type describes functions with inferred parameters. Example:
 ```scala
 type Contextual[T] = given Context => T
 ```
-A value of implicit function type is applied to context arguments, in
-the same way a method with context parameters is applied. For instance:
+A value of implicit function type is applied to inferred arguments, in
+the same way a method with inferred parameters is applied. For instance:
 ```scala
-  implicit val ctx: Context = ...
+  inferred ctx for Context = ...
 
   def f(x: Int): Contextual[Int] = ...
 
   f(2) given ctx   // explicit argument
-  f(2)             // argument left implicit
+  f(2)             // argument is inferred
 ```
 Conversely, if the expected type of an expression `E` is an implicit
 function type `given (T_1, ..., T_n) => U` and `E` is not already an
-implicit function value, `E` is converted to an implicit function value
+implicit function value, `E` is converted to an inferred function value
 by rewriting to
 ```scala
   given (x_1: T1, ..., x_n: Tn) => E
 ```
-where the names `x_1`, ..., `x_n` are arbitrary. Implicit closures are written
-with a `given` prefix. They differ from normal closures in two ways:
+where the names `x_1`, ..., `x_n` are arbitrary. inferred function values are written
+with a `given` prefix. They differ from normal function values in two ways:
 
- 1. Their parameters are implicit context parameters
+ 1. Their parameters are inferred parameters
  2. Their types are implicit function types.
 
 For example, continuing with the previous definitions,

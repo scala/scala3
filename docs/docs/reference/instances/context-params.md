@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Implicit Parameters and Arguments"
+title: "Inferred Parameters and Arguments"
 ---
 
 A new syntax for implicit parameters aligns definition and call syntax. Parameter definitions and method arguments both follow a `given` keyword. On the definition side, the old syntax
@@ -54,8 +54,8 @@ lists in a definition. Example:
 ```scala
 def f given (u: Universe) (x: u.T) given Context = ...
 
-instance global of Universe { type T = String ... }
-instance ctx of Context { ... }
+inferred global for Universe { type T = String ... }
+inferred ctx for Context { ... }
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala
@@ -69,7 +69,7 @@ or as a sequence of types. To distinguish the two, a leading `(` always indicate
 
 ## Summoning an Instance
 
-A method `summon` in `Predef` creates an implicit instance value for a given type, analogously to what `implicitly[T]` did. The only difference between the two is that
+A method `summon` in `Predef` returns the inferred value for a given type, analogously to what `implicitly[T]` did. The only difference between the two is that
 `summon` takes a context parameter, where `implicitly` took an old-style implicit parameter:
 ```scala
 def summon[T] with (x: T) = x
