@@ -407,6 +407,7 @@ object Scanners {
      */
     protected final def fetchToken(): Unit = {
       offset = charOffset - 1
+      name = null
       (ch: @switch) match {
         case ' ' | '\t' | CR | LF | FF =>
           nextChar()

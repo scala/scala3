@@ -18,7 +18,7 @@ trait SimpleExpr { (23, "bar", ) } // error
 trait TypeArgs { def f: ValidGeneric[Int, String, ] } // error
 
 trait TypeParamClause { type C[A, B, ] } // error
-trait FunTypeParamClause { def f[A, B, ] } // error
+trait FunTypeParamClause { def f[A, B, ] } // error // error
 
 trait SimpleType { def f: (Int, String, ) } // error
 trait FunctionArgTypes { def f: (Int, String, ) => Boolean } // error
