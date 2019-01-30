@@ -2038,7 +2038,7 @@ object Parsers {
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
      *  DefParamClause    ::=  [nl] `(' [FunArgMods] [DefParams] ')' | InstParamClause
-     *  InstParamClause   ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+     *  InstParamClause   ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
      *  ContextTypes      ::=  RefinedType {`,' RefinedType}
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
@@ -2109,10 +2109,11 @@ object Parsers {
 
       // begin paramClause
       inParens {
-        if (in.token == RPAREN && !prefix) Nil
+      	val isContextual = impliedMods.is(Contextual)
+        if (in.token == RPAREN && !prefix && !isContextual) Nil
         else {
           def funArgMods(mods: Modifiers): Modifiers =
-            if (in.token == IMPLICIT && !mods.is(Contextual))
+            if (in.token == IMPLICIT && !isContextual)
               funArgMods(addMod(mods, atSpan(accept(IMPLICIT)) { Mod.Implicit() }))
             else if (in.token == ERASED)
               funArgMods(addMod(mods, atSpan(accept(ERASED)) { Mod.Erased() }))
@@ -2148,7 +2149,7 @@ object Parsers {
         newLineOptWhenFollowedBy(LPAREN)
         if (in.token == LPAREN) {
           if (ofInstance && !isContextual)
-            syntaxError(em"parameters of instance definitions must come after `with'")
+            syntaxError(em"parameters of instance definitions must come after `given'")
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,

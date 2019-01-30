@@ -6,6 +6,8 @@ object Test {
 
   def g(x: Int) given (c: C) (y: Int) = x + c.x + y
 
+  def h(x: Int) given () = x // error
+
   implicit object C extends C(11)
 
   f(1)
