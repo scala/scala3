@@ -1,10 +1,14 @@
-package scala
+package scala.compiletime
 
 import scala.quoted._
 
 object StagedTuple {
-  import Tuple._
-  import NonEmptyTuple._
+  import Tuple.Concat
+  import Tuple.Head
+  import Tuple.Tail
+  import Tuple.Size
+  import Tuple.Elem
+  import scala.runtime.DynamicTuple._
 
   private final val specialize = true
 
@@ -12,7 +16,7 @@ object StagedTuple {
     if (!specialize) '{dynamicToArray($tup)}
     else size match {
       case Some(0) =>
-        '{empty$Array}
+        '{scala.runtime.DynamicTuple.empty$Array}
       case Some(1) =>
         tup.as[Tuple1[Object]].bind(t => '{Array($t._1)})
       case Some(2) =>
@@ -121,11 +125,13 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int]): Expr[Elem[Tup, N]] = {
+  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(implicit reflect: tasty.Reflection): Expr[Elem[Tup, N]] = {
+    import reflect._
+
     if (!specialize) '{dynamicApply($tup, $n)}
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
-        case Some(n) => quoted.QuoteError("index out of bounds: " + n)
+        case Some(n) => quoted.QuoteError("index out of bounds: " + n, tup)
         case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
@@ -256,7 +262,5 @@ object StagedTuple {
       val t: U = $expr
       ${in('t)}
     }
-
   }
-
 }

@@ -42,10 +42,10 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
   xTree match {
     case Term.Literal(Constant.Int(n)) =>
       if (n <= 0)
-        throw new QuoteError("Parameter must be natural number")
+        QuoteError("Parameter must be natural number")
       n.toExpr
     case _ =>
-      throw new QuoteError("Parameter must be a known constant")
+      QuoteError("Parameter must be a known constant")
   }
 }
 ```

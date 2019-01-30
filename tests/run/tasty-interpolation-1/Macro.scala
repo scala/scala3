@@ -38,13 +38,13 @@ abstract class MacroStringInterpolator[T] {
     catch {
       case ex: NotStaticlyKnownError =>
         // TODO use ex.expr to recover the position
-        throw new QuoteError(ex.getMessage)
+        QuoteError(ex.getMessage)
       case ex: StringContextError =>
         // TODO use ex.idx to recover the position
-        throw new QuoteError(ex.getMessage)
+        QuoteError(ex.getMessage)
       case ex: ArgumentError =>
         // TODO use ex.idx to recover the position
-        throw new QuoteError(ex.getMessage)
+        QuoteError(ex.getMessage)
     }
   }
 
