@@ -137,11 +137,10 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  [‘erased’] FunArgTypes (‘=>’ | ‘|=>’) Type               Function(ts, t)
+Type              ::=  { ‘erased’ | ‘given’} FunArgTypes ‘=>’ Type              Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
-FunArgMods        ::=  { ‘implicit’ | ‘erased’ }
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
@@ -176,10 +175,9 @@ TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                
 
 ### Expressions
 ```ebnf
-Expr              ::=  [FunArgMods] FunParams ‘=>’ Expr                         Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
-                    |  [‘erased’] FunParams ‘|=>’ Expr
+Expr              ::=  [ClosureMods] FunParams ‘=>’ Expr                        Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
-BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
+BlockResult       ::=  [ClosureMods] FunParams ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -304,6 +302,8 @@ InstParamClause   ::=  ‘given’ (‘(’ [DefParams] ‘)’ | ContextTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ContextTypes      ::=  RefinedType {‘,’ RefinedType}
+FunArgMods        ::=  { ‘implicit’ | ‘erased’ }
+ClosureMods       ::=  { ‘implicit’ | ‘erased’ | ‘given’}
 ```
 
 ### Bindings and Imports

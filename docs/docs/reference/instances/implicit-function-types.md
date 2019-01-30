@@ -5,7 +5,7 @@ title: "Implicit Function Types and Closures"
 
 An implicit function type describes functions with implicit (context) parameters. Example:
 ```scala
-type Contextual[T] = Context |=> T
+type Contextual[T] = given Context => T
 ```
 A value of implicit function type is applied to context arguments, in
 the same way a method with context parameters is applied. For instance:
@@ -18,14 +18,14 @@ the same way a method with context parameters is applied. For instance:
   f(2)             // argument left implicit
 ```
 Conversely, if the expected type of an expression `E` is an implicit
-function type `(T_1, ..., T_n) |=> U` and `E` is not already an
+function type `given (T_1, ..., T_n) => U` and `E` is not already an
 implicit function value, `E` is converted to an implicit function value
 by rewriting to
 ```scala
-  (x_1: T1, ..., x_n: Tn) |=> E
+  given (x_1: T1, ..., x_n: Tn) => E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. Implicit closures are written
-with a `|=>` connective instead of `=>` for normal closures. They differ from normal closures in two ways:
+with a `given` prefix. They differ from normal closures in two ways:
 
  1. Their parameters are implicit context parameters
  2. Their types are implicit function types.
@@ -34,11 +34,11 @@ For example, continuing with the previous definitions,
 ```scala
   def g(arg: Contextual[Int]) = ...
 
-  g(22)      // is expanded to g(ctx |=> 22)
+  g(22)      // is expanded to g(given ctx => 22)
 
-  g(f(2))    // is expanded to g(ctx |=> f(2) given ctx)
+  g(f(2))    // is expanded to g(given ctx => f(2) given ctx)
 
-  g(ctx |=> f(22) given ctx) // is left as it is
+  g(given ctx => f(22) given ctx) // is left as it is
 ```
 Implicit function types have considerable expressive power. For
 instance, here is how they can support the "builder pattern", where
@@ -76,13 +76,13 @@ Then, the `table`, `row` and `cell` constructor methods can be defined
 in terms of implicit function types to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
-  def table(init: Table |=> Unit) = {
+  def table(init: given Table => Unit) = {
     instance t of Table
     init
     t
   }
 
-  def row(init: Row |=> Unit) given (t: Table) = {
+  def row(init: given Row => Unit) given (t: Table) = {
     instance r of Row
     init
     t.add(r)
@@ -93,12 +93,12 @@ that would otherwise be necessary.
 ```
 With that setup, the table construction code above compiles and expands to:
 ```scala
-  table { $t: Table |=>
-    row { $r: Row |=>
+  table { given $t: Table =>
+    row { given $r: Row =>
       cell("top left") given $r
       cell("top right") given $r
     } given $t
-    row { $r: Row |=>
+    row { given $r: Row =>
       cell("bottom left") given $r
       cell("bottom right") given $r
     } given $t

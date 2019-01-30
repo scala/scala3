@@ -2536,8 +2536,9 @@ class Typer extends Namer
               ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.sourcePos)
             case _ =>
           }
-          simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
-      } else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
+        simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
+      }
+      else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)

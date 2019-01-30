@@ -178,10 +178,10 @@ object EtaExpansion extends LiftImpure {
    *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
    *
    *  where `T1, ..., Tn` are the paremeter types of the expanded method.
-   *  If `expr` has a contectual function type, the arguments are passed with `with`.
+   *  If `expr` has implicit function type, the arguments are passed with `given`.
    *  E.g. for (1):
    *
-   *      { val xs = es; (x1, ..., xn) => expr with (x1, ..., xn) }
+   *      { val xs = es; (x1, ..., xn) => expr given (x1, ..., xn) }
    *
    *  Case (3) applies if the method is curried, i.e. its result type is again a method
    *  type. Case (2) applies if the expected arity of the function type `xarity` differs

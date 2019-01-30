@@ -8,12 +8,12 @@ Initial implementation in (#1775)[https://github.com/lampepfl/dotty/pull/1775].
 ## Syntax
 
     Type              ::=  ...
-                        |  FunArgTypes `|=>' Type
+                        |  `given' FunArgTypes `=>' Type
     Expr              ::=  ...
-                        |  FunParams `|=>' Expr
+                        |  `given' FunParams `=>' Expr
 
 Implicit function types associate to the right, e.g.
-`S |=> T => U` is the same as `S => (T => U)`.
+`given S => given T => U` is the same as `given S => (given T => U)`.
 
 ## Implementation
 
@@ -31,7 +31,7 @@ trait ImplicitFunctionN[-T1 , ... , -TN, +R] {
 Implicit function types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
 
-Anonymous implicit function values `(x1: T1, ..., xn: Tn) |=> e` map
+Anonymous implicit function values `given (x1: T1, ..., xn: Tn) => e` map
 implicit parameters `xi` of types `Ti` to a result given by expression `e`.
 The scope of each implicit parameter `xi` is `e`. Implicit parameters must
 have pairwise distinct names.
@@ -53,8 +53,8 @@ expression:
       def apply with (x1: T1, ..., xn: Tn): T = e
     }
 
-In the case of a single untyped implicit parameter, `(x) |=> e` can be
-abbreviated to `x |=> e`.
+In the case of a single untyped implicit parameter, `given (x) => e` can be
+abbreviated to `given x => e`.
 
 A implicit parameter may also be a wildcard represented by an underscore `_`. In
 that case, a fresh name for the parameter is chosen arbitrarily.
@@ -64,7 +64,7 @@ Note: The closing paragraph of the [Anonymous Functions section](https://www
 functions) of the Scala 2.12 is subsumed by implicit function types and should
 be removed.
 
-Anonymous implicit functions `(x1: T1, ..., xn: Tn) |=> e` are
+Anonymous implicit functions `given (x1: T1, ..., xn: Tn) => e` are
 automatically inserted around any expression `e` whose expected type is
 `scala.ImplicitFunctionN[T1, ..., Tn, R]`, unless `e` is
 itself a function literal. This is analogous to the automatic
