@@ -2018,8 +2018,8 @@ object Parsers {
     /** ClsParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
-     *  DefParamClause    ::=  [nl] `(' [FunArgMods] [DefParams] ')' | InstParamClause
-     *  InstParamClause   ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
+     *  DefParamClause    ::=  [nl] `(' [FunArgMods] [DefParams] ')' | InferParamClause
+     *  InferParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
      *  ContextTypes      ::=  RefinedType {`,' RefinedType}
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
@@ -2112,7 +2112,7 @@ object Parsers {
 
     /** ClsParamClauses   ::=  {ClsParamClause}
      *  DefParamClauses   ::=  {DefParamClause}
-     *  InstParamClauses  ::=  {InstParamClause}
+     *  InferParamClauses ::=  {InferParamClause}
      *
      *  @return  The parameter definitions
      */
@@ -2536,7 +2536,7 @@ object Parsers {
     }
 
     /** InstanceDef    ::=  [id] InstanceParams InstanceBody
-     *  InstanceParams ::=  [DefTypeParamClause] {InstParamClause}
+     *  InstanceParams ::=  [DefTypeParamClause] {InferParamClause}
      *  InstanceBody   ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
      *                   |  ‘of’ Type ‘=’ Expr
      */

@@ -144,7 +144,7 @@ instance of Monoid[String] {
 }
 
 def sum[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
+    xs.foldLeft(infer[Monoid[T]].unit)(_.combine(_))
 ```
 Functors and monads:
 ```scala

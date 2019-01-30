@@ -48,9 +48,9 @@ trait StringSeqOps {
   }
 }
 ```
-We can make the extension method available by defining an inferred instance of `StringSeqOps`, like this:
+We can make the extension method available by defining an implicit instance of `StringSeqOps`, like this:
 ```scala
-implicit object ops1 extends StringSeqOps
+instance StringSeqOps1 of StringSeqOps
 ```
 Then
 ```scala
@@ -78,6 +78,25 @@ and where `T` is the expected type. The following two rewritings are tried in or
 
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
 `circle` has type `Circle` and `CircleOps` is an eligible implicit (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
+
+## Instances for Extension Methods
+
+Instances that define extension methods can also be defined without an `of` clause. E.g.,
+
+```scala
+instance StringOps {
+  def (xs: Seq[String]) longestStrings: Seq[String] = {
+    val maxLength = xs.map(_.length).max
+    xs.filter(_.length == maxLength)
+  }
+}
+
+instance ListOps {
+  def (xs: List[T]) second[T] = xs.tail.head
+}
+```
+If such instances are anonymous (as in the examples above), their name is synthesized from the name
+of the first defined extension method.
 
 ### Operators
 
@@ -124,63 +143,10 @@ def (x: T) + [T : Numeric](y: T): T = implicitly[Numeric[T]].plus(x, y)
 As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.
 
 
-### Extension Methods and Type Classes
-
-The rules for expanding extension methods make sure that they work seamlessly with type classes. For instance, consider `SemiGroup` and `Monoid`.
-```scala
-  // Two type classes:
-  trait SemiGroup[T] {
-    def (x: T) combine(y: T): T
-  }
-  trait Monoid[T] extends SemiGroup[T] {
-    def unit: T
-  }
-  object Monoid {
-    // An instance declaration:
-    inferred StringMonoid for Monoid[String] {
-      def (x: String) combine (y: String): String = x.concat(y)
-      def unit: String = ""
-    }
-  }
-
-  // Abstracting over a typeclass with a context bound:
-  def sum[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
-```
-
-In the last line, the call to `_.combine(_)` expands to `(x1, x2) => x1.combine(x2)`,
-which expands in turn to `(x1, x2) => ev.combine(x1, x2)` where `ev` is the inferred
-evidence parameter summoned by the context bound `[T: Monoid]`. This works since
-extension methods apply everywhere their enclosing object is available as an implicit.
-
-To avoid having to write `summon[Monoid[T]].unit` to access the `unit` method in `Monoid[T]`,
-we can make `unit` itself an extension method on the `Monoid` _companion object_,
-as shown below:
-
-```scala
-  trait Monoid[T] extends SemiGroup[T] {
-    def (self: Monoid.type) unit: T
-  }
-  object Monoid {
-    inferred StringMonoid for Monoid[String] {
-      def (x: String) combine (y: String): String = x.concat(y)
-      def (self: Monoid.type) unit: String = ""
-    }
-  }
-```
-
-This allows us to write `Monoid.unit` instead of `summon[Monoid[T]].unit`,
-letting the expected type distinguish which instance we want to use:
-
-```scala
-  def sum[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(Monoid.unit)(_.combine(_))
-```
-
 ### Syntax
 
 The required syntax extension just adds one clause for extension methods relative
-to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.html).
+to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md).
 ```
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses

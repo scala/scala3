@@ -1,0 +1,30 @@
+---
+layout: doc-page
+title: "Context Bounds"
+---
+
+## Context Bounds
+
+A context bound is a shorthand for expressing a common pattern of implicit parameters. For example, the `maximum` function of the last section could also have been written like this:
+```scala
+def maximum[T: Ord](xs: List[T]): T = xs.reduceLeft(max)
+```
+A bound `: C` on a type parameter `T` of a method or class indicates an inferred parameter `given C[T]`. The inferred parameter(s) generated from context bounds come last in the definition of the containing method or class. E.g.,
+```
+def f[T: C1 : C2, U: C3](x: T) given (y: U, z: V): R
+```
+would expand to
+```
+def f[T, U](x: T) given (y: U, z: V) given C1[T], C2[T], C3[U]: R
+```
+Context bounds can be combined with subtype bounds. If both are present, subtype bounds come first, e.g.
+```
+def g[T <: B : C](x: T): R = ...
+```
+
+## Syntax
+
+```
+TypeParamBounds   ::=  [SubtypeBounds] {ContextBound}
+ContextBound      ::=  ‘:’ Type
+```

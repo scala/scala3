@@ -156,7 +156,7 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
-                    |  ‘_’ TypeBounds
+                    |  ‘_’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
 ArgTypes          ::=  Type {‘,’ Type}
@@ -169,8 +169,8 @@ TypeArgs          ::=  ‘[’ ArgTypes ‘]’                                 
 NamedTypeArg      ::=  id ‘=’ Type                                              NamedArg(id, t)
 NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’                  nts
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
-TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
-TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                        ContextBounds(typeBounds, tps)
+SubtypeBounds     ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
+TypeParamBounds   ::=  SubtypeBounds {‘<%’ Type} {‘:’ Type}                     ContextBounds(typeBounds, tps)
 ```
 
 ### Expressions
@@ -281,11 +281,11 @@ DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
 DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
+TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] SubtypeBounds
 
 HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
 HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] | ‘_’)
-                       TypeBounds
+                       SubtypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause}
 ClsParamClause    ::=  [nl] ‘(’ [[FunArgMods] ClsParams] ‘)’
@@ -297,8 +297,8 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
-DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’ | InstParamClause
-InstParamClause   ::=  ‘given’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’ | InferParamClause
+InferParamClause  ::=  ‘given’ (‘(’ [DefParams] ‘)’ | ContextTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ContextTypes      ::=  RefinedType {‘,’ RefinedType}
@@ -346,7 +346,7 @@ VarDcl            ::=  ids ‘:’ Type                                         
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  ‘(’ DefParam ‘)’ [nl] id
                        [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] (TypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
+TypeDcl           ::=  id [TypeParamClause] (SubtypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
                     |  id [TypeParamClause] <: Type = MatchType
 
 Def               ::=  ‘val’ PatDef
@@ -374,7 +374,7 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 InstanceDef       ::=  [id] InstanceParams InstanceBody
-InstanceParams    ::=  [DefTypeParamClause] {InstParamClause}
+InstanceParams    ::=  [DefTypeParamClause] {InferParamClause}
 InstanceBody      ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
                     |  ‘of’ Type ‘=’ Expr
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)

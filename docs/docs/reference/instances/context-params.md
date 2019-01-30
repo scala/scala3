@@ -1,56 +1,76 @@
 ---
 layout: doc-page
-title: "Inferred Parameters and Arguments"
+title: "Inferable Parameters and Arguments"
 ---
 
-A new syntax for implicit parameters aligns definition and call syntax. Parameter definitions and method arguments both follow a `given` keyword. On the definition side, the old syntax
-```scala
-def f(a: A)(implicit b: B)
-```
-is now expressed as
-```scala
-def f(a: A) given (b: B)
-```
-or, leaving out the parameter name,
-```scala
-def f(a: A) given B
-```
-Implicit parameters defined with the new syntax are also called _context parameters_.
-They come with a matching syntax for applications: explicit arguments for context parameters are also written after a `given`.
+Functional programming tends to express most dependencies as simple functions parameterization.
+This is clean and powerful, but it sometimes leads to functions that take many parameters and
+call trees where the same value is passed over and over again in long call chains to many
+functions. Inferable parameters can help here since they enable the compiler to synthesize
+repetitive arguments instead of the programmer having to write them explicitly.
 
-The following example shows shows three methods that each have a context parameter for `Ord[T]`.
-```scala
+For example, given the [instance definitions](./instance-definitions.md) defined previously,
+a maximum function that works for any arguments for which an ordering exists can be defined as follows:
+```
+def max[T](x: T, y: T) given (ord: Ord[T]): T =
+  if (ord.compare(x, y) < 1) y else x
+```
+Here, `ord` is an _inferable parameter_. Inferable parameters are introduced with a `given` clause. Here is an example application of `max`:
+```
+max(2, 3) given IntOrd
+```
+The `given IntOrd` part provides the `IntOrd` instance as an argument for the `ord` parameter. But the point of inferable parameters is that this argument can also be left out (and usually is):
+```
+max(2, 3)
+```
+This is equally valid, and is completed by the compiler to the previous application.
+
+## Anonymous Inferred Parameters
+
+In many situations, the name of an inferable parameter of a method need not be
+mentioned explicitly at all, since it is only used in synthesized arguments for
+other inferable parameters. In that case one can avoid defining a parameter name
+and just provide its type. Example:
+```
 def maximum[T](xs: List[T]) given Ord[T]: T =
-  xs.reduceLeft((x, y) => if (x < y) y else x)
+  xs.reduceLeft(max)
+```
+`maximum` takes an inferable parameter of type `Ord` only to pass it on as an
+inferred argument to `max`. The name of the parameter is left out.
 
+Generally, inferable parameters may be given either as a parameter list `(p_1: T_1, ..., p_n: T_n)`
+or as a sequence of types, separated by commas. To distinguish the two, a leading
+`(` always indicates a parameter list.
+
+## Synthesizing Complex Inferred Arguments
+
+Here are two other methods that have an inferable parameter of type `Ord[T]`:
+```scala
 def descending[T] given (asc: Ord[T]): Ord[T] = new Ord[T] {
-  def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
+  def compare(x: T, y: T) = asc.compare(y, x)
 }
 
 def minimum[T](xs: List[T]) given Ord[T] =
   maximum(xs) given descending
 ```
 The `minimum` method's right hand side passes `descending` as an explicit argument to `maximum(xs)`.
-But usually, explicit arguments for context parameters are be left out. For instance,
+But usually, explicit arguments for inferable parameters are be left out. For instance,
 given `xs: List[Int]`, the following calls are all possible (and they all normalize to the last one:)
 ```scala
-maximum(xs)
+minimum(xs)
 maximum(xs) given descending
-maximum(xs) given (descending given IntOrd)
+maximum(xs) given (descending given ListOrd)
+maximum(xs) given (descending given (ListOrd given InOrd))
 ```
-Arguments for context parameters must use the `given` syntax. So the expression `maximum(xs)(descending)` would produce a type error.
+In summary, the argument passed in the definition of minimum is constructed
+from the `descending` function applied to the argument `ListOrd`, which is
+in turn applied to the argument `IntOrd`.
 
-The `given` connective is treated like an infix operator with the same precedence as other operators that start with a letter. The expression following a `given` may also be an argument list consisting of several implicit arguments separated by commas. If a tuple should be passed as a single implicit argument (probably an uncommon case), it has to be put in a pair of extra parentheses:
-```scala
-def f given (x: A, y: B)
-f given (a, b)
+## Mixing Inferable And Normal Parameters
 
-def g given (xy: (A, B))
-g given ((a, b))
-```
-Unlike existing implicit parameters, context parameters can be freely mixed with normal parameter lists.
-A context parameter may be followed by a normal parameter and _vice versa_. There can be several context parameter
-lists in a definition. Example:
+Inferable parameters can be freely mixed with normal parameter lists.
+An inferable parameter may be followed by a normal parameter and _vice versa_.
+There can be several inferable parameter lists in a definition. Example:
 ```scala
 def f given (u: Universe) (x: u.T) given Context = ...
 
@@ -64,15 +84,17 @@ f("abc")
 f("abc") given ctx
 (f given global)("abc") given ctx
 ```
-Context parameters may be given either as a normal parameter list `(...)`
-or as a sequence of types. To distinguish the two, a leading `(` always indicates a parameter list.
 
-## Summoning an Instance
+## Summmoning an Inferred Instance
 
-A method `summon` in `Predef` returns the inferred value for a given type, analogously to what `implicitly[T]` did. The only difference between the two is that
-`summon` takes a context parameter, where `implicitly` took an old-style implicit parameter:
+A method `infer` in `Predef` creates an instance value for a given type. For example,
+the instance value for `Ord[List[Int]]` is generated by
+```
+infer[Ord[List[Int]]]
+```
+The `infer` method is simply defined as the identity function with an inferable parameter.
 ```scala
-def summon[T] with (x: T) = x
+def infer[T] given (x: T) = x
 ```
 
 ## Syntax
@@ -82,7 +104,10 @@ Here is the new syntax of parameters and arguments seen as a delta from the [sta
 ClsParamClause    ::=  ...
                     |  ‘given’ (‘(’ [ClsParams] ‘)’ | ContextTypes)
 DefParamClause    ::=  ...
-                    |  InstParamClause
+                    |  InferParamClause
+InferParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
+ContextTypes      ::=  RefinedType {‘,’ RefinedType}
+
 InfixExpr         ::=  ...
                     |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
 ```

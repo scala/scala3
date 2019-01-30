@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Implicit Function Types and Closures"
+title: "Implicit Function Types and Values"
 ---
 
 An implicit function type describes functions with inferred parameters. Example:
@@ -24,7 +24,7 @@ by rewriting to
 ```scala
   given (x_1: T1, ..., x_n: Tn) => E
 ```
-where the names `x_1`, ..., `x_n` are arbitrary. inferred function values are written
+where the names `x_1`, ..., `x_n` are arbitrary. Inferred function values are written
 with a `given` prefix. They differ from normal function values in two ways:
 
  1. Their parameters are inferred parameters
@@ -40,6 +40,8 @@ For example, continuing with the previous definitions,
 
   g(given ctx => f(22) given ctx) // is left as it is
 ```
+### Example: Builder Pattern
+
 Implicit function types have considerable expressive power. For
 instance, here is how they can support the "builder pattern", where
 the aim is to construct tables like this:
@@ -104,6 +106,43 @@ With that setup, the table construction code above compiles and expands to:
     } given $t
   }
 ```
+### Example: Postconditions
+
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and extensions to provide a zero-overhead abstraction.
+
+```scala
+object PostConditions {
+  opaque type WrappedResult[T] = T
+
+  private object WrappedResult {
+    def wrap[T](x: T): WrappedResult[T] = x
+    def unwrap[T](x: WrappedResult[T]): T = x
+  }
+
+  def result[T] given (r: WrappedResult[T]): T = WrappedResult.unwrap(r)
+
+  def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
+    inferred for WrappedResult[T] = WrappedResult.wrap(x)
+    assert(condition)
+    x
+  }
+}
+
+object Test {
+  import PostConditions.ensuring
+  val s = List(1, 2, 3).sum.ensuring(result == 6)
+}
+```
+**Explanations**: We use an implicit function type `given WrappedResult[T] => Boolean`
+as the type of the condition of `ensuring`. An argument to `ensuring` such as
+`(result == 6)` will therefore have an implicit value of type `WrappedResult[T]` in scope
+to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure that we do not get unwanted inferred instances in scope (this is good practice in all cases where inferred parameters are involved). Since `WrappedResult` is an opaque type alias, its values need not be boxed, and since `ensuring` is added as an extension method, its argument does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient as the best possible code one could write by hand:
+
+    { val result = List(1, 2, 3).sum
+      assert(result == 6)
+      result
+    }
+
 ### Reference
 
 For more info, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
