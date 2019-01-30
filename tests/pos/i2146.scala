@@ -16,8 +16,8 @@ object Test {
 
   def main(args: Array[String]) = {
     println(foo[A, B])
-    println(foo[A, B] with a)
-    println(foo with a with b)
+    println(foo[A, B] given a)
+    println(foo given a given b)
     val s: A |=> A = simple[A]
     println(s)
     val x0: A |=> B |=> (A, B) = foo[A, B]
@@ -26,7 +26,7 @@ object Test {
     println(x1)
 
     println(bar[A, B])
-    println(bar[A, B] with a)
-    println(bar with a with b)
+    println(bar[A, B] given a)
+    println(bar given a given b)
   }
 }

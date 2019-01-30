@@ -180,6 +180,7 @@ object Tokens extends TokensCommon {
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
   final val INSTANCE = 64;         enter(INSTANCE, "instance")
+  final val GIVEN = 65;            enter(GIVEN, "given")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -201,7 +202,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, INSTANCE)
+  final val alphaKeywords: TokenSet = tokenRange(IF, GIVEN)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens: TokenSet = tokenRange(COMMA, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords

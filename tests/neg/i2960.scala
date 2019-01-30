@@ -24,7 +24,7 @@ class Tag(val name: String,
 
     def apply[U](f: Tag |=> U)(implicit t: Tag = null): this.type = {
         if(t != null) t.children += this
-        f with this
+        f given this
         this
     }
 }

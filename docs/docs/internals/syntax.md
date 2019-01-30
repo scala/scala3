@@ -92,10 +92,11 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ```
 abstract  case      catch     class     def       do        else      enum
-erased    extends   false     final     finally   for       if        implicit
-import    lazy      match     new       null      object    package   private
-protected override  return    super     sealed    then      throw     trait
-true      try       type      val       var       while     with      yield
+erased    extends   false     final     finally   for       given     if
+implicit  import    instance  lazy      match     new       null      object
+package   private   protected override  return    super     sealed    then
+throw     trait     true      try       type      val       var       while
+with      yield
 :         =         <-        =>        <:        :>        #         @
 ```
 
@@ -205,7 +206,7 @@ Catches           ::=  ‘catch’ Expr
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
-                    |  InfixExpr ‘with’ (InfixExpr | ParArgumentExprs)
+                    |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
@@ -290,7 +291,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause}
 ClsParamClause    ::=  [nl] ‘(’ [[FunArgMods] ClsParams] ‘)’
-                    |  ‘with’ (‘(’ ([[FunArgMods] ClsParams] ‘)’ | ContextTypes)
+                    |  ‘given’ (‘(’ ([[FunArgMods] ClsParams] ‘)’ | ContextTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -299,7 +300,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’ | InstParamClause
-InstParamClause   ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+InstParamClause   ::=  ‘given’ (‘(’ [DefParams] ‘)’ | ContextTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ContextTypes      ::=  RefinedType {‘,’ RefinedType}

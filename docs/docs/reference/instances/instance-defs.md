@@ -29,7 +29,7 @@ instance ListOrd[T: Ord] of Ord[List[T]] {
 }
 ```
 Instance definitions can be seen as shorthands for what is currently expressed with implicit object and method definitions.
-For instance, the definition of instance `IntOrd` above defines an implicit value of type `Ord[Int]`. It is hence equivalent
+For example, the definition of instance `IntOrd` above defines an implicit value of type `Ord[Int]`. It is hence equivalent
 to the following implicit object definition:
 ```scala
 implicit object IntOrd extends Ord[Int] {
@@ -83,7 +83,15 @@ If the name of an instance is missing, the compiler will synthesize a name from
 the type in the of clause, or, if that is missing, from the first defined
 extension method.
 
-## Conditional Instances
+**Aside: ** Why anonymous instances?
+
+ - It avoids clutter, relieving the programmer from having to invent names that are never referred to.
+   Usually the invented names are either meaning less (e.g. `ev1`), or they just rephrase the implemented type.
+ - It gives a systematic foundation for synthesized instance definitions, such as those coming from a `derives` clause.
+ - It achieves a uniform principle that the name of an implicit is always optional, no matter
+   whether the implicit is an instance definition or an implicit parameter.
+
+## Conditional Implicits
 
 An instance definition can depend on another instance being defined. Example:
 ```scala
@@ -91,20 +99,23 @@ trait Conversion[-From, +To] {
   def apply(x: From): To
 }
 
-instance [S, T] with (c: Conversion[S, T]) of Conversion[List[S], List[T]] {
+instance [S, T] given (c: Conversion[S, T]) of Conversion[List[S], List[T]] {
   def convert(x: List[From]): List[To] = x.map(c.apply)
 }
 ```
 This defines an implicit conversion from `List[S]` to `List[T]` provided there is an implicit conversion from `S` to `T`.
-The `with` clause instance defines required instances. The instance of `Conversion[List[From], List[To]]` above is defined only if an instance of `Conversion[From, To]` exists.
+The `given` clause defines required instances. The `Conversion[List[From], List[To]]` instance above
+is defined only if a `Conversion[From, To]` instance exists.
 
-Context bounds in instance definitions also translate to implicit parameters, and therefore they can be represented alternatively as with clauses. For instance, here is an equivalent definition of the `ListOrd` instance:
+Context bounds in instance definitions also translate to implicit parameters,
+and therefore they can be represented alternatively as with clauses. For example,
+here is an equivalent definition of the `ListOrd` instance:
 ```scala
-instance ListOrd[T] with (ord: Ord[T]) of List[Ord[T]] { ... }
+instance ListOrd[T] given (ord: Ord[T]) of List[Ord[T]] { ... }
 ```
-The name of a parameter in a `with` clause can also be left out, as shown in the following variant of `ListOrd`:
+The name of a parameter in a `given` clause can also be left out, as shown in the following variant of `ListOrd`:
 ```scala
-instance ListOrd[T] with Ord[T] of List[Ord[T]] { ... }
+instance ListOrd[T] given Ord[T] of List[Ord[T]] { ... }
 ```
 As usual one can then infer to implicit parameter only indirectly, by passing it as implicit argument to another function.
 
@@ -187,9 +198,10 @@ TmplDef          ::=  ...
                   |  ‘instance’ InstanceDef
 InstanceDef      ::=  [id] InstanceParams InstanceBody
 InstanceParams   ::=  [DefTypeParamClause] {InstParamClause}
-InstParamClause  ::=  ‘with’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+InstParamClause  ::=  ‘given’ (‘(’ [DefParams] ‘)’ | ContextTypes)
 InstanceBody     ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
                    |  ‘of’ Type ‘=’ Expr
 ContextTypes     ::=  RefinedType {‘,’ RefinedType}
 ```
-The identifier `id` can be omitted only if either the `of` part or the template body is present. If the `of` part is missing, the template body must define at least one extension method.
+The identifier `id` can be omitted only if either the `of` part or the template body is present.
+If the `of` part is missing, the template body must define at least one extension method.
