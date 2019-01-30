@@ -191,6 +191,45 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
         def isTrait: Boolean = symbol.flags.is(Flags.Trait)
 
+        def isConstructor(implicit ctx: Context): Boolean =
+          symbol.name == "<init>"
+
+        def isVarAccessor(implicit ctx: Context): Boolean = {
+          symbol.isVal && symbol.flags.is(Flags.Mutable)
+        }
+
+        def isValMethod(implicit ctx: Context): Boolean = {
+          symbol.isMethod && {
+            (symbol.flags.is(Flags.FieldAccessor)  && symbol.flags.is(Flags.Stable) ) ||
+            (symbol.isUsefulField && !symbol.flags.is(Flags.Mutable) )
+          }
+        }
+
+        def isAnonymousClassConstructor(implicit ctx: Context): Boolean = {
+          symbol.isConstructor && symbol.owner.isAnonymousClass
+        }
+
+        def isAnonymousSelfParameter(implicit ctx: Context): Boolean = {
+          symbol.isSelfParameter && {
+            symbol.name == tpnme.this_.toString || // hardlinked in ClassSignature.self
+            symbol.name.startsWith("x$") // wildcards can't be referenced: class A { _: B => }
+          }
+        }
+
+        def isWildCard(implicit ctx: Context): Boolean = {
+          symbol.name.startsWith(tpnme.WILDCARD.toString) &&
+          symbol.name != tpnme.THIS.toString
+        }
+
+        def isAnonymousInit(implicit ctx: Context): Boolean = {
+          return symbol.exists && symbol.owner.exists &&
+          (symbol.owner.isAnonymousFunction || symbol.owner.isAnonymousClass) &&
+          symbol.name == "<init>"
+        }
+
+        /* The following methods are directly extracted from the scala
+        implementation of SemanticDB (scalameta/semanticdb/scalac/library/src/main/scala/scala/meta/internal/semanticdb/scalac/SymbolOps.scala)
+        */
         def isValueParameter: Boolean = symbol.isParameter && !symbol.isType && !symbol.flags.is(Flags.ParamAccessor)
 
         def isJavaClass: Boolean = (symbol.isClass || symbol.isObject) && symbol.flags.is(Flags.JavaDefined)
@@ -213,9 +252,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           def ownerLocal = symbol.owner.isSemanticdbLocal
           !definitelyGlobal && (definitelyLocal || ownerLocal)
         }
-
-        def isConstructor(implicit ctx: Context): Boolean =
-          symbol.name == "<init>"
 
         def isSyntheticConstructor(implicit ctx: Context): Boolean = {
           val isObjectConstructor = symbol.isConstructor && symbol.owner.exists && symbol.owner.flags.is(Flags.Object)
@@ -247,17 +283,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           }
         }
 
-        def isVarAccessor(implicit ctx: Context): Boolean = {
-          symbol.isVal && symbol.flags.is(Flags.Mutable)
-        }
-
-        def isValMethod(implicit ctx: Context): Boolean = {
-          symbol.isMethod && {
-            (symbol.flags.is(Flags.FieldAccessor)  && symbol.flags.is(Flags.Stable) ) ||
-            (symbol.isUsefulField && !symbol.flags.is(Flags.Mutable) )
-          }
-        }
-
         /* the `isFieldForPrivateThis` is commented out otherwise class members of the form
           "private[this] val foo" are not converted to symbol occurences.
           In the original semanticdb this line is commented out.
@@ -284,9 +309,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           }
           !resolved.flags.is(Flags.Package)  && resolved.flags.is(Flags.JavaDefined)  && resolved.flags.is(Flags.Object)
         }
-        def isAnonymousClassConstructor(implicit ctx: Context): Boolean = {
-          symbol.isConstructor && symbol.owner.isAnonymousClass
-        }
         def isSyntheticAbstractType(implicit ctx: Context): Boolean = {
           symbol.flags.is(Flags.Synthetic)  && symbol.isAbstractType // these are hardlinked to TypeOps
         }
@@ -297,12 +319,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           symbol.name.startsWith("x$") &&
           symbol.owner.isAnonymousFunction
         }
-        def isAnonymousSelfParameter(implicit ctx: Context): Boolean = {
-          symbol.isSelfParameter && {
-            symbol.name == tpnme.this_.toString || // hardlinked in ClassSignature.self
-            symbol.name.startsWith("x$") // wildcards can't be referenced: class A { _: B => }
-          }
-        }
         def isStaticMember(implicit ctx: Context): Boolean =
           symbol.exists &&
             (symbol.flags.is(Flags.Static)  || symbol.owner.flags.is(Flags.ImplClass)  ||
@@ -312,23 +328,14 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           (symbol.isStaticMember && symbol.isClassConstructor) || (symbol.name == tpnme.STATIC_CONSTRUCTOR.toString)
         }
 
+        /* End of methods imported from the scala version of SemanticDB */
+
         def isInitChild(implicit ctx: Context): Boolean = {
           if (symbol.exists && symbol.owner.exists) {
             return symbol.owner.name == "<init>" || symbol.owner.isInitChild
           } else {
             return false
           }
-        }
-
-        def isWildCard(implicit ctx: Context): Boolean = {
-          symbol.name.startsWith(tpnme.WILDCARD.toString) &&
-          symbol.name != tpnme.THIS.toString
-        }
-
-        def isAnonymousInit(implicit ctx: Context): Boolean = {
-          return symbol.exists && symbol.owner.exists &&
-          (symbol.owner.isAnonymousFunction || symbol.owner.isAnonymousClass) &&
-          symbol.name == "<init>"
         }
 
         def isUseless(implicit ctx: Context): Boolean = {

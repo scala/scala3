@@ -45,14 +45,14 @@ object Main {
       var cleanedArgs = args
       cleanedArgs += "out" -> cleanedArgs.getOrElse("out", "out.semanticdb")
       if (cleanedArgs.contains("help") || !cleanedArgs.contains("input")) {
-        return None
+        None
       } else {
         cleanedArgs += "classpath" -> cleanedArgs.getOrElse("classpath", Files.createTempDirectory("semanticdb").toString)
         val tempFolder = new File(cleanedArgs("classpath"));
         if (!tempFolder.exists()){
             tempFolder.mkdir();
         }
-        return Some(cleanedArgs)
+        Some(cleanedArgs)
       }
     }
     case None => None
@@ -69,8 +69,7 @@ object Main {
      cliArgs("input") ::
     Nil
 
-    val reporter = driver.process(compilerParams.toArray)
-    return reporter
+    driver.process(compilerParams.toArray)
   }
 
 
