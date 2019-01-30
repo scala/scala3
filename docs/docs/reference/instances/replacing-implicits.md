@@ -41,8 +41,8 @@ Most use cases of implicit classes are already covered by extension methods. For
 ## Drop: Implicit As A Modifier
 
  - Old-style implicit parameters are replaced by `given` parameters.
- - Implicit function types `implicit T => U` are written `T |=> U`
- - Implicit closures `implicit x => e` are written `x |=> e`
+ - Implicit function types `implicit T => U` are written `given T => U`
+ - Implicit closures `implicit x => e` are written `given x => e`
  - All remaining implicit `val` and `def` definition are replaced by normal
    `val` or `def` definitions and implicit aliases.=
 

@@ -125,13 +125,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else simpleNameString(tsym)
     }
 
-  protected def arrowText(contextual: Boolean): Text = if (contextual) " |=> " else " => "
-
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ argsText(args) ~ ")"
 
-    def toTextFunction(args: List[Type], contextual: Boolean, isErased: Boolean): Text =
+    def toTextFunction(args: List[Type], isContextual: Boolean, isErased: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if (args.length == 2 && !defn.isTupleType(args.head))
@@ -139,11 +137,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           else
             toTextTuple(args.init)
         (keywordText("erased ") provided isErased) ~
-        argStr ~ arrowText(contextual) ~ argText(args.last)
+        (keywordText("given ") provided isContextual) ~
+        argStr ~ " => " ~ argText(args.last)
       }
 
-    def toTextDependentFunction(appType: MethodType): Text =
-      "(" ~ paramsText(appType) ~ ")" ~ arrowText(appType.isContextual) ~ toText(appType.resultType)
+    def toTextDependentFunction(appType: MethodType): Text = // !!!!
+      (keywordText("given ") provided appType.isImplicitMethod) ~
+      "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
 
     def isInfixType(tp: Type): Boolean = tp match {
       case AppliedType(tycon, args) =>
@@ -530,7 +530,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
           case _ => "(" ~ Text(args map argToText, ", ") ~ ")"
         }
-        changePrec(GlobalPrec) { argsText ~ arrowText(contextual) ~ toText(body) }
+        changePrec(GlobalPrec) {
+		  (keywordText("given ") provided contextual) ~
+          argsText ~ " => " ~ toText(body)
+        }
       case InfixOp(l, op, r) =>
         val opPrec = parsing.precedence(op.name)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }

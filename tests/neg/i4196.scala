@@ -1,6 +1,6 @@
 object Test {
   @annotation.tailrec
-  def foo(i: Unit |=> Int): Unit |=> Int =
+  def foo(i: given Unit => Int): given Unit => Int =
     if (i == 0)
       0
     else
