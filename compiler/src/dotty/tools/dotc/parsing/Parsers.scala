@@ -535,7 +535,7 @@ object Parsers {
           }
           else recur(operand())
         }
-        else if (in.token == WITH) {
+        else if (in.token == GIVEN) {
           val top1 = reduceStack(base, top, minInfixPrec, leftAssoc = true, nme.WITHkw, isType)
           assert(opStack `eq` base)
           val app = atSpan(startOffset(top1), in.offset) {
@@ -2139,7 +2139,7 @@ object Parsers {
                      ofInstance: Boolean = false): List[List[ValDef]] = {
       def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] = {
         val initialMods =
-          if (in.token == WITH) {
+          if (in.token == GIVEN) {
             in.nextToken()
             Modifiers(Contextual | Implicit)
           }

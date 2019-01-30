@@ -13,14 +13,14 @@ object Test {
 
     val xx: (String, Int) |=> Int = (x: String, y: Int) |=> x.length + y
 
-    val y: String => Boolean = x with _
+    val y: String => Boolean = x given _
 
     object nested {
       implicit val empty: String = ""
       assert(!x)
     }
 
-    val yy: (String, Int) => Any = xx with (_, _)
+    val yy: (String, Int) => Any = xx given (_, _)
 
     val z1: String |=> Boolean = implicitly[String].length >= 2
     assert(z1)
@@ -40,7 +40,7 @@ object Test {
     val z4: GenericImplicit[String] = implicitly[String].length >= 2
     assert(z4)
 
-    val b = x with "hello"
+    val b = x given "hello"
 
     val b1: Boolean = b
 
@@ -48,7 +48,7 @@ object Test {
 
     val bi1: Boolean = bi
 
-    val c = xx with ("hh", 22)
+    val c = xx given ("hh", 22)
 
     val c1: Int = c
 
@@ -56,7 +56,7 @@ object Test {
 
     def foo(s: String): Stringly[Int] = 42
 
-    (if ("".isEmpty) foo("") else foo("")).apply with ""
+    (if ("".isEmpty) foo("") else foo("")).apply given ""
   }
 }
 
@@ -81,11 +81,11 @@ object Contextual {
   def ctx: Ctx[Context] = implicitly[Context]
 
   def compile(s: String): Ctx[Boolean] =
-    (runOn(new java.io.File(s)) with ctx.withBinding(Source, s)) >= 0
+    (runOn(new java.io.File(s)) given ctx.withBinding(Source, s)) >= 0
 
   def runOn(f: java.io.File): Ctx[Int] = {
     val options = List("-verbose", "-explaintypes")
-    process(f).apply with ctx.withBinding(Options, options)
+    process(f).apply given ctx.withBinding(Options, options)
   }
 
   def process(f: java.io.File): Ctx[Int] =

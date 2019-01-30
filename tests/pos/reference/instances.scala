@@ -37,7 +37,7 @@ object Instances extends Common {
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  instance ListOrd[T] with Ord[T] of Ord[List[T]] {
+  instance ListOrd[T] given Ord[T] of Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -73,21 +73,21 @@ object Instances extends Common {
       ctx => x
   }
 
-  def maximum[T](xs: List[T]) with Ord[T]: T =
+  def maximum[T](xs: List[T]) given Ord[T]: T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T] with (asc: Ord[T]): Ord[T] = new Ord[T] {
+  def descending[T] given (asc: Ord[T]): Ord[T] = new Ord[T] {
     def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
   }
 
-  def minimum[T](xs: List[T]) with Ord[T] =
-    maximum(xs) with descending
+  def minimum[T](xs: List[T]) given Ord[T] =
+    maximum(xs) given descending
 
   def test(): Unit = {
     val xs = List(1, 2, 3)
     println(maximum(xs))
-    println(maximum(xs) with descending)
-    println(maximum(xs) with (descending with IntOrd))
+    println(maximum(xs) given descending)
+    println(maximum(xs) given (descending given IntOrd))
     println(minimum(xs))
   }
 
@@ -116,7 +116,7 @@ object Instances extends Common {
 
   class D[T]
 
-  class C with (ctx: Context) {
+  class C given (ctx: Context) {
     def f() = {
       locally {
         instance of Context = this.ctx
@@ -132,7 +132,7 @@ object Instances extends Common {
         println(summon[D[Int]])
       }
       locally {
-        instance with Context of D[Int]
+        instance given Context of D[Int]
         println(summon[D[Int]])
       }
     }
@@ -155,11 +155,11 @@ object PostConditions {
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
-  def result[T] with (wrapped: WrappedResult[T]): T = wrapped.unwrap
+  def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
   instance {
     def (x: T) ensuring[T] (condition: WrappedResult[T] |=> Boolean): T = {
-      assert(condition with WrappedResult(x))
+      assert(condition given WrappedResult(x))
       x
     }
   }
@@ -193,7 +193,7 @@ object AnonymousInstances extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  instance [From, To] with (c: Convertible[From, To]) of Convertible[List[From], List[To]] {
+  instance [From, To] given (c: Convertible[From, To]) of Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 

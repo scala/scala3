@@ -2,15 +2,15 @@ object Test {
   import scala.compiletime.constValue
 
   class Context {
-    inline def assumeIn[T](op: => Context |=> T) = {
+    inline def givenIn[T](op: => Context |=> T) = {
       instance of Context = this
       op
     }
   }
 
   def ctx: Context = new Context
-  def g with Context = ()
-  ctx.assumeIn(g)
+  def g given Context = ()
+  ctx.givenIn(g)
 
 /* The last three statements shoudl generate the following code:
 

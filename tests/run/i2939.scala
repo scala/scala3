@@ -8,7 +8,7 @@ class Tag(val name: String, val buffer: Buffer[Tag] = ArrayBuffer()) {
 	}
 
 	def apply[U](f: Tag |=> U)(implicit tag: Tag = null): this.type = {
-		f with this
+		f given this
 		if(tag != null) tag.buffer += this
 		this
 	}

@@ -8,6 +8,6 @@ object Test {
   }
 
   def fun(f: erased Int |=> String): String = {
-    f with 35
+    f given 35
   }
 }

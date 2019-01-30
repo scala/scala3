@@ -33,13 +33,16 @@ Can implicit function types help? Implicit function types allow to abstract over
 
 ### Alternative Design
 
-`implicit` is a modifier that gets attached to various constructs. I.e. we talk about implicit vals, defs, objects, parameters, or arguments. This conveys mechanism rather than intent. What _is_ the intent that we want to convey? Ultimately it's "trade types for terms". The programmer specifies a type and the compiler fills in the term matching that type automatically. So the concept we are after would serve to express definitions that provide the canonical _instances_ for certain types.
+`implicit` is a modifier that gets attached to various constructs.
+I.e. we talk about implicit vals, defs, objects, parameters, or arguments.
+This conveys mechanism rather than intent. What _is_ the intent that we want to convey?
+Ultimately it's "trade types for terms". The programmer specifies a type and the compiler
+fills in the term matching that type automatically. So the concept we are after would
+serve to express definitions that provide the canonical _instances_ for certain types.
 
-The next sections elaborate such an alternative design. It consists of three proposals:
+The next sections elaborate this alternative design. It consists of the following pages:
 
- - A proposal to replace implicit _definitions_ by [instance definitions](./instance-defs.html).
- - A proposal for a [new syntax](./context-params.html) of implicit _parameters_ and their _arguments_.
- - A proposal to [replace all remaining usages](./replacing-implicits.html) of `implicit` in the language.
-
-The first two proposals are independent of each other. The last one would work only if the first two are adopted.
-A [discussion page](./discussion.html) summarizes and evaluates the proposal.
+ - a proposal to replace implicit _definitions_ by [instance definitions](./instance-defs.md),
+ - a proposal for a [new syntax](./context-params.md) of implicit _parameters_ and their _arguments_,
+ - updates to the syntax for [implicit function types and closures](./implicit-function-types.md),
+ - a new way to express [implicit conversions](./implicit-conversions.md) as instances of a special trait,

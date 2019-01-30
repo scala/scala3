@@ -77,10 +77,8 @@ sidebar:
               url: docs/reference/instances/implicit-function-types.html
             - title: Implicit Conversions
               url: docs/reference/instances/implicit-conversions.html
-            - title: Replacing Implicits
+            - title: ReplacedImplicits
               url: docs/reference/instances/replacing-implicits.html
-            - title: Discussion
-              url: docs/reference/instances/discussion.html
         - title: Other Changed Features
           subsection:
             - title: Volatile Lazy Vals
