@@ -200,7 +200,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
         def isValMethod(implicit ctx: Context): Boolean = {
           symbol.isMethod && {
-            (symbol.flags.is(Flags.FieldAccessor)  && symbol.flags.is(Flags.Stable) ) ||
+            (symbol.flags.is(Flags.FieldAccessor)  && symbol.flags.is(Flags.StableRealizable) ) ||
             (symbol.isUsefulField && !symbol.flags.is(Flags.Mutable) )
           }
         }
