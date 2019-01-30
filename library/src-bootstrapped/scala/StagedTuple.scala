@@ -177,7 +177,7 @@ object StagedTuple {
     }
   }
 
-  def stagedCons[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]): Expr[H *: T] =
+  def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]): Expr[H *: T] =
   if (!specialize) '{dynamic_*:[T, H]($self, $x)}
   else {
     val res = tailSize match {
@@ -199,7 +199,7 @@ object StagedTuple {
     res.as[H *: T]
   }
 
-  def stagedConcat[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int]): Expr[Concat[Self, That]] = {
+  def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int]): Expr[Concat[Self, That]] = {
     if (!specialize) '{dynamic_++[Self, That]($self, $that)}
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
@@ -211,7 +211,7 @@ object StagedTuple {
           that
         case Some(1) =>
           if (thatSize.contains(0)) self
-          else stagedCons(that, '{$self.asInstanceOf[Tuple1[_]]._1}, thatSize)
+          else consStaged(that, '{$self.asInstanceOf[Tuple1[_]]._1}, thatSize)
         case Some(2) =>
           val self2 = self.as[Tuple2[_, _]]
           thatSize match {
