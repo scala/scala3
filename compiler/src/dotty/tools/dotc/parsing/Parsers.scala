@@ -2816,9 +2816,11 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
+        else if (in.token == GIVEN)
+          stats += implicitClosure(in.offset, Location.InBlock, modifiers(closureMods))
         else if (isExprIntro)
           stats += expr(Location.InBlock)
-        else if (isDefIntro(localModifierTokens) || in.token == GIVEN) // !!!!
+        else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT || in.token == ERASED || in.token == GIVEN) {
             val start = in.offset
             var imods = modifiers(closureMods)

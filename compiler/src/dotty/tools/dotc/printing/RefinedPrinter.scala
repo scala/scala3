@@ -141,7 +141,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         argStr ~ " => " ~ argText(args.last)
       }
 
-    def toTextDependentFunction(appType: MethodType): Text = // !!!!
+    def toTextDependentFunction(appType: MethodType): Text =
+      (keywordText("erased ") provided appType.isErasedMethod) ~
       (keywordText("given ") provided appType.isImplicitMethod) ~
       "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
 
