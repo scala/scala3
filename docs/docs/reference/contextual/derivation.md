@@ -47,8 +47,8 @@ These two conditions ensure that the synthesized derived instances for the trait
 ```scala
   def derived[T] with Generic[T] = ...
 ```
-That is, the `derived` method takes an inferable parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. A `Generic` instance is generated automatically
-for any types that derives a typeclass that needs it. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
+That is, the `derived` method takes an inferable parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. An implied `Generic` instance is generated automatically for any type that derives a typeclass with a `derived`
+method that refers to `Generic`. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
 ```scala
 sealed trait ParseResult[T] derives Generic
 ```
@@ -97,7 +97,7 @@ Cases[(
 Note that an empty element tuple is represented as type `Unit`. A single-element tuple
 is represented as `T *: Unit` since there is no direct syntax for such tuples: `(T)` is just `T` in parentheses, not a tuple.
 
-### The Generic TypeClass
+### The Generic Typeclass
 
 For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an implied instance of `Generic[C[T_1,...,T_n]]` that follows
 the outline below:

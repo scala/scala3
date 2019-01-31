@@ -94,7 +94,7 @@ The `infer` method is simply defined as the identity function over an inferable 
 ```scala
 def infer[T] given (x: T) = x
 ```
-Functions like `infer` that have only inferable parameters are also called implicit _queries_.
+Functions like `infer` that have only inferable parameters are also called _context queries_.
 
 ## Syntax
 

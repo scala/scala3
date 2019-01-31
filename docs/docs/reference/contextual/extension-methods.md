@@ -78,23 +78,23 @@ and where `T` is the expected type. The following two rewritings are tried in or
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
 `circle` has type `Circle` and `CircleOps` is an eligible implied instance (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
-## Instances for Extension Methods
+### Implied Instances for Extension Methods
 
-Instances that define extension methods can also be defined without an `of` clause. E.g.,
+Implied instances that define extension methods can also be defined without an `of` clause. E.g.,
 
 ```scala
-instance StringOps {
+implied StringOps {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-instance ListOps {
+implied ListOps {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such instances are anonymous (as in the examples above), their name is synthesized from the name
+If such implied instances are anonymous (as in the examples above), their name is synthesized from the name
 of the first defined extension method.
 
 ### Operators
@@ -102,7 +102,7 @@ of the first defined extension method.
 The extension method syntax also applies to the definition of operators.
 In each case the definition syntax mirrors the way the operator is applied.
 Examples:
-```
+```scala
   def (x: String) < (y: String) = ...
   def (x: Elem) +: (xs: Seq[Elem]) = ...
 
@@ -110,7 +110,7 @@ Examples:
   1 +: List(2, 3)
 ```
 The two definitions above translate to
-```
+```scala
   def < (x: String)(y: String) = ...
   def +: (xs: Seq[Elem])(x: Elem) = ...
 ```
@@ -120,23 +120,17 @@ to the implementation of right binding operators as normal methods.
 
 ### Generic Extensions
 
-The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible to extend a generic type by adding type parameters to an extension method:
+The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible to extend a generic type by adding type parameters to an extension method. Examples:
 
 ```scala
-def (xs: List[T]) second [T] = xs.tail.head
-```
+def (xs: List[T]) second [T] =
+  xs.tail.head
 
-or:
+def (xs: List[List[T]]) flattened [T] =
+  xs.foldLeft[List[T]](Nil)(_ ++ _)
 
-
-```scala
-def (xs: List[List[T]]) flattened [T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
-```
-
-or:
-
-```scala
-def (x: T) + [T : Numeric](y: T): T = implicitly[Numeric[T]].plus(x, y)
+def (x: T) + [T : Numeric](y: T): T =
+  implicitly[Numeric[T]].plus(x, y)
 ```
 
 As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.

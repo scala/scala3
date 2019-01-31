@@ -3,7 +3,7 @@ layout: doc-page
 title: "Inferable By-Name Parameters"
 ---
 
-Call-by-name inferable parameters can be used to avoid a divergent inferred expansion.
+Inferable by-name parameters can be used to avoid a divergent inferred expansion. Example:
 
 ```scala
 trait Codec[T] {
@@ -36,16 +36,17 @@ The precise steps for constructing an inferable argument for a by-name parameter
  1. Create a new implied instance of type `T`:
 
     ```scala
-    implied for T = ???
+    implied lv for T = ???
     ```
+    where `lv` is an arbitrary fresh name.
 
- 1. This instance is not immediately available as candidate for argument inference (making it immediately available would result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an inferred argument to a by-name parameter.
+ 1. This instance is not immediately available as candidate for argument inference (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an inferred argument to a by-name parameter.
 
- 1. If this search succeeds with expression `E`, and `E` contains references to the implied instance created previously, replace `E` by
+ 1. If this search succeeds with expression `E`, and `E` contains references to the implied instance `lv`, replace `E` by
 
 
     ```scala
-    { implied for T = E; lv }
+    { implied lv for T = E; lv }
     ```
 
     Otherwise, return `E` unchanged.

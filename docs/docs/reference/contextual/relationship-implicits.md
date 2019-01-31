@@ -3,39 +3,40 @@ layout: doc-page
 title: Relationship with Scala 2 Implicits"
 ---
 
-Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits.
-This page gives a rundown on the relationships between new and old features.
+Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits. This page gives a rundown on the relationships between new and old features.
 
-# Simulating Contextual Abstraction with Implicits
+## Simulating Contextual Abstraction with Implicits
 
 ### Implied Instance Definitions
 
 Implied instance definitions can be mapped to combinations of implicit objects, classes and implicit methods.
-Instance definitions without parameters are mapped to implicit objects. E.g.,
-```scala
-  implied IntOrd for Ord[Int] { ... }
-```
-maps to
-```scala
-  implicit object IntOrd extends Ord[Int] { ... }
-```
-Parameterized instance definitions are mapped to combinations of classes and implicit methods. E.g.,
-```scala
-  implied ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] { ... }
-```
-maps to
-```scala
-  class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
-  final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
-```
-Implied alias instances map to implicit methods. E.g.,
-```scala
-  implied ctx for ExecutionContext = ...
-```
-maps to
-```scala
-  final implicit def ctx: ExecutionContext = ...
-```
+
+ 1. Instance definitions without parameters are mapped to implicit objects. E.g.,
+    ```scala
+      implied IntOrd for Ord[Int] { ... }
+    ```
+    maps to
+    ```scala
+      implicit object IntOrd extends Ord[Int] { ... }
+    ```
+ 2. Parameterized instance definitions are mapped to combinations of classes and implicit methods. E.g.,
+    ```scala
+      implied ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] { ... }
+    ```
+    maps to
+    ```scala
+      class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
+      final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
+    ```
+ 3. Implied alias instances map to implicit methods. E.g.,
+    ```scala
+      implied ctx for ExecutionContext = ...
+    ```
+    maps to
+    ```scala
+      final implicit def ctx: ExecutionContext = ...
+    ```
+
 ### Anonymous Implied Instances
 
 Anonymous instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` instances above were left out, the following names would be synthesized instead:
@@ -80,7 +81,7 @@ The `infer` method corresponds to `implicitly` in Scala 2.
 
 Context bounds are the same in both language versions. They expand to the respective forms of implicit parameters.
 
-Note: To make migration simpler, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either with `given` or
+**Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either with `given` or
 with a normal application.
 
 ### Extension Methods
@@ -109,11 +110,12 @@ Implicit function types have no analogue in Scala 2.
 
 Implicit by-name parameters are not supported in Scala 2, but can be emulated to some degree by the `Lazy` type in Shapeless.
 
-# Simulating Scala 2 in Dotty
+## Simulating Scala 2 Implicits in Dotty
 
 ### Implicit Conversions
 
-Implicit conversion methods in Scala 2 can be expressed as instances of the `scala.Conversion` class in Dotty. E.g. instead of
+Implicit conversion methods in Scala 2 can be expressed as implied instances
+of the `scala.Conversion` class in Dotty. E.g. instead of
 ```scala
   implicit def stringToToken(str: String): Token = new Keyword(str)
 ```
@@ -143,11 +145,18 @@ can be expressed in Dotty as
 ### Abstract Implicits
 
 An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an instance alias. E.g., Scala 2's
-```
+```scala
   implicit def symDeco: SymDeco
 ```
 can be expressed in Dotty as
-```
+```scala
   def symDeco: SymDeco
   implied for SymDeco = symDeco
 ```
+
+## Implementation Status and Timeline
+
+The Dotty implementation implements both Scala-2's implicits and the new abstractions. In fact, support for Scala-2's implicits is an essential part of the common language subset between 2.13/2.14 and Dotty.
+Migration to the new abstractions will be supported by making automatic rewritings available.
+
+Depending on adoption patterns, old style implicits might start to be deprecated in a version following Scala 3.0.

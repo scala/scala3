@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Implied Conversions"
+title: "Inferable Conversions"
 ---
 
 Inferable conversions are defined by implied instances of the `scala.Conversion` class.
@@ -8,13 +8,13 @@ This class is defined in package `scala` as follows:
 ```scala
 abstract class Conversion[-T, +U] extends (T => U)
 ```
-For example, here is an implied conversion from `String` to `Token`:
+For example, here is an inferable conversion from `String` to `Token`:
 ```scala
 implied for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
-An implied conversion is applied automatically by the compiler in three situations:
+An inferable conversion is applied automatically by the compiler in three situations:
 
 1. If an expression `e` has type `T`, and `T` does not conform to the expression's expected type `S`.
 2. In a selection `e.m` with `e` of type `T`, but `T` defines no member `m`.

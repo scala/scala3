@@ -1,9 +1,7 @@
 ---
 layout: doc-page
-title: "Query Types - More Details"
+title: "Context Query Types - More Details"
 ---
-
-Initial implementation in (#1775)[https://github.com/lampepfl/dotty/pull/1775].
 
 ## Syntax
 
@@ -12,12 +10,12 @@ Initial implementation in (#1775)[https://github.com/lampepfl/dotty/pull/1775].
     Expr              ::=  ...
                         |  `given' FunParams `=>' Expr
 
-Query types associate to the right, e.g.
+Context query types associate to the right, e.g.
 `given S => given T => U` is the same as `given S => (given T => U)`.
 
 ## Implementation
 
-Query types are shorthands for class types that define `apply`
+Context query types are shorthands for class types that define `apply`
 methods with inferable parameters. Specifically, the `N`-ary function type
 `T1, ..., TN => R` is a shorthand for the class type
 `ImplicitFunctionN[T1 , ... , TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
@@ -27,10 +25,10 @@ trait ImplicitFunctionN[-T1 , ... , -TN, +R] {
   def apply given (x1: T1 , ... , xN: TN): R
 }
 ```
-Query types erase to normal function types, so these classes are
+Context query types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
 
-Query literals `given (x1: T1, ..., xn: Tn) => e` map
+Context query literals `given (x1: T1, ..., xn: Tn) => e` map
 inferable parameters `xi` of types `Ti` to a result given by expression `e`.
 The scope of each implicit parameter `xi` is `e`. The parameters must have pairwise distinct names.
 
@@ -55,10 +53,9 @@ abbreviated to `given x => e`.
 An inferable parameter may also be a wildcard represented by an underscore `_`. In
 that case, a fresh name for the parameter is chosen arbitrarily.
 
-Note: The closing paragraph of the [Anonymous Functions section](https://www
-.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-
-functions) of the Scala 2.12 is subsumed by query types and should
-be removed.
+Note: The closing paragraph of the
+[Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-functions)
+of Scala 2.12 is subsumed by query types and should be removed.
 
 Query literals `given (x1: T1, ..., xn: Tn) => e` are
 automatically created for any expression `e` whose expected type is
@@ -66,7 +63,7 @@ automatically created for any expression `e` whose expected type is
 itself a query literal. This is analogous to the automatic
 insertion of `scala.Function0` around expressions in by-name argument position.
 
-Query types generalize to `N > 22` in the same way that function types do, see [the corresponding
+Context query types generalize to `N > 22` in the same way that function types do, see [the corresponding
 documentation](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.html).
 
 ## Examples
@@ -79,4 +76,4 @@ Gist](https://gist.github.com/OlivierBlanvillain/234d3927fe9e9c6fba074b53a7bd9
 
 ### Type Checking
 
-After desugaring no additional typing rules are required for query types.
+After desugaring no additional typing rules are required for context query types.

@@ -1,14 +1,15 @@
 ---
 layout: doc-page
-title: "First Class Queries"
+title: "Context Queries"
 ---
 
-In the context of inference, _queries_ are functions with inferable parameters.
-_Query types_ are the types of first-class queries. Example:
+_Context queries_ are functions with inferable parameters.
+_Context query types_ are the types of first-class context queries.
+Here is an example for a context query type:
 ```scala
 type Contextual[T] = given Context => T
 ```
-A value of query type is applied to inferred arguments, in
+A value of context query type is applied to inferred arguments, in
 the same way a method with inferable parameters is applied. For instance:
 ```scala
   implied ctx for Context = ...
@@ -18,9 +19,9 @@ the same way a method with inferable parameters is applied. For instance:
   f(2) given ctx   // explicit argument
   f(2)             // argument is inferred
 ```
-Conversely, if the expected type of an expression `E` is a query
+Conversely, if the expected type of an expression `E` is a context query
 type `given (T_1, ..., T_n) => U` and `E` is not already a
-query literal, `E` is converted to a query literal by rewriting to
+context query literal, `E` is converted to a context query literal by rewriting to
 ```scala
   given (x_1: T1, ..., x_n: Tn) => E
 ```
@@ -31,7 +32,7 @@ are available as implied instances in `E`.
 Like query types, query literals are written with a `given` prefix. They differ from normal function literals in two ways:
 
  1. Their parameters are inferable.
- 2. Their types are query types.
+ 2. Their types are context query types.
 
 For example, continuing with the previous definitions,
 ```scala
@@ -45,7 +46,7 @@ For example, continuing with the previous definitions,
 ```
 ### Example: Builder Pattern
 
-Query types have considerable expressive power. For
+Context query types have considerable expressive power. For
 instance, here is how they can support the "builder pattern", where
 the aim is to construct tables like this:
 ```scala
@@ -111,7 +112,7 @@ With that setup, the table construction code above compiles and expands to:
 ```
 ### Example: Postconditions
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, query types, and extension methods to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, context query types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
 object PostConditions {
@@ -136,7 +137,7 @@ object Test {
   val s = List(1, 2, 3).sum.ensuring(result == 6)
 }
 ```
-**Explanations**: We use a query type `given WrappedResult[T] => Boolean`
+**Explanations**: We use a context query type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
 `(result == 6)` will therefore have an implied instance of type `WrappedResult[T]` in
 scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure
