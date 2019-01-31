@@ -1,14 +1,15 @@
 ---
 layout: doc-page
-title: "Implicit Function Types and Values"
+title: "First Class Queries"
 ---
 
-An implicit function type describes functions with inferred parameters. Example:
+In the context of inference, _queries_ are functions with inferable parameters.
+_Query types_ are the types of first-class queries. Example:
 ```scala
 type Contextual[T] = given Context => T
 ```
-A value of implicit function type is applied to inferred arguments, in
-the same way a method with inferred parameters is applied. For instance:
+A value of query type is applied to inferred arguments, in
+the same way a method with inferable parameters is applied. For instance:
 ```scala
   inferred ctx for Context = ...
 
@@ -17,18 +18,20 @@ the same way a method with inferred parameters is applied. For instance:
   f(2) given ctx   // explicit argument
   f(2)             // argument is inferred
 ```
-Conversely, if the expected type of an expression `E` is an implicit
-function type `given (T_1, ..., T_n) => U` and `E` is not already an
-implicit function value, `E` is converted to an inferred function value
-by rewriting to
+Conversely, if the expected type of an expression `E` is a query
+type `given (T_1, ..., T_n) => U` and `E` is not already a
+query literal, `E` is converted to a query literal by rewriting to
 ```scala
   given (x_1: T1, ..., x_n: Tn) => E
 ```
-where the names `x_1`, ..., `x_n` are arbitrary. Inferred function values are written
-with a `given` prefix. They differ from normal function values in two ways:
+where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
+before the expression `E` is typechecked, which means that x_1`, ..., `x_n`
+are available as inferred instances in `E`.
 
- 1. Their parameters are inferred parameters
- 2. Their types are implicit function types.
+Like query types, query literals are written with a `given` prefix. They differ from normal function literals in two ways:
+
+ 1. Their parameters are inferable.
+ 2. Their types are query types.
 
 For example, continuing with the previous definitions,
 ```scala
@@ -42,7 +45,7 @@ For example, continuing with the previous definitions,
 ```
 ### Example: Builder Pattern
 
-Implicit function types have considerable expressive power. For
+Query types have considerable expressive power. For
 instance, here is how they can support the "builder pattern", where
 the aim is to construct tables like this:
 ```scala
@@ -75,17 +78,17 @@ addition of elements via `add`:
   case class Cell(elem: String)
 ```
 Then, the `table`, `row` and `cell` constructor methods can be defined
-in terms of implicit function types to avoid the plumbing boilerplate
+in terms of query types to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: given Table => Unit) = {
-    instance t of Table
+    inferred t for Table
     init
     t
   }
 
   def row(init: given Row => Unit) given (t: Table) = {
-    instance r of Row
+    inferred r for Row
     init
     t.add(r)
   }
@@ -108,7 +111,7 @@ With that setup, the table construction code above compiles and expands to:
 ```
 ### Example: Postconditions
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and extensions to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, query types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
 object PostConditions {
@@ -133,10 +136,9 @@ object Test {
   val s = List(1, 2, 3).sum.ensuring(result == 6)
 }
 ```
-**Explanations**: We use an implicit function type `given WrappedResult[T] => Boolean`
+**Explanations**: We use a query type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
-`(result == 6)` will therefore have an implicit value of type `WrappedResult[T]` in scope
-to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure that we do not get unwanted inferred instances in scope (this is good practice in all cases where inferred parameters are involved). Since `WrappedResult` is an opaque type alias, its values need not be boxed, and since `ensuring` is added as an extension method, its argument does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient as the best possible code one could write by hand:
+`(result == 6)` will therefore have an inferred instance of type `WrappedResult[T]` in scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure that we do not get unwanted inferred instances in scope (this is good practice in all cases where inferred parameters are involved). Since `WrappedResult` is an opaque type alias, its values need not be boxed, and since `ensuring` is added as an extension method, its argument does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient as the best possible code one could write by hand:
 
     { val result = List(1, 2, 3).sum
       assert(result == 6)

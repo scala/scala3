@@ -1,7 +1,7 @@
 // A rewrite of Olivier Blanvillain's [adaptation](https://gist.github.com/OlivierBlanvillain/48bb5c66dbb0557da50465809564ee80)
 // of Oleg Kislyov's [lecture notes](http://okmij.org/ftp/tagless-final/course/lecture.pdf)
 // on tagless final interpreters.
-// Main win: Replace Either by an "algebraic effect" using an implicit function type.
+// Main win: Replace Either by an "algebraic effect" using a query type.
 object Test extends App {
 
   // Explicit ADT
