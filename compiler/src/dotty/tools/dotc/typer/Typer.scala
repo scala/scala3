@@ -2719,11 +2719,11 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
-          case SearchSuccess(inferred: ExtMethodApply, _, _) =>
-            inferred // nothing to check or adapt for extension method applications
-          case SearchSuccess(inferred, _, _) =>
-            checkImplicitConversionUseOK(inferred.symbol, tree.posd)
-            readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
+          case SearchSuccess(found: ExtMethodApply, _, _) =>
+            found // nothing to check or adapt for extension method applications
+          case SearchSuccess(found, _, _) =>
+            checkImplicitConversionUseOK(found.symbol, tree.posd)
+            readapt(found)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
             if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
               // don't report the failure but return the tree unchanged. This

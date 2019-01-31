@@ -1,6 +1,6 @@
 object Test {
   // a problematic implicit conversion, should we flag it?
-  inferred for Conversion[String, Int] {
+  implied for Conversion[String, Int] {
     def apply(x: String): Int = Integer.parseInt(toString)
   }
 }

@@ -3,7 +3,7 @@ object Test {
 
   class Context {
     inline def givenIn[T](op: => given Context => T) = {
-      instance of Context = this
+      implied for Context = this
       op
     }
   }

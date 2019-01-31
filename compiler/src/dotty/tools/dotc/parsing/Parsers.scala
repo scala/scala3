@@ -2542,11 +2542,11 @@ object Parsers {
      */
     def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
-      val name = if (isIdent && !isIdent(nme.of)) ident() else EmptyTermName
+      val name = if (isIdent) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val vparamss = paramClauses(ofInstance = true)
       val parents =
-        if (isIdent(nme.of)) {
+        if (in.token == FOR) {
           in.nextToken()
           tokenSeparated(COMMA, constrApp)
         }

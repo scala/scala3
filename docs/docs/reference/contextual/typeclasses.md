@@ -3,9 +3,9 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Inferred instance definitions, extension methods and context bounds
+Implied instance definitions, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
-with canonical implementations defined by inferred instance definitions. Here are some examples of standard typeclasses:
+with canonical implementations defined by implied instance definitions. Here are some examples of standard typeclasses:
 
 ### Semigroups and monoids:
 
@@ -20,12 +20,12 @@ object Monoid {
   def apply[T] = infer[Monoid[T]]
 }
 
-inferred for Monoid[String] {
+implied for Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
 
-inferred for Monoid[Int] {
+implied for Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: String = 0
 }
@@ -48,14 +48,14 @@ trait Monad[F[_]] extends Functor[F] {
   def pure[A](x: A): F[A]
 }
 
-inferred ListMonad for Monad[List] {
+implied ListMonad for Monad[List] {
   def (xs: List[A]) flatMap [A, B] (f: A => List[B]): List[B] =
     xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
 }
 
-inferred ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+implied ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
   def (r: Ctx => A) flatMap [A, B] (f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =

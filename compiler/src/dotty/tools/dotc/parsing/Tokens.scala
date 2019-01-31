@@ -178,7 +178,7 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val INSTANCE = 64;         enter(INSTANCE, "instance")
+  final val INSTANCE = 64;         enter(INSTANCE, "implied")
   final val GIVEN = 65;            enter(GIVEN, "given")
 
   /** special symbols */
@@ -250,6 +250,8 @@ object Tokens extends TokensCommon {
     TYPE, RPAREN, RBRACE, RBRACKET)
 
   final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
+
+  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, INSTANCE)
 
   final val softModifierNames = Set(nme.inline, nme.opaque)
 }

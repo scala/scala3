@@ -40,26 +40,26 @@ sidebar:
             - title: Translation
               url: docs/reference/enums/desugarEnums.html
         - title: Contextual Abstractions
-            - title: Inferred Instances
-              url: docs/reference/instances/instance-defs.html
+            - title: Implied Instances
+              url: docs/reference/contextual/instance-defs.html
             - title: Inferable Parameters
-              url: docs/reference/instances/context-params.html
+              url: docs/reference/contextual/inferable-params.html
             - title: Context Bounds
-              url: docs/reference/instances/context-bounds.html
+              url: docs/reference/contextual/context-bounds.html
             - title: Extension Methods
-              url: docs/reference/instances/extension-methods.html
+              url: docs/reference/contextual/extension-methods.html
             - title: Implementing Typeclasses
-              url: docs/reference/instances/typeclasses.html
+              url: docs/reference/contextual/typeclasses.html
             - title: Typeclass Derivation
               url: docs/reference/derivation.html
-            - title: Implicit Function Types
-              url: docs/reference/instances/implicit-function-types.html
-            - title: Implicit Conversions
-              url: docs/reference/instances/implicit-conversions.html
-            - title: Implicit By-Name Parameters
-              url: docs/reference/instances/implicit-by-name-parameters.html
+            - title: Query Types
+              url: docs/reference/contextual/query-types.html
+            - title: Implied Conversions
+              url: docs/reference/contextual/conversions.html
+            - title: Inferable By-Name Parameters
+              url: docs/reference/contextual/inferable-by-name-parameters.html
             - title: Relationship with Scala 2 Implicits
-              url: docs/reference/instances/relationship-implicits.html
+              url: docs/reference/contextual/relationship-implicits.html
         - title: Other New Features
           subsection:
             - title: Multiversal Equality

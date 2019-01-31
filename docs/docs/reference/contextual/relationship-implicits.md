@@ -3,16 +3,17 @@ layout: doc-page
 title: Relationship with Scala 2 Implicits"
 ---
 
-Many, but not all, of the new implicit features can be mapped to Scala-2 implicits. This page gives a rundown on the relationships between new and old features.
+Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits.
+This page gives a rundown on the relationships between new and old features.
 
-# Simulating Dotty's New Implicits in Scala 2
+# Simulating Contextual Abstraction with Implicits
 
-### Inferred Instance Definitions
+### Implied Instance Definitions
 
-Inferred instance definitions can be mapped to combinations of implicit objects, classes and implicit methods.
+Implied instance definitions can be mapped to combinations of implicit objects, classes and implicit methods.
 Instance definitions without parameters are mapped to implicit objects. E.g.,
 ```scala
-  inferred IntOrd for Ord[Int] { ... }
+  implied IntOrd for Ord[Int] { ... }
 ```
 maps to
 ```scala
@@ -20,27 +21,27 @@ maps to
 ```
 Parameterized instance definitions are mapped to combinations of classes and implicit methods. E.g.,
 ```scala
-  inferred ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] { ... }
+  implied ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] { ... }
 ```
 maps to
 ```scala
   class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
   final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
 ```
-Inferred alias instances map to implicit methods. E.g.,
+Implied alias instances map to implicit methods. E.g.,
 ```scala
-  inferred ctx for ExecutionContext = ...
+  implied ctx for ExecutionContext = ...
 ```
 maps to
 ```scala
   final implicit def ctx: ExecutionContext = ...
 ```
-### Anonymous Inferred Instances
+### Anonymous Implied Instances
 
 Anonymous instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` instances above were left out, the following names would be synthesized instead:
 ```scala
-  inferred Ord_Int_instance for Ord[Int] { ... }
-  inferred Ord_List_instance[T] for Ord[List[T]] { ... }
+  implied Ord_Int_instance for Ord[Int] { ... }
+  implied Ord_List_instance[T] for Ord[List[T]] { ... }
 ```
 The synthesized type names are formed from
 
@@ -52,7 +53,7 @@ Anonymous instances that define extension methods without also implementing a ty
 get their name from the name of the first extension method and the toplevel type
 constructor of its first parameter. For example, the instance
 ```scala
-  inferred {
+  implied {
      def (xs: List[T]) second[T] = ...
   }
 ```
@@ -118,7 +119,7 @@ Implicit conversion methods in Scala 2 can be expressed as instances of the `sca
 ```
 one can write
 ```scala
-  inferred stringToToken for Conversion[String, Token] {
+  implied stringToToken for Conversion[String, Token] {
     def apply(str: String): Token = new KeyWord(str)
   }
 ```
@@ -136,7 +137,7 @@ Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular 
 can be expressed in Dotty as
 ```scala
   lazy val pos: Position = tree.sourcePos
-  inferred for Position = pos
+  implied for Position = pos
 ```
 
 ### Abstract Implicits
@@ -148,5 +149,5 @@ An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a
 can be expressed in Dotty as
 ```
   def symDeco: SymDeco
-  inferred for SymDeco = symDeco
+  implied for SymDeco = symDeco
 ```

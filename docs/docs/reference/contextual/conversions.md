@@ -1,27 +1,27 @@
 ---
 layout: doc-page
-title: "Implicit Conversions"
+title: "Implied Conversions"
 ---
 
-Implicit conversions are defined by inferred instances of the `scala.Conversion` class.
+Inferable conversions are defined by implied instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
 abstract class Conversion[-T, +U] extends (T => U)
 ```
-For example, here is an implicit conversion from `String` to `Token`:
+For example, here is an implied conversion from `String` to `Token`:
 ```scala
-inferred for Conversion[String, Token] {
+implied for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
-An implicit conversion is applied automatically by the compiler in three situations:
+An implied conversion is applied automatically by the compiler in three situations:
 
 1. If an expression `e` has type `T`, and `T` does not conform to the expression's expected type `S`.
 2. In a selection `e.m` with `e` of type `T`, but `T` defines no member `m`.
 3. In an application `e.m(args)` with `e` of type `T`, if ``T` does define
    some member(s) named `m`, but none of these members can be applied to the arguments `args`.
 
-In the first case, the compiler looks in the implicit scope for a an instance of
+In the first case, the compiler looks in the implied scope for a an instance of
 `scala.Conversion` that maps an argument of type `T` to type `S`. In the second and third
 case, it looks for an instance of `scala.Conversion` that maps an argument of type `T`
 to a type that defines a member `m` which can be applied to `args` if present.
@@ -33,7 +33,7 @@ If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-inferred int2Integer for Conversion[Int, java.lang.Integer] {
+implied int2Integer for Conversion[Int, java.lang.Integer] {
   def apply(x: Int) = new java.lang.Integer(x)
 }
 ```
@@ -56,13 +56,13 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    inferred from for Conversion[String, CompletionArg] {
+    implied from for Conversion[String, CompletionArg] {
       def apply(s: String) = CompletionArg.Error(s)
     }
-    inferred from for Conversion[Future[HttpResponse], CompletionArg] {
+    implied from for Conversion[Future[HttpResponse], CompletionArg] {
       def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
     }
-    inferred from for Conversion[Future[StatusCode], CompletionArg] {
+    implied from for Conversion[Future[StatusCode], CompletionArg] {
       def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
     }
   }

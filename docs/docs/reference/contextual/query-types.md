@@ -11,7 +11,7 @@ type Contextual[T] = given Context => T
 A value of query type is applied to inferred arguments, in
 the same way a method with inferable parameters is applied. For instance:
 ```scala
-  inferred ctx for Context = ...
+  implied ctx for Context = ...
 
   def f(x: Int): Contextual[Int] = ...
 
@@ -26,7 +26,7 @@ query literal, `E` is converted to a query literal by rewriting to
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that x_1`, ..., `x_n`
-are available as inferred instances in `E`.
+are available as implied instances in `E`.
 
 Like query types, query literals are written with a `given` prefix. They differ from normal function literals in two ways:
 
@@ -82,13 +82,13 @@ in terms of query types to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: given Table => Unit) = {
-    inferred t for Table
+    implied t for Table
     init
     t
   }
 
   def row(init: given Row => Unit) given (t: Table) = {
-    inferred r for Row
+    implied r for Row
     init
     t.add(r)
   }
@@ -125,7 +125,7 @@ object PostConditions {
   def result[T] given (r: WrappedResult[T]): T = WrappedResult.unwrap(r)
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    inferred for WrappedResult[T] = WrappedResult.wrap(x)
+    implied for WrappedResult[T] = WrappedResult.wrap(x)
     assert(condition)
     x
   }
@@ -138,7 +138,13 @@ object Test {
 ```
 **Explanations**: We use a query type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
-`(result == 6)` will therefore have an inferred instance of type `WrappedResult[T]` in scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure that we do not get unwanted inferred instances in scope (this is good practice in all cases where inferred parameters are involved). Since `WrappedResult` is an opaque type alias, its values need not be boxed, and since `ensuring` is added as an extension method, its argument does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient as the best possible code one could write by hand:
+`(result == 6)` will therefore have an implied instance of type `WrappedResult[T]` in
+scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure
+that we do not get unwanted implied instances in scope (this is good practice in all cases
+where inferable parameters are involved). Since `WrappedResult` is an opaque type alias, its
+values need not be boxed, and since `ensuring` is added as an extension method, its argument
+does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient
+as the best possible code one could write by hand:
 
     { val result = List(1, 2, 3).sum
       assert(result == 6)
@@ -150,4 +156,4 @@ as the type of the condition of `ensuring`. An argument to `ensuring` such as
 For more info, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
 (which uses a different syntax that has been superseded).
 
-[More details](./implicit-function-types-spec.html)
+[More details](./query-types-spec.html)

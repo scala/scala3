@@ -40,13 +40,13 @@ object Test extends App {
     add(lit(8), neg(add(lit(1), lit(2))))
 
   // Base operations as typeclasses
-  inferred for Exp[Int] {
+  implied for Exp[Int] {
     def lit(i: Int): Int = i
     def neg(t: Int): Int = -t
     def add(l: Int, r: Int): Int = l + r
   }
 
-  inferred for Exp[String] {
+  implied for Exp[String] {
     def lit(i: Int): String = i.toString
     def neg(t: String): String = s"(-$t)"
     def add(l: String, r: String): String = s"($l + $r)"
@@ -67,11 +67,11 @@ object Test extends App {
   def tfm1[T: Exp : Mult] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2[T: Exp : Mult] = mul(lit(7), tf1)
 
-  inferred for Mult[Int] {
+  implied for Mult[Int] {
     def mul(l: Int, r: Int): Int = l * r
   }
 
-  inferred for Mult[String] {
+  implied for Mult[String] {
     def mul(l: String, r: String): String = s"$l * $r"
   }
 
@@ -87,7 +87,7 @@ object Test extends App {
   }
   import Tree._
 
-  inferred for Exp[Tree], Mult[Tree] {
+  implied for Exp[Tree], Mult[Tree] {
     def lit(i: Int): Tree = Node("Lit", Leaf(i.toString))
     def neg(t: Tree): Tree = Node("Neg", t)
     def add(l: Tree, r: Tree): Tree = Node("Add", l , r)
@@ -108,7 +108,7 @@ object Test extends App {
     private class Exc(msg: String) extends Exception(msg)
     def _throw(msg: String) given CanThrow: Nothing = throw new Exc(msg)
     def _try[T](op: Maybe[T])(handler: String => T): T = {
-      inferred for CanThrow
+      implied for CanThrow
       try op
       catch {
         case ex: Exception => handler(ex.getMessage)
@@ -153,7 +153,7 @@ object Test extends App {
     def value[T] given Exp[T]: T
   }
 
-  inferred for Exp[Wrapped] {
+  implied for Exp[Wrapped] {
     def lit(i: Int) = new Wrapped {
       def value[T] given (e: Exp[T]): T = e.lit(i)
     }
@@ -196,7 +196,7 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  inferred [T] given (e: Exp[T]) for Exp[NCtx => T] {
+  implied [T] given (e: Exp[T]) for Exp[NCtx => T] {
     import NCtx._
     def lit(i: Int) = {
       case Pos => e.lit(i)
@@ -216,7 +216,7 @@ object Test extends App {
   println(pushNeg(tf1[NCtx => String]))
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
-  inferred [T] given (e: Mult[T]) for Mult[NCtx => T] {
+  implied [T] given (e: Mult[T]) for Mult[NCtx => T] {
     import NCtx._
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))
@@ -230,7 +230,7 @@ object Test extends App {
   import IExp._
 
   // Going from type class encoding to ADT encoding
-  inferred initialize for Exp[IExp] {
+  implied initialize for Exp[IExp] {
     def lit(i: Int): IExp = Lit(i)
     def neg(t: IExp): IExp = Neg(t)
     def add(l: IExp, r: IExp): IExp = Add(l, r)

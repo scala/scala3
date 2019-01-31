@@ -205,10 +205,8 @@ object Scanners {
 
     private def handleMigration(keyword: Token): Token =
       if (!isScala2Mode) keyword
-      else if (  keyword == ENUM
-              || keyword == ERASED) treatAsIdent()
+      else if (scala3keywords.contains(keyword)) treatAsIdent()
       else keyword
-
 
     private def treatAsIdent() = {
       testScala2Mode(i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier")

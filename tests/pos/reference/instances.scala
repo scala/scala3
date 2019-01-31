@@ -32,12 +32,12 @@ class Common {
 
 object Instances extends Common {
 
-  inferred IntOrd for Ord[Int] {
+  implied IntOrd for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  inferred ListOrd[T] given Ord[T] for Ord[List[T]] {
+  implied ListOrd[T] given Ord[T] for Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,25 +48,25 @@ object Instances extends Common {
     }
   }
 
-  inferred StringOps {
+  implied StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  inferred ListOps {
+  implied ListOps {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  inferred ListMonad for Monad[List] {
+  implied ListMonad for Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  inferred ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+  implied ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -105,7 +105,7 @@ object Instances extends Common {
       def (sym: Symbol) name: String
     }
     def symDeco: SymDeco
-    inferred for SymDeco = symDeco
+    implied for SymDeco = symDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
@@ -119,20 +119,20 @@ object Instances extends Common {
   class C given (ctx: Context) {
     def f() = {
       locally {
-        inferred for Context = this.ctx
+        implied for Context = this.ctx
         println(infer[Context].value)
       }
       locally {
         lazy val ctx1 = this.ctx
-        inferred for Context = ctx1
+        implied for Context = ctx1
         println(infer[Context].value)
       }
       locally {
-        inferred d[T] for D[T]
+        implied d[T] for D[T]
         println(infer[D[Int]])
       }
       locally {
-        inferred given Context for D[Int]
+        implied given Context for D[Int]
         println(infer[D[Int]])
       }
     }
@@ -140,7 +140,7 @@ object Instances extends Common {
 
   class Token(str: String)
 
-  inferred StringToToken for Conversion[String, Token] {
+  implied StringToToken for Conversion[String, Token] {
     def apply(str: String): Token = new Token(str)
   }
 
@@ -150,14 +150,14 @@ object Instances extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private object WrappedResult {
+  private implied WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  inferred {
+  implied {
     def (x: T) ensuring[T] (condition: given WrappedResult[T] => Boolean): T = {
       assert(condition given WrappedResult(x))
       x
@@ -166,12 +166,12 @@ object PostConditions {
 }
 
 object AnonymousInstances extends Common {
-  inferred for Ord[Int] {
+  implied for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  inferred [T: Ord] for Ord[List[T]] {
+  implied [T: Ord] for Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -182,22 +182,22 @@ object AnonymousInstances extends Common {
     }
   }
 
-  inferred {
+  implied {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  inferred {
+  implied {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  inferred [From, To] given (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
+  implied [From, To] given (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  inferred for Monoid[String] {
+  implied for Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -272,13 +272,13 @@ object Completions {
   }
 
   // conversions defining the possible arguments to pass to `complete`
-  inferred stringArg for Conversion[String, CompletionArg] {
+  implied stringArg for Conversion[String, CompletionArg] {
     def apply(s: String) = CompletionArg.Error(s)
   }
-  inferred responseArg for Conversion[Future[HttpResponse], CompletionArg] {
+  implied responseArg for Conversion[Future[HttpResponse], CompletionArg] {
     def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
   }
-  inferred statusArg for Conversion[Future[StatusCode], CompletionArg] {
+  implied statusArg for Conversion[Future[StatusCode], CompletionArg] {
     def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
   }
 }
