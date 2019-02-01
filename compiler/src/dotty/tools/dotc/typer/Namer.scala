@@ -136,7 +136,7 @@ trait NamerContextOps { this: Context =>
       (valueParamss :\ resultType) { (params, resultType) =>
         val (isImplicit, isErased, isContextual) =
           if (params.isEmpty) (false, false, false)
-          else (params.head is Implicit, params.head is Erased, params.head.is(Contextual))
+          else (params.head is Implicit, params.head is Erased, params.head.is(Given))
         val make = MethodType.maker(isJava = isJava, isImplicit = isImplicit, isErased = isErased, isContextual = isContextual)
         if (isJava)
           for (param <- params)

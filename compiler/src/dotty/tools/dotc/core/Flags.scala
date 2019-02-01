@@ -347,8 +347,8 @@ object Flags {
   /** An extension method */
   final val Extension = termFlag(28, "<extension>")
 
-  /** A contextual (with) parameter */
-  final val Contextual = commonFlag(29, "<contextual>")
+  /** An inferable (`given`) parameter */
+  final val Given = commonFlag(29, "given")
 
   /** Symbol is defined by a Java class */
   final val JavaDefined: FlagSet = commonFlag(30, "<java>")

@@ -783,7 +783,7 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, accept(ARROW)) {
           val t = typ()
-          if (imods.is(Implicit | Contextual | Erased)) new FunctionWithMods(params, t, imods)
+          if (imods.is(Implicit | Given | Erased)) new FunctionWithMods(params, t, imods)
           else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
@@ -2090,7 +2090,7 @@ object Parsers {
 
       // begin paramClause
       inParens {
-      	val isContextual = impliedMods.is(Contextual)
+      	val isContextual = impliedMods.is(Given)
         if (in.token == RPAREN && !prefix && !isContextual) Nil
         else {
           def funArgMods(mods: Modifiers): Modifiers =
@@ -2123,10 +2123,10 @@ object Parsers {
         val initialMods =
           if (in.token == GIVEN) {
             in.nextToken()
-            Modifiers(Contextual | Implicit)
+            Modifiers(Given | Implicit)
           }
           else EmptyModifiers
-        val isContextual = initialMods.is(Contextual)
+        val isContextual = initialMods.is(Given)
         newLineOptWhenFollowedBy(LPAREN)
         if (in.token == LPAREN) {
           if (ofInstance && !isContextual)
@@ -2137,14 +2137,14 @@ object Parsers {
               firstClause = firstClause,
               initialMods = initialMods)
           val lastClause =
-            params.nonEmpty && params.head.mods.flags.is(Implicit, butNot = Contextual)
+            params.nonEmpty && params.head.mods.flags.is(Implicit, butNot = Given)
           params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length))
         }
         else if (isContextual) {
           val tps = commaSeparated(refinedType)
           var counter = nparams
           def nextIdx = { counter += 1; counter }
-          val params = tps.map(makeSyntheticParameter(nextIdx, _, Contextual | Implicit))
+          val params = tps.map(makeSyntheticParameter(nextIdx, _, Given | Implicit))
           params :: recur(firstClause = false, nparams + params.length)
         }
         else Nil
@@ -2438,7 +2438,7 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           enumDef(start, mods, atSpan(in.skipToken()) { Mod.Enum() })
-        case INSTANCE =>
+        case IMPLIED =>
           instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Instance() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())

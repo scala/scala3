@@ -331,13 +331,13 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
   /** Is `tree` an implicit function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
-    case tree: FunctionWithMods => tree.mods.is(Contextual)
-    case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Contextual)
+    case tree: FunctionWithMods => tree.mods.is(Given)
+    case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(Nil, expr) => isContextualClosure(expr)
     case Block(DefDef(nme.ANON_FUN, _, params :: _, _, _) :: Nil, cl: Closure) =>
       params match {
-        case param :: _ => param.mods.is(Contextual)
+        case param :: _ => param.mods.is(Given)
         case Nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isImplicitFunctionType(cl.tpt.typeOpt)
       }
     case _ => false

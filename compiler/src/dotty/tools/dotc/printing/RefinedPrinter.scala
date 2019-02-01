@@ -520,7 +520,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
-              if ((arg.mods is Contextual)) { contextual = true; "" }
+              if ((arg.mods is Given)) { contextual = true; "" }
               else if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
             implicitText ~ toText(name) ~ optAscription(tpt)

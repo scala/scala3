@@ -210,7 +210,7 @@ object EtaExpansion extends LiftImpure {
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     var paramFlag = Synthetic | Param
-    if (mt.isContextual) paramFlag |= Contextual
+    if (mt.isContextual) paramFlag |= Given
     if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
@@ -221,7 +221,7 @@ object EtaExpansion extends LiftImpure {
     if (mt.isContextual) body.pushAttachment(WithApply, ())
     if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
     val fn =
-      if (mt.isContextual) new untpd.FunctionWithMods(params, body, Modifiers(Implicit | Contextual))
+      if (mt.isContextual) new untpd.FunctionWithMods(params, body, Modifiers(Implicit | Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn

@@ -791,7 +791,7 @@ class Typer extends Namer
     }
 
     val funCls = defn.FunctionClass(args.length,
-        isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
+        isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
@@ -801,7 +801,7 @@ class Typer extends Namer
         params1.foreach(_.symbol.setFlag(funFlags))
       val resultTpt = typed(body)
       val companion = MethodType.maker(
-          isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
+          isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.sourcePos)
@@ -829,7 +829,7 @@ class Typer extends Namer
     val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
 
     val isContextual = tree match {
-      case tree: untpd.FunctionWithMods => tree.mods.is(Contextual)
+      case tree: untpd.FunctionWithMods => tree.mods.is(Given)
       case _ => false
     }
 
