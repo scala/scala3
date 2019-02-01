@@ -1,0 +1,1 @@
+case class Foo protected(a: Int)
