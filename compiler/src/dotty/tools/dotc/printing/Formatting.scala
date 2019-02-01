@@ -31,7 +31,8 @@ object Formatting {
           case NonFatal(ex)
           if !ctx.mode.is(Mode.PrintShowExceptions) &&
              !ctx.settings.YshowPrintErrors.value =>
-            s"[cannot display due to $ex, raw string = ${arg.toString}]"
+            val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
+            s"[cannot display due to $msg, raw string = ${arg.toString}]"
         }
       case _ => arg.toString
     }
