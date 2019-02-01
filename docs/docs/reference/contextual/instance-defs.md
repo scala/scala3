@@ -41,7 +41,7 @@ The name of an implied instance can be left out. So the implied instance definit
 of the last section can also be expressed like this:
 ```scala
 implied for Ord[Int] { ... }
-implied [T: Ord] for Ord[List[T]] { ... }
+implied [T] given (ord: Ord[T]) for Ord[List[T]] { ... }
 ```
 If the name of an instance is missing, the compiler will synthesize a name from
 the type(s) in the `for` clause.

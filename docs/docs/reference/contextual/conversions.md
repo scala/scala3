@@ -18,7 +18,7 @@ An implicit conversion is applied automatically by the compiler in three situati
 
 1. If an expression `e` has type `T`, and `T` does not conform to the expression's expected type `S`.
 2. In a selection `e.m` with `e` of type `T`, but `T` defines no member `m`.
-3. In an application `e.m(args)` with `e` of type `T`, if ``T` does define
+3. In an application `e.m(args)` with `e` of type `T`, if `T` does define
    some member(s) named `m`, but none of these members can be applied to the arguments `args`.
 
 In the first case, the compiler looks in the implied scope for a an instance of
