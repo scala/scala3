@@ -3,7 +3,7 @@ layout: doc-page
 title: "Context Queries"
 ---
 
-_Context queries_ are functions with inferable parameters.
+_Context queries_ are functions with (only) inferable parameters.
 _Context query types_ are the types of first-class context queries.
 Here is an example for a context query type:
 ```scala
@@ -26,7 +26,7 @@ context query literal, `E` is converted to a context query literal by rewriting 
   given (x_1: T1, ..., x_n: Tn) => E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
-before the expression `E` is typechecked, which means that x_1`, ..., `x_n`
+before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
 are available as implied instances in `E`.
 
 Like query types, query literals are written with a `given` prefix. They differ from normal function literals in two ways:

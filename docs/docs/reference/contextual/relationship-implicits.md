@@ -144,7 +144,7 @@ can be expressed in Dotty as
 
 ### Abstract Implicits
 
-An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an instance alias. E.g., Scala 2's
+An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an implied alias. E.g., Scala 2's
 ```scala
   implicit def symDeco: SymDeco
 ```

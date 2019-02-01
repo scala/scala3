@@ -54,7 +54,7 @@ sidebar:
               url: docs/reference/derivation.html
             - title: Context Queries
               url: docs/reference/contextual/query-types.html
-            - title: Implied Conversions
+            - title: Implicit Conversions
               url: docs/reference/contextual/conversions.html
             - title: Inferable By-Name Parameters
               url: docs/reference/contextual/inferable-by-name-parameters.html
