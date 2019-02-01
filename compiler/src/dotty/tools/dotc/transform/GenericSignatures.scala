@@ -283,7 +283,7 @@ object GenericSignatures {
           jsig(atp, toplevel, primitiveOK)
 
         case hktl: HKTypeLambda =>
-          jsig(hktl.finalResultType)
+          jsig(hktl.finalResultType, toplevel, primitiveOK)
 
         case _ =>
           val etp = erasure(tp)

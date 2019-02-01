@@ -1,17 +1,17 @@
 abstract class A[T] {
   def foo: T
 }
-class B extends A[implicit Int => Int] {
+class B extends A[Int |=> Int] {
   // No bridge needed for foo$direct
-  def foo: implicit Int => Int = 1
+  def foo: Int |=> Int = 1
 }
 
-abstract class X[T] extends A[implicit T => T] {
-  def foo: implicit T => T
+abstract class X[T] extends A[T |=> T] {
+  def foo: T |=> T
 }
 
 class Y extends X[Int] {
-  def foo: implicit Int => Int = 1
+  def foo: Int |=> Int = 1
 }
 
 object Test {

@@ -126,7 +126,7 @@ trait Printers
       if (flags.is(Flags.Contravariant)) flagList += "Flags.Contravariant"
       if (flags.is(Flags.Scala2X)) flagList += "Flags.Scala2X"
       if (flags.is(Flags.DefaultParameterized)) flagList += "Flags.DefaultParameterized"
-      if (flags.is(Flags.Stable)) flagList += "Flags.Stable"
+      if (flags.is(Flags.StableRealizable)) flagList += "Flags.StableRealizable"
       if (flags.is(Flags.Param)) flagList += "Flags.Param"
       if (flags.is(Flags.ParamAccessor)) flagList += "Flags.ParamAccessor"
       flagList.result().mkString(" | ")
@@ -501,7 +501,7 @@ trait Printers
       if (flags.is(Flags.Contravariant)) flagList += "contravariant"
       if (flags.is(Flags.Scala2X)) flagList += "scala2x"
       if (flags.is(Flags.DefaultParameterized)) flagList += "defaultParameterized"
-      if (flags.is(Flags.Stable)) flagList += "stable"
+      if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
       if (flags.is(Flags.Param)) flagList += "param"
       if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"
       flagList.result().mkString("/*", " ", "*/")
@@ -590,8 +590,9 @@ trait Printers
           else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ", color) += highlightTypeDef(name, color)
           else this += highlightKeyword("class ", color) += highlightTypeDef(name, color)
 
+          val typeParams = stats.collect { case IsTypeDef(targ) => targ  }.filter(_.symbol.isTypeParam).zip(targs)
           if (!flags.is(Flags.Object)) {
-            printTargsDefs(targs)
+            printTargsDefs(typeParams)
             val it = argss.iterator
             while (it.hasNext)
               printArgsDefs(it.next())
@@ -606,14 +607,19 @@ trait Printers
           if (parents1.nonEmpty)
             this += highlightKeyword(" extends ", color)
 
-          def printParent(parent: TermOrTypeTree): Unit = parent match {
+          def printParent(parent: TermOrTypeTree, needEmptyParens: Boolean = false): Unit = parent match {
             case IsTypeTree(parent) =>
               printTypeTree(parent)
             case IsTerm(Term.TypeApply(fun, targs)) =>
               printParent(fun)
+            case IsTerm(Term.Apply(fun@Term.Apply(_,_), args)) =>
+              printParent(fun, true)
+              if (!args.isEmpty || needEmptyParens)
+                inParens(printTrees(args, ", "))
             case IsTerm(Term.Apply(fun, args)) =>
               printParent(fun)
-              inParens(printTrees(args, ", "))
+              if (!args.isEmpty || needEmptyParens)
+                inParens(printTrees(args, ", "))
             case IsTerm(Term.Select(Term.New(tpt), _)) =>
               printTypeTree(tpt)
             case IsTerm(parent) =>
@@ -691,7 +697,7 @@ trait Printers
         case IsTypeDef(tdef @ TypeDef(name, rhs)) =>
           printDefAnnotations(tdef)
           this += highlightKeyword("type ", color)
-          printTargDef(tdef, isMember = true)
+          printTargDef((tdef, tdef), isMember = true)
 
         case IsValDef(vdef @ ValDef(name, tpt, rhs)) =>
           printDefAnnotations(vdef)
@@ -754,7 +760,7 @@ trait Printers
           printProtectedOrPrivate(ddef)
 
           this += highlightKeyword("def ", color) += highlightValDef((if (isConstructor) "this" else name), color)
-          printTargsDefs(targs)
+          printTargsDefs(targs.zip(targs))
           val it = argss.iterator
           while (it.hasNext)
             printArgsDefs(it.next())
@@ -1125,13 +1131,13 @@ trait Printers
         this
       }
 
-      def printTargsDefs(targs: List[TypeDef]): Unit = {
+      def printTargsDefs(targs: List[(TypeDef, TypeDef)], isDef:Boolean = true): Unit = {
         if (!targs.isEmpty) {
-          def printSeparated(list: List[TypeDef]): Unit = list match {
+          def printSeparated(list: List[(TypeDef, TypeDef)]): Unit = list match {
             case Nil =>
-            case x :: Nil => printTargDef(x)
+            case x :: Nil => printTargDef(x, isDef = isDef)
             case x :: xs =>
-              printTargDef(x)
+              printTargDef(x, isDef = isDef)
               this += ", "
               printSeparated(xs)
           }
@@ -1140,9 +1146,19 @@ trait Printers
         }
       }
 
-      def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
-        this += arg.name
-        arg.rhs match {
+      def printTargDef(arg: (TypeDef, TypeDef), isMember: Boolean = false, isDef:Boolean = true): Buffer = {
+        val (argDef, argCons) = arg
+
+        if (isDef) {
+          if (argDef.symbol.flags.is(Flags.Covariant)) {
+            this += highlightValDef("+", color)
+          } else if (argDef.symbol.flags.is(Flags.Contravariant)) {
+            this += highlightValDef("-", color)
+          }
+        }
+
+        this += argCons.name
+        argCons.rhs match {
           case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
           case rhs @ WildcardTypeTree() =>
             printTypeOrBound(rhs.tpe)
@@ -1412,7 +1428,7 @@ trait Printers
           printTypeTree(result)
 
         case TypeTree.LambdaTypeTree(tparams, body) =>
-          printTargsDefs(tparams)
+          printTargsDefs(tparams.zip(tparams), isDef = false)
           this += highlightTypeDef(" => ", color)
           printTypeOrBoundsTree(body)
 
@@ -1576,7 +1592,10 @@ trait Printers
         val Annotation(ref, args) = annot
         this += "@"
         printTypeTree(ref)
-        inParens(printTrees(args, ", "))
+        if (args.isEmpty)
+          this
+        else
+          inParens(printTrees(args, ", "))
       }
 
       def printDefAnnotations(definition: Definition): Buffer = {

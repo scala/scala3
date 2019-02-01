@@ -81,6 +81,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     compileFilesInDir("tests/run-with-compiler", withCompilerOptions) +
+    compileDir("tests/run-with-compiler-custom-args/tasty-interpreter", withCompilerOptions) +
     compileFile("tests/run-with-compiler-custom-args/staged-streams_1.scala", withCompilerOptions without "-Yno-deep-subtypes")
   }.checkRuns()
 

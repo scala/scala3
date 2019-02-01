@@ -622,7 +622,7 @@ trait Checking {
       if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
         check()
       case AppliedType(tycon, _)
-      if tycon.derivesFrom(defn.Predef_ImplicitConverter) && !sym.is(Synthetic) =>
+      if tycon.derivesFrom(defn.ConversionClass) && !sym.is(Synthetic) =>
         check()
       case _ =>
     }
@@ -901,14 +901,21 @@ trait Checking {
     }
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
-  def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = {
+  def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = {
     import untpd.modsDeco
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
-    if (!cdef.mods.isEnumCase && !isEnumAnonCls)
-      ctx.error(CaseClassCannotExtendEnum(cls, parent), cdef.sourcePos)
+    if (!cdef.mods.isEnumCase && !isEnumAnonCls) {
+      // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
+      // parent.
+      //
+      // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
+      // see enum-List-control.scala.
+      if (cls.is(Case) || firstParent.is(Enum))
+        ctx.error(ClassCannotExtendEnum(cls, firstParent), cdef.sourcePos)
+    }
   }
 
   /** Check that all references coming from enum cases in an enum companion object
@@ -975,7 +982,7 @@ trait Checking {
 
 trait ReChecking extends Checking {
   import tpd._
-  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
 }

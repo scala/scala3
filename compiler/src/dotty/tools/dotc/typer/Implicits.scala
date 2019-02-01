@@ -126,9 +126,9 @@ object Implicits {
               // this in Predef:
               //
               //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
-              //    implicit def convertIfConverter[A, B](x: A)(implicit ev: ImplicitConverter[A, B]): B = ev(a)
+              //    implicit def convertIfConverter[A, B](x: A)(implicit ev: Conversion[A, B]): B = ev(a)
               //
-              // (Once `<:<` inherits from `ImplicitConverter` we only need the 2nd one.)
+              // (Once `<:<` inherits from `Conversion` we only need the 2nd one.)
               // But clauses like this currently slow down implicit search a lot, because
               // they are eligible for all pairs of types, and therefore are tried too often.
               // We emulate instead these conversions directly in the search.
@@ -138,16 +138,18 @@ object Implicits {
               // We keep the old behavior under -language:Scala2.
               val isFunctionInS2 =
                 ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
-              val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
+              val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
-                  tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
+                  tpw.derivesFrom(defn.SubTypeClass) &&
+                    (defn.isNewCollections || // In 2.13, the type of `$conforms` changed from `A <:< A` to `A => A`
+                     ref.symbol != defn.Predef_conforms)
               val hasExtensions = resType match {
                 case SelectionProto(name, _, _, _) =>
                   tpw.memberBasedOnFlags(name, required = ExtensionMethod).exists
                 case _ => false
               }
               val conversionKind =
-                if (isFunctionInS2 || isImplicitConverter || isConforms) Candidate.Conversion
+                if (isFunctionInS2 || isImplicitConversion || isConforms) Candidate.Conversion
                 else Candidate.None
               val extensionKind =
                 if (hasExtensions) Candidate.Extension
@@ -1577,7 +1579,7 @@ final class SearchRoot extends SearchHistory {
             val nrhss = rhss.map(rhsMap(_))
 
             val vdefs = (nsyms zip nrhss) map {
-              case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs)
+              case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
             }
 
             val constr = ctx.newConstructor(classSym, Synthetic, Nil, Nil).entered

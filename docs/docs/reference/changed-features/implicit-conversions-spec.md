@@ -9,16 +9,17 @@ An implicit conversion, or _view_, from type `S` to type `T` is
 defined by either:
 
 - An `implicit def` which has type `S => T` or `(=> S) => T`
-- An implicit value which has type `ImplicitConverter[S, T]`
+- An implicit value which has type `Conversion[S, T]`
 
-The standard library defines an abstract class `ImplicitConverter`:
+The standard library defines an abstract class `Conversion`:
 
 ```scala
-abstract class ImplicitConverter[-T, +U] extends Function1[T, U]
+package scala
+@java.lang.FunctionalInterface
+abstract class Conversion[-T, +U] extends Function1[T, U]
 ```
 
-Function literals are automatically converted to `ImplicitConverter`
-values.
+Function literals are automatically converted to `Conversion` values.
 
 Views are applied in three situations:
 
@@ -60,14 +61,14 @@ val x: String = 0 // Compiles in Scala2 (uses `conv1`),
 
 In Scala 2, implicit values of a function type would be considered as
 potential views. In Scala 3, these implicit value need to have type
-`ImplicitConverter`:
+`Conversion`:
 
 ```scala
 // Scala 2:
 def foo(x: Int)(implicit conv: Int => String): String = x
 
 // Becomes with Scala 3:
-def foo(x: Int)(implicit conv: ImplicitConverter[Int, String]): String = x
+def foo(x: Int)(implicit conv: Conversion[Int, String]): String = x
 
 // Call site is unchanged:
 foo(4)(_.toString)
@@ -76,7 +77,7 @@ foo(4)(_.toString)
 implicit val myConverter: Int => String = _.toString
 
 // Becomes with Scala 3:
-implicit val myConverter: ImplicitConverter[Int, String] = _.toString
+implicit val myConverter: Conversion[Int, String] = _.toString
 ```
 
 Note that implicit conversions are also  affected by the [changes to
@@ -85,7 +86,7 @@ Scala 3.
 
 ## Motivation for the changes
 
-The introduction of `ImplicitConverter` in Scala 3 and the decision to
+The introduction of `Conversion` in Scala 3 and the decision to
 restrict implicit values of this type to be considered as potential
 views comes from the desire to remove surprising behavior from the
 language:
@@ -101,12 +102,12 @@ This snippet contains a type error. The right hand side of `val x`
 does not conform to type `String`. In Scala 2, the compiler will use
 `m` as an implicit conversion from `Int` to `String`, whereas Scala 3
 will report a type error, because Map isn't an instance of
-`ImplicitConverter`.
+`Conversion`.
 
 ## Migration path
 
 Implicit values that are used as views should see their type changed
-to `ImplicitConverter`.
+to `Conversion`.
 
 For the migration of implicit conversions that are affected by the
 changes to implicit resolution, refer to the [Changes in Implicit

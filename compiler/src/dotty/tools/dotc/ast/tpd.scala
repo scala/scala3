@@ -10,7 +10,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
-import collection.mutable
+import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
@@ -233,7 +233,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val previousParamRefs = if (isParamDependent) new mutable.ListBuffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type): TermSymbol = {
-          val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
+          val maybeImplicit =
+            if (tp.isContextual) Implicit | Contextual
+            else if (tp.isImplicitMethod) Implicit
+            else EmptyFlags
           val maybeErased = if (tp.isErasedMethod) Erased else EmptyFlags
 
           def makeSym(info: Type) = ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
@@ -730,6 +733,25 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (from == to) tree else loop(from, Nil, to :: Nil)
     }
 
+    /**
+     * Set the owner of every definition in this tree which is not itself contained in this
+     * tree to be `newowner`
+     */
+    def changeNonLocalOwners(newOwner: Symbol)(implicit ctx: Context): Tree = {
+      val ownerAcc = new TreeAccumulator[immutable.Set[Symbol]] {
+        def apply(ss: immutable.Set[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
+          case tree: DefTree =>
+            if (tree.symbol.exists) ss + tree.symbol.owner
+            else ss
+          case _ =>
+            foldOver(ss, tree)
+        }
+      }
+      val owners = ownerAcc(immutable.Set.empty[Symbol], tree).toList
+      val newOwners = List.fill(owners.size)(newOwner)
+      new TreeTypeMap(oldOwners = owners, newOwners = newOwners).apply(tree)
+    }
+
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
      *  owner by `from` to `to`.
      */
@@ -1039,9 +1061,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type)(implicit ctx: Context): Tree = {
+  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type],
+                      expectedType: Type, isContextual: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
-    val proto = new FunProtoTyped(args, expectedType)(typer)
+    val proto = new FunProtoTyped(args, expectedType)(typer, isContextual)
     val denot = receiver.tpe.member(method)
     assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
     val selected =

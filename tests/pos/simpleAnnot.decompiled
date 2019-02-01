@@ -1,9 +1,9 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleAnnot/Foo.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleAnnot/Foo.tasty */
 class Foo() {
-  @annot() type A = scala.Int
-  @annot() val a: scala.Int = scala.Predef.???
-  val b: scala.Int @annot() = scala.Predef.???
-  def c(x: scala.Int): scala.Int = (x: @annot())
+  @annot type A = scala.Int
+  @annot val a: scala.Int = scala.Predef.???
+  val b: scala.Int @annot = scala.Predef.???
+  def c(x: scala.Int): scala.Int = (x: @annot)
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleAnnot/annot.class */
-class annot() extends scala.annotation.Annotation()
+/** Decompiled from out/posTestFromTasty/pos/simpleAnnot/annot.tasty */
+class annot() extends scala.annotation.Annotation

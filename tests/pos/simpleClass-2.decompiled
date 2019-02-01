@@ -1,8 +1,8 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleClass-2/foo/A.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleClass-2/foo/A.tasty */
 package foo {
-  class A() extends foo.B()
+  class A() extends foo.B
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleClass-2/foo/B.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleClass-2/foo/B.tasty */
 package foo {
   class B()
 }

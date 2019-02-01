@@ -125,24 +125,25 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else simpleNameString(tsym)
     }
 
+  protected def arrowText(contextual: Boolean): Text = if (contextual) " |=> " else " => "
+
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ argsText(args) ~ ")"
 
-    def toTextFunction(args: List[Type], isImplicit: Boolean, isErased: Boolean): Text =
+    def toTextFunction(args: List[Type], contextual: Boolean, isErased: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if (args.length == 2 && !defn.isTupleType(args.head))
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        (keywordText("erased ") provided isErased) ~ (keywordText("implicit ") provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
+        (keywordText("erased ") provided isErased) ~
+        argStr ~ arrowText(contextual) ~ argText(args.last)
       }
 
-    def toTextDependentFunction(appType: MethodType): Text = {
-      (keywordText("implicit ") provided appType.isImplicitMethod) ~
-      "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
-    }
+    def toTextDependentFunction(appType: MethodType): Text =
+      "(" ~ paramsText(appType) ~ ")" ~ arrowText(appType.isContextual) ~ toText(appType.resultType)
 
     def isInfixType(tp: Type): Boolean = tp match {
       case AppliedType(tycon, args) =>
@@ -514,10 +515,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""
       case Function(args, body) =>
         var implicitSeen: Boolean = false
+        var contextual: Boolean = false
         def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
-              if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
+              if ((arg.mods is Contextual)) { contextual = true; "" }
+              else if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
             implicitText ~ toText(name) ~ optAscription(tpt)
           case _ =>
@@ -527,9 +530,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
           case _ => "(" ~ Text(args map argToText, ", ") ~ ")"
         }
-        changePrec(GlobalPrec) {
-          argsText ~ " => " ~ toText(body)
-        }
+        changePrec(GlobalPrec) { argsText ~ arrowText(contextual) ~ toText(body) }
       case InfixOp(l, op, r) =>
         val opPrec = parsing.precedence(op.name)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }

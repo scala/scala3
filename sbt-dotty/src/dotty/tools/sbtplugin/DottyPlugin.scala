@@ -163,14 +163,21 @@ object DottyPlugin extends AutoPlugin {
           inc
       },
 
-      scalaCompilerBridgeSource := {
-        val scalaBridge = scalaCompilerBridgeSource.value
-        val dottyBridge = (scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value).withConfigurations(Some(Configurations.Compile.name)).sources()
-        if (isDotty.value)
-          dottyBridge
-        else
-          scalaBridge
-      },
+      scalaCompilerBridgeBinaryJar := Def.taskDyn {
+        if (isDotty.value) Def.task {
+          val dottyBridgeArtifacts = fetchArtifactsOf("dotty-sbt-bridge", CrossVersion.disabled).value
+          val jars = dottyBridgeArtifacts.filter(art => art.getName.startsWith("dotty-sbt-bridge") && art.getName.endsWith(".jar")).toArray
+          if (jars.size == 0)
+            throw new MessageOnlyException("No jar found for dotty-sbt-bridge")
+          else if (jars.size > 1)
+            throw new MessageOnlyException(s"Multiple jars found for dotty-sbt-bridge: ${jars.toList}")
+          else
+            jars.headOption
+        }
+        else Def.task {
+          None: Option[File]
+        }
+      }.value,
 
       // Needed for RCs publishing
       scalaBinaryVersion := {
@@ -184,7 +191,7 @@ object DottyPlugin extends AutoPlugin {
         val si = scalaInstance.value
         if (isDotty.value) {
           Def.task {
-            val dottydocArtifacts = fetchArtifactsOf("dotty-doc").value
+            val dottydocArtifacts = fetchArtifactsOf("dotty-doc", CrossVersion.binary).value
             val includeArtifact = (f: File) => f.getName.endsWith(".jar")
             val dottydocJars = dottydocArtifacts.filter(includeArtifact).toArray
             val allJars = (si.allJars ++ dottydocJars).distinct
@@ -229,15 +236,15 @@ object DottyPlugin extends AutoPlugin {
     scalacOptions += "-from-tasty"
   ))
 
-  /** Fetch artefacts for scalaOrganization.value %% moduleName % scalaVersion.value */
-  private def fetchArtifactsOf(moduleName: String) = Def.task {
+  /** Fetch artifacts for scalaOrganization.value %% moduleName % scalaVersion.value */
+  private def fetchArtifactsOf(moduleName: String, crossVersion: CrossVersion) = Def.task {
     val dependencyResolution = Keys.dependencyResolution.value
     val log = streams.value.log
     val scalaInfo = scalaModuleInfo.value
     val updateConfiguration = Keys.updateConfiguration.value
     val warningConfiguration = (unresolvedWarningConfiguration in update).value
 
-    val moduleID = (scalaOrganization.value %% moduleName % scalaVersion.value).cross(CrossVersion.binary)
+    val moduleID = (scalaOrganization.value % moduleName % scalaVersion.value).cross(crossVersion)
     val descriptor = dependencyResolution.wrapDependencyInModule(moduleID, scalaInfo)
 
     dependencyResolution.update(descriptor, updateConfiguration, warningConfiguration, log) match {

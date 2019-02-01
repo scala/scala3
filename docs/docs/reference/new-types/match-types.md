@@ -86,7 +86,7 @@ Using `can-reduce`, we can now define match type reduction proper in the `reduce
 ```
 if
 ```
-    Match(S, C1, ..., Cn)  can-reduce  i, T
+  Match(S, C1, ..., Cn)  can-reduce  i, T
 ```
 and, for `j` in `1..i-1`: `C_j` is disjoint from `C_i`, or else `S` cannot possibly match `C_j`.
 See the section on overlapping patterns for an elaboration of "disjoint" and "cannot possibly match".

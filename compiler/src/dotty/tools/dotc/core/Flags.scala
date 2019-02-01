@@ -312,7 +312,6 @@ object Flags {
   final val Contravariant: FlagSet = typeFlag(21, "<contravariant>")
   final val Label: FlagSet = termFlag(21, "<label>")
 
-
   /** A trait that has only abstract methods as members
    *  and therefore can be represented by a Java interface.
    *  Warning: flag is set during regular typer pass, should be tested only after typer.
@@ -347,6 +346,9 @@ object Flags {
 
   /** An extension method */
   final val Extension = termFlag(28, "<extension>")
+
+  /** A contextual (with) parameter */
+  final val Contextual = commonFlag(29, "<contextual>")
 
   /** Symbol is defined by a Java class */
   final val JavaDefined: FlagSet = commonFlag(30, "<java>")

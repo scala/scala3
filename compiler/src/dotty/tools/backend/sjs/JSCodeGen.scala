@@ -2270,9 +2270,9 @@ class JSCodeGen()(implicit ctx: Context) {
     if (sym == defn.BoxedUnit_UNIT) {
       js.Undefined()
     } else {
-      val instance = genLoadModule(sym.owner)
+      val inst = genLoadModule(sym.owner)
       val method = encodeStaticMemberSym(sym)
-      js.Apply(instance, method, Nil)(toIRType(sym.info))
+      js.Apply(inst, method, Nil)(toIRType(sym.info))
     }
   }
 

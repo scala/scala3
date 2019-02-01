@@ -756,7 +756,7 @@ class Typer extends Namer
       case _ => untpd.TypeTree(tp)
     }
     pt.stripTypeVar.dealias.followSyntheticOpaque match {
-      case pt1 if defn.isNonDepFunctionType(pt1) =>
+      case pt1 if defn.isNonRefinedFunction(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
@@ -781,26 +781,27 @@ class Typer extends Namer
 
   def typedFunctionType(tree: untpd.Function, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.Function(args, body) = tree
-    val (isImplicit, isErased) = tree match {
-      case tree: untpd.FunctionWithMods =>
-        val isImplicit = tree.mods.is(Implicit)
-        var isErased = tree.mods.is(Erased)
-        if (isErased && args.isEmpty) {
-          ctx.error("An empty function cannot not be erased", tree.sourcePos)
-          isErased = false
-        }
-        (isImplicit, isErased)
-      case _ => (false, false)
+    var funFlags = tree match {
+      case tree: untpd.FunctionWithMods => tree.mods.flags
+      case _ => EmptyFlags
+    }
+    if (funFlags.is(Erased) && args.isEmpty) {
+      ctx.error("An empty function cannot not be erased", tree.sourcePos)
+      funFlags = funFlags &~ Erased
     }
 
-    val funCls = defn.FunctionClass(args.length, isImplicit, isErased)
+    val funCls = defn.FunctionClass(args.length,
+        isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
       completeParams(params)
       val params1 = params.map(typedExpr(_).asInstanceOf[ValDef])
+      if (!funFlags.isEmpty)
+        params1.foreach(_.symbol.setFlag(funFlags))
       val resultTpt = typed(body)
-      val companion = MethodType.maker(isImplicit = isImplicit, isErased = isErased)
+      val companion = MethodType.maker(
+          isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.sourcePos)
@@ -827,8 +828,8 @@ class Typer extends Namer
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
 
-    val isImplicit = tree match {
-      case tree: untpd.FunctionWithMods => tree.mods.is(Implicit)
+    val isContextual = tree match {
+      case tree: untpd.FunctionWithMods => tree.mods.is(Contextual)
       case _ => false
     }
 
@@ -881,7 +882,7 @@ class Typer extends Namer
       *         every parameter in `params`.
       */
     def calleeType: Type = fnBody match {
-      case Apply(expr, args) =>
+      case app @ Apply(expr, args) =>
         paramIndex = {
           for (param <- params; idx <- paramIndices(param, args))
           yield param.name -> idx
@@ -892,7 +893,7 @@ class Typer extends Namer
               expr1.tpe
             case _ =>
               val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType)(this)
+              val callProto = FunProto(protoArgs, WildcardType)(this, isContextual = app.isContextual)
               val expr1 = typedExpr(expr, callProto)
               fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
               expr1.tpe
@@ -951,7 +952,7 @@ class Typer extends Namer
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, isImplicit)
+        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
       }
     typed(desugared, pt)
   }
@@ -976,9 +977,9 @@ class Typer extends Namer
                      |because it has internal parameter dependencies,
                      |position = ${tree.span}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
                 }
-                else if ((tree.tpt `eq` untpd.ImplicitEmptyTree) && mt.paramNames.isEmpty)
+                else if ((tree.tpt `eq` untpd.ContextualEmptyTree) && mt.paramNames.isEmpty)
                   // Note implicitness of function in target type since there are no method parameters that indicate it.
-                  TypeTree(defn.FunctionOf(Nil, mt.resType, isImplicit = true, isErased = false))
+                  TypeTree(defn.FunctionOf(Nil, mt.resType, isContextual = true, isErased = false))
                 else
                   EmptyTree
             }
@@ -1593,7 +1594,11 @@ class Typer extends Namer
     val seenParents = mutable.Set[Symbol]()
 
     def typedParent(tree: untpd.Tree): Tree = {
-      var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
+      def isTreeType(t: untpd.Tree): Boolean = t match {
+        case _: untpd.Apply => false
+        case _ => true
+      }
+      var result = if (isTreeType(tree)) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.dealias.typeSymbol
       if (seenParents.contains(psym) && !cls.isRefinementClass) {
         if (!ctx.isAfterTyper) ctx.error(i"$psym is extended twice", tree.sourcePos)
@@ -1651,7 +1656,7 @@ class Typer extends Namer
         .withType(dummy.termRef)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) {
+      if (cls.derivesFrom(defn.EnumClass)) {
         val firstParent = parents1.head.tpe.dealias.typeSymbol
         checkEnum(cdef, cls, firstParent)
       }
@@ -1997,11 +2002,11 @@ class Typer extends Namer
         val ifpt = defn.asImplicitFunctionType(pt)
         val result = if (ifpt.exists &&
             xtree.isTerm &&
-            !untpd.isImplicitClosure(xtree) &&
+            !untpd.isContextualClosure(xtree) &&
             !ctx.mode.is(Mode.ImplicitShadowing) &&
             !ctx.mode.is(Mode.Pattern) &&
             !ctx.isAfterTyper)
-          makeImplicitFunction(xtree, ifpt)
+          makeContextualFunction(xtree, ifpt)
         else xtree match {
           case xtree: untpd.NameTree => typedNamed(xtree, pt)
           case xtree => typedUnnamed(xtree)
@@ -2022,10 +2027,10 @@ class Typer extends Namer
     tree
   }
 
-  protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+  protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
-    val ifun = desugar.makeImplicitFunction(formals, tree)
-    typr.println(i"make implicit function $tree / $pt ---> $ifun")
+    val ifun = desugar.makeContextualFunction(formals, tree)
+    typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typed(ifun, pt)
   }
 
@@ -2313,7 +2318,8 @@ class Typer extends Namer
               errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
             def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
             pt match {
-              case pt: FunProto =>
+              case pt: FunProto if !pt.isContextual =>
+              	// insert apply or convert qualifier only for a regular application
                 tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
               case _ =>
                 if (altDenots exists (_.info.paramInfoss == ListOfNil))
@@ -2343,11 +2349,17 @@ class Typer extends Namer
       }
 
       def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-        case _: MethodOrPoly =>
-          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
-            adapt(tree, pt.tupled, locked)
+        case wtp: MethodOrPoly =>
+          def methodStr = methPart(tree).symbol.showLocated
+          if (matchingApply(wtp, pt))
+            if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+              adapt(tree, pt.tupled, locked)
+            else
+              tree
+          else if (wtp.isContextual)
+            adaptNoArgs(wtp)  // insert arguments implicitly
           else
-            tree
+            errorTree(tree, em"Missing arguments for $methodStr")
         case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
           errorTree(tree, MethodDoesNotTakeParameters(tree))
         }
@@ -2524,7 +2536,7 @@ class Typer extends Namer
               ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.sourcePos)
             case _ =>
           }
-        simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
+          simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       } else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
@@ -2536,7 +2548,7 @@ class Typer extends Namer
     def adaptNoArgsOther(wtp: Type): Tree = {
       ctx.typeComparer.GADTused = false
       if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
-          !untpd.isImplicitClosure(tree) &&
+          !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
           !ctx.mode.is(Mode.Pattern) &&
           !ctx.mode.is(Mode.ImplicitShadowing) &&
@@ -2796,6 +2808,19 @@ class Typer extends Namer
       }
     }
   }
+
+  /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
+   *  This is the case if
+   *   - both are contextual, or
+   *   - neither is contextual, or
+   *   - the prototype is contextual and the method type is implicit.
+   *  The last rule is there for a transition period; it allows to mix `with` applications
+   *  with old-style implicit functions.
+   *  Overridden in `ReTyper`, where all applications are treated the same
+   */
+  protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =
+    methType.isContextual == pt.isContextual ||
+    methType.isImplicit && pt.isContextual // for a transition allow `with` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
     * against a selector of type `pt`. This implementation accounts for

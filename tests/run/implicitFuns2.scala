@@ -2,27 +2,27 @@ class A
 class B
 
 trait Foo {
-  def foo: implicit A => implicit B => Int
+  def foo: A |=> B |=> Int
 }
 
 class Foo1 extends Foo {
-  def foo: implicit A => implicit B => Int = 1
+  def foo: A |=> B |=> Int = 1
 }
 
 class Foo2 extends Foo1 {
-  override def foo: implicit A => implicit B => Int = 2
+  override def foo: A |=> B |=> Int = 2
 }
 
 trait Foo3 extends Foo {
-  override def foo: implicit A => implicit B => Int = 3
+  override def foo: A |=> B |=> Int = 3
 }
 
 class Bar[T] {
-  def bar: implicit A => T = null.asInstanceOf[T]
+  def bar: A |=> T = null.asInstanceOf[T]
 }
 
-class Bar1 extends Bar[implicit B => Int] {
-  override def bar: implicit A => implicit B => Int = 1
+class Bar1 extends Bar[B |=> Int] {
+  override def bar: A |=> B |=> Int = 1
 }
 
 object Test {

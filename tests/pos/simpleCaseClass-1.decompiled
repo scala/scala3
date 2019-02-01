@@ -1,14 +1,14 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleCaseClass-1/A.class */
+/** Decompiled from out/posTestFromTasty/pos/simpleCaseClass-1/A.tasty */
 case class A() {
   override def hashCode(): scala.Int = 1914112431
   override def equals(x$0: scala.Any): scala.Boolean = A.this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
-    case x$0: A @scala.unchecked() =>
+    case x$0: A @scala.unchecked =>
       true
     case _ =>
       false
   })
   override def toString(): java.lang.String = scala.runtime.ScalaRunTime._toString(A.this)
-  override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[A @scala.unchecked()]
+  override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[A @scala.unchecked]
   override def productArity: scala.Int = 0
   override def productPrefix: java.lang.String = "A"
   override def productElement(n: scala.Int): scala.Any = n match {

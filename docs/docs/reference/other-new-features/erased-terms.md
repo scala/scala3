@@ -91,7 +91,7 @@ that will not be found.
 
 As the implicit evidences of `turnedOn` and `turnedOff` are not used in the bodies of those functions 
 we can mark them as `erased`. This will remove the evidence parameters at runtime, but we would still
-evaluate the `isOn` and `isOff` implicits that where found as arguments.
+evaluate the `isOn` and `isOff` implicits that were found as arguments.
 As `isOn` and `isOff` are not used except as `erased` arguments, we can mark them as `erased`, hence
 removing the evaluation of the `isOn` and `isOff` evidences.
 

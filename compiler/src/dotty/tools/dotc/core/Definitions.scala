@@ -99,8 +99,8 @@ class Definitions {
    *
    *  ImplicitFunctionN traits follow this template:
    *
-   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object with FunctionN[T0,...,T{N-1}, R] {
-   *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
+   *        def apply with ($x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN traits follow this template:
@@ -111,8 +111,8 @@ class Definitions {
    *
    *  ErasedImplicitFunctionN traits follow this template:
    *
-   *      trait ErasedImplicitFunctionN[T0,...,T{N-1}, R] extends Object with ErasedFunctionN[T0,...,T{N-1}, R] {
-   *        def apply(erased implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      trait ErasedImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
+   *        def apply with (erased $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN and ErasedImplicitFunctionN erase to Function0.
@@ -128,13 +128,14 @@ class Definitions {
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
-        val methodType = MethodType.maker(isJava = false, name.isImplicitFunction, name.isErasedFunction)
-        val parentTraits =
-          if (!name.isImplicitFunction) Nil
-          else FunctionType(arity, isErased = name.isErasedFunction).appliedTo(argParamRefs ::: resParamRef :: Nil) :: Nil
+        val methodType = MethodType.maker(
+          isJava = false,
+          isImplicit = name.isImplicitFunction,
+          isContextual = name.isImplicitFunction,
+          isErased = name.isErasedFunction)
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
         denot.info =
-          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
+          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
     newClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
@@ -347,15 +348,18 @@ class Definitions {
 
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
-
-    lazy val Predef_ConformsR: TypeRef = ScalaPredefModule.requiredClass("<:<").typeRef
-    def Predef_Conforms(implicit ctx: Context): Symbol = Predef_ConformsR.symbol
     lazy val Predef_conformsR: TermRef = ScalaPredefModule.requiredMethodRef(nme.conforms_)
     def Predef_conforms(implicit ctx: Context): Symbol = Predef_conformsR.symbol
     lazy val Predef_classOfR: TermRef = ScalaPredefModule.requiredMethodRef(nme.classOf)
     def Predef_classOf(implicit ctx: Context): Symbol = Predef_classOfR.symbol
     lazy val Predef_undefinedR: TermRef = ScalaPredefModule.requiredMethodRef(nme.???)
     def Predef_undefined(implicit ctx: Context): Symbol = Predef_undefinedR.symbol
+
+  def SubTypeClass(implicit ctx: Context): Symbol =
+    if (isNewCollections)
+      ctx.requiredClass("scala.<:<")
+    else
+      ScalaPredefModule.requiredClass("<:<")
 
   lazy val ScalaRuntimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context): Symbol = ScalaRuntimeModuleRef.symbol
@@ -388,17 +392,13 @@ class Definitions {
 
   def DottyPredefModule(implicit ctx: Context): Symbol = DottyPredefModuleRef.symbol
 
-    lazy val Predef_ImplicitConverterR: TypeRef = DottyPredefModule.requiredClass("ImplicitConverter").typeRef
-    def Predef_ImplicitConverter(implicit ctx: Context): Symbol = Predef_ImplicitConverterR.symbol
-
   lazy val DottyArraysModuleRef: TermRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context): Symbol = DottyArraysModuleRef.symbol
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
   // TODO: Remove once we drop support for 2.12 standard library
-  lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value ||
-    ctx.base.staticRef("scala.collection.IterableOnce".toTypeName).exists
+  lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value
 
   def getWrapVarargsArrayModule: Symbol = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
 
@@ -585,12 +585,18 @@ class Definitions {
 
   lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
   def ThrowableClass(implicit ctx: Context): ClassSymbol = ThrowableType.symbol.asClass
-  lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
+  lazy val SerializableType: TypeRef       =
+    if (isNewCollections)
+      JavaSerializableClass.typeRef
+    else
+      ctx.requiredClassRef("scala.Serializable")
   def SerializableClass(implicit ctx: Context): ClassSymbol = SerializableType.symbol.asClass
   lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
   def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
   lazy val MatchErrorType: TypeRef         = ctx.requiredClassRef("scala.MatchError")
   def MatchErrorClass(implicit ctx: Context): ClassSymbol = MatchErrorType.symbol.asClass
+  lazy val ConversionType: TypeRef = ctx.requiredClass("scala.Conversion").typeRef
+  def ConversionClass(implicit ctx: Context): ClassSymbol = ConversionType.symbol.asClass
 
   lazy val StringAddType: TypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
   def StringAddClass(implicit ctx: Context): ClassSymbol = StringAddType.symbol.asClass
@@ -860,8 +866,8 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Type =
-      FunctionType(args.length, isImplicit, isErased).appliedTo(args ::: resultType :: Nil)
+    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Type =
+      FunctionType(args.length, isContextual, isErased).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context): Option[(List[Type], Type, Boolean, Boolean)] = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
@@ -949,10 +955,10 @@ class Definitions {
 
   lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
-  def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Symbol =
-    if (isImplicit && isErased)
+  def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): Symbol =
+    if (isContextual && isErased)
       ctx.requiredClass("scala.ErasedImplicitFunction" + n.toString)
-    else if (isImplicit)
+    else if (isContextual)
       ctx.requiredClass("scala.ImplicitFunction" + n.toString)
     else if (isErased)
       ctx.requiredClass("scala.ErasedFunction" + n.toString)
@@ -964,9 +970,9 @@ class Definitions {
     lazy val Function0_applyR: TermRef = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context): Symbol = Function0_applyR.symbol
 
-  def FunctionType(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
-    if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
-    else FunctionClass(n, isImplicit, isErased).typeRef
+  def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
+    if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
+    else FunctionClass(n, isContextual, isErased).typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
@@ -1121,15 +1127,19 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN
    *  instance?
    */
-  def isNonDepFunctionType(tp: Type)(implicit ctx: Context): Boolean = {
+  def isNonRefinedFunction(tp: Type)(implicit ctx: Context): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
-    arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol)
+
+    arity >= 0 &&
+      isFunctionClass(sym) &&
+      tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol) &&
+      !tp.isInstanceOf[RefinedType]
   }
 
   /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
   def isFunctionType(tp: Type)(implicit ctx: Context): Boolean =
-    isNonDepFunctionType(tp.dropDependentRefinement)
+    isNonRefinedFunction(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
   lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
@@ -1169,7 +1179,7 @@ class Definitions {
         false
     })
 
-  def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dealias.argInfos.length - 1
+  def functionArity(tp: Type)(implicit ctx: Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 
   /** Return underlying immplicit function type (i.e. instance of an ImplicitFunctionN class)
    *  or NoType if none exists. The following types are considered as underlying types:

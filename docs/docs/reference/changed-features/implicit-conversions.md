@@ -19,7 +19,7 @@ case).
 This conversion can be either:
 
 1. An `implicit def` of type `T => S` or `(=> T) => S`
-1. An implicit value of type `ImplicitConverter[T, S]`
+1. An implicit value of type `scala.Conversion[T, S]`
 
 Defining an implicit conversion will emit a warning unless the import
 `scala.language.implicitConversions` is in scope, or the flag
@@ -37,14 +37,14 @@ implicit def int2Integer(x: Int): java.lang.Integer =
   x.asInstanceOf[java.lang.Integer]
 ```
 
-The second example shows how to use `ImplicitConverter` to define an
+The second example shows how to use `Conversion` to define an
 `Ordering` for an arbitrary type, given existing `Ordering`s for other
 types:
 
 ```scala
 import scala.language.implicitConversions
 implicit def ordT[T, S](
-  implicit conv: ImplicitConverter[T, S],
+  implicit conv: Conversion[T, S],
            ordS: Ordering[S]
   ): Ordering[T] = {
   // `ordS` compares values of type `S`, but we can convert from `T` to `S`
@@ -54,7 +54,7 @@ implicit def ordT[T, S](
 class A(val x: Int) // The type for which we want an `Ordering`
 
 // Convert `A` to a type for which an `Ordering` is available:
-implicit val AToInt: ImplicitConverter[A, Int] = _.x
+implicit val AToInt: Conversion[A, Int] = _.x
 
 implicitly[Ordering[Int]] // Ok, exists in the standard library
 implicitly[Ordering[A]] // Ok, will use the implicit conversion from

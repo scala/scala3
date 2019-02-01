@@ -178,6 +178,10 @@ object EtaExpansion extends LiftImpure {
    *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
    *
    *  where `T1, ..., Tn` are the paremeter types of the expanded method.
+   *  If `expr` has a contectual function type, the arguments are passed with `with`.
+   *  E.g. for (1):
+   *
+   *      { val xs = es; (x1, ..., xn) => expr with (x1, ..., xn) }
    *
    *  Case (3) applies if the method is curried, i.e. its result type is again a method
    *  type. Case (2) applies if the expected arity of the function type `xarity` differs
@@ -206,6 +210,7 @@ object EtaExpansion extends LiftImpure {
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     var paramFlag = Synthetic | Param
+    if (mt.isContextual) paramFlag |= Contextual
     if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
@@ -213,9 +218,11 @@ object EtaExpansion extends LiftImpure {
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
+    if (mt.isContextual) body.pushAttachment(WithApply, ())
     if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
     val fn =
-      if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
+      if (mt.isContextual) new untpd.FunctionWithMods(params, body, Modifiers(Implicit | Contextual))
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

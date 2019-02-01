@@ -21,7 +21,6 @@ i3050.scala
 i4006b.scala
 i4006c.scala
 
-# Need to print empty tree for implicit match
-implicit-match.scala
-implicit-match-nested.scala
-implicit-match-and-inline-match.scala
+# Not sure what's wring here
+i4203.scala
+t6278-synth-def.scala

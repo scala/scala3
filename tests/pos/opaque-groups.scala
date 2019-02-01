@@ -4,7 +4,7 @@ package object groups {
   }
 
   object Semigroup {
-    def instance[A](f: (A, A) => A): Semigroup[A] =
+    def inst[A](f: (A, A) => A): Semigroup[A] =
       new Semigroup[A] {
         def combine(x: A, y: A): A = f(x, y)
       }
@@ -36,7 +36,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[First[A]] = ga
     def unwrap[G[_], A](gfa: G[First[A]]): G[A] = gfa
     implicit def firstSemigroup[A]: Semigroup[First[A]] =
-      Semigroup.instance((x, y) => x)
+      Semigroup.inst((x, y) => x)
   }
 
   opaque type Last[A] = A
@@ -45,7 +45,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[Last[A]] = ga
     def unwrap[G[_], A](gfa: G[Last[A]]): G[A] = gfa
     implicit def lastSemigroup[A]: Semigroup[Last[A]] =
-      Semigroup.instance((x, y) => y)
+      Semigroup.inst((x, y) => y)
   }
 
   opaque type Min[A] = A
@@ -54,7 +54,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[Min[A]] = ga
     def unwrap[G[_], A](gfa: G[Min[A]]): G[A] = gfa
     implicit def minSemigroup[A](implicit o: Ordering[A]): Semigroup[Min[A]] =
-      Semigroup.instance(o.min)
+      Semigroup.inst(o.min)
   }
 
   opaque type Max[A] = A
@@ -63,7 +63,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[Max[A]] = ga
     def unwrap[G[_], A](gfa: G[Max[A]]): G[A] = gfa
     implicit def maxSemigroup[A](implicit o: Ordering[A]): Semigroup[Max[A]] =
-      Semigroup.instance(o.max)
+      Semigroup.inst(o.max)
   }
 
   opaque type Plus[A] = A
@@ -72,7 +72,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[Plus[A]] = ga
     def unwrap[G[_], A](gfa: G[Plus[A]]): G[A] = gfa
     implicit def plusSemigroup[A](implicit n: Numeric[A]): Semigroup[Plus[A]] =
-      Semigroup.instance(n.plus)
+      Semigroup.inst(n.plus)
   }
 
   opaque type Times[A] = A
@@ -81,7 +81,7 @@ package object groups {
     def wraps[G[_], A](ga: G[A]): G[Times[A]] = ga
     def unwrap[G[_], A](gfa: G[Times[A]]): G[A] = gfa
     implicit def timesSemigroup[A](implicit n: Numeric[A]): Semigroup[Times[A]] =
-      Semigroup.instance(n.times)
+      Semigroup.inst(n.times)
   }
 
   opaque type Reversed[A] = A

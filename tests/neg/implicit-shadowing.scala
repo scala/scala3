@@ -20,8 +20,8 @@ object Test {
     }
   }
 
-  def h[T]: implicit C1[T] => Unit = {
-    def g[U]: implicit C2[U] => Unit = {
+  def h[T]: C1[T] |=> Unit = {
+    def g[U]: C2[U] |=> Unit = {
       implicitly[C1[T]]    // OK: no shadowing for evidence parameters
       implicitly[C2[U]]
     }

@@ -26,7 +26,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private[this] var myClassLoader: ClassLoader = _
 
   /** Class loader used to load compiled code */
-  private[this] def classLoader()(implicit ctx: Context) =
+  private[repl] def classLoader()(implicit ctx: Context) =
     if (myClassLoader != null) myClassLoader
     else {
       val parent = parentClassLoader.getOrElse {

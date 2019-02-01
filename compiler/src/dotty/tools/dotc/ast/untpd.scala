@@ -68,7 +68,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType: Boolean = body.isType
   }
 
-  /** A function type with `implicit` or `erased` modifiers */
+  /** A function type with `implicit`, `erased`, or `contextual` modifiers */
   class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
     extends Function(args, body)
 
@@ -149,6 +149,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
 
     case class Enum()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Enum)
+
+    case class Instance()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
   }
 
   /** Modifiers and annotations for definitions
@@ -213,6 +215,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def hasFlags: Boolean = flags != EmptyFlags
     def hasAnnotations: Boolean = annotations.nonEmpty
     def hasPrivateWithin: Boolean = privateWithin != tpnme.EMPTY
+    def hasMod(cls: Class[_]) = mods.exists(_.getClass == cls)
 
     private def isEnum = is(Enum, butNot = JavaDefined)
 
@@ -268,6 +271,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  TypeTree is derived.
    */
   val OriginalSymbol: Property.Key[Symbol] = new Property.Key
+
+  /** Property key for contextual Apply trees of the form `fn with arg` */
+  val WithApply: Property.StickyKey[Unit] = new Property.StickyKey
 
   // ------ Creation methods for untyped only -----------------
 
@@ -398,9 +404,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = EmptyModifiers)(implicit ctx: Context): ValDef =
     ValDef(pname, tpe, EmptyTree).withMods(mods | Param)
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null)(implicit ctx: Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = EmptyFlags)(implicit ctx: Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
-      .withFlags(SyntheticTermParam)
+      .withFlags(flags | SyntheticTermParam)
 
   def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context): Tree =
     if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
