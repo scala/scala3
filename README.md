@@ -26,4 +26,4 @@ How to Contribute
 
 License
 =======
-Dotty is licensed under the [Apache License Version 2.0](https://github.com/lampepfl/dotty/blob/master/LICENSE.txt)
+Dotty is licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
