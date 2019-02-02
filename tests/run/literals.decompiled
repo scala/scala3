@@ -2,7 +2,6 @@
 object Test {
   def αρετη: java.lang.String = "alpha rho epsilon tau eta"
   case class GGG(i: scala.Int) {
-    def αα(that: Test.GGG): scala.Int = GGG.this.i.+(that.i)
     override def hashCode(): scala.Int = {
       var acc: scala.Int = 767242539
       acc = scala.runtime.Statics.mix(acc, GGG.this.i)
@@ -24,6 +23,7 @@ object Test {
       case _ =>
         throw new java.lang.IndexOutOfBoundsException(n.toString())
     }
+    def αα(that: Test.GGG): scala.Int = GGG.this.i.+(that.i)
   }
   object GGG extends scala.Function1[scala.Int, Test.GGG]
   def check_success[a](name: scala.Predef.String, closure: => a, expected: a): scala.Unit = {

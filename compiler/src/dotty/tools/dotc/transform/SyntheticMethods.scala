@@ -23,8 +23,9 @@ import ValueClasses.isDerivedValueClass
  *    def productArity: Int
  *    def productPrefix: String
  *
- *  Special handling:
- *    protected def readResolve(): AnyRef
+ *  Add to serializable static objects, unless an implementation
+ *  already exists:
+ *    private def writeReplace(): AnyRef
  *
  *  Selectively added to value classes, unless a non-default
  *  implementation already exists:
@@ -50,8 +51,10 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
   def caseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
 
-  /** The synthetic methods of the case or value class `clazz`. */
-  def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
+  /** If this is a case or value class, return the appropriate additional methods,
+   *  otherwise return nothing.
+   */
+  def caseAndValueMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.appliedRef
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
@@ -255,12 +258,38 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      */
     def canEqualBody(that: Tree): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))
 
-    symbolsToSynthesize flatMap syntheticDefIfMissing
+    symbolsToSynthesize.flatMap(syntheticDefIfMissing)
   }
 
-  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template =
-    if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner))
-      cpy.Template(impl)(body = impl.body ++ syntheticMethods(ctx.owner.asClass))
+  /** If this is a serializable static object `Foo`, add the method:
+   *
+   *      private def writeReplace(): AnyRef =
+   *        new scala.runtime.ModuleSerializationProxy(classOf[Foo.type])
+   *
+   *  unless an implementation already exists, otherwise do nothing.
+   */
+  def serializableObjectMethod(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
+    def hasWriteReplace: Boolean =
+      clazz.membersNamed(nme.writeReplace)
+        .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+        .exists
+    if (clazz.is(Module) && clazz.isStatic && clazz.isSerializable && !hasWriteReplace) {
+      val writeReplace = ctx.newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
+        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+      List(
+        DefDef(writeReplace,
+          _ => New(defn.ModuleSerializationProxyType,
+                   defn.ModuleSerializationProxyConstructor,
+                   List(Literal(Constant(clazz.sourceModule.termRef)))))
+          .withSpan(ctx.owner.span.focus))
+    }
     else
-      impl
+      Nil
+  }
+
+  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template = {
+    val clazz = ctx.owner.asClass
+    cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body)
+  }
+
 }

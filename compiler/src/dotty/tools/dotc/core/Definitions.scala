@@ -575,7 +575,9 @@ class Definitions {
       case List(pt) => (pt isRef StringClass)
       case _ => false
     }).symbol.asTerm
+
   lazy val JavaSerializableClass: ClassSymbol     = ctx.requiredClass("java.io.Serializable")
+
   lazy val ComparableClass: ClassSymbol           = ctx.requiredClass("java.lang.Comparable")
 
   lazy val SystemClass: ClassSymbol               = ctx.requiredClass("java.lang.System")
@@ -655,6 +657,11 @@ class Definitions {
     def Product_productElement(implicit ctx: Context): Symbol = Product_productElementR.symbol
     lazy val Product_productPrefixR: TermRef = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context): Symbol = Product_productPrefixR.symbol
+
+  lazy val ModuleSerializationProxyType: TypeRef  = ctx.requiredClassRef("scala.runtime.ModuleSerializationProxy")
+  def ModuleSerializationProxyClass(implicit ctx: Context): ClassSymbol = ModuleSerializationProxyType.symbol.asClass
+    lazy val ModuleSerializationProxyConstructor: TermSymbol =
+      ModuleSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(WildcardType)))
 
   lazy val GenericType: TypeRef                = ctx.requiredClassRef("scala.reflect.Generic")
   def GenericClass(implicit ctx: Context): ClassSymbol    = GenericType.symbol.asClass

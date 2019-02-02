@@ -1,0 +1,4 @@
+/** Decompiled from out/runTestFromTasty/run/classof-object/Test.tasty */
+object Test {
+  def main(args: scala.Array[scala.Predef.String]): scala.Unit = if (scala.Predef.classOf[Test.type].==(Test.getClass()).unary_!) dotty.DottyPredef.assertFail() else ()
+}
