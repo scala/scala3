@@ -2,7 +2,10 @@ package dotty.tools.sbtplugin
 
 import sbt._
 import sbt.Keys._
-import sbt.librarymanagement._
+import sbt.librarymanagement.{
+  ivy, DependencyResolution, ScalaModuleInfo, SemanticSelector, UpdateConfiguration, UnresolvedWarningConfiguration,
+  VersionNumber
+}
 import sbt.internal.inc.ScalaInstance
 import xsbti.compile._
 import java.net.URLClassLoader
@@ -99,20 +102,6 @@ object DottyPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  // Adapted from CrossVersionUtil#sbtApiVersion
-  private def sbtFullVersion(v: String): Option[(Int, Int, Int)] =
-  {
-    val ReleaseV = """(\d+)\.(\d+)\.(\d+)(-\d+)?""".r
-    val CandidateV = """(\d+)\.(\d+)\.(\d+)(-RC\d+)""".r
-    val NonReleaseV = """(\d+)\.(\d+)\.(\d+)([-\w+]*)""".r
-    v match {
-      case ReleaseV(x, y, z, ht) => Some((x.toInt, y.toInt, z.toInt))
-      case CandidateV(x, y, z, ht)  => Some((x.toInt, y.toInt, z.toInt))
-      case NonReleaseV(x, y, z, ht) if z.toInt > 0 => Some((x.toInt, y.toInt, z.toInt))
-      case _ => None
-    }
-  }
-
   /** Patches the IncOptions so that .tasty and .hasTasty files are pruned as needed.
    *
    *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
@@ -142,12 +131,13 @@ object DottyPlugin extends AutoPlugin {
 
   override val globalSettings: Seq[Def.Setting[_]] = Seq(
     onLoad in Global := onLoad.in(Global).value.andThen { state =>
+
+      val requiredVersion = ">=1.2.7"
+
       val sbtV = sbtVersion.value
-      sbtFullVersion(sbtV) match {
-        case Some((1, sbtMinor, sbtPatch)) if sbtMinor > 1 || (sbtMinor == 1  && sbtPatch >= 5) =>
-        case _ =>
-          sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt >= 1.1.5 is required.")
-      }
+      if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
+        sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt $requiredVersion is required.")
+
       state
     }
   )
