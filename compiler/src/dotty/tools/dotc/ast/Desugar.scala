@@ -9,6 +9,7 @@ import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
 import util.{Property, SourceFile, SourcePosition}
+import util.NameTransformer.avoidIllegalChars
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -1046,10 +1047,8 @@ object desugar {
     if (nestedStats.isEmpty) pdef
     else {
       var fileName = ctx.source.file.name
-      val end = fileName.lastIndexOf('.') // drop extension
-      val start = fileName.lastIndexOf('.', end - 1) // drop any prefix before another `.`
-      val sourceName = fileName.substring(start + 1, end)
-      val groupName = (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
+      val sourceName = fileName.take(fileName.lastIndexOf('.'))
+      val groupName = avoidIllegalChars((sourceName ++ str.TOPLEVEL_SUFFIX).toTermName.asSimpleName)
       val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
