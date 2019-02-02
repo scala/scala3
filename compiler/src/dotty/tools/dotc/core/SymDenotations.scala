@@ -1974,8 +1974,8 @@ object SymDenotations {
      *  is as follows:
      *
      *  If this is the scala package look in the package first, and if nothing is found
-     *  there, look in the package object second. Otherwise, look in the package object
-     *  first, and if nothing is found there, in the package second.
+     *  there, look in the package object second. Otherwise, look in the both the package object
+     *  and the package and form a union of the results.
      *
      *  The reason for the special treatment of the scala package is that if we
      *  complete it too early, we freeze its superclass Any, so that no members can

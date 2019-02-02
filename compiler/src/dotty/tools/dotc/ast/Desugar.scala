@@ -1022,8 +1022,8 @@ object desugar {
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
-  /** Group all definitions that can't be at the toplebel in
-   *  an object named `<source>#object` where `<source>` is the name of the source file.
+  /** Group all definitions that can't be at the toplevel in
+   *  an object named `<source>$package` where `<source>` is the name of the source file.
    *  Definitions that can't be at the toplevel are:
    *
    *   - all pattern, value and method definitions
@@ -1045,7 +1045,10 @@ object desugar {
     val (nestedStats, topStats) = pdef.stats.partition(needsObject)
     if (nestedStats.isEmpty) pdef
     else {
-      val sourceName = ctx.source.file.name.takeWhile(_ != '.')
+      var fileName = ctx.source.file.name
+      val end = fileName.lastIndexOf('.') // drop extension
+      val start = fileName.lastIndexOf('.', end - 1) // drop any prefix before another `.`
+      val sourceName = fileName.substring(start + 1, end)
       val groupName = (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
       val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)

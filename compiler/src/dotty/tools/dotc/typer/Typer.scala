@@ -269,7 +269,7 @@ class Typer extends Namer
               !curOwner.isPackageObject
               // Package objects are never searched directly. We wait until we
               // hit the enclosing package. That way we make sure we consider
-              // all overloaded altrenatives of a definition, even if they are
+              // all overloaded alternatives of a definition, even if they are
               // in different source files.
 
           if (isNewDefScope) {
