@@ -293,11 +293,6 @@ object Build {
 
   /** Projects -------------------------------------------------------------- */
 
-  // Needed because the dotty project aggregates dotty-sbt-bridge but dotty-sbt-bridge
-  // currently refers to dotty in its scripted task and "aggregate" does not take by-name
-  // parameters: https://github.com/sbt/sbt/issues/2200
-  lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
-
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
   // - publishes its own empty artifact "dotty" that depends on "dotty-library" and "dotty-compiler",
