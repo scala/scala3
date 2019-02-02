@@ -16,6 +16,7 @@ import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
+import dotty.tools.sbtplugin.DottyPlugin.makeScalaInstance
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
@@ -206,20 +207,6 @@ object Build {
     // Use the same name as the non-bootstrapped projects for the artifacts
     moduleName ~= { _.stripSuffix("-bootstrapped") },
 
-    // Prevent sbt from setting the Scala bootclasspath, otherwise it will
-    // contain `scalaInstance.value.libraryJar` which in our case is the
-    // non-bootstrapped dotty-library that will then take priority over
-    // the bootstrapped dotty-library on the classpath or sourcepath.
-    classpathOptions ~= (_.withAutoBoot(false)),
-    // ... but when running under Java 8, we still need a Scala bootclasspath that contains the JVM bootclasspath,
-    // otherwise sbt incremental compilation breaks.
-    scalacOptions ++= {
-      if (isJavaAtLeast("9"))
-        Seq()
-      else
-        Seq("-bootclasspath", sys.props("sun.boot.class.path"))
-    },
-
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
     /*
     scalacOptions ++= {
@@ -240,34 +227,28 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      import sbt.internal.inc.ScalaInstance
-      import sbt.internal.inc.classpath.ClasspathUtilities
+      // TODO: Here we use the output class directories directly, this might impact
+      // performance when running the compiler (especially on Windows where file
+      // IO is slow). We should benchmark whether using jars is actually faster
+      // in practice (especially on our CI), this could be done using
+      // `exportJars := true`.
+      val all = fullClasspath.in(`dotty-doc`, Compile).value
+      def getArtifact(name: String): File =
+        all.find(_.get(artifact.key).exists(_.name == name))
+          .getOrElse(throw new MessageOnlyException(s"Artifact for $name not found in $all"))
+          .data
 
-      val libraryJar = packageBin.in(`dotty-library`, Compile).value
-      val compilerJar = packageBin.in(`dotty-compiler`, Compile).value
+      val scalaLibrary = getArtifact("scala-library")
+      val dottyLibrary = getArtifact("dotty-library")
+      val compiler = getArtifact("dotty-compiler")
 
-      // All dotty-doc's and compiler's dependencies except the library.
-      // (we get the compiler's dependencies because dottydoc depends on the compiler)
-      val otherDependencies = {
-        val excluded = Set("dotty-library", "dotty-compiler")
-        fullClasspath.in(`dotty-doc`, Compile).value
-          .filterNot(_.get(artifact.key).exists(a => excluded.contains(a.name)))
-          .map(_.data)
-      }
-
-      val allJars = libraryJar :: compilerJar :: otherDependencies.toList
-      val classLoader = state.value.classLoaderCache(allJars)
-      new ScalaInstance(
+      makeScalaInstance(
+        state.value,
         scalaVersion.value,
-        classLoader,
-        ClasspathUtilities.rootLoader, // FIXME: Should be a class loader which only includes the dotty-lib
-                                       // See: https://github.com/sbt/zinc/commit/9397b6aaf94ac3cfab386e3abd11c0ef9c2ceaff#diff-ea135f2f26f43e40ff045089da221e1e
-                                       // Should not matter, as it addresses an issue with `sbt run` that
-                                       // only occur when `(fork in run) := false`
-        libraryJar,
-        compilerJar,
-        allJars.toArray,
-        None
+        scalaLibrary,
+        dottyLibrary,
+        compiler,
+        all.map(_.data)
       )
     }
   )
