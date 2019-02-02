@@ -32,7 +32,7 @@ object Build {
   val scalacVersion = "2.12.8"
 
   val baseVersion = "0.13.0"
-  val baseSbtDottyVersion = "0.2.7"
+  val baseSbtDottyVersion = "0.3.0"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
