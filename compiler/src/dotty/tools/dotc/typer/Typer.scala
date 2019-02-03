@@ -40,7 +40,6 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
 
-
 object Typer {
 
   /** The precedence of bindings which determines which of several bindings will be
@@ -75,6 +74,11 @@ object Typer {
    *  the `()` was dropped by the Typer.
    */
   private val DroppedEmptyArgs = new Property.Key[Unit]
+
+  /** Am attachment that indicates a failed conversion or extension method
+   *  search was tried on a tree. This will in some cases be reported in error messages
+   */
+  private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
 }
 
 class Typer extends Namer
@@ -2724,11 +2728,14 @@ class Typer extends Namer
             checkImplicitConversionUseOK(inferred.symbol, tree.posd)
             readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
+            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) {
               // don't report the failure but return the tree unchanged. This
               // will cause a failure at the next level out, which usually gives
-              // a better error message.
+              // a better error message. To compensate, store the encountered failure
+              // as an attachment, so that it can be reported later as an addendum.
+              tree.putAttachment(HiddenSearchFailure, failure)
               tree
+            }
             else recover(failure.reason)
         }
       else recover(NoMatchingImplicits)

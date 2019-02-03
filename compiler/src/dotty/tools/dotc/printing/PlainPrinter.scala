@@ -524,7 +524,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case result: AmbiguousImplicits =>
           "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>
-          "?Unknown Implicit Result?" + result.getClass
+          "Search Failure: " ~ toText(result.tree)
     }
   }
 
