@@ -95,8 +95,7 @@ object Implicits {
           def methodCandidateKind(mt: MethodType, approx: Boolean) =
             if (mt.isImplicitMethod)
               viewCandidateKind(normalize(mt, pt), argType, resType)
-            else if (!mt.isImplicitMethod &&
-                mt.paramInfos.lengthCompare(1) == 0 && {
+            else if (mt.paramInfos.lengthCompare(1) == 0 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
                   ctx.test(implicit ctx => argType relaxed_<:< formal)
@@ -1276,9 +1275,13 @@ trait Implicits { self: Typer =>
                 case reason =>
                   if (contextual)
                     bestImplicit(contextual = false).recoverWith {
-                      failure2 => reason match {
-                        case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
-                        case _ => failure2
+                      failure2 => failure2.reason match {
+                        case _: AmbiguousImplicits => failure2
+                        case _ =>
+                          reason match {
+                            case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
+                            case _ => List(failure, failure2).maxBy(_.tree.treeSize)
+                          }
                       }
                     }
                   else failure
@@ -1637,4 +1640,6 @@ final class TermRefSet(implicit ctx: Context) {
     foreach(tr => buffer += tr)
     buffer.toList
   }
+
+  override def toString = toList.toString
 }
