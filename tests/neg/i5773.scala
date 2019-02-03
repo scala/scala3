@@ -20,7 +20,7 @@ object Main {
   def f1 = {
     println(1 appendS 2) // error This should give the following error message:
 /*
-21 |    println(1 appendS 2) // error This should give the following error message:
+21 |    println(1 appendS 2)
    |            ^^^^^^^^^
    |value appendS is not a member of Int.
    |An extension method was tried, but could not be fully constructed:
