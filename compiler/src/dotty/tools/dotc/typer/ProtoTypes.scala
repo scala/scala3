@@ -304,11 +304,13 @@ object ProtoTypes {
      *                  with unknown parameter types - this will then cause a
      *                  "missing parameter type" error
      */
-    private def typedArgs(force: Boolean): List[Tree] = {
-      if (state.typedArgs.size != args.length)
-        state.typedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
-      state.typedArgs
-    }
+    private def typedArgs(force: Boolean): List[Tree] =
+      if (state.typedArgs.size == args.length) state.typedArgs
+      else {
+        val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
+        if (!args1.contains(WildcardType)) state.typedArgs = args1
+        args1
+      }
 
     def typedArgs: List[Tree] = typedArgs(force = true)
     def unforcedTypedArgs: List[Tree] = typedArgs(force = false)
