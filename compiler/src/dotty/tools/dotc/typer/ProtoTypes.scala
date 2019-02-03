@@ -107,7 +107,7 @@ object ProtoTypes {
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   case class IgnoredProto(ignored: Type) extends UncachedGroundType with MatchAlways {
     override def revealIgnored = ignored.revealIgnored
-    override def deepenProto(implicit ctx: Context): Type = ignored
+    override def deepenProto(implicit ctx: Context): Type = ignored.deepenProto
   }
 
   /** A prototype for expressions [] that are part of a selection operation:
