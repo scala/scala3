@@ -2413,13 +2413,16 @@ class Typer extends Namer
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
       def addImplicitArgs(implicit ctx: Context) = {
-        def implicitArgs(formals: List[Type], argIndex: Int): List[Tree] = formals match {
+        def implicitArgs(formals: List[Type], argIndex: Int, pt: Type): List[Tree] = formals match {
           case Nil => Nil
           case formal :: formals1 =>
             val arg = inferImplicitArg(formal, tree.span.endPos)
             arg.tpe match {
-              case failed: SearchFailureType
-              if !failed.isInstanceOf[AmbiguousImplicits] && !tree.symbol.hasDefaultParams =>
+              case failed: AmbiguousImplicits =>
+                val pt1 = pt.deepenProto
+                if ((pt1 `ne` pt) && resultMatches(wtp, pt1)) implicitArgs(formals, argIndex, pt1)
+                else arg :: implicitArgs(formals1, argIndex + 1, pt1)
+              case failed: SearchFailureType if !tree.symbol.hasDefaultParams =>
                 // no need to search further, the adapt fails in any case
                 // the reason why we continue inferring arguments in case of an AmbiguousImplicits
                 // is that we need to know whether there are further errors.
@@ -2433,10 +2436,10 @@ class Typer extends Namer
                   if (wtp.isParamDependent && arg.tpe.exists)
                     formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), arg.tpe))
                   else formals1
-                arg :: implicitArgs(formals2, argIndex + 1)
+                arg :: implicitArgs(formals2, argIndex + 1, pt)
             }
         }
-        val args = implicitArgs(wtp.paramInfos, 0)
+        val args = implicitArgs(wtp.paramInfos, 0, pt)
 
         def propagatedFailure(args: List[Tree]): Type = args match {
           case arg :: args1 =>
@@ -2612,11 +2615,12 @@ class Typer extends Namer
       case _ => tp
     }
 
+    def resultMatches(wtp: Type, pt: Type) =
+      constrainResult(tree.symbol, wtp, revealProtoOfExtMethod(followAlias(pt)))
+
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       def functionExpected = defn.isFunctionType(ptNorm)
-      def resultMatch =
-        constrainResult(tree.symbol, wtp, revealProtoOfExtMethod(followAlias(pt)))
       def needsEta = pt match {
         case _: SingletonType => false
         case IgnoredProto(_: FunOrPolyProto) => false
@@ -2627,8 +2631,9 @@ class Typer extends Namer
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))
         case wtp: MethodType if wtp.isImplicitMethod &&
-          ({ resMatch = resultMatch; resMatch } || !functionExpected) =>
-          if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
+          ({ resMatch = resultMatches(wtp, pt); resMatch } || !functionExpected) =>
+          if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled))
+            adaptNoArgsImplicitMethod(wtp)
           else {
             // Don't proceed with implicit search if result type cannot match - the search
             // will likely be under-constrained, which means that an unbounded number of alternatives
