@@ -93,7 +93,9 @@ object Implicits {
         def viewCandidateKind(tpw: Type, argType: Type, resType: Type): Candidate.Kind = {
 
           def methodCandidateKind(mt: MethodType, approx: Boolean) =
-            if (!mt.isImplicitMethod &&
+            if (mt.isImplicitMethod)
+              viewCandidateKind(normalize(mt, pt), argType, resType)
+            else if (!mt.isImplicitMethod &&
                 mt.paramInfos.lengthCompare(1) == 0 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
