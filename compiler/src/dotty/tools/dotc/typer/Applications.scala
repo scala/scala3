@@ -799,7 +799,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
        *  part. Return an optional value to indicate success.
        */
       def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
-        if (ctx.mode.is(Mode.FixedQualifier)) None
+        if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
+          // Suppress insertion of apply or implicit conversion on extension method receiver
+          None
         else
           tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
             tryEither {
@@ -1691,7 +1693,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
     val app =
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
-        ctx.addMode(Mode.FixedQualifier))
+        ctx.addMode(Mode.SynthesizeExtMethodReceiver))
     if (!app.symbol.is(Extension))
       ctx.error(em"not an extension method: $methodRef", receiver.sourcePos)
     app

@@ -2211,7 +2211,9 @@ class Typer extends Namer
     def tryImplicit(fallBack: => Tree) =
       tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
-    if (ctx.mode.is(Mode.FixedQualifier)) tree
+    if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
+      // Suppress insertion of apply or implicit conversion on extension method receiver
+      tree
     else pt match {
       case pt @ FunProto(Nil, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
@@ -2394,6 +2396,13 @@ class Typer extends Namer
         case _ => tp
       }
     }
+
+    /** Reveal ignored parts of prototype when synthesizing the receiver
+     *  of an extension method. This is necessary for pos/i5773.scala
+     */
+    def revealProtoOfExtMethod(tp: Type)(implicit ctx: Context): Type =
+      if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver)) tp.deepenProto
+      else tp
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
       assert(wtp.isImplicitMethod)
@@ -2606,7 +2615,8 @@ class Typer extends Namer
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       def functionExpected = defn.isFunctionType(ptNorm)
-      def resultMatch = constrainResult(tree.symbol, wtp, followAlias(pt))
+      def resultMatch =
+        constrainResult(tree.symbol, wtp, revealProtoOfExtMethod(followAlias(pt)))
       def needsEta = pt match {
         case _: SingletonType => false
         case IgnoredProto(_: FunOrPolyProto) => false
