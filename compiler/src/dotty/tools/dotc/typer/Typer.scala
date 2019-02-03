@@ -361,6 +361,11 @@ class Typer extends Namer
       if (untpd.isVarPattern(tree) && name.isTermName)
         return typed(desugar.patternVar(tree), pt)
     }
+    // Shortcut for the root package, this is not just a performance
+    // optimization, it also avoids forcing imports thus potentially avoiding
+    // cyclic references.
+    if (name == nme.ROOTPKG)
+      return tree.withType(defn.RootPackage.termRef)
 
     val rawType = {
       val saved1 = unimported
