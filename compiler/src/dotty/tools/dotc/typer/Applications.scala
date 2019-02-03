@@ -277,10 +277,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     private[this] var _ok = true
 
     def ok: Boolean = _ok
-    def ok_=(x: Boolean): Unit = {
-      assert(x || ctx.reporter.errorsReported || !ctx.typerState.isCommittable) // !!! DEBUG
-      _ok = x
-    }
+    def ok_=(x: Boolean): Unit = _ok = x
 
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
@@ -1118,8 +1115,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Is given method reference applicable to type arguments `targs` and argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.test(implicit ctx => new ApplicableToTrees(methRef, targs, args, resultType).success)
+  def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
+    def isApp(implicit ctx: Context): Boolean =
+      new ApplicableToTrees(methRef, targs, args, resultType).success
+    if (keepConstraint) isApp else ctx.test(implicit ctx => isApp)
+  }
 
   /** Is given method reference applicable to type arguments `targs` and argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
@@ -1137,8 +1137,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicable(tp: Type, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    onMethod(tp, isApplicable(_, targs, args, resultType))
+  def isApplicable(tp: Type, targs: List[Type], args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
+    onMethod(tp, isApplicable(_, targs, args, resultType, keepConstraint))
 
   /** Is given type applicable to argument types `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
@@ -1491,7 +1491,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           )
           if (alts2.isEmpty && !ctx.isAfterTyper)
             alts.filter(alt =>
-              isApplicable(alt, targs, args, resultType)
+              isApplicable(alt, targs, args, resultType, keepConstraint = false)
             )
           else
             alts2
@@ -1511,14 +1511,14 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       case pt @ PolyProto(targs1, pt1) if targs.isEmpty =>
-        val alts1 = alts filter pt.isMatchedBy
+        val alts1 = alts.filter(pt.isMatchedBy(_))
         resolveOverloaded(alts1, pt1, targs1.tpes)
 
       case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
-        val compat = alts.filter(normalizedCompatible(_, pt))
+        val compat = alts.filter(normalizedCompatible(_, pt, keepConstraint = false))
         if (compat.isEmpty)
           /*
            * the case should not be moved to the enclosing match

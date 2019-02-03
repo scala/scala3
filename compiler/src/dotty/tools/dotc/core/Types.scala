@@ -1665,7 +1665,7 @@ object Types {
 
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
-    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean
+    def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(implicit ctx: Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T
     def map(tm: TypeMap)(implicit ctx: Context): ProtoType
 
