@@ -45,7 +45,14 @@ object ProtoTypes {
       }
       if (keepConstraint)
         tp.widenSingleton match {
-          case poly: PolyType => normalizedCompatible(tp, pt, keepConstraint = false)
+          case poly: PolyType =>
+            // We can't keep the constraint in this case, since we have to add type parameters
+            // to it, but there's no place to associate them with type variables.
+            // So we'd get a "inconsistent: no typevars were added to committable constraint"
+            // assertion failure in `constrained`. To do better, we'd have to change the
+            // constraint handling architecture so that some type parameters are committable
+            // and others are not. But that's a whole different ballgame.
+            normalizedCompatible(tp, pt, keepConstraint = false)
           case _ => testCompat
         }
       else ctx.test(implicit ctx => testCompat)
@@ -246,6 +253,8 @@ object ProtoTypes {
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
       val args = unforcedTypedArgs
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
+      // See remark in normalizedCompatible for why we can't keep the constraint
+      // if one of the arguments has a PolyType.
       typer.isApplicable(tp, Nil, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
@@ -308,7 +317,7 @@ object ProtoTypes {
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
         val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
-        if (!args1.contains(WildcardType)) state.typedArgs = args1
+        if (force || !args1.contains(WildcardType)) state.typedArgs = args1
         args1
       }
 

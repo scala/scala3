@@ -2398,7 +2398,7 @@ class Typer extends Namer
     }
 
     /** Reveal ignored parts of prototype when synthesizing the receiver
-     *  of an extension method. This is necessary for pos/i5773.scala
+     *  of an extension method. This is necessary for pos/i5773a.scala
      */
     def revealProtoOfExtMethod(tp: Type)(implicit ctx: Context): Type =
       if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver)) tp.deepenProto
