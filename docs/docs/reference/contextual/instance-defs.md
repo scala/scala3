@@ -30,9 +30,9 @@ implied ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] {
 }
 ```
 This code defines a trait `Ord` and two implied instance definitions. `IntOrd` defines
-an implied instance for the type `Ord[Int]` whereas `ListOrd` defines implied
-instances of `Ord[List[T]]` for all types `T` that come with an implied `Ord` instance themselves.
-The `given` clause in `ListOrd`  defines an [inferable parameter](./inferable-params.html).
+an implied instance for the type `Ord[Int]` whereas `ListOrd[T]` defines implied
+instances of `Ord[List[T]]` for all types `T` that come with an implied `Ord[T]` instance themselves.
+The `given` clause in `ListOrd` defines an [inferable parameter](./inferable-params.html).
 Inferable parameters are further explained in the next section.
 
 ## Anonymous Implied Instances
@@ -48,13 +48,11 @@ the type(s) in the `for` clause.
 
 ## Implied Alias Instances
 
-An implied alias instance defines an implied instance that is equal to some expression. E.g.,
+An implied alias instance defines an implied instance that is equal to some expression. E.g., assuming a global method `currentThreadPool` returning a value with a member `context`, one could define:
 ```scala
 implied ctx for ExecutionContext = currentThreadPool().context
 ```
-Here, we create an implied instance `ctx` of type `ExecutionContext` that resolves to the
-right hand side `currentThreadPool().context`. Each time an implied instance of `ExecutionContext`
-is demanded, the result of evaluating the right-hand side expression is returned.
+This creates an implied instance `ctx` of type `ExecutionContext` that resolves to the right hand side `currentThreadPool().context`. Each time an implied instance of `ExecutionContext` is demanded, the result of evaluating the right-hand side expression is returned.
 
 Alias instances may be anonymous, e.g.
 ```scala

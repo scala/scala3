@@ -3,7 +3,7 @@ layout: doc-page
 title: "Inferable Parameters"
 ---
 
-Functional programming tends to express most dependencies as simple functions parameterization.
+Functional programming tends to express most dependencies as simple function parameterization.
 This is clean and powerful, but it sometimes leads to functions that take many parameters and
 call trees where the same value is passed over and over again in long call chains to many
 functions. Inferable parameters can help here since they enable the compiler to synthesize

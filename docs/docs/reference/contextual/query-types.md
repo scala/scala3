@@ -112,7 +112,7 @@ With that setup, the table construction code above compiles and expands to:
 ```
 ### Example: Postconditions
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, context query types, and extension methods to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring`so that the checked result can be referred to simply by `result`. The example combines opaque aliases, context query types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
 object PostConditions {

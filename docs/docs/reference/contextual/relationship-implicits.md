@@ -82,7 +82,8 @@ The `infer` method corresponds to `implicitly` in Scala 2.
 Context bounds are the same in both language versions. They expand to the respective forms of implicit parameters.
 
 **Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either with `given` or
-with a normal application.
+with a normal application. Once old-style implicits are deprecated, context bounds
+will map to inferable parameters instead.
 
 ### Extension Methods
 

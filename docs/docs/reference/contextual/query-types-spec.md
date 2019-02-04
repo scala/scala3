@@ -42,11 +42,11 @@ the inferable parameters `xi`.
 
 The query literal is evaluated as the instance creation
 expression:
-
-    new scala.ImplicitFunctionN[T1, ..., Tn, T] {
-      def apply given (x1: T1, ..., xn: Tn): T = e
-    }
-
+```scala
+new scala.ImplicitFunctionN[T1, ..., Tn, T] {
+  def apply given (x1: T1, ..., xn: Tn): T = e
+}
+```
 In the case of a single untyped parameter, `given (x) => e` can be
 abbreviated to `given x => e`.
 
