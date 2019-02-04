@@ -48,14 +48,13 @@ implicit val bla: Double = 1.0
 val bar = foo // val bar: Int => Float = ...
 ```
 
-## Automatic Eta-Expansion and implicit function types
+## Automatic Eta-Expansion and query types
 
-Methods with implicit parameter lists can be assigned to a value with an implicit function type
-only by using the expected type explicitly.
+A method with inferable parameters can be expanded to a value of query type by writing the expected query type explicitly.
 
 ```scala
-def foo(x: Int)(implicit p: Double): Float = ???
-val bar: implicit Double => Float = foo(3) // val bar: implicit Double => Float = ...
+def foo(x: Int) given (p: Double): Float = ???
+val bar: given Double => Float = foo(3) // val bar: given Double => Float = ...
 ```
 
 ## Rules

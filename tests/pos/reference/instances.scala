@@ -32,12 +32,12 @@ class Common {
 
 object Instances extends Common {
 
-  instance IntOrd of Ord[Int] {
+  implied IntOrd for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  instance ListOrd[T] with Ord[T] of Ord[List[T]] {
+  implied ListOrd[T] given Ord[T] for Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,56 +48,56 @@ object Instances extends Common {
     }
   }
 
-  instance StringOps {
+  implied StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  instance ListOps {
+  implied ListOps {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  instance ListMonad of Monad[List] {
+  implied ListMonad for Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  instance ReaderMonad[Ctx] of Monad[[X] => Ctx => X] {
+  implied ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
   }
 
-  def maximum[T](xs: List[T]) with Ord[T]: T =
+  def maximum[T](xs: List[T]) given Ord[T]: T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T] with (asc: Ord[T]): Ord[T] = new Ord[T] {
+  def descending[T] given (asc: Ord[T]): Ord[T] = new Ord[T] {
     def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
   }
 
-  def minimum[T](xs: List[T]) with Ord[T] =
-    maximum(xs) with descending
+  def minimum[T](xs: List[T]) given Ord[T] =
+    maximum(xs) given descending
 
   def test(): Unit = {
     val xs = List(1, 2, 3)
     println(maximum(xs))
-    println(maximum(xs) with descending)
-    println(maximum(xs) with (descending with IntOrd))
+    println(maximum(xs) given descending)
+    println(maximum(xs) given (descending given IntOrd))
     println(minimum(xs))
   }
 
   case class Context(value: String)
-  val c0: Context |=> String = ctx |=> ctx.value
-  val c1: (Context |=> String) = (ctx: Context) |=> ctx.value
+  val c0: given Context => String = given ctx => ctx.value
+  val c1: (given Context => String) = given (ctx: Context) => ctx.value
 
   class A
   class B
-  val ab: (x: A, y: B) |=> Int = (a: A, b: B) |=> 22
+  val ab: given (x: A, y: B) => Int = given (a: A, b: B) => 22
 
   trait TastyAPI {
     type Symbol
@@ -105,7 +105,7 @@ object Instances extends Common {
       def (sym: Symbol) name: String
     }
     def symDeco: SymDeco
-    instance of SymDeco = symDeco
+    implied for SymDeco = symDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
@@ -116,31 +116,31 @@ object Instances extends Common {
 
   class D[T]
 
-  class C with (ctx: Context) {
+  class C given (ctx: Context) {
     def f() = {
       locally {
-        instance of Context = this.ctx
-        println(summon[Context].value)
+        implied for Context = this.ctx
+        println(infer[Context].value)
       }
       locally {
         lazy val ctx1 = this.ctx
-        instance of Context = ctx1
-        println(summon[Context].value)
+        implied for Context = ctx1
+        println(infer[Context].value)
       }
       locally {
-        instance d[T] of D[T]
-        println(summon[D[Int]])
+        implied d[T] for D[T]
+        println(infer[D[Int]])
       }
       locally {
-        instance with Context of D[Int]
-        println(summon[D[Int]])
+        implied given Context for D[Int]
+        println(infer[D[Int]])
       }
     }
   }
 
   class Token(str: String)
 
-  instance StringToToken of Conversion[String, Token] {
+  implied StringToToken for Conversion[String, Token] {
     def apply(str: String): Token = new Token(str)
   }
 
@@ -150,28 +150,28 @@ object Instances extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private instance WrappedResult {
+  private implied WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
-  def result[T] with (wrapped: WrappedResult[T]): T = wrapped.unwrap
+  def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  instance {
-    def (x: T) ensuring[T] (condition: WrappedResult[T] |=> Boolean): T = {
-      assert(condition with WrappedResult(x))
+  implied {
+    def (x: T) ensuring[T] (condition: given WrappedResult[T] => Boolean): T = {
+      assert(condition given WrappedResult(x))
       x
     }
   }
 }
 
 object AnonymousInstances extends Common {
-  instance of Ord[Int] {
+  implied for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  instance [T: Ord] of Ord[List[T]] {
+  implied [T: Ord] for Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -182,28 +182,28 @@ object AnonymousInstances extends Common {
     }
   }
 
-  instance {
+  implied {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  instance {
+  implied {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  instance [From, To] with (c: Convertible[From, To]) of Convertible[List[From], List[To]] {
+  implied [From, To] given (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  instance of Monoid[String] {
+  implied for Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
 
   def sum[T: Monoid](xs: List[T]): T =
-      xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
+      xs.foldLeft(infer[Monoid[T]].unit)(_.combine(_))
 }
 
 object Implicits extends Common {
@@ -272,13 +272,13 @@ object Completions {
   }
 
   // conversions defining the possible arguments to pass to `complete`
-  instance stringArg of Conversion[String, CompletionArg] {
+  implied stringArg for Conversion[String, CompletionArg] {
     def apply(s: String) = CompletionArg.Error(s)
   }
-  instance responseArg of Conversion[Future[HttpResponse], CompletionArg] {
+  implied responseArg for Conversion[Future[HttpResponse], CompletionArg] {
     def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
   }
-  instance statusArg of Conversion[Future[StatusCode], CompletionArg] {
+  implied statusArg for Conversion[Future[StatusCode], CompletionArg] {
     def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
   }
 }

@@ -791,7 +791,7 @@ class Typer extends Namer
     }
 
     val funCls = defn.FunctionClass(args.length,
-        isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
+        isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
@@ -801,7 +801,7 @@ class Typer extends Namer
         params1.foreach(_.symbol.setFlag(funFlags))
       val resultTpt = typed(body)
       val companion = MethodType.maker(
-          isContextual = funFlags.is(Contextual), isErased = funFlags.is(Erased))
+          isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.sourcePos)
@@ -829,7 +829,7 @@ class Typer extends Namer
     val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
 
     val isContextual = tree match {
-      case tree: untpd.FunctionWithMods => tree.mods.is(Contextual)
+      case tree: untpd.FunctionWithMods => tree.mods.is(Given)
       case _ => false
     }
 
@@ -2536,8 +2536,9 @@ class Typer extends Namer
               ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.sourcePos)
             case _ =>
           }
-          simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
-      } else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
+        simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
+      }
+      else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)
@@ -2718,11 +2719,11 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
-          case SearchSuccess(inferred: ExtMethodApply, _, _) =>
-            inferred // nothing to check or adapt for extension method applications
-          case SearchSuccess(inferred, _, _) =>
-            checkImplicitConversionUseOK(inferred.symbol, tree.posd)
-            readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
+          case SearchSuccess(found: ExtMethodApply, _, _) =>
+            found // nothing to check or adapt for extension method applications
+          case SearchSuccess(found, _, _) =>
+            checkImplicitConversionUseOK(found.symbol, tree.posd)
+            readapt(found)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
             if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
               // don't report the failure but return the tree unchanged. This

@@ -37,5 +37,5 @@ object DottyPredef {
    */
   @forceInline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
 
-  @forceInline def summon[T](implicit x: T) = x
+  @forceInline def infer[T](implicit x: T) = x
 }

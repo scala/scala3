@@ -118,9 +118,9 @@ trait NamerContextOps { this: Context =>
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
-  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type): Type =
+  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], givenTp: Type): Type =
     if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
-    else given
+    else givenTp
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
   def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
@@ -131,13 +131,12 @@ trait NamerContextOps { this: Context =>
       termParamss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type,
-                 isJava: Boolean = false, isInstance: Boolean = false)(implicit ctx: Context): Type = {
+  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
         val (isImplicit, isErased, isContextual) =
-          if (params.isEmpty) (isInstance, false, false)
-          else (params.head is Implicit, params.head is Erased, params.head.is(Contextual))
+          if (params.isEmpty) (false, false, false)
+          else (params.head is Implicit, params.head is Erased, params.head.is(Given))
         val make = MethodType.maker(isJava = isJava, isImplicit = isImplicit, isErased = isErased, isContextual = isContextual)
         if (isJava)
           for (param <- params)
@@ -1301,8 +1300,7 @@ class Namer { typer: Typer =>
     val termParamss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     def wrapMethType(restpe: Type): Type = {
       instantiateDependent(restpe, typeParams, termParamss)
-      ctx.methodType(tparams map symbolOfTree, termParamss, restpe,
-        isJava = ddef.mods is JavaDefined, isInstance = ddef.mods.hasMod(classOf[Mod.Instance]))
+      ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol

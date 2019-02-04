@@ -1089,8 +1089,8 @@ object desugar {
   }
 
   def makeContextualFunction(formals: List[Type], body: Tree)(implicit ctx: Context): Tree = {
-    val params = makeImplicitParameters(formals.map(TypeTree), Contextual)
-    new FunctionWithMods(params, body, Modifiers(Implicit | Contextual))
+    val params = makeImplicitParameters(formals.map(TypeTree), Given)
+    new FunctionWithMods(params, body, Modifiers(Implicit | Given))
   }
 
   /** Add annotation to tree:

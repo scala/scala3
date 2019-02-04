@@ -1,13 +1,13 @@
 class A
 
 trait Foo {
-  def foo: A |=> Int
+  def foo: given A => Int
 }
 
 class Test {
-  println(new FooI{})
+  new FooI{}
 }
 
 class FooI extends Foo {
-  def foo: A |=> Int = 3
+  def foo: given A => Int = 3
 }

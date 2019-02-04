@@ -632,7 +632,7 @@ class TreeUnpickler(reader: TastyReader,
           case DEFAULTparameterized => addFlag(DefaultParameterized)
           case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
-          case CONTEXTUAL => addFlag(Contextual)
+          case GIVEN => addFlag(Given)
           case PARAMsetter =>
             addFlag(ParamAccessor)
           case PRIVATEqualified =>
