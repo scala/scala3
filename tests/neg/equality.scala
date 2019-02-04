@@ -64,9 +64,7 @@ object equality {
     1 == null    // OK by eqIntNum
 
 
-    class Fruit
-
-    implicit def eqFruit: Eq[Fruit, Fruit] = Eq
+    class Fruit derives Eq
 
     class Apple extends Fruit
     class Pear extends Fruit

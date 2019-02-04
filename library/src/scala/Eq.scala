@@ -12,6 +12,7 @@ sealed trait Eq[-L, -R]
  *  any instance of `Eq`.
  */
 object Eq extends Eq[Any, Any] {
+  def derived: Eq[Any, Any] = Eq
 
   /** A fall-back "implicit" to compare values of any types.
    *  Even though this method is not declared implicit, the compiler will
