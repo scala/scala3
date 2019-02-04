@@ -116,6 +116,8 @@ sidebar:
               url: docs/reference/dropped-features/type-projection.html
             - title: Procedure Syntax
               url: docs/reference/dropped-features/procedure-syntax.html
+            - title: Package Objects
+              uril: docs/reference/dropped-features/package-objects.html
             - title: Early Initializers
               url: docs/reference/dropped-features/early-initializers.html
             - title: Class Shadowing

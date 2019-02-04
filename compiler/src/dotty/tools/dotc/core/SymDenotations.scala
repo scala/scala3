@@ -18,6 +18,7 @@ import config.Config
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
+import collection.mutable
 
 import scala.annotation.internal.sharable
 
@@ -518,12 +519,8 @@ object SymDenotations {
       name == tpnme.REFINE_CLASS
 
     /** Is this symbol a package object or its module class? */
-    def isPackageObject(implicit ctx: Context): Boolean = {
-      val nameMatches =
-        if (isType) name == tpnme.PACKAGE.moduleClassName
-        else name == nme.PACKAGE
-      nameMatches && (owner is Package) && (this is Module)
-    }
+    def isPackageObject(implicit ctx: Context): Boolean =
+      name.isPackageObjectName && (owner is Package) && (this is Module)
 
     /** Is this symbol an abstract type? */
     final def isAbstractType(implicit ctx: Context): Boolean = this is DeferredType
@@ -762,9 +759,7 @@ object SymDenotations {
              (  !(this is Local)
              || (owner is ImplClass) // allow private local accesses to impl class members
              || isCorrectThisType(pre)
-             ) &&
-             (!(this.is(Private) && owner.is(Package)) ||
-              owner == ctx.owner.enclosingPackageClass)
+             )
         || (this is Protected) &&
              (  superAccess
              || pre.isInstanceOf[ThisType]
@@ -1684,9 +1679,9 @@ object SymDenotations {
           val denots1 = collect(denots, ps)
           p.classSymbol.denot match {
             case parentd: ClassDenotation =>
-              denots1 union
+              denots1.union(
                 parentd.nonPrivateMembersNamed(name)
-                .mapInherited(ownDenots, denots1, thisType)
+                  .mapInherited(ownDenots, denots1, thisType))
             case _ =>
               denots1
           }
@@ -1944,25 +1939,47 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
-    private[this] var packageObjCache: SymDenotation = _
-    private[this] var packageObjRunId: RunId = NoRunId
+    private[this] var packageObjsCache: List[ClassDenotation] = _
+    private[this] var packageObjsRunId: RunId = NoRunId
 
-    /** The package object in this class, of one exists */
-    def packageObj(implicit ctx: Context): SymDenotation = {
-      if (packageObjRunId != ctx.runId) {
-        packageObjRunId = ctx.runId
-        packageObjCache = NoDenotation // break cycle in case we are looking for package object itself
-        packageObjCache = findMember(nme.PACKAGE, thisType, EmptyFlagConjunction, EmptyFlags).asSymDenotation
+    /** The package objects in this class */
+    def packageObjs(implicit ctx: Context): List[ClassDenotation] = {
+      if (packageObjsRunId != ctx.runId) {
+        packageObjsRunId = ctx.runId
+        packageObjsCache = Nil // break cycle in case we are looking for package object itself
+        packageObjsCache = {
+          val pkgObjBuf = new mutable.ListBuffer[ClassDenotation]
+          for (sym <- info.decls) { // don't use filter, since that loads classes with `$`s in their name
+            val denot = sym.lastKnownDenotation  // don't use `sym.denot`, as this brings forward classes too early
+            if (denot.isType && denot.name.isPackageObjectName)
+              pkgObjBuf += sym.asClass.classDenot
+          }
+          pkgObjBuf.toList
+        }
       }
-      packageObjCache
+      packageObjsCache
+    }
+
+    /** The package object (as a term symbol) in this package that might contain
+     *  `sym` as a member.
+     */
+    def packageObjFor(sym: Symbol)(implicit ctx: Context): Symbol = {
+      val owner = sym.maybeOwner
+      if (owner.is(Package)) NoSymbol
+      else if (owner.isPackageObject) owner.sourceModule
+      else // owner could be class inherited by package object (until package object inheritance is removed)
+        packageObjs.find(_.name == packageTypeName) match {
+          case Some(pobj) => pobj.sourceModule
+          case _ => NoSymbol
+        }
     }
 
     /** Looks in both the package object and the package for members. The precise algorithm
      *  is as follows:
      *
      *  If this is the scala package look in the package first, and if nothing is found
-     *  there, look in the package object second. Otherwise, look in the package object
-     *  first, and if nothing is found there, in the package second.
+     *  there, look in the package object second. Otherwise, look in the both the package object
+     *  and the package and form a union of the results.
      *
      *  The reason for the special treatment of the scala package is that if we
      *  complete it too early, we freeze its superclass Any, so that no members can
@@ -1970,28 +1987,33 @@ object SymDenotations {
      *  object that hides a class or object in the scala package of the same name, because
      *  the behavior would then be unintuitive for such members.
      */
-    override def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
-      packageObj.moduleClass.denot match {
-        case pcls: ClassDenotation if !pcls.isCompleting =>
-          if (symbol eq defn.ScalaPackageClass) {
-            val denots = super.computeNPMembersNamed(name)
-            if (denots.exists) denots else pcls.computeNPMembersNamed(name)
-          }
-          else {
-            val denots = pcls.computeNPMembersNamed(name)
-            if (denots.exists) denots else super.computeNPMembersNamed(name)
-          }
-        case _ =>
-          super.computeNPMembersNamed(name)
+    override def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+      def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match {
+        case pcls :: pobjs1 =>
+          if (pcls.isCompleting) recur(pobjs1, acc)
+          else recur(pobjs1, acc.union(pcls.computeNPMembersNamed(name)))
+        case nil =>
+          val directMembers = super.computeNPMembersNamed(name)
+          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))
+          else directMembers
       }
+      if (symbol `eq` defn.ScalaPackageClass) {
+        val denots = super.computeNPMembersNamed(name)
+        if (denots.exists) denots
+        else recur(packageObjs, NoDenotation)
+      }
+      else recur(packageObjs, NoDenotation)
+    }
 
     /** The union of the member names of the package and the package object */
     override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
-      val ownNames = super.memberNames(keepOnly)
-      packageObj.moduleClass.denot match {
-        case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly)
-        case _ => ownNames
+      def recur(pobjs: List[ClassDenotation], acc: Set[Name]): Set[Name] = pobjs match {
+        case pcls :: pobjs1 =>
+          recur(pobjs1, acc.union(pcls.memberNames(keepOnly)))
+        case nil =>
+          acc
       }
+      recur(packageObjs, super.memberNames(keepOnly))
     }
 
     /** If another symbol with the same name is entered, unlink it,
@@ -2003,7 +2025,7 @@ object SymDenotations {
       if (entry != null) {
         if (entry.sym == sym) return false
         mscope.unlink(entry)
-        if (sym.name == nme.PACKAGE) packageObjRunId = NoRunId
+        if (sym.name.isPackageObjectName) packageObjsRunId = NoRunId
       }
       true
     }
@@ -2352,6 +2374,8 @@ object SymDenotations {
 
     def baseClasses: List[ClassSymbol] = classes
   }
+
+  private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName
 
   @sharable private[this] var indent = 0 // for completions printing
 }

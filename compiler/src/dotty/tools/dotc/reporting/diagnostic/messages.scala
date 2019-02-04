@@ -1670,10 +1670,10 @@ object messages {
     val explanation: String = ""
   }
 
-  case class ExpectedClassOrObjectDef()(implicit ctx: Context)
-    extends Message(ExpectedClassOrObjectDefID) {
+  case class ExpectedToplevelDef()(implicit ctx: Context)
+    extends Message(ExpectedTopLevelDefID) {
     val kind: String = "Syntax"
-    val msg: String = "Expected class or object definition"
+    val msg: String = "Expected a toplevel definition"
     val explanation: String = ""
   }
 

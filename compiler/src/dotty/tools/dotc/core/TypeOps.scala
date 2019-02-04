@@ -223,9 +223,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def makePackageObjPrefixExplicit(tpe: NamedType): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
-      case pkgCls: PackageClassDenotation
-      if !tpe.symbol.maybeOwner.is(Package) && pkgCls.packageObj.exists =>
-        tpe.derivedSelect(pkgCls.packageObj.termRef)
+      case pkg: PackageClassDenotation =>
+        val pobj = pkg.packageObjFor(tpe.symbol)
+        if (pobj.exists) tpe.derivedSelect(pobj.termRef)
+        else tpe
       case _ =>
         tpe
     }

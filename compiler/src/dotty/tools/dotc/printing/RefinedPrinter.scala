@@ -109,7 +109,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (isOmittable(tp.cls)) return ""
       case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
-        if (sym.isPackageObject) return toTextPrefix(pre)
+        if (sym.isPackageObject && !homogenizedView) return toTextPrefix(pre)
         if (isOmittable(sym)) return ""
       case _ =>
     }
@@ -807,7 +807,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     if (sym.is(ModuleClass)) {
       val name =
-        if (sym.isPackageObject) sym.owner.name
+        if (sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE) sym.owner.name
         else sym.name.stripModuleClassSuffix
       kindString(sym) ~~ (nameString(name) + idString(sym))
     }

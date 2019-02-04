@@ -1013,11 +1013,20 @@ class TreeUnpickler(reader: TastyReader,
         }
       }
 
-      def completeSelect(name: Name, tpf: Type => NamedType): Select = {
+      def completeSelect(name: Name, sig: Signature): Select = {
         val localCtx =
           if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
         val qual = readTerm()(localCtx)
-        ConstFold(untpd.Select(qual, name).withType(tpf(qual.tpe.widenIfUnstable)))
+        var pre = qual.tpe.widenIfUnstable
+        val denot = accessibleDenot(pre, name, sig)
+        val owner = denot.symbol.maybeOwner
+        if (owner.isPackageObject && pre.termSymbol.is(Package))
+          pre = pre.select(owner.sourceModule)
+        val tpe = name match {
+          case name: TypeName => TypeRef(pre, name, denot)
+          case name: TermName => TermRef(pre, name, denot)
+        }
+        ConstFold(untpd.Select(qual, name).withType(tpe))
       }
 
       def readQualId(): (untpd.Ident, TypeRef) = {
@@ -1039,15 +1048,13 @@ class TreeUnpickler(reader: TastyReader,
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>
-          def readRest(name: TermName, sig: Signature): Tree =
-            completeSelect(name, pre => TermRef(pre, name, accessibleDenot(pre, name, sig)))
           readName() match {
-            case SignedName(name, sig) => readRest(name, sig)
-            case name => readRest(name, Signature.NotAMethod)
+            case SignedName(name, sig) => completeSelect(name, sig)
+            case name => completeSelect(name, Signature.NotAMethod)
           }
         case SELECTtpt =>
           val name = readName().toTypeName
-          completeSelect(name, pre => TypeRef(pre, name, accessibleDenot(pre, name, Signature.NotAMethod)))
+          completeSelect(name, Signature.NotAMethod)
         case QUALTHIS =>
           val (qual, tref) = readQualId()
           untpd.This(qual).withType(ThisType.raw(tref))

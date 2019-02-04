@@ -506,7 +506,7 @@ object Parsers {
       recur(top)
     }
 
-    /**   operand { infixop operand | ‘with’ (operand | ParArgumentExprs) } [postfixop],
+    /**   operand { infixop operand | ‘given’ (operand | ParArgumentExprs) } [postfixop],
      *
      *  respecting rules of associativity and precedence.
      *  @param notAnOperator  a token that does not count as operator.
@@ -1410,7 +1410,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
-     *                  | InfixExpr ‘with’ (InfixExpr | ParArgumentExprs)
+     *                  | InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
      */
     def postfixExpr(): Tree =
       infixOps(prefixExpr(), canStartExpressionTokens, prefixExpr, maybePostfix = true)
@@ -2017,7 +2017,7 @@ object Parsers {
 
     /** ClsParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
-     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
+     *  ClsParam          ::=  {Annotation} [{ParamModifier} (`val' | `var') | `inline'] Param
      *  DefParamClause    ::=  [nl] `(' [FunArgMods] [DefParams] ')' | InferParamClause
      *  InferParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
      *  ContextTypes      ::=  RefinedType {`,' RefinedType}
@@ -2675,7 +2675,7 @@ object Parsers {
     }
 
     /** TopStatSeq ::= TopStat {semi TopStat}
-     *  TopStat ::= Annotations Modifiers TmplDef
+     *  TopStat ::= Annotations Modifiers Def
      *            | Packaging
      *            | package object objectDef
      *            | Import
@@ -2695,15 +2695,13 @@ object Parsers {
         }
         else if (in.token == IMPORT)
           stats ++= importClause()
-        else if (in.token == AT || isTemplateIntro || isModifier)
-          stats +++= tmplDef(in.offset, defAnnotsMods(modifierTokens))
+        else if (in.token == AT || isDefIntro(modifierTokens))
+          stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           if (in.token == CASE)
             syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
           else
-            syntaxErrorOrIncomplete(ExpectedClassOrObjectDef())
-          if (mustStartStat) // do parse all definitions even if they are probably local (i.e. a "}" has been forgotten)
-            defOrDcl(in.offset, defAnnotsMods(modifierTokens))
+            syntaxErrorOrIncomplete(ExpectedToplevelDef())
         }
         acceptStatSepUnlessAtEnd()
       }
