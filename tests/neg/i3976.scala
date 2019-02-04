@@ -1,5 +1,5 @@
 object Test {
-  enum Hoge[F[_]] {
+  enum Hoge[F[_]] derives Eq {
     case A extends Hoge[List]
     case B extends Hoge[[X] => String]
   }
@@ -18,7 +18,7 @@ object Test {
 }
 
 object Test2 {
-  enum Hoge[F[G[_]]] {
+  enum Hoge[F[G[_]]] derives Eq {
     case A extends Hoge[[F[_]] => F[Int]]
     case B extends Hoge[[F[_]] => F[String]]
   }
@@ -37,7 +37,7 @@ object Test2 {
 }
 
 object Test3 {
-  enum Hoge[F[G[_]]] {
+  enum Hoge[F[G[_]]] derives Eq {
     case A extends Hoge[[X] => List]   // error: wrong kind
     case B extends Hoge[[X] => [Y] => String]  // error: wrong kind
   }

@@ -538,45 +538,6 @@ object desugar {
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumType)
 
-    // The Eq instance for an Enum class. For an enum class
-    //
-    //    enum class C[T1, ..., Tn]
-    //
-    // we generate:
-    //
-    //    implicit def eqInstance[T1$1, ..., Tn$1, T1$2, ..., Tn$2](implicit
-    //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
-    //      : Eq[C[T1$, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
-    //
-    // Higher-kinded type arguments `Ti` are omitted as evidence parameters.
-    //
-    // FIXME: This is too simplistic. Instead of just generating evidence arguments
-    // for every first-kinded type parameter, we should look instead at the
-    // actual types occurring in cases and derive parameters from these. E.g. in
-    //
-    //    enum HK[F[_]] {
-    //      case C1(x: F[Int]) extends HK[F[Int]]
-    //      case C2(y: F[String]) extends HL[F[Int]]
-    //
-    // we would need evidence parameters for `F[Int]` and `F[String]`
-    // We should generate Eq instances with the techniques
-    // of typeclass derivation once that is available.
-    def eqInstance = {
-      val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
-      val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
-      val subInstances =
-        for ((param1, param2) <- leftParams `zip` rightParams if !isHK(param1))
-        yield appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true)
-      DefDef(
-          name = nme.eqInstance,
-          tparams = leftParams ++ rightParams,
-          vparamss = if (subInstances.isEmpty) Nil else List(makeImplicitParameters(subInstances)),
-          tpt = appliedTypeTree(ref(defn.EqType),
-              appliedRef(classTycon, leftParams) :: appliedRef(classTycon, rightParams) :: Nil),
-          rhs = ref(defn.EqModule.termRef)).withFlags(Synthetic | Implicit)
-    }
-    def eqInstances = if (isEnum) eqInstance :: Nil else Nil
-
     // derived type classes of non-module classes go to their companions
     val (clsDerived, companionDerived) =
       if (mods.is(Module)) (impl.derived, Nil) else (Nil, impl.derived)
@@ -595,7 +556,7 @@ object desugar {
       mdefs
     }
 
-    val companionMembers = defaultGetters ::: eqInstances ::: enumCases
+    val companionMembers = defaultGetters ::: enumCases
 
     // The companion object definitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
@@ -645,7 +606,7 @@ object desugar {
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
       }
-      else if (companionMembers.nonEmpty || companionDerived.nonEmpty)
+      else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
       else if (isValueClass) {
         impl.constr.vparamss match {

@@ -1029,7 +1029,7 @@ class Namer { typer: Typer =>
 
       if (impl.derived.nonEmpty) {
         val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
-          case Some(pos) => (cls.companionClass.asClass, pos)
+          case Some(pos) => (cls.companionClass.orElse(cls).asClass, pos)
           case None => (cls, impl.sourcePos.startPos)
         }
         val deriver = new Deriver(derivingClass, derivePos)(localCtx)

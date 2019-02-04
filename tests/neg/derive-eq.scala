@@ -13,7 +13,6 @@ case class Triple[S, T, U] derives Eq
 
 
 object Test extends App {
-  Test1
   implicitly[Eq[Lst[Lst[One]], Lst[Lst[Two]]]]
   implicitly[Eq[Triple[One, One, One],
                 Triple[Two, Two, Two]]]
