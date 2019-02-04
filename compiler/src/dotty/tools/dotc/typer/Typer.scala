@@ -75,7 +75,7 @@ object Typer {
    */
   private val DroppedEmptyArgs = new Property.Key[Unit]
 
-  /** Am attachment that indicates a failed conversion or extension method
+  /** An attachment that indicates a failed conversion or extension method
    *  search was tried on a tree. This will in some cases be reported in error messages
    */
   private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
