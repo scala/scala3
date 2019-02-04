@@ -5,7 +5,7 @@ object Test {
 
   def f1[T] = classOf[T] // error
   def f2[T <: String] = classOf[T] // error
-  val x = classOf[Test.type] // error
+  val x = classOf[Test.type] // ok
   val y = classOf[C { type I = String }] // error
   val z = classOf[A] // ok
 }
