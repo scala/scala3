@@ -2551,9 +2551,17 @@ class Typer extends Namer
         missingArgs(wtp)
     }
 
+    def isImplicitFunctionRef(wtp: Type): Boolean = wtp match {
+      case RefinedType(parent, nme.apply, _) =>
+        isImplicitFunctionRef(parent) // apply refinements indicate a dependent IFT
+      case _ =>
+        val underlying = wtp.underlyingClassRef(refinementOK = false) // other refinements are not OK
+        defn.isImplicitFunctionClass(underlying.classSymbol)
+    }
+
     def adaptNoArgsOther(wtp: Type): Tree = {
       ctx.typeComparer.GADTused = false
-      if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
+      if (isImplicitFunctionRef(wtp) &&
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
           !ctx.mode.is(Mode.Pattern) &&
