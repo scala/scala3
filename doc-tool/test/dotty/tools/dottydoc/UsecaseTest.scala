@@ -258,12 +258,12 @@ abstract class UsecaseBase extends DottyDocTest {
   }
 
   @Test def checkIterator =
-    checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { case _ =>
+    checkFiles("../tests/scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
     }
 
   @Test def checkIterableLike =
-    checkFiles("../scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { case _ =>
+    checkFiles("../tests/scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
     }
 }

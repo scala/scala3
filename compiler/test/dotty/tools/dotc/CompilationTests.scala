@@ -53,26 +53,26 @@ class CompilationTests extends ParallelTesting {
       "compileMixed",
       List(
         "tests/pos/B.scala",
-        "scala2-library/src/library/scala/collection/immutable/Seq.scala",
-        "scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
-        "scala2-library/src/library/scala/package.scala",
-        "scala2-library/src/library/scala/collection/GenSeqLike.scala",
-        "scala2-library/src/library/scala/collection/SeqLike.scala",
-        "scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
+        "tests/scala2-library/src/library/scala/collection/immutable/Seq.scala",
+        "tests/scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
+        "tests/scala2-library/src/library/scala/package.scala",
+        "tests/scala2-library/src/library/scala/collection/GenSeqLike.scala",
+        "tests/scala2-library/src/library/scala/collection/SeqLike.scala",
+        "tests/scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
       ),
       scala2Mode
     ) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
     compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")) +
-    compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
-    compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    compileFile("tests/scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
+    compileFile("tests/scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
       "parSetSubset",
       List(
-       "scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
-       "scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
-       "scala2-library/src/library/scala/collection/mutable/SetLike.scala"
+       "tests/scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+       "tests/scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
+       "tests/scala2-library/src/library/scala/collection/mutable/SetLike.scala"
       ),
       scala2Mode
     ) +
@@ -80,9 +80,9 @@ class CompilationTests extends ParallelTesting {
     compileList(
       "testPredefDeprecatedNonCyclic",
       List(
-        "scala2-library/src/library/scala/io/Position.scala",
-        "scala2-library/src/library/scala/Predef.scala",
-        "scala2-library/src/library/scala/deprecated.scala"
+        "tests/scala2-library/src/library/scala/io/Position.scala",
+        "tests/scala2-library/src/library/scala/Predef.scala",
+        "tests/scala2-library/src/library/scala/deprecated.scala"
       ),
       scala2Mode
     ) +
