@@ -80,42 +80,38 @@ object Build {
   )
 
   // Packages all subprojects to their jars
-  lazy val packageAll =
-    taskKey[Map[String, String]]("Package everything needed to run tests")
+  val packageAll = taskKey[Map[String, String]]("Package everything needed to run tests")
 
   // Run tests with filter through vulpix test suite
-  lazy val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
+  val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
   // Run TASTY tests with filter through vulpix test suite
-  lazy val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
+  val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
 
   // Spawns a repl with the correct classpath
-  lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
+  val repl = inputKey[Unit]("run the REPL with correct classpath")
 
   // Used to compile files similar to ./bin/dotc script
-  lazy val dotc =
-    inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
+  val dotc = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
   // Used to run binaries similar to ./bin/dotr script
-  lazy val dotr =
-    inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
-
+  val dotr = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
   // Compiles the documentation and static site
-  lazy val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
+  val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
 
   // Shorthand for compiling a docs site
-  lazy val dottydoc = inputKey[Unit]("run dottydoc")
+  val dottydoc = inputKey[Unit]("run dottydoc")
 
-  lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
+  val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
 
   // Only available in vscode-dotty
-  lazy val unpublish = taskKey[Unit]("Unpublish a package")
+  val unpublish = taskKey[Unit]("Unpublish a package")
 
   // Settings used to configure the test language server
-  lazy val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
-  lazy val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
-  lazy val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+  val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
+  val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
+  val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
 
   lazy val SourceDeps = config("sourcedeps")
 
