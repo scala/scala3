@@ -52,7 +52,7 @@ sidebar:
             - title: Implementing Typeclasses
               url: docs/reference/contextual/typeclasses.html
             - title: Typeclass Derivation
-              url: docs/reference/derivation.html
+              url: docs/reference/contextual/derivation.html
             - title: Context Queries
               url: docs/reference/contextual/query-types.html
             - title: Implicit Conversions
