@@ -616,23 +616,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else runMain(testSource.runClassPath) match {
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
-          val outputLines = output.linesIterator.toArray :+ DiffUtil.EOF
-          val checkLines: Array[String] = Source.fromFile(checkFile.get, "UTF-8").getLines().toArray :+ DiffUtil.EOF
+          val outputLines = output.linesIterator.toSeq
+          val checkLines: Seq[String] = Source.fromFile(checkFile.get, "UTF-8").getLines().toSeq
           val sourceTitle = testSource.title
 
-          def linesMatch =
-            outputLines
-            .zip(checkLines)
-            .forall { case (x, y) => x == y }
+          diffMessage(sourceTitle, outputLines, checkLines).foreach { msg =>
 
-          if (outputLines.length != checkLines.length || !linesMatch) {
-            // Print diff to files and summary:
-            val diff = DiffUtil.mkColoredLineDiff(checkLines, outputLines)
-
-            val msg =
-              s"""|Output from '$sourceTitle' did not match check file.
-                  |Diff (expected on the left, actual right):
-                  |""".stripMargin + diff + "\n"
             echo(msg)
             addFailureInstruction(msg)
 
@@ -765,13 +754,36 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
         }
 
+        def fail(msg: String): Unit = {
+          echo(msg)
+          failTestSource(testSource)
+        }
+
+        def reporterOutputLines(reporter: TestReporter): List[String] = {
+          reporter.allErrors.flatMap { error =>
+            (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().split("\n").toList
+          }
+        }
+        def checkFileTest(sourceName: String, checkFile: JFile, actual: List[String]) = {
+          if (checkFile.exists) {
+            val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
+            diffMessage(sourceName, actual, expexted).foreach(fail)
+          }
+        }
+
         val (compilerCrashed, expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir, fromTasty, decompilation) =>
             val sourceFiles = testSource.sourceFiles
             val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(sourceFiles)
             val reporter = compile(sourceFiles, flags, true, outDir)
             val actualErrors = reporter.errorCount
-
+            files.foreach { file =>
+              if (file.isDirectory) Nil
+              else {
+                val checkFile = new JFile(file.getAbsolutePath.reverse.dropWhile(_ != '.').reverse + "check")
+                checkFileTest(testSource.title, checkFile, reporterOutputLines(reporter))
+              }
+            }
             if (reporter.compilerCrashed || actualErrors > 0)
               logReporterContents(reporter)
 
@@ -788,14 +800,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             if (actualErrors > 0)
               reporters.foreach(logReporterContents)
 
+            val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == JFile.separatorChar).reverse + ".check")
+            checkFileTest(testSource.title, checkFile, reporters.flatMap(reporter => reporterOutputLines(reporter)))
+
             (compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
           }
         }
 
-        def fail(msg: String): Unit = {
-          echo(msg)
-          failTestSource(testSource)
-        }
 
         if (compilerCrashed)
           fail(s"Compiler crashed when compiling: ${testSource.title}")
@@ -837,6 +848,24 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         registerCompletion()
       }
     }
+  }
+
+  def diffMessage(sourceTitle: String, outputLines: Seq[String], checkLines: Seq[String]): Option[String] = {
+    def linesMatch =
+      outputLines
+        .zip(checkLines)
+        .forall { case (x, y) => x == y }
+
+    if (outputLines.length != checkLines.length || !linesMatch) {
+      // Print diff to files and summary:
+      val diff = DiffUtil.mkColoredLineDiff(checkLines :+ DiffUtil.EOF, outputLines :+ DiffUtil.EOF)
+
+      Some(
+        s"""|Output from '$sourceTitle' did not match check file.
+            |Diff (expected on the left, actual right):
+            |""".stripMargin + diff + "\n")
+    } else None
+
   }
 
   /** The `CompilationTest` is the main interface to `ParallelTesting`, it
