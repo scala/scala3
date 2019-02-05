@@ -40,6 +40,7 @@ sidebar:
             - title: Translation
               url: docs/reference/enums/desugarEnums.html
         - title: Contextual Abstractions
+          subsection:
             - title: Implied Instances
               url: docs/reference/contextual/instance-defs.html
             - title: Inferable Parameters
