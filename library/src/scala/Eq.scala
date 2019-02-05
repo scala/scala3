@@ -11,8 +11,8 @@ sealed trait Eq[-L, -R]
  *  can also be used as a value that's compatible with
  *  any instance of `Eq`.
  */
-object Eq extends Eq[Any, Any] {
-  def derived: Eq[Any, Any] = Eq
+object Eq {
+  object derived extends Eq[Any, Any]
 
   /** A fall-back "implicit" to compare values of any types.
    *  Even though this method is not declared implicit, the compiler will
@@ -20,43 +20,43 @@ object Eq extends Eq[Any, Any] {
    *  or both `T` and `U` are Eq-free. A type `S` is Eq-free if there is no
    *  implicit instance of type `Eq[S, S]`.
    */
-  def eqAny[L, R]: Eq[L, R] = Eq
+  def eqAny[L, R]: Eq[L, R] = derived
 
   // Instances of `Eq` for common types
 
-  implicit def eqNumber   : Eq[Number, Number] = Eq
-  implicit def eqString   : Eq[String, String] = Eq
-  implicit def eqBoolean  : Eq[Boolean, Boolean] = Eq
-  implicit def eqByte     : Eq[Byte, Byte] = Eq
-  implicit def eqShort    : Eq[Short, Short] = Eq
-  implicit def eqChar     : Eq[Char, Char] = Eq
-  implicit def eqInt      : Eq[Int, Int] = Eq
-  implicit def eqLong     : Eq[Long, Long] = Eq
-  implicit def eqFloat    : Eq[Float, Float] = Eq
-  implicit def eqDouble   : Eq[Double, Double] = Eq
-  implicit def eqUnit     : Eq[Unit, Unit] = Eq
+  implicit def eqNumber   : Eq[Number, Number] = derived
+  implicit def eqString   : Eq[String, String] = derived
+  implicit def eqBoolean  : Eq[Boolean, Boolean] = derived
+  implicit def eqByte     : Eq[Byte, Byte] = derived
+  implicit def eqShort    : Eq[Short, Short] = derived
+  implicit def eqChar     : Eq[Char, Char] = derived
+  implicit def eqInt      : Eq[Int, Int] = derived
+  implicit def eqLong     : Eq[Long, Long] = derived
+  implicit def eqFloat    : Eq[Float, Float] = derived
+  implicit def eqDouble   : Eq[Double, Double] = derived
+  implicit def eqUnit     : Eq[Unit, Unit] = derived
 
   // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
-  implicit def eqProxy    : Eq[Proxy, Any]     = Eq
+  implicit def eqProxy    : Eq[Proxy, Any]     = derived
 
-  implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[GenSeq[T], GenSeq[U]] = Eq
-  implicit def eqSet[T, U](implicit eq: Eq[T, U]): Eq[Set[T], Set[U]] = Eq
+  implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[GenSeq[T], GenSeq[U]] = derived
+  implicit def eqSet[T, U](implicit eq: Eq[T, U]): Eq[Set[T], Set[U]] = derived
 
-  implicit def eqByteNum  : Eq[Byte, Number]   = Eq
-  implicit def eqNumByte  : Eq[Number, Byte]   = Eq
-  implicit def eqCharNum  : Eq[Char, Number]   = Eq
-  implicit def eqNumChar  : Eq[Number, Char]   = Eq
-  implicit def eqShortNum : Eq[Short, Number]  = Eq
-  implicit def eqNumShort : Eq[Number, Short]  = Eq
-  implicit def eqIntNum   : Eq[Int, Number]    = Eq
-  implicit def eqNumInt   : Eq[Number, Int]    = Eq
-  implicit def eqLongNum  : Eq[Long, Number]   = Eq
-  implicit def eqNumLong  : Eq[Number, Long]   = Eq
-  implicit def eqFloatNum : Eq[Float, Number]  = Eq
-  implicit def eqNumFloat : Eq[Number, Float]  = Eq
-  implicit def eqDoubleNum: Eq[Double, Number] = Eq
-  implicit def eqNumDouble: Eq[Number, Double] = Eq
+  implicit def eqByteNum  : Eq[Byte, Number]   = derived
+  implicit def eqNumByte  : Eq[Number, Byte]   = derived
+  implicit def eqCharNum  : Eq[Char, Number]   = derived
+  implicit def eqNumChar  : Eq[Number, Char]   = derived
+  implicit def eqShortNum : Eq[Short, Number]  = derived
+  implicit def eqNumShort : Eq[Number, Short]  = derived
+  implicit def eqIntNum   : Eq[Int, Number]    = derived
+  implicit def eqNumInt   : Eq[Number, Int]    = derived
+  implicit def eqLongNum  : Eq[Long, Number]   = derived
+  implicit def eqNumLong  : Eq[Number, Long]   = derived
+  implicit def eqFloatNum : Eq[Float, Number]  = derived
+  implicit def eqNumFloat : Eq[Number, Float]  = derived
+  implicit def eqDoubleNum: Eq[Double, Number] = derived
+  implicit def eqNumDouble: Eq[Number, Double] = derived
 
-  implicit def eqSBoolJBool: Eq[Boolean, java.lang.Boolean] = Eq
-  implicit def eqJBoolSBool: Eq[java.lang.Boolean, Boolean] = Eq
+  implicit def eqSBoolJBool: Eq[Boolean, java.lang.Boolean] = derived
+  implicit def eqJBoolSBool: Eq[java.lang.Boolean, Boolean] = derived
 }

@@ -7,23 +7,23 @@ object equality {
     def ===[U] (y: U)(implicit ce: Eq[T, U]) = x.equals(y)
   }
 
-  type EqEq[T] = Eq[T, T]
+  type EqEq[T] = Eq.derived[T, T]
 
   trait EqClass[T]
 
-  implicit def eqAny[T, U]: Eq[T, U] = Eq
+  implicit def eqAny[T, U]: Eq[T, U] = Eq.derived
 /*
-  implicit def mixedEq1[T, U](implicit ce: Eq[T, U]): Eq[T, Any] = Eq
-  implicit def mixedEq2[T, U](implicit ce: Eq[T, U]): Eq[Any, T] = Eq
-  implicit def mixedEq1alt : Eq[Any, EqClass] = Eq
-  implicit def mixedEq2    : Eq[EqClass, Any] = Eq
-  implicit def mixedEq2alt : Eq[EqClass, Any] = Eq
+  implicit def mixedEq1[T, U](implicit ce: Eq[T, U]): Eq[T, Any] = Eq.derived
+  implicit def mixedEq2[T, U](implicit ce: Eq[T, U]): Eq[Any, T] = Eq.derived
+  implicit def mixedEq1alt : Eq[Any, EqClass] = Eq.derived
+  implicit def mixedEq2    : Eq[EqClass, Any] = Eq.derived
+  implicit def mixedEq2alt : Eq[EqClass, Any] = Eq.derived
   implicit def mixedNull1[T]: Eq[T, Null]     = Eq
   implicit def mixedNull2[T]: Eq[Null, T]     = Eq
 */
   implicit def eqString: Eq[String, String] = Eq
-  implicit def eqInt: Eq[Int, Int] = Eq
-  implicit def eqOption[T, U](implicit ce: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
+  implicit def eqInt: Eq[Int, Int] = Eq.derived
+  implicit def eqOption[T, U](implicit ce: Eq[T, U]): Eq[Option[T], Option[U]] = Eq.derived
 
 /*
   implicit def eqEq[UE, TE <: UE with EqClass[UE]]: Eq[TE, TE] = Eq
@@ -37,8 +37,8 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  //implicit def eqStr: Eq[Str, Str] = Eq
-   //implicit def eqNum: Eq[Num, Num] = Eq
+  //implicit def eqStr: Eq[Str, Str] = Eq.derived
+   //implicit def eqNum: Eq[Num, Num] = Eq.derived
 
   implicit def eqOption[T, U](implicit ce: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
 */

@@ -8,8 +8,10 @@ object EqualityStrawman1 {
   @implicitNotFound("cannot compare value of type ${T} with a value outside its equality class")
   trait Impossible[T]
 
-  object Eq extends Eq[Any]
-
+  object Eq {
+    object derived extends Eq[Any]
+  }
+  
   trait Base {
     def === (other: Any): Boolean = this.equals(other)
     def === [T <: CondEquals](other: T)(implicit ce: Impossible[T]): Boolean = ???
@@ -32,11 +34,11 @@ object EqualityStrawman1 {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  implicit def eqStr: Eq[Str] = Eq
-  //implicit def eqNum: Eq[Num] = Eq
-  implicit def eqOption[T: Eq]: Eq[Option[T]] = Eq
+  implicit def eqStr: Eq[Str] = Eq.derived
+  //implicit def eqNum: Eq[Num] = Eq.derived
+  implicit def eqOption[T: Eq]: Eq[Option[T]] = Eq.derived
 
-  implicit def eqEq[T <: Equals[T]]: Eq[T] = Eq
+  implicit def eqEq[T <: Equals[T]]: Eq[T] = Eq.derived
 
   def main(args: Array[String]): Unit = {
     val x = Str("abc")

@@ -2,7 +2,7 @@ scala> object foo { class Foo }
 // defined object foo
 scala> object bar { class Foo }
 // defined object bar
-scala> implicit def eqFoo: Eq[foo.Foo, foo.Foo] = Eq
+scala> implicit def eqFoo: Eq[foo.Foo, foo.Foo] = Eq.derived
 def eqFoo: Eq[foo.Foo, foo.Foo]
 scala> object Bar { new foo.Foo == new bar.Foo }
 1 | object Bar { new foo.Foo == new bar.Foo }

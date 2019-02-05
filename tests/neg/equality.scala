@@ -10,20 +10,20 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  implicit def eqStr: Eq[Str, Str] = Eq
-  implicit def eqNum: Eq[Num, Num] = Eq
-  implicit def eqOption[T, U](implicit e: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
+  implicit def eqStr: Eq[Str, Str] = Eq.derived
+  implicit def eqNum: Eq[Num, Num] = Eq.derived
+  implicit def eqOption[T, U](implicit e: Eq[T, U]): Eq[Option[T], Option[U]] = Eq.derived
 
   case class PString(a: String) extends Proxy {
     def self = a
   }
 
 /*
-  implicit def eqString: Eq[String, String] = Eq
-  implicit def eqInt: Eq[Int, Int] = Eq
-  implicit def eqNumber: Eq[Number, Number] = Eq
-  implicit def eqIntNumber: Eq[Int, Number] = Eq
-  implicit def eqNumberInt: Eq[Number, Int] = Eq
+  implicit def eqString: Eq[String, String] = Eq.derived
+  implicit def eqInt: Eq[Int, Int] = Eq.derived
+  implicit def eqNumber: Eq[Number, Number] = Eq.derived
+  implicit def eqIntNumber: Eq[Int, Number] = Eq.derived
+  implicit def eqNumberInt: Eq[Number, Int] = Eq.derived
 */
   def main(args: Array[String]): Unit = {
     Some(Other(3)) == None

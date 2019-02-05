@@ -29,7 +29,7 @@ would not typecheck if an implicit was declared like this for type `T`
 (or an analogous one for type `S`):
 
 ```scala
-implicit def eqT: Eq[T, T] = Eq
+implicit def eqT: Eq[T, T] = Eq.derived
 ```
 
 This definition effectively says that value of type `T` can (only) be
@@ -55,10 +55,10 @@ definitions below make values of type `A` and type `B` comparable with
 each other, but not comparable to anything else:
 
 ```scala
-implicit def eqA : Eq[A, A] = Eq
-implicit def eqB : Eq[B, B] = Eq
-implicit def eqAB: Eq[A, B] = Eq
-implicit def eqBA: Eq[B, A] = Eq
+implicit def eqA : Eq[A, A] = Eq.derived
+implicit def eqB : Eq[B, B] = Eq.derived
+implicit def eqAB: Eq[A, B] = Eq.derived
+implicit def eqBA: Eq[B, A] = Eq.derived
 ```
 
 (As usual, the names of the implicit definitions don't matter, we have
@@ -75,7 +75,7 @@ over all types that do not themselves have an `Eq` instance.  `eqAny` is
 defined as follows:
 
 ```scala
-def eqAny[L, R]: Eq[L, R] = Eq
+def eqAny[L, R]: Eq[L, R] = Eq.derived
 ```
 
 Even though `eqAny` is not declared implicit, the compiler will still

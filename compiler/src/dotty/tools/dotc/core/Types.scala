@@ -40,7 +40,7 @@ object Types {
 
   @sharable private[this] var nextId = 0
 
-  implicit def eqType: Eq[Type, Type] = Eq
+  implicit def eqType: Eq[Type, Type] = Eq.derived
 
   /** Main class representing types.
    *

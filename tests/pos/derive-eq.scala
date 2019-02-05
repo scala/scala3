@@ -2,7 +2,7 @@
 case class One() derives Eq
 case class Two() derives Eq
 
-implied for Eq[One, Two] = Eq
+implied for Eq[One, Two] = Eq.derived
 
 enum Lst[T] derives Eq {
   case Cons(x: T, xs: Lst[T])
