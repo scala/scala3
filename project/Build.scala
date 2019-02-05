@@ -162,7 +162,7 @@ object Build {
       }
 
       // Make sure all submodules are properly cloned
-      val submodules = List("scala-backend", "scala2-library", "collection-strawman")
+      val submodules = List("scala-backend", "scala2-library")
       if (!submodules.forall(exists)) {
         sLog.value.log(Level.Error,
           s"""Missing some of the submodules

@@ -63,7 +63,6 @@ class CompilationTests extends ParallelTesting {
       ),
       scala2Mode
     ) +
-    compileDir("collection-strawman/collections/src/main", defaultOptions.and("-Yno-imports")) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
     compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")) +
