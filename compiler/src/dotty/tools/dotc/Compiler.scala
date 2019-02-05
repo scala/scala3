@@ -37,6 +37,7 @@ class Compiler {
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
+    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
@@ -45,7 +46,6 @@ class Compiler {
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
-    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new Pickler) ::            // Generate TASTY info
     List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil

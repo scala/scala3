@@ -185,6 +185,27 @@ object Applications {
       case _ => None
     }
   }
+
+  /** 1. If we are in an inline method but not in a nested quote, mark the inline method
+   *  as a macro.
+   *
+   *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
+   */
+  def handleMeta(tree: Tree)(implicit ctx: Context): tree.type = {
+    import transform.SymUtils._
+
+    def markAsMacro(c: Context): Unit =
+      if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+      else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+      else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+    val sym = tree.symbol
+    if (sym.isSplice || sym.isQuote) {
+      markAsMacro(ctx)
+      ctx.compilationUnit.needsStaging = true
+    }
+
+    tree
+  }
 }
 
 trait Applications extends Compatibility { self: Typer with Dynamic =>
@@ -754,7 +775,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
    */
-  def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+  def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = handleMeta {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isContextual)(argCtx(tree))
@@ -892,7 +913,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
-    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
+    handleMeta(typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case ExtMethodApply(app) =>
         app
       case _: TypeApply if !ctx.isAfterTyper =>
@@ -914,7 +935,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
         if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
         else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
-    }
+    })
   }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.

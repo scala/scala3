@@ -440,7 +440,7 @@ class Typer extends Namer
   }
 
   private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
-    checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
+    Applications.handleMeta(checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
@@ -1487,6 +1487,8 @@ class Typer extends Namer
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
       checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
+    if (sym.exists)
+      sym.defTree = vdef1
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
     vdef1
@@ -1557,7 +1559,9 @@ class Typer extends Namer
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
-    assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+    val ddef1 = assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+    sym.defTree = ddef1
+    ddef1
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 

@@ -81,7 +81,7 @@ class Staging extends MacroTransform {
   }
 
   override def run(implicit ctx: Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
+    /*if (ctx.compilationUnit.needsStaging)*/ super.run(freshStagingContext)
 
   protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
@@ -194,10 +194,8 @@ class Staging extends MacroTransform {
             case Some(tpRef) => tpRef
             case _ => tree
           }
-        case _: TypeTree | _: AppliedTypeTree | _: Apply | _: TypeApply | _: UnApply =>
+        case _: TypeTree | _: AppliedTypeTree | _: Apply | _: TypeApply | _: UnApply | Select(_, OuterSelectName(_, _)) =>
           tree.withType(checkTp(tree.tpe))
-        case Select(_, OuterSelectName(_, _)) =>
-          tree.withType(checkTp(tree.tpe.widen))
         case _: ValOrDefDef | _: Bind =>
           tree.symbol.info = checkTp(tree.symbol.info)
           tree
