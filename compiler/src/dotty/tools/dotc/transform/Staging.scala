@@ -37,16 +37,6 @@ class Staging extends MacroTransform {
   import tpd._
   import Staging._
 
-  /** Classloader used for loading macros */
-  private[this] var myMacroClassLoader: java.lang.ClassLoader = _
-  private def macroClassLoader(implicit ctx: Context): ClassLoader = {
-    if (myMacroClassLoader == null) {
-      val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-      myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
-    }
-    myMacroClassLoader
-  }
-
   override def phaseName: String = Staging.name
 
   override def allowsImplicitSearch: Boolean = true
@@ -88,39 +78,30 @@ class Staging extends MacroTransform {
       new PCPCheckAndHeal(ctx).transform(tree)
   }
 
-  private class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-      reporting.trace(i"PCPTransformer.transform $tree at $level", show = true) {
-        tree match {
-          case tree: DefDef if tree.symbol.is(Macro) =>
-            if (level > 0) {
-              super.transform(tree) // Ignore output, only check PCP
-              EmptyTree // Already inlined
-            }
-            else if (enclosingInlineds.nonEmpty) {
-              EmptyTree // Already checked at definition site and already inlined
-            }
-            else tree.rhs match {
-              case InlineSplice(_) =>
-                super.transform(tree) // Ignore output, only check PCP
-                tree
-              case _ =>
-                ctx.error(
-                  """Malformed macro.
-                    |
-                    |Expected the ~ to be at the top of the RHS:
-                    |  inline def foo(inline x: X, ..., y: Y): Int = ~impl(x, ... '(y))
-                    |
-                    | * The contents of the splice must call a static method
-                    | * All arguments must be quoted or inline
-                  """.stripMargin, tree.rhs.sourcePos)
-                tree
-            }
-          case _ =>
-            checkLevel(super.transform(tree))
-        }
+}
+
+object Staging {
+  val name: String = "staging"
+}
+
+  class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
+    import tpd._
+    import PCPCheckAndHeal._
+
+    /** Classloader used for loading macros */
+    private[this] var myMacroClassLoader: java.lang.ClassLoader = _
+    private def macroClassLoader(implicit ctx: Context): ClassLoader = {
+      if (myMacroClassLoader == null) {
+        val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+        myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
       }
+      myMacroClassLoader
+    }
+
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
+      case _ => checkLevel(super.transform(tree))
     }
 
     /** Transform quoted trees while maintaining phase correctness */
@@ -307,10 +288,16 @@ class Staging extends MacroTransform {
       }
     }
 
+
+  }
+
+  object PCPCheckAndHeal {
+    import tpd._
+
     /** InlineSplice is used to detect cases where the expansion
      *  consists of a (possibly multiple & nested) block or a sole expression.
      */
-    private object InlineSplice {
+    object InlineSplice {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
         case Spliced(code) if Splicer.canBeSpliced(code) => Some(code)
         case Block(List(stat), Literal(Constant(()))) => unapply(stat)
@@ -319,11 +306,4 @@ class Staging extends MacroTransform {
         case _ => None
       }
     }
-
   }
-
-}
-
-object Staging {
-  val name: String = "staging"
-}

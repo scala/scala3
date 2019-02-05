@@ -27,7 +27,7 @@ import EtaExpansion.etaExpand
 import util.Spans._
 import util.common._
 import util.Property
-import Applications.{ExtMethodApply, wrapDefs, productSelectorTypes}
+import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs}
 
 import collection.mutable
 import annotation.tailrec
@@ -36,6 +36,7 @@ import util.Stats.{record, track}
 import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
+import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
@@ -1553,7 +1554,39 @@ class Typer extends Namer
     if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
-    if (sym.isInlineMethod) PrepareInlineable.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.isInlineMethod) {
+      if (ctx.phase.isTyper) {
+        import PCPCheckAndHeal.InlineSplice
+        import TreeMapWithStages._
+        var isMacro = false
+        new TreeMapWithStages(freshStagingContext) {
+          override protected def transformSplice(splice: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+            isMacro = true
+            splice
+          }
+        }.transform(rhs1)
+
+        if (isMacro) {
+          sym.setFlag(Macro)
+          if (TreeMapWithStages.level == 0)
+          rhs1 match {
+            case InlineSplice(_) =>
+              new PCPCheckAndHeal(freshStagingContext).transform(rhs1) // Ignore output, only check PCP
+            case _ =>
+              ctx.error(
+                """Malformed macro.
+                  |
+                  |Expected the ~ to be at the top of the RHS:
+                  |  inline def foo(inline x: X, ..., y: Y): Int = ~impl(x, ... '(y))
+                  |
+                  | * The contents of the splice must call a static method
+                  | * All arguments must be quoted or inline
+                """.stripMargin, ddef.sourcePos)
+          }
+        }
+      }
+      PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
+    }
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -1928,6 +1961,16 @@ class Typer extends Namer
     }
   }
 
+  /** Translate `'(expr)`/`'{ expr* }` into `scala.quoted.Expr.apply(expr)` and `'[T]` into `scala.quoted.Type.apply[T]`
+   *  while tracking the quotation level in the context.
+   */
+  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+    if (tree.t.isType)
+      typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedType_applyR), List(tree.t)), pt)(TreeMapWithStages.quoteContext).withSpan(tree.span)
+    else
+      typedApply(untpd.Apply(untpd.ref(defn.QuotedExpr_applyR), tree.t), pt)(TreeMapWithStages.quoteContext).withSpan(tree.span)
+  }
+
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.removeAttachment(SymOfTree) match {
     case Some(sym) =>
@@ -2018,6 +2061,7 @@ class Typer extends Namer
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
+          case tree: untpd.Quote => typedQuote(tree, pt)
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
