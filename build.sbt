@@ -19,6 +19,7 @@ val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
+val `community-build` = Build.`community-build`
 
 val sjsSandbox = Build.sjsSandbox
 
