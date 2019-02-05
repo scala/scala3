@@ -1,23 +1,23 @@
 object Test {
-  val f: (Int |=> Char) |=> Boolean = ???
+  val f: given (given Int => Char) => Boolean = ???
   implicit val n: Int = 3
-  implicit val g: Int |=> Char = ???
+  implicit val g: given Int => Char = ???
 
   f : Boolean
 }
 
 object Test2 {
-  val f: (Int |=> Char) |=> Boolean = ???
+  val f: given (given Int => Char) => Boolean = ???
   implicit val s: String = null
-  implicit val g: Int |=> String |=> Char = ???
+  implicit val g: given Int => given String => Char = ???
 
   f : Boolean
 }
 
 object Test3 {
-  val f: (Int |=> String |=> Char) |=> Boolean = ???
+  val f: given (given Int => given String => Char) => Boolean = ???
   implicit val n: Int = 3
-  implicit val g: Int |=> Char = ???
+  implicit val g: given Int => Char = ???
 
   f : Boolean
 }

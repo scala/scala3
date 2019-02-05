@@ -18,10 +18,10 @@ class DiagnosticsTest {
 
   @Test def diagnosticMissingLambdaBody: Unit =
     code"""object Test {
-          |  Nil.map(x => x).filter(x$m1 =>$m2)
-          |$m3}""".withSource
+          |  Nil.map(x => x).filter(x$m1 =>$m2)$m3
+          |}""".withSource
       .diagnostics(m1,
-        (m2 to m3, "expression expected", Error, Some(IllegalStartSimpleExprID)),
+        (m2 to m2, "expression expected", Error, Some(IllegalStartSimpleExprID)),
         (m1 to m1, """Found:    Null
                      |Required: Boolean""".stripMargin, Error, Some(TypeMismatchID))
       )

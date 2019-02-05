@@ -203,7 +203,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
                   EXTENSION                           // An extension method
-                  CONTEXTUAL                          // new style implicit parameters, introduced with `with`
+                  GIVEN                               // new style implicit parameters, introduced with `given`
                   PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
                   Annotation
 
@@ -323,7 +323,7 @@ object TastyFormat {
   final val ERASED = 34
   final val OPAQUE = 35
   final val EXTENSION = 36
-  final val CONTEXTUAL = 37
+  final val GIVEN = 37
   final val PARAMsetter = 38
 
   // Cat. 2:    tag Nat
@@ -497,7 +497,7 @@ object TastyFormat {
        | DEFAULTparameterized
        | STABLE
        | EXTENSION
-       | CONTEXTUAL
+       | GIVEN
        | PARAMsetter
        | ANNOTATION
        | PRIVATEqualified
@@ -558,7 +558,7 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
     case EXTENSION => "EXTENSION"
-    case CONTEXTUAL => "CONTEXTUAL"
+    case GIVEN => "GIVEN"
     case PARAMsetter => "PARAMsetter"
 
     case SHAREDterm => "SHAREDterm"

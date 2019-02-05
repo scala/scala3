@@ -119,14 +119,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
-        case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
-          transformSelect(cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name), targs)
+        case pkg: PackageClassDenotation =>
+          val pobj = pkg.packageObjFor(tree.symbol)
+          if (pobj.exists)
+            return transformSelect(cpy.Select(tree)(qual.select(pobj), tree.name), targs)
         case _ =>
-          val tree1 = super.transform(tree)
-          constToLiteral(tree1) match {
-            case _: Literal => tree1
-            case _ => superAcc.transformSelect(tree1, targs)
-          }
+      }
+      val tree1 = super.transform(tree)
+      constToLiteral(tree1) match {
+        case _: Literal => tree1
+        case _ => superAcc.transformSelect(tree1, targs)
       }
     }
 

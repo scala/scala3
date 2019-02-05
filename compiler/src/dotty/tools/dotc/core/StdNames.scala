@@ -20,6 +20,7 @@ object StdNames {
     final val INITIALIZER_PREFIX       = "initial$"
     final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
     final val MODULE_SUFFIX            = "$"
+    final val TOPLEVEL_SUFFIX          = "$package"
     final val NAME_JOIN                = "$"
     final val DEFAULT_GETTER           = "$default$"
     final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
@@ -483,7 +484,6 @@ object StdNames {
     val notifyAll_ : N          = "notifyAll"
     val notify_ : N             = "notify"
     val null_ : N               = "null"
-    val of: N                   = "of"
     val ofDim: N                = "ofDim"
     val opaque: N               = "opaque"
     val ordinal: N              = "ordinal"

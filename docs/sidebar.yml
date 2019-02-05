@@ -39,10 +39,29 @@ sidebar:
               url: docs/reference/enums/adts.html
             - title: Translation
               url: docs/reference/enums/desugarEnums.html
-        - title: Other New Features
-          subsection:
+        - title: Contextual Abstractions
+            - title: Implied Instances
+              url: docs/reference/contextual/instance-defs.html
+            - title: Inferable Parameters
+              url: docs/reference/contextual/inferable-params.html
+            - title: Context Bounds
+              url: docs/reference/contextual/context-bounds.html
+            - title: Extension Methods
+              url: docs/reference/contextual/extension-methods.html
+            - title: Implementing Typeclasses
+              url: docs/reference/contextual/typeclasses.html
             - title: Typeclass Derivation
               url: docs/reference/derivation.html
+            - title: Context Queries
+              url: docs/reference/contextual/query-types.html
+            - title: Implicit Conversions
+              url: docs/reference/contextual/conversions.html
+            - title: Inferable By-Name Parameters
+              url: docs/reference/contextual/inferable-by-name-parameters.html
+            - title: Relationship with Scala 2 Implicits
+              url: docs/reference/contextual/relationship-implicits.html
+        - title: Other New Features
+          subsection:
             - title: Multiversal Equality
               url: docs/reference/other-new-features/multiversal-equality.html
             - title: Trait Parameters
@@ -55,10 +74,6 @@ sidebar:
               url: docs/reference/other-new-features/tasty-reflect.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
-            - title: Extension Methods
-              url: docs/reference/other-new-features/extension-methods.html
-            - title: By-Name Implicits
-              url: docs/reference/other-new-features/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling
               url: docs/reference/other-new-features/auto-parameter-tupling.html
             - title: Named Type Arguments
@@ -67,20 +82,6 @@ sidebar:
               url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
-        - title: New Implicits
-          subsection:
-            - title: Instance Definitions
-              url: docs/reference/instances/instance-defs.html
-            - title: Context Parameters
-              url: docs/reference/instances/context-params.html
-            - title: Implicit Function Types
-              url: docs/reference/instances/implicit-function-types.html
-            - title: Implicit Conversions
-              url: docs/reference/instances/implicit-conversions.html
-            - title: Replacing Implicits
-              url: docs/reference/instances/replacing-implicits.html
-            - title: Discussion
-              url: docs/reference/instances/discussion.html
         - title: Other Changed Features
           subsection:
             - title: Volatile Lazy Vals
@@ -115,6 +116,8 @@ sidebar:
               url: docs/reference/dropped-features/type-projection.html
             - title: Procedure Syntax
               url: docs/reference/dropped-features/procedure-syntax.html
+            - title: Package Objects
+              uril: docs/reference/dropped-features/package-objects.html
             - title: Early Initializers
               url: docs/reference/dropped-features/early-initializers.html
             - title: Class Shadowing

@@ -9,6 +9,7 @@ import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.FrontEnd
 import util.{Property, SourceFile, SourcePosition}
+import util.NameTransformer.avoidIllegalChars
 import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
@@ -1025,6 +1026,37 @@ object desugar {
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
+  /** Group all definitions that can't be at the toplevel in
+   *  an object named `<source>$package` where `<source>` is the name of the source file.
+   *  Definitions that can't be at the toplevel are:
+   *
+   *   - all pattern, value and method definitions
+   *   - non-class type definitions
+   *   - implicit classes and objects
+   *   - companion objects of opaque types
+   */
+  def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
+    val opaqueNames = pdef.stats.collect {
+      case stat: TypeDef if stat.mods.is(Opaque) => stat.name
+    }
+    def needsObject(stat: Tree) = stat match {
+      case _: ValDef | _: PatDef | _: DefDef => true
+      case stat: ModuleDef =>
+        stat.mods.is(Implicit) || opaqueNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
+      case stat: TypeDef => !stat.isClassDef || stat.mods.is(Implicit)
+      case _ => false
+    }
+    val (nestedStats, topStats) = pdef.stats.partition(needsObject)
+    if (nestedStats.isEmpty) pdef
+    else {
+      var fileName = ctx.source.file.name
+      val sourceName = fileName.take(fileName.lastIndexOf('.'))
+      val groupName = avoidIllegalChars((sourceName ++ str.TOPLEVEL_SUFFIX).toTermName.asSimpleName)
+      val grouped = ModuleDef(groupName, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+      cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
+    }
+  }
+
   /** Make closure corresponding to function.
    *      params => body
    *  ==>
@@ -1089,8 +1121,8 @@ object desugar {
   }
 
   def makeContextualFunction(formals: List[Type], body: Tree)(implicit ctx: Context): Tree = {
-    val params = makeImplicitParameters(formals.map(TypeTree), Contextual)
-    new FunctionWithMods(params, body, Modifiers(Implicit | Contextual))
+    val params = makeImplicitParameters(formals.map(TypeTree), Given)
+    new FunctionWithMods(params, body, Modifiers(Implicit | Given))
   }
 
   /** Add annotation to tree:
