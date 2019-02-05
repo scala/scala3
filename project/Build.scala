@@ -464,48 +464,6 @@ object Build {
 
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
-
-      // The scala-backend folder is a git submodule that contains a fork of the Scala 2.11
-      // compiler developed at https://github.com/lampepfl/scala/tree/sharing-backend.
-      // We do not compile the whole submodule, only the part of the Scala 2.11 GenBCode backend
-      // that we reuse for dotty.
-      // See http://dotty.epfl.ch/docs/contributing/backend.html for more information.
-      //
-      // NOTE: We link (or copy if symbolic links are not supported) these sources in
-      // the current project using `sourceGenerators` instead of simply
-      // referencing them using `unmanagedSourceDirectories` because the latter
-      // breaks some IDEs.
-      sourceGenerators in Compile += Def.task {
-        val outputDir = (sourceManaged in Compile).value
-
-        val submoduleCompilerDir = baseDirectory.value / ".." / "scala-backend" / "src" / "compiler"
-        val backendDir = submoduleCompilerDir / "scala" / "tools" / "nsc" / "backend"
-        val allScalaFiles = GlobFilter("*.scala")
-
-        // NOTE: Keep these exclusions synchronized with the ones in the tests (CompilationTests.scala)
-        val files = ((backendDir *
-          (allScalaFiles - "JavaPlatform.scala" - "Platform.scala" - "ScalaPrimitives.scala")) +++
-         (backendDir / "jvm") *
-          (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala" - "BackendStats.scala")
-        ).get
-
-        val pairs = files.pair(sbt.Path.rebase(submoduleCompilerDir, outputDir))
-
-        try {
-          pairs.foreach { case (src, dst) =>
-            sbt.IO.createDirectory(dst.getParentFile)
-            if (!dst.exists)
-              Files.createSymbolicLink(/*link = */ dst.toPath, /*existing = */src.toPath)
-          }
-        } catch {
-          case _: UnsupportedOperationException | _: FileSystemException =>
-            // If the OS doesn't support symbolic links, copy the directory instead.
-            sbt.IO.copy(pairs, CopyOptions(overwrite = true, preserveLastModified = true, preserveExecutable = true))
-        }
-
-        pairs.map(_._2)
-      }.taskValue,
-
       // set system in/out for repl
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),

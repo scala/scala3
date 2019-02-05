@@ -15,7 +15,6 @@ import scala.concurrent.duration._
 import vulpix._
 import dotty.tools.io.JFile
 
-
 class CompilationTests extends ParallelTesting {
   import ParallelTesting._
   import TestConfiguration._
@@ -239,25 +238,11 @@ class CompilationTests extends ParallelTesting {
     val compilerDir = Paths.get("compiler/src")
     val compilerSources = sources(Files.walk(compilerDir))
 
-    val backendDir = Paths.get("scala-backend/src/compiler/scala/tools/nsc/backend")
-    val backendJvmDir = Paths.get("scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
     val scalaJSIRDir = Paths.get("compiler/target/scala-2.12/src_managed/main/scalajs-ir-src/org/scalajs/ir")
+    val scalaJSIRSources = sources(Files.list(scalaJSIRDir))
 
-    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
-    val backendExcluded =
-      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
-    val backendJvmExcluded =
-      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala", "BackendStats.scala", "BCodeAsmEncode.scala")
-
-    val backendSources =
-      sources(Files.list(backendDir), excludedFiles = backendExcluded)
-    val backendJvmSources =
-      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
-    val scalaJSIRSources =
-      sources(Files.list(scalaJSIRDir))
-
-    val dotty1 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources ++ scalaJSIRSources, opt)(dotty1Group)
-    val dotty2 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources ++ scalaJSIRSources, opt)(dotty2Group)
+    val dotty1 = compileList("dotty", compilerSources ++ scalaJSIRSources, opt)(dotty1Group)
+    val dotty2 = compileList("dotty", compilerSources ++ scalaJSIRSources, opt)(dotty2Group)
 
     val tests = {
       lib.keepOutput :: dotty1.keepOutput :: {
@@ -273,8 +258,8 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/transform", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/typer", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/util", opt) +
-        compileList("shallow-backend", backendSources, opt) +
-        compileList("shallow-backend-jvm", backendJvmSources, opt) +
+        compileShallowFilesInDir("compiler/src/scala/tools/nsc/backend", opt) +
+        compileShallowFilesInDir("compiler/src/scala/tools/nsc/backend/jvm", opt) +
         compileList("shallow-scalajs-ir", scalaJSIRSources, opt)
       }.keepOutput :: Nil
     }.map(_.checkCompile())
