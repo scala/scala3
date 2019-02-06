@@ -16,12 +16,6 @@ import scala.annotation.tailrec
 class TreeMapWithImplicits extends tpd.TreeMap {
   import tpd._
 
-  protected def localCtx(tree: Tree)(implicit ctx: Context): FreshContext = {
-    val sym = tree.symbol
-    val owner = if (sym is PackageVal) sym.moduleClass else sym
-    ctx.fresh.setTree(tree).setOwner(owner)
-  }
-
   def transformSelf(vd: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))
 
@@ -75,11 +69,13 @@ class TreeMapWithImplicits extends tpd.TreeMap {
   }
 
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    def localCtx =
+      if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
     try tree match {
       case tree: Block =>
         super.transform(tree)(nestedScopeCtx(tree.stats))
       case tree: DefDef =>
-        implicit val ctx1 = localCtx(tree)(ctx)
+        implicit val ctx = localCtx
         cpy.DefDef(tree)(
           tree.name,
           transformSub(tree.tparams),
@@ -89,7 +85,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
       case EmptyValDef =>
         tree
       case _: PackageDef | _: MemberDef =>
-        super.transform(tree)(localCtx(tree))
+        super.transform(tree)(localCtx)
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
