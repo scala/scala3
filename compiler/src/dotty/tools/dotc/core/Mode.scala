@@ -52,6 +52,9 @@ object Mode {
   /** Allow GADTFlexType labelled types to have their bounds adjusted */
   val GADTflexible: Mode = newMode(8, "GADTflexible")
 
+  /** Assume -language:strictEquality */
+  val StrictEquality: Mode = newMode(9, "StrictEquality")
+
   /** We are currently printing something: avoid to produce more logs about
    *  the printing
    */

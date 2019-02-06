@@ -675,7 +675,7 @@ object Lst {
   def fromIterable[T](xs: Iterable[T]): Lst[T] = fromIterator(xs.iterator)
 
   object :: {
-    def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs match {
+    def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs.elems match {
       case null => None
       case elems: Arr =>
         Some((elems(0).asInstanceOf[T], _fromArray[T](elems, 1, elems.length)))
