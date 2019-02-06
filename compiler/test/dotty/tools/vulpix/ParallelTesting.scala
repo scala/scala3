@@ -759,8 +759,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           failTestSource(testSource)
         }
 
-        def reporterOutputLines(reporter: TestReporter): List[String] = {
-          reporter.allErrors.flatMap { error =>
+        def reporterOutputLines(reporters: List[TestReporter]): List[String] = {
+          reporters.flatMap(_.allErrors).sortBy(_.pos.source.toString).flatMap { error =>
             (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().lines.toList
           }
         }
@@ -779,7 +779,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               if (!file.isDirectory) {
                 val checkFile = new JFile(file.getAbsolutePath.replaceFirst("\\.scala$", ".check"))
                 if (checkFile.exists)
-                  checkFileTest(testSource.title, checkFile, reporterOutputLines(reporter))
+                  checkFileTest(testSource.title, checkFile, reporterOutputLines(reporter :: Nil))
               }
             }
             if (reporter.compilerCrashed || actualErrors > 0)
@@ -800,7 +800,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             val checkFile = new JFile(dir.getAbsolutePath + ".check")
             if (checkFile.exists)
-              checkFileTest(testSource.title, checkFile, reporters.flatMap(reporter => reporterOutputLines(reporter)))
+              checkFileTest(testSource.title, checkFile, reporterOutputLines(reporters))
 
             (compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
           }
