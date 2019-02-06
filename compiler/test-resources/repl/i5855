@@ -1,2 +1,0 @@
-scala> def f given Int = 1
-def f given (x$1: Int): Int
