@@ -155,6 +155,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
     compileFile("tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")) +
+    compileFile("tests/neg-custom-args/nullless.scala", defaultOptions.and("-strict")) +
     compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")) +
     compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
