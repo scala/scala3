@@ -1,21 +1,24 @@
-package dotty.tools.dotc
-package ast
+package dotty.tools.dotc.ast
 
-import core._
-import ast.Trees._
-import Contexts._
-import Symbols._
-import annotation.tailrec
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.TypeError
 
-/** A TreeMap that maintains the necessary infrastructore to support
+import scala.annotation.tailrec
+
+/** A TreeMap that maintains the necessary infrastructure to support
  *  contxtual implicit searches (type-scope implicits are supported anyway).
+ *
+ *  This incudes impicits defined in scope as well as imported implicits.
  */
-class TreeMapWithImplicits extends ast.tpd.TreeMap {
-  import ast.tpd._
+class TreeMapWithImplicits extends tpd.TreeMap {
+  import tpd._
 
   protected def localCtx(tree: Tree)(implicit ctx: Context): FreshContext = {
     val sym = tree.symbol
-    val owner = if (sym is Flags.PackageVal) sym.moduleClass else sym
+    val owner = if (sym is PackageVal) sym.moduleClass else sym
     ctx.fresh.setTree(tree).setOwner(owner)
   }
 
