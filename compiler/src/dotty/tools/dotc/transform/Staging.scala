@@ -130,7 +130,7 @@ class Staging extends MacroTransform {
     }
 
     /** Transform splice
-     *  - If inside a quote, transform transform the contents of the splice.
+     *  - If inside a quote, transform the contents of the splice.
      *  - If inside inlined code, expand the macro code.
      *  - If inside of a macro definition, check the validity of the macro.
      */
