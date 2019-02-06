@@ -761,7 +761,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         def reporterOutputLines(reporter: TestReporter): List[String] = {
           reporter.allErrors.flatMap { error =>
-            (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().split("\n").toList
+            (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().lines.toList
           }
         }
         def checkFileTest(sourceName: String, checkFile: JFile, actual: List[String]) = {
@@ -851,9 +851,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
   def diffMessage(sourceTitle: String, outputLines: Seq[String], checkLines: Seq[String]): Option[String] = {
     def linesMatch =
-      outputLines
-        .zip(checkLines)
-        .forall { case (x, y) => x == y }
+      (outputLines, checkLines).zipped.forall(_ == _)
 
     if (outputLines.length != checkLines.length || !linesMatch) {
       // Print diff to files and summary:
