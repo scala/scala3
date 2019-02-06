@@ -6,6 +6,7 @@ import scala.annotation.implicitNotFound
 trait Toolbox {
   def run[T](expr: Expr[T]): T
   def show[T](expr: Expr[T]): String
+  def show[T](tpe: Type[T]): String
 }
 
 object Toolbox {
@@ -32,7 +33,7 @@ object Toolbox {
   }
 
   /** Setting of the Toolbox instance. */
-  class Settings private (val outDir: Option[String], val showRawTree: Boolean, val compilerArgs: List[String], val color: Boolean)
+  case class Settings private (val outDir: Option[String], val showRawTree: Boolean, val compilerArgs: List[String], val color: Boolean)
 
   object Settings {
 

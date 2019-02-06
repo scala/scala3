@@ -41,16 +41,20 @@ class QuoteDriver extends Driver {
     method.invoke(inst).asInstanceOf[T]
   }
 
-  def show(expr: Expr[_], settings: Toolbox.Settings): String = {
-    def show(tree: Tree, ctx: Context): String = {
-      implicit val c: Context = ctx
-      val tree1 =
-        if (ctx.settings.YshowRawQuoteTrees.value) tree
-        else (new TreeCleaner).transform(tree)
-      ReflectionImpl.showTree(tree1)
-    }
-    withTree(expr, show, settings)
+  private def doShow(tree: Tree, ctx: Context): String = {
+    implicit val c: Context = ctx
+    val tree1 =
+      if (ctx.settings.YshowRawQuoteTrees.value) tree
+      else (new TreeCleaner).transform(tree)
+    ReflectionImpl.showTree(tree1)
   }
+
+  def show(expr: Expr[_], settings: Toolbox.Settings): String =
+    withTree(expr, doShow, settings)
+
+  def show(tpe: Type[_], settings: Toolbox.Settings): String =
+    withTypeTree(tpe, doShow, settings)
+
 
   def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Toolbox.Settings): T = {
     val ctx = setToolboxSettings(setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)._2.fresh, settings)
@@ -65,7 +69,7 @@ class QuoteDriver extends Driver {
   }
 
   def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Toolbox.Settings): T = {
-    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+    val ctx = setToolboxSettings(setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)._2.fresh, settings)
 
     var output: Option[T] = None
     def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
