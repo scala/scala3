@@ -53,6 +53,8 @@ sidebar:
               url: docs/reference/contextual/typeclasses.html
             - title: Typeclass Derivation
               url: docs/reference/contextual/derivation.html
+            - title: Multiversal Equality
+              url: docs/reference/contextual/multiversal-equality.html
             - title: Context Queries
               url: docs/reference/contextual/query-types.html
             - title: Implicit Conversions
@@ -63,8 +65,6 @@ sidebar:
               url: docs/reference/contextual/relationship-implicits.html
         - title: Other New Features
           subsection:
-            - title: Multiversal Equality
-              url: docs/reference/other-new-features/multiversal-equality.html
             - title: Trait Parameters
               url: docs/reference/other-new-features/trait-parameters.html
             - title: Inlining by Rewriting
