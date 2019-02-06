@@ -1472,7 +1472,7 @@ object desugar {
     val buf = new ListBuffer[VarInfo]
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
-      if (!seenName(named.name)) buf += ((named, t))
+      if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
     def collect(tree: Tree): Unit = tree match {
       case Bind(nme.WILDCARD, tree1) =>
         collect(tree1)

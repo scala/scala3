@@ -40,6 +40,7 @@ sidebar:
             - title: Translation
               url: docs/reference/enums/desugarEnums.html
         - title: Contextual Abstractions
+          subsection:
             - title: Implied Instances
               url: docs/reference/contextual/instance-defs.html
             - title: Inferable Parameters
@@ -51,7 +52,7 @@ sidebar:
             - title: Implementing Typeclasses
               url: docs/reference/contextual/typeclasses.html
             - title: Typeclass Derivation
-              url: docs/reference/derivation.html
+              url: docs/reference/contextual/derivation.html
             - title: Context Queries
               url: docs/reference/contextual/query-types.html
             - title: Implicit Conversions
@@ -117,7 +118,7 @@ sidebar:
             - title: Procedure Syntax
               url: docs/reference/dropped-features/procedure-syntax.html
             - title: Package Objects
-              uril: docs/reference/dropped-features/package-objects.html
+              url: docs/reference/dropped-features/package-objects.html
             - title: Early Initializers
               url: docs/reference/dropped-features/early-initializers.html
             - title: Class Shadowing
