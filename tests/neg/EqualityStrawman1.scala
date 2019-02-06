@@ -3,22 +3,22 @@ import annotation.implicitNotFound
 
 object EqualityStrawman1 {
 
-  trait Eq[-T]
+  trait Eql[-T]
 
   @implicitNotFound("cannot compare value of type ${T} with a value outside its equality class")
   trait Impossible[T]
 
-  object Eq {
-    object derived extends Eq[Any]
+  object Eql {
+    object derived extends Eql[Any]
   }
-  
+
   trait Base {
     def === (other: Any): Boolean = this.equals(other)
     def === [T <: CondEquals](other: T)(implicit ce: Impossible[T]): Boolean = ???
   }
 
   trait CondEquals extends Base {
-    def === [T >: this.type <: CondEquals](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
+    def === [T >: this.type <: CondEquals](other: T)(implicit ce: Eql[T]): Boolean = this.equals(other)
     def === [T](other: T)(implicit ce: Impossible[T]): Boolean = ???
   }
 
@@ -34,11 +34,11 @@ object EqualityStrawman1 {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  implicit def eqStr: Eq[Str] = Eq.derived
-  //implicit def eqNum: Eq[Num] = Eq.derived
-  implicit def eqOption[T: Eq]: Eq[Option[T]] = Eq.derived
+  implicit def eqStr: Eql[Str] = Eql.derived
+  //implicit def eqNum: Eql[Num] = Eql.derived
+  implicit def eqOption[T: Eql]: Eql[Option[T]] = Eql.derived
 
-  implicit def eqEq[T <: Equals[T]]: Eq[T] = Eq.derived
+  implicit def eqEq[T <: Equals[T]]: Eql[T] = Eql.derived
 
   def main(args: Array[String]): Unit = {
     val x = Str("abc")
@@ -59,7 +59,7 @@ object EqualityStrawman1 {
     None === z
 
 
-    def ddistinct[T <: Base: Eq](xs: List[T]): List[T] = xs match {
+    def ddistinct[T <: Base: Eql](xs: List[T]): List[T] = xs match {
       case Nil => Nil
       case x :: xs => x :: xs.filterNot(x === _)
     }

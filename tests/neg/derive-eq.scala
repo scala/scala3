@@ -1,20 +1,20 @@
 
-case class One() derives Eq
-case class Two() derives Eq
+case class One() derives Eql
+case class Two() derives Eql
 
-implied for Eq[One, Two] = Eq.derived
+implied for Eql[One, Two] = Eql.derived
 
-enum Lst[T] derives Eq {
+enum Lst[T] derives Eql {
   case Cons(x: T, xs: Lst[T])
   case Nil()
 }
 
-case class Triple[S, T, U] derives Eq
+case class Triple[S, T, U] derives Eql
 
 
 object Test extends App {
-  implicitly[Eq[Lst[Lst[One]], Lst[Lst[Two]]]]
-  implicitly[Eq[Triple[One, One, One],
+  implicitly[Eql[Lst[Lst[One]], Lst[Lst[Two]]]]
+  implicitly[Eql[Triple[One, One, One],
                 Triple[Two, Two, Two]]]
 
   val x: Triple[List[One], One, Two] = ???

@@ -699,18 +699,18 @@ trait Implicits { self: Typer =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
-    /** If `formal` is of the form Eq[T, U], try to synthesize an
-     *  `Eq.eqAny[T, U]` as solution.
+    /** If `formal` is of the form Eql[T, U], try to synthesize an
+     *  `Eql.eqlAny[T, U]` as solution.
      */
     def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
       def hasEq(tp: Type)(implicit ctx: Context): Boolean = {
-        val inst = inferImplicitArg(defn.EqType.appliedTo(tp, tp), span)
+        val inst = inferImplicitArg(defn.EqlType.appliedTo(tp, tp), span)
         !inst.isEmpty && !inst.tpe.isError
       }
 
-      /** Can we assume the eqAny instance for `tp1`, `tp2`?
+      /** Can we assume the eqlAny instance for `tp1`, `tp2`?
        *  This is the case if assumedCanEqual(tp1, tp2), or
        *  one of `tp1`, `tp2` has a reflexive `Eql` instance.
        */
@@ -756,7 +756,7 @@ trait Implicits { self: Typer =>
               ||
               !strictEquality &&
               ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)))
-            ref(defn.Eq_eqAny).appliedToTypes(args).withSpan(span)
+            ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
           else EmptyTree
         case _ =>
           EmptyTree
@@ -817,7 +817,7 @@ trait Implicits { self: Typer =>
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
               trySpecialCase(defn.GenericClass, synthesizedGeneric,
                 trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
-                  trySpecialCase(defn.EqClass, synthesizedEq,
+                  trySpecialCase(defn.EqlClass, synthesizedEq,
                     trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
     }
   }
@@ -963,8 +963,8 @@ trait Implicits { self: Typer =>
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
-      val res = implicitArgTree(defn.EqType.appliedTo(ltp, rtp), span)
-      implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
+      val res = implicitArgTree(defn.EqlType.appliedTo(ltp, rtp), span)
+      implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
   /** Find an implicit parameter or conversion.
@@ -1032,7 +1032,7 @@ trait Implicits { self: Typer =>
       if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
-    private def isCoherent = pt.isRef(defn.EqClass)
+    private def isCoherent = pt.isRef(defn.EqlClass)
 
     private val cmpContext = nestedContext()
     private val cmpCandidates = (c1: Candidate, c2: Candidate) => compare(c1.ref, c2.ref, c1.level, c2.level)(cmpContext)

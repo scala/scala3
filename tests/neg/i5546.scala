@@ -8,11 +8,11 @@ object O {
     val m: Meters = 1.0
     assert(m == 1.0)   // OK
   }
-  implicit def eqM: Eq[Meters, Meters] = Eq.derived
+  implicit def eqM: Eql[Meters, Meters] = Eql.derived
 
   opaque type Feet = Double
   object Feet { def apply(d: Double): Feet = d }
-  implicit def eqF: Eq[Feet, Feet] = Eq.derived
+  implicit def eqF: Eql[Feet, Feet] = Eql.derived
 
   def main(args: Array[String]): Unit = {
     println(Feet(3) == Meters(3)) // error: cannot compare

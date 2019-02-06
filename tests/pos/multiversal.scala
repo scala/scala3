@@ -1,7 +1,7 @@
 object Test {
-  import scala.Eq
+  import scala.Eql
 
-  implied [X, Y] given Eq[X, Y] for Eq[List[X], List[Y]] = Eq.derived
+  implied [X, Y] given Eql[X, Y] for Eql[List[X], List[Y]] = Eql.derived
 
   val b: Byte = 1
   val c: Char = 2
