@@ -8,7 +8,7 @@ package scala.compat.java8;
 import scala.MatchError;
 
 @FunctionalInterface
-public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R> {
+public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R>, java.io.Serializable {
     default void $init$() {
     };
 

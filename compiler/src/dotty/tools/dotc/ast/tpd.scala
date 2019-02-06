@@ -1074,7 +1074,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => 0
         }
         var allAlts = denot.alternatives
-          .map(_.termRef).filter(tr => typeParamCount(tr) == targs.length)
+          .map(denot => TermRef(receiver.tpe, denot.symbol))
+          .filter(tr => typeParamCount(tr) == targs.length)
         if (targs.isEmpty) allAlts = allAlts.filterNot(_.widen.isInstanceOf[PolyType])
         val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
         assert(alternatives.size == 1,
@@ -1084,10 +1085,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
         alternatives.head
       }
-      else denot.asSingleDenotation.termRef
-    val fun = receiver
-      .select(TermRef(receiver.tpe, selected.termSymbol.asTerm))
-      .appliedToTypes(targs)
+      else TermRef(receiver.tpe, denot.symbol)
+    val fun = receiver.select(selected).appliedToTypes(targs)
 
     val apply = untpd.Apply(fun, args)
     new typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs

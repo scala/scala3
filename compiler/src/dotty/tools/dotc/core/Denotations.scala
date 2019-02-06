@@ -748,26 +748,6 @@ object Denotations {
       if (matches) this else NoDenotation
     }
 
-    // ------ Forming types -------------------------------------------
-
-    /** The TypeRef representing this type denotation at its original location. */
-    def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(symbol.owner.thisType, symbol).withDenot(this)
-
-    /** The typeRef applied to its own type parameters */
-    def appliedRef(implicit ctx: Context): Type =
-      typeRef.appliedTo(symbol.typeParams.map(_.typeRef))
-
-    /** The TermRef representing this term denotation at its original location. */
-    def termRef(implicit ctx: Context): TermRef =
-      TermRef(symbol.owner.thisType, symbol).withDenot(this)
-
-    /** The NamedType representing this denotation at its original location.
-     *  Same as either `typeRef` or `termRef` depending whether this denotes a type or not.
-     */
-    def namedType(implicit ctx: Context): NamedType =
-      if (isType) typeRef else termRef
-
     // ------ Transformations -----------------------------------------
 
     private[this] var myValidFor: Period = Nowhere

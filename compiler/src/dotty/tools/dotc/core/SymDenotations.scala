@@ -1233,11 +1233,21 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
-    override def typeRef(implicit ctx: Context): TypeRef =
+    def typeRef(implicit ctx: Context): TypeRef =
       TypeRef(owner.thisType, symbol)
 
-    override def termRef(implicit ctx: Context): TermRef =
+    def termRef(implicit ctx: Context): TermRef =
       TermRef(owner.thisType, symbol)
+
+    /** The typeRef applied to its own type parameters */
+    def appliedRef(implicit ctx: Context): Type =
+      typeRef.appliedTo(symbol.typeParams.map(_.typeRef))
+
+    /** The NamedType representing this denotation at its original location.
+     *  Same as either `typeRef` or `termRef` depending whether this denotes a type or not.
+     */
+    def namedType(implicit ctx: Context): NamedType =
+      if (isType) typeRef else termRef
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter

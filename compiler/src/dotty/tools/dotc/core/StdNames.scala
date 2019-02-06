@@ -205,6 +205,7 @@ object StdNames {
     final val Singleton: N           = "Singleton"
     final val Throwable: N           = "Throwable"
     final val IOOBException: N       = "IndexOutOfBoundsException"
+    final val FunctionXXL: N         = "FunctionXXL"
 
     final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
