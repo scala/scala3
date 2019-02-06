@@ -7,7 +7,7 @@ Type.AppliedType(Type.SymRef(IsClassSymbol(<scala.Function1>), Type.ThisType(Typ
 Term.Inlined(None, Nil, Term.Ident("???"))
 Type.SymRef(IsDefSymbol(<scala.Predef$.???>), Type.SymRef(IsValSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageSymbol(<scala>), NoPrefix()))))
 
-Term.Literal(Constant.Int(1))
+Term.Inlined(None, Nil, Term.Literal(Constant.Int(1)))
 Type.ConstantType(Constant.Int(1))
 
 Term.Inlined(None, Nil, Term.Typed(Term.Literal(Constant.Int(1)), TypeTree.Ident("Int")))

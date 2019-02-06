@@ -105,7 +105,7 @@ class ReifyQuotes extends MacroTransform {
   private class QuoteReifier(outer: QuoteReifier, capturers: mutable.HashMap[Symbol, Tree => Tree],
                              val embedded: Embedded, val owner: Symbol)(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) { self =>
 
-    import TreeMapWithStages._
+    import StagingContext._
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean)(implicit ctx: Context): QuoteReifier = {

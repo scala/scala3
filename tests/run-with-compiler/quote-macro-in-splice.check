@@ -1,0 +1,4 @@
+{
+  val y: scala.Int = 1
+  y.+(8)
+}

@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
-import ast._
+import ast.{TreeInfo, tpd, _}
 import Trees._
 import core._
 import Flags._
@@ -25,6 +25,7 @@ import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, 
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
+import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 
 object Inliner {
   import tpd._
@@ -104,7 +105,7 @@ object Inliner {
     else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree
-      else new Inliner(tree, body).inlined(pt)
+      else new Inliner(tree, body).inlined(pt, tree.sourcePos)
     }
     else
       errorTree(
@@ -381,7 +382,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
   /** The Inlined node representing the inlined call */
-  def inlined(pt: Type): Tree = {
+  def inlined(pt: Type, sourcePos: SourcePosition): Tree = {
 
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
@@ -487,7 +488,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
-      bindingsBuf.transform(reducer.normalizeBinding(_)(inlineCtx))
+      bindingsBuf.transform { binding =>
+        val transformedBinding = reducer.normalizeBinding(binding)(inlineCtx)
+        // Set trees to symbols allow macros to see the definition tree.
+        // This is used by `underlyingArgument`.
+        transformedBinding.symbol.defTree = transformedBinding
+        transformedBinding
+      }
 
       // Run a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
@@ -949,9 +956,23 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
-      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+      val res =
+        if (tree.symbol == defn.QuotedExpr_splice && StagingContext.level == 0) expandMacro(qual1, tree.span)
+        else untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
       res
+    }
+
+    private def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
+      assert(StagingContext.level == 0)
+      // TODO cache macro classloader
+      val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+      val macroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
+
+      val inlinedFrom = enclosingInlineds.last
+      val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, macroClassLoader)(ctx.withSource(inlinedFrom.source))
+      if (ctx.reporter.hasErrors) EmptyTree
+      else evaluatedSplice.withSpan(span)
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree =

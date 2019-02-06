@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
@@ -89,16 +90,6 @@ object Staging {
     import tpd._
     import PCPCheckAndHeal._
 
-    /** Classloader used for loading macros */
-    private[this] var myMacroClassLoader: java.lang.ClassLoader = _
-    private def macroClassLoader(implicit ctx: Context): ClassLoader = {
-      if (myMacroClassLoader == null) {
-        val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-        myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
-      }
-      myMacroClassLoader
-    }
-
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
       case _ => checkLevel(super.transform(tree))
@@ -122,25 +113,19 @@ object Staging {
         if (splice1.isType) splice1
         else addSpliceCast(splice1)
       }
-      else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
-        val spliceCtx = ctx.outer // drop the last `inlineContext`
-        val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.span)
-        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx)
-        if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice.withSpan(splice.span))
-      }
-      else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
-        ctx.error(i"splice outside quotes or inline method", splice.sourcePos)
-        splice
-      }
-      else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside an inline definition
-        transform(splice.qualifier)(spliceContext) // Just check PCP
-        splice
-      }
-      else { // level 0 inside an inline definition
-        ctx.error(
-          "Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or inline.",
-          splice.sourcePos)
-        splice
+      else {
+        assert(!enclosingInlineds.nonEmpty, "unexpanded macro")
+        assert(ctx.owner.isInlineMethod)
+        if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside an inline definition
+          transform(splice.qualifier)(spliceContext) // Just check PCP
+          splice
+        }
+        else { // level 0 inside an inline definition
+          ctx.error(
+            "Malformed macro call. The contents of the $ must call a static method and arguments must be quoted or inline.",
+            splice.sourcePos)
+          splice
+        }
       }
     }
 

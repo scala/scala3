@@ -1325,10 +1325,6 @@ object desugar {
     val desugared = tree match {
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
-      case Splice(expr) => // TODO move to typer and track level
-        Select(expr, nme.splice)
-      case TypSplice(expr) => // TODO move to typer and track level
-        Select(expr, tpnme.splice)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

@@ -8,7 +8,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Flags.{Method => MethodFlag, _}
 import dotty.tools.dotc.core.NameKinds.FlatName
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames._
@@ -95,7 +95,7 @@ object Splicer {
     }
 
     protected def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Exprs.TastyTreeExpr(tree)
+      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span))
 
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.quoted.Types.TreeType(tree)
@@ -312,7 +312,13 @@ object Splicer {
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
       case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.QuotedExpr_apply =>
-        interpretQuote(quoted)
+        val quoted1 = quoted match {
+          case quoted: Ident if quoted.symbol.is(InlineProxy) && quoted.symbol.is(MethodFlag) => // inline proxy for by-name parameter
+            quoted.symbol.defTree.asInstanceOf[DefDef].rhs
+          case Inlined(EmptyTree, _, quoted) => quoted
+          case _ => quoted
+        }
+        interpretQuote(quoted1)
 
       case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedType_apply =>
         interpretTypeQuote(quoted)
@@ -336,6 +342,8 @@ object Splicer {
           interpretStaticMethodCall(module, fn.symbol, args.map(arg => interpretTree(arg)))
         } else if (env.contains(fn.name)) {
           env(fn.name)
+        } else if (tree.symbol.is(InlineProxy)) {
+          interpretTree(tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs)
         } else {
           unexpectedTree(tree)
         }

@@ -145,7 +145,7 @@ object PickledQuotes {
       case Block(stats, expr) =>
         seq(stats, rec(expr)).withSpan(fn.span)
       case _ =>
-        fn.select(nme.apply).appliedToArgs(argRefs())
+        fn.select(nme.apply).appliedToArgs(argRefs()).withSpan(fn.span)
     }
     Block(argVals, rec(fn))
   }

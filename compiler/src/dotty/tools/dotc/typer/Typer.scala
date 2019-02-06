@@ -37,6 +37,7 @@ import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
 import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
+import dotty.tools.dotc.core.StagingContext._
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
@@ -1568,7 +1569,7 @@ class Typer extends Namer
 
         if (isMacro) {
           sym.setFlag(Macro)
-          if (TreeMapWithStages.level == 0)
+          if (level == 0)
           rhs1 match {
             case InlineSplice(_) =>
               new PCPCheckAndHeal(freshStagingContext).transform(rhs1) // Ignore output, only check PCP
@@ -1961,14 +1962,33 @@ class Typer extends Namer
     }
   }
 
-  /** Translate `'(expr)`/`'{ expr* }` into `scala.quoted.Expr.apply(expr)` and `'[T]` into `scala.quoted.Type.apply[T]`
+  /** Translate '{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
-    if (tree.t.isType)
-      typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedType_applyR), List(tree.t)), pt)(TreeMapWithStages.quoteContext).withSpan(tree.span)
-    else
-      typedApply(untpd.Apply(untpd.ref(defn.QuotedExpr_applyR), tree.t), pt)(TreeMapWithStages.quoteContext).withSpan(tree.span)
+    val tree1 =
+      if (tree.t.isType)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedType_applyR), List(tree.t)), pt)(quoteContext)
+      else
+        typedApply(untpd.Apply(untpd.ref(defn.QuotedExpr_applyR), tree.t), pt)(quoteContext)
+    tree1.withSpan(tree.span)
+  }
+
+  /** Translate `${ t: Expr[T] }` into expresiion `t.splice` while tracking the quotation level in the context */
+  def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
+    checkSpliceOutsideQuote(tree)
+    typedSelect(untpd.Select(tree.expr, nme.splice), pt)(spliceContext).withSpan(tree.span)
+  }
+
+  /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
+  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
+    checkSpliceOutsideQuote(tree)
+    typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+  }
+
+  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+    if (level == 0 && !ctx.owner.isInlineMethod)
+      ctx.error("splice outside quotes or inline method", tree.sourcePos)
   }
 
   /** Retrieve symbol attached to given tree */
@@ -2062,6 +2082,8 @@ class Typer extends Namer
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case tree: untpd.Quote => typedQuote(tree, pt)
+          case tree: untpd.Splice => typedSplice(tree, pt)
+          case tree: untpd.TypSplice => typedTypSplice(tree, pt)
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
