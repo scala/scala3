@@ -765,10 +765,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
         }
         def checkFileTest(sourceName: String, checkFile: JFile, actual: List[String]) = {
-          if (checkFile.exists) {
-            val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
-            diffMessage(sourceName, actual, expexted).foreach(fail)
-          }
+          val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
+          diffMessage(sourceName, actual, expexted).foreach(fail)
         }
 
         val (compilerCrashed, expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {
@@ -778,10 +776,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             val reporter = compile(sourceFiles, flags, true, outDir)
             val actualErrors = reporter.errorCount
             files.foreach { file =>
-              if (file.isDirectory) Nil
-              else {
-                val checkFile = new JFile(file.getAbsolutePath.reverse.dropWhile(_ != '.').reverse + "check")
-                checkFileTest(testSource.title, checkFile, reporterOutputLines(reporter))
+              if (!file.isDirectory) {
+                val checkFile = new JFile(file.getAbsolutePath.replaceFirst("\\.scala$", ".check"))
+                if (checkFile.exists)
+                  checkFileTest(testSource.title, checkFile, reporterOutputLines(reporter))
               }
             }
             if (reporter.compilerCrashed || actualErrors > 0)
@@ -800,8 +798,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             if (actualErrors > 0)
               reporters.foreach(logReporterContents)
 
-            val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == JFile.separatorChar).reverse + ".check")
-            checkFileTest(testSource.title, checkFile, reporters.flatMap(reporter => reporterOutputLines(reporter)))
+            val checkFile = new JFile(dir.getAbsolutePath + ".check")
+            if (checkFile.exists)
+              checkFileTest(testSource.title, checkFile, reporters.flatMap(reporter => reporterOutputLines(reporter)))
 
             (compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
           }
