@@ -33,7 +33,7 @@ object Toolbox {
   }
 
   /** Setting of the Toolbox instance. */
-  case class Settings private (val outDir: Option[String], val showRawTree: Boolean, val compilerArgs: List[String], val color: Boolean)
+  case class Settings private (outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String], color: Boolean)
 
   object Settings {
 

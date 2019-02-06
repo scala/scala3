@@ -1427,6 +1427,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Symbol_isAbstractType(self: Symbol)(implicit ctx: Context): Boolean = self.isAbstractType
   def Symbol_isClassConstructor(self: Symbol)(implicit ctx: Context): Boolean = self.isClassConstructor
 
+  def Symbol_isType(self: Symbol)(implicit ctx: Context): Boolean = self.isType
+
+  def Symbol_isTerm(self: Symbol)(implicit ctx: Context): Boolean = self.isTerm
+
   type PackageDefSymbol = core.Symbols.Symbol
 
   def matchPackageDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageDefSymbol] =

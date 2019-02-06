@@ -10,14 +10,14 @@ case class Pair[A, B](_1: A, _2: B) {
     acc = scala.runtime.Statics.mix(acc, scala.runtime.Statics.anyHash(Pair.this._2))
     scala.runtime.Statics.finalizeHash(acc, 2)
   }
-  override def equals(x$0: scala.Any): scala.Boolean = Pair.this.eq(x$0.$asInstanceOf$[java.lang.Object]).||(x$0 match {
-    case x$0: Pair[A, B] @scala.unchecked =>
+  override def equals(x$0: scala.Any): scala.Boolean = Pair.this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
+    case x$0: Pair[Pair.this.A, Pair.this.B] @scala.unchecked =>
       Pair.this._1.==(x$0._1).&&(Pair.this._2.==(x$0._2))
     case _ =>
       false
   })
   override def toString(): java.lang.String = scala.runtime.ScalaRunTime._toString(Pair.this)
-  override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[Pair[A, B] @scala.unchecked]
+  override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[Pair[Pair.this.A, Pair.this.B] @scala.unchecked]
   override def productArity: scala.Int = 2
   override def productPrefix: java.lang.String = "Pair"
   override def productElement(n: scala.Int): scala.Any = n match {

@@ -1360,7 +1360,7 @@ trait Printers
             case tpe @ Type.SymRef(IsClassDefSymbol(sym), _) if sym.name.endsWith("$") =>
               printType(tpe)
               this += ".type"
-            case tpe @ Type.SymRef(sym, _) if !IsTypeSymbol.unapply(sym).nonEmpty =>
+            case tpe @ Type.SymRef(sym, _) if sym.isTerm =>
               printType(tpe)
               this += ".type"
             case tpe => printType(tpe)
@@ -1445,7 +1445,7 @@ trait Printers
         case Type.ConstantType(const) =>
           printConstant(const)
 
-        case Type.SymRef(sym, prefix) if IsTypeSymbol.unapply(sym).nonEmpty =>
+        case Type.SymRef(sym, prefix) if sym.isType =>
           prefix match {
             case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
             case NoPrefix() =>
@@ -1464,7 +1464,7 @@ trait Printers
           }
           this += highlightTypeDef(sym.name.stripSuffix("$"), color)
 
-        case Type.SymRef(sym, prefix) if !IsTypeSymbol.unapply(sym).nonEmpty =>
+        case Type.SymRef(sym, prefix) if sym.isTerm =>
           prefix match {
             case NoPrefix() =>
                 this += highlightTypeDef(sym.name, color)
