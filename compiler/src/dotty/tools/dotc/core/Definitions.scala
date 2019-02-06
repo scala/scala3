@@ -1001,6 +1001,7 @@ class Definitions {
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   /** Is a function class.
+   *   - FunctionXXL
    *   - FunctionN for N >= 0
    *   - ImplicitFunctionN for N >= 0
    *   - ErasedFunctionN for N > 0
@@ -1020,15 +1021,21 @@ class Definitions {
    */
   def isErasedFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isErasedFunction
 
-  /** Is a class that will be erased to FunctionXXL
+  /** Is either FunctionXXL or  a class that will be erased to FunctionXXL
+   *   - FunctionXXL
    *   - FunctionN for N >= 22
    *   - ImplicitFunctionN for N >= 22
    */
-  def isXXLFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).functionArity > MaxImplementedFunctionArity
+  def isXXLFunctionClass(cls: Symbol): Boolean = {
+    val name = scalaClassName(cls)
+    (name eq tpnme.FunctionXXL) || name.functionArity > MaxImplementedFunctionArity
+  }
 
   /** Is a synthetic function class
    *    - FunctionN for N > 22
-   *    - ImplicitFunctionN for N > 0
+   *    - ImplicitFunctionN for N >= 0
+   *    - ErasedFunctionN for N > 0
+   *    - ErasedImplicitFunctionN for N > 0
    */
   def isSyntheticFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isSyntheticFunction
 

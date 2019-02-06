@@ -706,6 +706,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
 
     def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
+    def isSerializable: Boolean = toDenot(sym).isSerializable
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
@@ -855,6 +856,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def samMethod(): Symbol =
       toDenot(sym).info.abstractTermMembers.headOption.getOrElse(toDenot(sym).info.member(nme.apply)).symbol
+
+    def isFunctionClass: Boolean =
+      defn.isFunctionClass(sym)
   }
 
 
