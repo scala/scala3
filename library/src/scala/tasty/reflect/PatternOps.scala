@@ -14,6 +14,8 @@ trait PatternOps extends Core {
     def pos(implicit ctx: Context): Position
 
     def tpe(implicit ctx: Context): Type
+
+    def symbol(implicit ctx: Context): Symbol
   }
   implicit def PatternDeco(pattern: Pattern): PatternAPI
 

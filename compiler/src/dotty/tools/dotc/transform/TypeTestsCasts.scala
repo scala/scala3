@@ -96,9 +96,9 @@ object TypeTestsCasts {
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
-      debug.println("P : " + P)
-      debug.println("P1 : " + P1)
-      debug.println("X : " + X)
+      debug.println("P : " + P.show)
+      debug.println("P1 : " + P1.show)
+      debug.println("X : " + X.show)
 
       P1 <:< X       // constraint P1
 
@@ -106,7 +106,7 @@ object TypeTestsCasts {
       maximizeType(P1, span, fromScala2x = true)
 
       val res = P1 <:< P
-      debug.println("P1 : " + P1)
+      debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 
       res
@@ -122,9 +122,19 @@ object TypeTestsCasts {
           case _                   => recur(defn.AnyType, tpT)
         }
       case tpe: AppliedType     =>
-        // first try withou striping type parameters for performance
-        isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
-        isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState())
+        X.widen match {
+          case OrType(tp1, tp2) =>
+            // This case is required to retrofit type inference,
+            // which cut constraints in the following two cases:
+            //   - T1 <:< T2 | T3
+            //   - T1 & T2 <:< T3
+            // See TypeComparer#either
+            recur(tp1, P) && recur(tp2, P)
+          case _ =>
+            // first try withou striping type parameters for performance
+            isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
+            isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState())
+        }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)

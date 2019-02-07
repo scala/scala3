@@ -1,11 +1,10 @@
-package example
 
-package object p {
+package object example {
   private lazy val x = 1
-  protected implicit var y: Int = 2
+  /*protected implicit var y: Int = 2
   def z(pp: Int) = 3
   def m[TT] = ???
-  abstract class C[+T, -U, V](x: T, y: U, z: V) {
+  abstract class Cex[+T, -U, V](x: T, y: U, z: V) {
     def this() = this(???, ???, ???)
     def w: Int
   }
@@ -20,5 +19,5 @@ package object p {
   class S[@specialized T]
   val List(xs1) = ???
   ??? match { case List(xs2) => ??? }
-  ??? match { case _: List[t] => ??? }
+  ??? match { case _: List[t] => ??? }*/
 }

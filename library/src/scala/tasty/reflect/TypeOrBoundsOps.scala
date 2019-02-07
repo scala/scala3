@@ -54,6 +54,7 @@ trait TypeOrBoundsOps extends Core {
     def <:<(other: Type)(implicit ctx: Context): Boolean
     def widen(implicit ctx: Context): Type
     def classSymbol(implicit ctx: Context): Option[ClassSymbol]
+    def typeSymbol(implicit ctx: Context): Symbol
   }
 
   val IsType: IsTypeModule

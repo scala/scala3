@@ -301,7 +301,7 @@ object messages {
     val explanation: String = ""
   }
 
-  case class NotAMember(site: Type, name: Name, selected: String)(implicit ctx: Context)
+  case class NotAMember(site: Type, name: Name, selected: String, addendum: String = "")(implicit ctx: Context)
   extends Message(NotAMemberID) {
     val kind: String = "Member Not Found"
 
@@ -361,7 +361,7 @@ object messages {
         )
       }
 
-      ex"$selected $name is not a member of ${site.widen}$closeMember"
+      ex"$selected $name is not a member of ${site.widen}$closeMember$addendum"
     }
 
     val explanation: String = ""
