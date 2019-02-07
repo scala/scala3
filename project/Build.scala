@@ -80,42 +80,38 @@ object Build {
   )
 
   // Packages all subprojects to their jars
-  lazy val packageAll =
-    taskKey[Map[String, String]]("Package everything needed to run tests")
+  val packageAll = taskKey[Map[String, String]]("Package everything needed to run tests")
 
   // Run tests with filter through vulpix test suite
-  lazy val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
+  val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
   // Run TASTY tests with filter through vulpix test suite
-  lazy val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
+  val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
 
   // Spawns a repl with the correct classpath
-  lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
+  val repl = inputKey[Unit]("run the REPL with correct classpath")
 
   // Used to compile files similar to ./bin/dotc script
-  lazy val dotc =
-    inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
+  val dotc = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
   // Used to run binaries similar to ./bin/dotr script
-  lazy val dotr =
-    inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
-
+  val dotr = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
   // Compiles the documentation and static site
-  lazy val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
+  val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
 
   // Shorthand for compiling a docs site
-  lazy val dottydoc = inputKey[Unit]("run dottydoc")
+  val dottydoc = inputKey[Unit]("run dottydoc")
 
-  lazy val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
+  val bootstrapFromPublishedJars = settingKey[Boolean]("If true, bootstrap dotty from published non-bootstrapped dotty")
 
   // Only available in vscode-dotty
-  lazy val unpublish = taskKey[Unit]("Unpublish a package")
+  val unpublish = taskKey[Unit]("Unpublish a package")
 
   // Settings used to configure the test language server
-  lazy val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
-  lazy val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
-  lazy val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+  val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
+  val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
+  val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
 
   lazy val SourceDeps = config("sourcedeps")
 
@@ -162,7 +158,7 @@ object Build {
       }
 
       // Make sure all submodules are properly cloned
-      val submodules = List("scala-backend", "scala2-library", "collection-strawman")
+      val submodules = List("scala-backend", "scala2-library")
       if (!submodules.forall(exists)) {
         sLog.value.log(Level.Error,
           s"""Missing some of the submodules
@@ -1018,6 +1014,28 @@ object Build {
       }.dependsOn(compile in Compile).evaluated
     )
 
+  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{dotty-bootstrapped.version,sbt-dotty.sbt}.")
+
+  lazy val `community-build` = project.in(file("community-build")).
+    settings(commonNonBootstrappedSettings).
+    settings(
+      prepareCommunityBuild := {
+        (publishLocal in `dotty-sbt-bridge`).value
+        (publishLocal in `dotty-interfaces`).value
+        (publishLocal in `scala-library`).value
+        (publishLocal in `scala-reflect`).value
+        (publishLocal in `dotty-library-bootstrapped`).value
+        (publishLocal in `dotty-doc-bootstrapped`).value
+        (publishLocal in `dotty-compiler-bootstrapped`).value
+        (publishLocal in `sbt-dotty`).value
+        (publishLocal in `dotty-bootstrapped`).value
+        val pluginText = s"""addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")"""
+        IO.write(baseDirectory.value / "sbt-dotty.sbt", pluginText)
+        IO.write(baseDirectory.value / "dotty-bootstrapped.version", dottyVersion)
+      },
+      (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
+      (Test / test    ) := ((Test / test    ) dependsOn prepareCommunityBuild).value
+    )
 
   lazy val publishSettings = Seq(
     publishMavenStyle := true,

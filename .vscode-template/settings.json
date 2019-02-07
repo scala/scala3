@@ -9,6 +9,7 @@
     "**/*.class": true,
     "**/*.hasTasty": true,
     "**/target/": true,
+    "community-build/community-projects": true,
     "scala2-library/{doc,docs,lib,META-INF,scripts,spec,test,tools}/": true, // only allow scala-backend/src
     "scala2-library/src/[abcefimprs]*": true,  // only allow scala-backend/src/library
     "scala-backend/{doc,docs,lib,META-INF,scripts,spec,test,tools}/": true, // only allow scala-backend/src
