@@ -32,6 +32,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
+  override protected def typeLub(tp1: Type, tp2: Type)(implicit actx: AbsentContext): Type =
+    lub(tp1, tp2)
+
+  override def externalize(param: TypeParamRef)(implicit ctx: Context): Type = param
+  override def externalize(tp: Type)(implicit ctx: Context): Type = tp
+
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
   private[this] var monitored = false
@@ -403,6 +409,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           val gbounds2 = gadtBounds(tp2.symbol)
           (gbounds2 != null) &&
             (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
+              (tp1 match {
+                case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                case _ => false
+              }) ||
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             GADTusage(tp2.symbol)
         }
@@ -974,7 +985,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         result
       } catch {
         case NonFatal(ex) =>
+          Console.out.flush()
+          Console.err.flush()
           if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
+          // Console.flush()
+          // ex.printStackTrace()
           recCount -= 1
           state.resetConstraintTo(saved)
           successCount = savedSuccessCount

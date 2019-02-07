@@ -45,6 +45,10 @@ abstract class Constraint extends Showable {
   /** The parameters that are known to be greater wrt <: than `param` */
   def upper(param: TypeParamRef): List[TypeParamRef]
 
+  def minLower(param: TypeParamRef): List[TypeParamRef]
+
+  def minUpper(param: TypeParamRef): List[TypeParamRef]
+
   /** lower(param) \ lower(butNot) */
   def exclusiveLower(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef]
 
@@ -59,13 +63,13 @@ abstract class Constraint extends Showable {
   def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
 
   /** The lower bound of `param` including all known-to-be-smaller parameters */
-  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type
+//  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type
 
   /** The upper bound of `param` including all known-to-be-greater parameters */
-  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type
+//  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type
 
   /** The bounds of `param` including all known-to-be-smaller and -greater parameters */
-  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
+//  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.

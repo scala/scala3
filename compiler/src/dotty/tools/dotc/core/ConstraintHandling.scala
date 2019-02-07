@@ -2,10 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._
+import Types._
+import Contexts._
+import Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
+import dotty.tools.dotc.reporting.trace
 
 /** Methods for adding constraints and solving them.
  *
@@ -65,6 +68,34 @@ trait ConstraintHandling[AbstractContext] {
       if (tvar1.exists) tvar1 else tp
     case tp => tp
   }
+
+  def externalize(param: TypeParamRef)(implicit ctx: Context): Type
+  def externalize(tp: Type)(implicit ctx: Context): Type
+
+  def _minLower(param: TypeParamRef)(implicit ctx: Context): List[TypeParamRef] =
+    constraint.minLower(param)
+
+  def _minUpper(param: TypeParamRef)(implicit ctx: Context): List[TypeParamRef] =
+    constraint.minUpper(param)
+
+  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
+    (externalize(constraint.nonParamBounds(param).lo) /: _minLower(param)) {
+      (t, u) =>
+        val eU = externalize(u)
+        if (t isRef ctx.typeComparer.NothingClass) eU
+        else t | eU
+    }
+
+  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
+    (externalize(constraint.nonParamBounds(param).hi) /: _minUpper(param)) {
+      (t, u) =>
+        val eU = externalize(u)
+        if (t isRef ctx.typeComparer.AnyClass) eU
+        else t & eU
+    }
+
+  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+    constraint.nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
     !constraint.contains(param) || {
@@ -261,7 +292,7 @@ trait ConstraintHandling[AbstractContext] {
     }
     constraint.entry(param) match {
       case _: TypeBounds =>
-        val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
+        val bound = if (fromBelow) fullLowerBound(param) else fullUpperBound(param)
         val inst = avoidParam(bound)
         typr_println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
@@ -312,7 +343,7 @@ trait ConstraintHandling[AbstractContext] {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
     val inst = approximation(param, fromBelow).simplified
-    if (fromBelow) widenInferred(inst, constraint.fullUpperBound(param)) else inst
+    if (fromBelow) widenInferred(inst, fullUpperBound(param)) else inst
   }
 
   /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have

@@ -2,12 +2,18 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Decorators._
+import Types._
+import Contexts._
+import Symbols._
+import Decorators._
 import util.SimpleIdentityMap
+
 import collection.mutable
 import printing.Printer
 import printing.Texts._
 import config.Config
+import dotty.tools.dotc.reporting.trace
+
 import reflect.ClassTag
 import annotation.tailrec
 import annotation.internal.sharable
@@ -196,6 +202,27 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
     entry(param).bounds
+
+  def replaced(name: String, prev: (Type, Type) => Type, op: (Type, Type) => Type)(t: Type, u: Type)(implicit ctx: Context): Type = {
+    val res = op(t, u)
+    val prevRes = prev(t, u)
+    if (res.show != prevRes.show) println(i"difference in $name: $res vs $prevRes")
+    res
+  }
+
+  def simplifyOrType(t: Type, u: Type)(implicit ctx: Context): Type = {
+    if (t eq defn.NothingType) u
+    else if (u eq defn.NothingType) t
+    else if (t eq u) t
+    else OrType(t, u)
+  }
+
+  def simplifyAndType(t: Type, u: Type)(implicit ctx: Context): Type = {
+    if (t eq defn.AnyType) u
+    else if (u eq defn.AnyType) t
+    else if (t eq u) t
+    else AndType(t, u)
+  }
 
   def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
     (nonParamBounds(param).lo /: minLower(param))(_ | _)

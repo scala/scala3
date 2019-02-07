@@ -396,7 +396,7 @@ object Implicits {
           case t: TypeParamRef =>
             constraint.entry(t) match {
               case NoType => t
-              case bounds: TypeBounds => constraint.fullBounds(t)
+              case bounds: TypeBounds => constraint.asInstanceOf[OrderingConstraint].fullBounds(t)
               case t1 => t1
             }
           case t: TypeVar =>

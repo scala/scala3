@@ -765,7 +765,9 @@ object Contexts {
   sealed abstract class GADTMap {
     def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit
     def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean
+    def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean
     def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds
+    def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds
     def contains(sym: Symbol)(implicit ctx: Context): Boolean
     def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type
     def debugBoundsDescription(implicit ctx: Context): String
@@ -853,12 +855,23 @@ object Contexts {
       }, gadts)
     } finally boundAdditionInProgress = false
 
+    def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean = {
+      constraint.isLess(tvar(sym1).origin, tvar(sym2).origin)
+    }
+
+    override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
+      mapping(sym) match {
+        case null => null
+        case tv => fullBounds(tv.origin)
+      }
+    }
+
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
         case null => null
         case tv =>
           def retrieveBounds: TypeBounds = {
-            val tb = constraint.fullBounds(tv.origin)
+            val tb = bounds(tv.origin)
             removeTypeVars(tb).asInstanceOf[TypeBounds]
           }
           (
@@ -870,10 +883,7 @@ object Contexts {
                 boundCache = boundCache.updated(sym, bounds)
                 bounds
             }
-          ).reporting({ res =>
-            // i"gadt bounds $sym: $res"
-            ""
-          }, gadts)
+          )// .reporting({ res => i"gadt bounds $sym: $res" }, gadts)
       }
     }
 
@@ -902,6 +912,9 @@ object Contexts {
     }
 
     override def isEmpty: Boolean = mapping.size == 0
+
+    override def externalize(param: TypeParamRef)(implicit ctx: Context): Type = reverseMapping(param).typeRef
+    override def externalize(tp: Type)(implicit ctx: Context): Type = removeTypeVars(tp)
 
     // ---- Private ----------------------------------------------------------
 
@@ -977,7 +990,9 @@ object Contexts {
   @sharable object EmptyGADTMap extends GADTMap {
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = unsupported("EmptyGADTMap.addEmptyBounds")
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = unsupported("EmptyGADTMap.addBound")
+    override def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean = unsupported("EmptyGADTMap.isLess")
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
+    override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
     override def contains(sym: Symbol)(implicit ctx: Context) = false
     override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = unsupported("EmptyGADTMap.approximation")
     override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGADTMap"
