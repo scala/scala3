@@ -161,7 +161,7 @@ trait Deriving { this: Typer =>
      *
      *      implicit def derived$D(implicit ev_1: D[T_1], ..., ev_n: D[T_n]): D[C[Ts]] = D.derived
      *
-     *  See the body of this method for who to generalize this to typeclasses with more
+     *  See the body of this method for how to generalize this to typeclasses with more
      *  or less than one type parameter.
      *
      *  See test run/typeclass-derivation2 and run/derive-multi
