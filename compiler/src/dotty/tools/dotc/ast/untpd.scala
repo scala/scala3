@@ -152,7 +152,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Enum()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Enum)
 
-    case class Instance()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
+    case class Instance()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implied)
   }
 
   /** Modifiers and annotations for definitions

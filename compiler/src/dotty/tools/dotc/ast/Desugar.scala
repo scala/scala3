@@ -344,8 +344,6 @@ object desugar {
     val isObject = mods.is(Module)
     val isCaseClass  = mods.is(Case) && !isObject
     val isCaseObject = mods.is(Case) && isObject
-    val isImplicit = mods.is(Implicit)
-    val isInstance = isImplicit && mods.mods.exists(_.isInstanceOf[Mod.Instance])
     val isEnum = mods.isEnumClass && !mods.is(Module)
     def isEnumCase = mods.isEnumCase
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
@@ -666,7 +664,7 @@ object desugar {
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
     //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
-      if (!isImplicit)
+      if (!mods.is(ImplicitOrImplied))
         Nil
       else if (ctx.owner is Package) {
         ctx.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
@@ -676,7 +674,7 @@ object desugar {
         ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
         Nil
       }
-      else if (arity != 1 && !isInstance) {
+      else if (arity != 1 && !mods.is(Implied)) {
         ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
         Nil
       }
@@ -690,7 +688,7 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(className.toTermName, constrTparams, defParamss, classTypeRef, creatorExpr)
-          .withMods(companionMods | Synthetic | Implicit | Final)
+          .withMods(companionMods | mods.flags & ImplicitOrImplied | Synthetic | Final)
           .withSpan(cdef.span) :: Nil
       }
 

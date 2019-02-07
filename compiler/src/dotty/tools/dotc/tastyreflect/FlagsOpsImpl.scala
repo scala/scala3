@@ -21,6 +21,7 @@ trait FlagsOpsImpl extends scala.tasty.reflect.FlagsOps with CoreImpl {
     def Sealed: Flags = core.Flags.Sealed
     def Case: Flags = core.Flags.Case
     def Implicit: Flags = core.Flags.Implicit
+    def Implied = core.Flags.Implied
     def Erased: Flags = core.Flags.Erased
     def Lazy: Flags = core.Flags.Lazy
     def Override: Flags = core.Flags.Override

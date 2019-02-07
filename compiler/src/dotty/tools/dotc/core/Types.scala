@@ -790,7 +790,7 @@ object Types {
     /** The set of implicit members of this type */
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
+          (name, buf) => buf ++= member(name).altsWith(_ is ImplicitOrImplied))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 

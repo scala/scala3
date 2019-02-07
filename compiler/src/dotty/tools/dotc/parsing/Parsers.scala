@@ -783,7 +783,7 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, accept(ARROW)) {
           val t = typ()
-          if (imods.is(Implicit | Given | Erased)) new FunctionWithMods(params, t, imods)
+          if (imods.is(Given | Erased)) new FunctionWithMods(params, t, imods)
           else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
@@ -817,7 +817,7 @@ object Parsers {
             }
             openParens.change(LPAREN, -1)
             accept(RPAREN)
-            if (imods.is(Implicit) || isValParamList || in.token == ARROW)
+            if (isValParamList || in.token == ARROW)
               functionRest(ts)
             else {
               val ts1 =

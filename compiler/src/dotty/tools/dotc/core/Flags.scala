@@ -384,6 +384,8 @@ object Flags {
   /** Symbol is a Java default method */
   final val DefaultMethod: FlagSet = termFlag(38, "<defaultmethod>")
 
+  final val Implied: FlagSet = commonFlag(39, "implied")
+
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum: FlagSet = commonFlag(40, "<enum>")
 
@@ -460,7 +462,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Override, JavaStatic)
 
   final val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
@@ -485,7 +487,7 @@ object Flags {
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    Extension.toCommonFlags | NonMember | ImplicitCommon | Permanent | Synthetic |
+    Extension.toCommonFlags | NonMember | ImplicitCommon | Implied | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -541,7 +543,7 @@ object Flags {
 
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Override | Final | Method | Implicit | Lazy |
+    Override | Final | Method | Implicit | Implied | Lazy |
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
@@ -586,6 +588,8 @@ object Flags {
   /** An inline method or inline argument proxy */
   final val InlineOrProxy: FlagSet = Inline | InlineProxy
 
+  final val ImplicitOrImplied = Implicit | Implied
+
   /** Assumed to be pure */
   final val StableOrErased: FlagSet = StableRealizable | Erased
 
@@ -600,9 +604,6 @@ object Flags {
 
   /** An inline method */
   final val InlineMethod: FlagConjunction = allOf(Inline, Method)
-
-  /** An implicit inline method */
-  final val ImplicitInlineMethod: FlagConjunction = allOf(Inline, Implicit, Method)
 
   /** An inline parameter */
   final val InlineParam: FlagConjunction = allOf(Inline, Param)
