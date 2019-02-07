@@ -27,7 +27,8 @@ object NameOps {
      */
     def apply(s: String)(implicit ctx: Context): String = {
       val marker = "$$$$"
-      val limit: Int = ctx.settings.XmaxClassfileName.value
+
+      val limit: Int = 240
       val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
