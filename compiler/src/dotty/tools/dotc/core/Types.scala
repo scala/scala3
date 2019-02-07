@@ -3863,10 +3863,10 @@ object Types {
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
           val constraint = ctx.typerState.constraint
-          if (constraint.entry(tp).exists) constraint.fullBounds(tp)
+          if (constraint.entry(tp).exists) ctx.typeComparer.fullBounds(tp)
           else NoType
         case tp: TypeRef =>
-          val bounds = ctx.gadt.bounds(tp.symbol)
+          val bounds = ctx.gadt.fullBounds(tp.symbol)
           if (bounds == null) NoType else bounds
         case tp: TypeVar =>
           tp.underlying

@@ -33,6 +33,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
+  override protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type = param
+
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
   private[this] var monitored = false
@@ -442,6 +444,16 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           val gbounds2 = gadtBounds(tp2.symbol)
           (gbounds2 != null) &&
             (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
+              (tp1 match {
+                case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                  // Note: since we approximate constrained types only with their non-param bounds,
+                  // we need to manually handle the case when we're comparing two constrained types,
+                  // one of which is constrained to be a subtype of another.
+                  // We do not need similar code in fourthTry, since we only need to care about
+                  // comparing two constrained types, and that case will be handled here first.
+                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                case _ => false
+              }) ||
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             GADTusage(tp2.symbol)
         }

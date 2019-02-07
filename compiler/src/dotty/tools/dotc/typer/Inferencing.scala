@@ -263,7 +263,7 @@ object Inferencing {
    *            0 if unconstrained, or constraint is from below and above.
    */
   private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
-    val constrained = ctx.typerState.constraint.fullBounds(param)
+    val constrained = ctx.typeComparer.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
     val approxBelow =
@@ -298,7 +298,7 @@ object Inferencing {
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
-        val bounds = ctx.typerState.constraint.fullBounds(tvar.origin)
+        val bounds = ctx.typeComparer.fullBounds(tvar.origin)
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {

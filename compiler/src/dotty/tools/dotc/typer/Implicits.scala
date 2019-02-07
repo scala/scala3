@@ -397,21 +397,29 @@ object Implicits {
      *  what was expected
      */
     override def clarify(tp: Type)(implicit ctx: Context): Type = {
-      val map = new TypeMap {
-        def apply(t: Type): Type = t match {
-          case t: TypeParamRef =>
-            constraint.entry(t) match {
-              case NoType => t
-              case bounds: TypeBounds => constraint.fullBounds(t)
-              case t1 => t1
-            }
-          case t: TypeVar =>
-            t.instanceOpt.orElse(apply(t.origin))
-          case _ =>
-            mapOver(t)
+      val ctx0 = ctx
+      locally {
+        implicit val ctx = ctx0.fresh.setTyperState {
+          val ts = ctx0.typerState.fresh()
+          ts.constraint_=(constraint)(ctx0)
+          ts
         }
+        val map = new TypeMap {
+          def apply(t: Type): Type = t match {
+            case t: TypeParamRef =>
+              constraint.entry(t) match {
+                case NoType => t
+                case bounds: TypeBounds => ctx.typeComparer.fullBounds(t)
+                case t1 => t1
+              }
+            case t: TypeVar =>
+              t.instanceOpt.orElse(apply(t.origin))
+            case _ =>
+              mapOver(t)
+          }
+        }
+        map(tp)
       }
-      map(tp)
     }
 
     def explanation(implicit ctx: Context): String =

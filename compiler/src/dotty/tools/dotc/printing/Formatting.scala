@@ -170,7 +170,7 @@ object Formatting {
       case sym: Symbol =>
         val info =
           if (ctx.gadt.contains(sym))
-            sym.info & ctx.gadt.bounds(sym)
+            sym.info & ctx.gadt.fullBounds(sym)
           else
             sym.info
         s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
@@ -190,7 +190,7 @@ object Formatting {
       case param: TermParamRef => false
       case skolem: SkolemType => true
       case sym: Symbol =>
-        ctx.gadt.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
+        ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
       case _ =>
         assert(false, "unreachable")
         false

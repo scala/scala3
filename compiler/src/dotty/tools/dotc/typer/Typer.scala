@@ -1096,7 +1096,7 @@ class Typer extends Namer
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(sym)
             else ctx.error(new DuplicateBind(b, cdef), b.sourcePos)
           if (!ctx.isAfterTyper) {
-            val bounds = ctx.gadt.bounds(sym)
+            val bounds = ctx.gadt.fullBounds(sym)
             if (bounds != null) sym.info = bounds
           }
           b

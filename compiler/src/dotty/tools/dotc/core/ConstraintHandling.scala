@@ -2,10 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._
+import Types._
+import Contexts._
+import Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
+import dotty.tools.dotc.reporting.trace
 
 /** Methods for adding constraints and solving them.
  *
@@ -30,6 +33,8 @@ trait ConstraintHandling[AbstractContext] {
 
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
+
+  protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type
 
   private[this] var addConstraintInvocations = 0
 
@@ -65,6 +70,30 @@ trait ConstraintHandling[AbstractContext] {
       if (tvar1.exists) tvar1 else tp
     case tp => tp
   }
+
+  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+    constraint.nonParamBounds(param) match {
+      case TypeAlias(tpr: TypeParamRef) => TypeAlias(externalize(tpr))
+      case tb => tb
+    }
+
+  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
+    (nonParamBounds(param).lo /: constraint.minLower(param)) {
+      (t, u) => t | externalize(u)
+    }
+
+  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
+    (nonParamBounds(param).hi /: constraint.minUpper(param)) {
+      (t, u) => t & externalize(u)
+    }
+
+  /** Full bounds of `param`, including other lower/upper params.
+    *
+    * Note that underlying operations perform subtype checks - for this reason, recursing on `fullBounds`
+    * of some param when comparing types might lead to infinite recursion. Consider `bounds` instead.
+    */
+  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+    nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
     !constraint.contains(param) || {
@@ -262,7 +291,7 @@ trait ConstraintHandling[AbstractContext] {
     }
     constraint.entry(param) match {
       case _: TypeBounds =>
-        val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
+        val bound = if (fromBelow) fullLowerBound(param) else fullUpperBound(param)
         val inst = avoidParam(bound)
         typr_println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
