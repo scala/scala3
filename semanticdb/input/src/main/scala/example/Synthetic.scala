@@ -43,5 +43,4 @@ class Synthetic {
     b <- scala.concurrent.Future.successful(2)
     if a < b
   } yield a
-
 }

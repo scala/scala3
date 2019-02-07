@@ -30,6 +30,14 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
     def owner(implicit ctx: Context): Symbol = symbol.owner
 
+    def isLocalDummy(implicit ctx: Context): Boolean = symbol.isLocalDummy
+    def isRefinementClass(implicit ctx: Context): Boolean = symbol.isRefinementClass
+    def isAliasType(implicit ctx: Context): Boolean = symbol.isAliasType
+    def isAnonymousClass(implicit ctx: Context): Boolean = symbol.isAnonymousClass
+    def isAnonymousFunction(implicit ctx: Context): Boolean = symbol.isAnonymousFunction
+    def isAbstractType(implicit ctx: Context): Boolean = symbol.isAbstractType
+    def isClassConstructor(implicit ctx: Context): Boolean = symbol.isClassConstructor
+
     def localContext(implicit ctx: Context): Context = {
       if (symbol.exists) ctx.withOwner(symbol)
       else ctx
@@ -164,6 +172,11 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
     def companionModule(implicit ctx: Context): Option[ValSymbol] = {
       val sym = symbol.companionModule
+      if (sym.exists) Some(sym.asTerm) else None
+    }
+
+    def moduleClass(implicit ctx: Context): Option[Symbol] = {
+      val sym = symbol.moduleClass
       if (sym.exists) Some(sym.asTerm) else None
     }
 

@@ -1,6 +1,8 @@
 package example
 
-class B
+class B {
+  val b = 4
+}
 
 class AC1 extends B { self =>
 }

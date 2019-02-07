@@ -36,6 +36,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
   def PatternDeco(pattern: Pattern): PatternAPI = new PatternAPI {
     def pos(implicit ctx: Context): Position = pattern.sourcePos
     def tpe(implicit ctx: Context): Type = pattern.tpe.stripTypeVar
+    def symbol(implicit ctx: Context): Symbol = pattern.symbol
   }
 
   object Pattern extends PatternModule {

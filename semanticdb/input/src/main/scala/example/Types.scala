@@ -3,9 +3,13 @@ package example
 import scala.language.existentials
 import scala.language.higherKinds
 
-class ann[T](x: T) extends scala.annotation.StaticAnnotation
-class ann1 extends scala.annotation.StaticAnnotation
-class ann2 extends scala.annotation.StaticAnnotation
+class TypeM {
+  def m: Int = ???
+}
+
+class TypeC extends TypeM {
+  val superType = super[TypeM].m
+}
 
 class TypB
 
@@ -30,6 +34,10 @@ object TypTest {
 
   trait N {
     def n: Int = ???
+  }
+
+  class B {
+    def x:Int = 4
   }
 
   class C extends M {
@@ -59,9 +67,6 @@ object TypTest {
     val compoundType5 = new M with N
     val compoundType6 = new M with N { def k: Int = ??? }
 
-    val annType1: T @ann(42) = ???
-    val annType2: T @ann1 @ann2 = ???
-
     val existentialType2: List[_] = ???
     val existentialType3 = Class.forName("foo.Bar")
     val existentialType4 = Class.forName("foo.Bar")
@@ -70,7 +75,7 @@ object TypTest {
     typeLambda1[({ type L[T] = List[T] })#L]
 
     object ClassInfoType1
-    class ClassInfoType2 extends B { def x = 42 }
+    class ClassInfoType2 extends B { override def x = 42 }
     trait ClassInfoType3[T]
 
     object MethodType {

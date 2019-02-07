@@ -101,6 +101,21 @@ trait FlagsOps extends Core {
 
     /** Is this symbol a parameter accessor */
     def ParamAccessor: Flags
+
+    /** Is this symbol an enum */
+    def Enum: Flags
+
+    /** Is this symbol a module class */
+    def ModuleClass: Flags
+
+    /** Is this symbol labeled private[this] */
+    def PrivateLocal: Flags
+
+    /** Is this symbol a package */
+    def Package: Flags
+
+    /** Is this symbol an implementation class of a Scala2 trait */
+    def ImplClass: Flags
   }
 
 }

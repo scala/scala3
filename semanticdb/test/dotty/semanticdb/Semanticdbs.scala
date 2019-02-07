@@ -81,8 +81,10 @@ object Semanticdbs {
    **/
   def printTextDocument(doc: s.TextDocument): String = {
     val sb = new StringBuilder
-    val occurrences = doc.occurrences.sorted
     val sourceFile = SourceFile.virtual(doc.uri, doc.text)
+    implicit val occurrenceOrdering: Ordering[s.SymbolOccurrence] =
+      buildOccurrenceOrdering(sourceFile)
+    val occurrences = doc.occurrences.sorted
     var offset = 0
     occurrences.foreach { occ =>
       val range = occ.range.get
@@ -98,28 +100,28 @@ object Semanticdbs {
   }
 
   /** Sort symbol occurrences by their start position. */
-  implicit val occurrenceOrdering: Ordering[s.SymbolOccurrence] =
+  def buildOccurrenceOrdering(sourceFile: SourceFile): Ordering[s.SymbolOccurrence] = {
     new Ordering[s.SymbolOccurrence] {
+      def rangeToTuple(r : s.Range): (Int, Int) = {
+        val start = sourceFile.lineToOffset(r.startLine) + r.startCharacter
+        val end = sourceFile.lineToOffset(r.endLine) + r.endCharacter
+        (start, end)
+      }
+
       override def compare(x: s.SymbolOccurrence, y: s.SymbolOccurrence): Int = {
         if (x.range.isEmpty) 0
         else if (y.range.isEmpty) 0
         else {
-          val a = x.range.get
-          val b = y.range.get
-          val byLine = Integer.compare(
-            a.startLine,
-            b.startLine
-          )
-          if (byLine != 0) {
-            byLine
+          val (as, ae) = rangeToTuple(x.range.get)
+          val (bs, be) = rangeToTuple(y.range.get)
+          val byStart = Integer.compare(as, bs)
+          if (byStart != 0) {
+            byStart
           } else {
-            val byCharacter = Integer.compare(
-              a.startCharacter,
-              b.startCharacter
-            )
-            byCharacter
+            Integer.compare(ae, be)
           }
         }
       }
     }
+  }
 }
