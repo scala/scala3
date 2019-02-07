@@ -95,17 +95,19 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     recur(selectors)
   }
 
+  private def implicitFlag = if (impliedOnly) Implied else Implicit
+
   /** The implicit references imported by this import clause */
   def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
     val pre = site
     if (isWildcardImport) {
-      val refs = pre.implicitMembers
+      val refs = pre.implicitMembers(implicitFlag)
       if (excluded.isEmpty) refs
       else refs filterNot (ref => excluded contains ref.name.toTermName)
     } else
       for {
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is ImplicitOrImplied)
+        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is implicitFlag)
       } yield {
         val original = reverseMapping(renamed)
         val ref = TermRef(pre, original, denot)

@@ -130,6 +130,7 @@ object Flags {
    */
   case class FlagConjunction(bits: Long) {
     override def toString: String = FlagSet(bits).toString
+    def | (fs: FlagSet): FlagConjunction = FlagConjunction((FlagSet(bits) | fs).bits)
   }
 
   def termFlagConjunction(x: Long) = FlagConjunction(TERMS | x)

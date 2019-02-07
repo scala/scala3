@@ -182,7 +182,10 @@ class Typer extends Namer
           NoType
         else {
           val pre = imp.site
-          val denot = pre.memberBasedOnFlags(name, required, EmptyFlags).accessibleFrom(pre)(refctx)
+          var reqd = required
+          var excl = EmptyFlags
+          if (imp.impliedOnly) reqd |= Implied else excl |= Implied
+          val denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
           if (reallyExists(denot)) pre.select(name, denot) else NoType
