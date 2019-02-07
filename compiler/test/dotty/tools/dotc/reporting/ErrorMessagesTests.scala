@@ -715,8 +715,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val TypesAndTraitsCantBeImplicit(symbol) :: Nil = messages
-      assertEquals("trait S", symbol.show)
+      val TypesAndTraitsCantBeImplicit() :: Nil = messages
     }
 
   @Test def onlyClassesCanBeAbstract =

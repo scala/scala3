@@ -380,7 +380,7 @@ object Checking {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)
-        fail(TypesAndTraitsCantBeImplicit(sym))
+        fail(TypesAndTraitsCantBeImplicit())
     }
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))

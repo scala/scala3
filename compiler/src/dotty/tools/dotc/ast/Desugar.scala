@@ -670,6 +670,10 @@ object desugar {
         ctx.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
         Nil
       }
+      else if (mods.is(Trait)) {
+        ctx.error(TypesAndTraitsCantBeImplicit(), cdef.sourcePos)
+        Nil
+      }
       else if (isCaseClass) {
         ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
         Nil
@@ -688,7 +692,7 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(className.toTermName, constrTparams, defParamss, classTypeRef, creatorExpr)
-          .withMods(companionMods | mods.flags & ImplicitOrImplied | Synthetic | Final)
+          .withMods(companionMods | mods.flags.toTermFlags & ImplicitOrImplied | Synthetic | Final)
           .withSpan(cdef.span) :: Nil
       }
 
