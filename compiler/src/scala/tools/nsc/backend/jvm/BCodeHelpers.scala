@@ -9,7 +9,7 @@ package backend.jvm
 
 import scala.tools.asm
 import scala.collection.mutable
-import scala.tools.nsc.io.AbstractFile
+import dotty.tools.io.AbstractFile
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -41,7 +41,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def getOutFolder(csym: Symbol, cName: String): _root_.scala.tools.nsc.io.AbstractFile = {
+  def getOutFolder(csym: Symbol, cName: String): AbstractFile = {
     try {
       csym.outputDirectory
     } catch {
@@ -145,7 +145,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
    */
   trait BCPickles {
 
-    import scala.reflect.internal.pickling.{ PickleFormat, PickleBuffer }
+    import dotty.tools.dotc.core.unpickleScala2.{ PickleFormat, PickleBuffer }
 
     val versionPickle = {
       val vp = new PickleBuffer(new Array[Byte](16), -1, 0)

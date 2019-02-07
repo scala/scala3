@@ -2,7 +2,7 @@ package scala.tools.nsc.backend.jvm
 
 import scala.collection.generic.Clearable
 import scala.reflect.ClassTag
-import scala.tools.nsc.io.AbstractFile
+import dotty.tools.io.AbstractFile
 import scala.language.implicitConversions
 import scala.tools.asm
 
@@ -657,7 +657,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def newWeakMap[K, V](): collection.mutable.WeakHashMap[K, V]
     def newMap[K, V](): collection.mutable.HashMap[K, V]
     def newSet[K](): collection.mutable.Set[K]
-    def newWeakSet[K >: Null <: AnyRef](): reflect.internal.util.WeakHashSet[K]
+    def newWeakSet[K >: Null <: AnyRef](): dotty.tools.dotc.util.WeakHashSet[K]
     def newAnyRefMap[K <: AnyRef, V](): collection.mutable.AnyRefMap[K, V]
   }
 

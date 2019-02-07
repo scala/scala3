@@ -7,7 +7,7 @@ package scala.tools.nsc
 package backend.jvm
 
 import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
-import scala.tools.nsc.io._
+import dotty.tools.io._
 import java.util.jar.Attributes.Name
 import scala.language.postfixOps
 
@@ -85,7 +85,7 @@ trait BytecodeWriters {
 
     private val baseDir = Directory(int.emitAsmp.get).createDirectory()
 
-    private def emitAsmp(jclassBytes: Array[Byte], asmpFile: io.File): Unit = {
+    private def emitAsmp(jclassBytes: Array[Byte], asmpFile: dotty.tools.io.File): Unit = {
       val pw = asmpFile.printWriter()
       try {
         val cnode = new asm.tree.ClassNode()

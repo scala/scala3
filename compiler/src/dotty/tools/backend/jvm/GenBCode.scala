@@ -105,7 +105,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     /* ---------------- q2 ---------------- */
 
     case class SubItem2(classNode: asm.tree.ClassNode,
-                        file:      scala.tools.nsc.io.AbstractFile)
+                        file:      dotty.tools.io.AbstractFile)
 
     case class Item2(arrivalPos: Int,
                      mirror:     SubItem2,
@@ -128,7 +128,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     case class SubItem3(
                          jclassName:  String,
                          jclassBytes: Array[Byte],
-                         jclassFile:  scala.tools.nsc.io.AbstractFile
+                         jclassFile:  dotty.tools.io.AbstractFile
                          )
 
     case class Item3(arrivalPos: Int,
