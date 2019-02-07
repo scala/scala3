@@ -787,10 +787,10 @@ object Types {
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
-    /** The set of implicit members of this type */
+    /** The set of implicit term members of this type */
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_ is ImplicitOrImplied))
+          (name, buf) => buf ++= member(name).altsWith(_.is(ImplicitOrImpliedTerm)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 

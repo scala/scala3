@@ -130,9 +130,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Var()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
-    case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.ImplicitCommon)
+    case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
 
-    case class Given()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.ImplicitCommon | Flags.Given)
+    case class Given()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit | Flags.Given)
 
     case class Erased()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Erased)
 
