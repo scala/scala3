@@ -157,16 +157,6 @@ object Build {
         }
       }
 
-      // Make sure all submodules are properly cloned
-      val submodules = List("scala-backend", "scala2-library")
-      if (!submodules.forall(exists)) {
-        sLog.value.log(Level.Error,
-          s"""Missing some of the submodules
-             |You can initialize the modules with:
-             |  > git submodule update --init
-          """.stripMargin)
-      }
-
       // Copy default configuration from .vscode-template/ unless configuration files already exist in .vscode/
       sbt.IO.copyDirectory(new File(".vscode-template/"), new File(".vscode/"), overwrite = false)
 
