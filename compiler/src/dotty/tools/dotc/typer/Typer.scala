@@ -1779,7 +1779,7 @@ class Typer extends Namer
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     checkStable(expr1.tpe, imp.expr.sourcePos)
     if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.posd)
-    assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
+    assignType(cpy.Import(imp)(imp.impliedOnly, expr1, imp.selectors), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {

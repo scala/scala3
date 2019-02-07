@@ -404,7 +404,8 @@ object Contexts {
         case ref: RefTree[_] => Some(ref.name.asTermName)
         case _               => None
       }
-      ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
+      ctx.fresh.setImportInfo(
+        new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt, imp.impliedOnly))
     }
 
     /** Does current phase use an erased types interpretation? */

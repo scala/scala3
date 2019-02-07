@@ -392,7 +392,7 @@ object desugar {
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
         val enumCompanionRef = new TermRefTree()
-        val enumImport = Import(enumCompanionRef, enumCases.flatMap(caseIds))
+        val enumImport = Import(impliedOnly = false, enumCompanionRef, enumCases.flatMap(caseIds))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
