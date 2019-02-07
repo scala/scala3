@@ -18,7 +18,7 @@ import config.Printers.cyclicErrors
 class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
   def toMessage(implicit ctx: Context): Message = super.getMessage
-  override def getMessage: String = throw new Exception("Use toMessage instead for TypeError")
+  override def getMessage: String = super.getMessage
 }
 
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends TypeError {
