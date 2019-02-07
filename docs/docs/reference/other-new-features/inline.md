@@ -3,7 +3,7 @@ layout: doc-page
 title: Inline
 ---
 
-`inline` is a new [soft modifier](./soft-modifier.html) that guarantees that a definition will be inline at the point of use. Example:
+`inline` is a new [soft modifier](../soft-modifier.html) that guarantees that a definition will be inline at the point of use. Example:
 
     object Config {
       inline val logging = false
