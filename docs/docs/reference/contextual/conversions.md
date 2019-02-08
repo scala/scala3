@@ -54,15 +54,15 @@ object Completions {
     // these always come with CompletionArg
     // They can be invoked explicitly, e.g.
     //
-    //   CompletionArg.from(statusCode)
+    //   CompletionArg.fromStatusCode(statusCode)
 
-    implied from for Conversion[String, CompletionArg] {
+    implied fromString for Conversion[String, CompletionArg] {
       def apply(s: String) = CompletionArg.Error(s)
     }
-    implied from for Conversion[Future[HttpResponse], CompletionArg] {
+    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] {
       def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
     }
-    implied from for Conversion[Future[StatusCode], CompletionArg] {
+    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] {
       def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
     }
   }
