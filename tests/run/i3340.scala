@@ -5,6 +5,7 @@ object Test {
     printlnStackLine(f3)
     printlnStackLine(f4)
     printlnStackLine(f5)
+    printlnStackLine(f6)
   }
 
   def f1: Unit = {
@@ -32,6 +33,13 @@ object Test {
     val n: Any = null
     val a: Nothing =
       n.asInstanceOf[Nothing] // throws here
+    ()
+  }
+
+  def f6: Unit = {
+    val n: Any = null
+    val a: Nothing =
+      { println("foo"); n }.asInstanceOf[Nothing] // throws here
     ()
   }
 
