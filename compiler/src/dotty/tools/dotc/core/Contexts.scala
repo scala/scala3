@@ -780,15 +780,13 @@ object Contexts {
     private var myConstraint: Constraint,
     private var mapping: SimpleIdentityMap[Symbol, TypeVar],
     private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-    private var boundCache: SimpleIdentityMap[Symbol, TypeBounds]
   ) extends GADTMap with ConstraintHandling[Context] {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
     def this() = this(
       myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
       mapping = SimpleIdentityMap.Empty,
-      reverseMapping = SimpleIdentityMap.Empty,
-      boundCache = SimpleIdentityMap.Empty
+      reverseMapping = SimpleIdentityMap.Empty
     )
 
     implicit override def ctx(implicit ctx: Context): Context = ctx
@@ -801,9 +799,7 @@ object Contexts {
 
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
-    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
-      boundCache = SimpleIdentityMap.Empty
-      boundAdditionInProgress = true
+    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = {
       @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
         case tv: TypeVar =>
           val inst = instType(tv)
@@ -813,13 +809,12 @@ object Contexts {
 
       def externalizedSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
         val externalizedTp1 = removeTypeVars(tp1)
-        val externalizedTp2 = removeTypeVars(tp2)
 
         (
-          if (isSubtype) externalizedTp1 frozen_<:< externalizedTp2
-          else externalizedTp2 frozen_<:< externalizedTp1
+          if (isSubtype) externalizedTp1 frozen_<:< tp2
+          else tp2 frozen_<:< externalizedTp1
         ).reporting({ res =>
-          val descr = i"$externalizedTp1 frozen_${if (isSubtype) "<:<" else ">:>"} $externalizedTp2"
+          val descr = i"$externalizedTp1 frozen_${if (isSubtype) "<:<" else ">:>"} $tp2"
           i"$descr = $res"
         }, gadts)
       }
@@ -832,9 +827,13 @@ object Contexts {
           return if (isUpper) isSubType(externalizedInst , bound) else isSubType(bound, externalizedInst)
       }
 
-      val internalizedBound = insertTypeVars(bound)
+      val internalizedBound = bound match {
+          case nt: NamedType if contains(nt.symbol) =>
+            stripInternalTypeVar(tvar(nt.symbol))
+          case _ => bound
+        }
       (
-        stripInternalTypeVar(internalizedBound) match {
+        internalizedBound match {
           case boundTvar: TypeVar =>
             if (boundTvar eq symTvar) true
             else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
@@ -853,44 +852,35 @@ object Contexts {
         val op = if (isUpper) "<:" else ">:"
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
       }, gadts)
-    } finally boundAdditionInProgress = false
-
-    def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean = {
-      constraint.isLess(tvar(sym1).origin, tvar(sym2).origin)
     }
 
-    override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
+    def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean =
+      constraint.isLess(tvar(sym1).origin, tvar(sym2).origin)
+
+    override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds =
       mapping(sym) match {
         case null => null
         case tv => fullBounds(tv.origin)
       }
-    }
 
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
         case null => null
         case tv =>
-          def retrieveBounds: TypeBounds = {
-            val tb = bounds(tv.origin)
-            removeTypeVars(tb).asInstanceOf[TypeBounds]
-          }
-          (
-            if (boundAdditionInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
-            else boundCache(sym) match {
-              case tb: TypeBounds => tb
-              case null =>
-                val bounds = retrieveBounds
-                boundCache = boundCache.updated(sym, bounds)
-                bounds
+          def retrieveBounds: TypeBounds =
+            bounds(tv.origin) match {
+              case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
+                TypeAlias(reverseMapping(tpr).typeRef)
+              case tb => tb
             }
-          )// .reporting({ res => i"gadt bounds $sym: $res" }, gadts)
+          retrieveBounds//.reporting({ res => i"gadt bounds $sym: $res" }, gadts)
       }
     }
 
     override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 
     override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = {
-      val res = removeTypeVars(approximation(tvar(sym).origin, fromBelow = fromBelow))
+      val res = approximation(tvar(sym).origin, fromBelow = fromBelow)
       gadts.println(i"approximating $sym ~> $res")
       res
     }
@@ -898,8 +888,7 @@ object Contexts {
     override def fresh: GADTMap = new SmartGADTMap(
       myConstraint,
       mapping,
-      reverseMapping,
-      boundCache
+      reverseMapping
     )
 
     def restore(other: GADTMap): Unit = other match {
@@ -907,14 +896,12 @@ object Contexts {
         this.myConstraint = other.myConstraint
         this.mapping = other.mapping
         this.reverseMapping = other.reverseMapping
-        this.boundCache = other.boundCache
       case _ => ;
     }
 
     override def isEmpty: Boolean = mapping.size == 0
 
     override def externalize(param: TypeParamRef)(implicit ctx: Context): Type = reverseMapping(param).typeRef
-    override def externalize(tp: Type)(implicit ctx: Context): Type = removeTypeVars(tp)
 
     // ---- Private ----------------------------------------------------------
 
@@ -941,17 +928,6 @@ object Contexts {
       }
     }
 
-    private def insertTypeVars(tp: Type, map: TypeMap = null)(implicit ctx: Context) = tp match {
-      case tp: TypeRef =>
-        val sym = tp.typeSymbol
-        if (contains(sym)) tvar(sym) else tp
-      case _ =>
-        (if (map != null) map else new TypeVarInsertingMap()).mapOver(tp)
-    }
-    private final class TypeVarInsertingMap(implicit ctx: Context) extends TypeMap {
-      override def apply(tp: Type): Type = insertTypeVars(tp, this)
-    }
-
     private def removeTypeVars(tp: Type, map: TypeMap = null)(implicit ctx: Context) = tp match {
       case tpr: TypeParamRef =>
         reverseMapping(tpr) match {
@@ -963,14 +939,8 @@ object Contexts {
           case null => tv
           case sym => sym.typeRef
         }
-      case _ =>
-        (if (map != null) map else new TypeVarRemovingMap()).mapOver(tp)
+      case tp => tp
     }
-    private final class TypeVarRemovingMap(implicit ctx: Context) extends TypeMap {
-      override def apply(tp: Type): Type = removeTypeVars(tp, this)
-    }
-
-    private[this] var boundAdditionInProgress = false
 
     // ---- Debug ------------------------------------------------------------
 

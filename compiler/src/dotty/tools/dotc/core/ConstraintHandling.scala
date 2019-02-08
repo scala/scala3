@@ -70,7 +70,6 @@ trait ConstraintHandling[AbstractContext] {
   }
 
   def externalize(param: TypeParamRef)(implicit ctx: Context): Type
-  def externalize(tp: Type)(implicit ctx: Context): Type
 
   def _minLower(param: TypeParamRef)(implicit ctx: Context): List[TypeParamRef] =
     constraint.minLower(param)
@@ -79,7 +78,7 @@ trait ConstraintHandling[AbstractContext] {
     constraint.minUpper(param)
 
   def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
-    (externalize(constraint.nonParamBounds(param).lo) /: _minLower(param)) {
+    (constraint.nonParamBounds(param).lo /: _minLower(param)) {
       (t, u) =>
         val eU = externalize(u)
         if (t isRef ctx.typeComparer.NothingClass) eU
@@ -87,7 +86,7 @@ trait ConstraintHandling[AbstractContext] {
     }
 
   def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
-    (externalize(constraint.nonParamBounds(param).hi) /: _minUpper(param)) {
+    (constraint.nonParamBounds(param).hi /: _minUpper(param)) {
       (t, u) =>
         val eU = externalize(u)
         if (t isRef ctx.typeComparer.AnyClass) eU

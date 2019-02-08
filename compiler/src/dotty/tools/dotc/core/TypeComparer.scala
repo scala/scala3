@@ -36,7 +36,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     lub(tp1, tp2)
 
   override def externalize(param: TypeParamRef)(implicit ctx: Context): Type = param
-  override def externalize(tp: Type)(implicit ctx: Context): Type = tp
 
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
