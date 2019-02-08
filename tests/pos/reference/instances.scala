@@ -140,8 +140,10 @@ object Instances extends Common {
 
   class Token(str: String)
 
-  implied StringToToken for Conversion[String, Token] {
-    def apply(str: String): Token = new Token(str)
+  object Token {
+    implied StringToToken for Conversion[String, Token] {
+      def apply(str: String): Token = new Token(str)
+    }
   }
 
   val x: Token = "if"
@@ -246,7 +248,8 @@ object Implicits extends Common {
 
 object Test extends App {
   Instances.test()
-  import PostConditions._
+  import PostConditions.result
+  import implied PostConditions._
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 }
