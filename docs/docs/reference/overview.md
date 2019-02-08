@@ -27,7 +27,7 @@ The primary goal of the language constructs in this section is to make the langu
    be deprecated in the future). Intersection types are one of the core features of DOT. They
    are commutative: `A & B` and `B & A` represent the same type.
 
- - [Implicit function types](http://dotty.epfl.ch/docs/reference/new-types/implicit-function-types.html) `implicit A => B`.
+ - [Implicit function types](http://dotty.epfl.ch/docs/reference/implicit-function-types.html) `implicit A => B`.
 
    Methods and lambdas can have implicit parameters, so it's natural to extend the
    same property to function types. Implicit function types help ergonomics and performance
