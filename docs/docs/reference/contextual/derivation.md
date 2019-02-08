@@ -38,12 +38,7 @@ The generated typeclass instances are placed in the companion objects `Labelled`
 
 ### Derivable Types
 
-A trait or class can appear in a `derives` clause if
-
- - it has a single type parameter, and
- - its companion object defines a method named `derived`.
-
-These two conditions ensure that the synthesized derived instances for the trait are well-formed. The type and implementation of a `derived` method are arbitrary, but typically it has a definition like this:
+A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The type and implementation of a `derived` method are arbitrary, but typically it has a definition like this:
 ```scala
   def derived[T] with Generic[T] = ...
 ```
