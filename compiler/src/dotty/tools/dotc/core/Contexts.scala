@@ -799,15 +799,13 @@ object Contexts {
     private var myConstraint: Constraint,
     private var mapping: SimpleIdentityMap[Symbol, TypeVar],
     private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-    private var boundCache: SimpleIdentityMap[Symbol, TypeBounds]
   ) extends GADTMap with ConstraintHandling[Context] {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
     def this() = this(
       myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
       mapping = SimpleIdentityMap.Empty,
-      reverseMapping = SimpleIdentityMap.Empty,
-      boundCache = SimpleIdentityMap.Empty
+      reverseMapping = SimpleIdentityMap.Empty
     )
 
     implicit override def ctx(implicit ctx: Context): Context = ctx
@@ -826,9 +824,7 @@ object Contexts {
 
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
-    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = try {
-      boundCache = SimpleIdentityMap.Empty
-      boundAdditionInProgress = true
+    override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = {
       @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
         case tv: TypeVar =>
           val inst = instType(tv)
@@ -836,49 +832,44 @@ object Contexts {
         case _ => tp
       }
 
-      def externalizedSubtype(tp1: Type, tp2: Type, isSubtype: Boolean): Boolean = {
-        val externalizedTp1 = removeTypeVars(tp1)
-        val externalizedTp2 = removeTypeVars(tp2)
-
-        (
-          if (isSubtype) externalizedTp1 frozen_<:< externalizedTp2
-          else externalizedTp2 frozen_<:< externalizedTp1
-        ).reporting({ res =>
-          val descr = i"$externalizedTp1 frozen_${if (isSubtype) "<:<" else ">:>"} $externalizedTp2"
-          i"$descr = $res"
-        }, gadts)
-      }
-
       val symTvar: TypeVar = stripInternalTypeVar(tvar(sym)) match {
         case tv: TypeVar => tv
         case inst =>
-          val externalizedInst = removeTypeVars(inst)
-          gadts.println(i"instantiated: $sym -> $externalizedInst")
-          return if (isUpper) isSubType(externalizedInst , bound) else isSubType(bound, externalizedInst)
+          gadts.println(i"instantiated: $sym -> $inst")
+          return if (isUpper) isSubType(inst , bound) else isSubType(bound, inst)
       }
 
-      val internalizedBound = insertTypeVars(bound)
+      val internalizedBound = bound match {
+          case nt: NamedType if contains(nt.symbol) =>
+            stripInternalTypeVar(tvar(nt.symbol))
+          case _ => bound
+        }
       (
-        stripInternalTypeVar(internalizedBound) match {
+        internalizedBound match {
           case boundTvar: TypeVar =>
             if (boundTvar eq symTvar) true
             else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
             else addLess(boundTvar.origin, symTvar.origin)
           case bound =>
-            if (externalizedSubtype(symTvar, bound, isSubtype = !isUpper)) {
-              gadts.println(i"manually unifying $symTvar with $bound")
-              constraint = constraint.updateEntry(symTvar.origin, bound)
-              true
-            }
-            else if (isUpper) addUpperBound(symTvar.origin, bound)
-            else addLowerBound(symTvar.origin, bound)
+            val oldUpperBound = bounds(symTvar.origin)
+            // If we already have bounds `F >: [t] => List[t] <: [t] => Any`
+            // and we want to record that `F <: [+A] => List[A]`, we need to adapt
+            // type parameter variances of the bound. Consider that the following is valid:
+            //
+            // class Foo[F[t] >: List[t]]
+            // type T = Foo[List]
+            //
+            // precisely because `Foo[List]` is desugared to `Foo[[A] => List[A]]`.
+            val bound1 = bound.adaptHkVariances(oldUpperBound)
+            if (isUpper) addUpperBound(symTvar.origin, bound1)
+            else addLowerBound(symTvar.origin, bound1)
         }
       ).reporting({ res =>
         val descr = if (isUpper) "upper" else "lower"
         val op = if (isUpper) "<:" else ">:"
         i"adding $descr bound $sym $op $bound = $res\t( $symTvar $op $internalizedBound )"
       }, gadts)
-    } finally boundAdditionInProgress = false
+    }
 
     override def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean =
       constraint.isLess(tvar(sym1).origin, tvar(sym2).origin)
@@ -886,34 +877,27 @@ object Contexts {
     override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds =
       mapping(sym) match {
         case null => null
-        case tv => removeTypeVars(fullBounds(tv.origin)).asInstanceOf[TypeBounds]
+        case tv => fullBounds(tv.origin)
       }
 
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
         case null => null
         case tv =>
-          def retrieveBounds: TypeBounds = {
-            val tb = bounds(tv.origin)
-            removeTypeVars(tb).asInstanceOf[TypeBounds]
-          }
-          (
-            if (boundAdditionInProgress || ctx.mode.is(Mode.GADTflexible)) retrieveBounds
-            else boundCache(sym) match {
-              case tb: TypeBounds => tb
-              case null =>
-                val bounds = retrieveBounds
-                boundCache = boundCache.updated(sym, bounds)
-                bounds
+          def retrieveBounds: TypeBounds =
+            bounds(tv.origin) match {
+              case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
+                TypeAlias(reverseMapping(tpr).typeRef)
+              case tb => tb
             }
-          )// .reporting({ res => i"gadt bounds $sym: $res" }, gadts)
+          retrieveBounds//.reporting({ res => i"gadt bounds $sym: $res" }, gadts)
       }
     }
 
     override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 
     override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = {
-      val res = removeTypeVars(approximation(tvar(sym).origin, fromBelow = fromBelow))
+      val res = approximation(tvar(sym).origin, fromBelow = fromBelow)
       gadts.println(i"approximating $sym ~> $res")
       res
     }
@@ -921,8 +905,7 @@ object Contexts {
     override def fresh: GADTMap = new SmartGADTMap(
       myConstraint,
       mapping,
-      reverseMapping,
-      boundCache
+      reverseMapping
     )
 
     def restore(other: GADTMap): Unit = other match {
@@ -930,7 +913,6 @@ object Contexts {
         this.myConstraint = other.myConstraint
         this.mapping = other.mapping
         this.reverseMapping = other.reverseMapping
-        this.boundCache = other.boundCache
       case _ => ;
     }
 
@@ -963,37 +945,6 @@ object Contexts {
           res
       }
     }
-
-    private def insertTypeVars(tp: Type, map: TypeMap = null)(implicit ctx: Context) = tp match {
-      case tp: TypeRef =>
-        val sym = tp.typeSymbol
-        if (contains(sym)) tvar(sym) else tp
-      case _ =>
-        (if (map != null) map else new TypeVarInsertingMap()).mapOver(tp)
-    }
-    private final class TypeVarInsertingMap(implicit ctx: Context) extends TypeMap {
-      override def apply(tp: Type): Type = insertTypeVars(tp, this)
-    }
-
-    private def removeTypeVars(tp: Type, map: TypeMap = null)(implicit ctx: Context) = tp match {
-      case tpr: TypeParamRef =>
-        reverseMapping(tpr) match {
-          case null => tpr
-          case sym => sym.typeRef
-        }
-      case tv: TypeVar =>
-        reverseMapping(tv.origin) match {
-          case null => tv
-          case sym => sym.typeRef
-        }
-      case _ =>
-        (if (map != null) map else new TypeVarRemovingMap()).mapOver(tp)
-    }
-    private final class TypeVarRemovingMap(implicit ctx: Context) extends TypeMap {
-      override def apply(tp: Type): Type = removeTypeVars(tp, this)
-    }
-
-    private[this] var boundAdditionInProgress = false
 
     // ---- Debug ------------------------------------------------------------
 
