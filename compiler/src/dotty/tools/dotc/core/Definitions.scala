@@ -570,6 +570,10 @@ class Definitions {
   lazy val ClassClass: ClassSymbol                = ctx.requiredClass("java.lang.Class")
   lazy val BoxedNumberClass: ClassSymbol          = ctx.requiredClass("java.lang.Number")
   lazy val ClassCastExceptionClass: ClassSymbol   = ctx.requiredClass("java.lang.ClassCastException")
+    lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  = ClassCastExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef StringClass)
+      case _ => false
+    }).symbol.asTerm
   lazy val ArithmeticExceptionClass: ClassSymbol  = ctx.requiredClass("java.lang.ArithmeticException")
     lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) => (pt isRef StringClass)

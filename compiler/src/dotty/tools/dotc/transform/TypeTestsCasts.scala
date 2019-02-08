@@ -244,6 +244,13 @@ object TypeTestsCasts {
           else if (isDerivedValueClass(testCls)) {
             expr // adaptToType in Erasure will do the necessary type adaptation
           }
+          else if (testCls eq defn.NothingClass) {
+            // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
+            // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
+            val throwCCE = Throw(New(defn.ClassCastExceptionClass.typeRef, defn.ClassCastExceptionClass_stringConstructor,
+                Literal(Constant("Cannot cast to scala.Nothing")) :: Nil))
+            Block(expr :: Nil, throwCCE).withSpan(expr.span)
+          }
           else
             derivedTree(expr, defn.Any_asInstanceOf, testType)
         }
