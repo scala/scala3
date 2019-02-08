@@ -193,7 +193,7 @@ trait Deriving { this: Typer =>
           if (nparams == 0) Nil
           else if (nparams == 1) tparam :: Nil
           else typeClass.typeParams.map(tcparam =>
-            tparam.copy(name = s"${tparam.name}_${tcparam.name}".toTypeName)
+            tparam.copy(name = s"${tparam.name}_$$_${tcparam.name}".toTypeName)
               .asInstanceOf[TypeSymbol])
         }
         val firstKindedParamss = clsParamss.filter {
