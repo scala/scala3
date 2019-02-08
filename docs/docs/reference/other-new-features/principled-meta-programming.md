@@ -624,7 +624,7 @@ and adding quoted variants `'(...)`, `'{...}` and `'[...]` to the
                           |  ‘'’ ‘[’ Type ‘]’
 
 Syntax changes are given relative to the [Dotty reference
-grammar](../internal/syntax.md).
+grammar](../../internals/syntax.md).
 
 An alternative syntax would treat `'` as a separate operator. This
 would be attractive since it enables quoting single identifiers as
@@ -764,7 +764,7 @@ environments and terms.
                            Es |- 't: expr T
 
 The meta theory of a slightly simplified variant 2-stage variant of this calculus
-is studied [separately](simple-smp.md).
+is studied [separately](../simple-smp.md).
 
 ## Going Further
 
