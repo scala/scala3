@@ -9,7 +9,6 @@
     "**/*.class": true,
     "**/*.hasTasty": true,
     "**/target/": true,
-    "tests/": true,
     "community-build/community-projects": true
   }
 }
