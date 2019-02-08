@@ -16,13 +16,16 @@ trait TreeUtils {
     implicit val bodyTpe: quoted.Type[U] = bodyType.seal.asInstanceOf[quoted.Type[U]]
     implicit val rhsTpe: quoted.Type[T] = rhs.tpe.seal.asInstanceOf[quoted.Type[T]]
     val rhsExpr = rhs.seal[T]
-    let[T, U](rhsExpr)(x => body(x.unseal.asInstanceOf[Term.Ident]).seal[U]).unseal
+
+    let[T, U](rhsExpr) { x =>
+      val id = ('(x)).unseal.asInstanceOf[Term.Ident]
+      id.withPos(rhs.pos)
+      body(id).seal[U]
+    }.unseal
   }
 
-  /**  */
   private def let[T: quoted.Type, U: quoted.Type](rhs: Expr[T])(in: Expr[T] => Expr[U]): Expr[U] = '{
     val x = ~rhs
     ~in('(x))
   }
-
 }

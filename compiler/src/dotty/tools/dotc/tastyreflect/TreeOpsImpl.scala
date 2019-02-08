@@ -12,6 +12,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.sourcePos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
+    def withPos(pos: Position)(implicit ctx: Context): Unit = tree.withSpan(pos.span)
   }
 
   def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {

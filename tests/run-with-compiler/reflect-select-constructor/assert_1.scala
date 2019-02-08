@@ -14,10 +14,12 @@ object scalatest {
       Type.IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
 
     cond.unseal.underlyingArgument match {
-      case Term.Apply(Term.Select(lhs, op), rhs :: Nil) =>
+      case t @ Term.Apply(Term.Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
-            let(Term.Select.overloaded(left, op, Nil, right :: Nil)) { result =>
+            val app = Term.Select.overloaded(left, op, Nil, right :: Nil)
+            app.withPos(t.pos)
+            let(app) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
@@ -30,7 +32,9 @@ object scalatest {
       if isImplicitMethodType(f.tpe) =>
         let(lhs) { left =>
           let(rhs) { right =>
-            let(Term.Apply(Term.Select.overloaded(Term.Apply(qual, left :: Nil), op, Nil, right :: Nil), implicits)) { result =>
+            val app = Term.Select.overloaded(Term.Apply(qual, left :: Nil), op, Nil, right :: Nil)
+            app.withPos(f.pos)
+            let(Term.Apply(app, implicits)) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
