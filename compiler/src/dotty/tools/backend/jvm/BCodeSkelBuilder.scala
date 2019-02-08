@@ -1,11 +1,4 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
-
-package scala
-package tools.nsc
+package dotty.tools
 package backend
 package jvm
 

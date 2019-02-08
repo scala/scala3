@@ -1036,7 +1036,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a primitive method call. */
   private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.span
 
@@ -1076,7 +1076,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a simple unary operation. */
   private def genSimpleUnaryOp(tree: Apply, arg: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.span
 
@@ -1117,7 +1117,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a simple binary operation. */
   private def genSimpleBinaryOp(tree: Apply, lhs: Tree, rhs: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps._
     import js.UnaryOp._
 
     implicit val pos = tree.span
@@ -1332,7 +1332,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genUniversalEqualityOp(ltpe: Type, rtpe: Type, lhs: js.Tree, rhs: js.Tree, code: Int)(
       implicit pos: Position): js.Tree = {
 
-    import scala.tools.nsc.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps._
 
     val bypassEqEq = {
       // Do not call equals if we have a literal null at either side.
@@ -1458,7 +1458,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for an array operation (get, set or length) */
   private def genArrayOp(tree: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps._
 
     implicit val pos = tree.span
 

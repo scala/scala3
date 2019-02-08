@@ -258,8 +258,8 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/transform", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/typer", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/util", opt) +
-        compileShallowFilesInDir("compiler/src/scala/tools/nsc/backend", opt) +
-        compileShallowFilesInDir("compiler/src/scala/tools/nsc/backend/jvm", opt) +
+        compileShallowFilesInDir("compiler/src/dotty/tools/backend", opt) +
+        compileShallowFilesInDir("compiler/src/dotty/tools/backend/jvm", opt) +
         compileList("shallow-scalajs-ir", scalaJSIRSources, opt)
       }.keepOutput :: Nil
     }.map(_.checkCompile())

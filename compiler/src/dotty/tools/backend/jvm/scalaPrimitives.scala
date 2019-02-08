@@ -35,7 +35,7 @@ import scala.collection.immutable
  * Inspired from the `scalac` compiler.
  */
 class DottyPrimitives(ctx: Context) {
-  import scala.tools.nsc.backend.ScalaPrimitivesOps._
+  import dotty.tools.backend.ScalaPrimitivesOps._
 
   private lazy val primitives: immutable.Map[Symbol, Int] = init
 

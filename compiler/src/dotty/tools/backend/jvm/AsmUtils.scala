@@ -1,9 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2014 LAMP/EPFL
- * @author  Martin Odersky
- */
-
-package scala.tools.nsc.backend.jvm
+package dotty.tools
+package backend
+package jvm
 
 import scala.tools.asm.tree.{AbstractInsnNode, ClassNode, MethodNode}
 import java.io.PrintWriter

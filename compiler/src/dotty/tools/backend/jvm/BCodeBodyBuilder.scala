@@ -1,11 +1,4 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
-
-package scala
-package tools.nsc
+package dotty.tools
 package backend
 package jvm
 
@@ -13,7 +6,7 @@ import scala.annotation.switch
 
 import scala.tools.asm
 import scala.tools.asm.{Handle, Label, Opcodes}
-import scala.tools.nsc.backend.jvm.BCodeHelpers.InvokeStyle
+import BCodeHelpers.InvokeStyle
 
 /*
  *

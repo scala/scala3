@@ -1,10 +1,4 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
- */
-
-package scala
-package tools.nsc
+package dotty.tools
 package backend
 
 object ScalaPrimitivesOps extends ScalaPrimitivesOps

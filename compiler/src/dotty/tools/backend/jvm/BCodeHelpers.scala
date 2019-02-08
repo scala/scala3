@@ -1,11 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
-package scala
-package tools.nsc
-package backend.jvm
+package dotty.tools
+package backend
+package jvm
 
 import scala.tools.asm
 import scala.collection.mutable

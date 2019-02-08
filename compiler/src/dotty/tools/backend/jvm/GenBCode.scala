@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Phases.Phase
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.tools.asm.CustomAttr
-import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.util.SourceFile

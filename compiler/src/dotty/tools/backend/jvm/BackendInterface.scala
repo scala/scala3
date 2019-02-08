@@ -1,4 +1,6 @@
-package scala.tools.nsc.backend.jvm
+package dotty.tools
+package backend
+package jvm
 
 import scala.collection.generic.Clearable
 import scala.reflect.ClassTag
