@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Phases.Phase
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.tools.asm.CustomAttr
-import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.util.SourceFile
@@ -105,7 +104,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     /* ---------------- q2 ---------------- */
 
     case class SubItem2(classNode: asm.tree.ClassNode,
-                        file:      scala.tools.nsc.io.AbstractFile)
+                        file:      dotty.tools.io.AbstractFile)
 
     case class Item2(arrivalPos: Int,
                      mirror:     SubItem2,
@@ -128,7 +127,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     case class SubItem3(
                          jclassName:  String,
                          jclassBytes: Array[Byte],
-                         jclassFile:  scala.tools.nsc.io.AbstractFile
+                         jclassFile:  dotty.tools.io.AbstractFile
                          )
 
     case class Item3(arrivalPos: Int,

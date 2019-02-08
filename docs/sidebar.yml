@@ -145,8 +145,6 @@ sidebar:
           url: docs/contributing/intellij-idea.html
         - title: Testing
           url: docs/contributing/testing.html
-        - title: Working with the Backend
-          url: docs/contributing/backend.html
     - title: Internals
       subsection:
         - title: Backend

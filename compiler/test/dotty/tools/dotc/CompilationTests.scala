@@ -15,7 +15,6 @@ import scala.concurrent.duration._
 import vulpix._
 import dotty.tools.io.JFile
 
-
 class CompilationTests extends ParallelTesting {
   import ParallelTesting._
   import TestConfiguration._
@@ -54,26 +53,26 @@ class CompilationTests extends ParallelTesting {
       "compileMixed",
       List(
         "tests/pos/B.scala",
-        "scala2-library/src/library/scala/collection/immutable/Seq.scala",
-        "scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
-        "scala2-library/src/library/scala/package.scala",
-        "scala2-library/src/library/scala/collection/GenSeqLike.scala",
-        "scala2-library/src/library/scala/collection/SeqLike.scala",
-        "scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
+        "tests/scala2-library/src/library/scala/collection/immutable/Seq.scala",
+        "tests/scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
+        "tests/scala2-library/src/library/scala/package.scala",
+        "tests/scala2-library/src/library/scala/collection/GenSeqLike.scala",
+        "tests/scala2-library/src/library/scala/collection/SeqLike.scala",
+        "tests/scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
       ),
       scala2Mode
     ) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
     compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")) +
-    compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
-    compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    compileFile("tests/scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
+    compileFile("tests/scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
       "parSetSubset",
       List(
-       "scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
-       "scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
-       "scala2-library/src/library/scala/collection/mutable/SetLike.scala"
+       "tests/scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+       "tests/scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
+       "tests/scala2-library/src/library/scala/collection/mutable/SetLike.scala"
       ),
       scala2Mode
     ) +
@@ -81,9 +80,9 @@ class CompilationTests extends ParallelTesting {
     compileList(
       "testPredefDeprecatedNonCyclic",
       List(
-        "scala2-library/src/library/scala/io/Position.scala",
-        "scala2-library/src/library/scala/Predef.scala",
-        "scala2-library/src/library/scala/deprecated.scala"
+        "tests/scala2-library/src/library/scala/io/Position.scala",
+        "tests/scala2-library/src/library/scala/Predef.scala",
+        "tests/scala2-library/src/library/scala/deprecated.scala"
       ),
       scala2Mode
     ) +
@@ -239,25 +238,11 @@ class CompilationTests extends ParallelTesting {
     val compilerDir = Paths.get("compiler/src")
     val compilerSources = sources(Files.walk(compilerDir))
 
-    val backendDir = Paths.get("scala-backend/src/compiler/scala/tools/nsc/backend")
-    val backendJvmDir = Paths.get("scala-backend/src/compiler/scala/tools/nsc/backend/jvm")
     val scalaJSIRDir = Paths.get("compiler/target/scala-2.12/src_managed/main/scalajs-ir-src/org/scalajs/ir")
+    val scalaJSIRSources = sources(Files.list(scalaJSIRDir))
 
-    // NOTE: Keep these exclusions synchronized with the ones in the sbt build (Build.scala)
-    val backendExcluded =
-      List("JavaPlatform.scala", "Platform.scala", "ScalaPrimitives.scala")
-    val backendJvmExcluded =
-      List("BCodeICodeCommon.scala", "GenASM.scala", "GenBCode.scala", "ScalacBackendInterface.scala", "BackendStats.scala", "BCodeAsmEncode.scala")
-
-    val backendSources =
-      sources(Files.list(backendDir), excludedFiles = backendExcluded)
-    val backendJvmSources =
-      sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
-    val scalaJSIRSources =
-      sources(Files.list(scalaJSIRDir))
-
-    val dotty1 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources ++ scalaJSIRSources, opt)(dotty1Group)
-    val dotty2 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources ++ scalaJSIRSources, opt)(dotty2Group)
+    val dotty1 = compileList("dotty", compilerSources ++ scalaJSIRSources, opt)(dotty1Group)
+    val dotty2 = compileList("dotty", compilerSources ++ scalaJSIRSources, opt)(dotty2Group)
 
     val tests = {
       lib.keepOutput :: dotty1.keepOutput :: {
@@ -273,8 +258,8 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/transform", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/typer", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/util", opt) +
-        compileList("shallow-backend", backendSources, opt) +
-        compileList("shallow-backend-jvm", backendJvmSources, opt) +
+        compileShallowFilesInDir("compiler/src/dotty/tools/backend", opt) +
+        compileShallowFilesInDir("compiler/src/dotty/tools/backend/jvm", opt) +
         compileList("shallow-scalajs-ir", scalaJSIRSources, opt)
       }.keepOutput :: Nil
     }.map(_.checkCompile())
