@@ -1737,7 +1737,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val app =
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
         ctx.addMode(Mode.SynthesizeExtMethodReceiver))
-    if (!app.symbol.is(Extension))
+    val appSym =
+      app match {
+        case Inlined(call, _, _) => call.symbol
+        case _ => app.symbol
+      }
+    if (!appSym.is(Extension))
       ctx.error(em"not an extension method: $methodRef", receiver.sourcePos)
     app
   }
