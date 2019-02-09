@@ -25,11 +25,11 @@ object NameOps {
      *
      *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
      */
-    def apply(s: String)(implicit ctx: Context): String = {
+    def apply(s: String): String = {
       val marker = "$$$$"
 
-      val limit: Int = 240
-      val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
+      final val charLimit: Int = 240
+      val MaxNameLength = (charLimit - 6) min 2 * (charLimit - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
         val prefix = s take edge
