@@ -15,14 +15,10 @@ Compiling and Running
 Start by cloning the repository:
 
 ```bash
-$ git clone --recurse-submodules --single-branch https://github.com/lampepfl/dotty.git
+$ git clone https://github.com/lampepfl/dotty.git
 $ cd dotty
 $ sbt managedSources # Needed for IDE import to succeed
 ```
-
-Pass `--single-branch` to clone only the master branch, otherwise cloning will be *much* slower (details in [issue #3236](https://github.com/lampepfl/dotty/issues/3236)).
-
-The repository uses submodules, which may need updating/initializing using `git submodule update --init`. Starting `sbt` will alert you if this is needed.
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
 all be done from within sbt:

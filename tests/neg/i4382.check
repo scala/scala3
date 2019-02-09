@@ -1,0 +1,8 @@
+[199..207] in i4382.scala
+unreducible application of higher-kinded type App.HkAbs to wildcard arguments
+[149..155] in i4382.scala
+unreducible application of higher-kinded type App.HkU to wildcard arguments
+[97..103] in i4382.scala
+unreducible application of higher-kinded type App.HkL to wildcard arguments
+[46..51] in i4382.scala
+unreducible application of higher-kinded type App.Id to wildcard arguments

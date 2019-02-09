@@ -1,0 +1,3 @@
+<267..267> in i5311.scala
+Found:    s.T[Int] => s.T[Int]
+Required: m.Foo

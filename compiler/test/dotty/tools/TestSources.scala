@@ -8,7 +8,7 @@ object TestSources {
 
   // Std Lib
 
-  private final val stdLibPath = "scala2-library/src/library/"
+  private final val stdLibPath = "tests/scala2-library/src/library/"
 
   private def blacklistFile: String = "compiler/test/dotc/scala-collections.blacklist"
 

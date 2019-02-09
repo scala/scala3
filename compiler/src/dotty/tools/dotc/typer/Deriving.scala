@@ -32,6 +32,8 @@ trait Deriving { this: Typer =>
     /** A buffer for synthesized symbols */
     private var synthetics = new mutable.ListBuffer[Symbol]
 
+    private var derivesGeneric = false
+
     /** the children of `cls` ordered by textual occurrence */
     lazy val children: List[Symbol] = cls.children
 
@@ -159,8 +161,13 @@ trait Deriving { this: Typer =>
      *
      *      implicit def derived$D(implicit ev_1: D[T_1], ..., ev_n: D[T_n]): D[C[Ts]] = D.derived
      *
-     *  See test run/typeclass-derivation2 for examples that spell out what would be generated.
-     *  Note that the name of the derived method containd the name in the derives clause, not
+     *  See the body of this method for how to generalize this to typeclasses with more
+     *  or less than one type parameter.
+     *
+     *  See test run/typeclass-derivation2 and run/derive-multi
+     *  for examples that spell out what would be generated.
+     *
+     *  Note that the name of the derived method contains the name in the derives clause, not
      *  the underlying class name. This allows one to disambiguate derivations of type classes
      *  that have the same name but different prefixes through selective aliasing.
      */
@@ -168,24 +175,53 @@ trait Deriving { this: Typer =>
       val originalType = typedAheadType(derived, AnyTypeConstructorProto).tpe
       val underlyingType = underlyingClassRef(originalType)
       val derivedType = checkClassType(underlyingType, derived.sourcePos, traitReq = false, stablePrefixReq = true)
-      val nparams = derivedType.classSymbol.typeParams.length
+      val typeClass = derivedType.classSymbol
+      val nparams = typeClass.typeParams.length
       if (derivedType.isRef(defn.GenericClass))
-        () // do nothing, a Generic instance will be created anyway by `addGeneric`
-      else if (nparams == 1) {
-        val typeClass = derivedType.classSymbol
-        val firstKindedParams = cls.typeParams.filterNot(_.info.isLambdaSub)
+        derivesGeneric = true
+      else {
+        // A matrix of all parameter combinations of current class parameters
+        // and derived typeclass parameters.
+        // Rows: parameters of current class
+        // Columns: parameters of typeclass
+
+        // Running example: typeclass: class TC[X, Y, Z], deriving class: class A[T, U]
+        // clsParamss =
+        //     T_X  T_Y  T_Z
+        //     U_X  U_Y  U_Z
+        val clsParamss: List[List[TypeSymbol]] = cls.typeParams.map { tparam =>
+          if (nparams == 0) Nil
+          else if (nparams == 1) tparam :: Nil
+          else typeClass.typeParams.map(tcparam =>
+            tparam.copy(name = s"${tparam.name}_${tcparam.name}".toTypeName)
+              .asInstanceOf[TypeSymbol])
+        }
+        val firstKindedParamss = clsParamss.filter {
+          case param :: _ => !param.info.isLambdaSub
+          case nil => false
+        }
+
+        // The types of the required evidence parameters. In the running example:
+        // TC[T_X, T_Y, T_Z], TC[U_X, U_Y, U_Z]
         val evidenceParamInfos =
-          for (param <- firstKindedParams) yield derivedType.appliedTo(param.typeRef)
-        val resultType = derivedType.appliedTo(cls.appliedRef)
+          for (row <- firstKindedParamss)
+          yield derivedType.appliedTo(row.map(_.typeRef))
+
+        // The class instances in the result type. Running example:
+        //   A[T_X, U_X], A[T_Y, U_Y], A[T_Z, U_Z]
+        val resultInstances =
+          for (n <- List.range(0, nparams))
+          yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
+
+        // TC[A[T_X, U_X], A[T_Y, U_Y], A[T_Z, U_Z]]
+        val resultType = derivedType.appliedTo(resultInstances)
+
+        val clsParams: List[TypeSymbol] = clsParamss.flatten
         val instanceInfo =
-          if (cls.typeParams.isEmpty) ExprType(resultType)
-          else PolyType.fromParams(cls.typeParams, ImplicitMethodType(evidenceParamInfos, resultType))
+          if (clsParams.isEmpty) ExprType(resultType)
+          else PolyType.fromParams(clsParams, ImplicitMethodType(evidenceParamInfos, resultType))
         addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.sourcePos, reportErrors = true)
       }
-      else
-        ctx.error(
-          i"derived class $derivedType should have one type paramater but has $nparams",
-          derived.sourcePos)
     }
 
     /** Add value corresponding to `val genericClass = new GenericClass(...)`
@@ -210,14 +246,33 @@ trait Deriving { this: Typer =>
       addDerivedInstance(defn.GenericType.name, genericCompleter, codePos, reportErrors = false)
     }
 
+    /** If any of the instances has a companion with a `derived` member
+     *  that refers to `scala.reflect.Generic`, add an implied instance
+     *  of `Generic`. Note: this is just an optimization to avoid possible
+     *  code duplication. Generic instances are created on the fly if they
+     *  are missing from the companion.
+     */
+    private def maybeAddGeneric(): Unit = {
+      val genericCls = defn.GenericClass
+      def refersToGeneric(sym: Symbol): Boolean = {
+        val companion = sym.info.finalResultType.classSymbol.companionModule
+        val derivd = companion.info.member(nme.derived)
+        derivd.hasAltWith(sd => sd.info.existsPart(p => p.typeSymbol == genericCls))
+      }
+      if (derivesGeneric || synthetics.exists(refersToGeneric)) {
+        derive.println(i"add generic infrastructure for $cls")
+        addGeneric()
+        addGenericClass()
+      }
+    }
+
     /** Create symbols for derived instances and infrastructure,
-     *  append them to `synthetics` buffer,
-     *  and enter them into class scope.
+     *  append them to `synthetics` buffer, and enter them into class scope.
+     *  Also, add generic instances if needed.
      */
     def enterDerived(derived: List[untpd.Tree]) = {
       derived.foreach(processDerivedInstance(_))
-      addGeneric()
-      addGenericClass()
+      maybeAddGeneric()
     }
 
     private def tupleElems(tp: Type): List[Type] = tp match {
