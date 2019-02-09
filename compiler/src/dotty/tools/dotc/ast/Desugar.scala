@@ -1045,7 +1045,7 @@ object desugar {
     def needsObject(stat: Tree) = stat match {
       case _: ValDef | _: PatDef | _: DefDef => true
       case stat: ModuleDef =>
-        stat.mods.is(Implicit) || opaqueNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
+        stat.mods.is(ImplicitOrImplied) || opaqueNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
       case stat: TypeDef => !stat.isClassDef || stat.mods.is(Implicit)
       case _ => false
     }

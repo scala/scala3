@@ -30,6 +30,7 @@ case class Triple[S, T, U] derives A, B
 
 object Test1 {
   import Lst._
+  import implied Lst._
   implicitly[A]
 }
 
