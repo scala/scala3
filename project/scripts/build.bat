@@ -57,6 +57,10 @@ if defined _BOOTSTRAP (
         )
     )
 )
+if defined _COMMUNITY (
+    call :community_build
+    if not !_EXITCODE!==0 goto end
+)
 if defined _SBT (
     call :test_sbt
     if not !_EXITCODE!==0 goto end
@@ -82,6 +86,7 @@ set _BOOTSTRAP=
 set _COMPILE=
 set _CLEAN_ALL=
 set _CLONE=
+set _COMMUNITY=
 set _DOCUMENTATION=
 set _HELP=
 set _SBT=
@@ -105,6 +110,9 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else if /i "%__ARG:~0,7%"=="compile" (
     if not "%__ARG:~-5%"=="-only" set _CLONE=1
     set _COMPILE=1
+) else if /i "%__ARGS:~0,9%"=="community" (
+    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
+    set _COMMUNITY=1
 ) else if /i "%__ARG:~0,3%"=="doc" (
     if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
     set _DOCUMENTATION=1
@@ -115,7 +123,7 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else (
     echo [91mError[0m: Unknown subcommand %__ARG% 1>&2
     set _EXITCODE=1
-    goto :eof
+    goto :args_done
 )
 shift
 goto args_loop
@@ -136,6 +144,7 @@ echo     boot[strap]            generate+test bootstrapped compiler (after compi
 echo     cleanall               clean project (sbt+git) and quit
 echo     clone                  update submodules
 echo     compile                generate+test 1st stage compiler (after clone)
+echo     community              test community-build (after bootstrap)
 echo     doc[umentation]        generate documentation (after bootstrap)
 echo     help                   display this help message
 echo     sbt                    test sbt-dotty (after bootstrap)
@@ -143,6 +152,7 @@ echo   Advanced subcommands (no deps):
 echo     arch[ives]-only        generate ONLY gz/zip archives
 echo     boot[strap]-only       generate+test ONLY bootstrapped compiler
 echo     compile-only           generate+test ONLY 1st stage compiler
+echo     community-only         test ONLY community-build
 echo     doc[umentation]-only]  generate ONLY documentation
 echo     sbt-only               test ONLY sbt-dotty
 
@@ -150,17 +160,23 @@ goto :eof
 
 :init
 if %_VERBOSE%==1 (
-    for /f %%i in ('where git.exe') do set __GIT_CMD1=%%i
-    set __GIT_BRANCH=unknown
-    for /f "tokens=1-4,*" %%f in ('!__GIT_CMD1! branch -vv ^| findstr /b *') do set __GIT_BRANCH=%%g %%i
+    for /f "delims=" %%i in ('where git.exe') do (
+        if not defined __GIT_CMD1 set __GIT_CMD1=%%i
+    )
+    for /f "delims=" %%i in ('where java.exe') do (
+        if not defined __JAVA_CMD1 set __JAVA_CMD1=%%i
+    )
+    set __BRANCH_NAME=unknown
+    for /f %%i in ('!__GIT_CMD1! rev-parse --abbrev-ref HEAD') do set __BRANCH_NAME=%%i
     echo Tool paths
     echo    GIT_CMD=!__GIT_CMD1!
+    echo    JAVA_CMD=!__JAVA_CMD1!
     echo    SBT_CMD=%_SBT_CMD%
     echo Tool options
     echo    JAVA_OPTS=%JAVA_OPTS%
     echo    SBT_OPTS=%SBT_OPTS%
-    echo Current Git branch
-    echo    !__GIT_BRANCH!
+    echo Current Git branch:
+    echo    !__BRANCH_NAME!
     echo.
 )
 goto :eof
@@ -230,6 +246,23 @@ if %_DEBUG%==1 echo [%_BASENAME%] call %_SCRIPTS_DIR%\bootstrapCmdTests.bat
 call %_SCRIPTS_DIR%\bootstrapCmdTests.bat
 if not %ERRORLEVEL%==0 (
     echo [91mError[0m: Failed to run bootstrapCmdTests.bat 1>&2
+    set _EXITCODE=1
+    goto :eof
+)
+goto :eof
+
+:community_build
+if %_DEBUG%==1 echo [%_BASENAME%] %_GIT_CMD% submodule update --init --recursive --jobs 7
+%_GIT_CMD% submodule update --init --recursive --jobs 7
+if not %ERRORLEVEL%==0 (
+    echo Error: Failed to update Git submodules 1>&2
+    set _EXITCODE=1
+    goto :eof
+)
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" community-build/test
+call "%_SBT_CMD%" community-build/test
+if not %ERRORLEVEL%==0 (
+    echo [91mError[0m: Failed to run sbt command community-build/test 1>&2
     set _EXITCODE=1
     goto :eof
 )
