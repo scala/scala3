@@ -149,6 +149,8 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
     compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")) +
+    compileFile("tests/neg-custom-args/implicit-conversions.scala", defaultOptions.and("-Xfatal-warnings", "-feature")) +
+    compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
