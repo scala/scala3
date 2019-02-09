@@ -240,7 +240,7 @@ class DottyLanguageServer extends LanguageServer
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
     val worksheetMode = isWorksheet(uri)
 
     val text =
@@ -265,7 +265,7 @@ class DottyLanguageServer extends LanguageServer
       checkMemory()
 
       val driver = driverFor(uri)
-      implicit val ctx = driver.currentCtx
+      implicit def ctx: Context = driver.currentCtx
 
       val change = params.getContentChanges.get(0)
       assert(change.getRange == null, "TextDocumentSyncKind.Incremental support is not implemented")
@@ -305,7 +305,7 @@ class DottyLanguageServer extends LanguageServer
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val items = driver.compilationUnits.get(uri) match {
@@ -324,7 +324,7 @@ class DottyLanguageServer extends LanguageServer
   override def definition(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val path = Interactive.pathTo(driver.openedTrees(uri), pos)
@@ -347,7 +347,7 @@ class DottyLanguageServer extends LanguageServer
     val pos = sourcePosition(driver, uri, params.getPosition)
 
     val (definitions, originalSymbols) = {
-      implicit val ctx: Context = driver.currentCtx
+      implicit def ctx: Context = driver.currentCtx
       val path = Interactive.pathTo(driver.openedTrees(uri), pos)
       val definitions = Interactive.findDefinitions(path, pos, driver)
       val originalSymbols = Interactive.enclosingSourceSymbols(path, pos)
@@ -376,7 +376,7 @@ class DottyLanguageServer extends LanguageServer
   override def rename(params: RenameParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val uriTrees = driver.openedTrees(uri)
     val pos = sourcePosition(driver, uri, params.getPosition)
@@ -443,7 +443,7 @@ class DottyLanguageServer extends LanguageServer
   override def documentHighlight(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val uriTrees = driver.openedTrees(uri)
@@ -463,7 +463,7 @@ class DottyLanguageServer extends LanguageServer
   override def hover(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val trees = driver.openedTrees(uri)
@@ -487,7 +487,7 @@ class DottyLanguageServer extends LanguageServer
   override def documentSymbol(params: DocumentSymbolParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val uriTrees = driver.openedTrees(uri)
 
@@ -502,7 +502,7 @@ class DottyLanguageServer extends LanguageServer
     val query = params.getQuery
 
     drivers.values.toList.flatMap { driver =>
-      implicit val ctx = driver.currentCtx
+      implicit def ctx: Context = driver.currentCtx
 
       val trees = driver.sourceTreesContaining(query)
       val defs = Interactive.namedTrees(trees, Include.empty, _.name.toString.contains(query))
@@ -517,7 +517,7 @@ class DottyLanguageServer extends LanguageServer
     val pos = sourcePosition(driver, uri, params.getPosition)
 
     val (definitions, originalSymbols) = {
-      implicit val ctx: Context = driver.currentCtx
+      implicit def ctx: Context = driver.currentCtx
       val path = Interactive.pathTo(driver.openedTrees(uri), pos)
       val originalSymbols = Interactive.enclosingSourceSymbols(path, pos)
       val definitions = Interactive.findDefinitions(path, pos, driver)
@@ -545,7 +545,7 @@ class DottyLanguageServer extends LanguageServer
 
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit val ctx = driver.currentCtx
+    implicit def ctx: Context = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val trees = driver.openedTrees(uri)
