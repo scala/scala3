@@ -28,7 +28,7 @@ object NameOps {
     def apply(s: String): String = {
       val marker = "$$$$"
 
-      final val charLimit: Int = 240
+      val charLimit: Int = 240
       val MaxNameLength = (charLimit - 6) min 2 * (charLimit - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
