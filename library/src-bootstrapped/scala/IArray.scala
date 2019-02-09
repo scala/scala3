@@ -4,7 +4,7 @@ import reflect.ClassTag
 /** It would be nice it IArray could be covariant, but unfortunately that's not
  *  possible. The problem is the preculiar behavior of `Array[Any]`.
  *  `Array[Any]` erases to `Object[]`. So, `IArray[Any]` also erases to `Object[]`.
- *  Bit this means `IArray[Int]`, which erases to `Int[]`, cannot be a subtype of
+ *  But this means `IArray[Int]`, which erases to `Int[]`, cannot be a subtype of
  *  `IArray[Any]`.
  */
 opaque type IArray[T] = Array[T]
