@@ -33,18 +33,9 @@ export interface TastyDecompileResult {
 	error: number
 }
 
-// TODO: Can be removed once https://github.com/Microsoft/vscode-languageserver-node/pull/421
-// is merged.
-export function asVersionedTextDocumentIdentifier(textDocument: vscode.TextDocument): VersionedTextDocumentIdentifier {
-	return {
-		uri: client.code2ProtocolConverter.asUri(textDocument.uri),
-		version: textDocument.version
-	}
-}
-
 export function asWorksheetRunParams(textDocument: vscode.TextDocument): WorksheetRunParams {
 	return {
-    textDocument: asVersionedTextDocumentIdentifier(textDocument)
+    textDocument: client.code2ProtocolConverter.asVersionedTextDocumentIdentifier(textDocument)
 	}
 }
 
