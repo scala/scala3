@@ -99,7 +99,12 @@ class Worksheet implements Disposable {
 
   /** Display the output in the worksheet's editor. */
   handleMessage(output: WorksheetPublishOutputParams, editor: vscode.TextEditor) {
-    this.displayAndSaveResult(output.line - 1, output.content, editor)
+    let range = output.range ?
+      this.client.protocol2CodeConverter.asRange(output.range) :
+      (output.line ?
+        new Range(output.line - 1, 0, output.line - 1, 0) :
+        new Range(0, 0, 0, 0))
+    this.displayAndSaveResult(range, output.content, editor)
   }
 
   /**
@@ -140,22 +145,22 @@ class Worksheet implements Disposable {
    * Parse and display the result of running part of this worksheet. The result is saved so that it
    * can be restored if this buffer is closed.
    *
-   * @param lineNumber The number of the line in the source that produced the result.
+   * @param range      The range in the source that produced the result.
    * @param runResult  The result itself.
    * @param editor     The editor where to display the result.
    */
-  private displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor): void {
+  private displayAndSaveResult(range: Range, runResult: string, editor: vscode.TextEditor): void {
     const resultLines = runResult.split(/\r\n|\r|\n/g)
 
     if (resultLines.length == 0)
       return
 
-    const line = editor.document.lineAt(lineNumber)
+    const lastLine = editor.document.lineAt(range.end.line)
     const decorationOptions = {
-      range: line.range,
+      range: range,
       hoverMessage: new vscode.MarkdownString().appendCodeblock(runResult)
     }
-    const decorationMargin = this.margin - line.text.length
+    const decorationMargin = this.margin - lastLine.text.length
     const decorationText = resultLines[0] + (resultLines.length > 1 ? `<${resultLines.length - 1} lines hidden, hover to see full output>` : "")
     const decorationType = this.createDecoration(decorationMargin, decorationText)
     const decoration = new Decoration(decorationType, decorationOptions)

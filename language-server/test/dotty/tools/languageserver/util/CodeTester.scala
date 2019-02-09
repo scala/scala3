@@ -182,7 +182,7 @@ class CodeTester(projects: List[Project]) {
    *
    * @see dotty.tools.languageserver.util.actions.WorksheetRun
    */
-  def run(marker: CodeMarker, expected: String*): this.type =
+  def run(marker: CodeMarker, expected: (CodeRange, String)*): this.type =
     doAction(new WorksheetRun(marker, expected, strict = true))
 
   /**
@@ -194,7 +194,7 @@ class CodeTester(projects: List[Project]) {
    *
    * @see dotty.tools.languageserver.util.actions.WorksheetRun
    */
-  def runNonStrict(marker: CodeMarker, expected: String*): this.type =
+  def runNonStrict(marker: CodeMarker, expected: (CodeRange, String)*): this.type =
     doAction(new WorksheetRun(marker, expected, strict = false))
 
   /**

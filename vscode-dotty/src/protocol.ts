@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { RequestType, NotificationType } from 'vscode-jsonrpc'
-import { VersionedTextDocumentIdentifier, TextDocumentIdentifier } from 'vscode-languageserver-protocol'
+import { Range, VersionedTextDocumentIdentifier, TextDocumentIdentifier } from 'vscode-languageserver-protocol'
 
 import { client } from './extension'
 
@@ -17,7 +17,13 @@ export interface WorksheetRunResult {
 /** The parameters for the `worksheet/publishOutput` notification. */
 export interface WorksheetPublishOutputParams {
   textDocument: VersionedTextDocumentIdentifier
-  line: number
+  // TODO: remove this property and make `range` non-optional once we
+  // stop supporting Dotty < 0.13.0-RC1
+  /**
+   * @deprecated Use range instead.
+   */
+  line?: number
+  range?: Range
   content: string
 }
 
