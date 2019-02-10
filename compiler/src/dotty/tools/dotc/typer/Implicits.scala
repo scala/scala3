@@ -520,27 +520,32 @@ trait ImplicitRunInfo { self: Run =>
         val comps = new TermRefSet
         tp match {
           case tp: NamedType =>
-            val pre = tp.prefix
-            comps ++= iscopeRefs(pre)
-            def addRef(companion: TermRef): Unit = {
-              val compSym = companion.symbol
-              if (compSym is Package)
-                addRef(companion.select(nme.PACKAGE))
-              else if (compSym.exists)
-                comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
+            if (!tp.symbol.is(Package) || ctx.scala2Mode) {
+              // Don't consider implicits in package prefixes unless under -language:Scala2
+              val pre = tp.prefix
+              comps ++= iscopeRefs(pre)
+              def addRef(companion: TermRef): Unit = {
+                val compSym = companion.symbol
+                if (compSym is Package) {
+                  assert(ctx.scala2Mode)
+                  addRef(companion.select(nme.PACKAGE))
+                }
+                else if (compSym.exists)
+                  comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
+              }
+              def addCompanionOf(sym: Symbol) = {
+                val companion = sym.companionModule
+                if (companion.exists) addRef(companion.termRef)
+              }
+              def addClassScope(cls: ClassSymbol): Unit = {
+                addCompanionOf(cls)
+                for (parent <- cls.classParents; ref <- iscopeRefs(tp.baseType(parent.classSymbol)))
+                  addRef(ref)
+              }
+              val underlyingTypeSym = tp.widen.typeSymbol
+              if (underlyingTypeSym.isOpaqueAlias) addCompanionOf(underlyingTypeSym)
+              else tp.classSymbols(liftingCtx).foreach(addClassScope)
             }
-            def addCompanionOf(sym: Symbol) = {
-              val companion = sym.companionModule
-              if (companion.exists) addRef(companion.termRef)
-            }
-            def addClassScope(cls: ClassSymbol): Unit = {
-              addCompanionOf(cls)
-              for (parent <- cls.classParents; ref <- iscopeRefs(tp.baseType(parent.classSymbol)))
-                addRef(ref)
-            }
-            val underlyingTypeSym = tp.widen.typeSymbol
-            if (underlyingTypeSym.isOpaqueAlias) addCompanionOf(underlyingTypeSym)
-            else tp.classSymbols(liftingCtx).foreach(addClassScope)
           case _ =>
             for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
         }
