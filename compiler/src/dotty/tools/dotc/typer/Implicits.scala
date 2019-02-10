@@ -1105,7 +1105,8 @@ trait Implicits { self: Typer =>
           }
         }
       }
-      else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
+      else if (false &&
+               contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
                 !shadowing.tpe.isError && !refSameAs(shadowing)) {
         implicits.println(i"SHADOWING $ref in ${ref.termSymbol.maybeOwner} is shadowed by $shadowing in ${shadowing.symbol.maybeOwner}")
         SearchFailure(generated1.withTypeUnchecked(
