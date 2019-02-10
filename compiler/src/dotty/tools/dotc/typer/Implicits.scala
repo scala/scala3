@@ -437,20 +437,6 @@ object Implicits {
       em"${err.refStr(ref)} does not $qualify"
   }
 
-  class ShadowedImplicit(ref: TermRef,
-                         shadowing: Type,
-                         val expectedType: Type,
-                         val argument: Tree) extends SearchFailureType {
-    /** same as err.refStr but always prints owner even if it is a term */
-    def show(ref: Type)(implicit ctx: Context): String = ref match {
-      case ref: NamedType if ref.symbol.maybeOwner.isTerm =>
-        i"${ref.symbol} in ${ref.symbol.owner}"
-      case _ => err.refStr(ref)
-    }
-    def explanation(implicit ctx: Context): String =
-      em"${show(ref)} does $qualify but it is shadowed by ${show(shadowing)}"
-  }
-
   class DivergingImplicit(ref: TermRef,
                           val expectedType: Type,
                           val argument: Tree) extends SearchFailureType {
@@ -836,9 +822,6 @@ trait Implicits { self: Typer =>
         shortForm
       case _ =>
         arg.tpe match {
-          case tpe: ShadowedImplicit =>
-            i"""$headline;
-               |${tpe.explanation}."""
           case tpe: SearchFailureType =>
             i"""$headline.
               |I found:
@@ -1047,9 +1030,9 @@ trait Implicits { self: Typer =>
     /** Try to typecheck an implicit reference */
     def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
       val ref = cand.ref
-      var generated: Tree = tpd.ref(ref).withSpan(span.startPos)
+      val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
       val locked = ctx.typerState.ownedVars
-      val generated1 =
+      val adapted =
         if (argument.isEmpty)
           adapt(generated, pt, locked)
         else {
@@ -1071,52 +1054,20 @@ trait Implicits { self: Typer =>
           }
           else tryConversion
         }
-      lazy val shadowing =
-        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName).withSpan(span.toSynthetic))(
-          nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
-
-      /** Is candidate reference the same as the `shadowing` reference? (i.e.
-       *  no actual shadowing occured). This is the case if the
-       *  underlying symbol of the shadowing reference is the same as the
-       *  symbol of the candidate reference, or if they have a common type owner.
-       *
-       *  The second condition (same owner) is needed because the candidate reference
-       *  and the potential shadowing reference are typechecked with different prototypes.
-       *  so might yield different overloaded symbols. E.g. if the candidate reference
-       *  is to an implicit conversion generated from an implicit class, the shadowing
-       *  reference could go to the companion object of that class instead.
-       */
-      def refSameAs(shadowing: Tree): Boolean = {
-        def symMatches(sym: Symbol): Boolean =
-          sym == ref.symbol || sym.owner.isType && sym.owner == ref.symbol.owner
-        def denotMatches(d: Denotation): Boolean = d match {
-          case d: SingleDenotation => symMatches(d.symbol)
-          case d => d.hasAltWith(denotMatches(_))
-        }
-        denotMatches(closureBody(shadowing).denot)
-      }
-
       if (ctx.reporter.hasErrors) {
         ctx.reporter.removeBufferedMessages
         SearchFailure {
-          generated1.tpe match {
-            case _: SearchFailureType => generated1
-            case _ => generated1.withType(new MismatchedImplicit(ref, pt, argument))
+          adapted.tpe match {
+            case _: SearchFailureType => adapted
+            case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
           }
         }
       }
-      else if (false &&
-               contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
-                !shadowing.tpe.isError && !refSameAs(shadowing)) {
-        implicits.println(i"SHADOWING $ref in ${ref.termSymbol.maybeOwner} is shadowed by $shadowing in ${shadowing.symbol.maybeOwner}")
-        SearchFailure(generated1.withTypeUnchecked(
-          new ShadowedImplicit(ref, methPart(shadowing).tpe, pt, argument)))
-      }
       else {
-        val generated2 =
-          if (cand.isExtension) Applications.ExtMethodApply(generated1).withType(generated1.tpe)
-          else generated1
-        SearchSuccess(generated2, ref, cand.level)(ctx.typerState, ctx.gadt)
+        val returned =
+          if (cand.isExtension) Applications.ExtMethodApply(adapted).withType(adapted.tpe)
+          else adapted
+        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
       }
     }}
 
@@ -1326,7 +1277,7 @@ trait Implicits { self: Typer =>
                         case _: AmbiguousImplicits => failure2
                         case _ =>
                           reason match {
-                            case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
+                            case (_: DivergingImplicit) => failure
                             case _ => List(failure, failure2).maxBy(_.tree.treeSize)
                           }
                       }
