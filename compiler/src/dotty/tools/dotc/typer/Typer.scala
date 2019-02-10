@@ -2025,7 +2025,6 @@ class Typer extends Namer
         val result = if (ifpt.exists &&
             xtree.isTerm &&
             !untpd.isContextualClosure(xtree) &&
-            !ctx.mode.is(Mode.ImplicitShadowing) &&
             !ctx.mode.is(Mode.Pattern) &&
             !ctx.isAfterTyper)
           makeContextualFunction(xtree, ifpt)
@@ -2594,7 +2593,6 @@ class Typer extends Namer
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
           !ctx.mode.is(Mode.Pattern) &&
-          !ctx.mode.is(Mode.ImplicitShadowing) &&
           !ctx.isAfterTyper) {
         typr.println(i"insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
