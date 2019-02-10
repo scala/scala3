@@ -1034,9 +1034,6 @@ trait Implicits { self: Typer =>
 
     private def isCoherent = pt.isRef(defn.EqlClass)
 
-    private val cmpContext = nestedContext()
-    private val cmpCandidates = (c1: Candidate, c2: Candidate) => compare(c1.ref, c2.ref, c1.level, c2.level)(cmpContext)
-
     /** The expected type for the searched implicit */
     lazy val fullProto: Type = implicitProto(pt, identity)
 
@@ -1143,13 +1140,14 @@ trait Implicits { self: Typer =>
 
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
+
       /** Compare previous success with reference and level to determine which one would be chosen, if
        *  an implicit starting with the reference was found.
        */
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else if (prev.level != level) prev.level - level
-        else nestedContext().test(implicit ctx => compare(prev.ref, ref, prev.level, level))
+        else nestedContext().test(implicit ctx => compare(prev.ref, ref))
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an

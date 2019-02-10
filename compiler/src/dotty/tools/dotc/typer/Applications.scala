@@ -1181,9 +1181,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Compare to alternatives of an overloaded call or an implicit search.
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
-   *  @param  level1, level2  If alternatives come from a comparison of two contextual
-   *                          implicit candidates, the nesting levels of the candidates.
-   *                          In all other cases the nesting levels are both 0.
    *  @return  1   if 1st alternative is preferred over 2nd
    *          -1   if 2nd alternative is preferred over 1st
    *           0   if neither alternative is preferred over the other
@@ -1191,11 +1188,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  An alternative A1 is preferred over an alternative A2 if it wins in a tournament
    *  that awards one point for each of the following:
    *
-   *   - A1 is nested more deeply than A2
-   *   - The nesting levels of A1 and A2 are the same, and A1's owner derives from A2's owner
+   *   - A1's owner derives from A2's owner.
    *   - A1's type is more specific than A2's type.
    */
-  def compare(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
+  def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
 
@@ -1305,10 +1301,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
     val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
-    val ownerScore =
-      if (nesting1 > nesting2) 1
-      else if (nesting1 < nesting2) -1
-      else compareOwner(owner1, owner2)
+    val ownerScore = compareOwner(owner1, owner2)
 
     val tp1 = stripImplicit(alt1.widen)
     val tp2 = stripImplicit(alt2.widen)
