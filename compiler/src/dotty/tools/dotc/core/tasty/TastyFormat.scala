@@ -58,7 +58,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*
                   OBJECTDEF      Length NameRef Template Modifier*
-                  IMPORT         Length qual_Term Selector*
+                  IMPORT         Length [IMPLIED] qual_Term Selector*
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*
@@ -180,6 +180,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SEALED
                   CASE
                   IMPLICIT
+                  IMPLIED
                   ERASED
                   LAZY
                   OVERRIDE
@@ -324,7 +325,8 @@ object TastyFormat {
   final val OPAQUE = 35
   final val EXTENSION = 36
   final val GIVEN = 37
-  final val PARAMsetter = 38
+  final val IMPLIED = 38
+  final val PARAMsetter = 39
 
   // Cat. 2:    tag Nat
 
@@ -475,6 +477,7 @@ object TastyFormat {
        | SEALED
        | CASE
        | IMPLICIT
+       | IMPLIED
        | ERASED
        | LAZY
        | OVERRIDE
@@ -535,6 +538,7 @@ object TastyFormat {
     case SEALED => "SEALED"
     case CASE => "CASE"
     case IMPLICIT => "IMPLICIT"
+    case IMPLIED => "IMPLIED"
     case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"

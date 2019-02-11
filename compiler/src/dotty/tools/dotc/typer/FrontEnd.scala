@@ -66,7 +66,7 @@ class FrontEnd extends Phase {
 
   private def firstTopLevelDef(trees: List[tpd.Tree])(implicit ctx: Context): Symbol = trees match {
     case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
-    case Import(_, _) :: defs        => firstTopLevelDef(defs)
+    case Import(_, _, _) :: defs     => firstTopLevelDef(defs)
     case (tree @ TypeDef(_, _)) :: _ => tree.symbol
     case _ => NoSymbol
   }

@@ -16,8 +16,8 @@ object ImportInfo {
   def rootImport(refFn: () => TermRef)(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(expr, selectors)
-    new ImportInfo(implicit ctx => imp.symbol, selectors, None, isRootImport = true)
+    def imp(implicit ctx: Context) = tpd.Import(impliedOnly = false, expr, selectors)
+    new ImportInfo(implicit ctx => imp.symbol, selectors, None, impliedOnly = false, isRootImport = true)
   }
 }
 
@@ -26,11 +26,14 @@ object ImportInfo {
  *  @param   selectors    The selector clauses
  *  @param   symNameOpt   Optionally, the name of the import symbol. None for root imports.
  *                        Defined for all explicit imports from ident or select nodes.
+ *  @param   impliedOnly  true if this is an implied import
  *  @param   isRootImport true if this is one of the implicit imports of scala, java.lang,
  *                        scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
-                 symNameOpt: Option[TermName], val isRootImport: Boolean = false) extends Showable {
+                 symNameOpt: Option[TermName],
+                 val impliedOnly: Boolean,
+                 val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
@@ -92,17 +95,19 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     recur(selectors)
   }
 
+  private def implicitFlag = if (impliedOnly) Implied else Implicit
+
   /** The implicit references imported by this import clause */
   def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
     val pre = site
     if (isWildcardImport) {
-      val refs = pre.implicitMembers
+      val refs = pre.implicitMembers(implicitFlag)
       if (excluded.isEmpty) refs
       else refs filterNot (ref => excluded contains ref.name.toTermName)
     } else
       for {
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is Implicit)
+        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is implicitFlag)
       } yield {
         val original = reverseMapping(renamed)
         val ref = TermRef(pre, original, denot)

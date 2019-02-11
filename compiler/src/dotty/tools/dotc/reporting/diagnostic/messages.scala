@@ -1507,8 +1507,7 @@ object messages {
     val explanation: String = ""
   }
 
-  case class TypesAndTraitsCantBeImplicit(sym: Symbol)(
-    implicit ctx: Context)
+  case class TypesAndTraitsCantBeImplicit()(implicit ctx: Context)
     extends Message(TypesAndTraitsCantBeImplicitID) {
     val msg: String = hl"""${"implicit"} modifier cannot be used for types or traits"""
     val kind: String = "Syntax"

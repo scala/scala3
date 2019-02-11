@@ -72,12 +72,13 @@ trait TreeOps extends Core {
 
   val Import: ImportModule
   abstract class ImportModule {
-    def apply(expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
-    def copy(original: Import)(expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
-    def unapply(imp: Tree)(implicit ctx: Context): Option[(Term, List[ImportSelector])]
+    def apply(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
+    def copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
+    def unapply(imp: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])]
   }
 
   trait ImportAPI {
+    def impliedOnly: Boolean
     def expr(implicit ctx: Context): Term
     def selectors(implicit ctx: Context): List[ImportSelector]
   }

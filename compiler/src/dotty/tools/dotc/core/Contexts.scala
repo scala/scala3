@@ -13,6 +13,7 @@ import Scopes._
 import Uniques._
 import ast.Trees._
 import ast.untpd
+import Flags.ImplicitOrImplied
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
@@ -214,7 +215,7 @@ object Contexts {
         implicitsCache = {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
-              try owner.thisType.implicitMembers
+              try owner.thisType.implicitMembers(ImplicitOrImplied)
               catch {
                 case ex: CyclicReference => Nil
               }
@@ -404,7 +405,8 @@ object Contexts {
         case ref: RefTree[_] => Some(ref.name.asTermName)
         case _               => None
       }
-      ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
+      ctx.fresh.setImportInfo(
+        new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt, imp.impliedOnly))
     }
 
     /** Does current phase use an erased types interpretation? */

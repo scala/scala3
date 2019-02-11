@@ -1873,7 +1873,8 @@ object SymDenotations {
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this is Package) Iterator.empty
-            else info.decls.iterator filter (_ is Implicit)
+              // implicits in package objects are added by the overriding `memberNames` in `PackageClassDenotation`
+            else info.decls.iterator filter (_ is ImplicitOrImplied)
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names

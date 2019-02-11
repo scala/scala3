@@ -133,7 +133,7 @@ object PostConditions {
 }
 
 object Test {
-  import PostConditions.ensuring
+  import PostConditions.{ensuring, result}
   val s = List(1, 2, 3).sum.ensuring(result == 6)
 }
 ```

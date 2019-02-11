@@ -783,7 +783,7 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, accept(ARROW)) {
           val t = typ()
-          if (imods.is(Implicit | Given | Erased)) new FunctionWithMods(params, t, imods)
+          if (imods.is(Given | Erased)) new FunctionWithMods(params, t, imods)
           else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
@@ -817,7 +817,7 @@ object Parsers {
             }
             openParens.change(LPAREN, -1)
             accept(RPAREN)
-            if (imods.is(Implicit) || isValParamList || in.token == ARROW)
+            if (isValParamList || in.token == ARROW)
               functionRest(ts)
             else {
               val ts1 =
@@ -2157,11 +2157,13 @@ object Parsers {
     def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
       md.withMods(mods).setComment(in.getDocComment(start))
 
-    /** Import  ::= import ImportExpr {`,' ImportExpr}
+    /** Import  ::= import [implied] [ImportExpr {`,' ImportExpr}
      */
     def importClause(): List[Tree] = {
       val offset = accept(IMPORT)
-      commaSeparated(importExpr) match {
+      val impliedOnly = in.token == IMPLIED
+      if (impliedOnly) in.nextToken()
+      commaSeparated(importExpr(impliedOnly)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -2174,21 +2176,24 @@ object Parsers {
 
     /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
      */
-    val importExpr: () => Import = () => path(thisOK = false, handleImport) match {
-      case imp: Import =>
-        imp
-      case sel @ Select(qual, name) =>
-        val selector = atSpan(pointOffset(sel)) { Ident(name) }
-        cpy.Import(sel)(qual, selector :: Nil)
-      case t =>
-        accept(DOT)
-        Import(t, Ident(nme.WILDCARD) :: Nil)
-    }
+    def importExpr(impliedOnly: Boolean): () => Import = {
 
-    val handleImport: Tree => Tree = { tree: Tree =>
-      if (in.token == USCORE) Import(tree, importSelector() :: Nil)
-      else if (in.token == LBRACE) Import(tree, inBraces(importSelectors()))
-      else tree
+      val handleImport: Tree => Tree = { tree: Tree =>
+        if (in.token == USCORE) Import(impliedOnly, tree, importSelector() :: Nil)
+        else if (in.token == LBRACE) Import(impliedOnly, tree, inBraces(importSelectors()))
+        else tree
+      }
+
+      () => path(thisOK = false, handleImport) match {
+        case imp: Import =>
+          imp
+        case sel @ Select(qual, name) =>
+          val selector = atSpan(pointOffset(sel)) { Ident(name) }
+          cpy.Import(sel)(impliedOnly, qual, selector :: Nil)
+        case t =>
+          accept(DOT)
+          Import(impliedOnly, t, Ident(nme.WILDCARD) :: Nil)
+      }
     }
 
     /** ImportSelectors ::= `{' {ImportSelector `,'} (ImportSelector | `_') `}'

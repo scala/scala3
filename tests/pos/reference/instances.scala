@@ -140,8 +140,10 @@ object Instances extends Common {
 
   class Token(str: String)
 
-  implied StringToToken for Conversion[String, Token] {
-    def apply(str: String): Token = new Token(str)
+  object Token {
+    implied StringToToken for Conversion[String, Token] {
+      def apply(str: String): Token = new Token(str)
+    }
   }
 
   val x: Token = "if"
@@ -246,7 +248,8 @@ object Implicits extends Common {
 
 object Test extends App {
   Instances.test()
-  import PostConditions._
+  import PostConditions.result
+  import implied PostConditions._
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 }
@@ -263,22 +266,29 @@ object Completions {
     case Response(f: Future[HttpResponse])
     case Status(code: Future[StatusCode])
   }
+  object CompletionArg {
+
+    // conversions defining the possible arguments to pass to `complete`
+    // these always come with CompletionArg
+    // They can be invoked explicitly, e.g.
+    //
+    //   CompletionArg.from(statusCode)
+
+    implied fromString for Conversion[String, CompletionArg] {
+      def apply(s: String) = CompletionArg.Error(s)
+    }
+    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] {
+      def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
+    }
+    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] {
+      def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
+    }
+  }
   import CompletionArg._
 
   def complete[T](arg: CompletionArg) = arg match {
     case Error(s) => ???
     case Response(f) => ???
     case Status(code) => ???
-  }
-
-  // conversions defining the possible arguments to pass to `complete`
-  implied stringArg for Conversion[String, CompletionArg] {
-    def apply(s: String) = CompletionArg.Error(s)
-  }
-  implied responseArg for Conversion[Future[HttpResponse], CompletionArg] {
-    def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
-  }
-  implied statusArg for Conversion[Future[StatusCode], CompletionArg] {
-    def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
   }
 }

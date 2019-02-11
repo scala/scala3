@@ -20,6 +20,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   def ImportDeco(imp: Import): ImportAPI = new ImportAPI {
+    def impliedOnly: Boolean = imp.impliedOnly
     def expr(implicit ctx: Context): Tree = imp.expr
     def selectors(implicit ctx: Context): List[ImportSelector] = imp.selectors
   }
@@ -208,14 +209,14 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
   }
 
   object Import extends ImportModule {
-    def apply(expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
-      tpd.Import(expr, selectors)
+    def apply(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
+      tpd.Import(impliedOnly, expr, selectors)
 
-    def copy(original: Import)(expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
-      tpd.cpy.Import(original)(expr, selectors)
+    def copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
+      tpd.cpy.Import(original)(impliedOnly, expr, selectors)
 
-    def unapply(x: Tree)(implicit ctx: Context): Option[(Term, List[ImportSelector])] = x match {
-      case x: tpd.Import => Some((x.expr, x.selectors))
+    def unapply(x: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])] = x match {
+      case x: tpd.Import => Some((x.impliedOnly, x.expr, x.selectors))
       case _ => None
     }
   }
