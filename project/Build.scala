@@ -962,7 +962,7 @@ object Build {
       }.dependsOn(compile in Compile).evaluated
     )
 
-  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{dotty-bootstrapped.version,sbt-dotty.sbt}.")
+  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{dotty-bootstrapped.version,sbt-dotty-sbt}.")
 
   lazy val `community-build` = project.in(file("community-build")).
     settings(commonNonBootstrappedSettings).
@@ -978,7 +978,7 @@ object Build {
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `dotty-bootstrapped`).value
         val pluginText = s"""addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")"""
-        IO.write(baseDirectory.value / "sbt-dotty.sbt", pluginText)
+        IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
         IO.write(baseDirectory.value / "dotty-bootstrapped.version", dottyVersion)
       },
       (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
