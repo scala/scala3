@@ -505,6 +505,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       this
     }
 
+    protected def updateCheckFile(checkFile: JFile, lines: Seq[String]): Unit = {
+      val outFile = dotty.tools.io.File(checkFile.toPath)
+      outFile.writeAll(lines.mkString("", EOL, EOL))
+      echo("Updated checkfile: " + checkFile.getPath)
+    }
+
     /** Returns all files in directory or the file if not a directory */
     private def flattenFiles(f: JFile): Array[JFile] =
       if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
@@ -537,28 +543,32 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                     val output = Source.fromFile(outDir.getParent + "_decompiled" + JFile.separator + outDir.getName
                       + JFile.separator + "decompiled.scala", "UTF-8").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
-                    }.toList
+                    }.filter(!_.startsWith(ignoredFilePathLine)).toList
 
-                    val check: String = Source.fromFile(checkFile, "UTF-8").getLines().filter(!_.startsWith(ignoredFilePathLine))
+                    val check: String = Source.fromFile(checkFile, "UTF-8").getLines()
                       .mkString(EOL)
 
-                    if (output.filter(!_.startsWith(ignoredFilePathLine)).mkString(EOL) != check) {
+                    if (output.mkString(EOL) != check) {
                       val outFile = dotty.tools.io.File(checkFile.toPath).addExtension(".out")
-                      outFile.writeAll(output.mkString(EOL))
-                      val msg =
-                        s"""Output differed for test $name, use the following command to see the diff:
-                           |  > diff $checkFile $outFile
+                      if (summaryReport.updateCheckFiles) {
+                        updateCheckFile(checkFile, output)
+                      } else {
+                        outFile.writeAll(output.mkString("", EOL, ""))
+                        val msg =
+                          s"""Output differed for test $name, use the following command to see the diff:
+                             |  > diff $checkFile $outFile
                         """.stripMargin
 
-                      echo(msg)
-                      addFailureInstruction(msg)
+                        echo(msg)
+                        addFailureInstruction(msg)
 
-                      // Print build instructions to file and summary:
-                      val buildInstr = testSource.buildInstructions(0, rep.warningCount)
-                      addFailureInstruction(buildInstr)
+                        // Print build instructions to file and summary:
+                        val buildInstr = testSource.buildInstructions(0, rep.warningCount)
+                        addFailureInstruction(buildInstr)
 
-                      // Fail target:
-                      failTestSource(testSource)
+                        // Fail target:
+                        failTestSource(testSource)
+                      }
                     }
                   case _ =>
                 }
@@ -631,6 +641,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             // Fail target:
             failTestSource(testSource)
+
+            if (summaryReport.updateCheckFiles)
+              updateCheckFile(checkFile.get, outputLines)
           }
         }
 
@@ -766,7 +779,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
         def checkFileTest(sourceName: String, checkFile: JFile, actual: List[String]) = {
           val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
-          diffMessage(sourceName, actual, expexted).foreach(fail)
+          for (msg <- diffMessage(sourceName, actual, expexted)) {
+            fail(msg)
+            if (summaryReport.updateCheckFiles)
+              updateCheckFile(checkFile, actual)
+          }
         }
 
         val (compilerCrashed, expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {

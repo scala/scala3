@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/i1444/Test.class */
 object Test {
   class Cls(implicit x: Test.X)
   class ClsImpl() extends Test.Cls()(Test.AnX)

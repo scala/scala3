@@ -40,6 +40,9 @@ trait SummaryReporting {
 
   /** Echoes contents of `it` to file *immediately* then flushes */
   def echoToLog(it: Iterator[String]): Unit
+
+  /** Echoes outputs of the test into the thier checkfiles */
+  def updateCheckFiles: Boolean
 }
 
 /** A summary report that doesn't do anything */
@@ -53,12 +56,13 @@ final class NoSummaryReport extends SummaryReporting {
   def echoSummary(): Unit = ()
   def echoToLog(msg: String): Unit = ()
   def echoToLog(it: Iterator[String]): Unit = ()
+  def updateCheckFiles: Boolean = false
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
  *  which outputs to a log file in `./testlogs/`
  */
-final class SummaryReport extends SummaryReporting {
+final class SummaryReport(val updateCheckFiles: Boolean) extends SummaryReporting {
   import scala.collection.JavaConverters._
 
   private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]

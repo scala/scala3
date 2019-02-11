@@ -72,6 +72,6 @@ class IdempotencyTests extends ParallelTesting {
 }
 
 object IdempotencyTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

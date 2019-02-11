@@ -303,7 +303,7 @@ class CompilationTests extends ParallelTesting {
 }
 
 object CompilationTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 
   def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] = {

@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/lambda/foo/Foo.class */
 package foo {
   class Foo() {
     ((x: scala.Int) => 2)

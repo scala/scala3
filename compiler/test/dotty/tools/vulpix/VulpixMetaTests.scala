@@ -20,7 +20,7 @@ class VulpixMetaTests extends ParallelTesting {
   def isInteractive = false // Don't beautify output for interactive use.
   def testFilter = None // Run all the tests.
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
   implicit def testGroup: TestGroup = TestGroup("VulpixMetaTests")
 
   @Test def compilePos: Unit = compileFilesInDir("tests/vulpix-tests/meta/pos", defaultOptions).checkCompile()

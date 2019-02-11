@@ -51,6 +51,6 @@ class FromTastyTests extends ParallelTesting {
 }
 
 object FromTastyTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

@@ -1,4 +1,3 @@
-/** Decompiled from out/runTestFromTasty/run/literals/Test.tasty */
 object Test {
   def αρετη: java.lang.String = "alpha rho epsilon tau eta"
   case class GGG(i: scala.Int) {
