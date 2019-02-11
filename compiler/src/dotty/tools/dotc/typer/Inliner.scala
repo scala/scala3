@@ -531,9 +531,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** A utility object offering methods for rewriting inlined code */
   object reducer {
 
+    import dotty.tools.dotc.core.Contexts.GADTMap
+
     /** An extractor for terms equivalent to `new C(args)`, returning the class `C`,
      *  a list of bindings, and the arguments `args`. Can see inside blocks and Inlined nodes and can
      *  follow a reference to an inline value binding to its right hand side.
+ *
      *  @return    optionally, a triple consisting of
      *             - the class `C`
      *             - the arguments `args`
@@ -729,7 +732,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: List[CaseDef], typer: Typer)(implicit ctx: Context): MatchRedux = {
 
       val isImplicit = scrutinee.isEmpty
-      val gadtSyms = typer.gadtSyms(scrutType)
 
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
        *  bindings for variables bound in this pattern to `caseBindingMap`.
@@ -920,7 +922,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
 
         if (!isImplicit) caseBindingMap += ((NoSymbol, scrutineeBinding))
-        val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
+        val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GADTflexible)
         if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(gadtCtx)) {
           val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
           val guardOK = cdef.guard.isEmpty || {

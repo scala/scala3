@@ -1047,37 +1047,8 @@ class Typer extends Namer
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
 
-  /** gadtSyms = "all type parameters of enclosing methods that appear
-    *              non-variantly in the selector type" todo: should typevars
-    *              which appear with variances +1 and -1 (in different
-    *              places) be considered as well?
-    */
-  def gadtSyms(selType: Type)(implicit ctx: Context): Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
-    val accu = new TypeAccumulator[Set[Symbol]] {
-      def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
-        val tsyms1 = t match {
-          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
-            tsyms + tr.symbol
-          case _ =>
-            tsyms
-        }
-        foldOver(tsyms1, t)
-      }
-    }
-    accu(Set.empty, selType)
-  }
-
-  /** Context with fresh GADT bounds for all gadtSyms */
-  def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context): Context = {
-    val gadtCtx = ctx.fresh.setFreshGADTBounds
-    for (sym <- gadtSyms)
-      if (!gadtCtx.gadt.contains(sym)) gadtCtx.gadt.addEmptyBounds(sym)
-    gadtCtx
-  }
-
   def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] = {
-    val gadts = gadtSyms(selType)
-    cases.mapconserve(typedCase(_, selType, pt, gadts))
+    cases.mapconserve(typedCase(_, selType, pt))
   }
 
   /** - strip all instantiated TypeVars from pattern types.
@@ -1105,9 +1076,9 @@ class Typer extends Namer
     }
 
   /** Type a case. */
-  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
+  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type)(implicit ctx: Context): CaseDef = track("typedCase") {
     val originalCtx = ctx
-    val gadtCtx = gadtContext(gadtSyms)
+    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
 
     def caseRest(pat: Tree)(implicit ctx: Context) = {
       val pat1 = indexPattern(tree).transform(pat)
@@ -1537,19 +1508,38 @@ class Typer extends Namer
     if (sym is ImplicitOrImplied) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
-    var rhsCtx = ctx
-    if (sym.isConstructor && !sym.isPrimaryConstructor && tparams1.nonEmpty) {
-      // for secondary constructors we need a context that "knows"
-      // that their type parameters are aliases of the class type parameters.
-      // See pos/i941.scala
-      rhsCtx = ctx.fresh.setFreshGADTBounds
-      (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
-        val tr = tparam.typeRef
-        rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
-        rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
+    val rhsCtx: Context = {
+      var _result: FreshContext = null
+      def resultCtx(): FreshContext = {
+        if (_result == null) _result = ctx.fresh
+        _result
       }
+
+      if (tparams1.nonEmpty) {
+        resultCtx().setFreshGADTBounds
+        if (!sym.isConstructor) {
+          // if we're _not_ in a constructor, allow constraining type parameters
+          tparams1.foreach { tdef =>
+            val tb @ TypeBounds(lo, hi) = tdef.symbol.info.bounds
+            resultCtx().gadt.addBound(tdef.symbol, lo, isUpper = false)
+            resultCtx().gadt.addBound(tdef.symbol, hi, isUpper = true)
+          }
+        } else if (!sym.isPrimaryConstructor) {
+          // otherwise, for secondary constructors we need a context that "knows"
+          // that their type parameters are aliases of the class type parameters.
+          // See pos/i941.scala
+          (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
+            val tr = tparam.typeRef
+            resultCtx().gadt.addBound(tdef.symbol, tr, isUpper = false)
+            resultCtx().gadt.addBound(tdef.symbol, tr, isUpper = true)
+          }
+        }
+      }
+
+      if (sym.isInlineMethod) resultCtx().addMode(Mode.InlineableBody)
+
+      if (_result ne null) _result else ctx
     }
-    if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
     if (sym.isInlineMethod) {

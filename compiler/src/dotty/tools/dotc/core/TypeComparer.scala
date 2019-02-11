@@ -455,7 +455,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 case _ => false
               }) ||
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
-            GADTusage(tp2.symbol)
+            { tp1.isRef(NothingClass) || GADTusage(tp2.symbol) }
         }
         isSubApproxHi(tp1, info2.lo) || compareGADT || fourthTry
 
@@ -714,7 +714,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               (gbounds1 != null) &&
                 (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
-                GADTusage(tp1.symbol)
+                { tp2.isRef(AnyClass) || GADTusage(tp1.symbol) }
             }
             isSubType(hi1, tp2, approx.addLow) || compareGADT
           case _ =>

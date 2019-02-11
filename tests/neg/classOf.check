@@ -2,5 +2,7 @@
 Test.C{I = String} is not a class type
 [116..117] in classOf.scala
 T is not a class type
+
+where:    T is a type in method f2 with bounds <: String
 [72..73] in classOf.scala
 T is not a class type
