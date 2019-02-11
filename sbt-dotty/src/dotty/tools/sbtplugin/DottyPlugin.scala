@@ -163,7 +163,7 @@ object DottyPlugin extends AutoPlugin {
           inc
       },
 
-      scalaCompilerBridgeBinaryJar := Def.taskDyn {
+      scalaCompilerBridgeBinaryJar := Def.settingDyn {
         if (isDotty.value) Def.task {
           val dottyBridgeArtifacts = fetchArtifactsOf("dotty-sbt-bridge", CrossVersion.disabled).value
           val jars = dottyBridgeArtifacts.filter(art => art.getName.startsWith("dotty-sbt-bridge") && art.getName.endsWith(".jar")).toArray
