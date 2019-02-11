@@ -1376,7 +1376,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  Test that the resulting bounds are still satisfiable.
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
-    val boundImprecise = if (isUpper) approx.high else approx.low
+    val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GADTflexible) && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
