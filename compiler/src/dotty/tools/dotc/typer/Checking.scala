@@ -647,17 +647,9 @@ trait Checking {
         sym.info.finalResultType.classSymbols.exists(_.isLinkedWith(conv.owner)) ||
         defn.isPredefClass(conv.owner) ||
         conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
-      if (!conversionOK) {
-        val symToShow =
-          if (sym.is(Implicit)) sym
-          else {
-            assert(sym.name == nme.apply)
-            sym.owner
-          }
-        val clsSyms = sym.info.finalResultType.classSymbols.map(_.linkedClass)
+      if (!conversionOK)
         checkFeature(defn.LanguageModuleClass, nme.implicitConversions,
           i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
-      }
     }
 
   /** Issue a feature warning if feature is not enabled */
