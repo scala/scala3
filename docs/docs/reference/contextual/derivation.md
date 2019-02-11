@@ -317,7 +317,7 @@ calling the `error` method defined in `scala.compiletime`.
 ```scala
 implied [T] with (elemEq: Eq[T]) for Eq[Tree[T]] {
   def eql(x: Tree[T], y: Tree[T]): Boolean = {
-    val ev = infer[Generic[Tree[T]]]
+    val ev = the[Generic[Tree[T]]]
     val mx = ev.reflect(x)
     val my = ev.reflect(y)
     mx.ordinal == my.ordinal && {

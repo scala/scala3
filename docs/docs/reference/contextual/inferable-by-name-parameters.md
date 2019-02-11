@@ -19,7 +19,7 @@ implied optionCodec[T] given (ev: => Codec[T]) for Codec[Option[T]] {
   }
 }
 
-val s = infer[Codec[Option[Int]]]
+val s = the[Codec[Option[Int]]]
 
 s.write(Some(33))
 s.write(None)
@@ -54,7 +54,7 @@ The precise steps for constructing an inferable argument for a by-name parameter
 In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
-val s = infer[Test.Codec[Option[Int]]](
+val s = the[Test.Codec[Option[Int]]](
   optionCodec[Int](intCodec))
 ```
 
