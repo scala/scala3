@@ -634,17 +634,23 @@ trait Checking {
    *    - it is defined in Predef
    *    - it is the scala.reflect.Selectable.reflectiveSelectable conversion
    */
-  def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = {
-    val conversionOK =
-      !sym.exists ||
-      sym.is(Synthetic) ||
-      sym.info.finalResultType.classSymbols.exists(_.owner.isLinkedWith(sym.owner)) ||
-      defn.isPredefClass(sym.owner) ||
-      sym.name == nme.reflectiveSelectable && sym.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
-    if (!conversionOK)
-      checkFeature(defn.LanguageModuleClass, nme.implicitConversions,
-        i"Use of implicit conversion ${sym.showLocated}", NoSymbol, posd.sourcePos)
-  }
+  def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit =
+    if (sym.exists) {
+      val conv =
+        if (sym.is(Implicit)) sym
+        else {
+          assert(sym.name == nme.apply)
+          sym.owner
+        }
+      val conversionOK =
+        conv.is(Synthetic) ||
+        sym.info.finalResultType.classSymbols.exists(_.isLinkedWith(conv.owner)) ||
+        defn.isPredefClass(conv.owner) ||
+        conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
+      if (!conversionOK)
+        checkFeature(defn.LanguageModuleClass, nme.implicitConversions,
+          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
+    }
 
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(base: ClassSymbol,
