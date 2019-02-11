@@ -3772,12 +3772,12 @@ object Types {
 
     def reduced(implicit ctx: Context): Type = {
       val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
-      val cmp = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
+      val typeComparer = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
 
       def reduceSequential(cases: List[Type])(implicit ctx: Context): Type = cases match {
         case Nil => NoType
         case cas :: cases1 =>
-          val r = cmp.matchCase(scrutinee, cas, instantiate = true)
+          val r = typeComparer.matchCase(scrutinee, cas, instantiate = true)
           if (r.exists) r
           else if (cantPossiblyMatch(cas)) reduceSequential(cases1)
           else NoType
@@ -3785,7 +3785,7 @@ object Types {
 
       def reduceParallel(implicit ctx: Context) = {
         val applicableBranches = cases
-          .map(cmp.matchCase(scrutinee, _, instantiate = true)(trackingCtx))
+          .map(typeComparer.matchCase(scrutinee, _, instantiate = true)(trackingCtx))
           .filter(_.exists)
         applicableBranches match {
           case Nil => NoType
@@ -3815,9 +3815,9 @@ object Types {
 
       def updateReductionContext() = {
         reductionContext = new mutable.HashMap
-        for (tp <- cmp.footprint)
+        for (tp <- typeComparer.footprint)
           reductionContext(tp) = contextInfo(tp)
-        typr.println(i"footprint for $this $hashCode: ${cmp.footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+        typr.println(i"footprint for $this $hashCode: ${typeComparer.footprint.toList.map(x => (x, contextInfo(x)))}%, %")
       }
 
       def upToDate =
