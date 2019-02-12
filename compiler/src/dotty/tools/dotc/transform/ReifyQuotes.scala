@@ -259,7 +259,7 @@ class ReifyQuotes extends MacroTransform {
      *
      *  See: `capture`
      *
-     *  At the same time register `embedded` trees `x` and `y` to place as arguments of the hole
+     *  At the same time register embedded trees `x` and `y` to place as arguments of the hole
      *  placed in the original code.
      *     '{
      *        val x = ???
