@@ -156,11 +156,13 @@ object ParseResult {
       case CommandExtract(_) | "" => false
       case _ => {
         val reporter = newStoreReporter
+        val source = SourceFile.virtual("<incomplete-handler>", sourceCode)
+        val localCtx = ctx.fresh.setSource(source).setReporter(reporter)
         var needsMore = false
         reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(sourceCode)(ctx.fresh.setReporter(reporter))
-          !reporter.hasErrors && needsMore
+          parseStats(sourceCode)(localCtx)
         }
+        !reporter.hasErrors && needsMore
       }
     }
 }

@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleInline/Foo.class */
 class Foo() {
   inline def foo: scala.Int = (9: scala.Int)
   def bar: scala.Int = (9: scala.Int)

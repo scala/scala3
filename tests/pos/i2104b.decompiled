@@ -1,10 +1,8 @@
-/** Decompiled from out/posTestFromTasty/pos/i2104b/Cons.tasty */
 trait Cons[+H, +T]() extends java.lang.Object
 object Cons {
   def apply[H, T](h: H, t: T): Cons[H, T] = scala.Predef.???
   def unapply[H, T](t: Cons[H, T]): scala.Option[Pair[H, T]] = scala.Predef.???
 }
-/** Decompiled from out/posTestFromTasty/pos/i2104b/Pair.tasty */
 case class Pair[A, B](_1: A, _2: B) {
   override def hashCode(): scala.Int = {
     var acc: scala.Int = 2479866
@@ -32,7 +30,6 @@ case class Pair[A, B](_1: A, _2: B) {
   }
 }
 object Pair extends scala.AnyRef
-/** Decompiled from out/posTestFromTasty/pos/i2104b/Test.tasty */
 object Test {
   def main(args: scala.Array[scala.Predef.String]): scala.Unit = Cons.apply[scala.Option[scala.Int], scala.None.type](scala.Option.apply[scala.Int](1), scala.None) match {
     case Cons(scala.Some(i), scala.None) =>

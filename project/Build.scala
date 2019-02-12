@@ -85,9 +85,6 @@ object Build {
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
-  // Run TASTY tests with filter through vulpix test suite
-  val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
-
   // Spawns a repl with the correct classpath
   val repl = inputKey[Unit]("run the REPL with correct classpath")
 
@@ -438,15 +435,6 @@ object Build {
     case Bootstrapped => `dotty-doc-bootstrapped`
   }
 
-  def testOnlyFiltered(test: String, options: String) = Def.inputTaskDyn {
-    val args = spaceDelimited("<arg>").parsed
-    val cmd = s" $test -- $options" + {
-      if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
-      else ""
-    }
-    (testOnly in Test).toTask(cmd)
-  }
-
   def findLib(attList: Seq[Attributed[File]], name: String) = attList
     .map(_.data.getAbsolutePath)
     .find(_.contains(name))
@@ -547,8 +535,17 @@ object Build {
         jarOpts ::: tuning ::: agentOptions ::: ci_build
       },
 
-      testCompilation := testOnlyFiltered("dotty.tools.dotc.*CompilationTests", "--exclude-categories=dotty.SlowTests").evaluated,
-      testFromTasty := testOnlyFiltered("dotty.tools.dotc.FromTastyTests", "").evaluated,
+      testCompilation := Def.inputTaskDyn {
+        val args = spaceDelimited("<arg>").parsed
+        val updateCheckfile = args.contains("--update-checkfiles")
+        val fromTasty = args.contains("--from-tasty")
+        val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
+        val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
+        val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+          (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=true" else "") +
+          (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
+        (testOnly in Test).toTask(cmd)
+      }.evaluated,
 
       dotr := {
         val args: List[String] = spaceDelimited("<arg>").parsed.toList
@@ -962,7 +959,7 @@ object Build {
       }.dependsOn(compile in Compile).evaluated
     )
 
-  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{dotty-bootstrapped.version,sbt-dotty.sbt}.")
+  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{dotty-bootstrapped.version,sbt-dotty-sbt}.")
 
   lazy val `community-build` = project.in(file("community-build")).
     settings(commonNonBootstrappedSettings).
@@ -978,7 +975,7 @@ object Build {
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `dotty-bootstrapped`).value
         val pluginText = s"""addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")"""
-        IO.write(baseDirectory.value / "sbt-dotty.sbt", pluginText)
+        IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
         IO.write(baseDirectory.value / "dotty-bootstrapped.version", dottyVersion)
       },
       (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,

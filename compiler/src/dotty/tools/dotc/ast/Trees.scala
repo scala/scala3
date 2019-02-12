@@ -762,7 +762,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
+  case class Import[-T >: Untyped] private[ast] (impliedOnly: Boolean, expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
@@ -1156,9 +1156,9 @@ object Trees {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(tree.source))
       }
-      def Import(tree: Tree)(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
-        case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
-        case _ => finalize(tree, untpd.Import(expr, selectors)(tree.source))
+      def Import(tree: Tree)(impliedOnly: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
+        case tree: Import if (impliedOnly == tree.impliedOnly) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case _ => finalize(tree, untpd.Import(impliedOnly, expr, selectors)(tree.source))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
@@ -1303,8 +1303,8 @@ object Trees {
               cpy.TypeDef(tree)(name, transform(rhs))
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
-            case Import(expr, selectors) =>
-              cpy.Import(tree)(transform(expr), selectors)
+            case Import(impliedOnly, expr, selectors) =>
+              cpy.Import(tree)(impliedOnly, transform(expr), selectors)
             case PackageDef(pid, stats) =>
               cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(localCtx))
             case Annotated(arg, annot) =>
@@ -1427,7 +1427,7 @@ object Trees {
               this(x, rhs)
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
-            case Import(expr, selectors) =>
+            case Import(impliedOnly, expr, selectors) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
               this(this(x, pid), stats)(localCtx)

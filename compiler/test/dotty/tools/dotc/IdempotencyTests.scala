@@ -24,6 +24,7 @@ class IdempotencyTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {

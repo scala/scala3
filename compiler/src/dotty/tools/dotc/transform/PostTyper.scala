@@ -300,7 +300,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: LambdaTypeTree =>
           VarianceChecker.checkLambda(tree)
           super.transform(tree)
-        case Import(expr, selectors) =>
+        case Import(_, expr, selectors) =>
           val exprTpe = expr.tpe
           val seen = mutable.Set.empty[Name]
           def checkIdent(ident: untpd.Ident): Unit = {

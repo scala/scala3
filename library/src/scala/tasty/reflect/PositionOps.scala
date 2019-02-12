@@ -26,6 +26,9 @@ trait PositionOps extends Core {
     /** The end column in the source file */
     def endColumn: Int
 
+    /** Source code within the position */
+    def sourceCode: String
+
   }
   implicit def PositionDeco(pos: Position): PositionAPI
 

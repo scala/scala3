@@ -145,7 +145,7 @@ trait Deriving { this: Typer =>
       if (ctx.denotNamed(instanceName).exists) {
         if (reportErrors) ctx.error(i"duplicate typeclass derivation for $clsName", pos)
       }
-      else add(newMethod(instanceName, info, pos.span, Implicit))
+      else add(newMethod(instanceName, info, pos.span, Implied))
     }
 
     /** Check derived type tree `derived` for the following well-formedness conditions:

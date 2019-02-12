@@ -532,9 +532,13 @@ class TreePickler(pickler: TastyPickler) {
             }
             pickleStats(tree.constr :: rest)
           }
-        case Import(expr, selectors) =>
+        case Import(impliedOnly, expr, selectors) =>
           writeByte(IMPORT)
-          withLength { pickleTree(expr); pickleSelectors(selectors) }
+          withLength {
+            if (impliedOnly) writeByte(IMPLIED)
+            pickleTree(expr)
+            pickleSelectors(selectors)
+          }
         case PackageDef(pid, stats) =>
           writeByte(PACKAGE)
           withLength { pickleType(pid.tpe); pickleStats(stats) }
@@ -646,6 +650,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Scala2x) writeByte(SCALA2X)
     if (isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
+      if (flags is Implied) writeByte(IMPLIED)
       if (flags is Erased) writeByte(ERASED)
       if (flags.is(Lazy, butNot = Module)) writeByte(LAZY)
       if (flags is AbsOverride) { writeByte(ABSTRACT); writeByte(OVERRIDE) }

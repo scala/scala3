@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleSingleton/Foo.class */
 class Foo() {
   def foo(x: scala.Int): scala.Unit = {
     val a: x.type = x

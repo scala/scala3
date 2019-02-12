@@ -1,4 +1,3 @@
-/** Decompiled from out/runTestFromTasty/run/t889/Test.tasty */
 object Test extends dotty.runtime.LegacyApp {
   val a: collection.immutable.List[java.lang.String] = scala.List.apply[java.lang.String]("a")
   Test.a match {

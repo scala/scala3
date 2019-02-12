@@ -17,7 +17,7 @@ class CommunityBuildTest {
   /** Build the given project with the published local compiler and sbt plugin.
    *
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
-   *  and expects community-build/sbt-dotty.sbt to set the compiler plugin.
+   *  and expects community-build/sbt-dotty-sbt to set the compiler plugin.
    *
    *  @param project  The project name, should be a git submodule in community-build/
    *  @param command  The sbt command used to build the project
@@ -51,7 +51,7 @@ class CommunityBuildTest {
 
     // Workaround for https://github.com/sbt/sbt/issues/4395
     new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
-    val pluginFilePath = communitybuildDir.resolve("sbt-dotty.sbt").toAbsolutePath().toString()
+    val pluginFilePath = communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
 
     // Run the sbt command with the compiler version and sbt plugin set in the build
     val arguments = Seq(

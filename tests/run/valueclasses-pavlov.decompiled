@@ -1,4 +1,3 @@
-/** Decompiled from out/runTestFromTasty/run/valueclasses-pavlov/Box1.tasty */
 final class Box1(val value: scala.Predef.String) extends scala.AnyVal {
   override def hashCode(): scala.Int = Box1.this.value.hashCode()
   override def equals(x$0: scala.Any): scala.Boolean = x$0 match {
@@ -9,7 +8,6 @@ final class Box1(val value: scala.Predef.String) extends scala.AnyVal {
   }
 }
 object Box1 extends scala.AnyRef
-/** Decompiled from out/runTestFromTasty/run/valueclasses-pavlov/Box2.tasty */
 final class Box2(val value: scala.Predef.String) extends scala.AnyVal with Foo {
   override def hashCode(): scala.Int = Box2.this.value.hashCode()
   override def equals(x$0: scala.Any): scala.Boolean = x$0 match {
@@ -22,19 +20,16 @@ final class Box2(val value: scala.Predef.String) extends scala.AnyVal with Foo {
   def box2(x: Box2): scala.Predef.String = "box2: ok"
 }
 object Box2 extends scala.AnyRef
-/** Decompiled from out/runTestFromTasty/run/valueclasses-pavlov/C.tasty */
 class C(x: scala.Predef.String) {
   def this() = {
     this("")
     ()
   }
 }
-/** Decompiled from out/runTestFromTasty/run/valueclasses-pavlov/Foo.tasty */
 trait Foo() extends scala.Any {
   def box1(x: Box1): scala.Predef.String
   def box2(x: Box2): scala.Predef.String
 }
-/** Decompiled from out/runTestFromTasty/run/valueclasses-pavlov/Test.tasty */
 object Test {
   def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
     val b1: Box1 = new Box1("")

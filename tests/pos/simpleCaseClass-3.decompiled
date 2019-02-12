@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleCaseClass-3/A.tasty */
 case class A[T](x: T) {
   override def hashCode(): scala.Int = {
     var acc: scala.Int = 65
