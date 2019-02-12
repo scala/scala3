@@ -1391,7 +1391,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |Test '$title' compiled with $errors error(s) and $warnings warning(s),
             |the test can be reproduced by running:
             |
-            |  sbt "testFromTasty $file"
+            |  sbt "testCompilation --from-tasty $file"
             |
             |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-$listName.blacklist`
             |

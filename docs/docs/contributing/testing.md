@@ -92,3 +92,15 @@ To run `testCompilation` on a bootstrapped Dotty compiler, use
 `dotty-compiler-bootstrapped/testCompilation` (with the same syntax as above).
 Some tests can only be run in bootstrapped compilers; that includes all tests
 with `with-compiler` in their name.
+
+### From TASTy tests
+
+`testCompilation` has a additional mode to run tests that compile code from a `.tasty` file, decompile a `.tasty` file and recompile the decompiled tasty.
+ Modify blacklist and whitelists in `compiler/test/dotc` to enable or disable tests from `.tasty` files.
+
+ ```bash
+ $ sbt
+ > testCompilation --from-tasty
+ ```
+ 
+ This mode can be combined with `--update-checkfiles` to update the `.decompiled` files or can be run under `dotty-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler. 
