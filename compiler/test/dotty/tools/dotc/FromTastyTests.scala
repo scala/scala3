@@ -20,7 +20,7 @@ class FromTastyTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
-
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   @Test def posTestFromTasty: Unit = {
     // Can be reproduced with
@@ -51,6 +51,6 @@ class FromTastyTests extends ParallelTesting {
 }
 
 object FromTastyTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
+  implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

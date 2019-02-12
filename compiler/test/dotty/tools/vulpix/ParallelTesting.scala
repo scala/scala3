@@ -46,6 +46,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    */
   def testFilter: Option[String]
 
+  /** Tests should override the checkfiles with the current output */
+  def updateCheckFiles: Boolean
+
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
    */
@@ -550,7 +553,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
                     if (output.mkString(EOL) != check) {
                       val outFile = dotty.tools.io.File(checkFile.toPath).addExtension(".out")
-                      if (summaryReport.updateCheckFiles) {
+                      if (updateCheckFiles) {
                         updateCheckFile(checkFile, output)
                       } else {
                         outFile.writeAll(output.mkString("", EOL, ""))
@@ -642,7 +645,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             // Fail target:
             failTestSource(testSource)
 
-            if (summaryReport.updateCheckFiles)
+            if (updateCheckFiles)
               updateCheckFile(checkFile.get, outputLines)
           }
         }
@@ -781,7 +784,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
           for (msg <- diffMessage(sourceName, actual, expexted)) {
             fail(msg)
-            if (summaryReport.updateCheckFiles)
+            if (updateCheckFiles)
               updateCheckFile(checkFile, actual)
           }
         }

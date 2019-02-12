@@ -24,6 +24,7 @@ class IdempotencyTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
@@ -72,6 +73,6 @@ class IdempotencyTests extends ParallelTesting {
 }
 
 object IdempotencyTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
+  implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

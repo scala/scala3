@@ -80,6 +80,12 @@ This will run both the test `./tests/pos/companions.scala` and
 `./tests/neg/companions.scala` since both of these match the given string.
 This also means that you could run `testCompilation` with no arguments to run all integration tests.
 
+When complex checkfiles must be updated, `testCompilation` can run in a mode where it overrides the checkfiles with the test outputs.
+```bash
+$ sbt
+> testCompilation --update-checkfiles
+```
+
 ### Bootstrapped-only tests
 
 To run `testCompilation` on a bootstrapped Dotty compiler, use

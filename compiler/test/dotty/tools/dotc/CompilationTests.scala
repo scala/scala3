@@ -27,6 +27,7 @@ class CompilationTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -303,7 +304,7 @@ class CompilationTests extends ParallelTesting {
 }
 
 object CompilationTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport(updateCheckFiles = false)
+  implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 
   def sources(paths: JStream[Path], excludedFiles: List[String] = Nil): List[String] = {

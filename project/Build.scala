@@ -440,10 +440,11 @@ object Build {
 
   def testOnlyFiltered(test: String, options: String) = Def.inputTaskDyn {
     val args = spaceDelimited("<arg>").parsed
-    val cmd = s" $test -- $options" + {
-      if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
-      else ""
-    }
+    val updateCheckfile = args.contains("--update-checkfiles")
+    val args1 = if (updateCheckfile) args.filter(_ != "--update-checkfiles") else args
+    val cmd = s" $test -- $options" +
+      (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=true" else "") +
+      (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
     (testOnly in Test).toTask(cmd)
   }
 
