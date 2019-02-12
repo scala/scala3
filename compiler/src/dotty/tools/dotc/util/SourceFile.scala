@@ -190,7 +190,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 }
 object SourceFile {
-  implicit def eqSource: Eq[SourceFile, SourceFile] = Eq
+  implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
 
   implicit def fromContext(implicit ctx: Context): SourceFile = ctx.source
 

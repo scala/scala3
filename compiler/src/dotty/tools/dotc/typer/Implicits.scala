@@ -699,16 +699,65 @@ trait Implicits { self: Typer =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
-    /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
-     *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
+    /** If `formal` is of the form Eql[T, U], try to synthesize an
+     *  `Eql.eqlAny[T, U]` as solution.
      */
     def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
-      //println(i"synth eq $formal / ${formal.argTypes}%, %")
+
+      /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
+      def hasEq(tp: Type)(implicit ctx: Context): Boolean = {
+        val inst = inferImplicitArg(defn.EqlType.appliedTo(tp, tp), span)
+        !inst.isEmpty && !inst.tpe.isError
+      }
+
+      /** Can we assume the eqlAny instance for `tp1`, `tp2`?
+       *  This is the case if assumedCanEqual(tp1, tp2), or
+       *  one of `tp1`, `tp2` has a reflexive `Eql` instance.
+       */
+      def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: Context) =
+        assumedCanEqual(tp1, tp2) || {
+          val nestedCtx = ctx.fresh.addMode(Mode.StrictEquality)
+          !hasEq(tp1)(nestedCtx) && !hasEq(tp2)(nestedCtx)
+        }
+
+      /** Is an `Eql[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
+      def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean = {
+        def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
+          cls2 == defn.boxedType(cls1.typeRef).symbol ||
+          cls1.isNumericValueClass && cls2.derivesFrom(defn.BoxedNumberClass)
+
+        if (cls1.isPrimitiveValueClass)
+          if (cls2.isPrimitiveValueClass)
+            cls1 == cls2 || cls1.isNumericValueClass && cls2.isNumericValueClass
+          else
+            cmpWithBoxed(cls1, cls2)
+        else if (cls2.isPrimitiveValueClass)
+          cmpWithBoxed(cls2, cls1)
+        else if (cls1 == defn.NullClass)
+          cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
+        else if (cls2 == defn.NullClass)
+          cls1.derivesFrom(defn.ObjectClass)
+        else
+          false
+      }
+
+      /** Some simulated `Eql` instances for predefined types. It's more efficient
+       *  to do this directly instead of setting up a lot of `Eql` instances to
+       *  interpret.
+       */
+      def canComparePredefined(tp1: Type, tp2: Type) =
+        tp1.classSymbols.exists(cls1 =>
+          tp2.classSymbols.exists(cls2 => canComparePredefinedClasses(cls1, cls2)))
+
       formal.argTypes match {
-        case args @ (arg1 :: arg2 :: Nil)
-        if !ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality) &&
-           ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)) =>
-          ref(defn.Eq_eqAny).appliedToTypes(args).withSpan(span)
+        case args @ (arg1 :: arg2 :: Nil) =>
+          List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
+          if (canComparePredefined(arg1, arg2)
+              ||
+              !strictEquality &&
+              ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)))
+            ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
+          else EmptyTree
         case _ =>
           EmptyTree
       }
@@ -735,14 +784,6 @@ trait Implicits { self: Typer =>
         case _ =>
           EmptyTree
       }
-    }
-
-    def hasEq(tp: Type): Boolean =
-      inferImplicit(defn.EqType.appliedTo(tp, tp), EmptyTree, span).isSuccess
-
-    def validEqAnyArgs(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-      List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", span))
-      assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2)
     }
 
     /** If `formal` is of the form `scala.reflect.Generic[T]` for some class type `T`,
@@ -776,7 +817,7 @@ trait Implicits { self: Typer =>
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
               trySpecialCase(defn.GenericClass, synthesizedGeneric,
                 trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
-                  trySpecialCase(defn.EqClass, synthesizedEq,
+                  trySpecialCase(defn.EqlClass, synthesizedEq,
                     trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
     }
   }
@@ -885,16 +926,16 @@ trait Implicits { self: Typer =>
         em"parameter ${paramName} of $methodStr"
     }
 
+  private def strictEquality(implicit ctx: Context): Boolean =
+    ctx.mode.is(Mode.StrictEquality) ||
+    ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality)
+
+  /** An Eql[T, U] instance is assumed
+   *   - if one of T, U is an error type, or
+   *   - if one of T, U is a subtype of the lifted version of the other,
+   *     unless strict equality is set.
+   */
   private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
-    def eqNullable: Boolean = {
-      val other =
-        if (ltp.isRef(defn.NullClass)) rtp
-        else if (rtp.isRef(defn.NullClass)) ltp
-        else NoType
-
-      (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
-    }
-
     // Map all non-opaque abstract types to their upper bound.
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
@@ -910,14 +951,20 @@ trait Implicits { self: Typer =>
           if (variance > 0) mapOver(t) else t
       }
     }
-    ltp.isError || rtp.isError || ltp <:< lift(rtp) || rtp <:< lift(ltp) || eqNullable
+
+    ltp.isError ||
+    rtp.isError ||
+    !strictEquality && {
+      ltp <:< lift(rtp) ||
+      rtp <:< lift(ltp)
+    }
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
-      val res = implicitArgTree(defn.EqType.appliedTo(ltp, rtp), span)
-      implicits.println(i"Eq witness found for $ltp / $rtp: $res: ${res.tpe}")
+      val res = implicitArgTree(defn.EqlType.appliedTo(ltp, rtp), span)
+      implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
   /** Find an implicit parameter or conversion.
@@ -985,7 +1032,7 @@ trait Implicits { self: Typer =>
       if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
-    private def isCoherent = pt.isRef(defn.EqClass)
+    private def isCoherent = pt.isRef(defn.EqlClass)
 
     private val cmpContext = nestedContext()
     private val cmpCandidates = (c1: Candidate, c2: Candidate) => compare(c1.ref, c2.ref, c1.level, c2.level)(cmpContext)

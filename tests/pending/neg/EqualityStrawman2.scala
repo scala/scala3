@@ -1,32 +1,32 @@
 object equality {
 
-  trait Eq[T, U]
-  def Eq[T, U]: Eq[T, U] = new Eq[T, U]{}
+  trait Eql[T, U]
+  def Eql[T, U]: Eql[T, U] = new Eql[T, U]{}
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit ce: Eq[T, U]) = x.equals(y)
+    def ===[U] (y: U)(implicit ce: Eql[T, U]) = x.equals(y)
   }
 
-  type EqEq[T] = Eq[T, T]
+  type EqEq[T] = Eql.derived[T, T]
 
   trait EqClass[T]
 
-  implicit def eqAny[T, U]: Eq[T, U] = Eq
+  implicit def eqAny[T, U]: Eql[T, U] = Eql.derived
 /*
-  implicit def mixedEq1[T, U](implicit ce: Eq[T, U]): Eq[T, Any] = Eq
-  implicit def mixedEq2[T, U](implicit ce: Eq[T, U]): Eq[Any, T] = Eq
-  implicit def mixedEq1alt : Eq[Any, EqClass] = Eq
-  implicit def mixedEq2    : Eq[EqClass, Any] = Eq
-  implicit def mixedEq2alt : Eq[EqClass, Any] = Eq
-  implicit def mixedNull1[T]: Eq[T, Null]     = Eq
-  implicit def mixedNull2[T]: Eq[Null, T]     = Eq
+  implicit def mixedEq1[T, U](implicit ce: Eql[T, U]): Eql[T, Any] = Eql.derived
+  implicit def mixedEq2[T, U](implicit ce: Eql[T, U]): Eql[Any, T] = Eql.derived
+  implicit def mixedEq1alt : Eql[Any, EqClass] = Eql.derived
+  implicit def mixedEq2    : Eql[EqClass, Any] = Eql.derived
+  implicit def mixedEq2alt : Eql[EqClass, Any] = Eql.derived
+  implicit def mixedNull1[T]: Eql[T, Null]     = Eql
+  implicit def mixedNull2[T]: Eql[Null, T]     = Eql
 */
-  implicit def eqString: Eq[String, String] = Eq
-  implicit def eqInt: Eq[Int, Int] = Eq
-  implicit def eqOption[T, U](implicit ce: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
+  implicit def eqString: Eql[String, String] = Eql
+  implicit def eqInt: Eql[Int, Int] = Eql.derived
+  implicit def eqOption[T, U](implicit ce: Eql[T, U]): Eql[Option[T], Option[U]] = Eql.derived
 
 /*
-  implicit def eqEq[UE, TE <: UE with EqClass[UE]]: Eq[TE, TE] = Eq
+  implicit def eqEq[UE, TE <: UE with EqClass[UE]]: Eql[TE, TE] = Eql
 
   case class Str(str: String) extends EqClass[Str]
   case class Num(x: Int) extends EqClass[Num]
@@ -37,10 +37,10 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  //implicit def eqStr: Eq[Str, Str] = Eq
-   //implicit def eqNum: Eq[Num, Num] = Eq
+  //implicit def eqStr: Eql[Str, Str] = Eql.derived
+   //implicit def eqNum: Eql[Num, Num] = Eql.derived
 
-  implicit def eqOption[T, U](implicit ce: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
+  implicit def eqOption[T, U](implicit ce: Eql[T, U]): Eql[Option[T], Option[U]] = Eql
 */
   def some[T](x: T): Option[T] = Some(x)
 
@@ -91,7 +91,7 @@ object equality {
     class Fruit extends EqClass
     class Apple extends Fruit
     class Pear extends Fruit
-    implicit def eqFruit: Eq[Fruit, Fruit] = Eq
+    implicit def eqFruit: Eql[Fruit, Fruit] = Eql
 
     Some(new Apple) === Some(new Pear)
 
