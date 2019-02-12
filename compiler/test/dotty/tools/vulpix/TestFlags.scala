@@ -20,6 +20,14 @@ final case class TestFlags(
     TestFlags(defaultClassPath, s"$runClassPath${JFile.pathSeparator}$classPath", options)
 
   def all: Array[String] = Array("-classpath", defaultClassPath) ++ options
+
+  /** Subset of the flags that should be passed to javac. */
+  def javacFlags: Array[String] = {
+    val flags = all
+    val cp = flags.dropWhile(_ != "-classpath").take(2)
+    val output = flags.dropWhile(_ != "-d").take(2)
+    cp ++ output
+  }
 }
 
 object TestFlags {
