@@ -56,7 +56,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   }
 
   /** Transform the quote `quote` which contains the quoted `body`. */
-  protected def quotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+  protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
     quote match {
       case quote: Apply => cpy.Apply(quote)(quote.fun, body :: Nil)
       case quote: TypeApply => cpy.TypeApply(quote)(quote.fun, body :: Nil)
@@ -64,7 +64,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   }
 
   /** Transform the splice `splice`. */
-  protected def splice(splice: Select)(implicit ctx: Context): Tree
+  protected def transformSplice(splice: Select)(implicit ctx: Context): Tree
 
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
     reporting.trace(i"StagingTransformer.transform $tree at $level", show = true) {
@@ -81,13 +81,13 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           transform(t) // '(~x) --> x
 
         case Quoted(quotedTree) =>
-          quotation(quotedTree, tree)
+          transformQuotation(quotedTree, tree)
 
         case Spliced(Quoted(quotedTree)) =>
           transform(quotedTree) // ~('x) --> x
 
         case tree @ Spliced(_) =>
-          splice(tree)
+          transformSplice(tree)
 
         case Block(stats, _) =>
           val last = enteredSyms

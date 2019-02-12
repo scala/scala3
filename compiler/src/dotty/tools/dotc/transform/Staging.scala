@@ -124,9 +124,9 @@ class Staging extends MacroTransform {
     }
 
     /** Transform quoted trees while maintaining phase correctness */
-    override protected def quotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+    override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val body1 = transform(body)(quoteContext)
-      super.quotation(body1, quote)
+      super.transformQuotation(body1, quote)
     }
 
     /** Transform splice
@@ -134,7 +134,7 @@ class Staging extends MacroTransform {
      *  - If inside inlined code, expand the macro code.
      *  - If inside of a macro definition, check the validity of the macro.
      */
-    protected def splice(splice: Select)(implicit ctx: Context): Tree = {
+    protected def transformSplice(splice: Select)(implicit ctx: Context): Tree = {
       if (level >= 1) {
         val body1 = transform(splice.qualifier)(spliceContext)
         val splice1 = cpy.Select(splice)(body1, splice.name)

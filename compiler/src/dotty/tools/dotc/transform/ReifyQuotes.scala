@@ -168,12 +168,12 @@ class ReifyQuotes extends MacroTransform {
      *  `scala.quoted.Unpickler.unpickleExpr` that matches `tpe` with
      *  core and splices as arguments.
      */
-    override protected def quotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+    override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.QuotedType_apply
       assert(!body.symbol.isSplice)
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
-        super.quotation(body1, quote)
+        super.transformQuotation(body1, quote)
       }
       else body match {
         case body: RefTree if isCaptured(body.symbol, level + 1) =>
@@ -230,7 +230,7 @@ class ReifyQuotes extends MacroTransform {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    protected def splice(splice: Select)(implicit ctx: Context): Tree = {
+    protected def transformSplice(splice: Select)(implicit ctx: Context): Tree = {
       if (level > 1) {
         val body1 = nested(isQuote = false).transform(splice.qualifier)(spliceContext)
         body1.select(splice.name)
@@ -357,15 +357,15 @@ class ReifyQuotes extends MacroTransform {
           case TypeApply(Select(spliceTree @ Spliced(_), _), tp) if tree.symbol == defn.Any_asInstanceOf =>
             // Splice term which should be in the form `x.unary_~.asInstanceOf[T]` where T is an artefact of
             // typer to allow pickling/unpickling phase consistent types
-            splice(spliceTree)
+            transformSplice(spliceTree)
 
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
             val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            splice(ref(splicedType).select(tpnme.UNARY_~).withSpan(tree.span))
+            transformSplice(ref(splicedType).select(tpnme.UNARY_~).withSpan(tree.span))
 
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val t = capturers(tree.symbol).apply(tree)
-            splice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
+            transformSplice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
 
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
             // Shrink size of the tree. The methods have already been inlined.
