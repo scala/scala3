@@ -481,7 +481,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "7.0.0-scala-1", // used by the backend
         // FIXME: Not needed, but should be on the compiler CP
         ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
