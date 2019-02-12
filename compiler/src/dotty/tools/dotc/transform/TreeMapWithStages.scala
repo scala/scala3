@@ -48,7 +48,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   private def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree: DefTree =>
       val sym = tree.symbol
-      if ((sym.isClass || !sym.maybeOwner.isType) && !levelOfMap.contains(sym)) {
+      if ((sym.isClass || sym.maybeOwner.isTerm) && !levelOfMap.contains(sym)) {
         levelOfMap(sym) = level
         enteredSyms = sym :: enteredSyms
       }
