@@ -7,6 +7,7 @@ import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Symbols._
 import typer.ConstFold
 import reporting.trace
+import dotty.tools.dotc.transform.SymUtils._
 
 import scala.annotation.tailrec
 
@@ -814,6 +815,28 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case _ => t1.hashCode
         }
       }
+  }
+
+  /** Extractors for quotes */
+  object Quoted {
+    /** Extracts the content of a quoted tree.
+     *  The result can be the contents of a term or type quote, which
+     *  will return a term or type tree respectively.
+     */
+    def unapply(tree: tpd.Tree)(implicit ctx: Context): Option[tpd.Tree] = tree match {
+      case tree: GenericApply[Type] if tree.symbol.isQuote => Some(tree.args.head)
+      case _ => None
+    }
+  }
+
+  /** Extractors for splices */
+  object Spliced {
+    /** Extracts the content of a spliced tree.
+     *  The result can be the contents of a term or type splice, which
+     *  will return a term or type tree respectively.
+     */
+    def unapply(tree: tpd.Select)(implicit ctx: Context): Option[tpd.Tree] =
+      if (tree.symbol.isSplice) Some(tree.qualifier) else None
   }
 }
 
