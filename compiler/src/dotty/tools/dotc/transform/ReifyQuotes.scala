@@ -209,15 +209,7 @@ class ReifyQuotes extends MacroTransform {
       if (splices.nonEmpty) pickleAsTasty()
       else if (isType) {
         def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName)
-        if (body.symbol == defn.UnitClass) tag("UnitTag")
-        else if (body.symbol == defn.BooleanClass) tag("BooleanTag")
-        else if (body.symbol == defn.ByteClass) tag("ByteTag")
-        else if (body.symbol == defn.CharClass) tag("CharTag")
-        else if (body.symbol == defn.ShortClass) tag("ShortTag")
-        else if (body.symbol == defn.IntClass) tag("IntTag")
-        else if (body.symbol == defn.LongClass) tag("LongTag")
-        else if (body.symbol == defn.FloatClass) tag("FloatTag")
-        else if (body.symbol == defn.DoubleClass) tag("DoubleTag")
+        if (body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
         else pickleAsTasty()
       }
       else toValue(body) match {
