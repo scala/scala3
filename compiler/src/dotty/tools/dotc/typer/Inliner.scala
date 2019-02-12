@@ -153,7 +153,8 @@ object Inliner {
 
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
           val transformed = reposition(tree match {
-            case tree: Inlined => transformInline(tree)
+            case tree: Inlined =>
+              tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource)) : Tree
             case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
             case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
             case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
@@ -166,12 +167,9 @@ object Inliner {
           assert(transformed.isInstanceOf[EmptyTree[_]] || transformed.isInstanceOf[EmptyValDef[_]] || transformed.source == curSource)
           transformed
         }
-        def transformInline(tree: Inlined)(implicit ctx: Context): Tree = {
-          tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource))
-        }
       }
 
-      (new Reposition).transformInline(inlined)
+      (new Reposition).transform(inlined)
     }
   }
 
