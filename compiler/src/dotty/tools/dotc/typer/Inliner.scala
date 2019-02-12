@@ -136,29 +136,35 @@ object Inliner {
        *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
        */
       class Reposition extends TreeMap(cpyWithNewSource) {
+        def finalize(tree: Tree, copied: untpd.Tree) =
+          copied.withSpan(tree.span).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
+
+        def reposition(tree: Tree)(implicit ctx: Context): Tree = enclosingInlineds match {
+          case call :: _ if call.symbol.source != curSource =>
+            tree match {
+              case _: EmptyTree[_] | _: EmptyValDef[_] => tree
+              case _ =>
+                // Until we implement JSR-45, we cannot represent in output positions in other source files.
+                // So, reposition inlined code from other files with the call position:
+                tree.withSpan(inlinedAtSpan)
+            }
+          case _ => tree
+        }
+
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-          val transformed = tree match {
+          val transformed = reposition(tree match {
             case tree: Inlined => transformInline(tree)
-            case tree: Ident => cpy.Ident(tree)(tree.name)
-            case tree: This => cpy.This(tree)(tree.qual)
-            case tree: Literal => cpy.Literal(tree)(tree.const)
-            case tree: JavaSeqLiteral => cpy.SeqLiteral(tree)(tree.elems, tree.elemtpt)(ctx.withSource(curSource))
+            case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
+            case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
+            case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
+            case tree: JavaSeqLiteral => finalize(tree, untpd.JavaSeqLiteral(tree.elems, tree.elemtpt)(curSource))
+            case tree: SeqLiteral => finalize(tree, untpd.SeqLiteral(tree.elems, tree.elemtpt)(curSource))
             case tree: TypeTree => tpd.TypeTree(tree.tpe)(ctx.withSource(curSource)).withSpan(tree.span)
+            case tree: Bind => finalize(tree, untpd.Bind(tree.name, tree.body)(curSource))
             case _ => super.transform(tree)
-          }
-          val transformed2 = enclosingInlineds match {
-            case call :: _ if call.symbol.source != curSource =>
-              transformed match {
-                case _: EmptyTree[_] | _: EmptyValDef[_] => transformed
-                case _ =>
-                  // Until we implement JSR-45, we cannot represent in output positions in other source files.
-                  // So, reposition inlined code from other files with the call position:
-                  transformed.withSpan(inlinedAtSpan)
-              }
-            case _ => transformed
-          }
-          assert(transformed2.isInstanceOf[EmptyTree[_]] || transformed2.isInstanceOf[EmptyValDef[_]] || transformed2.source == curSource)
-          transformed2
+          })
+          assert(transformed.isInstanceOf[EmptyTree[_]] || transformed.isInstanceOf[EmptyValDef[_]] || transformed.source == curSource)
+          transformed
         }
         def transformInline(tree: Inlined)(implicit ctx: Context): Tree = {
           tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource))
