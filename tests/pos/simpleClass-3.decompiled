@@ -1,6 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleClass-3/A.class */
 class A() extends B with C
-/** Decompiled from out/posTestFromTasty/pos/simpleClass-3/B.class */
 trait B() extends java.lang.Object
-/** Decompiled from out/posTestFromTasty/pos/simpleClass-3/C.class */
 trait C() extends java.lang.Object

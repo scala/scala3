@@ -7,13 +7,8 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.experimental.categories.Category
 
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.collection.JavaConverters._
-import scala.util.matching.Regex
 import scala.concurrent.duration._
 import vulpix._
-import dotty.tools.io.JFile
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BootstrappedOnlyCompilationTests extends ParallelTesting {
@@ -28,6 +23,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 

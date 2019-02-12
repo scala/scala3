@@ -21,6 +21,7 @@ class VulpixUnitTests extends ParallelTesting {
   def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = !sys.env.contains("DRONE")
   def testFilter = None
+  def updateCheckFiles: Boolean = false
 
   // To fail with something else than an AssertionError
   def fail(): Unit = throw new Exception("didn't fail properly")

@@ -1,4 +1,2 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleConstructor/A.class */
 class A(a: scala.Int, val b: scala.Int, var c: scala.Int)
-/** Decompiled from out/posTestFromTasty/pos/simpleConstructor/B.class */
 class B(protected val x: scala.Int, protected[B] val y: scala.Int, private[B] val z: scala.Int)

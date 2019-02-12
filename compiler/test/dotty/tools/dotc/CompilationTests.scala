@@ -27,6 +27,7 @@ class CompilationTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 

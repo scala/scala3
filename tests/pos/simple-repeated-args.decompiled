@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/simple-repeated-args/Foo.class */
 class Foo() {
   scala.List.apply[scala.Any](1, "2", '3')
   scala.Array.apply(1)

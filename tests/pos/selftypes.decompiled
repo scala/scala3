@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/selftypes/selftypes.class */
 object selftypes {
   trait A() extends java.lang.Object { self: selftypes.AB =>
     type AA = scala.List[this.BX]

@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-2/Foo.class */
 class Foo() {
   def bar(x: scala.Any): scala.Unit = x match {
     case scala.Some(scala.Some(i: scala.Int)) =>
