@@ -133,7 +133,7 @@ class ReifyQuotes extends MacroTransform {
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
         val local = ctx.newSymbol(
           owner = ctx.owner,
-          name = UniqueName.fresh((splicedTree.symbol.name.toString + "$" + nme.UNARY_~).toTermName).toTypeName,
+          name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_~").toTermName).toTypeName,
           flags = Synthetic,
           info = TypeAlias(splicedTree.tpe.select(tpnme.UNARY_~)),
           coord = spliced.termSymbol.coord).asType
