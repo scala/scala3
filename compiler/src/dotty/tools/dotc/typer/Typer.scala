@@ -443,7 +443,7 @@ class Typer extends Namer
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
-    def typeSelectOnTerm(implicit ctx: Context): Tree =
+    def typedSelectOnTerm(implicit ctx: Context): Tree =
       typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
         case qual1 @ ExtMethodApply(app) =>
           pt.revealIgnored match {
@@ -458,17 +458,17 @@ class Typer extends Namer
           else typedDynamicSelect(tree, Nil, pt)
       }
 
-    def typeSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
+    def typedSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
       typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
 
     def tryJavaSelectOnType(implicit ctx: Context): Tree = tree.qualifier match {
-      case Select(qual, name) => typeSelectOnType(untpd.Select(qual, name.toTypeName))
-      case Ident(name)        => typeSelectOnType(untpd.Ident(name.toTypeName))
+      case Select(qual, name) => typedSelectOnType(untpd.Select(qual, name.toTypeName))
+      case Ident(name)        => typedSelectOnType(untpd.Ident(name.toTypeName))
       case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
     def selectWithFallback(fallBack: Context => Tree) =
-      tryAlternatively(typeSelectOnTerm(_))(fallBack)
+      tryAlternatively(typedSelectOnTerm(_))(fallBack)
 
     if (tree.qualifier.isType) {
       val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
@@ -479,7 +479,7 @@ class Typer extends Namer
       // value A and from the type A. We have to try both.
       selectWithFallback(tryJavaSelectOnType(_)) // !!! possibly exponential bcs of qualifier retyping
     else
-      typeSelectOnTerm(ctx)
+      typedSelectOnTerm(ctx)
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
@@ -1871,6 +1871,13 @@ class Typer extends Namer
     res
   }
 
+  def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = {
+    val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+    typed(untpd.Select(tree.expr, nspace.UNARY_PREFIX ++ nme.raw.TILDE), pt)
+      // for now, translate back to `unary_~`.
+      // in the future, replace with specialized treatment for splices
+  }
+
   /** Translate infix operation expression `l op r` to
    *
    *    l.op(r)   			    if `op` is left-associative
@@ -2016,7 +2023,8 @@ class Typer extends Namer
           case tree: untpd.Tuple => typedTuple(tree, pt)
           case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withSpan(tree.span), pt)
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
-          case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
+          case tree: untpd.Splice => typedSplice(tree, pt)
+          case tree @ untpd.PostfixOp(_, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }

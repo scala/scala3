@@ -14,6 +14,7 @@ import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
 import annotation.constructorOnly
+import rewrites.Rewrites.patch
 
 import scala.annotation.internal.sharable
 
@@ -1389,8 +1390,19 @@ object desugar {
           Select(t, op.name)
         }
       case PrefixOp(op, t) =>
-        val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
-        Select(t, nspace.UNARY_PREFIX ++ op.name)
+        val isSplice = op.name.toTermName == nme.raw.TILDE
+        if (isSplice && !ctx.scala2Mode)
+          untpd.Splice(t)
+        else {
+          if (isSplice) {
+            ctx.migrationWarning(i"""`~` is no longer supported as a general prefix operation.
+                                    |Use `X.unary_~` instead of `~ X`.""", tree.sourcePos)
+            patch(Span(op.span.start, t.span.start), "")
+            patch(tree.span.endPos, ".unary_~")
+          }
+          val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+          Select(t, nspace.UNARY_PREFIX ++ op.name)
+        }
       case DoWhile(body, cond) =>
         // while ({ { body }; { cond } }) { () }
         // the inner blocks are there to protect the scopes of body and cond from each other
