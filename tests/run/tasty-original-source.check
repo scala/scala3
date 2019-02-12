@@ -1,0 +1,3 @@
+(foo("abc"),abc)
+(foo(  "def"  ),def)
+(foo("ghi" /* comment */),ghi)
