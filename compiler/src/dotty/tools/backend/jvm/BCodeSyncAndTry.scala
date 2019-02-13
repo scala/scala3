@@ -28,7 +28,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       // if the synchronized block returns a result, store it in a local variable.
       // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
       val hasResult = (expectedType != UNIT)
-      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", Object_Type, tree.pos) else null;
+      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", Object_Type, tree.pos) else null
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
@@ -206,7 +206,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * please notice `tmp` has type tree.tpe, while `earlyReturnVar` has the method return type.
        * Because those two types can be different, dedicated vars are needed.
        */
-      val tmp          = if (guardResult) locals.makeLocal(tpeTK(tree), "tmp", tree.tpe, tree.pos) else null;
+      val tmp          = if (guardResult) locals.makeLocal(tpeTK(tree), "tmp", tree.tpe, tree.pos) else null
 
       /*
        * upon early return from the try-body or one of its EHs (but not the EH-version of the finally-clause)
@@ -229,6 +229,34 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val endTryBody = currProgramPoint()
       bc goTo postHandlers
 
+      /**
+       * A return within a `try` or `catch` block where a `finally` is present ("early return")
+       * emits a store of the result to a local, jump to a "cleanup" version of the `finally` block,
+       * and sets `shouldEmitCleanup = true` (see [[PlainBodyBuilder.genReturn]]).
+       *
+       * If the try-catch is nested, outer `finally` blocks need to be emitted in a cleanup version
+       * as well, so the `shouldEmitCleanup` variable remains `true` until the outermost `finally`.
+       * Nested cleanup `finally` blocks jump to the next enclosing one. For the outermost, we emit
+       * a read of the local variable, a return, and we set `shouldEmitCleanup = false` (see
+       * [[pendingCleanups]]).
+       *
+       * Now, assume we have
+       *
+       *     try { return 1 } finally {
+       *       try { println() } finally { println() }
+       *     }
+       *
+       * Here, the outer `finally` needs a cleanup version, but the inner one does not. The method
+       * here makes sure that `shouldEmitCleanup` is only propagated outwards, not inwards to
+       * nested `finally` blocks.
+       */
+      def withFreshCleanupScope(body: => Unit) = {
+        val savedShouldEmitCleanup = shouldEmitCleanup
+        shouldEmitCleanup = false
+        body
+        shouldEmitCleanup = savedShouldEmitCleanup || shouldEmitCleanup
+      }
+
       /* ------ (2) One EH for each case-clause (this does not include the EH-version of the finally-clause)
        *            An EH in (2) is reached upon abrupt termination of (1).
        *            An EH in (2) is protected by:
@@ -237,7 +265,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * ------
        */
 
-      for (ch <- caseHandlers) {
+      for (ch <- caseHandlers) withFreshCleanupScope {
 
         // (2.a) emit case clause proper
         val startHandler = currProgramPoint()
@@ -271,6 +299,11 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
       }
 
+      // Need to save the state of `shouldEmitCleanup` at this point: while emitting the first
+      // version of the `finally` block below, the variable may become true. But this does not mean
+      // that we need a cleanup version for the current block, only for the enclosing ones.
+      val currentFinallyBlockNeedsCleanup = shouldEmitCleanup
+
       /* ------ (3.A) The exception-handler-version of the finally-clause.
        *              Reached upon abrupt termination of (1) or one of the EHs in (2).
        *              Protected only by whatever protects the whole try-catch-finally expression.
@@ -279,7 +312,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
       // a note on terminology: this is not "postHandlers", despite appearences.
       // "postHandlers" as in the source-code view. And from that perspective, both (3.A) and (3.B) are invisible implementation artifacts.
-      if (hasFinally) {
+      if (hasFinally) withFreshCleanupScope {
         nopIfNeeded(startTryBody)
         val finalHandler = currProgramPoint() // version of the finally-clause reached via unhandled exception.
         protect(startTryBody, finalHandler, finalHandler, null)
@@ -307,14 +340,11 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       // this is not "postHandlers" either.
       // `shouldEmitCleanup` can be set, and at the same time this try expression may lack a finally-clause.
       // In other words, all combinations of (hasFinally, shouldEmitCleanup) are valid.
-      if (hasFinally && shouldEmitCleanup) {
-        val savedInsideCleanup = insideCleanupBlock
-        insideCleanupBlock = true
+      if (hasFinally && currentFinallyBlockNeedsCleanup) {
         markProgramPoint(finCleanup)
         // regarding return value, the protocol is: in place of a `return-stmt`, a sequence of `adapt, store, jump` are inserted.
         emitFinalizer(finalizer, null, isDuplicate = true)
         pendingCleanups()
-        insideCleanupBlock = savedInsideCleanup
       }
 
       /* ------ (4) finally-clause-for-normal-nonEarlyReturn-exit
