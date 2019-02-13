@@ -563,16 +563,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             bc emitRETURN returnType
           case nextCleanup :: rest =>
             if (saveReturnValue) {
-              if (insideCleanupBlock) {
-                int.warning(r.pos, "Return statement found in finally-clause, discarding its return-value in favor of that of a more deeply nested return.")
-                bc drop returnType
-              } else {
-                // regarding return value, the protocol is: in place of a `return-stmt`, a sequence of `adapt, store, jump` are inserted.
-                if (earlyReturnVar == null) {
-                  earlyReturnVar = locals.makeLocal(returnType, "earlyReturnVar", expr.tpe, expr.pos)
-                }
-                locals.store(earlyReturnVar)
+              // regarding return value, the protocol is: in place of a `return-stmt`, a sequence of `adapt, store, jump` are inserted.
+              if (earlyReturnVar == null) {
+                earlyReturnVar = locals.makeLocal(returnType, "earlyReturnVar", expr.tpe, expr.pos)
               }
+              locals.store(earlyReturnVar)
             }
             bc goTo nextCleanup
             shouldEmitCleanup = true

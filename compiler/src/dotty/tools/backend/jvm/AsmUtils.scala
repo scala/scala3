@@ -2,7 +2,7 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.tools.asm.tree.{AbstractInsnNode, ClassNode, MethodNode}
+import scala.tools.asm.tree.{AbstractInsnNode}
 import java.io.PrintWriter
 import scala.tools.asm.util.{TraceClassVisitor, TraceMethodVisitor, Textifier}
 import scala.tools.asm.ClassReader
@@ -31,7 +31,7 @@ object AsmUtils {
   final val traceSerializedClassEnabled = false
   final val traceSerializedClassPattern = ""
 
-  def traceMethod(mnode: MethodNode): Unit = {
+  def traceMethod(mnode: MethodNode1): Unit = {
     println(s"Bytecode for method ${mnode.name}")
     val p = new Textifier
     val tracer = new TraceMethodVisitor(p)
@@ -41,7 +41,7 @@ object AsmUtils {
     w.flush()
   }
 
-  def traceClass(cnode: ClassNode): Unit = {
+  def traceClass(cnode: ClassNode1): Unit = {
     println(s"Bytecode for class ${cnode.name}")
     val w = new PrintWriter(System.out)
     cnode.accept(new TraceClassVisitor(w))
@@ -50,8 +50,8 @@ object AsmUtils {
 
   def traceClass(bytes: Array[Byte]): Unit = traceClass(readClass(bytes))
 
-  def readClass(bytes: Array[Byte]): ClassNode = {
-    val node = new ClassNode()
+  def readClass(bytes: Array[Byte]): ClassNode1 = {
+    val node = new ClassNode1()
     new ClassReader(bytes).accept(node, 0)
     node
   }
