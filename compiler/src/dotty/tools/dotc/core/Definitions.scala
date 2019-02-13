@@ -734,11 +734,11 @@ class Definitions {
   lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
     lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
 
-  lazy val EqType: TypeRef = ctx.requiredClassRef("scala.Eq")
-  def EqClass(implicit ctx: Context): ClassSymbol = EqType.symbol.asClass
-  def EqModule(implicit ctx: Context): Symbol = EqClass.companionModule
+  lazy val EqlType: TypeRef = ctx.requiredClassRef("scala.Eql")
+  def EqlClass(implicit ctx: Context): ClassSymbol = EqlType.symbol.asClass
+  def EqlModule(implicit ctx: Context): Symbol = EqlClass.companionModule
 
-    def Eq_eqAny(implicit ctx: Context): TermSymbol = EqModule.requiredMethod(nme.eqAny)
+    def Eql_eqlAny(implicit ctx: Context): TermSymbol = EqlModule.requiredMethod(nme.eqlAny)
 
   lazy val NotType: TypeRef = ctx.requiredClassRef("scala.implicits.Not")
   def NotClass(implicit ctx: Context): ClassSymbol = NotType.symbol.asClass

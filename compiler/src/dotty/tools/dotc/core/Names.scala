@@ -25,7 +25,7 @@ object Names {
     def toTermName: TermName
   }
 
-  implicit def eqName: Eq[Name, Name] = Eq
+  implicit def eqName: Eql[Name, Name] = Eql.derived
 
   /** A common superclass of Name and Symbol. After bootstrap, this should be
    *  just the type alias Name | Symbol

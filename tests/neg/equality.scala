@@ -10,20 +10,20 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  implicit def eqStr: Eq[Str, Str] = Eq
-  implicit def eqNum: Eq[Num, Num] = Eq
-  implicit def eqOption[T, U](implicit e: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
+  implicit def eqStr: Eql[Str, Str] = Eql.derived
+  implicit def eqNum: Eql[Num, Num] = Eql.derived
+  implicit def eqOption[T, U](implicit e: Eql[T, U]): Eql[Option[T], Option[U]] = Eql.derived
 
   case class PString(a: String) extends Proxy {
     def self = a
   }
 
 /*
-  implicit def eqString: Eq[String, String] = Eq
-  implicit def eqInt: Eq[Int, Int] = Eq
-  implicit def eqNumber: Eq[Number, Number] = Eq
-  implicit def eqIntNumber: Eq[Int, Number] = Eq
-  implicit def eqNumberInt: Eq[Number, Int] = Eq
+  implicit def eqString: Eql[String, String] = Eql.derived
+  implicit def eqInt: Eql[Int, Int] = Eql.derived
+  implicit def eqNumber: Eql[Number, Number] = Eql.derived
+  implicit def eqIntNumber: Eql[Int, Number] = Eql.derived
+  implicit def eqNumberInt: Eql[Number, Int] = Eql.derived
 */
   def main(args: Array[String]): Unit = {
     Some(Other(3)) == None
@@ -58,15 +58,13 @@ object equality {
 
     1 == true  // error
 
-    null == true // OK by eqProxy or eqJBoolSBool
-    true == null // OK by eqSBoolJBool
-    null == 1    // OK by eqProxy or eqNumInt
-    1 == null    // OK by eqIntNum
+    null == true // error
+    true == null // error
+    null == 1    // error
+    1 == null    // error
 
 
-    class Fruit
-
-    implicit def eqFruit: Eq[Fruit, Fruit] = Eq
+    class Fruit derives Eql
 
     class Apple extends Fruit
     class Pear extends Fruit

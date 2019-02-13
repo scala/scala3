@@ -24,7 +24,7 @@ enum E4 {
 case class C4() extends E4 // error: cannot extend enum
 case object O4 extends E4 // error: cannot extend enum
 
-enum Option[+T] {
+enum Option[+T] derives Eql {
   case Some(x: T)
   case None
 }
