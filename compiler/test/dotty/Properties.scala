@@ -21,7 +21,8 @@ object Properties {
   val testsFilter: Option[String] = sys.props.get("dotty.tests.filter")
 
   /** Tests should override the checkfiles with the current output */
-  val testsUpdateCheckfile: Boolean = propIsNullOrTrue("dotty.tests.updateCheckfiles")
+  val testsUpdateCheckfile: Boolean =
+    sys.props.getOrElse("dotty.tests.updateCheckfiles", "FALSE") == "TRUE"
 
   /** When set, the run tests are only compiled - not run, a warning will be
    *  issued

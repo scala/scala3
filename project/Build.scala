@@ -542,7 +542,7 @@ object Build {
         val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
         val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
         val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
-          (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=true" else "") +
+          (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
           (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
         (testOnly in Test).toTask(cmd)
       }.evaluated,
