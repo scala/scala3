@@ -1178,8 +1178,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
         if (returnsUnit)
-          ctx.requiredClass(("scala.compat.java8.JProcedure" + arity))
-        else ctx.requiredClass(("scala.compat.java8.JFunction" + arity))
+          ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
+        else ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
       }
     }
   }
