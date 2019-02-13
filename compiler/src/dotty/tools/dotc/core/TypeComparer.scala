@@ -451,7 +451,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             // widening in `fourthTry` before adding to the constraint.
             if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
             else isSubTypeWhenFrozen(tp1, tp2)
-          alwaysTrue || {
+          alwaysTrue ||
+          frozenConstraint && (tp1 match {
+            case tp1: TypeParamRef => constraint.isLess(tp1, tp2)
+            case _ => false
+          }) || {
             if (canConstrain(tp2) && !approx.low)
               addConstraint(tp2, tp1.widenExpr, fromBelow = true)
             else fourthTry
