@@ -153,12 +153,12 @@ AnnotType         ::=  SimpleType {Annotation}                                  
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
-                    |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘_’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
+                    |  ‘$’ (id | ‘{’ Block ‘}’)
 ArgTypes          ::=  Type {‘,’ Type}
                     |  NamedTypeArg {‘,’ NamedTypeArg}
 FunArgType        ::=  Type
@@ -208,9 +208,9 @@ InfixExpr         ::=  PrefixExpr
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
-                    |  ''{’ BlockExprContents ‘}’
-                    |  ‘'(’ ExprsInParens ‘)’
-                    |  ‘'[’ Type ‘]’
+                    |  ‘'’ (id | ‘{’ Block ‘}’)
+                    |  ‘'’ ‘[’ Type ‘]’
+                    |  ‘$’ (id | ‘{’ Block ‘}’)
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
                     |  Path
@@ -227,8 +227,7 @@ ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                            
                     |  ‘(’ [ExprsInParens] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
-BlockExpr         ::=  ‘{’ BlockExprContents ‘}’
-BlockExprContents ::=  CaseClauses | Block
+BlockExpr         ::=  ‘{’ CaseClauses | Block ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def

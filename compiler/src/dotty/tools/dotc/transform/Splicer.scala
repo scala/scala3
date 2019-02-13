@@ -29,8 +29,8 @@ import scala.reflect.ClassTag
 object Splicer {
   import tpd._
 
-  /** Splice the Tree for a Quoted expression. `~'(xyz)` becomes `xyz`
-   *  and for `~xyz` the tree of `xyz` is interpreted for which the
+  /** Splice the Tree for a Quoted expression. `${'{xyz}}` becomes `xyz`
+   *  and for `$xyz` the tree of `xyz` is interpreted for which the
    *  resulting expression is returned as a `Tree`
    *
    *  See: `Staging`
@@ -59,8 +59,8 @@ object Splicer {
       }
   }
 
-  /** Check that the Tree can be spliced. `~'(xyz)` becomes `xyz`
-    *  and for `~xyz` the tree of `xyz` is interpreted for which the
+  /** Check that the Tree can be spliced. `${'{xyz}}` becomes `xyz`
+    *  and for `$xyz` the tree of `xyz` is interpreted for which the
     *  resulting expression is returned as a `Tree`
     *
     *  See: `Staging`

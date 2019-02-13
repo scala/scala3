@@ -302,6 +302,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => toTextGlobal(arg)
     }
 
+    def dropBlock(tree: Tree): Tree = tree match {
+      case Block(Nil, expr) => expr
+      case _ => tree
+    }
+
     tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
@@ -572,7 +577,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("try ") ~ toText(expr) ~ " " ~ keywordStr("catch") ~ " {" ~ toText(handler) ~ "}" ~ optText(finalizer)(keywordStr(" finally ") ~ _)
         }
       case Quote(tree) =>
-        if (tree.isType) keywordStr("'[") ~ toTextGlobal(tree) ~ keywordStr("]") else keywordStr("'{") ~ toTextGlobal(tree) ~ keywordStr("}")
+        if (tree.isType) keywordStr("'[") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("]")
+        else keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
+      case Splice(tree) =>
+        keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>

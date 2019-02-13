@@ -26,7 +26,7 @@ object PickledQuotes {
   def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
     if (ctx.reporter.hasErrors) Nil
     else {
-      assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'(~x)` which should be optimized to `x`
+      assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
       TastyString.pickle(pickled)
     }

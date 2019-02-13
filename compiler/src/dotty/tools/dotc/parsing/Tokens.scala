@@ -193,16 +193,14 @@ object Tokens extends TokensCommon {
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
-  final val QPAREN = 85;           enter(QPAREN, "'(")
-  final val QBRACE = 86;           enter(QBRACE, "'{")
-  final val QBRACKET = 87;         enter(QBRACKET, "'[")
+  final val SPLICE = 85;           enter(SPLICE, "$")
+  final val QUOTE = 86;            enter(QUOTE, "'")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, GIVEN)
-  final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
-  final val symbolicTokens: TokenSet = tokenRange(COMMA, VIEWBOUND)
+  final val symbolicKeywords: TokenSet = tokenRange(USCORE, SPLICE)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
   final val allTokens: TokenSet = tokenRange(minToken, maxToken)
@@ -214,10 +212,10 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
 
   final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QBRACE, QPAREN, QBRACKET, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, QUOTE, SPLICE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
-    THIS, SUPER, USCORE, LPAREN, AT)
+    THIS, SUPER, USCORE, LPAREN, AT, SPLICE)
 
   final val canStartBindingTokens: TokenSet = identifierTokens | BitSet(USCORE, LPAREN)
 

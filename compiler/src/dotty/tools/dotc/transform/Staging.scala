@@ -30,7 +30,7 @@ import scala.annotation.constructorOnly
  *
  *  Type healing consists in transforming a phase inconsistent type `T` into `implicitly[Type[T]].unary_~`.
  *
- *  For macro definitions we assume that we have a single ~ directly as the RHS.
+ *  For macro definitions we assume that we have a single ${...} directly as the RHS.
  *  The Splicer is used to check that the RHS will be interpretable (with the `Splicer`) once inlined.
  */
 class Staging extends MacroTransform {

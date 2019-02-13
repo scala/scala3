@@ -918,15 +918,33 @@ object Parsers {
         })
       else t
 
+    /** The block in a quote or splice */
+    def stagedBlock(isQuote: Boolean) = {
+      val saved = in.inQuote
+      in.inQuote = isQuote
+      inDefScopeBraces {
+        try block() finally in.inQuote = saved
+      }
+    }
+
+    /** SimpleEpxr  ::=  ‘$’ (id | ‘{’ Block ‘}’)
+     *  SimpleType  ::=  ‘$’ (id | ‘{’ Block ‘}’)
+     */
+    def splice(isType: Boolean): Tree =
+      atSpan(in.skipToken()) {
+        val expr = if (isIdent) termIdent() else stagedBlock(isQuote = false)
+        if (isType) TypSplice(expr) else Splice(expr)
+      }
+
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
      *                     |  StableId
-     *                     |  ['~'] StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
      *                     |  Refinement
      *                     |  Literal
+     *                     |  ‘$’ (id | ‘{’ Block ‘}’)
      */
     def simpleType(): Tree = simpleTypeRest {
       if (in.token == LPAREN)
@@ -940,8 +958,8 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       }
-      else if (isIdent(nme.raw.TILDE) && in.lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
-        atSpan(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
+      else if (in.token == SPLICE)
+        splice(isType = true)
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
@@ -1402,9 +1420,9 @@ object Parsers {
 
     /** SimpleExpr    ::= ‘new’ (ConstrApp [TemplateBody] | TemplateBody)
      *                 |  BlockExpr
-     *                 |  ‘'{’ BlockExprContents ‘}’
-     *                 |  ‘'(’ ExprsInParens ‘)’
-     *                 |  ‘'[’ Type ‘]’
+     *                 |  ‘'’ (id | ‘{’ Block ‘}’)
+     *                 |  ‘'’ ‘[’ Type ‘]’
+     *                 |  ‘$’ (id | ‘{’ Block ‘}’)
      *                 |  SimpleExpr1 [`_']
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
@@ -1433,15 +1451,21 @@ object Parsers {
         case LBRACE =>
           canApply = false
           blockExpr()
-        case QPAREN =>
-          in.token = LPAREN
-          atSpan(in.offset)(Quote(simpleExpr()))
-        case QBRACE =>
-          in.token = LBRACE
-          atSpan(in.offset)(Quote(simpleExpr()))
-        case QBRACKET =>
-          in.token = LBRACKET
-          atSpan(in.offset)(Quote(inBrackets(typ())))
+        case QUOTE =>
+          atSpan(in.skipToken()) {
+            Quote {
+              if (in.token == LBRACKET) {
+                val saved = in.inQuote
+                in.inQuote = true
+                inBrackets {
+                  try typ() finally in.inQuote = saved
+                }
+              }
+              else stagedBlock(isQuote = true)
+            }
+          }
+        case SPLICE =>
+          splice(isType = false)
         case NEW =>
           canApply = false
           newExpr()

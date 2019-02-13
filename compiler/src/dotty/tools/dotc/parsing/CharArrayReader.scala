@@ -122,6 +122,8 @@ abstract class CharArrayReader { self =>
   /** A new reader that takes off at the current character position */
   def lookaheadReader(): CharArrayLookaheadReader = new CharArrayLookaheadReader
 
+  def lookaheadChar(): Char = lookaheadReader().getc()
+
   class CharArrayLookaheadReader extends CharArrayReader {
     val buf: Array[Char] = self.buf
     charOffset = self.charOffset
