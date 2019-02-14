@@ -20,13 +20,11 @@ import SymDenotations.SymDenotation
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet}
+import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition}
 
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
-import util.SourcePosition
-import ast.TreeInfo
 
 object Inliner {
   import tpd._
@@ -122,32 +120,56 @@ object Inliner {
   def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
-      val inlinedAtPos = inlined.call.sourcePos
+      val inlinedAtSpan = inlined.call.span
       val curSource = ctx.compilationUnit.source
+
+      // Tree copier that changes the source of all trees to `curSource`
+      val cpyWithNewSource = new TypedTreeCopier {
+        override protected def sourceFile(tree: tpd.Tree): SourceFile = curSource
+        override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier {
+          override protected def sourceFile(tree: untpd.Tree): SourceFile = curSource
+        }
+      }
 
       /** Removes all Inlined trees, replacing them with blocks.
        *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
        *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
        */
-      class Reposition extends TreeMap {
-        override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-          case tree: Inlined => transformInline(tree)
-          case _ =>
-            val transformed = super.transform(tree)
-            enclosingInlineds match {
-              case call :: _ if call.symbol.source != curSource =>
+      class Reposition extends TreeMap(cpyWithNewSource) {
+        def finalize(tree: Tree, copied: untpd.Tree) =
+          copied.withSpan(tree.span).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
+
+        def reposition(tree: Tree)(implicit ctx: Context): Tree = enclosingInlineds match {
+          case call :: _ if call.symbol.source != curSource =>
+            tree match {
+              case _: EmptyTree[_] | _: EmptyValDef[_] => tree
+              case _ =>
                 // Until we implement JSR-45, we cannot represent in output positions in other source files.
                 // So, reposition inlined code from other files with the call position:
-                transformed.withSpan(inlined.call.span)
-              case _ => transformed
+                tree.withSpan(inlinedAtSpan)
             }
+          case _ => tree
         }
-        def transformInline(tree: Inlined)(implicit ctx: Context): Tree = {
-          tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))
+
+        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+          val transformed = reposition(tree match {
+            case tree: Inlined =>
+              tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource)) : Tree
+            case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
+            case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
+            case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
+            case tree: JavaSeqLiteral => finalize(tree, untpd.JavaSeqLiteral(tree.elems, tree.elemtpt)(curSource))
+            case tree: SeqLiteral => finalize(tree, untpd.SeqLiteral(tree.elems, tree.elemtpt)(curSource))
+            case tree: TypeTree => tpd.TypeTree(tree.tpe)(ctx.withSource(curSource)).withSpan(tree.span)
+            case tree: Bind => finalize(tree, untpd.Bind(tree.name, tree.body)(curSource))
+            case _ => super.transform(tree)
+          })
+          assert(transformed.isInstanceOf[EmptyTree[_]] || transformed.isInstanceOf[EmptyValDef[_]] || transformed.source == curSource)
+          transformed
         }
       }
 
-      (new Reposition).transformInline(inlined)
+      (new Reposition).transform(inlined)
     }
   }
 
