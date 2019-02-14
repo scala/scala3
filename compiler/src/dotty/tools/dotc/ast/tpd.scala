@@ -890,12 +890,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree ne null` (might need a cast to be type correct) */
     def testNotNull(implicit ctx: Context): Tree = {
-      val receiver = if (!defn.isSubtypeOfBottom(tree.tpe)) tree.ensureConforms(defn.ObjectType)
-      else {
+      val receiver = if (defn.isBottomType(tree.tpe)) {
         // If the receiver is of type `Nothing` or `Null`, add an ascription so that the selection
         // succeeds: e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
         Typed(tree, TypeTree(defn.AnyRefType))
       }
+      else tree.ensureConforms(defn.ObjectType)
       receiver.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
     }
 

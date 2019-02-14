@@ -1004,11 +1004,6 @@ class Definitions {
   def isBottomType(tp: Type): Boolean =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
-  /** Is `tp` a subtype of `Nothing` or `Null`? Unlike `isBottomType`, this uses subtyping instead of inheritance. */
-  def isSubtypeOfBottom(tp: Type): Boolean = {
-    tp.frozen_<:<(NothingType) || tp.frozen_<:<(NullType)
-  }
-
   /** Is a function class.
    *   - FunctionXXL
    *   - FunctionN for N >= 0

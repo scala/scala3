@@ -335,15 +335,15 @@ object PatternMatcher {
               patternPlan(casted, pat, onSuccess)
             })
         case UnApply(extractor, implicits, args) =>
-          val unappPlan = if (!defn.isSubtypeOfBottom(scrutinee.info)) {
+          val unappPlan = if (defn.isBottomType(scrutinee.info)) {
+            // Generate a throwaway but type-correct plan.
+            // This plan will never execute because it'll be guarded by a `NonNullTest`.
+            ResultPlan(tpd.Throw(tpd.Literal(Constant(null))))
+          } else {
             val mt @ MethodType(_) = extractor.tpe.widen
             var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
             if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
             unapplyPlan(unapp, args)
-          } else {
-            // Generate a throwaway but type-correct plan.
-            // This plan will never execute because it'll be guarded by a `NonNullTest`.
-            ResultPlan(tpd.Throw(tpd.Literal(Constant(null))))
           }
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
           else TestPlan(NonNullTest, scrutinee, tree.span, unappPlan)
