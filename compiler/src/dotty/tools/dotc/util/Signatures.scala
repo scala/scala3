@@ -80,27 +80,25 @@ object Signatures {
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
     val classTree = symbol.topLevelClass.asClass.rootTree
-    val isImplicit: TermName => Boolean = tpd.defPath(symbol, classTree).lastOption match {
-      case Some(DefDef(_, _, paramss, _, _)) =>
-        val flatParams = paramss.flatten
-        name => flatParams.find(_.name == name).map(_.symbol.is(Implicit)).getOrElse(false)
-      case _ =>
-        _ => false
+
+    def toParamss(tp: MethodType)(implicit ctx: Context): List[List[Param]] = {
+      val rest = tp.resType match {
+        case res: MethodType =>
+          toParamss(res)
+        case _ =>
+          Nil
+      }
+      tp.paramNames.zip(tp.paramInfos).map { case (name, info) =>
+        Signatures.Param(name.show,
+          info.widenTermRefExpr.show,
+          docComment.flatMap(_.paramDoc(name)),
+          isImplicit = tp.isImplicitMethod)
+      } :: rest
     }
 
     denot.info.stripPoly match {
       case tpe: MethodType =>
-        val infos = {
-          tpe.paramInfoss.zip(tpe.paramNamess).map { case (infos, names) =>
-            infos.zip(names).map { case (info, name) =>
-              Signatures.Param(name.show,
-                               info.widenTermRefExpr.show,
-                               docComment.flatMap(_.paramDoc(name)),
-                               isImplicit = isImplicit(name))
-            }
-          }
-        }
-
+        val paramss = toParamss(tpe)
         val typeParams = denot.info match {
           case poly: PolyType =>
             poly.paramNames.zip(poly.paramInfos).map { case (x, y) => x.show + y.show }
@@ -115,7 +113,7 @@ object Signatures {
         val signature =
           Signatures.Signature(name,
                                typeParams,
-                               infos,
+                               paramss,
                                returnType,
                                docComment.map(_.mainDoc))
 

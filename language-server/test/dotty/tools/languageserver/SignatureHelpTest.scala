@@ -8,6 +8,24 @@ import dotty.tools.dotc.util.Signatures.{Param => P, Signature => S}
 
 class SignatureHelpTest {
 
+  @Test def javaParam: Unit = {
+    val signature =
+      S("codePointAt", Nil, List(List(P("x$0", "Int"))), Some("Int"))
+    code"""object O {
+             "hello".codePointAt($m1)
+           }""".withSource
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
+  @Test def scala2Param: Unit = {
+    val signature =
+      S("apply[A]", Nil, List(List(P("xs", "A*"))), Some("List[A]"))
+    code"""object O {
+             List($m1)
+           }""".withSource
+      .signatureHelp(m1, List(signature), Some(0), 0)
+  }
+
   @Test def singleParam: Unit = {
     val signature =
       S("foo", Nil, List(List(P("param0", "Int"))), Some("Int"))
