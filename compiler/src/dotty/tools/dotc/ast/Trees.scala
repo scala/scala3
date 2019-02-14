@@ -820,13 +820,15 @@ object Trees {
 
   class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoSource) {
     // assert(uniqueId != 1492)
+    override def withSpan(span: Span) = throw new AssertionError("Cannot change span of EmptyTree")
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T])(NoSource) with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
-    override def isEmpty: Boolean = true
     setMods(untpd.Modifiers(PrivateLocal))
+    override def isEmpty: Boolean = true
+    override def withSpan(span: Span) = throw new AssertionError("Cannot change span of EmptyValDef")
   }
 
   @sharable val theEmptyTree: EmptyTree[Type] = new EmptyTree[Type]

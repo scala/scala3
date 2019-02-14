@@ -144,8 +144,8 @@ class Staging extends MacroTransform {
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
         val pos: SourcePosition = spliceCtx.source.atSpan(enclosingInlineds.head.span)
-        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withSpan(splice.span)
-        if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
+        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx)
+        if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice.withSpan(splice.span))
       }
       else if (!ctx.owner.isInlineMethod) { // level 0 outside an inline method
         ctx.error(i"splice outside quotes or inline method", splice.sourcePos)
