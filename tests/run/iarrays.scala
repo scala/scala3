@@ -50,4 +50,8 @@ object Test extends App {
   assert(reduce(is, 0, _ + _) == 6)
 
   val IArray(1, 2, 3) = xs
+
+  val as: IArray[Any] = IArray(1, "hello")
+  assert(as(as.length - 1) == "hello")
+
 }
