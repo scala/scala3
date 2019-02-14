@@ -58,7 +58,7 @@ object TestConfiguration {
     "-Yprint-pos",
     "-Yprint-pos-syms"
   )
-  val defaultPositionCheckingOptions = defaultOptions and "-Ydebug-pos" and "-Yprint-pos"
+  val defaultPositionCheckingOptions = defaultOptions and "-Ydebug-pos" and "-Yprint-pos" // use with -Xprint and a checkfile
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
   val scala2Mode = defaultOptions and "-language:Scala2"

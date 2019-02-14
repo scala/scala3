@@ -1,8 +1,8 @@
 Flag -pagewidth set repeatedly
-result of tests/pos-special/pickler-positions/i4947g.scala after pickler:
+result of tests/pos-special/i4947g.scala after pickler:
 package <empty>@<0..0> {
   final lazy module val Test: Test$@<0..0> = new Test$@<0..0>@<0..0>()@<0..0>@<0..0>
-  @scala.annotation.internal.SourceFile@<no position>@<no position>("tests/pos-special/pickler-positions/i4947g.scala"@<no position>)@<no position> final module class Test$() extends Object@<7..7>@<7..7>()@<7..7>, _root_@<17..17>.scala@<17..17>.Serializable@<17..17> { this: Test@<17..17>.type@<17..17> => 
+  @scala.annotation.internal.SourceFile@<no position>@<no position>("tests/pos-special/i4947g.scala"@<no position>)@<no position> final module class Test$() extends Object@<7..7>@<7..7>()@<7..7>, _root_@<17..17>.scala@<17..17>.Serializable@<17..17> { this: Test@<17..17>.type@<17..17> => 
     private def writeReplace(): AnyRef = new scala.runtime.ModuleSerializationProxy@<7..7>@<7..7>(classOf[Test.type]@<7..7>)@<7..7>@<7..7>
     inline def fact[T >: Nothing <: Any@<33..33>@[33..34]](inline i: Int@<46..49>@[36..43..49])(f: => T@<57..58>@<54..58>@[51..58]): Int@<61..64> = 
       {
@@ -95,6 +95,48 @@ package <empty>@<0..0> {
         }@<67..196> :Int@<61..64>@<250..343>
       }
     @<250..343>
+  }@[0..7..346]
+}@<0..346>
+result of tests/pos-special/i4947g.scala after erasure:
+package <empty>@<0..0> {
+  final lazy module val Test: Test$ = new Test$@<0..0>@<0..0>()@<0..0>@<0..0>
+  @scala.annotation.internal.SourceFile@<no position>@<no position>("tests/pos-special/i4947g.scala"@<no position>)@<no position> final module class Test$() extends Object@<7..7>@<7..7>()@<7..7>, Serializable { 
+    private def writeReplace(): Object = new scala.runtime.ModuleSerializationProxy@<7..7>@<7..7>(classOf[Test$]@<7..7>)@<7..7>@<7..7>
+    def printStack(tag: String@[215..226], i: Int@[228..234]): Unit = ()@<244..246>@[200..204..246]
+    {
+      Test.printStack@<73..83>("track"@<84..91>, 0@<93..94>)@<73..95>
+      Test.printStack@<100..110>("track"@<111..118>, 0@<120..121>)@<100..122>
+      {
+        Test.printStack@<73..83>("track"@<84..91>, 2@<93..94>)@<73..95>
+        Test.printStack@<100..110>("track"@<111..118>, 2@<120..121>)@<100..122>
+        {
+          Test.printStack@<280..290>("main1"@<291..298>, -1@<300..301>)@<280..303>
+          Test.printStack@<310..320>("main2"@<321..328>, -1@<330..331>)@<310..333>
+        }@<272..339>
+        2@<170..171>.*@<170..173>(
+          {
+            Test.printStack@<73..83>("track"@<84..91>, 1@<93..94>)@<73..95>
+            Test.printStack@<100..110>("track"@<111..118>, 1@<120..121>)@<100..122>
+            {
+              Test.printStack@<280..290>("main1"@<291..298>, -1@<300..301>)@<280..303>
+              Test.printStack@<310..320>("main2"@<321..328>, -1@<330..331>)@<310..333>
+            }@<272..339>
+            1@<170..171>.*@<170..173>(
+              {
+                Test.printStack@<73..83>("track"@<84..91>, 0@<93..94>)@<73..95>
+                Test.printStack@<100..110>("track"@<111..118>, 0@<120..121>)@<100..122>
+                {
+                  Test.printStack@<280..290>("main1"@<291..298>, -1@<300..301>)@<280..303>
+                  Test.printStack@<310..320>("main2"@<321..328>, -1@<330..331>)@<310..333>
+                }@<272..339>
+                1@<151..152>
+              }@<67..196> :Int@<174..186>
+            )@<170..186>
+          }@<67..196> :Int@<174..186>
+        )@<170..186>
+      }@<67..196> :Int@<264..339>
+      1@<151..152>
+    }@<67..196> :Int@<250..343>
   }@[0..7..346]
 }@<0..346>
 one warning found

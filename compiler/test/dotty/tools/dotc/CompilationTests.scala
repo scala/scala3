@@ -50,6 +50,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/completeFromSource/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
     compileFile("tests/pos-special/repeatedArgs213.scala", defaultOptions.and("-Ynew-collections")) +
     compileFilesInDir("tests/pos-special/pickler-positions", defaultPositionCheckingOptions.and("-Xprint:pickler", "-pagewidth", "1000")) + // Require checkfiles
+    compileFile("tests/pos-special/i4947g.scala", defaultPositionCheckingOptions.and("-Xprint:pickler,erasure", "-pagewidth", "1000")) + // Requires a checkfile
     compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-feature")) +
     compileList(
       "compileMixed",
