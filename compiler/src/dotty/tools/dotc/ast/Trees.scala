@@ -15,6 +15,7 @@ import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import Decorators._
+import dotty.tools.dotc.core.tasty.TreePickler.Hole
 
 object Trees {
 
@@ -1438,6 +1439,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
+            case Hole(_, args) =>
+              this(x, args)
             case _ =>
               foldMoreCases(x, tree)
           }

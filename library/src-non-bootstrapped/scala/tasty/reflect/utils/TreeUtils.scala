@@ -6,6 +6,8 @@ trait TreeUtils {
   val reflect: Reflection
   import reflect._
 
-  def let(rhs: Term)(in: Term.Ident => Term): Term = throw new Exception("non bootstrpped lib")
+  /** Bind the `rhs` to a `val` and use it in `body` */
+  def let(rhs: Term)(bodyType: Type)(body: Term.Ident => Term): Term =
+    throw new Exception("non bootstrpped lib")
 
 }

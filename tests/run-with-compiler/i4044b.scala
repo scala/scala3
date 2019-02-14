@@ -8,7 +8,7 @@ sealed abstract class VarRef[T] {
 }
 
 object VarRef {
-  def apply[T: Type, U](init: Expr[T])(body: VarRef[T] => Expr[U]): Expr[U] = '{
+  def apply[T: Type, U: Type](init: Expr[T])(body: VarRef[T] => Expr[U]): Expr[U] = '{
     var x = ~init
     ~body(
       new VarRef {

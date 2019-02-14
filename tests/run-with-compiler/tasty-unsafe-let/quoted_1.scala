@@ -13,7 +13,7 @@ object Macros {
     val rhsTerm = rhs.unseal
 
     import reflect.util.{let => letTerm}
-    letTerm(rhsTerm) { rhsId =>
+    letTerm(rhsTerm)(('[Unit]).unseal.tpe) { rhsId =>
       body(rhsId.seal[Any].asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
     }.seal[Unit]
   }

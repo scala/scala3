@@ -19,7 +19,7 @@ object Lifters {
     ~initArray(arr, '(array))
   }
 
-  private def initArray[T : Liftable](arr: Array[T], array: Expr[Array[T]]): Expr[Array[T]] = {
+  private def initArray[T : Liftable : Type](arr: Array[T], array: Expr[Array[T]]): Expr[Array[T]] = {
     UnrolledExpr.block(
       arr.zipWithIndex.map {
         case (x, i) => '{ (~array)(~i.toExpr) = ~x.toExpr }
