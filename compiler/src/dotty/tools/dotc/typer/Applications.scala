@@ -1191,6 +1191,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *
    *   - A1's owner derives from A2's owner.
    *   - A1's type is more specific than A2's type.
+   *
+   *  If that tournament yields a draw, a tiebreak is applied where
+   *  an alternative that takes more implicit parameters wins over one
+   *  that takes fewer.
    */
   def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
@@ -1290,12 +1294,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
       }
 
+    // # skipped implicit parameters in tp1  -  # skipped implicit parameters in tp2
+    var implicitBalance: Int = 0
+
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type): Type = tp match {
+    def stripImplicit(tp: Type, weight: Int): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
+        implicitBalance += mt.paramInfos.length * weight
         resultTypeApprox(mt)
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, weight))
       case _ =>
         tp
     }
@@ -1304,21 +1312,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
     val ownerScore = compareOwner(owner1, owner2)
 
-    val tp1 = stripImplicit(alt1.widen)
-    val tp2 = stripImplicit(alt2.widen)
+    val tp1 = stripImplicit(alt1.widen, -1)
+    val tp2 = stripImplicit(alt2.widen, +1)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
     overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
 
+    def tieBreak = -implicitBalance.signum
+
     if (ownerScore == 1)
-      if (winsType1 || !winsType2) 1 else 0
+      if (winsType1 || !winsType2) 1 else tieBreak
     else if (ownerScore == -1)
-      if (winsType2 || !winsType1) -1 else 0
+      if (winsType2 || !winsType1) -1 else tieBreak
     else if (winsType1)
-      if (winsType2) 0 else 1
+      if (winsType2) tieBreak else 1
     else
-      if (winsType2) -1 else 0
+      if (winsType2) -1 else tieBreak
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
