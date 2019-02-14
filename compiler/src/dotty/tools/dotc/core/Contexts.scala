@@ -775,7 +775,7 @@ object Contexts {
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
-  sealed abstract class GADTMap {
+  sealed abstract class GADTMap extends Showable {
     def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit
     def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean
     def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean
@@ -801,6 +801,14 @@ object Contexts {
     private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
   ) extends GADTMap with ConstraintHandling[Context] {
     import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
+
+    def subsumes(left: GADTMap, right: GADTMap, pre: GADTMap)(implicit ctx: Context): Boolean = {
+      def extractConstraint(g: GADTMap) = g match {
+        case s: SmartGADTMap => s.constraint
+        case EmptyGADTMap => OrderingConstraint.empty
+      }
+      subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
+    }
 
     def this() = this(
       myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
@@ -950,6 +958,8 @@ object Contexts {
 
     override def constr_println(msg: => String): Unit = gadtsConstr.println(msg)
 
+    override def toText(printer: Printer): Texts.Text = constraint.toText(printer)
+
     override def debugBoundsDescription(implicit ctx: Context): String = {
       val sb = new mutable.StringBuilder
       sb ++= constraint.show
@@ -969,6 +979,7 @@ object Contexts {
     override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
     override def contains(sym: Symbol)(implicit ctx: Context) = false
     override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = unsupported("EmptyGADTMap.approximation")
+    override def toText(printer: Printer): Texts.Text = "EmptyGADTMap"
     override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGADTMap"
     override def fresh = new SmartGADTMap
     override def restore(other: GADTMap): Unit = {
