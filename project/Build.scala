@@ -227,28 +227,33 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      // TODO: Here we use the output class directories directly, this might impact
-      // performance when running the compiler (especially on Windows where file
-      // IO is slow). We should benchmark whether using jars is actually faster
-      // in practice (especially on our CI), this could be done using
-      // `exportJars := true`.
-      val all = fullClasspath.in(`dotty-doc`, Compile).value
-      def getArtifact(name: String): File =
-        all.find(_.get(artifact.key).exists(_.name == name))
-          .getOrElse(throw new MessageOnlyException(s"Artifact for $name not found in $all"))
+      val externalDeps = externalDependencyClasspath.in(`dotty-doc`, Compile).value
+      def getExternalDep(name: String): File =
+        externalDeps.find(_.get(artifact.key).exists(_.name == name))
+          .getOrElse(throw new MessageOnlyException(s"Artifact for $name not found in $externalDeps"))
           .data
 
-      val scalaLibrary = getArtifact("scala-library")
-      val dottyLibrary = getArtifact("dotty-library")
-      val compiler = getArtifact("dotty-compiler")
+      val scalaLibrary = getExternalDep("scala-library")
+
+      // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+      // just directories containing classfiles because sbt maintains a cache of
+      // compiler instances. This cache is invalidated based on timestamps
+      // however this is only implemented on jars, directories are never
+      // invalidated.
+      val dottyLibrary = packageBin.in(`dotty-library`, Compile).value
+      val dottyInterfaces = packageBin.in(`dotty-interfaces`, Compile).value
+      val dottyCompiler = packageBin.in(`dotty-compiler`, Compile).value
+      val dottyDoc = packageBin.in(`dotty-doc`, Compile).value
+
+      val allJars = Seq(dottyLibrary, dottyInterfaces, dottyCompiler, dottyDoc) ++ externalDeps.map(_.data)
 
       makeScalaInstance(
         state.value,
         scalaVersion.value,
         scalaLibrary,
         dottyLibrary,
-        compiler,
-        all.map(_.data)
+        dottyCompiler,
+        allJars
       )
     }
   )
