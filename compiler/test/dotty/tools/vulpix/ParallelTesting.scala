@@ -289,6 +289,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       realStderr.println(msg + paddingRight)
     }
 
+    def checkFileTest(testSource: TestSource, checkFile: JFile, actual: List[String]) = {
+      val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
+      for (msg <- diffMessage(testSource.title, actual, expexted)) {
+        echo(msg)
+        failTestSource(testSource)
+        if (updateCheckFiles)
+          updateCheckFile(checkFile, actual)
+      }
+    }
+
     /** Print a progress bar for the current `Test` */
     private def updateProgressMonitor(start: Long): Unit = {
       val tCompiled = testSourcesCompleted
@@ -374,10 +384,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       try {
         // If a test contains a Java file that cannot be parsed by Dotty's Java source parser, its
         // name must contain the string "JAVA_ONLY".
-        val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getAbsolutePath)
+        val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getPath)
         driver.process(allArgs ++ dottyFiles, reporter = reporter)
 
-        val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath)
+
+        val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getPath)
         val javaErrors = compileWithJavac(javaFiles)
 
         if (javaErrors.isDefined) {
@@ -578,7 +589,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                 rep
               }
               else if (fromTasty) compileFromTasty(flags, false, outDir)
-              else compile(testSource.sourceFiles, flags, false, outDir)
+              else {
+                val reporter = compile(testSource.sourceFiles, flags, false, outDir)
+                files.foreach { file =>
+                  if (!file.isDirectory) {
+                    val checkFile = new JFile(file.getAbsolutePath.replaceFirst("\\.scala$", ".check"))
+                    if (checkFile.exists)
+                      checkFileTest(testSource, checkFile, reporterOutputLines(reporter :: Nil))
+                  }
+                }
+                reporter
+              }
             registerCompletion()
 
             if (reporter.compilerCrashed || reporter.errorCount > 0) {
@@ -598,6 +619,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             def warningCount = reporters.foldLeft(0)(_ + _.warningCount)
 
+            val checkFile = new JFile(dir.getAbsolutePath + ".check")
+            if (checkFile.exists)
+              checkFileTest(testSource, checkFile, reporterOutputLines(reporters))
+
             registerCompletion()
 
             if (compilerCrashed || errorCount > 0) {
@@ -605,6 +630,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               logBuildInstructions(reporters.head, testSource, errorCount, warningCount)
             }
         }
+      }
+
+      private def reporterOutputLines(reporters: List[TestReporter]): List[String] = {
+        def outputDilter(str: String): Boolean = !str.startsWith("checking tests/")
+        reporters.iterator.flatMap(_.messages.filter(outputDilter).flatMap(_.linesIterator)).toList
       }
     }
   }
@@ -779,14 +809,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().lines.toList
           }
         }
-        def checkFileTest(sourceName: String, checkFile: JFile, actual: List[String]) = {
-          val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
-          for (msg <- diffMessage(sourceName, actual, expexted)) {
-            fail(msg)
-            if (updateCheckFiles)
-              updateCheckFile(checkFile, actual)
-          }
-        }
 
         val (compilerCrashed, expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = testSource match {
           case testSource @ JointCompilationSource(_, files, flags, outDir, fromTasty, decompilation) =>
@@ -798,7 +820,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               if (!file.isDirectory) {
                 val checkFile = new JFile(file.getAbsolutePath.replaceFirst("\\.scala$", ".check"))
                 if (checkFile.exists)
-                  checkFileTest(testSource.title, checkFile, reporterOutputLines(reporter :: Nil))
+                  checkFileTest(testSource, checkFile, reporterOutputLines(reporter :: Nil))
               }
             }
             if (reporter.compilerCrashed || actualErrors > 0)
@@ -819,7 +841,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             val checkFile = new JFile(dir.getAbsolutePath + ".check")
             if (checkFile.exists)
-              checkFileTest(testSource.title, checkFile, reporterOutputLines(reporters))
+              checkFileTest(testSource, checkFile, reporterOutputLines(reporters))
 
             (compilerCrashed, expectedErrors, actualErrors, () => getMissingExpectedErrors(errorMap, errors), errorMap)
           }

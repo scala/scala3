@@ -37,7 +37,7 @@ class CompilationTests extends ParallelTesting {
     compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
   }.checkCompile()
 
-  @Test def pos: Unit = {
+  @Test def posAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
     compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileFile("tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
@@ -49,6 +49,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
     compileFile("tests/pos-special/completeFromSource/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
     compileFile("tests/pos-special/repeatedArgs213.scala", defaultOptions.and("-Ynew-collections")) +
+    compileFilesInDir("tests/pos-special/pickler-positions", defaultPositionCheckingOptions.and("-Xprint:pickler", "-pagewidth", "1000")) + // Require checkfiles
     compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-feature")) +
     compileList(
       "compileMixed",

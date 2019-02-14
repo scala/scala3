@@ -1,0 +1,100 @@
+Flag -pagewidth set repeatedly
+result of tests/pos-special/pickler-positions/i4947g.scala after pickler:
+package <empty>@tests/pos-special/pickler-positions/i4947g.scala<0..0> {
+  final lazy module val Test: Test$@tests/pos-special/pickler-positions/i4947g.scala<0..0> = new Test$@tests/pos-special/pickler-positions/i4947g.scala<0..0>@tests/pos-special/pickler-positions/i4947g.scala<0..0>()@tests/pos-special/pickler-positions/i4947g.scala<0..0>@tests/pos-special/pickler-positions/i4947g.scala<0..0>
+  @scala.annotation.internal.SourceFile@tests/pos-special/pickler-positions/i4947g.scala<no position>@tests/pos-special/pickler-positions/i4947g.scala<no position>("tests/pos-special/pickler-positions/i4947g.scala"@tests/pos-special/pickler-positions/i4947g.scala<no position>)@tests/pos-special/pickler-positions/i4947g.scala<no position> final module class Test$() extends Object@tests/pos-special/pickler-positions/i4947g.scala<7..7>@tests/pos-special/pickler-positions/i4947g.scala<7..7>()@tests/pos-special/pickler-positions/i4947g.scala<7..7>, _root_@tests/pos-special/pickler-positions/i4947g.scala<17..17>.scala@tests/pos-special/pickler-positions/i4947g.scala<17..17>.Serializable@tests/pos-special/pickler-positions/i4947g.scala<17..17> { this: Test@tests/pos-special/pickler-positions/i4947g.scala<17..17>.type@tests/pos-special/pickler-positions/i4947g.scala<17..17> => 
+    private def writeReplace(): AnyRef = new scala.runtime.ModuleSerializationProxy@tests/pos-special/pickler-positions/i4947g.scala<7..7>@tests/pos-special/pickler-positions/i4947g.scala<7..7>(classOf[Test.type]@tests/pos-special/pickler-positions/i4947g.scala<7..7>)@tests/pos-special/pickler-positions/i4947g.scala<7..7>@tests/pos-special/pickler-positions/i4947g.scala<7..7>
+    inline def fact[T >: Nothing <: Any@tests/pos-special/pickler-positions/i4947g.scala<33..33>@tests/pos-special/pickler-positions/i4947g.scala[33..34]](inline i: Int@tests/pos-special/pickler-positions/i4947g.scala<46..49>@tests/pos-special/pickler-positions/i4947g.scala[36..43..49])(f: => T@tests/pos-special/pickler-positions/i4947g.scala<57..58>@tests/pos-special/pickler-positions/i4947g.scala<54..58>@tests/pos-special/pickler-positions/i4947g.scala[51..58]): Int@tests/pos-special/pickler-positions/i4947g.scala<61..64> = 
+      {
+        Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<73..83>("track"@tests/pos-special/pickler-positions/i4947g.scala<84..91>, i@tests/pos-special/pickler-positions/i4947g.scala<93..94>)@tests/pos-special/pickler-positions/i4947g.scala<73..95>
+        Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<100..110>("track"@tests/pos-special/pickler-positions/i4947g.scala<111..118>, i@tests/pos-special/pickler-positions/i4947g.scala<120..121>)@tests/pos-special/pickler-positions/i4947g.scala<100..122>
+        f@tests/pos-special/pickler-positions/i4947g.scala<127..128>
+        (if i@tests/pos-special/pickler-positions/i4947g.scala<137..138>.==@tests/pos-special/pickler-positions/i4947g.scala<137..141>(0@tests/pos-special/pickler-positions/i4947g.scala<142..143>)@tests/pos-special/pickler-positions/i4947g.scala<137..143> then 1@tests/pos-special/pickler-positions/i4947g.scala<151..152> else 
+          {
+            i@tests/pos-special/pickler-positions/i4947g.scala<170..171>.*@tests/pos-special/pickler-positions/i4947g.scala<170..173>(Test.fact@tests/pos-special/pickler-positions/i4947g.scala<174..178>[T]@tests/pos-special/pickler-positions/i4947g.scala<174..178>(i@tests/pos-special/pickler-positions/i4947g.scala<179..180>.-@tests/pos-special/pickler-positions/i4947g.scala<179..181>(1@tests/pos-special/pickler-positions/i4947g.scala<181..182>)@tests/pos-special/pickler-positions/i4947g.scala<179..182>)@tests/pos-special/pickler-positions/i4947g.scala<174..183>(f@tests/pos-special/pickler-positions/i4947g.scala<184..185>)@tests/pos-special/pickler-positions/i4947g.scala<174..186>)@tests/pos-special/pickler-positions/i4947g.scala<170..186>
+          }@tests/pos-special/pickler-positions/i4947g.scala<162..192>
+        )@tests/pos-special/pickler-positions/i4947g.scala<133..192>
+      }@tests/pos-special/pickler-positions/i4947g.scala<67..196> :Int@tests/pos-special/pickler-positions/i4947g.scala<61..64>@tests/pos-special/pickler-positions/i4947g.scala<61..196>
+    @tests/pos-special/pickler-positions/i4947g.scala[17..28..196]
+    def printStack(tag: String@tests/pos-special/pickler-positions/i4947g.scala<220..226>@tests/pos-special/pickler-positions/i4947g.scala[215..226], i: Int@tests/pos-special/pickler-positions/i4947g.scala<231..234>@tests/pos-special/pickler-positions/i4947g.scala[228..234]): Unit@tests/pos-special/pickler-positions/i4947g.scala<237..241> = ()@tests/pos-special/pickler-positions/i4947g.scala<244..246>@tests/pos-special/pickler-positions/i4947g.scala[200..204..246]
+    /* inlined from Test$@tests/pos-special/pickler-positions/i4947g.scala<250..343> */ 
+      {
+        {
+          Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<73..83>("track"@tests/pos-special/pickler-positions/i4947g.scala<84..91>, 0@tests/pos-special/pickler-positions/i4947g.scala<93..94>)@tests/pos-special/pickler-positions/i4947g.scala<73..95>
+          Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<100..110>("track"@tests/pos-special/pickler-positions/i4947g.scala<111..118>, 0@tests/pos-special/pickler-positions/i4947g.scala<120..121>)@tests/pos-special/pickler-positions/i4947g.scala<100..122>
+          /* inlined from outside */ 
+            {
+              /* inlined from Test$@tests/pos-special/pickler-positions/i4947g.scala<264..339> */ 
+                {
+                  {
+                    Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<73..83>("track"@tests/pos-special/pickler-positions/i4947g.scala<84..91>, 2@tests/pos-special/pickler-positions/i4947g.scala<93..94>)@tests/pos-special/pickler-positions/i4947g.scala<73..95>
+                    Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<100..110>("track"@tests/pos-special/pickler-positions/i4947g.scala<111..118>, 2@tests/pos-special/pickler-positions/i4947g.scala<120..121>)@tests/pos-special/pickler-positions/i4947g.scala<100..122>
+                    /* inlined from outside */ 
+                      {
+                        {
+                          Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<280..290>("main1"@tests/pos-special/pickler-positions/i4947g.scala<291..298>, -1@tests/pos-special/pickler-positions/i4947g.scala<300..301>)@tests/pos-special/pickler-positions/i4947g.scala<280..303>
+                          Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<310..320>("main2"@tests/pos-special/pickler-positions/i4947g.scala<321..328>, -1@tests/pos-special/pickler-positions/i4947g.scala<330..331>)@tests/pos-special/pickler-positions/i4947g.scala<310..333>
+                        }@tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                      }
+                    @tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                    2@tests/pos-special/pickler-positions/i4947g.scala<170..171>.*@tests/pos-special/pickler-positions/i4947g.scala<170..173>(
+                      /* inlined from Test$@tests/pos-special/pickler-positions/i4947g.scala<174..186> */ 
+                        {
+                          {
+                            Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<73..83>("track"@tests/pos-special/pickler-positions/i4947g.scala<84..91>, 1@tests/pos-special/pickler-positions/i4947g.scala<93..94>)@tests/pos-special/pickler-positions/i4947g.scala<73..95>
+                            Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<100..110>("track"@tests/pos-special/pickler-positions/i4947g.scala<111..118>, 1@tests/pos-special/pickler-positions/i4947g.scala<120..121>)@tests/pos-special/pickler-positions/i4947g.scala<100..122>
+                            /* inlined from outside */ 
+                              {
+                                /* inlined from outside */ 
+                                  {
+                                    {
+                                      Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<280..290>("main1"@tests/pos-special/pickler-positions/i4947g.scala<291..298>, -1@tests/pos-special/pickler-positions/i4947g.scala<300..301>)@tests/pos-special/pickler-positions/i4947g.scala<280..303>
+                                      Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<310..320>("main2"@tests/pos-special/pickler-positions/i4947g.scala<321..328>, -1@tests/pos-special/pickler-positions/i4947g.scala<330..331>)@tests/pos-special/pickler-positions/i4947g.scala<310..333>
+                                    }@tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                                  }
+                                @tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                              }
+                            @tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                            1@tests/pos-special/pickler-positions/i4947g.scala<170..171>.*@tests/pos-special/pickler-positions/i4947g.scala<170..173>(
+                              /* inlined from Test$@tests/pos-special/pickler-positions/i4947g.scala<174..186> */ 
+                                {
+                                  {
+                                    Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<73..83>("track"@tests/pos-special/pickler-positions/i4947g.scala<84..91>, 0@tests/pos-special/pickler-positions/i4947g.scala<93..94>)@tests/pos-special/pickler-positions/i4947g.scala<73..95>
+                                    Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<100..110>("track"@tests/pos-special/pickler-positions/i4947g.scala<111..118>, 0@tests/pos-special/pickler-positions/i4947g.scala<120..121>)@tests/pos-special/pickler-positions/i4947g.scala<100..122>
+                                    /* inlined from outside */ 
+                                      {
+                                        /* inlined from outside */ 
+                                          {
+                                            /* inlined from outside */ 
+                                              {
+                                                {
+                                                  Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<280..290>("main1"@tests/pos-special/pickler-positions/i4947g.scala<291..298>, -1@tests/pos-special/pickler-positions/i4947g.scala<300..301>)@tests/pos-special/pickler-positions/i4947g.scala<280..303>
+                                                  Test.printStack@tests/pos-special/pickler-positions/i4947g.scala<310..320>("main2"@tests/pos-special/pickler-positions/i4947g.scala<321..328>, -1@tests/pos-special/pickler-positions/i4947g.scala<330..331>)@tests/pos-special/pickler-positions/i4947g.scala<310..333>
+                                                }@tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                                              }
+                                            @tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                                          }
+                                        @tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                                      }
+                                    @tests/pos-special/pickler-positions/i4947g.scala<272..339>
+                                    1@tests/pos-special/pickler-positions/i4947g.scala<151..152>
+                                  }@tests/pos-special/pickler-positions/i4947g.scala<67..196> :Int@tests/pos-special/pickler-positions/i4947g.scala<61..64>@tests/pos-special/pickler-positions/i4947g.scala<174..186>
+                                }
+                              @tests/pos-special/pickler-positions/i4947g.scala<174..186>
+                            )@tests/pos-special/pickler-positions/i4947g.scala<170..186>
+                          }@tests/pos-special/pickler-positions/i4947g.scala<67..196> :Int@tests/pos-special/pickler-positions/i4947g.scala<61..64>@tests/pos-special/pickler-positions/i4947g.scala<174..186>
+                        }
+                      @tests/pos-special/pickler-positions/i4947g.scala<174..186>
+                    )@tests/pos-special/pickler-positions/i4947g.scala<170..186>
+                  }@tests/pos-special/pickler-positions/i4947g.scala<67..196> :Int@tests/pos-special/pickler-positions/i4947g.scala<61..64>@tests/pos-special/pickler-positions/i4947g.scala<264..339>
+                }
+              @tests/pos-special/pickler-positions/i4947g.scala<264..339>
+            }
+          @tests/pos-special/pickler-positions/i4947g.scala<258..343>
+          1@tests/pos-special/pickler-positions/i4947g.scala<151..152>
+        }@tests/pos-special/pickler-positions/i4947g.scala<67..196> :Int@tests/pos-special/pickler-positions/i4947g.scala<61..64>@tests/pos-special/pickler-positions/i4947g.scala<250..343>
+      }
+    @tests/pos-special/pickler-positions/i4947g.scala<250..343>
+  }@tests/pos-special/pickler-positions/i4947g.scala[0..7..346]
+}@tests/pos-special/pickler-positions/i4947g.scala<0..346>
+one warning found

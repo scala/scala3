@@ -1,0 +1,31 @@
+Flag -pagewidth set repeatedly
+result of tests/pos-special/pickler-positions/inline0/Lib_1.scala after pickler:
+package <empty>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..0> {
+  final lazy module val Lib: Lib$@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..0> = new Lib$@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..0>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..0>()@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..0>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..0>
+  @scala.annotation.internal.SourceFile@tests/pos-special/pickler-positions/inline0/Lib_1.scala<no position>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<no position>("tests/pos-special/pickler-positions/inline0/Lib_1.scala"@tests/pos-special/pickler-positions/inline0/Lib_1.scala<no position>)@tests/pos-special/pickler-positions/inline0/Lib_1.scala<no position> final module class Lib$() extends Object@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>()@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>, _root_@tests/pos-special/pickler-positions/inline0/Lib_1.scala<15..15>.scala@tests/pos-special/pickler-positions/inline0/Lib_1.scala<15..15>.Serializable@tests/pos-special/pickler-positions/inline0/Lib_1.scala<15..15> { this: Lib@tests/pos-special/pickler-positions/inline0/Lib_1.scala<15..15>.type@tests/pos-special/pickler-positions/inline0/Lib_1.scala<15..15> => 
+    private def writeReplace(): AnyRef = new scala.runtime.ModuleSerializationProxy@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>(classOf[Lib.type]@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>)@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>@tests/pos-special/pickler-positions/inline0/Lib_1.scala<7..7>
+    inline def foo(x: Int@tests/pos-special/pickler-positions/inline0/Lib_1.scala<33..36>@tests/pos-special/pickler-positions/inline0/Lib_1.scala[30..36]): Int = 
+      {
+        val y: Int = x@tests/pos-special/pickler-positions/inline0/Lib_1.scala<54..55>.+@tests/pos-special/pickler-positions/inline0/Lib_1.scala<54..57>(x@tests/pos-special/pickler-positions/inline0/Lib_1.scala<58..59>)@tests/pos-special/pickler-positions/inline0/Lib_1.scala<54..59>@tests/pos-special/pickler-positions/inline0/Lib_1.scala[46..50..59]
+        y@tests/pos-special/pickler-positions/inline0/Lib_1.scala<64..65>.*@tests/pos-special/pickler-positions/inline0/Lib_1.scala<64..67>(y@tests/pos-special/pickler-positions/inline0/Lib_1.scala<68..69>)@tests/pos-special/pickler-positions/inline0/Lib_1.scala<64..69>
+      }@tests/pos-special/pickler-positions/inline0/Lib_1.scala<40..73>
+    @tests/pos-special/pickler-positions/inline0/Lib_1.scala[15..26..73]
+  }@tests/pos-special/pickler-positions/inline0/Lib_1.scala[0..7..75]
+}@tests/pos-special/pickler-positions/inline0/Lib_1.scala<0..75>
+one warning found
+Flag -pagewidth set repeatedly
+result of tests/pos-special/pickler-positions/inline0/App_2.scala after pickler:
+package <empty>@tests/pos-special/pickler-positions/inline0/App_2.scala<0..0> {
+  @scala.annotation.internal.SourceFile@tests/pos-special/pickler-positions/inline0/App_2.scala<no position>@tests/pos-special/pickler-positions/inline0/App_2.scala<no position>("tests/pos-special/pickler-positions/inline0/App_2.scala"@tests/pos-special/pickler-positions/inline0/App_2.scala<no position>)@tests/pos-special/pickler-positions/inline0/App_2.scala<no position> class App() extends Object@tests/pos-special/pickler-positions/inline0/App_2.scala<6..6>@tests/pos-special/pickler-positions/inline0/App_2.scala<6..6>()@tests/pos-special/pickler-positions/inline0/App_2.scala<6..6> { 
+    val a: Int@tests/pos-special/pickler-positions/inline0/App_2.scala<21..24> = 8@tests/pos-special/pickler-positions/inline0/App_2.scala<27..28>@tests/pos-special/pickler-positions/inline0/App_2.scala[14..18..28]
+    /* inlined from Lib$@tests/pos-special/pickler-positions/inline0/App_2.scala<31..41> */ 
+      {
+        {
+          val y: Int = this@tests/pos-special/pickler-positions/inline0/App_2.scala<54..54>.a@tests/pos-special/pickler-positions/inline0/App_2.scala<54..55>.+@tests/pos-special/pickler-positions/inline0/Lib_1.scala<54..57>(this@tests/pos-special/pickler-positions/inline0/App_2.scala<58..58>.a@tests/pos-special/pickler-positions/inline0/App_2.scala<58..59>)@tests/pos-special/pickler-positions/inline0/Lib_1.scala<54..59>@tests/pos-special/pickler-positions/inline0/Lib_1.scala[46..50..59]
+          y@tests/pos-special/pickler-positions/inline0/Lib_1.scala<64..65>.*@tests/pos-special/pickler-positions/inline0/Lib_1.scala<64..67>(y@tests/pos-special/pickler-positions/inline0/Lib_1.scala<68..69>)@tests/pos-special/pickler-positions/inline0/Lib_1.scala<64..69>
+        }@tests/pos-special/pickler-positions/inline0/Lib_1.scala<31..41>
+      }
+    @tests/pos-special/pickler-positions/inline0/App_2.scala<31..41>
+  }@tests/pos-special/pickler-positions/inline0/App_2.scala[0..6..43]
+}@tests/pos-special/pickler-positions/inline0/App_2.scala<0..43>
+one warning found
