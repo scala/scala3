@@ -10,7 +10,7 @@ package object quoted {
     def toExprOfList(implicit ev: Type[T]): Expr[List[T]] = {
       def rec(list: List[Expr[T]]): Expr[List[T]] = list match {
         case x :: xs  => '{ (~x) :: (~rec(xs)) }
-        case Nil => '(Nil)
+        case Nil => '{Nil}
       }
       rec(list)
     }

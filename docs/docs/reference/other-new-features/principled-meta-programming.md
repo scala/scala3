@@ -783,7 +783,7 @@ implementation of power otherwise.
 This assumes a `Constant` extractor that maps tree nodes representing
 constants to their values.
 
-With the right extractors, the "AsFunction" operation
+With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
 be implemented in user code:
 ```scala
