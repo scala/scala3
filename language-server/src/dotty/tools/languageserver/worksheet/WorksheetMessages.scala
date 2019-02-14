@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.worksheet
 
-import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
+import org.eclipse.lsp4j.{ Range, VersionedTextDocumentIdentifier }
 
 // All case classes in this file should have zero-parameters secondary
 // constructors to allow Gson to reflectively create instances on
@@ -17,6 +17,6 @@ case class WorksheetRunResult(success: Boolean) {
 }
 
 /** The parameters to the `worksheet/publishOutput` notification. */
-case class WorksheetRunOutput(textDocument: VersionedTextDocumentIdentifier, line: Int, content: String) {
-  def this() = this(null, 0, null)
+case class WorksheetRunOutput(textDocument: VersionedTextDocumentIdentifier, range: Range, content: String) {
+  def this() = this(null, null, null)
 }

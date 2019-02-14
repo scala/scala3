@@ -13,86 +13,98 @@ import java.lang.System.{lineSeparator => nl}
 class WorksheetTest {
 
   @Test def runExpression: Unit = {
-    ws"${m1}2 + 2".withSource
-      .run(m1, "1:val res0: Int = 4")
+    ws"${m1}2 + 2${m2}".withSource
+      .run(m1,
+        ((m1 to m2), "val res0: Int = 4"))
   }
 
   @Test def runSimpleVal: Unit = {
-    ws"${m1}val foo = 123".withSource
-      .run(m1, "1:val foo: Int = 123")
+    ws"${m1}val foo = 123${m2}".withSource
+      .run(m1,
+        ((m1 to m2), "val foo: Int = 123"))
   }
 
   @Test def usePreviousDefinition: Unit = {
-    ws"""${m1}val foo = 123
-         val bar = foo + 1""".withSource
-      .run(m1, "1:val foo: Int = 123",
-                    "2:val bar: Int = 124")
+    ws"""${m1}val foo = 123${m2}
+         ${m3}val bar = foo + 1${m4}""".withSource
+      .run(m1,
+        ((m1 to m2), "val foo: Int = 123"),
+        ((m3 to m4), "val bar: Int = 124"))
   }
 
   @Test def defineObject: Unit = {
-    ws"""${m1}def foo(x: Int) = x + 1
-         foo(1)""".withSource
-      .run(m1, "1:def foo(x: Int): Int",
-                    "2:val res0: Int = 2")
+    ws"""${m1}def foo(x: Int) = x + 1${m2}
+         ${m3}foo(1)${m4}""".withSource
+      .run(m1,
+        ((m1 to m2), "def foo(x: Int): Int"),
+        ((m3 to m4), "val res0: Int = 2"))
   }
 
   @Test def defineCaseClass: Unit = {
-    ws"""${m1} case class Foo(x: Int)
-         Foo(1)""".withSource
-      .run(m1, "1:// defined case class Foo",
-                    "2:val res0: Foo = Foo(1)")
+    ws"""${m1}case class Foo(x: Int)${m2}
+         ${m3}Foo(1)${m4}""".withSource
+      .run(m1,
+        ((m1 to m2), "// defined case class Foo"),
+        ((m3 to m4), "val res0: Foo = Foo(1)"))
   }
 
   @Test def defineClass: Unit = {
     ws"""${m1}class Foo(x: Int) {
            override def toString: String = "Foo"
-         }
-         new Foo(1)""".withSource
-      .run(m1, "3:// defined class Foo",
-                    "4:val res0: Foo = Foo")
+         }${m2}
+         ${m3}new Foo(1)${m4}""".withSource
+      .run(m1,
+        ((m1 to m2), "// defined class Foo"),
+        ((m3 to m4), "val res0: Foo = Foo"))
   }
 
   @Test def defineAnonymousClass0: Unit = {
     ws"""${m1}new {
           override def toString: String = "Foo"
-         }""".withSource
-      .run(m1, "3:val res0: Object = Foo")
+         }${m2}""".withSource
+      .run(m1,
+        ((m1 to m2), "val res0: Object = Foo"))
   }
 
   @Test def defineAnonymousClass1: Unit = {
-    ws"""${m1}class Foo
-         trait Bar
-         new Foo with Bar {
+    ws"""${m1}class Foo${m2}
+         ${m3}trait Bar${m4}
+         ${m5}new Foo with Bar {
            override def toString: String = "Foo"
-         }""".withSource
-      .run(m1, "1:// defined class Foo",
-                    "2:// defined trait Bar",
-                    "5:val res0: Foo & Bar = Foo")
+         }${m6}""".withSource
+      .run(m1,
+        ((m1 to m2), "// defined class Foo"),
+        ((m3 to m4), "// defined trait Bar"),
+        ((m5 to m6), "val res0: Foo & Bar = Foo"))
   }
 
   @Test def produceMultilineOutput: Unit = {
-    ws"""${m1}1 to 3 foreach println""".withSource
-      .run(m1, s"1:1${nl}2${nl}3")
+    ws"""${m1}1 to 3 foreach println${m2}""".withSource
+      .run(m1,
+        ((m1 to m2), s"1${nl}2${nl}3"))
   }
 
   @Test def patternMatching0: Unit = {
     ws"""${m1}1 + 2 match {
           case x if x % 2 == 0 => "even"
           case _ => "odd"
-        }""".withSource
-      .run(m1, "4:val res0: String = odd")
+        }${m2}""".withSource
+      .run(m1,
+        ((m1 to m2), "val res0: String = odd"))
   }
 
   @Test def patternMatching1: Unit = {
-    ws"""${m1}val (foo, bar) = (1, 2)""".withSource
-      .run(m1, s"1:val bar: Int = 2${nl}val foo: Int = 1")
+    ws"""${m1}val (foo, bar) = (1, 2)${m2}""".withSource
+      .run(m1,
+        ((m1 to m2), s"val bar: Int = 2${nl}val foo: Int = 1"))
   }
 
   @Test def evaluationException: Unit = {
-    ws"""${m1}val foo = 1 / 0
-         val bar = 2""".withSource
-      .runNonStrict(m1, "1:java.lang.ArithmeticException: / by zero",
-                             "2:val bar: Int = 2")
+    ws"""${m1}val foo = 1 / 0${m2}
+         ${m3}val bar = 2${m4}""".withSource
+      .runNonStrict(m1,
+        ((m1 to m2), "java.lang.ArithmeticException: / by zero"),
+        ((m3 to m4), "val bar: Int = 2"))
   }
 
   @Test def worksheetCompletion(): Unit = {
@@ -204,15 +216,17 @@ class WorksheetTest {
   }
 
   @Test def systemExit(): Unit = {
-    ws"""${m1}println("Hello, world!")
+    ws"""${m1}println("Hello, world!")${m2}
          System.exit(0)
          println("Goodbye!")""".withSource
-      .run(m1, "1:Hello, world!")
+      .run(m1,
+        ((m1 to m2), "Hello, world!"))
   }
 
   @Test def outputOnStdErr(): Unit = {
-    ws"""${m1}System.err.println("Oh no")""".withSource
-      .run(m1, "1:Oh no")
+    ws"""${m1}System.err.println("Oh no")${m2}""".withSource
+      .run(m1,
+        ((m1 to m2), "Oh no"))
   }
 
 }

@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd.{DefTree, Template, Tree, TypeDef}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.SourceTree
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.{ SourceFile, SourcePosition, NoSourcePosition }
 
 import dotty.tools.dotc.core.Flags.Synthetic
 
@@ -22,7 +22,7 @@ object Worksheet {
    */
   def run(tree: SourceTree,
           treeLock: Object,
-          sendMessage: (Int, String) => Unit,
+          sendMessage: (SourcePosition, String) => Unit,
           cancelChecker: CancelChecker)(
     implicit ctx: Context): Unit = {
     // For now, don't try to run multiple evaluators in parallel, this would require
@@ -30,7 +30,7 @@ object Worksheet {
     Evaluator.synchronized {
       Evaluator.get(cancelChecker) match {
         case None =>
-          sendMessage(1, "Couldn't start the JVM.")
+          sendMessage(NoSourcePosition, "Couldn't start the JVM.")
         case Some(evaluator) =>
           val queries = treeLock.synchronized {
             tree.tree match {
@@ -59,16 +59,15 @@ object Worksheet {
   }
 
   /**
-   * Extract the line number and source code corresponding to this tree
+   * Extract the position and source code corresponding to this tree
    *
    * @param evaluator  The JVM that runs the REPL.
    * @param tree       The compiled tree to evaluate.
    * @param sourcefile The sourcefile of the worksheet.
    */
-  private def query(tree: Tree, sourcefile: SourceFile): (Int, String) = {
-    val line = sourcefile.offsetToLine(tree.span.end)
+  private def query(tree: Tree, sourcefile: SourceFile)(implicit ctx: Context): (SourcePosition, String) = {
     val source = sourcefile.content.slice(tree.span.start, tree.span.end).mkString
-    (line, source)
+    (tree.sourcePos, source)
   }
 
   private def bounds(span: Span): (Int, Int) = (span.start, span.end)

@@ -65,12 +65,12 @@ indicate that worksheet execution has produced some output.
         * The worksheet that produced this output.
         */
        textDocument: VersionedTextDocumentIdentifier;
-   
+
        /**
-        * The line number of the expression that produced this output.
+        * The range of the expression that produced this output.
         */
-       line: int;
-   
+       range: Range;
+
        /**
         * The output that has been produced.
         */

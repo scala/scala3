@@ -684,9 +684,11 @@ object Build {
       fork in run := true,
       fork in Test := true,
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.5.0",
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
         Dependencies.`jackson-databind`
       ),
+      // Work around https://github.com/eclipse/lsp4j/issues/295
+      dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value,
 
       run := Def.inputTaskDyn {

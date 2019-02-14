@@ -11,7 +11,7 @@
   },
   "icon": "images/dotty-logo.png",
   "engines": {
-    "vscode": "^1.27.1"
+    "vscode": "^1.30.0"
   },
   "categories": [
     "Programming Languages"
@@ -121,18 +121,18 @@
     "promisify-child-process": "^2.1.2",
     "request": "^2.88.0",
     "vscode-jsonrpc": "4.0.0",
-    "vscode-languageclient": "^5.1.0",
-    "vscode-languageserver": "^5.1.0",
-    "ws": "^6.1.2"
+    "vscode-languageclient": "^5.2.1",
+    "vscode-languageserver": "^5.2.1",
+    "ws": "^6.1.3"
   },
   "devDependencies": {
     "@types/archiver": "^2.1.2",
     "@types/compare-versions": "^3.0.0",
     "@types/mocha": "^5.2.5",
-    "@types/node": "^8.10.38",
+    "@types/node": "^10.12.24",
     "@types/request": "^2.48.1",
-    "@types/ws": "^6.0.0",
-    "typescript": "^2.9.2",
-    "vscode": "^1.1.22"
+    "@types/ws": "^6.0.1",
+    "typescript": "^3.2.4",
+    "vscode": "^1.1.29"
   }
 }
