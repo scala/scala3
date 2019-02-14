@@ -1,6 +1,6 @@
 Flag -pagewidth set repeatedly
 result of tests/pos-special/pickler-positions/class0.scala after pickler:
-package <empty>@<0..0> {
-  @scala.annotation.internal.SourceFile@<no position>@<no position>("tests/pos-special/pickler-positions/class0.scala"@<no position>)@<no position> class Foo() extends Object@<6..6>@<6..6>()@<6..6> {}@[0..6..9]
-}@<0..9>
+package <empty>@tests/pos-special/pickler-positions/class0.scala<0..0> {
+  @scala.annotation.internal.SourceFile@tests/pos-special/pickler-positions/class0.scala<no position>@tests/pos-special/pickler-positions/class0.scala<no position>("tests/pos-special/pickler-positions/class0.scala"@tests/pos-special/pickler-positions/class0.scala<no position>)@tests/pos-special/pickler-positions/class0.scala<no position> class Foo() extends Object@tests/pos-special/pickler-positions/class0.scala<6..6>@tests/pos-special/pickler-positions/class0.scala<6..6>()@tests/pos-special/pickler-positions/class0.scala<6..6> {}@tests/pos-special/pickler-positions/class0.scala[0..6..9]
+}@tests/pos-special/pickler-positions/class0.scala<0..9>
 one warning found
