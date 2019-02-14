@@ -7,13 +7,13 @@ import reflect.ClassTag
  *  But this means `IArray[Int]`, which erases to `Int[]`, cannot be a subtype of
  *  `IArray[Any]`.
  */
-opaque type IArray[T] = Array[T]
+opaque type IArray[+T] = Array[_ <: T]
 
 object IArray {
 
   implied arrayOps {
-    inline def (arr: IArray[T]) apply[T] (n: Int): T = (arr: Array[T]).apply(n)
-    inline def (arr: IArray[T]) length[T] : Int = (arr: Array[T]).length
+    inline def (arr: IArray[T]) apply[T] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+    inline def (arr: IArray[T]) length[T] : Int = arr.asInstanceOf[Array[T]].length
   }
   def apply[T: ClassTag](xs: T*): IArray[T] = Array(xs: _*)
 
@@ -27,7 +27,7 @@ object IArray {
   def apply(x: Double, xs: Double*): IArray[Double] = Array(x, xs: _*)
   def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs: _*)
 
-  def concat[T: ClassTag](xss: IArray[T]*): IArray[T] = Array.concat(xss: _*)
+  def concat[T: ClassTag](xss: IArray[T]*): IArray[T] = Array.concat[T](xss.asInstanceOf[Seq[Array[T]]]: _*)
 
   def fill[T: ClassTag](n: Int)(elem: => T): IArray[T] =
     Array.fill(n)(elem)
@@ -56,5 +56,5 @@ object IArray {
 
   def iterate[T: ClassTag](start: T, len: Int)(f: T => T): IArray[T] = Array.iterate(start, len)(f)
 
-  def unapplySeq[T](x: IArray[T]): Option[IndexedSeq[T]] = Array.unapplySeq(x)
+  def unapplySeq[T](x: IArray[T]): Option[IndexedSeq[T]] = Array.unapplySeq[T](x.asInstanceOf[Array[T]])
 }
