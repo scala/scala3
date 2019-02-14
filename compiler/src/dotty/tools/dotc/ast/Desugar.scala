@@ -1007,7 +1007,7 @@ object desugar {
       case _: ValDef | _: PatDef | _: DefDef => true
       case stat: ModuleDef =>
         stat.mods.is(ImplicitOrImplied) || opaqueNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
-      case stat: TypeDef => !stat.isClassDef || stat.mods.is(Implicit)
+      case stat: TypeDef => !stat.isClassDef || stat.mods.is(ImplicitOrImplied)
       case _ => false
     }
     val (nestedStats, topStats) = pdef.stats.partition(needsObject)
