@@ -15,9 +15,9 @@ object scalatest {
 
     cond.unseal.underlyingArgument match {
       case Term.Apply(sel @ Term.Select(lhs, op), rhs :: Nil) =>
-        let(lhs) { left =>
-          let(rhs) { right =>
-            let(Term.Apply(Term.Select.copy(sel)(left, op), right :: Nil)) { result =>
+        let(lhs)(definitions.UnitType) { left =>
+          let(rhs)(definitions.UnitType) { right =>
+            let(Term.Apply(Term.Select.copy(sel)(left, op), right :: Nil))(definitions.UnitType) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
@@ -28,9 +28,9 @@ object scalatest {
         }.seal[Unit]
       case Term.Apply(f @ Term.Apply(Term.IsSelect(sel @ Term.Select(Term.Apply(qual, lhs :: Nil), op)), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
-        let(lhs) { left =>
-          let(rhs) { right =>
-            let(Term.Apply(Term.Apply(Term.Select.copy(sel)(Term.Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
+        let(lhs)(definitions.UnitType) { left =>
+          let(rhs)(definitions.UnitType) { right =>
+            let(Term.Apply(Term.Apply(Term.Select.copy(sel)(Term.Apply(qual, left :: Nil), op), right :: Nil), implicits))(definitions.UnitType) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
