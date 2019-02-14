@@ -30,6 +30,34 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(mapSig), Some(0), 0)
   }
 
+  /** Implicit parameter lists consisting solely of DummyImplicits are hidden. */
+  @Test def hiddenDummyParams: Unit = {
+    val foo1Sig =
+      S("foo1", Nil, List(List(P("param0", "Int"))), Some("Int"))
+    val foo2Sig =
+      S("foo2", Nil, List(List(P("param0", "Int"))), Some("Int"))
+    val foo3Sig =
+      S("foo3", Nil, List(List(P("param0", "Int")),
+        List(P("dummy", "DummyImplicit"))), Some("Int"))
+    val foo4Sig =
+      S("foo4", Nil, List(List(P("param0", "Int")),
+        List(P("x", "Int", isImplicit = true), P("dummy", "DummyImplicit", isImplicit = true))), Some("Int"))
+    code"""object O {
+             def foo1(param0: Int)(implicit dummy: DummyImplicit): Int = ???
+             def foo2(param0: Int)(implicit dummy1: DummyImplicit, dummy2: DummyImplicit): Int = ???
+             def foo3(param0: Int)(dummy: DummyImplicit): Int = ???
+             def foo4(param0: Int)(implicit x: Int, dummy: DummyImplicit): Int = ???
+             foo1($m1)
+             foo2($m2)
+             foo3($m3)
+             foo4($m4)
+           }""".withSource
+      .signatureHelp(m1, List(foo1Sig), Some(0), 0)
+      .signatureHelp(m2, List(foo2Sig), Some(0), 0)
+      .signatureHelp(m3, List(foo3Sig), Some(0), 0)
+      .signatureHelp(m4, List(foo4Sig), Some(0), 0)
+  }
+
   @Test def singleParam: Unit = {
     val signature =
       S("foo", Nil, List(List(P("param0", "Int"))), Some("Int"))

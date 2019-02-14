@@ -355,11 +355,17 @@ class Definitions {
     lazy val Predef_undefinedR: TermRef = ScalaPredefModule.requiredMethodRef(nme.???)
     def Predef_undefined(implicit ctx: Context): Symbol = Predef_undefinedR.symbol
 
-  def SubTypeClass(implicit ctx: Context): Symbol =
+  def SubTypeClass(implicit ctx: Context): ClassSymbol =
     if (isNewCollections)
       ctx.requiredClass("scala.<:<")
     else
       ScalaPredefModule.requiredClass("<:<")
+
+  def DummyImplicitClass(implicit ctx: Context): ClassSymbol =
+    if (isNewCollections)
+      ctx.requiredClass("scala.DummyImplicit")
+    else
+      ScalaPredefModule.requiredClass("DummyImplicit")
 
   lazy val ScalaRuntimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context): Symbol = ScalaRuntimeModuleRef.symbol
