@@ -5,7 +5,7 @@ object Test {
     def f[T](x: Expr[T])(implicit t: Type[T]) = '{
       val z = ~x
     }
-    println(f('(2))(Type.IntTag).show)
+    println(f('{2})(Type.IntTag).show)
   }
 }
 

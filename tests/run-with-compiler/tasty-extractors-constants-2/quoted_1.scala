@@ -19,8 +19,8 @@ object Macros {
     val run2  = power(n.toExpr, 4.0.toExpr).run
 
     // n is a constant in a quote
-    val show3 = power('(2), 5.0.toExpr).show
-    val run3 =  power('(2), 5.0.toExpr).run
+    val show3 = power('{2}, 5.0.toExpr).show
+    val run3 =  power('{2}, 5.0.toExpr).run
 
     // n2 is clearly not a constant
     // FIXME
@@ -29,17 +29,17 @@ object Macros {
 //    val run4  = (power(n2, 6.0.toExpr).run)
 
     '{
-      println(~show1.toExpr)
-      println(~run1.toExpr)
+      println(${show1.toExpr})
+      println(${run1.toExpr})
       println()
-      println(~show2.toExpr)
-      println(~run2.toExpr)
+      println(${show2.toExpr})
+      println(${run2.toExpr})
       println()
-      println(~show3.toExpr)
-      println(~run3.toExpr)
+      println(${show3.toExpr})
+      println(${run3.toExpr})
 //      println()
-//      println(~show4.toExpr)
-//      println(~run4.toExpr)
+//      println(${show4.toExpr})
+//      println(${run4.toExpr})
     }
   }
 
@@ -54,9 +54,9 @@ object Macros {
   }
 
   def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
-    if (n == 0) '(1.0)
+    if (n == 0) '{1.0}
     else if (n == 1) x
-    else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '(y)) } }
+    else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '{y}) } }
     else '{ ~x * ~powerCode(n - 1, x) }
 
   def dynamicPower(n: Int, x: Double): Double =

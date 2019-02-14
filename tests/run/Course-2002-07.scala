@@ -364,7 +364,7 @@ object M9 {
     val f0 = Prod(x, x);
     val f1 = f0 derive x;
     Console.println("f (x) = " + f0);
-    Console.println("f'(x) = " + f1);
+    Console.println("f'{x} = " + f1);
     Console.println();
   }
 
@@ -431,14 +431,14 @@ object MA {
     val f0 = x * x;
     val f1 = f0 derive x;
     Console.println("f (x) = " + f0);
-    Console.println("f'(x) = " + f1);
+    Console.println("f'{x} = " + f1);
 
     val g0 = Number(2) * x * x + Number(3) * x;
     val g1 = g0 derive x;
     Console.println("g (x) = " + g0);
-    Console.println("g'(x) = " + g1);
+    Console.println("g'{x} = " + g1);
     Console.println("g (3) = " + evalvars(List(("x",3)))(g0));
-    Console.println("g'(3) = " + evalvars(List(("x",3)))(g1));
+    Console.println("g'{3} = " + evalvars(List(("x",3)))(g1));
 
     Console.println();
   }

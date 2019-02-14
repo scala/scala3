@@ -22,7 +22,7 @@ class VecRDyn[T: Type] extends VecDyn with VecROp[Expr[Int], Expr[T], Expr[Unit]
       var sum = ~zero
       var i = 0
       while (i < ~vec.size) {
-        sum = ~{ plus('(sum), vec('(i))) }
+        sum = ${ plus('{sum}, vec('{i})) }
         i += 1
       }
       sum
@@ -40,7 +40,7 @@ class VecRStaDim[T: Type](r: Ring[T]) extends VecROp[Int, T, Expr[Unit]]  {
     def loop(i: Int, acc: Expr[Unit]): Expr[Unit] =
       if (i < arr.size) loop(i + 1, '{ ~acc; ~arr.get(i) })
       else acc
-    loop(0, '())
+    loop(0, '{})
   }
   override def toString(): String = s"VecRStaDim($r)"
 }
@@ -60,7 +60,7 @@ class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]]) extends VecROp[PV[Int], PV
         def loop(i: Int, acc: Expr[Unit]): Expr[Unit] =
           if (i < n) loop(i + 1, '{ ~acc; ~arr.get(Sta(i)) })
           else acc
-        loop(0, '())
+        loop(0, '{})
       case Dyn(n) =>
           '{ "TODO"; () }
 

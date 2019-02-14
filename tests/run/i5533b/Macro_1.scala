@@ -5,7 +5,7 @@ object scalatest {
   def f(x: Int): Int = x
   def f(x: String): String = x
 
-  inline def assert(condition: => Boolean): Unit = ~assertImpl('(condition))
+  inline def assert(condition: => Boolean): Unit = ~assertImpl('{condition})
 
   def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
     import refl._

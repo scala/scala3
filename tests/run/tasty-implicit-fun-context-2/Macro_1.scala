@@ -10,7 +10,7 @@ object Foo {
     ~fooImpl
 
   def fooImpl(implicit reflect: Reflection): given Reflection => Tastier[given Reflection => Macro[String]] = {
-    '("abc")
+    '{"abc"}
   }
 
 }

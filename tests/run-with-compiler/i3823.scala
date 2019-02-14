@@ -5,6 +5,6 @@ object Test {
     def f[T: Type](x: Expr[T])(t: Type[T]) = '{
       val z: t.unary_~ = ~x
     }
-    println(f('(2))('[Int]).show)
+    println(f('{2})('[Int]).show)
   }
 }

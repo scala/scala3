@@ -28,6 +28,6 @@ trait Op2[T] {
 trait Plus2[T] extends Op2[T]
 object Plus2 {
   implicit case object IPlus extends Plus2[Int] {
-    def apply(x: Expr[Int], y: Expr[Int]): Expr[Int] = '(~x + ~y)
+    def apply(x: Expr[Int], y: Expr[Int]): Expr[Int] = '{$x + $y}
   }
 }

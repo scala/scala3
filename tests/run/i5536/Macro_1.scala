@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.tasty._
 
 object scalatest {
-  inline def assert(condition: => Boolean): Unit = ~assertImpl('(condition))
+  inline def assert(condition: => Boolean): Unit = ~assertImpl('{condition})
 
   def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
     import refl._

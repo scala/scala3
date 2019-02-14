@@ -12,11 +12,11 @@ class Foo {
   }
 
   inline def i(): Unit = ~Foo.impl[Any]('{
-    '(this) // error
+    '{this} // error
   })
 
   inline def j(that: Foo): Unit = ~Foo.impl[Any]('{
-    '(that) // error
+    '{that} // error
   })
 
   inline def k(): Unit = ~Foo.impl[Any](this) // error
@@ -25,5 +25,5 @@ class Foo {
 }
 
 object Foo {
-  def impl[T](x: Any): Expr[Unit] = '()
+  def impl[T](x: Any): Expr[Unit] = '{}
 }

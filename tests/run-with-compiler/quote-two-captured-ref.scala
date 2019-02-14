@@ -6,10 +6,10 @@ object Test {
 
     val q = '{
       val x = 1
-      println(~{
+      println(${
         println(1)
-        val a = '(x)
-        val b = '(x)
+        val a = '{x}
+        val b = '{x}
         '{ ~a + ~b }
       })
     }

@@ -17,7 +17,7 @@ object Test {
       var x = ~init
       ~body(
         new Var[T] {
-          def get: Expr[T] = '(x)
+          def get: Expr[T] = '{x}
           def update(e: Expr[T]): Expr[Unit] = '{ x = ~e }
         }
       )
@@ -508,7 +508,7 @@ object Test {
                 var el = ~current.get
                 val f: Unit => Unit = ~nadv.get
                 f(())
-                ~k('(el))
+                ~k('{el})
               }
 
             }
@@ -606,7 +606,7 @@ object Test {
           '{
               val el = (~arr).apply(~i.get)
               ~i.update('{ ~i.get + 1 })
-              ~k('(el))
+              ~k('{el})
           }
         }
 

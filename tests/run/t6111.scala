@@ -23,6 +23,6 @@ object Test extends dotty.runtime.LegacyApp {
     case Foo(p) => p // p should be a pair of Int
   })
 
-  // Prints '(x, x)'
+  // Prints '{x, x}'
   "x" match { case Foo997(a) => println(a) }
 }

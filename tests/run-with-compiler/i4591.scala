@@ -9,7 +9,7 @@ object Test {
   }
 
   def main(args: Array[String]): Unit = {
-    foo('(Option(9))).run
+    foo('{Option(9)}).run
   }
 
 }

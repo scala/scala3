@@ -13,14 +13,14 @@ object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
-    val liftedUnit: Expr[Unit] = '()
+    val liftedUnit: Expr[Unit] = '{}
 
-    letVal('(1))(a => '{ ~a + 1 }).show
-    letLazyVal('(1))(a => '{ ~a + 1 }).show
-    letDef('(1))(a => '{ ~a + 1 }).show
+    letVal('{1})(a => '{ ~a + 1 }).show
+    letLazyVal('{1})(a => '{ ~a + 1 }).show
+    letDef('{1})(a => '{ ~a + 1 }).show
 
-    liftedWhile('(true))('{ println(1) }).show
-    liftedDoWhile('{ println(1) })('(true)).show
+    liftedWhile('{true})('{ println(1) }).show
+    liftedDoWhile('{ println(1) })('{true}).show
 
     val t1: Expr[Tuple1[Int]] = Tuple1(4).toExpr
     val t2: Expr[(Int, Int)] = (2, 3).toExpr
@@ -54,17 +54,17 @@ package liftable {
 
   object Units {
     implicit def UnitIsLiftable: Liftable[Unit] = new Liftable[Unit] {
-      def toExpr(x: Unit): Expr[Unit] = '()
+      def toExpr(x: Unit): Expr[Unit] = '{}
     }
   }
 
   object Lets {
     def letVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
-      '{ val letVal: ~t = ~expr; ~body('(letVal)) }
+      '{ val letVal: ~t = ~expr; ~body('{letVal}) }
     def letLazyVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
-      '{ lazy val letLazyVal: ~t = ~expr; ~body('(letLazyVal)) }
+      '{ lazy val letLazyVal: ~t = ~expr; ~body('{letLazyVal}) }
     def letDef[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
-      '{ def letDef: ~t = ~expr; ~body('(letDef)) }
+      '{ def letDef: ~t = ~expr; ~body('{letDef}) }
   }
 
   object Loops {
@@ -87,7 +87,7 @@ package liftable {
 
     implicit def Tuple3IsLiftable[T1: Liftable, T2: Liftable, T3: Liftable](implicit t1: Type[T1], t2: Type[T2], t3: Type[T3]): Liftable[(T1, T2, T3)] = new Liftable[(T1, T2, T3)] {
       def toExpr(x: (T1, T2, T3)): Expr[(T1, T2, T3)] =
-        '{ Tuple3[~t1, ~t2, ~t3](~x._1.toExpr, ~x._2.toExpr, ~x._3.toExpr) }
+        '{ Tuple3[${t1, ~t2, ~t3](~x._1.toExpr, ~x._2.toExpr, ~x._3.toExpr}) }
 
     }
 
@@ -122,8 +122,8 @@ package liftable {
         case Nil => acc
       }
        def unrolledForeach(f: Expr[T => Unit]): Expr[Unit] = list match {
-         case x :: xs => '{ (~f).apply(~x.toExpr); ~xs.unrolledForeach(f) }
-         case Nil => '()
+         case x :: xs => '{ (${f).apply(${x.toExpr}}); ~xs.unrolledForeach(f) }
+         case Nil => '{}
        }
     }
 

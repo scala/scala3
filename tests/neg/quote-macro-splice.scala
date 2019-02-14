@@ -14,11 +14,11 @@ object Test {
 
   inline def foo3: Int = { // error
     val a = 1
-    ~impl('(a))
+    ~impl('{a})
   }
 
   inline def foo4: Int = { // error
-    ~impl('(1))
+    ~impl('{1})
     1
   }
 

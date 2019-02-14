@@ -21,7 +21,7 @@ object UnrolledExpr {
 class UnrolledExpr[T: Liftable, It <: Iterable[T]](xs: It) {
   import UnrolledExpr._
 
-  def foreach[U](f: T => Expr[U]): Expr[Unit] = block(xs.map(f), '())
+  def foreach[U](f: T => Expr[U]): Expr[Unit] = block(xs.map(f), '{})
 
   def withFilter(f: T => Boolean): UnrolledExpr[T, Iterable[T]] = new UnrolledExpr(xs.filter(f))
 

@@ -9,7 +9,7 @@ object Test {
 
     '{ ~IntIsLiftable.toExpr(1) }
 
-    '{ ~1.toExpr }
+    '{ ${1.toExpr} }
 
   }
 
