@@ -84,16 +84,25 @@ object Signatures {
     def toParamss(tp: MethodType)(implicit ctx: Context): List[List[Param]] = {
       val rest = tp.resType match {
         case res: MethodType =>
-          toParamss(res)
+          // HACK: Hide parameter lists consisting only of CanBuildFrom,
+          // remove this once we switch to the 2.13 standard library.
+          if (res.resultType.isParameterless &&
+              res.isImplicitMethod &&
+              res.paramInfos.forall(_.classSymbol.fullName.toString == "scala.collection.generic.CanBuildFrom"))
+            Nil
+          else
+            toParamss(res)
         case _ =>
           Nil
       }
-      tp.paramNames.zip(tp.paramInfos).map { case (name, info) =>
+      val params = tp.paramNames.zip(tp.paramInfos).map { case (name, info) =>
         Signatures.Param(name.show,
           info.widenTermRefExpr.show,
           docComment.flatMap(_.paramDoc(name)),
           isImplicit = tp.isImplicitMethod)
-      } :: rest
+      }
+
+      params :: rest
     }
 
     denot.info.stripPoly match {

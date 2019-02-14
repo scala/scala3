@@ -8,7 +8,7 @@ import dotty.tools.dotc.util.Signatures.{Param => P, Signature => S}
 
 class SignatureHelpTest {
 
-  @Test def javaParam: Unit = {
+  @Test def fromJava: Unit = {
     val signature =
       S("codePointAt", Nil, List(List(P("x$0", "Int"))), Some("Int"))
     code"""object O {
@@ -17,13 +17,17 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
-  @Test def scala2Param: Unit = {
-    val signature =
+  @Test def fromScala2: Unit = {
+    val applySig =
       S("apply[A]", Nil, List(List(P("xs", "A*"))), Some("List[A]"))
+    val mapSig =
+      S("map[B, That]", Nil, List(List(P("f", "A => B"))), Some("That"))
     code"""object O {
              List($m1)
+             List(1, 2, 3).map($m2)
            }""".withSource
-      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m1, List(applySig), Some(0), 0)
+      .signatureHelp(m2, List(mapSig), Some(0), 0)
   }
 
   @Test def singleParam: Unit = {
