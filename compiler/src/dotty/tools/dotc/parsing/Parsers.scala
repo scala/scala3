@@ -2419,7 +2419,7 @@ object Parsers {
             makeTypeDef(typeBounds())
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
-            EmptyTree
+            return EmptyTree // return to avoid setting the span to EmptyTree
         }
       }
     }

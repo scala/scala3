@@ -334,6 +334,9 @@ abstract class SymbolLoader extends LazyType {
     } catch {
       case ex: IOException =>
         signalError(ex)
+      case NonFatal(ex: TypeError) =>
+        println(s"exception caught when loading $root: ${ex.toMessage}")
+        throw ex
       case NonFatal(ex) =>
         println(s"exception caught when loading $root: $ex")
         throw ex

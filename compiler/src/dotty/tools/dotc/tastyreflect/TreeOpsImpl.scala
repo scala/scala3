@@ -777,7 +777,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with CoreImpl with Helpers
         tpd.Return(expr, ctx.owner)
 
       def copy(original: Tree)(expr: Term)(implicit ctx: Context): Return =
-        tpd.cpy.Return(original)(expr, tpd.EmptyTree)
+        tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
 
       def unapply(x: Term)(implicit ctx: Context): Option[Term] = x match {
         case x: tpd.Return => Some(x.expr)

@@ -524,8 +524,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[Type] =
       copied.withTypeUnchecked(tree.tpe)
 
+    protected val untpdCpy = untpd.cpy
+
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
-      val tree1 = untpd.cpy.Select(tree)(qualifier, name)
+      val tree1 = untpdCpy.Select(tree)(qualifier, name)
       tree match {
         case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
           tree1.withTypeUnchecked(tree.tpe)
@@ -539,7 +541,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-      val tree1 = untpd.cpy.Apply(tree)(fun, args)
+      val tree1 = untpdCpy.Apply(tree)(fun, args)
       tree match {
         case tree: Apply
         if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
@@ -549,7 +551,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-      val tree1 = untpd.cpy.TypeApply(tree)(fun, args)
+      val tree1 = untpdCpy.TypeApply(tree)(fun, args)
       tree match {
         case tree: TypeApply
         if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
@@ -559,22 +561,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Literal(tree: Tree)(const: Constant)(implicit ctx: Context): Literal =
-      ta.assignType(untpd.cpy.Literal(tree)(const))
+      ta.assignType(untpdCpy.Literal(tree)(const))
 
     override def New(tree: Tree)(tpt: Tree)(implicit ctx: Context): New =
-      ta.assignType(untpd.cpy.New(tree)(tpt), tpt)
+      ta.assignType(untpdCpy.New(tree)(tpt), tpt)
 
     override def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
-      ta.assignType(untpd.cpy.Typed(tree)(expr, tpt), tpt)
+      ta.assignType(untpdCpy.Typed(tree)(expr, tpt), tpt)
 
     override def NamedArg(tree: Tree)(name: Name, arg: Tree)(implicit ctx: Context): NamedArg =
-      ta.assignType(untpd.cpy.NamedArg(tree)(name, arg), arg)
+      ta.assignType(untpdCpy.NamedArg(tree)(name, arg), arg)
 
     override def Assign(tree: Tree)(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign =
-      ta.assignType(untpd.cpy.Assign(tree)(lhs, rhs))
+      ta.assignType(untpdCpy.Assign(tree)(lhs, rhs))
 
     override def Block(tree: Tree)(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
-      val tree1 = untpd.cpy.Block(tree)(stats, expr)
+      val tree1 = untpdCpy.Block(tree)(stats, expr)
       tree match {
         case tree: Block if expr.tpe eq tree.expr.tpe => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, stats, expr)
@@ -582,7 +584,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = {
-      val tree1 = untpd.cpy.If(tree)(cond, thenp, elsep)
+      val tree1 = untpdCpy.If(tree)(cond, thenp, elsep)
       tree match {
         case tree: If if (thenp.tpe eq tree.thenp.tpe) && (elsep.tpe eq tree.elsep.tpe) => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, thenp, elsep)
@@ -590,7 +592,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
-      val tree1 = untpd.cpy.Closure(tree)(env, meth, tpt)
+      val tree1 = untpdCpy.Closure(tree)(env, meth, tpt)
       tree match {
         case tree: Closure if sameTypes(env, tree.env) && (meth.tpe eq tree.meth.tpe) && (tpt.tpe eq tree.tpt.tpe) =>
           tree1.withTypeUnchecked(tree.tpe)
@@ -599,7 +601,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
-      val tree1 = untpd.cpy.Match(tree)(selector, cases)
+      val tree1 = untpdCpy.Match(tree)(selector, cases)
       tree match {
         case tree: Match if sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, selector, cases)
@@ -607,7 +609,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = {
-      val tree1 = untpd.cpy.CaseDef(tree)(pat, guard, body)
+      val tree1 = untpdCpy.CaseDef(tree)(pat, guard, body)
       tree match {
         case tree: CaseDef if body.tpe eq tree.body.tpe => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, pat, body)
@@ -615,16 +617,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Labeled(tree: Tree)(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
-      ta.assignType(untpd.cpy.Labeled(tree)(bind, expr))
+      ta.assignType(untpdCpy.Labeled(tree)(bind, expr))
 
     override def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return =
-      ta.assignType(untpd.cpy.Return(tree)(expr, from))
+      ta.assignType(untpdCpy.Return(tree)(expr, from))
 
     override def WhileDo(tree: Tree)(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
-      ta.assignType(untpd.cpy.WhileDo(tree)(cond, body))
+      ta.assignType(untpdCpy.WhileDo(tree)(cond, body))
 
     override def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = {
-      val tree1 = untpd.cpy.Try(tree)(expr, cases, finalizer)
+      val tree1 = untpdCpy.Try(tree)(expr, cases, finalizer)
       tree match {
         case tree: Try if (expr.tpe eq tree.expr.tpe) && sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, expr, cases)
@@ -632,7 +634,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Inlined(tree: Tree)(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = {
-      val tree1 = untpd.cpy.Inlined(tree)(call, bindings, expansion)
+      val tree1 = untpdCpy.Inlined(tree)(call, bindings, expansion)
       tree match {
         case tree: Inlined if sameTypes(bindings, tree.bindings) && (expansion.tpe eq tree.expansion.tpe) =>
           tree1.withTypeUnchecked(tree.tpe)
@@ -641,7 +643,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral = {
-      val tree1 = untpd.cpy.SeqLiteral(tree)(elems, elemtpt)
+      val tree1 = untpdCpy.SeqLiteral(tree)(elems, elemtpt)
       tree match {
         case tree: SeqLiteral
         if sameTypes(elems, tree.elems) && (elemtpt.tpe eq tree.elemtpt.tpe) =>
@@ -652,7 +654,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     override def Annotated(tree: Tree)(arg: Tree, annot: Tree)(implicit ctx: Context): Annotated = {
-      val tree1 = untpd.cpy.Annotated(tree)(arg, annot)
+      val tree1 = untpdCpy.Annotated(tree)(arg, annot)
       tree match {
         case tree: Annotated if (arg.tpe eq tree.arg.tpe) && (annot eq tree.annot) => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, arg, annot)
@@ -671,18 +673,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   class TimeTravellingTreeCopier extends TypedTreeCopier {
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
-      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
+      ta.assignType(untpdCpy.Apply(tree)(fun, args), fun, args)
       // Note: Reassigning the original type if `fun` and `args` have the same types as before
       // does not work here: The computed type depends on the widened function type, not
       // the function type itself. A treetransform may keep the function type the
       // same but its widened type might change.
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
-      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
+      ta.assignType(untpdCpy.TypeApply(tree)(fun, args), fun, args)
       // Same remark as for Apply
 
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
-            ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
+            ta.assignType(untpdCpy.Closure(tree)(env, meth, tpt), meth, tpt)
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
@@ -889,9 +891,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else Erasure.Boxing.adaptToType(tree, tp)
 
     /** `tree ne null` (might need a cast to be type correct) */
-    def testNotNull(implicit ctx: Context): Tree =
-      tree.ensureConforms(defn.ObjectType)
-        .select(defn.Object_ne).appliedTo(Literal(Constant(null)))
+    def testNotNull(implicit ctx: Context): Tree = {
+      val receiver = if (defn.isBottomType(tree.tpe)) {
+        // If the receiver is of type `Nothing` or `Null`, add an ascription so that the selection
+        // succeeds: e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
+        Typed(tree, TypeTree(defn.AnyRefType))
+      }
+      else tree.ensureConforms(defn.ObjectType)
+      receiver.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
+    }
 
     /** If inititializer tree is `_', the default value of its type,
      *  otherwise the tree itself.

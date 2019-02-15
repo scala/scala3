@@ -985,7 +985,11 @@ class Typer extends Namer
               case SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 if (!isFullyDefined(pt, ForceDegree.all))
-                  ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.sourcePos)
+                  ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
+                else if (pt.classSymbol.is(FinalOrSealed)) {
+                  val offendingFlag = pt.classSymbol.flags & FinalOrSealed
+                  ctx.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.sourcePos)
+                }
                 TypeTree(pt)
               case _ =>
                 if (mt.isParamDependent) {

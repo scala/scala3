@@ -1,2 +1,2 @@
-null.asInstanceOf[lang.Object]
-null.asInstanceOf[scala.List[lang.Object]]
+null.asInstanceOf[java.lang.Object]
+null.asInstanceOf[scala.List[java.lang.Object]]

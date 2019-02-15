@@ -251,7 +251,7 @@ object StagedTuple {
 
     def as[T: Type]: Expr[T] = '{ (~expr).asInstanceOf[T] }
 
-    def bind[T](in: Expr[U] => Expr[T]): Expr[T] = '{
+    def bind[T: Type](in: Expr[U] => Expr[T]): Expr[T] = '{
       val t: U = (~expr)
       ~(in('(t)))
     }

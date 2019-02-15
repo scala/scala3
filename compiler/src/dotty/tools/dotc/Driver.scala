@@ -6,7 +6,7 @@ import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
-import core.Mode
+import core.{Mode, TypeError}
 import reporting._
 
 import scala.util.control.NonFatal
@@ -37,6 +37,9 @@ class Driver {
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
           ctx.reporter
+        case ex: TypeError =>
+          println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
+          throw ex
         case ex: Throwable =>
           println(s"$ex while compiling ${fileNames.mkString(", ")}")
           throw ex

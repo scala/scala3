@@ -14,8 +14,8 @@ class Test {
 
   '((y: Expr[Int]) => ~y )  // error: wrong staging level
 
-  def f[T](t: Type[T], x: Expr[T]) = '{ // error: wrong staging level
-    val z2 = ~x
+  def f[T](t: Type[T], x: Expr[T]) = '{
+    val z2 = ~x // error // error: wrong staging level
   }
 
   def g[T](implicit t: Type[T], x: Expr[T]) = '{

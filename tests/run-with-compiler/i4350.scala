@@ -3,7 +3,7 @@ import scala.quoted.Toolbox.Default._
 import scala.quoted.Type
 
 class Foo[T: Type] {
-  def q = '(null.asInstanceOf[T])
+  def q = '((null: Any).asInstanceOf[T])
 }
 
 object Test {

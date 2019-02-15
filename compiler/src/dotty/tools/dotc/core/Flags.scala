@@ -638,6 +638,9 @@ object Flags {
   /** value that's final or inline */
   final val FinalOrInline: FlagSet = Final | Inline
 
+  /** class that's final or sealed */
+  final val FinalOrSealed: FlagSet = Final | Sealed
+
   /** A covariant type parameter instance */
   final val LocalCovariant: FlagConjunction = allOf(Local, Covariant)
 

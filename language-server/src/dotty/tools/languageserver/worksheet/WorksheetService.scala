@@ -1,8 +1,10 @@
 package dotty.tools.languageserver.worksheet
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.languageserver.DottyLanguageServer
+import dotty.tools.languageserver.DottyLanguageServer.range
 
 import org.eclipse.lsp4j.jsonrpc._//{CancelChecker, CompletableFutures}
 import org.eclipse.lsp4j.jsonrpc.services._//{JsonSegment, JsonRequest}
@@ -19,8 +21,8 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
       val uri = new URI(params.textDocument.getUri)
       try {
         val driver = driverFor(uri)
-        val sendMessage =
-          (line: Int, msg: String) => client.publishOutput(WorksheetRunOutput(params.textDocument, line, msg))
+        val sendMessage = (pos: SourcePosition, msg: String) =>
+          client.publishOutput(WorksheetRunOutput(params.textDocument, range(pos).get, msg))
 
         runWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
         cancelChecker.checkCanceled()
@@ -41,7 +43,7 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
    */
   private def runWorksheet(driver: InteractiveDriver,
                            uri: URI,
-                           sendMessage: (Int, String) => Unit,
+                           sendMessage: (SourcePosition, String) => Unit,
                            cancelChecker: CancelChecker)(
       implicit ctx: Context): Unit = {
     val treeOpt = thisServer.synchronized {
