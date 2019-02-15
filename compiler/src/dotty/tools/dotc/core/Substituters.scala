@@ -212,7 +212,7 @@ trait Substituters { this: Context =>
           fs = fs.tail
           ts = ts.tail
         }
-        if (tp.prefix `eq` NoPrefix) tp else tp.derivedSelect(apply(tp.prefix))
+        if (tp.prefix `eq` NoPrefix) tp else derivedSelect(tp, apply(tp.prefix))
       case _: ThisType | _: BoundType =>
         tp
       case _ =>
