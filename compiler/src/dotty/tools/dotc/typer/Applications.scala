@@ -1297,23 +1297,50 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     // # skipped implicit parameters in tp1  -  # skipped implicit parameters in tp2
     var implicitBalance: Int = 0
 
+    /** Widen the type of synthetic implied methods from the implementation class to the
+     *  type that's implemented. Example
+     *
+     *      implied I[X] for T { ... }
+     *
+     *  This desugars to
+     *
+     *      class I[X] extends T { ... }
+     *      implied def I[X]: I[X] = new I[X]
+     *
+     *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
+     *  No such widening is performed for implied aliases, which are not synthetic. E.g.
+     *
+     *      implied J[X] for T = rhs
+     *
+     *  already has the right result type `T`. Neither is widening performed for implied
+     *  objects, since these are anyway taken to be more specific than methods
+     *  (by condition 3a above).
+     */
+    def widenImplied(tp: Type, alt: TermRef): Type =
+      if (alt.symbol.is(SyntheticImpliedMethod))
+        tp.parents match {
+          case Nil => tp
+          case ps => ps.reduceLeft(AndType(_, _))
+        }
+      else tp
+
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type, weight: Int): Type = tp match {
+    def stripImplicit(tp: Type, alt: TermRef, weight: Int): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
         implicitBalance += mt.paramInfos.length * weight
-        resultTypeApprox(mt)
+        widenImplied(resultTypeApprox(mt), alt)
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, weight))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, alt, weight))
       case _ =>
-        tp
+        widenImplied(tp, alt)
     }
 
     val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
     val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
     val ownerScore = compareOwner(owner1, owner2)
 
-    val tp1 = stripImplicit(alt1.widen, -1)
-    val tp2 = stripImplicit(alt2.widen, +1)
+    val tp1 = stripImplicit(alt1.widen, alt1, -1)
+    val tp2 = stripImplicit(alt2.widen, alt2, +1)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
