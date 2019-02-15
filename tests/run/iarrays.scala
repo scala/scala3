@@ -25,6 +25,13 @@ object Test extends App {
     acc
   }
 
+  def reduce2[T <: AnyRef](xs: IArray[T], z: T, op: (T, T) => T) = {
+    var acc = z
+    for (i <- 0 until xs.length)
+      acc = op(acc, xs(i))
+    acc
+  }
+
   def flatten[T: ClassTag](ys: IArray[IArray[T]]) = {
     var len = 0
     for (i <- 0 until ys.length) len += ys(i).length
@@ -42,6 +49,9 @@ object Test extends App {
   val ys = IArray.concat(xs, xs, xs)
   assert(reduce(ys, 0, _ + _) == 18)
 
+  val ss = IArray("a", "b", "c")
+  assert(reduce2(ss, "", _ ++ _) == "abc")
+
   val zss = IArray.fill(2, 3)(1)
   val zs = flatten(zss)
   assert(reduce(zs, 0, _ + _) == 6)
@@ -53,5 +63,6 @@ object Test extends App {
 
   val as: IArray[Any] = IArray(1, "hello")
   assert(as(as.length - 1) == "hello")
+  assert(reduce(as, 0, (x, y) => x.toString ++ y.toString) == "01hello")
 
 }
