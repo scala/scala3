@@ -1790,7 +1790,7 @@ object SymDenotations {
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)
                   case tparams: List[Symbol @unchecked] =>
-                    recur(tycon).subst(tparams, args)
+                    new ctx.SubstApproxMap(tparams, args).apply(recur(tycon))
                 }
               record(tp, baseTp)
               baseTp
