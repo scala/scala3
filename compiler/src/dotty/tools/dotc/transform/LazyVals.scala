@@ -36,8 +36,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   override def changesMembers: Boolean = true  // the phase adds lazy val accessors
 
-  def transformer: LazyVals = new LazyVals
-
   val containerFlags: FlagSet = Synthetic | Mutable | Lazy
   val initFlags: FlagSet      = Synthetic | Method
 
