@@ -695,4 +695,50 @@ class TestBCode extends DottyBytecodeTest {
         "`test` was not properly generated\n" + diffInstructions(instructions, expected))
     }
   }
+
+  @Test def i5924b = {
+    val source =
+      """|import scala.annotation.static
+         |trait Base
+         |
+         |object Base {
+         |  @static val x = 10
+         |  @static final val y = 10
+         |  @static def f: Int = 30
+         |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Base.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      getMethod(clsNode, "f")
+      getField(clsNode, "x")
+      getField(clsNode, "y")
+    }
+  }
+
+  @Test def i5924c = {
+    val source =
+      """|import scala.annotation.static
+         |class Base
+         |
+         |object Base {
+         |  @static val x = 10
+         |  @static final val y = 10
+         |  @static var a = 10
+         |  @static final var b = 10
+         |  @static def f: Int = 30
+         |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Base.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      getMethod(clsNode, "f")
+      getField(clsNode, "x")
+      getField(clsNode, "y")
+      getField(clsNode, "a")
+      getField(clsNode, "b")
+    }
+  }
 }

@@ -24,12 +24,11 @@ class MoveStatics extends MiniPhase with SymTransformer {
   override def phaseName: String = MoveStatics.name
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) &&
-        sym.owner.companionClass.exists && !sym.owner.companionClass.is(Flags.Trait)) {
+    if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists &&
+        (sym.is(Flags.Method) || !(sym.is(Flags.Mutable) && sym.owner.companionClass.is(Flags.Trait)))) {
       sym.owner.asClass.delete(sym.symbol)
       sym.owner.companionClass.asClass.enter(sym.symbol)
-      val flags = if (sym.is(Flags.Method)) sym.flags else sym.flags | Flags.Mutable
-      sym.copySymDenotation(owner = sym.owner.companionClass, initFlags = flags)
+      sym.copySymDenotation(owner = sym.owner.companionClass)
     }
     else sym
   }
@@ -59,9 +58,8 @@ class MoveStatics extends MiniPhase with SymTransformer {
       }
 
       def move(module: TypeDef, companion: TypeDef): List[Tree] = {
-        assert(companion ne module)
+        assert(companion != module)
         if (!module.symbol.is(Flags.Module)) move(companion, module)
-        else if (companion != null && companion.symbol.is(Flags.Trait)) List(module, companion)
         else {
           val allMembers =
             (if(companion != null) {companion.rhs.asInstanceOf[Template].body} else Nil) ++
