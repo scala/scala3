@@ -13,7 +13,7 @@ import ast.Trees._
 import NameOps._
 import collection.mutable
 import reporting.diagnostic.messages._
-import Checking.checkNoPrivateLeaks
+import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
 trait TypeAssigner {
   import tpd._
@@ -519,10 +519,10 @@ trait TypeAssigner {
     tree.withType(ref.tpe)
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree =
-    tree.withType(AndType(left.tpe, right.tpe))
+    tree.withType(AndType(checkNoWildcard(left).tpe, checkNoWildcard(right).tpe))
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree =
-    tree.withType(OrType(left.tpe, right.tpe))
+    tree.withType(OrType(checkNoWildcard(left).tpe, checkNoWildcard(right).tpe))
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.

@@ -153,6 +153,11 @@ class Definitions {
     sym
   }
 
+  private def enterBinaryAlias(name: TypeName, op: (Type, Type) => Type): TypeSymbol =
+    enterAliasType(name,
+      HKTypeLambda(TypeBounds.empty :: TypeBounds.empty :: Nil)(
+      tl => op(tl.paramRefs(0), tl.paramRefs(1))))
+
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags,
                     useCompleter: Boolean = false) = {
@@ -321,6 +326,9 @@ class Definitions {
     cls
   }
   def AnyKindType: TypeRef = AnyKindClass.typeRef
+
+  lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
+  lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _))
 
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
@@ -1326,6 +1334,8 @@ class Definitions {
     AnyClass,
     AnyRefAlias,
     AnyKindClass,
+    andType,
+    orType,
     RepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,
