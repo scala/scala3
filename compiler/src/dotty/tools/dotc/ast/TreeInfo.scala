@@ -562,7 +562,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
   def stripCast(tree: Tree)(implicit ctx: Context): Tree = {
-    def isCast(sel: Tree) = sel.symbol == defn.Any_asInstanceOf
+    def isCast(sel: Tree) = sel.symbol.isTypeCast
     unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)

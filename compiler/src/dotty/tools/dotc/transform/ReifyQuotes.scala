@@ -346,7 +346,7 @@ class ReifyQuotes extends MacroTransform {
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case TypeApply(Select(spliceTree @ Spliced(_), _), tp) if tree.symbol == defn.Any_asInstanceOf =>
+          case TypeApply(Select(spliceTree @ Spliced(_), _), tp) if tree.symbol.isTypeCast =>
             // Splice term which should be in the form `x.unary_~.asInstanceOf[T]` where T is an artefact of
             // typer to allow pickling/unpickling phase consistent types
             transformSplice(spliceTree)
