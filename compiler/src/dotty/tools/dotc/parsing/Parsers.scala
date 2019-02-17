@@ -501,13 +501,7 @@ object Parsers {
             opStack = opStack.tail
             recur {
               atSpan(opInfo.operator.span union opInfo.operand.span union top.span) {
-                val op = opInfo.operator
-                val l = opInfo.operand
-                val r = top
-                if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
-                  AndTypeTree(l, r)
-                } else
-                  InfixOp(l, op, r)
+                InfixOp(opInfo.operand, opInfo.operator, top)
               }
             }
           }
@@ -909,7 +903,7 @@ object Parsers {
         if (ctx.settings.strict.value)
           deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
-        AndTypeTree(t, withType())
+        makeAndType(t, withType())
       }
       else t
 

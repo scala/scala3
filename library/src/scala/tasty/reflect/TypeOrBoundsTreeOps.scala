@@ -14,7 +14,6 @@ trait TypeOrBoundsTreeOps extends Core {
   implicit def RefinedDeco(x: TypeTree.Refined): TypeTree.RefinedAPI
   implicit def AppliedDeco(x: TypeTree.Applied): TypeTree.AppliedAPI
   implicit def AnnotatedDeco(x: TypeTree.Annotated): TypeTree.AnnotatedAPI
-  implicit def AndDeco(x: TypeTree.And): TypeTree.AndAPI
   implicit def MatchTypeTreeDeco(x: TypeTree.MatchType): TypeTree.MatchTypeAPI
   implicit def ByNameDeco(x: TypeTree.ByName): TypeTree.ByNameAPI
   implicit def LambdaTypeTreeDeco(x: TypeTree.LambdaTypeTree): TypeTree.LambdaTypeTreeAPI
@@ -187,24 +186,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated
       def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, Term)]
-    }
-
-    val IsAnd: IsAndModule
-    abstract class IsAndModule {
-      /** Matches any And and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[And]
-    }
-
-    trait AndAPI {
-      def left(implicit ctx: Context): TypeTree
-      def right(implicit ctx: Context): TypeTree
-    }
-
-    val And: AndModule
-    abstract class AndModule {
-      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): And
-      def copy(original: And)(left: TypeTree, right: TypeTree)(implicit ctx: Context): And
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 
     val IsMatchType: IsMatchTypeModule

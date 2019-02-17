@@ -1273,12 +1273,6 @@ class Typer extends Namer
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
-  def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
-    val left1 = checkSimpleKinded(typed(tree.left))
-    val right1 = checkSimpleKinded(typed(tree.right))
-    assignType(cpy.AndTypeTree(tree)(left1, right1), left1, right1)
-  }
-
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = track("typedRefinedTypeTree") {
     val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withSpan(tree.span)
@@ -2003,7 +1997,6 @@ class Typer extends Namer
           case tree: untpd.Inlined => typedInlined(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
-          case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(ctx.localContext(tree, NoSymbol).setNewScope)

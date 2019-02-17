@@ -518,9 +518,6 @@ trait TypeAssigner {
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context): SingletonTypeTree =
     tree.withType(ref.tpe)
 
-  def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree =
-    tree.withType(AndType(checkNoWildcard(left).tpe, checkNoWildcard(right).tpe))
-
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
    */
@@ -539,10 +536,13 @@ trait TypeAssigner {
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree = {
     assert(!hasNamedArg(args))
     val tparams = tycon.tpe.typeParams
-    var ownType =
-      if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
+    val ownType =
+      if (sameLength(tparams, args)) {
+        if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
+        else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
+        else tycon.tpe.appliedTo(args.tpes)
+      }
       else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.sourcePos)
-    if (tycon.symbol == defn.andType || tycon.symbol == defn.orType) ownType = ownType.dealias
     tree.withType(ownType)
   }
 
