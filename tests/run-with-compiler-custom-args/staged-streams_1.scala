@@ -358,10 +358,10 @@ object Test {
           Linear(zip_producer(producer1, producer2))
 
         case (Linear(producer1), Nested(producer2, nestf2)) =>
-          pushLinear[Expr[A], _, B](producer1, producer2, nestf2)
+          pushLinear[A = Expr[A], C = B](producer1, producer2, nestf2)
 
         case (Nested(producer1, nestf1), Linear(producer2)) =>
-          mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, Expr[A]](producer2, producer1, nestf1))
+          mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[A = B, C = Expr[A]](producer2, producer1, nestf1))
 
         case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
           zipRaw[A, B](Linear(makeLinear(stream1)), stream2)
