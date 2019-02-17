@@ -285,7 +285,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               // Ideally, this should be done by Typer, but we run into cyclic references
               // when trying to typecheck self types which are intersections.
           else if (tree.tpt.symbol == defn.orType)
-            // nothing to do
+            () // nothing to do
           else
             Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
