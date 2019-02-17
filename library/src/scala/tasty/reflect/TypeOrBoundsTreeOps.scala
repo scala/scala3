@@ -14,8 +14,7 @@ trait TypeOrBoundsTreeOps extends Core {
   implicit def RefinedDeco(x: TypeTree.Refined): TypeTree.RefinedAPI
   implicit def AppliedDeco(x: TypeTree.Applied): TypeTree.AppliedAPI
   implicit def AnnotatedDeco(x: TypeTree.Annotated): TypeTree.AnnotatedAPI
-  implicit def AndDeco(x: TypeTree.And): TypeTree.OrAPI
-  implicit def OrDeco(x: TypeTree.Or): TypeTree.OrAPI
+  implicit def AndDeco(x: TypeTree.And): TypeTree.AndAPI
   implicit def MatchTypeTreeDeco(x: TypeTree.MatchType): TypeTree.MatchTypeAPI
   implicit def ByNameDeco(x: TypeTree.ByName): TypeTree.ByNameAPI
   implicit def LambdaTypeTreeDeco(x: TypeTree.LambdaTypeTree): TypeTree.LambdaTypeTreeAPI
@@ -205,24 +204,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class AndModule {
       def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): And
       def copy(original: And)(left: TypeTree, right: TypeTree)(implicit ctx: Context): And
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
-    }
-
-    val IsOr: IsOrModule
-    abstract class IsOrModule {
-      /** Matches any Or and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Or]
-    }
-
-    trait OrAPI {
-      def left(implicit ctx: Context): TypeTree
-      def right(implicit ctx: Context): TypeTree
-    }
-
-    val Or: OrModule
-    abstract class OrModule {
-      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or
-      def copy(original: Or)(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
     }
 

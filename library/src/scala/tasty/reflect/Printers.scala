@@ -219,8 +219,6 @@ trait Printers
           this += "TypeTree.Singleton(" += ref += ")"
         case TypeTree.And(left, right) =>
           this += "TypeTree.And(" += left += ", " += right += ")"
-        case TypeTree.Or(left, right) =>
-          this += "TypeTree.Or(" += left += ", " += right += ")"
         case TypeTree.Refined(tpt, refinements) =>
           this += "TypeTree.Refined(" += tpt += ", " ++= refinements += ")"
         case TypeTree.Applied(tpt, args) =>
@@ -1423,12 +1421,12 @@ trait Printers
           printTypeTree(left)
           this += highlightTypeDef(" & ", color)
           printTypeTree(right)
-
+/*
         case TypeTree.Or(left, right) =>
           printTypeTree(left)
           this += highlightTypeDef(" | ", color)
           printTypeTree(right)
-
+*/
         case TypeTree.MatchType(bound, selector, cases) =>
           printTypeTree(selector)
           this += highlightKeyword(" match ", color)

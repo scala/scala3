@@ -74,7 +74,6 @@ trait CoreImpl extends scala.tasty.reflect.Core {
       type Applied = tpd.AppliedTypeTree
       type Annotated = tpd.Annotated
       type And = tpd.AndTypeTree
-      type Or = tpd.OrTypeTree
       type MatchType = tpd.MatchTypeTree
       type ByName = tpd.ByNameTypeTree
       type LambdaTypeTree = tpd.LambdaTypeTree

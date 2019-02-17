@@ -1279,13 +1279,6 @@ class Typer extends Namer
     assignType(cpy.AndTypeTree(tree)(left1, right1), left1, right1)
   }
 
-  def typedOrTypeTree(tree: untpd.OrTypeTree)(implicit ctx: Context): OrTypeTree = track("typedOrTypeTree") {
-    val where = "in a union type"
-    val left1 = checkNotSingleton(checkSimpleKinded(typed(tree.left)), where)
-    val right1 = checkNotSingleton(checkSimpleKinded(typed(tree.right)), where)
-    assignType(cpy.OrTypeTree(tree)(left1, right1), left1, right1)
-  }
-
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = track("typedRefinedTypeTree") {
     val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withSpan(tree.span)
@@ -1365,9 +1358,15 @@ class Typer extends Namer
         case (tparam, _) =>
           tparam.paramInfo.bounds
       }
-      val args2 = preCheckKinds(args1, paramBounds)
-      // check that arguments conform to bounds is done in phase PostTyper
-      assignType(cpy.AppliedTypeTree(tree)(tpt1, args2), tpt1, args2)
+      var checkedArgs = preCheckKinds(args1, paramBounds)
+        // check that arguments conform to bounds is done in phase PostTyper
+      if (tpt1.symbol == defn.andType)
+        checkedArgs = checkedArgs.mapconserve(arg =>
+          checkSimpleKinded(checkNoWildcard(arg)))
+      else if (tpt1.symbol == defn.orType)
+        checkedArgs = checkedArgs.mapconserve(arg =>
+          checkNotSingleton(checkSimpleKinded(checkNoWildcard(arg)), "in a union type"))
+      assignType(cpy.AppliedTypeTree(tree)(tpt1, checkedArgs), tpt1, checkedArgs)
     }
   }
 
@@ -2005,7 +2004,6 @@ class Typer extends Namer
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
-          case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(ctx.localContext(tree, NoSymbol).setNewScope)

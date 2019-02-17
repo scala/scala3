@@ -504,9 +504,7 @@ object Parsers {
                 val op = opInfo.operator
                 val l = opInfo.operand
                 val r = top
-                if (isType && !op.isBackquoted && op.name == tpnme.raw.BAR) {
-                  OrTypeTree(l, r)
-                } else if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
+                if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
                   AndTypeTree(l, r)
                 } else
                   InfixOp(l, op, r)

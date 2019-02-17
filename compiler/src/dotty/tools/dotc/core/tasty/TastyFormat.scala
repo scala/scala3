@@ -107,7 +107,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEBOUNDStpt  Length low_Term high_Term?
                   ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
                   ANDtpt         Length left_Term right_Term
-                  ORtpt          Length left_Term right_Term
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*
                   BYNAMEtpt             underlying_Term
                   SHAREDterm            term_ASTRef
@@ -421,7 +420,6 @@ object TastyFormat {
   final val ANDtype = 165
   final val ANDtpt = 166
   final val ORtype = 167
-  final val ORtpt = 168
   final val POLYtype = 169
   final val TYPELAMBDAtype = 170
   final val LAMBDAtpt = 171
@@ -518,7 +516,6 @@ object TastyFormat {
        | TYPEBOUNDStpt
        | ANNOTATEDtpt
        | ANDtpt
-       | ORtpt
        | BYNAMEtpt
        | MATCHtpt
        | BIND => true
@@ -649,7 +646,6 @@ object TastyFormat {
     case ANDtype => "ANDtype"
     case ANDtpt => "ANDtpt"
     case ORtype => "ORtype"
-    case ORtpt => "ORtpt"
     case BYNAMEtype => "BYNAMEtype"
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
