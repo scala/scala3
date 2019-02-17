@@ -39,8 +39,8 @@ class SyntaxHighlightingTests extends DottyTest {
     test("type Foo", "<K|type> <T|Foo>")
     test("type Foo =", "<K|type> <T|Foo> =")
     test("type Foo = Int", "<K|type> <T|Foo> = <T|Int>")
-    test("type A = String | Int", "<K|type> <T|A> = <T|String | Int>")
-    test("type B = String & Int", "<K|type> <T|B> = <T|String & Int>")
+    test("type A = String | Int", "<K|type> <T|A> = <T|String> <T||> <T|Int>")
+    test("type B = String & Int", "<K|type> <T|B> = <T|String> <T|&> <T|Int>")
   }
 
   @Test
