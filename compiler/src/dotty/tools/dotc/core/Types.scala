@@ -3764,9 +3764,6 @@ object Types {
 
     override def tryNormalize(implicit ctx: Context): Type = reduced.normalized
 
-    /** Switch to choose parallel or sequential reduction */
-    private final val reduceInParallel = false
-
     final def cantPossiblyMatch(cas: Type)(implicit ctx: Context): Boolean =
       true  // should be refined if we allow overlapping cases
 
@@ -3783,24 +3780,6 @@ object Types {
           else NoType
       }
 
-      def reduceParallel(implicit ctx: Context) = {
-        val applicableBranches = cases
-          .map(typeComparer.matchCase(scrutinee, _, instantiate = true)(trackingCtx))
-          .filter(_.exists)
-        applicableBranches match {
-          case Nil => NoType
-          case applicableBranch :: Nil => applicableBranch
-          case _ =>
-            record(i"MatchType.multi-branch")
-            ctx.typeComparer.glb(applicableBranches)
-        }
-      }
-
-      def isBounded(tp: Type) = tp match {
-        case tp: TypeParamRef =>
-        case tp: TypeRef => ctx.gadt.contains(tp.symbol)
-      }
-
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
           val constraint = ctx.typerState.constraint
@@ -3813,27 +3792,26 @@ object Types {
           tp.underlying
       }
 
-      def updateReductionContext() = {
+      def updateReductionContext(): Unit = {
         reductionContext = new mutable.HashMap
         for (tp <- typeComparer.footprint)
           reductionContext(tp) = contextInfo(tp)
         typr.println(i"footprint for $this $hashCode: ${typeComparer.footprint.toList.map(x => (x, contextInfo(x)))}%, %")
       }
 
-      def upToDate =
+      def isUpToDate: Boolean =
         reductionContext.keysIterator.forall { tp =>
           reductionContext(tp) `eq` contextInfo(tp)
         }
 
       record("MatchType.reduce called")
-      if (!Config.cacheMatchReduced || myReduced == null || !upToDate) {
+      if (!Config.cacheMatchReduced || myReduced == null || !isUpToDate) {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
           trace(i"reduce match type $this $hashCode", typr, show = true) {
             try
               if (defn.isBottomType(scrutinee)) defn.NothingType
-              else if (reduceInParallel) reduceParallel(trackingCtx)
               else reduceSequential(cases)(trackingCtx)
             catch {
               case ex: Throwable =>
