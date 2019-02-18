@@ -592,7 +592,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               else {
                 val reporter = compile(testSource.sourceFiles, flags, false, outDir)
                 files.foreach { file =>
-                  if (!file.isDirectory) {
+                  if (!file.isDirectory && file.getName.endsWith(".scala")) {
                     val checkFile = new JFile(file.getAbsolutePath.replaceFirst("\\.scala$", ".checklog"))
                     if (checkFile.exists)
                       checkFileTest(testSource, checkFile, reporterOutputLines(reporter :: Nil))
