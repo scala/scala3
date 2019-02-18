@@ -244,7 +244,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 12
+  val MajorVersion: Int = 13
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
