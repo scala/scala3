@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
+import scala.tools.asm.CustomAttr
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.util.SourceFile
@@ -239,7 +240,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
                 getFileForClassfile(outF, store.name, ".hasTasty")
                 binary
               }
-            val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
+            val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, tasty)
             store.visitAttribute(dataAttr)
           }
 
