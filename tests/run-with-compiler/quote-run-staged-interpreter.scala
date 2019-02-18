@@ -19,7 +19,7 @@ object Test {
       case Var(x) => env(x)
       case Let(x, e, body) =>
         if (keepLets)
-          '{ val y = ${compileImpl(e, env)}; ${compileImpl(body, env + (x -> '{y})} }
+          '{ val y = ${compileImpl(e, env)}; ${compileImpl(body, env + (x -> '{y})) } }
         else
           compileImpl(body, env + (x -> compileImpl(e, env)))
     }

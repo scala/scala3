@@ -13,8 +13,8 @@ object Test {
 
   def f(t: Type[List[Int]]): Expr[Int] = '{
     def ff: Int = {
-      val a: ~t = {
-        type T = ~t
+      val a: $t = {
+        type T = $t
         val b: T = 3 :: Nil
         b
       }
@@ -23,5 +23,5 @@ object Test {
     ff
   }
 
-  def g[T](a: Type[T]): Type[List[T]] = '[List[~a]]
+  def g[T](a: Type[T]): Type[List[T]] = '[List[$a]]
 }
