@@ -284,8 +284,9 @@ object Types {
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
-    /** Is some part of this type produced as a repair for an error? */
-    def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
+    /** Is some part of the widened version of this type produced as a repair for an error? */
+    def isErroneous(implicit ctx: Context): Boolean =
+      widen.existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
