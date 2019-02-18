@@ -6,7 +6,7 @@ object Arrays {
   implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T]): Liftable[Array[List[T]]] = {
     new Liftable[Array[List[T]]] {
       def toExpr(arr: Array[List[T]]): Expr[Array[List[T]]] = '{
-        new Array[List[${t]](${arr.length.toExpr}})
+        new Array[List[$t]](${arr.length.toExpr})
         // TODO add elements
       }
     }
