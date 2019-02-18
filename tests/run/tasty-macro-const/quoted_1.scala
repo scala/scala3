@@ -9,7 +9,7 @@ object Macros {
     import reflection._
     val xTree: Term = x.unseal
     xTree match {
-      case Term.Block(Nil, Term.Literal(Constant.Int(n))) =>
+      case Term.Literal(Constant.Int(n)) =>
         if (n <= 0)
           throw new QuoteError("Parameter must be natural number")
         xTree.seal[Int]

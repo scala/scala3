@@ -1,19 +1,19 @@
-Term.Block(Nil, Term.Literal(Constant.Boolean(true)))
+Term.Literal(Constant.Boolean(true))
 Type.ConstantType(Constant.Boolean(true))
 
-Term.Block(Nil, Term.Literal(Constant.Int(1)))
+Term.Literal(Constant.Int(1))
 Type.ConstantType(Constant.Int(1))
 
-Term.Block(Nil, Term.Literal(Constant.Long(2)))
+Term.Literal(Constant.Long(2))
 Type.ConstantType(Constant.Long(2))
 
-Term.Block(Nil, Term.Literal(Constant.Float(2.1)))
+Term.Literal(Constant.Float(2.1))
 Type.ConstantType(Constant.Float(2.1))
 
-Term.Block(Nil, Term.Literal(Constant.Double(2.2)))
+Term.Literal(Constant.Double(2.2))
 Type.ConstantType(Constant.Double(2.2))
 
-Term.Block(Nil, Term.Literal(Constant.String("abc")))
+Term.Literal(Constant.String("abc"))
 Type.ConstantType(Constant.String("abc"))
 
 Term.Inlined(None, Nil, Term.Apply(Term.Ident("println"), List(Term.Literal(Constant.String("abc")))))
@@ -28,7 +28,7 @@ Type.SymRef(IsClassSymbol(<scala.Byte>), Type.SymRef(IsPackageSymbol(<scala>), T
 Term.Inlined(None, Nil, Term.Typed(Term.Literal(Constant.Short(8)), TypeTree.Ident("Short")))
 Type.SymRef(IsClassSymbol(<scala.Short>), Type.SymRef(IsPackageSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<root>>), NoPrefix()))))
 
-Term.Block(Nil, Term.Literal(Constant.Char(a)))
+Term.Literal(Constant.Char(a))
 Type.ConstantType(Constant.Char(a))
 
 Term.Inlined(None, Nil, Term.Block(List(Term.Literal(Constant.Int(1)), Term.Literal(Constant.Int(2))), Term.Literal(Constant.Int(3))))
