@@ -923,7 +923,12 @@ object Parsers {
       val saved = in.inQuote
       in.inQuote = isQuote
       inDefScopeBraces {
-        try block() finally in.inQuote = saved
+        try
+          block() match {
+            case Block(Nil, expr) => expr
+            case t => t
+          }
+        finally in.inQuote = saved
       }
     }
 
