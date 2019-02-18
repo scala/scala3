@@ -1297,7 +1297,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     // # skipped implicit parameters in tp1  -  # skipped implicit parameters in tp2
     var implicitBalance: Int = 0
 
-    /** Widen the type of synthetic implied methods from the implementation class to the
+    /** Widen the result type of synthetic implied methods from the implementation class to the
      *  type that's implemented. Example
      *
      *      implied I[X] for T { ... }
@@ -1316,46 +1316,61 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  objects, since these are anyway taken to be more specific than methods
      *  (by condition 3a above).
      */
-    def widenImplied(tp: Type, alt: TermRef): Type =
-      if (alt.symbol.is(SyntheticImpliedMethod))
-        tp.parents match {
-          case Nil => tp
-          case ps => ps.reduceLeft(AndType(_, _))
-        }
-      else tp
+    def widenImplied(tp: Type, alt: TermRef): Type = tp match {
+      case mt: MethodType if mt.isImplicitMethod =>
+        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenImplied(mt.resultType, alt))
+      case pt: PolyType =>
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenImplied(pt.resultType, alt))
+      case _ =>
+        if (alt.symbol.is(SyntheticImpliedMethod))
+          tp.parents match {
+            case Nil => tp
+            case ps => ps.reduceLeft(AndType(_, _))
+          }
+        else tp
+    }
 
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type, alt: TermRef, weight: Int): Type = tp match {
+    def stripImplicit(tp: Type, weight: Int): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
         implicitBalance += mt.paramInfos.length * weight
-        widenImplied(resultTypeApprox(mt), alt)
+        resultTypeApprox(mt)
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, alt, weight))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, weight))
       case _ =>
-        widenImplied(tp, alt)
+        tp
     }
 
     val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
     val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
     val ownerScore = compareOwner(owner1, owner2)
 
-    val tp1 = stripImplicit(alt1.widen, alt1, -1)
-    val tp2 = stripImplicit(alt2.widen, alt2, +1)
-    def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
-    def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
+    def compareWithTypes(tp1: Type, tp2: Type) = {
+      def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
+      def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
-    overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
+      overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
+      if (ownerScore == 1)
+	      if (winsType1 || !winsType2) 1 else 0
+	    else if (ownerScore == -1)
+	      if (winsType2 || !winsType1) -1 else 0
+	    else if (winsType1)
+	      if (winsType2) 0 else 1
+	    else
+        if (winsType2) -1 else 0
+    }
 
-    def tieBreak = -implicitBalance.signum
+    val fullType1 = widenImplied(alt1.widen, alt1)
+    val fullType2 = widenImplied(alt2.widen, alt2)
+    val strippedType1 = stripImplicit(fullType1, -1)
+    val strippedType2 = stripImplicit(fullType2, +1)
 
-    if (ownerScore == 1)
-      if (winsType1 || !winsType2) 1 else tieBreak
-    else if (ownerScore == -1)
-      if (winsType2 || !winsType1) -1 else tieBreak
-    else if (winsType1)
-      if (winsType2) tieBreak else 1
-    else
-      if (winsType2) -1 else tieBreak
+    val result = compareWithTypes(strippedType1, strippedType2)
+    if (result != 0) result
+    else if (implicitBalance != 0) -implicitBalance.signum
+    else if ((strippedType1 `ne` fullType1) || (strippedType2 `ne` fullType2))
+      compareWithTypes(fullType1, fullType2)
+    else 0
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {

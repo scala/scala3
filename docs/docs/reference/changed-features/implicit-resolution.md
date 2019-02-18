@@ -99,9 +99,11 @@ affect implicits on the language level.
         buzz(1)   // error: ambiguous
 
  7. The rule for picking a _most specific_ alternative among a set of overloaded or implicit
-    alternatives is refined to take the number of inferable parameters into account. All else
+    alternatives is refined to take inferable parameters into account. All else
     being equal, an alternative that takes more inferable parameters is taken to be more specific
-    than an alternative that takes fewer. The following paragraph in the SLS is affected by this change:
+    than an alternative that takes fewer. If both alternatives take the same number of
+    inferable parameters, we try to choose between them as if they were methods with regular parameters.
+    The following paragraph in the SLS is affected by this change:
 
     _Original version:_
 
@@ -112,6 +114,9 @@ affect implicits on the language level.
     An alternative A is _more specific_ than an alternative B if
 
      - the relative weight of A over B is greater than the relative weight of B over A, or
-     - the relative weights are the same and A takes more inferable parameters than B.
+     - the relative weights are the same and A takes more inferable parameters than B, or
+     - the relative weights and the number of inferable parameters are the same and
+       A is more specific than B if all inferable parameters in either alternative are
+       replaced by regular parameters.
 
 [//]: # todo: expand with precise rules
