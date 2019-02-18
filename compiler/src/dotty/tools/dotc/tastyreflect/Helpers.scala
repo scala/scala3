@@ -1,6 +1,8 @@
 package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.Trees
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts._
 
 trait Helpers {
 
