@@ -781,7 +781,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[MessageContainer]) = !reporterErrors.forall { error =>
           val key = if (error.pos.exists) {
-            val fileName = error.pos.source.file.toString
+            val fileName = error.pos.source.file.absolutePath
             s"$fileName:${error.pos.line}"
 
           } else "nopos"
