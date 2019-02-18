@@ -925,7 +925,8 @@ object Parsers {
       inDefScopeBraces {
         try
           block() match {
-            case Block(Nil, expr) => expr
+            case t @ Block(Nil, expr) =>
+              if (expr.isEmpty) t else expr
             case t => t
           }
         finally in.inQuote = saved
