@@ -77,7 +77,9 @@ escape           ::=  ‘$$’
                    |  ‘{’ Block  [‘;’ whiteSpace stringFormat whiteSpace] ‘}’
 stringFormat     ::=  {printableChar \ (‘"’ | ‘}’ | ‘ ’ | ‘\t’ | ‘\n’)}
 
-symbolLiteral    ::=  ‘'’ plainid
+symbolLiteral    ::=  ‘'’ plainid // until 2.13
+quoteId          ::=  ‘'’ plainid // from 3.1
+spliceId         ::=  '$' plainid
 
 comment          ::=  ‘/*’ “any sequence of characters; nested comments are allowed” ‘*/’
                    |  ‘//’ “any sequence of characters up to end of line”
@@ -158,7 +160,8 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  ‘_’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
-                    |  ‘$’ (id | ‘{’ Block ‘}’)
+                    |  spliceId    // only inside quotes
+                    |  ‘$’ ‘{’ Block ‘}’
 ArgTypes          ::=  Type {‘,’ Type}
                     |  NamedTypeArg {‘,’ NamedTypeArg}
 FunArgType        ::=  Type
@@ -208,9 +211,11 @@ InfixExpr         ::=  PrefixExpr
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
-                    |  ‘'’ (id | ‘{’ Block ‘}’)
+                    |  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
-                    |  ‘$’ (id | ‘{’ Block ‘}’)
+                    |  ‘$’ ‘{’ Block ‘}’
+                    |  spliceId    // only inside quotes
+                    |  quoteId     // only inside splices
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
                     |  Path
