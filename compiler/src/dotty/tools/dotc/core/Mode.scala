@@ -60,11 +60,6 @@ object Mode {
    */
   val Printing: Mode = newMode(10, "Printing")
 
-  /** We are currently typechecking an ident to determine whether some implicit
-   *  is shadowed - don't do any other shadowing tests.
-   */
-  val ImplicitShadowing: Mode = newMode(11, "ImplicitShadowing")
-
   /** We are currently in a `viewExists` check. In that case, ambiguous
    *  implicits checks are disabled and we succeed with the first implicit
    *  found.
