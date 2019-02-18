@@ -4,8 +4,8 @@ object Test {
 
   def outer(implicit c: C) = {
 
-    def f(c: C) = implicitly[C]   // error: shadowing
-    def g(c: Int) = implicitly[C] // error: shadowing (even though type is different)
+    def f(c: C) = implicitly[C]   // now ok: shadowing no longer tested
+    def g(c: Int) = implicitly[C] // now ok: shadowing no longer tested
 
     f(new C)
   }

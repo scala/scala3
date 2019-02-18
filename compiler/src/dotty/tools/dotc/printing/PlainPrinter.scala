@@ -520,7 +520,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
       result.reason match {
         case _: NoMatchingImplicits => "No Matching Implicit"
         case _: DivergingImplicit => "Diverging Implicit"
-        case _: ShadowedImplicit => "Shadowed Implicit"
         case result: AmbiguousImplicits =>
           "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>

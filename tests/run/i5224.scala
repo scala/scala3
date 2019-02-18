@@ -16,5 +16,7 @@ object Test extends App {
     def barInt: Unit = ???
 
     implicitly[Bar[Int]]
+      // used to resolve to bar, but
+      // resolves to barInt now, since shadowing is no longer tested
   }
 }
