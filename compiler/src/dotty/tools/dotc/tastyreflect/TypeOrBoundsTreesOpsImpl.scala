@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{Contexts, Types}
 
 
-trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with CoreImpl {
+trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with RootPositionImpl {
 
   def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
     def pos(implicit ctx: Context): Position = tpt.sourcePos
@@ -115,7 +115,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
 
     object Inferred extends InferredModule {
-      def apply(tpe: Type)(implicit ctx: Context): Inferred = tpd.TypeTree(tpe)
+      def apply(tpe: Type)(implicit ctx: Context): Inferred = withDefaultPos(ctx => tpd.TypeTree(tpe)(ctx))
 
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
         case x @ Trees.TypeTree() => !x.tpe.isInstanceOf[Types.TypeBounds]
@@ -148,7 +148,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object Select extends SelectModule {
       def apply(qualifier: Term, name: String)(implicit ctx: Context): Select =
-        tpd.Select(qualifier, name.toTypeName)
+        withDefaultPos(ctx => tpd.Select(qualifier, name.toTypeName)(ctx))
 
       def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
@@ -185,7 +185,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object Singleton extends SingletonModule {
       def apply(ref: Term)(implicit ctx: Context): Singleton =
-        tpd.SingletonTypeTree(ref)
+        withDefaultPos(ctx => tpd.SingletonTypeTree(ref)(ctx))
 
       def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton =
         tpd.cpy.SingletonTypeTree(original)(ref)
@@ -222,7 +222,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object Applied extends AppliedModule {
       def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
-        tpd.AppliedTypeTree(tpt, args)
+        withDefaultPos(ctx => tpd.AppliedTypeTree(tpt, args)(ctx))
 
       def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
         tpd.cpy.AppliedTypeTree(original)(tpt, args)
@@ -242,7 +242,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object Annotated extends AnnotatedModule {
       def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
-        tpd.Annotated(arg, annotation)
+        withDefaultPos(ctx => tpd.Annotated(arg, annotation)(ctx))
 
       def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
         tpd.cpy.Annotated(original)(arg, annotation)
@@ -262,7 +262,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object And extends AndModule {
       def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): And =
-        tpd.AndTypeTree(left, right)
+        withDefaultPos(ctx => tpd.AndTypeTree(left, right)(ctx))
 
       def copy(original: And)(left: TypeTree, right: TypeTree)(implicit ctx: Context): And =
         tpd.cpy.AndTypeTree(original)(left, right)
@@ -282,7 +282,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object Or extends OrModule {
       def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or =
-        tpd.OrTypeTree(left, right)
+        withDefaultPos(ctx => tpd.OrTypeTree(left, right)(ctx))
 
       def copy(original: Or)(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or =
         tpd.cpy.OrTypeTree(original)(left, right)
@@ -302,7 +302,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object MatchType extends MatchTypeModule {
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
-        tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)
+        withDefaultPos(ctx => tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)(ctx))
 
       def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
         tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
@@ -322,7 +322,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object ByName extends ByNameModule {
       def apply(result: TypeTree)(implicit ctx: Context): ByName =
-        tpd.ByNameTypeTree(result)
+        withDefaultPos(ctx => tpd.ByNameTypeTree(result)(ctx))
 
       def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName =
         tpd.cpy.ByNameTypeTree(original)(result)
@@ -342,7 +342,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object LambdaTypeTree extends LambdaTypeTreeModule {
       def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
-        tpd.LambdaTypeTree(tparams, body)
+        withDefaultPos(ctx => tpd.LambdaTypeTree(tparams, body)(ctx))
 
       def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
         tpd.cpy.LambdaTypeTree(original)(tparams, body)
@@ -380,7 +380,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
     object TypeBlock extends TypeBlockModule {
       def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
-        tpd.Block(aliases, tpt)
+        withDefaultPos(ctx => tpd.Block(aliases, tpt)(ctx))
 
       def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
         tpd.cpy.Block(original)(aliases, tpt)

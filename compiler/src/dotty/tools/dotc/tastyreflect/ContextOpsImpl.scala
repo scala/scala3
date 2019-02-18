@@ -1,7 +1,5 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.util.{Spans, SourcePosition}
-
 trait ContextOpsImpl extends scala.tasty.reflect.ContextOps with CoreImpl {
 
   val rootContext: Context
@@ -11,7 +9,5 @@ trait ContextOpsImpl extends scala.tasty.reflect.ContextOps with CoreImpl {
 
     def source: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
   }
-
-  def rootPosition: SourcePosition = SourcePosition(rootContext.source, Spans.NoSpan)
 
 }
