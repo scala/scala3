@@ -989,7 +989,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 t match {
                   case Typed(expr, _) =>
                     Block(stats, expr)
-                  case TypeApply(Select(expr, n), _) if n == defn.Any_asInstanceOf.name =>
+                  case TypeApply(sel@Select(expr, _), _) if sel.symbol.isTypeCast =>
                     Block(stats, expr)
                   case _ =>
                     rhs0

@@ -2622,7 +2622,7 @@ class Typer extends Namer
           // I suspect, but am not 100% sure that this might affect inferred types,
           // if the expected type is a supertype of the GADT bound. It would be good to come
           // up with a test case for this.
-          tree.asInstance(pt)
+          tree.select(defn.Any_typeCast).appliedToType(pt)
         else
           tree
       }

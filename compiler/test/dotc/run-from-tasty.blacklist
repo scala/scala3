@@ -12,4 +12,4 @@ typeclass-derivation2a.scala
 typeclass-derivation3.scala
 derive-generic.scala
 deriving-interesting-prefixes.scala
-
+companion-loading.scala
