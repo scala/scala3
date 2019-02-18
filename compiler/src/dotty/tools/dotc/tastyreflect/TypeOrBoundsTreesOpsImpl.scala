@@ -50,16 +50,6 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     def annotation(implicit ctx: Contexts.Context): Term = x.annot
   }
 
-  def AndDeco(x: TypeTree.And): TypeTree.OrAPI = new TypeTree.OrAPI {
-    def left(implicit ctx: Contexts.Context): TypeTree = x.left
-    def right(implicit ctx: Contexts.Context): TypeTree = x.right
-  }
-
-  def OrDeco(x: TypeTree.Or): TypeTree.OrAPI = new TypeTree.OrAPI {
-    def left(implicit ctx: Contexts.Context): TypeTree = x.left
-    def right(implicit ctx: Contexts.Context): TypeTree = x.right
-  }
-
   def MatchTypeTreeDeco(x: TypeTree.MatchType): TypeTree.MatchTypeAPI = new TypeTree.MatchTypeAPI {
     def bound(implicit ctx: Contexts.Context): Option[TypeTree] = if (x.bound == tpd.EmptyTree) None else Some(x.bound)
     def selector(implicit ctx: Contexts.Context): TypeTree = x.selector
@@ -249,46 +239,6 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, Term)] = x match {
         case x: tpd.Annotated => Some(x.arg, x.annot)
-        case _ => None
-      }
-    }
-
-    object IsAnd extends IsAndModule {
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[And] = tpt match {
-        case tpt: tpd.AndTypeTree => Some(tpt)
-        case _ => None
-      }
-    }
-
-    object And extends AndModule {
-      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): And =
-        withDefaultPos(ctx => tpd.AndTypeTree(left, right)(ctx))
-
-      def copy(original: And)(left: TypeTree, right: TypeTree)(implicit ctx: Context): And =
-        tpd.cpy.AndTypeTree(original)(left, right)
-
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
-        case x: tpd.AndTypeTree => Some(x.left, x.right)
-        case _ => None
-      }
-    }
-
-    object IsOr extends IsOrModule {
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Or] = tpt match {
-        case tpt: tpd.OrTypeTree => Some(tpt)
-        case _ => None
-      }
-    }
-
-    object Or extends OrModule {
-      def apply(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or =
-        withDefaultPos(ctx => tpd.OrTypeTree(left, right)(ctx))
-
-      def copy(original: Or)(left: TypeTree, right: TypeTree)(implicit ctx: Context): Or =
-        tpd.cpy.OrTypeTree(original)(left, right)
-
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
-        case x: tpd.OrTypeTree => Some(x.left, x.right)
         case _ => None
       }
     }

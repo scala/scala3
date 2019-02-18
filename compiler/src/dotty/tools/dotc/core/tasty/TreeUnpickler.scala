@@ -1175,14 +1175,11 @@ class TreeUnpickler(reader: TastyReader,
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
               val args = until(end)(readTpt())
-              untpd.AppliedTypeTree(tycon, args).withType(tycon.tpe.safeAppliedTo(args.tpes))
-            case ANDtpt =>
-              val tpt1 = readTpt()
-              val tpt2 = readTpt()
-              // FIXME: We need to do this instead of "AndType(tpt1, tpt2)" to avoid self-type cyclic reference in tasty_tools
-              untpd.AndTypeTree(tpt1, tpt2).withType(AndType(tpt1.tpe, tpt2.tpe))
-            case ORtpt =>
-              OrTypeTree(readTpt(), readTpt())
+              val ownType =
+                if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
+                else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
+                else tycon.tpe.safeAppliedTo(args.tpes)
+              untpd.AppliedTypeTree(tycon, args).withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>

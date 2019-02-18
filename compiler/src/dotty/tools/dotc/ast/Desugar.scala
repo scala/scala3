@@ -1440,7 +1440,7 @@ object desugar {
     def collect(tree: Tree): Unit = tree match {
       case Bind(nme.WILDCARD, tree1) =>
         collect(tree1)
-      case tree @ Bind(_, Typed(tree1, tpt)) if !mayBeTypePat(tpt) =>
+      case tree @ Bind(_, Typed(tree1, tpt)) =>
         add(tree, tpt)
         collect(tree1)
       case tree @ Bind(_, tree1) =>

@@ -280,7 +280,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
-          Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
+          if (tree.tpt.symbol == defn.andType)
+            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.posd)
+              // Ideally, this should be done by Typer, but we run into cyclic references
+              // when trying to typecheck self types which are intersections.
+          else if (tree.tpt.symbol == defn.orType)
+            () // nothing to do
+          else
+            Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.posd)
@@ -292,11 +299,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
-        case tree: AndTypeTree =>
-          // Ideally, this should be done by Typer, but we run into cyclic references
-          // when trying to typecheck self types which are intersections.
-          Checking.checkNonCyclicInherited(tree.tpe, tree.left.tpe :: tree.right.tpe :: Nil, EmptyScope, tree.posd)
-          super.transform(tree)
         case tree: LambdaTypeTree =>
           VarianceChecker.checkLambda(tree)
           super.transform(tree)

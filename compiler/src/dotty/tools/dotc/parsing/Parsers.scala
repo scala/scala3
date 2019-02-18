@@ -423,6 +423,19 @@ object Parsers {
       case _ => false
     }
 
+    def isWildcardType(t: Tree): Boolean = t match {
+      case t: TypeBoundsTree => true
+      case Parens(t1) => isWildcardType(t1)
+      case _ => false
+    }
+
+    def rejectWildcardType(t: Tree, fallbackTree: Tree = scalaAny): Tree =
+      if (isWildcardType(t)) {
+        syntaxError(UnboundWildcardType(), t.span)
+        fallbackTree
+      }
+      else t
+
 /* -------------- XML ---------------------------------------------------- */
 
     /** the markup parser */
@@ -488,15 +501,7 @@ object Parsers {
             opStack = opStack.tail
             recur {
               atSpan(opInfo.operator.span union opInfo.operand.span union top.span) {
-                val op = opInfo.operator
-                val l = opInfo.operand
-                val r = top
-                if (isType && !op.isBackquoted && op.name == tpnme.raw.BAR) {
-                  OrTypeTree(checkAndOrArgument(l), checkAndOrArgument(r))
-                } else if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
-                  AndTypeTree(checkAndOrArgument(l), checkAndOrArgument(r))
-                } else
-                  InfixOp(l, op, r)
+                InfixOp(opInfo.operand, opInfo.operator, top)
               }
             }
           }
@@ -768,7 +773,7 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(): Tree = checkWildcard(typ())
+    def toplevelTyp(): Tree = rejectWildcardType(typ())
 
     /** Type        ::=  FunTypeMods FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
@@ -830,7 +835,7 @@ object Parsers {
                       t
                   }
                 }
-              val tuple = atSpan(start) { makeTupleOrParens(ts) }
+              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
               infixTypeRest(
                 refinedTypeRest(
                   withTypeRest(
@@ -885,7 +890,7 @@ object Parsers {
 
     def refinedTypeRest(t: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) refinedTypeRest(atSpan(startOffset(t)) { RefinedTypeTree(checkWildcard(t), refinement()) })
+      if (in.token == LBRACE) refinedTypeRest(atSpan(startOffset(t)) { RefinedTypeTree(rejectWildcardType(t), refinement()) })
       else t
     }
 
@@ -898,7 +903,7 @@ object Parsers {
         if (ctx.settings.strict.value)
           deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
-        AndTypeTree(checkAndOrArgument(t), checkAndOrArgument(withType()))
+        makeAndType(t, withType())
       }
       else t
 
@@ -907,7 +912,10 @@ object Parsers {
     def annotType(): Tree = annotTypeRest(simpleType())
 
     def annotTypeRest(t: Tree): Tree =
-      if (in.token == AT) annotTypeRest(atSpan(startOffset(t)) { Annotated(t, annot()) })
+      if (in.token == AT)
+        annotTypeRest(atSpan(startOffset(t)) {
+          Annotated(rejectWildcardType(t), annot())
+        })
       else t
 
     /** SimpleType       ::=  SimpleType TypeArgs
@@ -949,7 +957,7 @@ object Parsers {
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atSpan(startOffset(t)) {
-        AppliedTypeTree(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
+        AppliedTypeTree(rejectWildcardType(t), typeArgs(namedOK = false, wildOK = true)) })
       case _ => t
     }
 
@@ -959,18 +967,23 @@ object Parsers {
       atSpan(startOffset(t), startOffset(id)) { Select(t, id.name) }
     }
 
-    /** NamedTypeArg      ::=  id `=' Type
-     */
-    val namedTypeArg: () => NamedArg = () => {
-      val name = ident()
-      accept(EQUALS)
-      NamedArg(name.toTypeName, typ())
-    }
-
     /**   ArgTypes          ::=  Type {`,' Type}
      *                        |  NamedTypeArg {`,' NamedTypeArg}
+     *    NamedTypeArg      ::=  id `=' Type
      */
     def argTypes(namedOK: Boolean, wildOK: Boolean): List[Tree] = {
+
+      def argType() = {
+        val t = typ()
+        if (wildOK) t else rejectWildcardType(t)
+      }
+
+      def namedTypeArg() = {
+        val name = ident()
+        accept(EQUALS)
+        NamedArg(name.toTypeName, argType())
+      }
+
       def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
         val rest =
           if (in.token == COMMA) {
@@ -980,16 +993,15 @@ object Parsers {
           else Nil
         first :: rest
       }
-      def typParser() = checkWildcard(typ(), wildOK)
       if (namedOK && in.token == IDENTIFIER)
-        typParser() match {
+        argType() match {
           case Ident(name) if in.token == EQUALS =>
             in.nextToken()
-            otherArgs(NamedArg(name, typ()), namedTypeArg)
+            otherArgs(NamedArg(name, argType()), () => namedTypeArg())
           case firstArg =>
-            otherArgs(firstArg, () => typ())
+            otherArgs(firstArg, () => argType())
         }
-      else commaSeparated(() => typParser())
+      else commaSeparated(() => argType())
     }
 
     /** FunArgType ::=  Type | `=>' Type
@@ -1063,46 +1075,6 @@ object Parsers {
       if (location == Location.InParens) typ()
       else if (location == Location.InPattern) refinedType()
       else infixType()
-
-    /** Checks whether `t` represents a non-value type (wildcard types, or ByNameTypeTree).
-     *  If it is, returns the [[Tree]] which immediately represents the non-value type.
-     */
-    @tailrec
-    private final def findNonValueTypeTree(t: Tree, alsoNonValue: Boolean): Option[Tree] = t match {
-      case TypeBoundsTree(_, _) => Some(t)
-      case ByNameTypeTree(_) if alsoNonValue => Some(t)
-      case Parens(t1) => findNonValueTypeTree(t1, alsoNonValue)
-      case Annotated(t1, _) => findNonValueTypeTree(t1, alsoNonValue)
-      case _ => None
-    }
-
-    def rejectWildcard(t: Tree, fallbackTree: Tree): Tree =
-      findNonValueTypeTree(t, false) match {
-        case Some(wildcardTree) =>
-          syntaxError(UnboundWildcardType(), wildcardTree.span)
-          fallbackTree
-        case None => t
-      }
-
-
-    def checkWildcard(t: Tree, wildOK: Boolean = false, fallbackTree: Tree = scalaAny): Tree =
-      if (wildOK)
-        t
-      else
-        rejectWildcard(t, fallbackTree)
-
-    def checkAndOrArgument(t: Tree): Tree =
-      findNonValueTypeTree(t, true) match {
-        case Some(typTree) =>
-          typTree match {
-            case typTree: TypeBoundsTree =>
-              syntaxError(UnboundWildcardType(), typTree.span)
-            case typTree: ByNameTypeTree =>
-              syntaxError(ByNameParameterNotSupported(typTree), typTree.span)
-          }
-          scalaAny
-        case None => t
-      }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
@@ -2580,7 +2552,7 @@ object Parsers {
      */
     val constrApp: () => Tree = () => {
       // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
-      val t = checkWildcard(annotType(), fallbackTree = Ident(nme.ERROR))
+      val t = rejectWildcardType(annotType(), fallbackTree = Ident(nme.ERROR))
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
     }

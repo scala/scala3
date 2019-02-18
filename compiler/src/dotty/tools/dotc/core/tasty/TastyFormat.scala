@@ -106,8 +106,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   LAMBDAtpt      Length TypeParam* body_Term
                   TYPEBOUNDStpt  Length low_Term high_Term?
                   ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
-                  ANDtpt         Length left_Term right_Term
-                  ORtpt          Length left_Term right_Term
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*
                   BYNAMEtpt             underlying_Term
                   SHAREDterm            term_ASTRef
@@ -246,7 +244,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 12
+  val MajorVersion: Int = 13
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
@@ -419,9 +417,7 @@ object TastyFormat {
   final val TYPEBOUNDS = 163
   final val TYPEBOUNDStpt = 164
   final val ANDtype = 165
-  final val ANDtpt = 166
   final val ORtype = 167
-  final val ORtpt = 168
   final val POLYtype = 169
   final val TYPELAMBDAtype = 170
   final val LAMBDAtpt = 171
@@ -517,8 +513,6 @@ object TastyFormat {
        | LAMBDAtpt
        | TYPEBOUNDStpt
        | ANNOTATEDtpt
-       | ANDtpt
-       | ORtpt
        | BYNAMEtpt
        | MATCHtpt
        | BIND => true
@@ -647,9 +641,7 @@ object TastyFormat {
     case TYPEBOUNDStpt => "TYPEBOUNDStpt"
     case TYPEALIAS => "TYPEALIAS"
     case ANDtype => "ANDtype"
-    case ANDtpt => "ANDtpt"
     case ORtype => "ORtype"
-    case ORtpt => "ORtpt"
     case BYNAMEtype => "BYNAMEtype"
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"

@@ -164,17 +164,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Is name a left-associative operator? */
   def isLeftAssoc(operator: Name): Boolean = !operator.isEmpty && (operator.toSimpleName.last != ':')
 
-  /** can this type be a type pattern? */
-  def mayBeTypePat(tree: Tree): Boolean = unsplice(tree) match {
-    case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
-    case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
-    case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
-    case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
-    case Select(tpt, _) => mayBeTypePat(tpt)
-    case Annotated(tpt, _) => mayBeTypePat(tpt)
-    case _ => false
-  }
-
   /** Is this argument node of the form <expr> : _*, or is it a reference to
    *  such an argument ? The latter case can happen when an argument is lifted.
    */

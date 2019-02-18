@@ -92,6 +92,11 @@ object Checking {
     checkValidIfApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
 
+  def checkNoWildcard(tree: Tree)(implicit ctx: Context): Tree = tree.tpe match {
+    case tpe: TypeBounds => errorTree(tree, "no wildcard type allowed here")
+    case _ => tree
+  }
+
   /** Check that kind of `arg` has the same outline as the kind of paramBounds.
    *  E.g. if `paramBounds` has kind * -> *, `arg` must have that kind as well,
    *  and analogously for all other kinds. This kind checking does not take into account

@@ -428,7 +428,7 @@ object JavaParsers {
         }
         val ts = buf.toList
         if (ts.tail.isEmpty) ts.head
-        else ts.reduce(AndTypeTree(_,_))
+        else ts.reduce(makeAndType(_,_))
       }
 
     def formalParams(): List[ValDef] = {
