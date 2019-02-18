@@ -124,8 +124,6 @@ TASTy Reflect provides the following types:
 +- TypeOrBoundsTree ---+               +- Refined
                        |               +- Applied
                        |               +- Annotated
-                       |               +- And
-                       |               +- Or
                        |               +- MatchType
                        |               +- ByName
                        |               +- LambdaTypeTree
