@@ -12,14 +12,6 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  /** case class Address(streetNumber: Int, streetName: String)
-   *
-   *  Lens.gen[Address, Int](_.streetNumber)   ~~>
-   *
-   *  Lens[Address, Int](_.streetNumber)(n => a => a.copy(streetNumber = n))
-   */
-  inline def gen[S, T](get: S => T): Lens[S, T] = ~impl('(get))
-
   def impl[S: Type, T: Type](getter: Expr[S => T])(implicit refl: Reflection): Expr[Lens[S, T]] = {
     import refl._
     import util._
@@ -39,5 +31,19 @@ object Lens {
           apply(~getter)(setter)
         }
     }
+  }
+}
+
+object GenLens {
+  /** case class Address(streetNumber: Int, streetName: String)
+   *
+   *  Lens.gen[Address, Int](_.streetNumber)   ~~>
+   *
+   *  Lens[Address, Int](_.streetNumber)(n => a => a.copy(streetNumber = n))
+   */
+
+  def apply[S] = new MkGenLens[S]
+  class MkGenLens[S] {
+    inline def apply[T](get: S => T): Lens[S, T] = ~Lens.impl('(get))
   }
 }

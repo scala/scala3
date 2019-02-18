@@ -2,8 +2,7 @@ case class Address(streetNumber: Int, streetName: String)
 
 object Test {
   def main(args: Array[String]): Unit = {
-    // val len = Lens.gen[Address, Int](_.streetNumber)
-    val len = Lens.gen[Address, Int]( (a: Address) => a.streetNumber)
+    val len = GenLens[Address](_.streetNumber)
     val address = Address(10, "High Street")
     assert(len.get(address) == 10)
     val addr2 = len.set(5, address)
