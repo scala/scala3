@@ -16,10 +16,10 @@ Type.SymRef(IsClassSymbol(<scala.Int>), Type.SymRef(IsPackageSymbol(<scala>), Ty
 Term.Inlined(None, Nil, Term.Typed(Term.Ident("Nil"), TypeTree.Applied(TypeTree.Ident("List"), List(TypeTree.Ident("Int")))))
 Type.AppliedType(Type.SymRef(IsClassSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.SymRef(IsPackageSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.SymRef(IsClassSymbol(<scala.Int>), Type.SymRef(IsPackageSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<root>>), NoPrefix()))))))
 
-Term.Inlined(None, Nil, Term.Typed(Term.Apply(Term.Select(Term.New(TypeTree.Ident("Baz")), "<init>"), Nil), TypeTree.And(TypeTree.Ident("Foo"), TypeTree.Ident("Bar"))))
+Term.Inlined(None, Nil, Term.Typed(Term.Apply(Term.Select(Term.New(TypeTree.Ident("Baz")), "<init>"), Nil), TypeTree.Applied(TypeTree.Ident("&"), List(TypeTree.Ident("Foo"), TypeTree.Ident("Bar")))))
 Type.AndType(Type.SymRef(IsClassSymbol(<Foo>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<empty>>), NoPrefix()))), Type.SymRef(IsClassSymbol(<Bar>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<empty>>), NoPrefix()))))
 
-Term.Inlined(None, Nil, Term.Typed(Term.Literal(Constant.Int(1)), TypeTree.Or(TypeTree.Ident("Int"), TypeTree.Ident("String"))))
+Term.Inlined(None, Nil, Term.Typed(Term.Literal(Constant.Int(1)), TypeTree.Applied(TypeTree.Ident("|"), List(TypeTree.Ident("Int"), TypeTree.Ident("String")))))
 Type.OrType(Type.SymRef(IsClassSymbol(<scala.Int>), Type.SymRef(IsPackageSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<root>>), NoPrefix())))), Type.SymRef(IsTypeSymbol(<scala.Predef$.String>), Type.SymRef(IsValSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageSymbol(<scala>), NoPrefix())))))
 
 Term.Inlined(None, Nil, Term.Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), TypeTree.Inferred(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Inferred()), "<init>"), Nil)), Nil, None, Nil)), Term.Literal(Constant.Unit())))
