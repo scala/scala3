@@ -1414,17 +1414,7 @@ trait Printers
               this += " "
               printAnnotation(annot)
           }
-/*
-        case TypeTree.And(left, right) =>
-          printTypeTree(left)
-          this += highlightTypeDef(" & ", color)
-          printTypeTree(right)
 
-        case TypeTree.Or(left, right) =>
-          printTypeTree(left)
-          this += highlightTypeDef(" | ", color)
-          printTypeTree(right)
-*/
         case TypeTree.MatchType(bound, selector, cases) =>
           printTypeTree(selector)
           this += highlightKeyword(" match ", color)
