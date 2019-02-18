@@ -45,13 +45,6 @@ trait TreeOps extends Core {
     /** Position in the source code */
     def pos(implicit ctx: Context): Position
 
-    /** Set the position of the tree
-     *
-     *  @note It only changes positions, not source file of the tree. Source
-     *        file of trees are derived from context and cannot be changed.
-     */
-    def withPos(pos: Position)(implicit ctx: Context): Unit
-
     def symbol(implicit ctx: Context): Symbol
   }
 

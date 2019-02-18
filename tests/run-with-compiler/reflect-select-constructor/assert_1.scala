@@ -18,7 +18,6 @@ object scalatest {
         let(lhs) { left =>
           let(rhs) { right =>
             val app = Term.Select.overloaded(left, op, Nil, right :: Nil)
-            app.withPos(t.pos)
             let(app) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
@@ -33,7 +32,6 @@ object scalatest {
         let(lhs) { left =>
           let(rhs) { right =>
             val app = Term.Select.overloaded(Term.Apply(qual, left :: Nil), op, Nil, right :: Nil)
-            app.withPos(f.pos)
             let(Term.Apply(app, implicits)) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]

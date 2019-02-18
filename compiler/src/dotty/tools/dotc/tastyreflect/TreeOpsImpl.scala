@@ -12,7 +12,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.sourcePos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
-    def withPos(pos: Position)(implicit ctx: Context): Unit = tree.withSpan(pos.span)
   }
 
   def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {
@@ -405,11 +404,11 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       def unique(qualifier: Term, name: String)(implicit ctx: Context): Select = {
         val denot = qualifier.tpe.member(name.toTermName)
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
-        tpd.Select(qualifier, name.toTermName)
+        withDefaultPos(implicit ctx => tpd.Select(qualifier, name.toTermName))
       }
 
       def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply =
-        tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply]
+        withDefaultPos(implicit ctx => tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
 
       def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
