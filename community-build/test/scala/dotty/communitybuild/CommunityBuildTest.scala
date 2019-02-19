@@ -111,17 +111,17 @@ class CommunityBuildTest {
 
   @Test def betterfiles = test(
     project = "betterfiles",
-    command = "dottyCompile"
+    command = "dotty-community-build/compile"
   )
 
   @Test def ScalaPB = test(
     project = "ScalaPB",
-    command = "dottyCompile"
+    command = "dotty-community-build/compile"
   )
 
   @Test def minitest = test(
     project = "minitest",
-    command = "dottyCompile"
+    command = "dotty-community-build/compile"
   )
 
   @Test def fastparse = test(
