@@ -1,6 +1,7 @@
 package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core.{Contexts, Names, Types}
+import dotty.tools.dotc.core.Decorators._
 
 trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreImpl {
 
@@ -23,6 +24,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
       if (tpe.classSymbol.exists) Some(tpe.classSymbol.asClass) else None
 
     def typeSymbol(implicit ctx: Context): Symbol = tpe.typeSymbol
+
+    def memberType(member: Symbol)(implicit ctx: Context): Type =
+      member.info.asSeenFrom(tpe, member.owner)
   }
 
   def ConstantTypeDeco(x: ConstantType): Type.ConstantTypeAPI = new Type.ConstantTypeAPI {
@@ -181,6 +185,9 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
     }
 
     object TermRef extends TermRefModule {
+      def apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef =
+        Types.TermRef(qual, name.toTermName)
+
       def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
           tp.designator match {

@@ -2,7 +2,6 @@ package scala.tasty
 package reflect
 
 trait TreeOps extends Core {
-
   // Decorators
 
   implicit def TreeDeco(tree: Tree): TreeAPI
@@ -249,6 +248,7 @@ trait TreeOps extends Core {
     /** Scala term identifier */
     val Ident: IdentModule
     abstract class IdentModule {
+      def apply(tmref: TermRef)(implicit ctx: Context): Ident
 
       def copy(original: Tree)(name: String)(implicit ctx: Context): Ident
 
