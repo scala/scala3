@@ -43,7 +43,7 @@ abstract class TokensCommon {
   final val STRINGLIT = 8;         enter(STRINGLIT, "string literal")
   final val STRINGPART = 9;        enter(STRINGPART, "string literal", "string literal part")
   //final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  //final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
+  //final val QUOTEID = 11;        enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
   /** identifiers */
   final val IDENTIFIER = 12;       enter(IDENTIFIER, "identifier")
@@ -149,7 +149,7 @@ object Tokens extends TokensCommon {
   final def maxToken: Int = XMLSTART
 
   final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
+  final val QUOTEID = 11;          enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
   final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
 
@@ -193,29 +193,29 @@ object Tokens extends TokensCommon {
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
-  final val SPLICE = 85;           enter(SPLICE, "$")
-  final val QUOTE = 86;            enter(QUOTE, "'")
+  final val QUOTE = 85;            enter(QUOTE, "'")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, GIVEN)
-  final val symbolicKeywords: TokenSet = tokenRange(USCORE, SPLICE)
+  final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
   final val allTokens: TokenSet = tokenRange(minToken, maxToken)
 
-  final val simpleLiteralTokens: TokenSet = tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, SYMBOLLIT)
+  final val simpleLiteralTokens: TokenSet =
+    tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, QUOTEID) // TODO: drop QUOTEID when symbol literals are gone
   final val literalTokens: TokenSet = simpleLiteralTokens | BitSet(INTERPOLATIONID, NULL)
 
   final val atomicExprTokens: TokenSet = literalTokens | identifierTokens | BitSet(
-    USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
+    USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
   final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QUOTE, SPLICE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
-    THIS, SUPER, USCORE, LPAREN, AT, SPLICE)
+    THIS, SUPER, USCORE, LPAREN, AT)
 
   final val canStartBindingTokens: TokenSet = identifierTokens | BitSet(USCORE, LPAREN)
 

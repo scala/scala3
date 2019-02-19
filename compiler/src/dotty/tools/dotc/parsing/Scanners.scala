@@ -184,8 +184,6 @@ object Scanners {
     /** Return a list of all the comment positions */
     def commentSpans: List[Span] = commentPosBuf.toList
 
-    var inQuote = false
-
     private[this] def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
@@ -417,7 +415,7 @@ object Scanners {
              'K' | 'L' | 'M' | 'N' | 'O' |
              'P' | 'Q' | 'R' | 'S' | 'T' |
              'U' | 'V' | 'W' | 'X' | 'Y' |
-             'Z' | '_' |
+             'Z' | '$' | '_' |
              'a' | 'b' | 'c' | 'd' | 'e' |
              'f' | 'g' | 'h' | 'i' | 'j' |
              'k' | 'l' | 'm' | 'n' | 'o' |
@@ -426,15 +424,9 @@ object Scanners {
              'z' =>
           putChar(ch)
           nextChar()
-          finishIdent()
-        case '$' =>
-          putChar(ch)
-          nextChar()
-          if (inQuote) {
-            token = SPLICE
-            litBuf.clear()
-          }
-          else finishIdent()
+          getIdentRest()
+          if (ch == '"' && token == IDENTIFIER)
+            token = INTERPOLATIONID
         case '<' => // is XMLSTART?
           def fetchLT() = {
             val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
@@ -528,9 +520,9 @@ object Scanners {
           def fetchSingleQuote() = {
             nextChar()
             if (isIdentifierStart(ch))
-              charLitOr { getIdentRest(); SYMBOLLIT }
+              charLitOr { getIdentRest(); QUOTEID }
             else if (isOperatorPart(ch) && (ch != '\\'))
-              charLitOr { getOperatorRest(); SYMBOLLIT }
+              charLitOr { getOperatorRest(); QUOTEID }
             else ch match {
               case '{' | '[' | ' ' | '\t' if lookaheadChar() != '\'' =>
                 token = QUOTE
@@ -716,11 +708,6 @@ object Scanners {
         } else {
           finishNamed()
         }
-    }
-
-    def finishIdent(): Unit = {
-      getIdentRest()
-      if (ch == '"' && token == IDENTIFIER) token = INTERPOLATIONID
     }
 
     private def getOperatorRest(): Unit = (ch: @switch) match {

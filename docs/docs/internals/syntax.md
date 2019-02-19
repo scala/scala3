@@ -44,6 +44,7 @@ id               ::=  plainid
                    |  ‘`’ { charNoBackQuoteOrNewline | UnicodeEscape | charEscapeSeq } ‘`’
                    |  INT                           // interpolation id, only for quasi-quotes
 idrest           ::=  {letter | digit} [‘_’ op]
+quoteId          ::=  ‘'’ alphaid
 
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit {digit}
@@ -78,8 +79,6 @@ escape           ::=  ‘$$’
 stringFormat     ::=  {printableChar \ (‘"’ | ‘}’ | ‘ ’ | ‘\t’ | ‘\n’)}
 
 symbolLiteral    ::=  ‘'’ plainid // until 2.13
-quoteId          ::=  ‘'’ plainid // from 3.1
-spliceId         ::=  '$' plainid
 
 comment          ::=  ‘/*’ “any sequence of characters; nested comments are allowed” ‘*/’
                    |  ‘//’ “any sequence of characters up to end of line”
@@ -160,7 +159,6 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  ‘_’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
-                    |  spliceId    // only inside quotes
                     |  ‘$’ ‘{’ Block ‘}’
 ArgTypes          ::=  Type {‘,’ Type}
                     |  NamedTypeArg {‘,’ NamedTypeArg}
@@ -214,7 +212,6 @@ SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)      
                     |  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
                     |  ‘$’ ‘{’ Block ‘}’
-                    |  spliceId    // only inside quotes
                     |  quoteId     // only inside splices
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
