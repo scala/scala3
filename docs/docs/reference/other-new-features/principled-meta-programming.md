@@ -52,8 +52,8 @@ quotation.
 
 Quotes and splices can also be applied directly to identifiers. An identifier
 `$x` starting with a `$` that appears inside a quoted expression or type is treated as a
-splice `${x}`. Analogously, an identifier 'x will be treated in the future as a quote `'{x}`.
-See the Syntax section below for details.
+splice `${x}`. Analogously, an quoted identifier 'x that appears inside a splice
+is treated as a quote `'{x}`. See the Syntax section below for details.
 
 Quotes and splices are duals of each other. For arbitrary
 expressions `e` and types `T` we have:
@@ -608,18 +608,15 @@ Compared to the [Dotty reference grammar](../../internals/syntax.md)
 there are the following syntax changes:
 
       SimpleExpr      ::=  ...
-                        |  ‘'’ BlockExpr
+                        |  ‘'’ ‘{’ Block ‘}’
                         |  ‘'’ ‘[’ Type ‘]’
-                        |  ‘$’ BlockExpr
+                        |  ‘$’ ‘{’ Block ‘}’
       SimpleType      ::=  ...
-                        |  ‘$’ BlockExpr
+                        |  ‘$’ ‘{’ Block ‘}’
 
 In addition, an identifier `$x` starting with a `$` that appears inside
-a quoted expression or type is treated as a splice `${x}`.
-
-In the future, an analogous rule will apply to quoted identifiers. I.e. `'x`
-will expand everywhere to `'{x}`. However, we need to wait one language version with this
-so that the competing legacy syntax of symbol literals can be phased out safely.
+a quoted expression or type is treated as a splice `${x}` and a quoted identifier
+`'x` that appears inside a splice is treated as a quote `'{x}`
 
 ### Implementation in `dotc`
 
