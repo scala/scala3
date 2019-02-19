@@ -65,4 +65,9 @@ object Test extends App {
   assert(as(as.length - 1) == "hello")
   assert(reduce(as, 0, (x, y) => x.toString ++ y.toString) == "01hello")
 
+  // Check that representation of IArray and Array is the same
+  val bs: IArray[Double] = IArray(1.0, 2.0)
+  val cs: Array[Double] = bs.asInstanceOf[Array[Double]]
+  cs(1) = 3.0
+  assert(bs(1) == 3.0)
 }
