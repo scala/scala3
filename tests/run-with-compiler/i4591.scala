@@ -4,7 +4,7 @@ import scala.quoted._
 object Test {
 
   def foo[T: Type](init: Expr[T]): Expr[Unit] = '{
-    var x = ~init
+    var x = $init
     println(x)
   }
 

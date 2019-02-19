@@ -4,7 +4,7 @@ import scala.tasty._
 
 object Macros {
 
-  implicit inline def printType[T]: Unit = ~impl('[T])
+  implicit inline def printType[T]: Unit = ${ impl('[T]) }
 
   def impl[T](x: Type[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._

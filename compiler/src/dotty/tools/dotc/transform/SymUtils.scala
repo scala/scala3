@@ -162,5 +162,5 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** Is symbol a splice operation? */
   def isSplice(implicit ctx: Context): Boolean =
-    self == defn.QuotedExpr_~ || self == defn.QuotedType_~
+    self == defn.QuotedExpr_splice || self == defn.QuotedType_splice
 }

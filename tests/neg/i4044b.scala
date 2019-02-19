@@ -8,8 +8,8 @@ class Test {
 
     '{
       b // error
-      ~(b)
-      ~('{b}) // error
+      ${b}
+      ${ '{b} } // error
       '{ '{$b} } // error
     }
 

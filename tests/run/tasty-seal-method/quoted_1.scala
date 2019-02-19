@@ -5,7 +5,7 @@ import scala.tasty._
 object Asserts {
 
   inline def zeroLastArgs(x: => Int): Int =
-    ~zeroLastArgsImpl('{x})
+    ${ zeroLastArgsImpl('{x}) }
 
   /** Replaces last argument list by 0s */
   def zeroLastArgsImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[Int] = {
@@ -27,7 +27,7 @@ object Asserts {
   }
 
   inline def zeroAllArgs(x: => Int): Int =
-    ~zeroAllArgsImpl('{x})
+    ${ zeroAllArgsImpl('{x}) }
 
   /** Replaces all argument list by 0s */
   def zeroAllArgsImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[Int] = {

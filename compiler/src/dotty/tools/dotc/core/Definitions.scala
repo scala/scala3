@@ -707,7 +707,7 @@ class Definitions {
   def QuotedExprModule(implicit ctx: Context): Symbol = QuotedExprClass.companionModule
     lazy val QuotedExpr_applyR: TermRef = QuotedExprModule.requiredMethodRef(nme.apply)
     def QuotedExpr_apply(implicit ctx: Context): Symbol = QuotedExpr_applyR.symbol
-    lazy val QuotedExpr_~ : TermSymbol = QuotedExprClass.requiredMethod(nme.UNARY_~)
+    lazy val QuotedExpr_splice : TermSymbol = QuotedExprClass.requiredMethod(nme.splice)
 
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
   def QuotedExprsClass(implicit ctx: Context): ClassSymbol = QuotedExprsModule.asClass
@@ -715,8 +715,8 @@ class Definitions {
   lazy val QuotedTypeType: TypeRef = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context): ClassSymbol = QuotedTypeType.symbol.asClass
 
-    lazy val QuotedType_spliceR: TypeRef = QuotedTypeClass.requiredType(tpnme.UNARY_~).typeRef
-    def QuotedType_~ : Symbol = QuotedType_spliceR.symbol
+    lazy val QuotedType_spliceR: TypeRef = QuotedTypeClass.requiredType(tpnme.splice).typeRef
+    def QuotedType_splice : Symbol = QuotedType_spliceR.symbol
 
   lazy val QuotedTypeModuleType: TermRef = ctx.requiredModuleRef("scala.quoted.Type")
   def QuotedTypeModule(implicit ctx: Context): Symbol = QuotedTypeModuleType.symbol

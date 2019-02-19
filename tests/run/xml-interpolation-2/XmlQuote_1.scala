@@ -10,7 +10,7 @@ case class Xml(parts: String, args: List[Any])
 object XmlQuote {
 
   class SCOps(ctx: => StringContext) {
-    inline def xml(args: Any*): Xml = ~XmlQuote.impl('{this}, '{args})
+    inline def xml(args: Any*): Xml = ${ XmlQuote.impl('{this}, '{args}) }
   }
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 

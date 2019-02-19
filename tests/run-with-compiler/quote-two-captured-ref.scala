@@ -10,7 +10,7 @@ object Test {
         println(1)
         val a = '{x}
         val b = '{x}
-        '{ ~a + ~b }
+        '{ $a + $b }
       })
     }
 

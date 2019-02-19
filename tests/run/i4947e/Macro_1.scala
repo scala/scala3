@@ -6,6 +6,6 @@ object Macros {
   }
   def assertImpl(expr: Expr[Boolean]) = '{
     printStack("assertImpl")
-    println(~expr)
+    println($expr)
   }
 }

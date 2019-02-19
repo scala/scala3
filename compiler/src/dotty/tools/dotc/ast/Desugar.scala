@@ -1319,9 +1319,9 @@ object desugar {
         else
           Apply(ref(defn.QuotedExpr_applyR), t)
       case Splice(expr) =>
-        Select(expr, nme.UNARY_~)
+        Select(expr, nme.splice)
       case TypSplice(expr) =>
-        Select(expr, tpnme.UNARY_~)
+        Select(expr, tpnme.splice)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

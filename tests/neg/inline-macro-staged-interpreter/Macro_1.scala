@@ -3,7 +3,7 @@ import scala.quoted._
 
 object E {
 
-  inline def eval[T](inline x: E[T]): T = ~impl(x)
+  inline def eval[T](inline x: E[T]): T = ${ impl(x) }
 
   def impl[T](x: E[T]): Expr[T] = x.lift
 

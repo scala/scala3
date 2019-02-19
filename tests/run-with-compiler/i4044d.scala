@@ -9,7 +9,7 @@ class Foo {
       ${
         println("evaluating inner quote")
         '{
-          b + ~a
+          b + $a
         }
       }
     }

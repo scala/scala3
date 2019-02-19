@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object FQuote {
 
   implicit class SCOps(ctx: StringContext) {
-    inline def ff(args: => Any*): String = ~impl('{this}, '{args})
+    inline def ff(args: => Any*): String = ${impl('{this}, '{args})}
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
@@ -16,7 +16,7 @@ object FQuote {
       case x :: xs  =>
         val head = x.seal[Any]
         val tail = liftListOfAny(xs)
-        '{ ~head :: ~tail }
+        '{ $head :: $tail }
       case Nil => '{Nil}
     }
 
@@ -53,6 +53,6 @@ object FQuote {
     }
 
     val string = parts.mkString("")
-    '{ new collection.immutable.StringOps(${string.toExpr}).format(~args: _*) }
+    '{ new collection.immutable.StringOps(${string.toExpr}).format($args: _*) }
   }
 }

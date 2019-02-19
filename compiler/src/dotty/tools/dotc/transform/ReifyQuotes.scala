@@ -129,13 +129,13 @@ class ReifyQuotes extends MacroTransform {
 
       def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
         val splicedTree = tpd.ref(spliced)
-        val rhs = transform(splicedTree.select(tpnme.UNARY_~))
+        val rhs = transform(splicedTree.select(tpnme.splice))
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
         val local = ctx.newSymbol(
           owner = ctx.owner,
           name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_~").toTermName).toTypeName,
           flags = Synthetic,
-          info = TypeAlias(splicedTree.tpe.select(tpnme.UNARY_~)),
+          info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
           coord = spliced.termSymbol.coord).asType
 
         ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
@@ -353,11 +353,11 @@ class ReifyQuotes extends MacroTransform {
 
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
             val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            transformSplice(ref(splicedType).select(tpnme.UNARY_~).withSpan(tree.span))
+            transformSplice(ref(splicedType).select(tpnme.splice).withSpan(tree.span))
 
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val t = capturers(tree.symbol).apply(tree)
-            transformSplice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
+            transformSplice(t.select(if (tree.isTerm) nme.splice else tpnme.splice))
 
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
             // Shrink size of the tree. The methods have already been inlined.

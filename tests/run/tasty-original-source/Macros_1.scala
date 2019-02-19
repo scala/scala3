@@ -3,7 +3,7 @@ import scala.tasty._
 
 object Macros {
 
-  implicit inline def withSource(arg: Any): (String, Any) = ~impl('{arg})
+  implicit inline def withSource(arg: Any): (String, Any) = ${ impl('{arg}) }
 
   private def impl(arg: Expr[Any])(implicit reflect: Reflection): Expr[(String, Any)] = {
     import reflect._

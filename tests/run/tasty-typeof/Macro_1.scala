@@ -3,7 +3,7 @@ import scala.tasty._
 
 object Macros {
 
-  inline def testTypeOf(): Unit = ~testTypeOfImpl
+  inline def testTypeOf(): Unit = ${ testTypeOfImpl }
 
   private def testTypeOfImpl(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._

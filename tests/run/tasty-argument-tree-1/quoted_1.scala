@@ -3,7 +3,7 @@ import scala.tasty._
 
 object Macros {
 
-  inline def inspect[T](x: T): Unit = ~impl('{x})
+  inline def inspect[T](x: T): Unit = ${ impl('{x}) }
 
   def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._

@@ -6,7 +6,7 @@ import scala.tasty.util._
 
 object Macros {
 
-  inline def testMacro: Unit = ~impl
+  inline def testMacro: Unit = ${impl}
 
   def impl(implicit reflect: Reflection): Expr[Unit] = {
     // 2 is a lifted constant
@@ -49,15 +49,15 @@ object Macros {
     val Constant = new ConstantExtractor(reflect)
     n match {
       case Constant(n1) => powerCode(n1, x)
-      case _ => '{ dynamicPower(~n, ~x) }
+      case _ => '{ dynamicPower($n, $x) }
     }
   }
 
   def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
-    else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '{y}) } }
-    else '{ ~x * ~powerCode(n - 1, x) }
+    else if (n % 2 == 0) '{ { val y = $x * $x; ${powerCode(n / 2, '{y})} } }
+    else '{ $x * ${powerCode(n - 1, x)} }
 
   def dynamicPower(n: Int, x: Double): Double =
     if (n == 0) 1.0

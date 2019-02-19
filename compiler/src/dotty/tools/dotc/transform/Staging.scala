@@ -301,7 +301,7 @@ class Staging extends MacroTransform {
                               | The access would be accepted with the right type tag, but
                               | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
               case _ =>
-                Some(tag.select(tpnme.UNARY_~))
+                Some(tag.select(tpnme.splice))
             }
           }
         case _ =>

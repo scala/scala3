@@ -9,7 +9,7 @@ object Test {
       val x = "foo"
       ${
         val y = '{x}
-        '{ val z: T = ~y }
+        '{ val z: T = $y }
       }
       x
     }

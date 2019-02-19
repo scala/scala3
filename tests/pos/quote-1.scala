@@ -3,7 +3,7 @@ import scala.quoted._
 object Test {
 
   def f[T](x: Expr[T])(implicit t: Type[T]) = '{
-    val y: t.unary_~ = x.unary_~
+    val y: $t = $x
     val z = $x
   }
 

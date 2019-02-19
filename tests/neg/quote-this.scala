@@ -11,16 +11,16 @@ class Foo {
     }
   }
 
-  inline def i(): Unit = ~Foo.impl[Any]('{
+  inline def i(): Unit = ${ Foo.impl[Any]('{
     '{this} // error
-  })
+  }) }
 
-  inline def j(that: Foo): Unit = ~Foo.impl[Any]('{
+  inline def j(that: Foo): Unit = ${ Foo.impl[Any]('{
     '{that} // error
-  })
+  }) }
 
-  inline def k(): Unit = ~Foo.impl[Any](this) // error
-  inline def l(that: Foo): Unit = ~Foo.impl[Any](that) // error
+  inline def k(): Unit = ${ Foo.impl[Any](this) } // error
+  inline def l(that: Foo): Unit = ${ Foo.impl[Any](that) } // error
 
 }
 

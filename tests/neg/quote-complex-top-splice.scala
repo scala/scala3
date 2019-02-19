@@ -9,15 +9,15 @@ object Test {
     impl(x)
   }
 
-  inline def foo2: Unit = ~impl({ // error
+  inline def foo2: Unit = ${ impl({ // error
     val x = 1
     x
-  })
+  }) }
 
-  inline def foo3: Unit = ~impl({ // error
+  inline def foo3: Unit = ${ impl({ // error
     println("foo3")
     3
-  })
+  }) }
 
   inline def foo4: Unit = ${ // error
     println("foo4")

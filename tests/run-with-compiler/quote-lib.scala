@@ -15,9 +15,9 @@ object Test {
 
     val liftedUnit: Expr[Unit] = '{}
 
-    letVal('{1})(a => '{ ~a + 1 }).show
-    letLazyVal('{1})(a => '{ ~a + 1 }).show
-    letDef('{1})(a => '{ ~a + 1 }).show
+    letVal('{1})(a => '{ $a + 1 }).show
+    letLazyVal('{1})(a => '{ $a + 1 }).show
+    letDef('{1})(a => '{ $a + 1 }).show
 
     liftedWhile('{true})('{ println(1) }).show
     liftedDoWhile('{ println(1) })('{true}).show
