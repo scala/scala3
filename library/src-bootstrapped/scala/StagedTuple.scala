@@ -21,7 +21,7 @@ object StagedTuple {
         tup.as[Tuple3[Object, Object, Object]].bind(t => '{Array($t._1, $t._2, $t._3)})
       case Some(4) =>
         tup.as[Tuple4[Object, Object, Object, Object]].bind(t => '{Array($t._1, $t._2, $t._3, $t._4)})
-      case Some(n) if n <= $MaxSpecialized =>
+      case Some(n) if n <= MaxSpecialized =>
         '{to$Array($tup, ${ n.toExpr })}
       case Some(n) =>
         '{${ tup.as[TupleXXL] }.elems}
@@ -86,9 +86,9 @@ object StagedTuple {
           '{${ tup.as[Tuple3[_, _, _]]}._1}
         case Some(4) =>
           '{${ tup.as[Tuple4[_, _, _, _]] }._1}
-        case Some(n) if n > 4 && n <= $MaxSpecialized =>
+        case Some(n) if n > 4 && n <= MaxSpecialized =>
           '{${ tup.as[Product] }.productElement(0)}
-        case Some(n) if n > $MaxSpecialized =>
+        case Some(n) if n > MaxSpecialized =>
           '{${tup.as[TupleXXL] }.elems(0)}
         case None =>
           '{dynamicHead($tup)}
@@ -159,13 +159,13 @@ object StagedTuple {
             case Some(3) => '{$t._4}
             case _ => fallbackApply()
           }
-        case Some(s) if s > 4 && s <= $MaxSpecialized =>
+        case Some(s) if s > 4 && s <= MaxSpecialized =>
           val t = tup.as[Product]
           nValue match {
             case Some(n) if n >= 0 && n < s => '{$t.productElement(${ n.toExpr })}
             case _ => fallbackApply()
           }
-        case Some(s) if s > $MaxSpecialized =>
+        case Some(s) if s > MaxSpecialized =>
           val t = tup.as[TupleXXL]
           nValue match {
             case Some(n) if n >= 0 && n < s => '{$t.elems(${ n.toExpr })}

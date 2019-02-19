@@ -23,7 +23,7 @@ sealed trait Tuple extends Any {
       case Some(4) =>
         val t = asInstanceOf[Tuple4[Object, Object, Object, Object]]
         Array(t._1, t._2, t._3, t._4)
-      case Some(n) if n <= $MaxSpecialized =>
+      case Some(n) if n <= MaxSpecialized =>
         to$Array(this, n)
       case Some(n) =>
         asInstanceOf[TupleXXL].elems
@@ -125,8 +125,8 @@ sealed trait Tuple extends Any {
 }
 
 object Tuple {
-  inline val $MaxSpecialized = 22
-  inline private val XXL = $MaxSpecialized + 1
+  inline val MaxSpecialized = 22
+  inline private val XXL = MaxSpecialized + 1
 
   final val stageIt = false
 
@@ -328,9 +328,9 @@ sealed trait NonEmptyTuple extends Tuple {
         case Some(4) =>
           val t = asInstanceOf[Tuple4[_, _, _, _]]
           t._1
-        case Some(n) if n > 4 && n <= $MaxSpecialized =>
+        case Some(n) if n > 4 && n <= MaxSpecialized =>
           asInstanceOf[Product].productElement(0)
-        case Some(n) if n > $MaxSpecialized =>
+        case Some(n) if n > MaxSpecialized =>
           val t = asInstanceOf[TupleXXL]
           t.elems(0)
         case None =>
@@ -412,13 +412,13 @@ sealed trait NonEmptyTuple extends Tuple {
             case Some(3) => t._4.asInstanceOf[Result]
             case _ => fallbackApply(n).asInstanceOf[Result]
           }
-        case Some(s) if s > 4 && s <= $MaxSpecialized =>
+        case Some(s) if s > 4 && s <= MaxSpecialized =>
           val t = asInstanceOf[Product]
           inline constValueOpt[n.type] match {
             case Some(n) if n >= 0 && n < s => t.productElement(n).asInstanceOf[Result]
             case _ => fallbackApply(n).asInstanceOf[Result]
           }
-        case Some(s) if s > $MaxSpecialized =>
+        case Some(s) if s > MaxSpecialized =>
           val t = asInstanceOf[TupleXXL]
           inline constValueOpt[n.type] match {
             case Some(n) if n >= 0 && n < s => t.elems(n).asInstanceOf[Result]
