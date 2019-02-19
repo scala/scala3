@@ -711,9 +711,14 @@ class TestBCode extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       val clsIn   = dir.lookupName("Base.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
-      getMethod(clsNode, "f")
-      getField(clsNode, "x")
-      getField(clsNode, "y")
+      val f = getMethod(clsNode, "f")
+      val x = getField(clsNode, "x")
+      val y = getField(clsNode, "y")
+      assert((f.access & Opcodes.ACC_STATIC) != 0)
+      List(x, y).foreach { node =>
+        assert((node.access & Opcodes.ACC_STATIC) != 0)
+        assert((node.access & Opcodes.ACC_FINAL) != 0)
+      }
     }
   }
 
@@ -734,11 +739,19 @@ class TestBCode extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       val clsIn   = dir.lookupName("Base.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
-      getMethod(clsNode, "f")
-      getField(clsNode, "x")
-      getField(clsNode, "y")
-      getField(clsNode, "a")
-      getField(clsNode, "b")
+      val f = getMethod(clsNode, "f")
+      val x = getField(clsNode, "x")
+      val y = getField(clsNode, "y")
+      val a = getField(clsNode, "a")
+      val b = getField(clsNode, "b")
+      assert((f.access & Opcodes.ACC_STATIC) != 0)
+      List(x, y).foreach { node =>
+        assert((node.access & Opcodes.ACC_STATIC) != 0)
+        assert((node.access & Opcodes.ACC_FINAL) != 0)
+      }
+      List(a, b).foreach { node =>
+        assert((node.access & Opcodes.ACC_STATIC) != 0)
+      }
     }
   }
 }
