@@ -17,21 +17,48 @@ object Lens {
     import util._
     import quoted.Toolbox.Default._
 
-    // obj.copy(field = value)
-    def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
-      Term.Select.overloaded(obj.unseal, "copy", Nil, Term.NamedArg(field, value.unseal) :: Nil).seal[S]
+
+    // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
+    def setterBody(obj: Term, value: Term, fields: List[String]): Term = {
+      // o.copy(field = value)
+      def helper(obj: Term, value: Term, field: String): Term =
+        Term.Select.overloaded(obj, "copy", Nil, Term.NamedArg(field, value) :: Nil)
+
+      fields match {
+        case field :: Nil => helper(obj, value, field)
+        case field :: fields =>
+          helper(obj, setterBody(Term.Select.unique(obj, field), value, fields), field)
+      }
+    }
+
+    object Path {
+      private def recur(tree: Term, selects: List[String]): Option[(Term, List[String])] = tree match {
+        case Term.Ident(_) if selects.nonEmpty => Some((tree, selects))
+        case Term.Select(qual, name) => recur(qual, name :: selects)
+        case _ => None
+      }
+
+      def unapply(t: Term): Option[(Term, List[String])] = recur(t, Nil)
+    }
+
+    object Function {
+      def unapply(t: Term): Option[(List[ValDef], Term)] = t match {
+        case Term.Inlined(
+          None, Nil,
+          Term.Block(
+            (ddef @ DefDef(_, Nil, params :: Nil, _, Some(body))) :: Nil,
+            Term.Lambda(meth, _)
+          )
+        ) if meth.symbol == ddef.symbol => Some((params, body))
+        case _ => None
+      }
+    }
 
     // exception: getter.unseal.underlyingArgument
     getter.unseal match {
-      case Term.Inlined(
-        None, Nil,
-        Term.Block(
-          DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Term.Select(o, field))) :: Nil,
-          Term.Lambda(meth, _)
-        )
-      ) if o.symbol == param.symbol =>
+      case Function(param :: Nil, Path(o, fields)) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ~setterBody('(s), '(t), field)
+          val setter = (t: T) => (s: S) => ~setterBody(('(s)).unseal, ('(t)).unseal, fields).seal[S]
           apply(~getter)(setter)
         }
       case _ =>
