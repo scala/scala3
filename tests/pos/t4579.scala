@@ -7,7 +7,7 @@
 
 class LispTokenizer(s: String) extends Iterator[String] {
   private var i = 0;
-  private def isDelimiter(ch: Char) = ch <= ' ' || ch == '{' || ch == '}'
+  private def isDelimiter(ch: Char) = ch <= ' ' || ch == '(' || ch == ')'
   def hasNext: Boolean = {
     while (i < s.length() && s.charAt(i) <= ' ') i += 1
     i < s.length()
@@ -459,11 +459,11 @@ class LispUser(lisp: Lisp) {
     Console.println(lisp2string(string2lisp("(lambda (x) (+ (* x x) 1))")));
     Console.println();
 
-    Console.println("(    '{1 2 3}) = " + evaluate("     (quote(1 2 3))"));
-    Console.println("(car '{1 2 3}) = " + evaluate("(car (quote(1 2 3)))"));
-    Console.println("(cdr '{1 2 3}) = " + evaluate("(cdr (quote(1 2 3)))"));
-    Console.println("(null? '{2 3}) = " + evaluate("(null? (quote(2 3)))"));
-    Console.println("(null?    '{}) = " + evaluate("(null?    (quote()))"));
+    Console.println("(    '(1 2 3)) = " + evaluate("     (quote(1 2 3))"));
+    Console.println("(car '(1 2 3)) = " + evaluate("(car (quote(1 2 3)))"));
+    Console.println("(cdr '(1 2 3)) = " + evaluate("(cdr (quote(1 2 3)))"));
+    Console.println("(null? '(2 3)) = " + evaluate("(null? (quote(2 3)))"));
+    Console.println("(null?    '()) = " + evaluate("(null?    (quote()))"));
     Console.println();
 
     Console.println("faculty(10) = " + evaluate(
