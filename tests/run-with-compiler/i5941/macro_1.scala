@@ -21,15 +21,21 @@ object Lens {
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
       Term.Select.overloaded(obj.unseal, "copy", Nil, Term.NamedArg(field, value.unseal) :: Nil).seal[S]
 
-    getter.unseal.underlyingArgument match {
-      case Term.Block(
-        DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Term.Select(o, field))) :: Nil,
-        Term.Lambda(meth, _)
-      ) =>
+    // exception: getter.unseal.underlyingArgument
+    getter.unseal match {
+      case Term.Inlined(
+        None, Nil,
+        Term.Block(
+          DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Term.Select(o, field))) :: Nil,
+          Term.Lambda(meth, _)
+        )
+      ) if o.symbol == param.symbol =>
         '{
           val setter = (t: T) => (s: S) => ~setterBody('(s), '(t), field)
           apply(~getter)(setter)
         }
+      case _ =>
+        throw new QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
     }
   }
 }
@@ -37,13 +43,13 @@ object Lens {
 object GenLens {
   /** case class Address(streetNumber: Int, streetName: String)
    *
-   *  Lens.gen[Address, Int](_.streetNumber)   ~~>
+   *  GenLens[Address](_.streetNumber)   ~~>
    *
    *  Lens[Address, Int](_.streetNumber)(n => a => a.copy(streetNumber = n))
    */
 
   def apply[S] = new MkGenLens[S]
   class MkGenLens[S] {
-    inline def apply[T](get: S => T): Lens[S, T] = ~Lens.impl('(get))
+    inline def apply[T](get: => (S => T)): Lens[S, T] = ~Lens.impl('(get))
   }
 }
