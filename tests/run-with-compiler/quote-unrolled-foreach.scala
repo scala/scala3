@@ -5,27 +5,27 @@ object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
   def main(args: Array[String]): Unit = {
-    val code1 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('{arr}, '{f}) } }
+    val code1 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
     println(code1.show)
     println()
 
-    val code1Tpe = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('{arr}, '{f}) } }
+    val code1Tpe = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
     println(code1Tpe.show)
     println()
 
-    val code1Tpe2 = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('{arr}, '{f}) } }
+    val code1Tpe2 = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
     println(code1Tpe2.show)
     println()
 
-    val code2 = '{ (arr: Array[Int]) => ${ foreach1('{arr}, '{i => System.out.println(i)}) } }
+    val code2 = '{ (arr: Array[Int]) => ${ foreach1('arr, '{i => System.out.println(i)}) } }
     println(code2.show)
     println()
 
-    val code3 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach3('{arr}, '{f}) } }
+    val code3 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach3('arr, 'f) } }
     println(code3.show)
     println()
 
-    val code4 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach4('{arr}, '{f}, 4) } }
+    val code4 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach4('arr, 'f, 4) } }
     println(code4.show)
     println()
 
@@ -36,7 +36,7 @@ object Test {
 
     def printAll(arr: Array[Int]) = '{
       val arr1 = ${ arr.toExpr }
-      ${ foreach1('{arr1}, '{x => println(x)}) }
+      ${ foreach1('arr1, '{x => println(x)}) }
     }
 
     println(printAll(Array(1, 3, 4, 5)).show)
@@ -78,7 +78,7 @@ object Test {
     var i = 0
     while (i < size) {
       val element = ($arrRef)(i)
-      ${ f('{element}) } // Use AppliedFuntion
+      ${ f('element) } // Use AppliedFuntion
       i += 1
     }
   }

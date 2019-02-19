@@ -19,7 +19,7 @@ object Test {
       case Var(x) => env(x)
       case Let(x, e, body) =>
         if (keepLets)
-          '{ val y = ${compileImpl(e, env)}; ${compileImpl(body, env + (x -> '{y})) } }
+          '{ val y = ${compileImpl(e, env)}; ${compileImpl(body, env + (x -> 'y)) } }
         else
           compileImpl(body, env + (x -> compileImpl(e, env)))
     }
@@ -31,7 +31,7 @@ object Test {
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    val res1 = '{ (x: Int) => ${compile(exp, Map("x" -> '{x}), false)} }
+    val res1 = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
 
 
     println(res1.show)

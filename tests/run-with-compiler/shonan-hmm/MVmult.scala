@@ -27,9 +27,9 @@ object MVmult {
       val n = vout.length
       val m = v.length
       ${
-        val vout_ = OVec('{n}, (i, x: Expr[Int]) => '{vout($i) = $x})
-        val a_ = Vec('{n}, (i: Expr[Int]) => Vec('{m}, (j: Expr[Int]) => '{ a($i)($j) } ))
-        val v_ = Vec('{m}, (i: Expr[Int]) => '{v($i)})
+        val vout_ = OVec('n, (i, x: Expr[Int]) => '{vout($i) = $x})
+        val a_ = Vec('n, (i: Expr[Int]) => Vec('m, (j: Expr[Int]) => '{ a($i)($j) } ))
+        val v_ = Vec('m, (i: Expr[Int]) => '{v($i)})
 
         val MV = new MVmult[Expr[Int], Expr[Int], Expr[Unit]](RingIntExpr, new VecRDyn)
         MV.mvmult(vout_, a_, v_)
@@ -59,7 +59,7 @@ object MVmult {
     '{
       val arr = ${a.toExpr}
       ${
-        val (n, m, a2) = amat1(a, '{arr})
+        val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntPExpr, new VecRStaDyn(new RingIntPExpr))(n, m, a2)
       }
     }
@@ -70,7 +70,7 @@ object MVmult {
     '{
       val arr = ${a.toExpr}
       ${
-        val (n, m, a2) = amat1(a, '{arr})
+        val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntOPExpr, new VecRStaDyn(new RingIntPExpr))(n, m, a2)
       }
     }
@@ -81,7 +81,7 @@ object MVmult {
     '{
       val arr = ${a.toExpr}
       ${
-        val (n, m, a2) = amat1(a, '{arr})
+        val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntOPExpr, new VecRStaOptDynInt(new RingIntPExpr))(n, m, a2)
       }
     }
@@ -108,7 +108,7 @@ object MVmult {
         loop(i + 1, default :: acc)
       } else '{
         val row = ${a(i).toExpr}
-        ${ loop(i + 1, '{row} :: acc) }
+        ${ loop(i + 1, 'row :: acc) }
       }
     }
     loop(0, Nil)

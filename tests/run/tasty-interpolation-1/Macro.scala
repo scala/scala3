@@ -8,9 +8,9 @@ import scala.quoted.Toolbox.Default._
 object Macro {
 
   class StringContextOps(strCtx: => StringContext) {
-    inline def s2(args: Any*): String = ${SIntepolator('{strCtx}, '{args})}
-    inline def raw2(args: Any*): String = ${RawIntepolator('{strCtx}, '{args})}
-    inline def foo(args: Any*): String = ${FooIntepolator('{strCtx}, '{args})}
+    inline def s2(args: Any*): String = ${SIntepolator('strCtx, 'args)}
+    inline def raw2(args: Any*): String = ${RawIntepolator('strCtx, 'args)}
+    inline def foo(args: Any*): String = ${FooIntepolator('strCtx, 'args)}
   }
   implicit inline def SCOps(strCtx: => StringContext): StringContextOps = new StringContextOps(strCtx)
 }

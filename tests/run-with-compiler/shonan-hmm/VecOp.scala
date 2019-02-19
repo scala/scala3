@@ -16,7 +16,7 @@ class VecDyn extends VecOp[Expr[Int], Expr[Unit]] {
   def iter: Vec[Expr[Int], Expr[Unit]] => Expr[Unit] = arr => '{
     var i = 0
     while (i < ${arr.size}) {
-      ${arr('{i})}
+      ${arr('i)}
       i += 1
     }
   }

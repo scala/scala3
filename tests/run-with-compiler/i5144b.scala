@@ -6,7 +6,7 @@ object Test {
   def eval1(ff: Expr[Int => Int]): Expr[Int] = ff('{42})
 
   def peval1(): Expr[Unit] = '{
-    def f(x: Int): Int = ${eval1('{f})}
+    def f(x: Int): Int = ${eval1('f)}
   }
 
   def main(args: Array[String]): Unit = {

@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object FQuote {
 
   implicit class SCOps(ctx: StringContext) {
-    inline def ff(args: => Any*): String = ${impl('{this}, '{args})}
+    inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {

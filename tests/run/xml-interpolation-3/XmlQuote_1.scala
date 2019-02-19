@@ -9,7 +9,7 @@ object XmlQuote {
 
   implicit object SCOps {
     inline def (inline ctx: StringContext) xml (args: => Any*): Xml =
-      ${XmlQuote.impl(ctx, '{args})}
+      ${XmlQuote.impl(ctx, 'args)}
   }
 
   def impl(receiver: StringContext, args: Expr[Seq[Any]]): Expr[Xml] = {

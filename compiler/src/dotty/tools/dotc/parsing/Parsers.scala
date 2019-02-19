@@ -703,34 +703,16 @@ object Parsers {
     def qualId(): Tree = dotSelectors(termIdent())
 
     /** SimpleExpr    ::= literal
-     *                  | symbol
+     *                  | 'id | 'this | 'true | 'false | 'null
      *                  | null
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset = in.offset.
      */
     def literal(negOffset: Int = in.offset, inPattern: Boolean = false): Tree = {
-      def finish(value: Any): Tree = {
-        val t = atSpan(negOffset) { Literal(Constant(value)) }
-        in.nextToken()
-        t
-      }
-      val isNegated = negOffset < in.offset
-      atSpan(negOffset) {
-        if (in.token == QUOTEID) {
-          if ((staged & StageKind.Spliced) != 0 && isIdentifierStart(in.name(1)))
-            Quote(atSpan(in.offset + 1)(Ident(in.name.drop(1))))
-          else {
-            migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
-                                        |use a string literal "${in.name}" or an application Symbol("${in.name}") instead.""")
-            if (in.isScala2Mode) {
-              patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
-              patch(source, Span(in.charOffset - 1), "\")")
-            }
-            atSpan(in.skipToken()) { SymbolLit(in.strVal) }
-          }
-        }
-        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
-        else finish(in.token match {
+
+      def literalOf(token: Token): Literal = {
+        val isNegated = negOffset < in.offset
+        val value = token match {
           case CHARLIT                => in.charVal
           case INTLIT                 => in.intVal(isNegated).toInt
           case LONGLIT                => in.intVal(isNegated)
@@ -743,7 +725,41 @@ object Parsers {
           case _                      =>
             syntaxErrorOrIncomplete(IllegalLiteral())
             null
-        })
+        }
+        Literal(Constant(value))
+      }
+
+      atSpan(negOffset) {
+        if (in.token == QUOTEID) {
+          if ((staged & StageKind.Spliced) != 0 && isIdentifierStart(in.name(0))) {
+            val t = atSpan(in.offset + 1) {
+              val tok = in.toToken(in.name)
+              tok match {
+                case TRUE | FALSE | NULL => literalOf(tok)
+                case THIS => This(EmptyTypeIdent)
+                case _ => Ident(in.name)
+              }
+            }
+            in.nextToken()
+            Quote(t)
+          }
+          else {
+            migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
+                                        |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                                        |or enclose in braces '{${in.name}} if you want a quoted expression.""")
+            if (in.isScala2Mode) {
+              patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
+              patch(source, Span(in.charOffset - 1), "\")")
+            }
+            atSpan(in.skipToken()) { SymbolLit(in.strVal) }
+          }
+        }
+        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
+        else {
+          val t = literalOf(in.token)
+          in.nextToken()
+          t
+        }
       }
     }
 

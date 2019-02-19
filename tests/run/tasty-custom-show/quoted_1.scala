@@ -5,7 +5,7 @@ import scala.tasty.Reflection
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
-    ${ impl('{x}) }
+    ${ impl('x) }
 
   def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._

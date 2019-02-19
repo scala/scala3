@@ -18,7 +18,7 @@ object Test {
       ${
         body(
           new Var[T] {
-            def get: Expr[T] = '{x}
+            def get: Expr[T] = 'x
             def update(e: Expr[T]): Expr[Unit] = '{ x = $e }
           }
         )
@@ -460,12 +460,12 @@ object Test {
                         ${producer.step(st, k)}
                       }
                       else {
-                        ${nadv.update('{oldnadv})}
+                        ${nadv.update('oldnadv)}
                         oldnadv(())
                       }
                     }}
 
-                    ${nadv.update('{adv1})}
+                    ${nadv.update('adv1)}
                     adv1(())
                   })
                 }
@@ -497,7 +497,7 @@ object Test {
                           }
                         }
 
-                        ${nadv.update('{adv})}
+                        ${nadv.update('adv)}
                         adv(())
                         ${k((hasNext, curr, nadv))}
                      }}
@@ -511,7 +511,7 @@ object Test {
                 var el = ${current.get}
                 val f: Unit => Unit = ${nadv.get}
                 f(())
-                ${k('{el})}
+                ${k('el)}
               }
 
             }
@@ -609,7 +609,7 @@ object Test {
           '{
               val el = ($arr).apply(${i.get})
               ${i.update('{ ${i.get} + 1 })}
-              ${k('{el})}
+              ${k('el)}
           }
         }
 

@@ -3,7 +3,7 @@ import scala.tasty._
 
 object scalatest {
 
-  inline def assert(condition: => Boolean): Unit = ${ assertImpl('{condition}, '{""}) }
+  inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
     import refl._

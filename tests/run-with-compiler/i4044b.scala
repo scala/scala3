@@ -13,7 +13,7 @@ object VarRef {
     ${body(
       new VarRef {
         def update(e: Expr[T]): Expr[Unit] = '{ x = $e }
-        def expr: Expr[T] = '{x}
+        def expr: Expr[T] = 'x
       }
     )}
   }

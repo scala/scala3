@@ -22,7 +22,7 @@ class VecRDyn[T: Type] extends VecDyn with VecROp[Expr[Int], Expr[T], Expr[Unit]
       var sum = $zero
       var i = 0
       while (i < ${vec.size}) {
-        sum = ${ plus('{sum}, vec('{i})) }
+        sum = ${ plus('sum, vec('i)) }
         i += 1
       }
       sum

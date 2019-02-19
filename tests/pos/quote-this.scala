@@ -18,7 +18,7 @@ class Foo {
   }
 
   inline def g(): Unit = ${ Foo.impl[this.type](1) }
-  inline def h(): Unit = ${ Foo.impl[Any]('{this}) }
+  inline def h(): Unit = ${ Foo.impl[Any]('this) }
   inline def i(that: Foo): Unit = ${ Foo.impl[that.type](1) }
 
 }

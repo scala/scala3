@@ -13,7 +13,7 @@ object Test {
       ${
         body(
           new Var {
-            def get: Expr[String] = '{x}
+            def get: Expr[String] = 'x
             def update(e: Expr[String]): Expr[Unit] = '{ x = $e }
           }
         )

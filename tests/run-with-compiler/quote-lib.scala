@@ -60,11 +60,11 @@ package liftable {
 
   object Lets {
     def letVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
-      '{ val letVal: $t = $expr; ${ body('{letVal}) } }
+      '{ val letVal: $t = $expr; ${ body('letVal) } }
     def letLazyVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
-      '{ lazy val letLazyVal: $t = $expr; ${ body('{letLazyVal}) } }
+      '{ lazy val letLazyVal: $t = $expr; ${ body('letLazyVal) } }
     def letDef[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
-      '{ def letDef: $t = $expr; ${ body('{letDef}) } }
+      '{ def letDef: $t = $expr; ${ body('letDef) } }
   }
 
   object Loops {

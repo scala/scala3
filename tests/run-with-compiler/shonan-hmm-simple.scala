@@ -102,7 +102,7 @@ class ExprVecOps[T: Type] extends VecOps[Expr[Int], Expr[T]] {
     var sum = $zero
     var i = 0
     while (i < ${vec.size}) {
-      sum = ${ plus('{sum}, vec.get('{i})) }
+      sum = ${ plus('sum, vec.get('i)) }
       i += 1
     }
     sum

@@ -7,9 +7,9 @@ final class Optional[+A >: Null](val value: A) extends AnyVal {
   def get: A = value
   def isEmpty = value == null
 
-  inline def getOrElse[B >: A](alt: => B): B = ${ Optional.getOrElseImpl('{this}, '{alt}) }
+  inline def getOrElse[B >: A](alt: => B): B = ${ Optional.getOrElseImpl('this, 'alt) }
 
-  inline def map[B >: Null](f: A => B): Optional[B] = ${ Optional.mapImpl('{this}, '{f}) }
+  inline def map[B >: Null](f: A => B): Optional[B] = ${ Optional.mapImpl('this, 'f) }
 
   override def toString = if (isEmpty) "<empty>" else s"$value"
 }

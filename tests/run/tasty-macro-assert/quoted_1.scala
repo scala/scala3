@@ -12,7 +12,7 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: => Boolean): Unit =
-    ${impl('{cond})}
+    ${impl('cond)}
 
   def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._

@@ -253,7 +253,7 @@ object StagedTuple {
 
     def bind[T: Type](in: Expr[U] => Expr[T]): Expr[T] = '{
       val t: U = $expr
-      ${in('{t})}
+      ${in('t)}
     }
 
   }

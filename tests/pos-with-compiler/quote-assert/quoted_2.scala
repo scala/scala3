@@ -5,7 +5,7 @@ import Macros._
 object Test {
 
   inline def assert(expr: => Boolean): Unit =
-    ${ assertImpl('{expr}) }
+    ${ assertImpl('expr) }
 
 
   val program = '{

@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Macros {
   inline def unrolledForeach(f: Int => Int): Int =
-   ${unrolledForeachImpl('{f})}
+   ${unrolledForeachImpl('f)}
 
   def unrolledForeachImpl(f: Expr[Int => Int]): Expr[Int] = '{
     val size: Int = 5

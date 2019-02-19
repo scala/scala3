@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Macros {
   inline def unrolledForeach(seq: IndexedSeq[Int], f: => Int => Unit, inline unrollSize: Int): Unit = // or f: Int => Unit
-    ${ unrolledForeachImpl('{seq}, '{f}, unrollSize) }
+    ${ unrolledForeachImpl('seq, 'f, unrollSize) }
 
   def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSize: Int): Expr[Unit] = '{
     val size = ($seq).length
@@ -14,7 +14,7 @@ object Macros {
         for (j <- new UnrolledRange(0, unrollSize)) '{
           val index = i + ${j.toExpr}
           val element = ($seq)(index)
-          ${ f('{element}) } // or `($f)(element)` if `f` should not be inlined
+          ${ f('element) } // or `($f)(element)` if `f` should not be inlined
         }
       }
       i += ${unrollSize.toExpr}

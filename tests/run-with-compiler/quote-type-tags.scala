@@ -8,7 +8,7 @@ object Test {
       '{$x.asInstanceOf[$t]}
 
     println(asof('{}, '[Unit]).show)
-    println(asof('{true}, '[Boolean]).show)
+    println(asof('true, '[Boolean]).show)
     println(asof('{0.toByte}, '[Byte]).show)
     println(asof('{ 'a' }, '[Char]).show)
     println(asof('{1.toShort}, '[Short]).show)

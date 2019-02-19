@@ -100,13 +100,12 @@ object Scanners {
     def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
       target.name = termName(flushBuf(litBuf))
       target.token = idtoken
-      if (idtoken == IDENTIFIER) {
-        val idx = target.name.start
-        target.token = toToken(idx)
-      }
+      if (idtoken == IDENTIFIER)
+        target.token = toToken(target.name)
     }
 
-    def toToken(idx: Int): Token
+    /** The token for given `name`. Either IDENTIFIER or a keyword. */
+    def toToken(name: SimpleName): Token
 
     /** Clear buffer and set string */
     def setStrVal(): Unit =
@@ -215,9 +214,11 @@ object Scanners {
       IDENTIFIER
     }
 
-    def toToken(idx: Int): Token =
+    def toToken(name: SimpleName): Token = {
+      val idx = name.start
       if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
       else IDENTIFIER
+    }
 
     private class TokenData0 extends TokenData
 

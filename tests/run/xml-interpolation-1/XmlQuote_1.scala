@@ -8,7 +8,7 @@ case class Xml(parts: String, args: List[Any])
 object XmlQuote {
 
   implicit class SCOps(ctx: StringContext) {
-    inline def xml(args: => Any*): Xml = ${XmlQuote.impl('{this}, '{args})}
+    inline def xml(args: => Any*): Xml = ${XmlQuote.impl('this, 'args)}
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])

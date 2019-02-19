@@ -22,7 +22,7 @@ object TypeToolbox {
   }
 
   /** type associated with the tree */
-  inline def typeOf[T, Expected](a: T): Boolean = ${typeOfImpl('{a}, '[Expected])}
+  inline def typeOf[T, Expected](a: T): Boolean = ${typeOfImpl('a, '[Expected])}
   private def typeOfImpl(a: Expr[_], expected: Type[_])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
     val res = a.unseal.tpe =:= expected.unseal.tpe
