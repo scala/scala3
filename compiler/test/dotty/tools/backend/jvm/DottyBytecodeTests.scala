@@ -695,4 +695,63 @@ class TestBCode extends DottyBytecodeTest {
         "`test` was not properly generated\n" + diffInstructions(instructions, expected))
     }
   }
+
+  @Test def i5924b = {
+    val source =
+      """|import scala.annotation.static
+         |trait Base
+         |
+         |object Base {
+         |  @static val x = 10
+         |  @static final val y = 10
+         |  @static def f: Int = 30
+         |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Base.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val f = getMethod(clsNode, "f")
+      val x = getField(clsNode, "x")
+      val y = getField(clsNode, "y")
+      assert((f.access & Opcodes.ACC_STATIC) != 0)
+      List(x, y).foreach { node =>
+        assert((node.access & Opcodes.ACC_STATIC) != 0)
+        assert((node.access & Opcodes.ACC_FINAL) != 0)
+      }
+    }
+  }
+
+  @Test def i5924c = {
+    val source =
+      """|import scala.annotation.static
+         |class Base
+         |
+         |object Base {
+         |  @static val x = 10
+         |  @static final val y = 10
+         |  @static var a = 10
+         |  @static final var b = 10
+         |  @static def f: Int = 30
+         |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Base.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val f = getMethod(clsNode, "f")
+      val x = getField(clsNode, "x")
+      val y = getField(clsNode, "y")
+      val a = getField(clsNode, "a")
+      val b = getField(clsNode, "b")
+      assert((f.access & Opcodes.ACC_STATIC) != 0)
+      List(x, y).foreach { node =>
+        assert((node.access & Opcodes.ACC_STATIC) != 0)
+        assert((node.access & Opcodes.ACC_FINAL) != 0)
+      }
+      List(a, b).foreach { node =>
+        assert((node.access & Opcodes.ACC_STATIC) != 0)
+      }
+    }
+  }
 }
