@@ -559,12 +559,6 @@ class TreePickler(pickler: TastyPickler) {
         case AppliedTypeTree(tycon, args) =>
           writeByte(APPLIEDtpt)
           withLength { pickleTree(tycon); args.foreach(pickleTree) }
-        case AndTypeTree(tp1, tp2) =>
-          writeByte(ANDtpt)
-          withLength { pickleTree(tp1); pickleTree(tp2) }
-        case OrTypeTree(tp1, tp2) =>
-          writeByte(ORtpt)
-          withLength { pickleTree(tp1); pickleTree(tp2) }
         case MatchTypeTree(bound, selector, cases) =>
           writeByte(MATCHtpt)
           withLength {

@@ -626,18 +626,6 @@ object Trees {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
   }
 
-  /** left & right */
-  case class AndTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends TypTree[T] {
-    type ThisTree[-T >: Untyped] = AndTypeTree[T]
-  }
-
-  /** left | right */
-  case class OrTypeTree[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends TypTree[T] {
-    type ThisTree[-T >: Untyped] = OrTypeTree[T]
-  }
-
   /** tpt { refinements } */
   case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends ProxyTree[T] with TypTree[T] {
@@ -934,8 +922,6 @@ object Trees {
     type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
-    type AndTypeTree = Trees.AndTypeTree[T]
-    type OrTypeTree = Trees.OrTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
     type LambdaTypeTree = Trees.LambdaTypeTree[T]
@@ -1102,14 +1088,6 @@ object Trees {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref)(sourceFile(tree)))
       }
-      def AndTypeTree(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree = tree match {
-        case tree: AndTypeTree if (left eq tree.left) && (right eq tree.right) => tree
-        case _ => finalize(tree, untpd.AndTypeTree(left, right)(sourceFile(tree)))
-      }
-      def OrTypeTree(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree = tree match {
-        case tree: OrTypeTree if (left eq tree.left) && (right eq tree.right) => tree
-        case _ => finalize(tree, untpd.OrTypeTree(left, right)(sourceFile(tree)))
-      }
       def RefinedTypeTree(tree: Tree)(tpt: Tree, refinements: List[Tree])(implicit ctx: Context): RefinedTypeTree = tree match {
         case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
         case _ => finalize(tree, untpd.RefinedTypeTree(tpt, refinements)(sourceFile(tree)))
@@ -1271,10 +1249,6 @@ object Trees {
               tree
             case SingletonTypeTree(ref) =>
               cpy.SingletonTypeTree(tree)(transform(ref))
-            case AndTypeTree(left, right) =>
-              cpy.AndTypeTree(tree)(transform(left), transform(right))
-            case OrTypeTree(left, right) =>
-              cpy.OrTypeTree(tree)(transform(left), transform(right))
             case RefinedTypeTree(tpt, refinements) =>
               cpy.RefinedTypeTree(tree)(transform(tpt), transformSub(refinements))
             case AppliedTypeTree(tpt, args) =>
@@ -1399,10 +1373,6 @@ object Trees {
               x
             case SingletonTypeTree(ref) =>
               this(x, ref)
-            case AndTypeTree(left, right) =>
-              this(this(x, left), right)
-            case OrTypeTree(left, right) =>
-              this(this(x, left), right)
             case RefinedTypeTree(tpt, refinements) =>
               this(this(x, tpt), refinements)
             case AppliedTypeTree(tpt, args) =>

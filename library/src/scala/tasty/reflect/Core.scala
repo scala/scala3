@@ -45,8 +45,6 @@ package scala.tasty.reflect
  *  +- TypeOrBoundsTree ---+               +- Refined
  *                         |               +- Applied
  *                         |               +- Annotated
- *                         |               +- And
- *                         |               +- Or
  *                         |               +- MatchType
  *                         |               +- ByName
  *                         |               +- LambdaTypeTree
@@ -294,12 +292,6 @@ trait Core {
 
       /** Type tree representing an annotated type */
       type Annotated <: TypeTree
-
-      /** Type tree representing an intersection type */
-      type And <: TypeTree
-
-      /** Type tree representing a union type */
-      type Or <: TypeTree
 
       /** Type tree representing a type match */
       type MatchType <: TypeTree

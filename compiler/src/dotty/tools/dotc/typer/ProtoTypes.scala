@@ -367,7 +367,7 @@ object ProtoTypes {
     def isDropped: Boolean = state.toDrop
 
     override def isErroneous(implicit ctx: Context): Boolean =
-      state.typedArgs.tpes.exists(_.widen.isErroneous)
+      state.typedArgs.tpes.exists(_.isErroneous)
 
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 

@@ -31,15 +31,15 @@ import scala.util.Properties.isJavaAtLeast
 object Build {
   val scalacVersion = "2.12.8"
 
-  val baseVersion = "0.13.0"
+  val baseVersion = "0.14.0"
   val baseSbtDottyVersion = "0.3.1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
-  val publishedDottyVersion = "0.11.0-RC1"
-  val publishedSbtDottyVersion = "0.2.6"
+  val publishedDottyVersion = "0.13.0-RC1"
+  val publishedSbtDottyVersion = "0.3.0"
 
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -409,7 +409,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "7.0.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
         // FIXME: Not needed, but should be on the compiler CP
         ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
@@ -849,7 +849,7 @@ object Build {
     settings(commonSettings).
     settings(
       EclipseKeys.skipProject := true,
-      version := "0.1.13-snapshot", // Keep in sync with package.json
+      version := "0.1.14-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",

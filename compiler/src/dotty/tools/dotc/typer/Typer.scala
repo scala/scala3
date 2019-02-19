@@ -735,7 +735,7 @@ class Typer extends Namer
       val ptDefined = isFullyDefined(pt, ForceDegree.none)
       if (ptDefined && !(avoidingType <:< pt)) avoidingType = pt
       val tree1 = ascribeType(tree, avoidingType)
-      assert(ptDefined || noLeaks(tree1) || tree1.tpe.widen.isErroneous,
+      assert(ptDefined || noLeaks(tree1) || tree1.tpe.isErroneous,
           // `ptDefined` needed because of special case of anonymous classes
           i"leak: ${escapingRefs(tree1, localSyms).toList}%, % in $tree1")
       tree1
@@ -1273,19 +1273,6 @@ class Typer extends Namer
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
-  def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
-    val left1 = checkSimpleKinded(typed(tree.left))
-    val right1 = checkSimpleKinded(typed(tree.right))
-    assignType(cpy.AndTypeTree(tree)(left1, right1), left1, right1)
-  }
-
-  def typedOrTypeTree(tree: untpd.OrTypeTree)(implicit ctx: Context): OrTypeTree = track("typedOrTypeTree") {
-    val where = "in a union type"
-    val left1 = checkNotSingleton(checkSimpleKinded(typed(tree.left)), where)
-    val right1 = checkNotSingleton(checkSimpleKinded(typed(tree.right)), where)
-    assignType(cpy.OrTypeTree(tree)(left1, right1), left1, right1)
-  }
-
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = track("typedRefinedTypeTree") {
     val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withSpan(tree.span)
@@ -1365,9 +1352,15 @@ class Typer extends Namer
         case (tparam, _) =>
           tparam.paramInfo.bounds
       }
-      val args2 = preCheckKinds(args1, paramBounds)
-      // check that arguments conform to bounds is done in phase PostTyper
-      assignType(cpy.AppliedTypeTree(tree)(tpt1, args2), tpt1, args2)
+      var checkedArgs = preCheckKinds(args1, paramBounds)
+        // check that arguments conform to bounds is done in phase PostTyper
+      if (tpt1.symbol == defn.andType)
+        checkedArgs = checkedArgs.mapconserve(arg =>
+          checkSimpleKinded(checkNoWildcard(arg)))
+      else if (tpt1.symbol == defn.orType)
+        checkedArgs = checkedArgs.mapconserve(arg =>
+          checkNotSingleton(checkSimpleKinded(checkNoWildcard(arg)), "in a union type"))
+      assignType(cpy.AppliedTypeTree(tree)(tpt1, checkedArgs), tpt1, checkedArgs)
     }
   }
 
@@ -2004,8 +1997,6 @@ class Typer extends Namer
           case tree: untpd.Inlined => typedInlined(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
-          case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
-          case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(ctx.localContext(tree, NoSymbol).setNewScope)
@@ -2029,7 +2020,6 @@ class Typer extends Namer
         val result = if (ifpt.exists &&
             xtree.isTerm &&
             !untpd.isContextualClosure(xtree) &&
-            !ctx.mode.is(Mode.ImplicitShadowing) &&
             !ctx.mode.is(Mode.Pattern) &&
             !ctx.isAfterTyper)
           makeContextualFunction(xtree, ifpt)
@@ -2598,7 +2588,6 @@ class Typer extends Namer
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
           !ctx.mode.is(Mode.Pattern) &&
-          !ctx.mode.is(Mode.ImplicitShadowing) &&
           !ctx.isAfterTyper) {
         typr.println(i"insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
@@ -2622,7 +2611,7 @@ class Typer extends Namer
           // I suspect, but am not 100% sure that this might affect inferred types,
           // if the expected type is a supertype of the GADT bound. It would be good to come
           // up with a test case for this.
-          tree.asInstance(pt)
+          tree.select(defn.Any_typeCast).appliedToType(pt)
         else
           tree
       }
@@ -2897,7 +2886,8 @@ class Typer extends Namer
   }
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(implicit ctx: Context): Unit = {
-    if (!ctx.isAfterTyper && isPureExpr(tree) && !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
+    if (!tree.tpe.isErroneous && !ctx.isAfterTyper && isPureExpr(tree) &&
+        !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
       ctx.warning(PureExpressionInStatementPosition(original, exprOwner), original.sourcePos)
   }
 }

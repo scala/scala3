@@ -15,6 +15,7 @@ class ReflectionImpl(val rootContext: Contexts.Context)
     with PatternOpsImpl
     with PositionOpsImpl
     with PrintersImpl
+    with RootPositionImpl
     with SettingsOpsImpl
     with SignatureOpsImpl
     with StandardDefinitions

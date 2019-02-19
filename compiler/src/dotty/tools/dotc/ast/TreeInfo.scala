@@ -164,17 +164,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Is name a left-associative operator? */
   def isLeftAssoc(operator: Name): Boolean = !operator.isEmpty && (operator.toSimpleName.last != ':')
 
-  /** can this type be a type pattern? */
-  def mayBeTypePat(tree: Tree): Boolean = unsplice(tree) match {
-    case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
-    case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
-    case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
-    case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
-    case Select(tpt, _) => mayBeTypePat(tpt)
-    case Annotated(tpt, _) => mayBeTypePat(tpt)
-    case _ => false
-  }
-
   /** Is this argument node of the form <expr> : _*, or is it a reference to
    *  such an argument ? The latter case can happen when an argument is lifted.
    */
@@ -562,7 +551,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
   def stripCast(tree: Tree)(implicit ctx: Context): Tree = {
-    def isCast(sel: Tree) = sel.symbol == defn.Any_asInstanceOf
+    def isCast(sel: Tree) = sel.symbol.isTypeCast
     unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)

@@ -93,8 +93,6 @@ trait TreeUtils
       case TypeTree.Select(qualifier, _) => foldTree(x, qualifier)
       case TypeTree.Projection(qualifier, _) => foldTypeTree(x, qualifier)
       case TypeTree.Singleton(ref) => foldTree(x, ref)
-      case TypeTree.And(left, right) => foldTypeTree(foldTypeTree(x, left), right)
-      case TypeTree.Or(left, right) => foldTypeTree(foldTypeTree(x, left), right)
       case TypeTree.Refined(tpt, refinements) => foldTrees(foldTypeTree(x, tpt), refinements)
       case TypeTree.Applied(tpt, args) => foldTypeTrees(foldTypeTree(x, tpt), args)
       case TypeTree.ByName(result) => foldTypeTree(x, result)
@@ -254,10 +252,6 @@ trait TreeUtils
         TypeTree.Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
       case TypeTree.IsApplied(tree) =>
         TypeTree.Applied.copy(tree)(transformTypeTree(tree.tpt), transformTypeOrBoundsTrees(tree.args))
-      case TypeTree.IsAnd(tree) =>
-        TypeTree.And.copy(tree)(transformTypeTree(tree.left), transformTypeTree(tree.right))
-      case TypeTree.IsOr(tree) =>
-        TypeTree.Or.copy(tree)(transformTypeTree(tree.left), transformTypeTree(tree.right))
       case TypeTree.IsMatchType(tree) =>
         TypeTree.MatchType.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
       case TypeTree.IsByName(tree) =>

@@ -294,7 +294,7 @@ object TypeTestsCasts {
             ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
-        else if (sym eq defn.Any_asInstanceOf)
+        else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
 
