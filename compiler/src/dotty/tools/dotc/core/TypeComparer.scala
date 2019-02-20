@@ -1148,7 +1148,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       def matchAbstractTypeMember(info1: Type) = info1 match {
         case TypeBounds(lo, hi) if lo ne hi =>
           tp2.refinedInfo match {
-            case rinfo2: TypeBounds if tp1.widenExpr.isSingleton =>
+            case rinfo2: TypeBounds if tp1.isStable =>
               val ref1 = tp1.widenExpr.select(name)
               isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
             case _ =>
