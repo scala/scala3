@@ -135,11 +135,10 @@ class CommunityBuildTest {
     command = "sourcecodeJVM/compile"
   )
 
-  // TODO @smarter?
-  // @Test def stdLib213 = test(
-  //   project = "stdLib213",
-  //   command = "library/compile"
-  // )
+  @Test def stdLib213 = test(
+    project = "stdLib213",
+    command = "library/compile"
+  )
 
   // TODO @oderky? It got broken by #5458
   // @Test def pdbp = test(

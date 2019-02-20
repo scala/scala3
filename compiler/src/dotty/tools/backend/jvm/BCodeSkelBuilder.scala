@@ -231,6 +231,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 
+        assert(!f.isStaticMember || !claszSymbol.isInterface || !f.isMutable,
+          s"interface $claszSymbol cannot have non-final static field $f")
+
         val jfield = new asm.tree.FieldNode(
           flags,
           f.javaSimpleName.toString,

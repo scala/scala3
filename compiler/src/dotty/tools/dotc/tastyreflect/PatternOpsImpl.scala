@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Contexts
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 
-trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
+trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with RootPositionImpl {
 
   def ValueDeco(value: Value): Pattern.ValueAPI = new Pattern.ValueAPI {
     def value(implicit ctx: Context): Term = value
@@ -74,7 +74,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
     object Bind extends BindModule {
 
       def copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind =
-        tpd.cpy.Bind(original)(name.toTermName, pattern)
+        withDefaultPos(ctx => tpd.cpy.Bind(original)(name.toTermName, pattern)(ctx))
 
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(String, Pattern)] = pattern match {
         case IsBind(pattern) => Some((pattern.name.toString, pattern.body))
@@ -93,7 +93,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
     object Unapply extends UnapplyModule {
 
       def copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply =
-        tpd.cpy.UnApply(original)(fun, implicits, patterns)
+        withDefaultPos(ctx => tpd.cpy.UnApply(original)(fun, implicits, patterns)(ctx))
 
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
         case IsUnapply(x) => Some((x.fun, x.implicits, UnapplyDeco(x).patterns))
@@ -110,7 +110,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
 
     object Alternatives extends AlternativesModule {
       def apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
-        tpd.Alternative(patterns)
+        withDefaultPos(ctx => tpd.Alternative(patterns)(ctx))
 
       def copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
         tpd.cpy.Alternative(original)(patterns)
@@ -131,10 +131,10 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with CoreImpl {
 
     object TypeTest extends TypeTestModule {
       def apply(tpt: TypeTree)(implicit ctx: Context): TypeTest =
-        tpd.Typed(untpd.Ident(nme.WILDCARD).withType(tpt.tpe), tpt)
+        withDefaultPos(ctx => tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe)(ctx), tpt)(ctx))
 
       def copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
-        tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withType(tpt.tpe), tpt)
+        tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
 
       def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree] = x match {
         case Trees.Typed(Trees.UnApply(_, _, _), _) => None
