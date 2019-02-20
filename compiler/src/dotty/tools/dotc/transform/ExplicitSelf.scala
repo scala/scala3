@@ -37,7 +37,7 @@ class ExplicitSelf extends MiniPhase {
     case Select(thiz: This, name) if name.isTermName =>
       val cls = thiz.symbol.asClass
       if (cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner))
-        cpy.Select(tree)(thiz.asInstance(AndType(cls.classInfo.selfType, thiz.tpe)), name)
+        cpy.Select(tree)(thiz.cast(AndType(cls.classInfo.selfType, thiz.tpe)), name)
       else tree
     case _ => tree
   }

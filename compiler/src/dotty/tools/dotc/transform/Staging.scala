@@ -169,7 +169,7 @@ class Staging extends MacroTransform {
      */
     protected def addSpliceCast(tree: Tree)(implicit ctx: Context): Tree = {
       val tp = checkType(tree.sourcePos).apply(tree.tpe.widenTermRefExpr)
-      tree.asInstance(tp).withSpan(tree.span)
+      tree.cast(tp).withSpan(tree.span)
     }
 
     /** If `tree` refers to a locally defined symbol (either directly, or in a pickled type),

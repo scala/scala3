@@ -885,13 +885,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree.select(defn.Any_asInstanceOf).appliedToType(tp)
     }
 
-    /** `tree.asInstanceOf[tp]` (or its box/unbox/cast equivalent when after
+    /** cast tree to `tp`, assuming no exception is raised, i.e the operation is pure */
+    def cast(tp: Type)(implicit ctx: Context): Tree = {
+      assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
+      tree.select(if (ctx.erasedTypes) defn.Any_asInstanceOf else defn.Any_typeCast)
+        .appliedToType(tp)
+    }
+
+    /** cast `tree` to `tp` (or its box/unbox/cast equivalent when after
      *  erasure and value and non-value types are mixed),
      *  unless tree's type already conforms to `tp`.
      */
     def ensureConforms(tp: Type)(implicit ctx: Context): Tree =
       if (tree.tpe <:< tp) tree
-      else if (!ctx.erasedTypes) asInstance(tp)
+      else if (!ctx.erasedTypes) cast(tp)
       else Erasure.Boxing.adaptToType(tree, tp)
 
     /** `tree ne null` (might need a cast to be type correct) */
