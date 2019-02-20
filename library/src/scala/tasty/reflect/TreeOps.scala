@@ -272,8 +272,16 @@ trait TreeOps extends Core {
     /** Scala term selection */
     val Select: SelectModule
     abstract class SelectModule {
+      /** Select a field or a non-overloaded method by name
+       *
+       *  @note The method will produce an assertion error if the selected
+       *        method is overloaded. The method `overloaded` should be used
+       *        in that case.
+       */
+      def unique(qualifier: Term, name: String)(implicit ctx: Context): Select
 
-      // TODO def apply(qualifier: Term, name: String, signature: Option[Signature])(implicit ctx: Context): Select
+      /** Call an overloaded method with the given type and term parameters */
+      def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply
 
       def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select
 
