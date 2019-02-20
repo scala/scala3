@@ -1132,7 +1132,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     /*>|>*/ trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) /*<|<*/ {
       val rinfo2 = tp2.refinedInfo
 
-      // If the member is an abstract type, compare the member itself
+      // If the member is an abstract type and the prefix is a path, compare the member itself
       // instead of its bounds. This case is needed situations like:
       //
       //    class C { type T }
@@ -1148,7 +1148,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       def matchAbstractTypeMember(info1: Type) = info1 match {
         case TypeBounds(lo, hi) if lo ne hi =>
           tp2.refinedInfo match {
-            case rinfo2: TypeBounds =>
+            case rinfo2: TypeBounds if tp1.isStable =>
               val ref1 = tp1.widenExpr.select(name)
               isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
             case _ =>
