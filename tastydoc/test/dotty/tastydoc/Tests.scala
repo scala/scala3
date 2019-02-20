@@ -1,4 +1,4 @@
-package dotty.semanticdb
+package dotty.tastydoc
 
 import scala.tasty.Reflection
 import scala.tasty.file._
@@ -16,28 +16,28 @@ import java.lang.reflect.InvocationTargetException
 class Tests {
   @Test def testAccess(): Unit = {
     ConsumeTasty(
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.13/classes",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
       List("example.Access"),
       new dotty.tastydoc.TastydocConsumer
     )
   }
   @Test def testExample(): Unit = {
     ConsumeTasty(
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.13/classes",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
       List("example.Example"),
       new dotty.tastydoc.TastydocConsumer
     )
   }
   @Test def testExample2(): Unit = {
     ConsumeTasty(
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.13/classes",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
       List("example.OExample"),
       new dotty.tastydoc.TastydocConsumer
     )
   }
   @Test def testClasses(): Unit = {
     ConsumeTasty(
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.13/classes",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
       List("example.C2"),
       new dotty.tastydoc.TastydocConsumer
     )

@@ -33,9 +33,9 @@ class TastydocConsumer extends TastyConsumer {
   //   Traverser.traverseTree(root)(reflect.rootContext)
   // }
 
-    // println("Full tree =========================")
-    // println(root.show)
-    // println("End of full tree ==================")
+    println("Full tree =========================")
+    println(root.show)
+    println("End of full tree ==================")
 
     def printType(typeTree: reflect.TypeTree) : Unit = typeTree match {
       //case Ident(id) => print(id)
@@ -77,8 +77,8 @@ class TastydocConsumer extends TastyConsumer {
         case IsPackageClause(clause @ PackageClause(pid, stats)) =>
           println("Package: "+ pid)
           stats.foreach(traverse(level+1, _))
-        case Import(expr, selectors) =>
-          println("import " + selectors + expr)
+        case Import(impliedOnly, expr, selectors) =>
+          println("import " + expr + selectors)
         case IsDefinition(cdef @ ClassDef(name, constr, parents, derived, self, body)) =>
           println("Class: " + name)
           (0 until level+1).foreach(_ => print("  "))
