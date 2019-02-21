@@ -1,6 +1,6 @@
 case class A() {
   override def hashCode(): scala.Int = 1914112431
-  override def equals(x$0: scala.Any): scala.Boolean = A.this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
+  override def equals(x$0: scala.Any): scala.Boolean = A.this.eq(x$0.$asInstanceOf$[java.lang.Object]).||(x$0 match {
     case x$0: A @scala.unchecked =>
       true
     case _ =>

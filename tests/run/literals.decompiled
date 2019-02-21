@@ -6,7 +6,7 @@ object Test {
       acc = scala.runtime.Statics.mix(acc, GGG.this.i)
       scala.runtime.Statics.finalizeHash(acc, 1)
     }
-    override def equals(x$0: scala.Any): scala.Boolean = GGG.this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
+    override def equals(x$0: scala.Any): scala.Boolean = GGG.this.eq(x$0.$asInstanceOf$[java.lang.Object]).||(x$0 match {
       case x$0: Test.GGG @scala.unchecked =>
         GGG.this.i.==(x$0.i)
       case _ =>
