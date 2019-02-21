@@ -419,31 +419,29 @@ class TestBCode extends DottyBytecodeTest {
 
       val instructions = instructionsFromMethod(method)
       val expected = List(
-        VarOp(Opcodes.ALOAD, 1),
-        VarOp(Opcodes.ASTORE, 2),
-        VarOp(Opcodes.ALOAD, 2),
-        TypeOp(Opcodes.INSTANCEOF, "Test"),
-        Jump(Opcodes.IFEQ, Label(11)),
-        Field(Opcodes.GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
-        Invoke(Opcodes.INVOKEVIRTUAL, "scala/Predef$", "$qmark$qmark$qmark", "()Lscala/runtime/Nothing$;", false),
-        Op(Opcodes.ATHROW),
-        Label(11),
-        FrameEntry(1, List("java/lang/Object"), List()),
-        TypeOp(Opcodes.NEW, "scala/MatchError"),
-        Op(Opcodes.DUP),
-        VarOp(Opcodes.ALOAD, 2),
-        Invoke(Opcodes.INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(Opcodes.ATHROW),
-        Label(18),
-        FrameEntry(0, List(), List("java/lang/Throwable")),
-        Op(Opcodes.ATHROW),
-        Label(21),
-        FrameEntry(4, List(), List("java/lang/Throwable")),
-        Op(Opcodes.ATHROW)
+        VarOp(ASTORE, 2)
+        VarOp(ALOAD, 2)
+        TypeOp(INSTANCEOF, Test)
+        Jump(IFEQ, Label(8))
+        Field(GETSTATIC, scala/Predef$, MODULE$, Lscala/Predef$;)
+        Invoke(INVOKEVIRTUAL, scala/Predef$, $qmark$qmark$qmark, ()Lscala/runtime/Nothing$;, false)
+        Op(ATHROW)
+        Label(8)
+        FrameEntry(1, List(java/lang/Object), List())
+        TypeOp(NEW, scala/MatchError)
+        Op(DUP)
+        VarOp(ALOAD, 2)
+        Invoke(INVOKESPECIAL, scala/MatchError, <init>, (Ljava/lang/Object;)V, false)
+        Op(ATHROW)
+        Label(15)
+        FrameEntry(0, List(), List(java/lang/Throwable))
+        Op(ATHROW)
+        Label(18)
+        FrameEntry(4, List(), List(java/lang/Throwable))
+        Op(ATHROW)
       )
       assert(instructions == expected,
         "`test` was not properly generated\n" + diffInstructions(instructions, expected))
-
     }
   }
 
