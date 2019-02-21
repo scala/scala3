@@ -680,7 +680,7 @@ class Definitions {
   lazy val ModuleSerializationProxyType: TypeRef  = ctx.requiredClassRef("scala.runtime.ModuleSerializationProxy")
   def ModuleSerializationProxyClass(implicit ctx: Context): ClassSymbol = ModuleSerializationProxyType.symbol.asClass
     lazy val ModuleSerializationProxyConstructor: TermSymbol =
-      ModuleSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(WildcardType)))
+      ModuleSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty)))
 
   lazy val GenericType: TypeRef                = ctx.requiredClassRef("scala.reflect.Generic")
   def GenericClass(implicit ctx: Context): ClassSymbol    = GenericType.symbol.asClass
