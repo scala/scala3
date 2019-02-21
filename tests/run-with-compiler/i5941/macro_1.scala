@@ -129,7 +129,7 @@ object Iso {
     }
   }
 
-  def implUnit[S: Type](implicit refl: Reflection): Expr[Iso[S, Unit]] = {
+  def implUnit[S: Type](implicit refl: Reflection): Expr[Iso[S, 1]] = {
     import refl._
     import util._
     import quoted.Toolbox.Default._
@@ -139,7 +139,7 @@ object Iso {
     if (tpS.isSingleton) {
       val ident = Term.Ident(tpS.asInstanceOf[TermRef]).seal[S]
       '{
-        Iso[S, Unit](Function.const(~ident))(Function.const(()))
+        Iso[S, 1](Function.const(~ident))(Function.const(1))
       }
     }
     else if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).nonEmpty) {
@@ -156,7 +156,7 @@ object Iso {
       val obj = Term.Select.overloaded(Term.Ident(companion), "apply", Nil, Nil).seal[S]
 
       '{
-        Iso[S, Unit](Function.const(~obj))(Function.const(()))
+        Iso[S, 1](Function.const(~obj))(Function.const(1))
       }
     }
     else {
@@ -176,7 +176,7 @@ object GenIso {
   inline def apply[S, A]: Iso[S, A] = ~Iso.impl[S, A]
 
   inline def fields[S, A]: Iso[S, A] = ???
-  inline def unit[S]: Iso[S, Unit] = ~Iso.implUnit[S]
+  inline def unit[S]: Iso[S, 1] = ~Iso.implUnit[S]
 }
 
 trait Prism[S, A] {
