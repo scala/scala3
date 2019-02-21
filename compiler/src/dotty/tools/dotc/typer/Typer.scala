@@ -80,7 +80,6 @@ object Typer {
    */
   private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
 
-  val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 }
 
 class Typer extends Namer
@@ -2708,7 +2707,7 @@ class Typer extends Namer
       case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
       case tp: LazyRef => captureWildcards(tp.ref)
       case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
-      case tp @ AppliedType(tycon, args) if args.exists(isBounds) =>
+      case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
         tycon.typeParams match {
           case tparams @ ((_: Symbol) :: _) =>
             val args1 = args.map {

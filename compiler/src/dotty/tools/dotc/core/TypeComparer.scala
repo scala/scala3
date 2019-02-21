@@ -1519,7 +1519,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           if (common.exists) common
           else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
           else if (v < 0) lub(arg1.loBound, arg2.loBound)
-          else if (arg1.isInstanceOf[TypeBounds] || arg2.isInstanceOf[TypeBounds])
+          else if (isBounds(arg1) || isBounds(arg2))
             TypeBounds(lub(arg1.loBound, arg2.loBound),
                        glb(arg1.hiBound, arg2.hiBound))
           else if (homogenizeArgs && !frozenConstraint && isSameType(arg1, arg2)) arg1

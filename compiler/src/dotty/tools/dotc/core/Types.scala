@@ -2067,7 +2067,7 @@ object Types {
           var tp1 = argForParam(base.tp1)
           var tp2 = argForParam(base.tp2)
           val variance = tparam.paramVariance
-          if (tp1.isInstanceOf[TypeBounds] || tp2.isInstanceOf[TypeBounds] || variance == 0) {
+          if (isBounds(tp1) || isBounds(tp2) || variance == 0) {
             // compute argument as a type bounds instead of a point type
             tp1 = tp1.bounds
             tp2 = tp2.bounds
@@ -3479,6 +3479,8 @@ object Types {
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 
+    def hasWildcardArg(implicit ctx: Context): Boolean = args.exists(isBounds)
+
     def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
@@ -3619,7 +3621,7 @@ object Types {
   /** A skolem type reference with underlying type `info`.
    *  Note: `info` is a var, since this allows one to create a number of skolem types
    *  and fill in their infos with types that refers to the skolem types recursively.
-   *  This is used in `captureWildcards` in Typer`.
+   *  This is used in `captureWildcards` in `Typer`.
    */
   case class SkolemType(var info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
@@ -5091,4 +5093,6 @@ object Types {
   private val keepAlways: AnnotatedType => Context => Boolean = _ => _ => true
   private val keepNever: AnnotatedType => Context => Boolean = _ => _ => false
   private val keepIfRefining: AnnotatedType => Context => Boolean = tp => ctx => tp.isRefining(ctx)
+
+  val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 }

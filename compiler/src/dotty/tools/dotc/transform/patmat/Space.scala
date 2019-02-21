@@ -624,7 +624,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (maximize) lo else hi
 
     def apply(tp: Type): Type = tp match {
-      case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+      case tp: TypeRef if isBounds(tp.underlying) =>
         val lo = this(tp.info.loBound)
         val hi = this(tp.info.hiBound)
         // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
@@ -632,7 +632,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         debug.println(s"$tp exposed to =====> $exposed")
         exposed
 
-      case AppliedType(tycon: TypeRef, args) if tycon.underlying.isInstanceOf[TypeBounds] =>
+      case AppliedType(tycon: TypeRef, args) if isBounds(tycon.underlying) =>
         val args2 = args.map(this)
         val lo = this(tycon.info.loBound).applyIfParameterized(args2)
         val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
