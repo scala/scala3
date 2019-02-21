@@ -8,4 +8,8 @@ object MatcherFactory1 {
   def impl(self: Expr[MatcherFactory1#AndNotWord]) =
     '{ ~self }
 
+
+  def impl2[T: Type](a: MatcherFactory1)(self: Expr[T])(implicit ev: T =:= a.AndNotWord) =
+    '{ ~self }
+
 }
