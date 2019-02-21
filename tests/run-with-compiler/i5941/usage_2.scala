@@ -32,5 +32,8 @@ object Test {
     assert(GenIso[JStr, String].to(JStr("Hello")) == "Hello")
     assert(GenIso.unit[JNull.type].to(JNull) == 1)
     assert(GenIso.unit[JNull.type].from(1) == JNull)
+
+    // TODO: require whitebox macros
+    // assert(GenIso.fields[Address].from((0, "a")) == Address(0, "a"))
   }
 }

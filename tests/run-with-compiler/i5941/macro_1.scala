@@ -163,6 +163,9 @@ object Iso {
       throw new QuoteError("Only support generation for case classes or singleton types")
     }
   }
+
+  // TODO: require whitebox macro
+  def implFields[S: Type](implicit refl: Reflection): Expr[Iso[S, Any]] = ???
 }
 
 object GenIso {
@@ -175,7 +178,9 @@ object GenIso {
    */
   inline def apply[S, A]: Iso[S, A] = ~Iso.impl[S, A]
 
-  inline def fields[S, A]: Iso[S, A] = ???
+  // TODO: require whitebox macro
+  inline def fields[S]: Iso[S, Any] = ~Iso.implFields[S]
+
   inline def unit[S]: Iso[S, 1] = ~Iso.implUnit[S]
 }
 
