@@ -79,6 +79,8 @@ object Typer {
    *  search was tried on a tree. This will in some cases be reported in error messages
    */
   private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
+
+  val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 }
 
 class Typer extends Namer
@@ -1917,7 +1919,7 @@ class Typer extends Namer
           val elemTpes = (elems, pts).zipped.map((elem, pt) =>
             ctx.typeComparer.widenInferred(elem.tpe, pt))
           val resTpe = (elemTpes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
-          app1.asInstance(resTpe)
+          app1.cast(resTpe)
         }
       }
     }
@@ -2697,10 +2699,47 @@ class Typer extends Namer
       case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(pt)).withType(pt)
     }
 
+    /** Replace every top-level occurrence of a wildcard type argument by
+    *  a skolem type
+    */
+    def captureWildcards(tp: Type)(implicit ctx: Context): Type = tp match {
+      case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
+      case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
+      case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
+      case tp: LazyRef => captureWildcards(tp.ref)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
+      case tp @ AppliedType(tycon, args) if args.exists(isBounds) =>
+        tycon.typeParams match {
+          case tparams @ ((_: Symbol) :: _) =>
+            val args1 = args.map {
+              case TypeBounds(lo, hi) =>
+                val skolem = SkolemType(defn.TypeBoxType.appliedTo(lo, hi))
+                TypeRef(skolem, defn.TypeBox_CAP)
+              case arg => arg
+            }
+            val boundss = tparams.map(_.paramInfo.subst(tparams.asInstanceOf[List[TypeSymbol]], args1))
+            for ((newArg, oldArg, bounds) <- (args1, args, boundss).zipped)
+              if (newArg `ne` oldArg) {
+                val TypeRef(skolem @ SkolemType(app @ AppliedType(typeBox, lo :: hi :: Nil)), _) = newArg
+                skolem.info = app.derivedAppliedType(
+                  typeBox, (lo | bounds.loBound) :: (hi & bounds.hiBound) :: Nil)
+              }
+            tp.derivedAppliedType(tycon, args1)
+          case _ =>
+            tp
+        }
+      case _ => tp
+    }
+
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
       if (folded ne tree) return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
+
+      // Try to capture wildcards in type
+      val captured = captureWildcards(wtp)
+      if (captured `ne` wtp) return readapt(tree.cast(captured))
+
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass) {
         // local adaptation makes sure every adapted tree conforms to its pt
@@ -2709,6 +2748,7 @@ class Typer extends Namer
         checkStatementPurity(tree1)(tree, ctx.owner)
         return tpd.Block(tree1 :: Nil, Literal(Constant(())))
       }
+
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
@@ -2725,6 +2765,7 @@ class Typer extends Namer
           }
         case _ =>
       }
+
       // try an extension method in scope
       pt match {
         case SelectionProto(name, mbrType, _, _) =>
@@ -2749,6 +2790,7 @@ class Typer extends Namer
           }
         case _ =>
       }
+
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
       def recover(failure: SearchFailureType) =

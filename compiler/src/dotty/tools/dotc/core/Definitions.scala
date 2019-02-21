@@ -755,6 +755,10 @@ class Definitions {
 
     def Eql_eqlAny(implicit ctx: Context): TermSymbol = EqlModule.requiredMethod(nme.eqlAny)
 
+  lazy val TypeBoxType: TypeRef = ctx.requiredClassRef("scala.internal.TypeBox")
+
+    lazy val TypeBox_CAP: TypeSymbol = TypeBoxType.symbol.requiredType(tpnme.CAP)
+
   lazy val NotType: TypeRef = ctx.requiredClassRef("scala.implicits.Not")
   def NotClass(implicit ctx: Context): ClassSymbol = NotType.symbol.asClass
   def NotModule(implicit ctx: Context): Symbol = NotClass.companionModule
