@@ -1001,44 +1001,53 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   }
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
-  *  variances in type parameters `tparams`.
+  *   variances in type parameters `tparams2`.
+  *   @param  tp1       The applied type containing `args1`
+  *   @param  tparams2  The type parameters of the type constructor applied to `args2`
   */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams: List[ParamInfo]): Boolean =
-    if (args1.isEmpty) args2.isEmpty
-    else args2.nonEmpty && {
-      val tparam = tparams.head
-      val v = tparam.paramVariance
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
 
-      def compareCaptured(arg1: Type, arg2: Type): Boolean = arg1 match {
-        case arg1: TypeBounds =>
-          val captured = TypeRef(tp1, tparam.asInstanceOf[TypeSymbol])
-          isSubArg(captured, arg2)
-        case _ =>
-          false
-      }
+    def paramBounds(tparam: Symbol): TypeBounds =
+      tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-      def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
-        case arg2: TypeBounds =>
-          arg2.contains(arg1) || compareCaptured(arg1, arg2)
-        case _ =>
-          arg1 match {
-            case arg1: TypeBounds =>
-              compareCaptured(arg1, arg2)
-            case _ =>
-              (v > 0 || isSubType(arg2, arg1)) &&
-              (v < 0 || isSubType(arg1, arg2))
-          }
-      }
+    def recur(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
+      if (args1.isEmpty) args2.isEmpty
+      else args2.nonEmpty && {
+        val tparam = tparams2.head
+        val v = tparam.paramVariance
 
-      val arg1 = args1.head
-      val arg2 = args2.head
-      isSubArg(arg1, arg2) || {
-        // last effort: try to adapt variances of higher-kinded types if this is sound.
-        // TODO: Move this to eta-expansion?
-        val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
-        adapted2.ne(arg2) && isSubArg(arg1, adapted2)
-      }
-    } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
+        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
+          case arg2: TypeBounds =>
+            val arg1norm = arg1 match {
+              case arg1: TypeBounds =>
+                tparam match {
+                  case tparam: Symbol => arg1 & paramBounds(tparam)
+                  case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
+                }
+              case _ => arg1
+            }
+            arg2.contains(arg1norm)
+          case _ =>
+            arg1 match {
+              case arg1: TypeBounds => false
+              case _ =>
+                (v > 0 || isSubType(arg2, arg1)) &&
+                (v < 0 || isSubType(arg1, arg2))
+            }
+        }
+
+        val arg1 = args1.head
+        val arg2 = args2.head
+        isSubArg(arg1, arg2) || {
+          // last effort: try to adapt variances of higher-kinded types if this is sound.
+          // TODO: Move this to eta-expansion?
+          val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
+          adapted2.ne(arg2) && isSubArg(arg1, adapted2)
+        }
+      } && recur(args1.tail, args2.tail, tparams2.tail)
+
+    recur(args1, args2, tparams2)
+  }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
