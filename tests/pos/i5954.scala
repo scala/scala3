@@ -6,10 +6,10 @@ object MatcherFactory1 {
   import scala.quoted._
 
   def impl(self: Expr[MatcherFactory1#AndNotWord]) =
-    '{ ~self }
+    '{ val a: Any = $self }
 
 
   def impl2[T: Type](a: MatcherFactory1)(self: Expr[T])(implicit ev: T =:= a.AndNotWord) =
-    '{ ~self }
+    '{ val a: Any = $self }
 
 }
