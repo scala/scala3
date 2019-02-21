@@ -241,8 +241,8 @@ class Staging extends MacroTransform {
      */
     private def checkSymLevel(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
       val isThis = tp.isInstanceOf[ThisType]
-      if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
-        checkSymLevel(sym.owner, sym.owner.thisType, pos)
+      if (!isThis && !sym.is(Param) && sym.maybeOwner.isType)
+        None
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         tryHeal(sym, tp, pos)
       else
