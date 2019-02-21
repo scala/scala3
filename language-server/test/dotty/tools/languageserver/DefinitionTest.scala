@@ -367,4 +367,15 @@ class DefinitionTest {
       .definition(m17 to m18, List(m11 to m12))
       .definition(m19 to m20, List(m13 to m14))
   }
+
+  @Test def definitionDoesNotExist: Unit = withSources(
+    code"""object Foo {
+          |  ${m1}unknown1${m2}
+          |  ${m3}unknown2${m4}.${m5}unknown3${m6}
+          |  Foo.${m7}unknown4${m8}
+          |}""")
+    .definition(m1 to m2, Nil)
+    .definition(m3 to m4, Nil)
+    .definition(m5 to m6, Nil)
+    .definition(m7 to m8, Nil)
 }
