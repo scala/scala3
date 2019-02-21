@@ -1041,12 +1041,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             arg1 match {
               case arg1: TypeBounds =>
 	            tparam match {
-	              case tparam: Symbol if leftRoot.isStable =>
+	              case tparam: Symbol if leftRoot.isStable || ctx.isAfterTyper =>
 	                val captured = TypeRef(leftRoot, tparam)
 	                isSubArg(captured, arg2)
 	              case _ =>
 	                false
-	            }        
+	            }
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&
                 (v < 0 || isSubType(arg1, arg2))
