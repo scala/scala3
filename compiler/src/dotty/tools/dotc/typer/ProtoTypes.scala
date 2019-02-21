@@ -603,14 +603,10 @@ object ProtoTypes {
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
     case tp @ AppliedType(tycon, args) =>
-      def dropBounds(tp: Type) = tp match {
-        case tp: TypeBounds if false => WildcardType(tp)
-        case tp => tp
-      }
       wildApprox(tycon, theMap, seen) match {
         case _: WildcardType => WildcardType // this ensures we get a * type
         case tycon1 => tp.derivedAppliedType(tycon1,
-          args.mapConserve(arg => dropBounds(wildApprox(arg, theMap, seen))))
+          args.mapConserve(arg => wildApprox(arg, theMap, seen)))
       }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(
