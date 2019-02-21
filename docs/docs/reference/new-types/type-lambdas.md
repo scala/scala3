@@ -10,7 +10,7 @@ a type definition.
 
 For instance, the type above defines a binary type constructor, with a
 covariant parameter `X` and a non-variant parameter `Y`. The
-constructor maps arguments `S` and `T` to `Map[T, S]`. Type parameters
+constructor maps arguments `X` and `Y` to `Map[Y, X]`. Type parameters
 of type lambdas can have variances and bounds. A parameterized type
 definition or declaration such as
 
