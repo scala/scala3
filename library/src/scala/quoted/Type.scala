@@ -5,7 +5,7 @@ import scala.reflect.ClassTag
 import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Type[T] {
-  type splice = T
+  type `$splice` = T
 }
 
 /** Some basic type tags, currently incomplete */

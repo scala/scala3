@@ -4,7 +4,7 @@ import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Expr[+T] {
 
-  final def splice: T = throw new Error("splice should have been compiled away")
+  final def `$splice`: T = throw new Error("splice should have been compiled away")
 
   /** Evaluate the contents of this expression and return the result.
    *

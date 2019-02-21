@@ -521,7 +521,7 @@ object StdNames {
     val setSymbol: N            = "setSymbol"
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
-    val splice: N               = "splice"
+    val splice: N               = "$splice"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"
     val staticPackage : N       = "staticPackage"
