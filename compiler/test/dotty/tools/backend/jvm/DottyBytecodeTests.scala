@@ -401,50 +401,6 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
-  @Test def returnThrowInPatternMatch = {
-    val source =
-      """class Test {
-        |  def test(a: Any): Int = {
-        |    a match {
-        |      case _: Test => ???
-        |    }
-        |  }
-        |}
-      """.stripMargin
-
-    checkBCode(source) { dir =>
-      val moduleIn = dir.lookupName("Test.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
-      val method = getMethod(moduleNode, "test")
-
-      val instructions = instructionsFromMethod(method)
-      val expected = List(
-        VarOp(ASTORE, 2)
-        VarOp(ALOAD, 2)
-        TypeOp(INSTANCEOF, Test)
-        Jump(IFEQ, Label(8))
-        Field(GETSTATIC, scala/Predef$, MODULE$, Lscala/Predef$;)
-        Invoke(INVOKEVIRTUAL, scala/Predef$, $qmark$qmark$qmark, ()Lscala/runtime/Nothing$;, false)
-        Op(ATHROW)
-        Label(8)
-        FrameEntry(1, List(java/lang/Object), List())
-        TypeOp(NEW, scala/MatchError)
-        Op(DUP)
-        VarOp(ALOAD, 2)
-        Invoke(INVOKESPECIAL, scala/MatchError, <init>, (Ljava/lang/Object;)V, false)
-        Op(ATHROW)
-        Label(15)
-        FrameEntry(0, List(), List(java/lang/Throwable))
-        Op(ATHROW)
-        Label(18)
-        FrameEntry(4, List(), List(java/lang/Throwable))
-        Op(ATHROW)
-      )
-      assert(instructions == expected,
-        "`test` was not properly generated\n" + diffInstructions(instructions, expected))
-    }
-  }
-
   /** Test that type lambda applications are properly dealias */
   @Test def i5090 = {
     val source =
