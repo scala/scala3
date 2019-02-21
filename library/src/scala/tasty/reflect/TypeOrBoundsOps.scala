@@ -55,6 +55,7 @@ trait TypeOrBoundsOps extends Core {
     def widen(implicit ctx: Context): Type
     def classSymbol(implicit ctx: Context): Option[ClassSymbol]
     def typeSymbol(implicit ctx: Context): Symbol
+    def isSingleton(implicit ctx: Context): Boolean
     def memberType(member: Symbol)(implicit ctx: Context): Type
   }
 

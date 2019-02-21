@@ -128,6 +128,41 @@ object Iso {
       apply(from)(to)
     }
   }
+
+  def implUnit[S: Type](implicit refl: Reflection): Expr[Iso[S, Unit]] = {
+    import refl._
+    import util._
+    import quoted.Toolbox.Default._
+
+    val tpS = typeOf[S]
+
+    if (tpS.isSingleton) {
+      val ident = Term.Ident(tpS.asInstanceOf[TermRef]).seal[S]
+      '{
+        Iso[S, Unit](Function.const(~ident))(Function.const(()))
+      }
+    }
+    else if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).nonEmpty) {
+      val cls = tpS.classSymbol.get
+
+      if (cls.caseFields.size != 0)
+        throw new QuoteError("Use GenIso.fields for case classes more than one parameter")
+
+      val companion = tpS match {
+        case Type.SymRef(sym, prefix)   => Type.TermRef(prefix, sym.name)
+        case Type.TypeRef(name, prefix) => Type.TermRef(prefix, name)
+      }
+
+      val obj = Term.Select.overloaded(Term.Ident(companion), "apply", Nil, Nil).seal[S]
+
+      '{
+        Iso[S, Unit](Function.const(~obj))(Function.const(()))
+      }
+    }
+    else {
+      throw new QuoteError("Only support generation for case classes or singleton types")
+    }
+  }
 }
 
 object GenIso {
@@ -141,7 +176,7 @@ object GenIso {
   inline def apply[S, A]: Iso[S, A] = ~Iso.impl[S, A]
 
   inline def fields[S, A]: Iso[S, A] = ???
-  inline def unit[S]: Iso[S, Unit] = ???
+  inline def unit[S]: Iso[S, Unit] = ~Iso.implUnit[S]
 }
 
 trait Prism[S, A] {

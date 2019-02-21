@@ -30,5 +30,7 @@ object Test {
     // assert(jStr(JStr("world")) == JStr("world"))
 
     assert(GenIso[JStr, String].to(JStr("Hello")) == "Hello")
+    assert(GenIso.unit[JNull.type].to(JNull) == (()))
+    assert(GenIso.unit[JNull.type].from(()) == JNull)
   }
 }

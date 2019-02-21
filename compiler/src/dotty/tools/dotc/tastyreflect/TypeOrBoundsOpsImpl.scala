@@ -25,6 +25,8 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with CoreI
 
     def typeSymbol(implicit ctx: Context): Symbol = tpe.typeSymbol
 
+    def isSingleton(implicit ctx: Context): Boolean = tpe.isSingleton
+
     def memberType(member: Symbol)(implicit ctx: Context): Type =
       member.info.asSeenFrom(tpe, member.owner)
   }
