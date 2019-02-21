@@ -130,20 +130,30 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
   }
 
-  private[this] var approx: ApproxState = NoApprox
+  private[this] var approx: ApproxState = FreshApprox
   protected def approxState: ApproxState = approx
 
+  private [this] var leftRoot: Type = null
+
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
-    val saved = approx
-    this.approx = a
+    val savedApprox = approx
+    val savedLeftRoot = leftRoot
+    if (a == FreshApprox) {
+      this.approx = NoApprox
+      this.leftRoot = tp1
+    }
+    else this.approx = a
     try recur(tp1, tp2)
     catch {
       case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
     }
-    finally this.approx = saved
+    finally {
+      this.approx = savedApprox
+      this.leftRoot = savedLeftRoot
+    }
   }
 
-  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, NoApprox)
+  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, FreshApprox)
 
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
@@ -277,7 +287,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case tp2: SuperType =>
         def compareSuper = tp1 match {
           case tp1: SuperType =>
-            isSubType(tp1.thistpe, tp2.thistpe) &&
+            recur(tp1.thistpe, tp2.thistpe) &&
             isSameType(tp1.supertpe, tp2.supertpe)
           case _ =>
             secondTry
@@ -355,7 +365,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
       case tp1: SkolemType =>
         tp2 match {
-          case tp2: SkolemType if !ctx.phase.isTyper && isSubType(tp1.info, tp2.info) => true
+          case tp2: SkolemType if !ctx.phase.isTyper && recur(tp1.info, tp2.info) => true
           case _ => thirdTry
         }
       case tp1: TypeVar =>
@@ -449,7 +459,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             // So if the constraint is not yet frozen, we do the same comparison again
             // with a frozen constraint, which means that we get a chance to do the
             // widening in `fourthTry` before adding to the constraint.
-            if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
+            if (frozenConstraint) recur(tp1, bounds(tp2).lo)
             else isSubTypeWhenFrozen(tp1, tp2)
           alwaysTrue || {
             if (canConstrain(tp2) && !approx.low)
@@ -879,7 +889,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
                 tycon2.name.toString.startsWith("Tuple") &&
-                  defn.isTupleType(tp2) && isSubType(tp1, tp2.toNestedPairs) ||
+                  defn.isTupleType(tp2) && recur(tp1, tp2.toNestedPairs) ||
                 tryBaseType(info2.cls)
               case _ =>
                 fourthTry
@@ -1029,7 +1039,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             arg2.contains(arg1norm)
           case _ =>
             arg1 match {
-              case arg1: TypeBounds => false
+              case arg1: TypeBounds =>
+	            tparam match {
+	              case tparam: Symbol if leftRoot.isStable =>
+	                val captured = TypeRef(leftRoot, tparam)
+	                isSubArg(captured, arg2)
+	              case _ =>
+	                false
+	            }        
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&
                 (v < 0 || isSubType(arg1, arg2))
@@ -1809,6 +1826,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
 object TypeComparer {
 
+  val oldScheme = true
+
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
     var tpe: Type = NoType
@@ -1835,6 +1854,7 @@ object TypeComparer {
   }
 
   val NoApprox: ApproxState = new ApproxState(0)
+  val FreshApprox: ApproxState = new ApproxState(4)
 
   /** Show trace of comparison operations when performing `op` as result string */
   def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
