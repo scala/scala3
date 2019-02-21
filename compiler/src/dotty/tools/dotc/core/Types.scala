@@ -2415,7 +2415,7 @@ object Types {
     }
   }
 
-  /** A constant type with  single `value`. */
+  /** A constant type with single `value`. */
   abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
     override def underlying(implicit ctx: Context): Type = value.tpe
 

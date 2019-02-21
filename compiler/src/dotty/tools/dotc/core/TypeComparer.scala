@@ -528,7 +528,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case tp2: HKTypeLambda =>
         def compareTypeLambda: Boolean = tp1.stripTypeVar match {
           case tp1: HKTypeLambda =>
-            /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail.
+           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail.
             * The issue is that, logically, bounds should compare contravariantly,
             * but that would invalidate a pattern exploited in t2994:
             *
@@ -761,14 +761,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
 
     /** Subtype test for the hk application `tp2 = tycon2[args2]`.
-    */
+     */
     def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: List[Type]): Boolean = {
       val tparams = tycon2.typeParams
       if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
       /** True if `tp1` and `tp2` have compatible type constructors and their
-      *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
-      */
+       *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
+       */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case AppliedType(tycon1, args1) =>
           tycon1.dealiasKeepRefiningAnnots match {
@@ -815,25 +815,25 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
 
       /** `param2` can be instantiated to a type application prefix of the LHS
-      *  or to a type application prefix of one of the LHS base class instances
-      *  and the resulting type application is a supertype of `tp1`,
-      *  or fallback to fourthTry.
-      */
+       *  or to a type application prefix of one of the LHS base class instances
+       *  and the resulting type application is a supertype of `tp1`,
+       *  or fallback to fourthTry.
+       */
       def canInstantiate(tycon2: TypeParamRef): Boolean = {
 
         /** Let
-        *
-        *    `tparams_1, ..., tparams_k-1`    be the type parameters of the rhs
-        *    `tparams1_1, ..., tparams1_n-1`  be the type parameters of the constructor of the lhs
-        *    `args1_1, ..., args1_n-1`        be the type arguments of the lhs
-        *    `d  =  n - k`
-        *
-        *  Returns `true` iff `d >= 0` and `tycon2` can be instantiated to
-        *
-        *      [tparams1_d, ... tparams1_n-1] -> tycon1[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
-        *
-        *  such that the resulting type application is a supertype of `tp1`.
-        */
+         *
+         *    `tparams_1, ..., tparams_k-1`    be the type parameters of the rhs
+         *    `tparams1_1, ..., tparams1_n-1`  be the type parameters of the constructor of the lhs
+         *    `args1_1, ..., args1_n-1`        be the type arguments of the lhs
+         *    `d  =  n - k`
+         *
+         *  Returns `true` iff `d >= 0` and `tycon2` can be instantiated to
+         *
+         *      [tparams1_d, ... tparams1_n-1] -> tycon1[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
+         *
+         *  such that the resulting type application is a supertype of `tp1`.
+         */
         def appOK(tp1base: Type) = tp1base match {
           case tp1base: AppliedType =>
             var tycon1 = tp1base.tycon
@@ -874,21 +874,21 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
 
       /** Fall back to comparing either with `fourthTry` or against the lower
-      *  approximation of the rhs.
-      *  @param   tyconLo   The type constructor's lower approximation.
-      */
+       *  approximation of the rhs.
+       *  @param   tyconLo   The type constructor's lower approximation.
+       */
       def fallback(tyconLo: Type) =
         either(fourthTry, isSubApproxHi(tp1, tyconLo.applyIfParameterized(args2)))
 
       /** Let `tycon2bounds` be the bounds of the RHS type constructor `tycon2`.
-      *  Let `app2 = tp2` where the type constructor of `tp2` is replaced by
-      *  `tycon2bounds.lo`.
-      *  If both bounds are the same, continue with `tp1 <:< app2`.
-      *  otherwise continue with either
-      *
-      *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
-      *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
-      */
+       *  Let `app2 = tp2` where the type constructor of `tp2` is replaced by
+       *  `tycon2bounds.lo`.
+       *  If both bounds are the same, continue with `tp1 <:< app2`.
+       *  otherwise continue with either
+       *
+       *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
+       *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
+       */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
         if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
           if (tyconIsTypeRef) recur(tp1, tp2.superType)
@@ -927,7 +927,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
 
     /** Subtype test for the application `tp1 = tycon1[args1]`.
-    */
+     */
     def compareAppliedType1(tp1: AppliedType, tycon1: Type, args1: List[Type]): Boolean =
       tycon1 match {
         case param1: TypeParamRef =>
@@ -973,8 +973,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that
-    *  the case was covered previously during subtyping.
-    */
+     *  the case was covered previously during subtyping.
+     */
     def isNewSubType(tp1: Type): Boolean =
       if (isCovered(tp1) && isCovered(tp2)) {
         //println(s"useless subtype: $tp1 <:< $tp2")
@@ -1031,12 +1031,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   }
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
-  *   variances in type parameters `tparams2`.
-  *   @param  tp1       The applied type containing `args1`
-  *   @param  tparams2  The type parameters of the type constructor applied to `args2`
-  */
+   *  variances in type parameters `tparams2`.
+   *
+   *  @param  tp1       The applied type containing `args1`
+   *  @param  tparams2  The type parameters of the type constructor applied to `args2`
+   */
   def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
-
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
