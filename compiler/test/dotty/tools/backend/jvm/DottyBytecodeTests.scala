@@ -401,6 +401,31 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def returnThrowInPatternMatch = {
+    val source =
+      """class Test {
+        |  def test(a: Any): Int = {
+        |    a match {
+        |      case _: Test => ???
+        |    }
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn = dir.lookupName("Test.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method = getMethod(moduleNode, "test")
+
+      val instructions = instructionsFromMethod(method)
+      val hasReturn = instructions.exists {
+        case Op(Opcodes.RETURN) => true
+        case _ => false
+      }
+      assertFalse(hasReturn)
+    }
+  }
+
   /** Test that type lambda applications are properly dealias */
   @Test def i5090 = {
     val source =
