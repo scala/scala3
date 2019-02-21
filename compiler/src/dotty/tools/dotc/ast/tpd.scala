@@ -573,10 +573,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tree1 = untpdCpy.Block(tree)(stats, expr)
       tree match {
         case tree: Block if (expr.tpe eq tree.expr.tpe) && (expr.tpe eq tree.tpe) =>
-          // the second guard is needed in case avoid somehow widened the type.
-          // if it did it could potentially need to rewiden it
-          // eg {val s = ...; s}
-          // changing type of s should change type of block, though type of expr is unchanged - TermRef(s)
+          // The last guard is a conservative check: if `tree.tpe` is different from `expr.tpe`, then
+          // it was computed from widening `expr.tpe`, and tree transforms might cause `expr.tpe.widen`
+          // to change even if `expr.tpe` itself didn't change, e.g:
+          //     { val s = ...;  s }
+          // If the type of `s` changed, then the type of the block might have changed, even though `expr.tpe`
+          // will still be `TermRef(NoPrefix, s)`
           tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, stats, expr)
       }
@@ -587,9 +589,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree match {
         case tree: If if (thenp.tpe eq tree.thenp.tpe) && (elsep.tpe eq tree.elsep.tpe) &&
           ((tree.tpe eq thenp.tpe) || (tree.tpe eq elsep.tpe)) =>
-          // last guard is needed in case previous if had computed a widened ORType that needs to be recomputed
-          // eg {val a = ...; val b = ...; if(...) a else b}
-          // changing type of a or b should change type of if, though types of both trees remain unchanged
+          // The last guard is a conservative check similar to the one done in `Block` above,
+          // if `tree.tpe` is not identical to the type of one of its branch, it might have been
+          // computed from the widened type of the branches, so the same reasoning than
+          // in `Block` applies.
           tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, thenp, elsep)
       }
