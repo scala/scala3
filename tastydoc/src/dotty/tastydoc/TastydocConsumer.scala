@@ -37,63 +37,69 @@ class TastydocConsumer extends TastyConsumer {
     println(root.show)
     println("End of full tree ==================")
 
-    def convertType(typeTree: reflect.TypeTree) : String = typeTree match {
+    def convertTypeTree(typeTree: reflect.TypeTree) : String = typeTree match {
       case reflect.TypeTree.Ident(id) => id
-      //case AppliedTypeTree(x, y) =>
-      case _ => typeTree.toString
+      //case reflect.TypeTree.Applied(tycon, args) => convertType(tycon) + "[" + args.map(x => convertType(x)).reduceLeft
+      //case reflect.Type.AppliedType(tycon, args) =>
+      case tpt => convertTypeOrBounds(tpt.tpe)
     }
 
-    def traverse(level: Int, child: reflect.Tree) : Unit = {
+    def convertTypeOrBounds(tpe: reflect.TypeOrBounds) : String = tpe match {
+      case reflect.Type.AppliedType(tycon, args) => convertTypeOrBounds(tycon) + "[" + args.map(convertTypeOrBounds).foldLeft("")((x, y) => x + ", " + y) + "]"
+      case reflect.Type.TypeRef(name, qualifier) => name //TODO: handle qualifier
+      case tpe => tpe.toString
+    }
 
-      def findDefDef(level: Int, child: reflect.Tree) : Unit = {
+    def traverse(level: Int, child: reflect.Tree) : String = {
+
+      def findDefDef(level: Int, child: reflect.Tree) : String = {
         child match {
           case IsDefinition(ddef @ DefDef(name, tparams, vparamss, tpt, rhs)) =>
-            (0 until level).foreach(_ => print("  "))
-            print(name)
-            print("(")
-            vparamss match {
-              case Nil | List(Nil) => //Difference?
-              case List(args) => print(args.map{case ValDef(vname, vtype, _) => vname + ": " + convertType(vtype)}.reduce((x, y) => x + ", " + y))
-              case _ => println("FAILED MATCH FOR VPARAMS DEFDEF")
-            }
-            print(")")
-            print(" : ")
-            print(convertType(tpt))
-            println
-          case _ =>
+            (0 until level).map(_ => "  ").foldLeft("")(_+_) +
+            name +
+            "(" +
+            (vparamss match {
+              case Nil | List(Nil) => "" //Difference?
+              case List(args) => args.map{case ValDef(vname, vtype, _) => vname + ": " + convertTypeTree(vtype)}.reduce((x, y) => x + ", " + y)
+              case _ => "FAILED MATCH FOR VPARAMS DEFDEF"
+            }) +
+            ") : " +
+            convertTypeTree(tpt) + "\n"
+          case _ => "FAILED MATCH FOR DEFDEF"
         }
       }
-      def findValDef(level: Int, child: reflect.Tree) : Unit = {
+      def findValDef(level: Int, child: reflect.Tree) : String = {
         child match {
           case IsDefinition(vdef @ ValDef(name, tpt, rhs)) =>
-            (0 until level).foreach(_ => print("  "))
-            print(name + " : ")
-            print(convertType(tpt))
-          case _ =>
+            (0 until level).map(_ => "  ").foldLeft("")(_+_) +
+            name + " : " +
+            convertTypeTree(tpt)
+          case _ => "FAILED MATCH FOR VALDEF"
         }
       }
 
-      (0 until level).foreach(_ => print("  "))
-      child match {
-        case IsPackageClause(clause @ PackageClause(pid, stats)) =>
-          println("Package: "+ pid)
-          stats.foreach(traverse(level+1, _))
-        case Import(impliedOnly, expr, selectors) =>
-          println("import " + expr + selectors)
-        case IsDefinition(cdef @ ClassDef(name, constr, parents, derived, self, body)) =>
-          println("Class: " + name)
-          (0 until level+1).foreach(_ => print("  "))
-          println("Methods:")
-          body.foreach(findDefDef(level+2, _))
-          (0 until level+1).foreach(_ => print("  "))
-          println("Values:")
-          body.foreach(findValDef(level+2, _))
+      (0 until level).map(_ => "  ").foldLeft("")(_+_) +
+      (child match {
+        case reflect.Term.Ident(name) => name
+        case reflect.PackageClause(pid, stats) =>
+          "Package: "+ traverse(level, pid) + "\n" +
+          stats.map(traverse(level+1, _)).foldLeft("")(_+_)
+        case reflect.Import(impliedOnly, expr, selectors) =>
+          "import " + expr + selectors + "\n"
+        case reflect.ClassDef(name, constr, parents, derived, self, body) =>
+          "Class: " + name + "\n" +
+          (0 until level+1).map(_ => "  ").foldLeft("")(_+_) +
+          "Methods:" + "\n" +
+          body.map(findDefDef(level+2, _)).foldLeft("")(_+_) +
+          (0 until level+1).map(_ => "  ").foldLeft("")(_+_) +
+          "Values:" + "\n" +
+          body.map(findValDef(level+2, _)).foldLeft("")(_+_)
         case _ =>
-          println("No match in traverse")
-      }
+          "No match in traverse" + "\n"
+      })
     }
 
-    traverse(0, root)
+    print(traverse(0, root))
     println
   }
 }

@@ -52,9 +52,23 @@ Used to represent simple type such as Int, String
 #### Project
 #### Singleton
 #### Refined
+#### Applied
+<!-- For type of the form `x[y]`
+* `tycon: Type` x
+* `args: List[Type]` y -->
 #### Annotated
 #### MatchType
 #### ByName
 #### LambdaTypeTree
 #### TypeBind
 #### TypeBlock
+
+## TypeOrBounds
+### Type
+#### ConstantType
+#### SymRef
+<!-- ..... -->
+#### AppliedType
+For type of the form `x[y]
+`tycon: Type` x
+`args: List[TypeOrBounds /* Type | TypeBounds */]` y
