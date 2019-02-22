@@ -37,9 +37,10 @@ class TastydocConsumer extends TastyConsumer {
     println(root.show)
     println("End of full tree ==================")
 
-    def printType(typeTree: reflect.TypeTree) : Unit = typeTree match {
-      //case Ident(id) => print(id)
-      case _ => print(typeTree)
+    def convertType(typeTree: reflect.TypeTree) : String = typeTree match {
+      case reflect.TypeTree.Ident(id) => id
+      //case AppliedTypeTree(x, y) =>
+      case _ => typeTree.toString
     }
 
     def traverse(level: Int, child: reflect.Tree) : Unit = {
@@ -52,12 +53,12 @@ class TastydocConsumer extends TastyConsumer {
             print("(")
             vparamss match {
               case Nil | List(Nil) => //Difference?
-              case List(args) => print(args.map{case ValDef(vname, vtype, _) => vname + ": " + vtype}.reduce((x, y) => x + ", " + y))
+              case List(args) => print(args.map{case ValDef(vname, vtype, _) => vname + ": " + convertType(vtype)}.reduce((x, y) => x + ", " + y))
               case _ => println("FAILED MATCH FOR VPARAMS DEFDEF")
             }
             print(")")
             print(" : ")
-            printType(tpt)
+            print(convertType(tpt))
             println
           case _ =>
         }
@@ -67,7 +68,7 @@ class TastydocConsumer extends TastyConsumer {
           case IsDefinition(vdef @ ValDef(name, tpt, rhs)) =>
             (0 until level).foreach(_ => print("  "))
             print(name + " : ")
-            printType(tpt)
+            print(convertType(tpt))
           case _ =>
         }
       }

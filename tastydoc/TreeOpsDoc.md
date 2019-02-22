@@ -1,7 +1,7 @@
 # Tasty Reflect Documentation
-This is an attempt at documenting some of the Tasty Reflect API for easier understanding.
+This is an attempt at documenting some of the Tasty Reflect API for an easier understanding.
 
-Information mostly come from `compiler/src/dotty/tools/dotc/tastyreflect/TreeOpsImpl.scala` and `library/src/scala/tasty/reflect/TreeOps.scala`
+Information mostly come from `compiler/src/dotty/tools/dotc/tastyreflect/TreeOpsImpl.scala`, `library/src/scala/tasty/reflect/TreeOps.scala`, `compiler/src/dotty/tools/dotc/tastyreflect/TypeOrBoundsTreesOpsImpl.scala`
 
 It follows the structure of `library/src/scala/tasty/reflect/Core.scala`
 
@@ -42,3 +42,19 @@ Represent a value
 * `name: String` Name
 * `tpt: TypeTree` Type
 * `rhs: Option[Term]` Body
+
+## TypeOrBoundsTree
+### TypeTree
+#### Inferred
+#### Ident
+Used to represent simple type such as Int, String
+#### Select
+#### Project
+#### Singleton
+#### Refined
+#### Annotated
+#### MatchType
+#### ByName
+#### LambdaTypeTree
+#### TypeBind
+#### TypeBlock
