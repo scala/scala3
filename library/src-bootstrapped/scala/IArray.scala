@@ -11,7 +11,7 @@ object IArray {
   /** Defines extension methods for immutable arrays */
   implied arrayOps {
 
-    /** The selection operatiom on an immutable array.
+    /** The selection operation on an immutable array.
      *
      *  @param arr the immutable array
      *  @param n   the index of the element to select
