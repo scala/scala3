@@ -35,5 +35,10 @@ object Test {
 
     // TODO: require whitebox macros
     // assert(GenIso.fields[Address].from((0, "a")) == Address(0, "a"))
+
+    val jNum: Prism[Json, Double] = GenPrism[Json, JNum] composeIso GenIso[JNum, Double]
+    assert(jNum(3.5) == JNum(3.5))
+    assert(jNum.getOption(JNum(3.5)) == Some(3.5))
+    assert(jNum.getOption(JNull) == None)
   }
 }

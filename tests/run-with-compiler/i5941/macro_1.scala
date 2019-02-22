@@ -184,9 +184,14 @@ object GenIso {
   inline def unit[S]: Iso[S, 1] = ~Iso.implUnit[S]
 }
 
-trait Prism[S, A] {
+trait Prism[S, A] { outer =>
   def getOption(s: S): Option[A]
   def apply(a: A): S
+
+  def composeIso[B](iso: Iso[A, B]): Prism[S, B] = new Prism {
+    def getOption(s: S): Option[B] = outer.getOption(s).map(a => iso.to(a))
+    def apply(b: B): S = outer(iso.from(b))
+  }
 }
 
 object Prism {
@@ -195,7 +200,20 @@ object Prism {
     def apply(a: A): S = app(a)
   }
 
-  def impl[S: Type, A: Type](implicit refl: Reflection): Expr[Prism[S, A]] = ???
+  def impl[S: Type, A <: S : Type](implicit refl: Reflection): Expr[Prism[S, A]] = {
+    import refl._
+    import util._
+    import quoted.Toolbox.Default._
+
+    val tpS = typeOf[S]
+    val tpA = typeOf[A]
+
+    '{
+      val get = (p: S) =>  if (p.isInstanceOf[A]) Some(p.asInstanceOf[A]) else None
+      val app = (p: A) =>  p
+      apply(get)(app)
+    }
+  }
 }
 
 object GenPrism {
@@ -204,8 +222,8 @@ object GenPrism {
    *
    *   Prism[Json, JStr]{
    *     case JStr(v) => Some(v)
-   *      case _      => None
+   *     case _       => None
    *   }(jstr => jstr)
    */
-  inline def apply[S, A]: Prism[S, A] = ~Prism.impl[S, A]
+  inline def apply[S, A <: S]: Prism[S, A] = ~Prism.impl[S, A]
 }
