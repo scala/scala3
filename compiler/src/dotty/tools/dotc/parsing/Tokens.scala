@@ -180,6 +180,7 @@ object Tokens extends TokensCommon {
   final val ERASED = 63;           enter(ERASED, "erased")
   final val IMPLIED = 64;          enter(IMPLIED, "implied")
   final val GIVEN = 65;            enter(GIVEN, "given")
+  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -198,7 +199,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, GIVEN)
+  final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
