@@ -2701,7 +2701,7 @@ class Typer extends Namer
     /** Replace every top-level occurrence of a wildcard type argument by
      *  a fresh skolem type. The skolem types are of the form $i.CAP, where
      *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
-     *  type member.
+     *  type member. See the documentation of `TypeBox` for a rationale why we do this.
      */
     def captureWildcards(tp: Type)(implicit ctx: Context): Type = tp match {
       case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
@@ -2712,19 +2712,15 @@ class Typer extends Namer
       case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
         tycon.typeParams match {
           case tparams @ ((_: Symbol) :: _) =>
-            val args1 = args.map {
-              case TypeBounds(lo, hi) =>
-                val skolem = SkolemType(defn.TypeBoxType.appliedTo(lo, hi))
-                TypeRef(skolem, defn.TypeBox_CAP)
-              case arg => arg
-            }
-            val boundss = tparams.map(_.paramInfo.subst(tparams.asInstanceOf[List[TypeSymbol]], args1))
-            for ((newArg, oldArg, bounds) <- (args1, args, boundss).zipped)
-              if (newArg `ne` oldArg) {
-                val TypeRef(skolem @ SkolemType(app @ AppliedType(typeBox, lo :: hi :: Nil)), _) = newArg
-                skolem.info = app.derivedAppliedType(
-                  typeBox, (lo | bounds.loBound) :: (hi & bounds.hiBound) :: Nil)
+            val boundss = tparams.map(_.paramInfo.substApprox(tparams.asInstanceOf[List[TypeSymbol]], args))
+            val args1 = args.zipWithConserve(boundss) { (arg, bounds) =>
+              arg match {
+                case TypeBounds(lo, hi) =>
+                  val skolem = SkolemType(defn.TypeBoxType.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
+                  TypeRef(skolem, defn.TypeBox_CAP)
+                case arg => arg
               }
+            }
             tp.derivedAppliedType(tycon, args1)
           case _ =>
             tp

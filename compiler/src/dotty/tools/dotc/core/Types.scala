@@ -3618,12 +3618,8 @@ object Types {
 
   // ----- Skolem types -----------------------------------------------
 
-  /** A skolem type reference with underlying type `info`.
-   *  Note: `info` is a var, since this allows one to create a number of skolem types
-   *  and fill in their infos with types that refers to the skolem types recursively.
-   *  This is used in `captureWildcards` in `Typer`.
-   */
-  case class SkolemType(private[dotc] var info: Type) extends UncachedProxyType with ValueType with SingletonType {
+  /** A skolem type reference with underlying type `info` */
+  case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
     def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =
       if (info eq this.info) this else SkolemType(info)
