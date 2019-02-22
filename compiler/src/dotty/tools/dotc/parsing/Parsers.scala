@@ -548,7 +548,7 @@ object Parsers {
             val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
             Apply(top, args)
           }
-          app.pushAttachment(WithApply, ())
+          app.pushAttachment(ApplyGiven, ())
           recur(app)
         }
         else reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
