@@ -2699,8 +2699,10 @@ class Typer extends Namer
     }
 
     /** Replace every top-level occurrence of a wildcard type argument by
-    *  a skolem type
-    */
+     *  a fresh skolem type. The skolem types are of the form $i.CAP, where
+     *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+     *  type member.
+     */
     def captureWildcards(tp: Type)(implicit ctx: Context): Type = tp match {
       case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
       case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
@@ -2733,11 +2735,13 @@ class Typer extends Namer
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
-      if (folded ne tree) return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
+      if (folded ne tree)
+        return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
 
       // Try to capture wildcards in type
       val captured = captureWildcards(wtp)
-      if (captured `ne` wtp) return readapt(tree.cast(captured))
+      if (captured `ne` wtp)
+        return readapt(tree.cast(captured))
 
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass) {

@@ -130,9 +130,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
   }
 
+  /** The current approximation state. See `ApproxState`. */
   private[this] var approx: ApproxState = FreshApprox
   protected def approxState: ApproxState = approx
 
+  /** The original left-hand type of the comparison. Gets reset
+   *  everytime we compare components of the previous pair of types.
+   *  This type is used for capture conversion in `isSubArgs`.
+   */
   private [this] var leftRoot: Type = null
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
@@ -155,6 +160,16 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
   def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, FreshApprox)
 
+  /** The inner loop of the isSubType comparison.
+   *  Recursive calls from recur should go to recur directly if the two types
+   *  compared in the callee are essentially the same as the types compared in the
+   *  caller. "The same" means: represent essentially the same sets of values.
+   * `recur` should not be used to compare components of types. In this case
+   *  one should use `isSubType(_, _)`.
+   *  `recur` should also not be used to compare approximated versions of the original
+   *  types (as when we go from an abstract type to one of its bounds). In that case
+   *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation
+   */
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
     def monitoredIsSubType = {
@@ -1017,14 +1032,47 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   */
   def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
 
+    /** The bounds of parameter `tparam`, where all references to type paramneters
+     *  are replaced by corresponding arguments (or their approximations in the case of
+     *  wildcard arguments).
+     */
     def paramBounds(tparam: Symbol): TypeBounds =
       tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-    def recur(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
+    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
       if (args1.isEmpty) args2.isEmpty
       else args2.nonEmpty && {
         val tparam = tparams2.head
         val v = tparam.paramVariance
+
+        /** Try a capture conversion:
+         *  If the original left-hand type `leftRoot` is a path `p.type`,
+         *  and the current widened left type is an application with wildcard arguments
+         *  such as `C[_]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
+         *  compare with `C[p.X]` instead. Otherwise return `false`.
+         *  Also do a capture conversion in either of the following cases:
+         *
+         *   - If we are after typer. We generally relax soundness requirements then.
+         *     We need the relaxed condition to correctly compute overriding relationships.
+         *     Missing this case led to AbstractMethod errors in the bootstrap.
+         *
+         *   - If we are in mode TypevarsMissContext, which means we test implicits
+         *     for eligibility. In this case, we can be more permissive, since it's
+         *     just a pre-check. This relaxation is needed since the full
+         *     implicit typing might perform an adaptation that skolemizes the
+         *     type of a synthesized tree before comparing it with an expected type.
+         *     But no such adaptation is applied for implicit eligibility
+         *     testing, so we have to compensate.
+         */
+        def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
+          case tparam: Symbol
+          if leftRoot.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext) =>
+            val captured = TypeRef(leftRoot, tparam)
+            assert(captured.exists, i"$leftRoot has no member $tparam in isSubArgs($args1, $args2, $tp1, $tparams2)")
+            isSubArg(captured, arg2)
+          case _ =>
+            false
+        }
 
         def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
           case arg2: TypeBounds =>
@@ -1040,13 +1088,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           case _ =>
             arg1 match {
               case arg1: TypeBounds =>
-	            tparam match {
-	              case tparam: Symbol if leftRoot.isStable || ctx.isAfterTyper =>
-	                val captured = TypeRef(leftRoot, tparam)
-	                isSubArg(captured, arg2)
-	              case _ =>
-	                false
-	            }
+                compareCaptured(arg1, arg2)
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&
                 (v < 0 || isSubType(arg1, arg2))
@@ -1061,9 +1103,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
           adapted2.ne(arg2) && isSubArg(arg1, adapted2)
         }
-      } && recur(args1.tail, args2.tail, tparams2.tail)
+      } && recurArgs(args1.tail, args2.tail, tparams2.tail)
 
-    recur(args1, args2, tparams2)
+    recurArgs(args1, args2, tparams2)
   }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
@@ -1826,8 +1868,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
 object TypeComparer {
 
-  val oldScheme = true
-
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
     var tpe: Type = NoType
@@ -1841,6 +1881,12 @@ object TypeComparer {
   private val LoApprox = 1
   private val HiApprox = 2
 
+  /** The approximation state indicates how the pair of types currently compared
+   *  relates to the types compared originally.
+   *   - `NoApprox`: They are still the same types
+   *   - `LoApprox`: The left type is approximated (i.e widened)"
+   *   - `HiApprox`: The right type is approximated (i.e narrowed)"
+   */
   class ApproxState(private val bits: Int) extends AnyVal {
     override def toString: String = {
       val lo = if ((bits & LoApprox) != 0) "LoApprox" else ""
@@ -1854,6 +1900,11 @@ object TypeComparer {
   }
 
   val NoApprox: ApproxState = new ApproxState(0)
+
+  /** A special approximation state to indicate that this is the first time we
+   *  compare (approximations of) this pair of types. It's converted to `NoApprox`
+   *  in `isSubType`, but also leads to `leftRoot` being set there.
+   */
   val FreshApprox: ApproxState = new ApproxState(4)
 
   /** Show trace of comparison operations when performing `op` as result string */

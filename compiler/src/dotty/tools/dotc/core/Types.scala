@@ -1443,8 +1443,8 @@ object Types {
     final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type =
       ctx.substSym(this, from, to, null)
 
-    /** Substitute all occurrences of symbols in `from` by corresponding types in a`to`.
-     *  Unlike `subst`, the `to` types here can be type bounds. A TypeBounds target
+    /** Substitute all occurrences of symbols in `from` by corresponding types in `to`.
+     *  Unlike for `subst`, the `to` types can be type bounds. A TypeBounds target
      *  will be replaced by range that gets absorbed in an approximating type map.
      */
     final def substApprox(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
