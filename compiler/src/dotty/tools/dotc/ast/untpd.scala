@@ -274,8 +274,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   val OriginalSymbol: Property.Key[Symbol] = new Property.Key
 
-  /** Property key for contextual Apply trees of the form `fn with arg` */
-  val WithApply: Property.StickyKey[Unit] = new Property.StickyKey
+  /** Property key for contextual Apply trees of the form `fn given arg` */
+  val ApplyGiven: Property.StickyKey[Unit] = new Property.StickyKey
 
   // ------ Creation methods for untyped only -----------------
 
