@@ -3623,7 +3623,7 @@ object Types {
    *  and fill in their infos with types that refers to the skolem types recursively.
    *  This is used in `captureWildcards` in `Typer`.
    */
-  case class SkolemType(var info: Type) extends UncachedProxyType with ValueType with SingletonType {
+  case class SkolemType(private[dotc] var info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
     def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =
       if (info eq this.info) this else SkolemType(info)

@@ -138,7 +138,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  everytime we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
-  private [this] var leftRoot: Type = null
+  private [this] var leftRoot: Type = _
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx

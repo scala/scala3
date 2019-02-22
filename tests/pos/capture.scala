@@ -14,7 +14,9 @@
 //    Convert `t` to `t.cast[C[$j.CAP]]` where `$j` is a skolem of type `TypeBox[Nothing, Any`]
 //    (or more generally, `TypeBox[L, U]`) wgere `L` and `U` are the bounds of the wildcard).
 //
-// skolemization-of-ewach-param is more robust since it is stable under widening.
+// skolemization-of-each-param is more robust since it is stable under widening.
+// By contrast, skolemization-as-a-whole risks losing capturing ability if the skolem
+// type is widened in some context. This leads to the difference in behavior shown below.
 class Test {
 
   abstract class Liftable[T]
@@ -31,5 +33,5 @@ class Test {
 
   runtimeClass.toExpr(ClassIsLiftable) // OK for skolemization-as-a-whole and skolemization-of-each-param
 
-  runtimeClass.toExpr // only works with skolemization-of-each-param
+  runtimeClass.toExpr // only works with skolemization-of-each-param, also works in scalac.
 }
