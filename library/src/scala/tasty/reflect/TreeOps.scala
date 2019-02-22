@@ -248,7 +248,7 @@ trait TreeOps extends Core {
     /** Scala term identifier */
     val Ident: IdentModule
     abstract class IdentModule {
-      def apply(tmref: TermRef)(implicit ctx: Context): Ident
+      def apply(tmref: TermRef)(implicit ctx: Context): Term
 
       def copy(original: Tree)(name: String)(implicit ctx: Context): Ident
 

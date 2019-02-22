@@ -383,8 +383,8 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
     }
 
     object Ident extends IdentModule {
-      def apply(tmref: TermRef)(implicit ctx: Context): Ident =
-        withDefaultPos(implicit ctx => tpd.Ident(tmref))
+      def apply(tmref: TermRef)(implicit ctx: Context): Term =
+        withDefaultPos(implicit ctx => tpd.ref(tmref).asInstanceOf[Term])
 
       def copy(original: Tree)(name: String)(implicit ctx: Context): Ident =
         tpd.cpy.Ident(original)(name.toTermName)

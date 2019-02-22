@@ -40,5 +40,19 @@ object Test {
     assert(jNum(3.5) == JNum(3.5))
     assert(jNum.getOption(JNum(3.5)) == Some(3.5))
     assert(jNum.getOption(JNull) == None)
+
+    // inner classes
+    val inner = new Inner
+    assert(GenIso[inner.JStr, String].to(inner.JStr("Hello")) == "Hello")
+    assert(GenIso.unit[inner.JNull.type].to(inner.JNull) == 1)
+    assert(GenIso.unit[inner.JNull.type].from(1) == inner.JNull)
   }
+}
+
+class Inner {
+  sealed trait Json
+  case object JNull extends Json
+  case class JStr(v: String) extends Json
+  case class JNum(v: Double) extends Json
+  case class JObj(v: Map[String, Json]) extends Json
 }
