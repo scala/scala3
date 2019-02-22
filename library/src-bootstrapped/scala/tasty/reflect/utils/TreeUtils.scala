@@ -14,12 +14,13 @@ trait TreeUtils {
     implicit val rhsTpe: quoted.Type[T] = rhs.tpe.seal.asInstanceOf[quoted.Type[T]]
     val rhsExpr = rhs.seal[T]
     val expr = '{
-      val x = ~rhsExpr
-      ~{
-        val id = ('(x)).unseal.asInstanceOf[Term.Ident]
+      val x = $rhsExpr
+      ${
+        val id = ('x).unseal.asInstanceOf[Term.Ident]
         body(id).seal[Any]
       }
     }
     expr.unseal
   }
+
 }

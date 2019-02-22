@@ -3,12 +3,12 @@ import scala.tasty._
 
 object Macros {
 
-  implicit inline def withSource(arg: Any): (String, Any) = ~impl('(arg))
+  implicit inline def withSource(arg: Any): (String, Any) = ${ impl('arg) }
 
   private def impl(arg: Expr[Any])(implicit reflect: Reflection): Expr[(String, Any)] = {
     import reflect._
     val source = arg.unseal.underlyingArgument.pos.sourceCode.toString.toExpr
-    '(Tuple2(~source, ~arg))
+    '{Tuple2($source, $arg)}
   }
 
 }

@@ -5,7 +5,7 @@ import scala.tasty.util._
 
 object Macros {
 
-  implicit inline def testMacro: Unit = ~impl
+  implicit inline def testMacro: Unit = ${impl}
 
   def impl(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -16,12 +16,12 @@ object Macros {
     val Constant = new ConstantExtractor(reflect)
 
     3.toExpr match { case Constant(n) => stagedPrintln(n) }
-    '(4) match { case Constant(n) => stagedPrintln(n) }
-    '("abc") match { case Constant(n) => stagedPrintln(n) }
-    '(null) match { case Constant(n) => stagedPrintln(n) }
+    '{4} match { case Constant(n) => stagedPrintln(n) }
+    '{"abc"} match { case Constant(n) => stagedPrintln(n) }
+    '{null} match { case Constant(n) => stagedPrintln(n) }
 
-    '(new Object) match { case Constant(n) => println(n); case _ => stagedPrintln("OK") }
+    '{new Object} match { case Constant(n) => println(n); case _ => stagedPrintln("OK") }
 
-    '(print(~buff.result().toExpr))
+    '{print(${buff.result().toExpr})}
   }
 }

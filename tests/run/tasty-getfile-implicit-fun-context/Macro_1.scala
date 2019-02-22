@@ -7,7 +7,7 @@ object SourceFiles {
   def tastyContext(implicit ctx: Reflection): Reflection = ctx
 
   implicit inline def getThisFile: String =
-    ~getThisFileImpl
+    ${getThisFileImpl}
 
   def getThisFileImpl: Macro[String] = {
     val reflect = tastyContext

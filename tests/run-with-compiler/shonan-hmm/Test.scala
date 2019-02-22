@@ -18,7 +18,7 @@ object Test {
       val intExprComplex = new RingComplex(RingIntExpr)
       import intExprComplex._
 
-      val res = Complex('(1), '(2)) * Complex('(4), '(2))
+      val res = Complex('{1}, '{2}) * Complex('{4}, '{2})
       println(s"Complex(${res.re.show}, ${res.im.show})")
     }
 
@@ -26,7 +26,7 @@ object Test {
     //   val intExprComplex = implicitly[Ring[Expr[Complex[Int]]]]
     //   import intExprComplex._
 
-    //   val res = '(Complex(1, 2)) * '(Complex(4, 2))
+    //   val res = '{Complex(1, 2)} * '{Complex(4, 2)}
     //   println(res.show)
     // }
 

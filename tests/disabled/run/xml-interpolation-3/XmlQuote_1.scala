@@ -9,11 +9,11 @@ object XmlQuote {
 
   implicit object SCOps {
     inline def xml(this inline ctx: StringContext)(args: => Any*): Xml =
-      ~XmlQuote.impl(ctx, '(args))
+      ${XmlQuote.impl(ctx, 'args)}
   }
 
   def impl(receiver: StringContext, args: Expr[Seq[Any]]): Expr[Xml] = {
     val string = receiver.parts.mkString("??")
-    '(new Xml(~string.toExpr, (~args).toList))
+    '{new Xml(${string.toExpr}, ($args).toList)}
   }
 }

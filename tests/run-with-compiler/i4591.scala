@@ -4,12 +4,12 @@ import scala.quoted._
 object Test {
 
   def foo[T: Type](init: Expr[T]): Expr[Unit] = '{
-    var x = ~init
+    var x = $init
     println(x)
   }
 
   def main(args: Array[String]): Unit = {
-    foo('(Option(9))).run
+    foo('{Option(9)}).run
   }
 
 }

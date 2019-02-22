@@ -3,7 +3,7 @@ package scala.quoted
 import scala.runtime.quoted.Unpickler.liftedExpr
 
 /** A typeclass for types that can be turned to `quoted.Expr[T]`
- *  without going through an explicit `'(...)` operation.
+ *  without going through an explicit `'{...}` operation.
  */
 abstract class Liftable[T] {
   def toExpr(x: T): Expr[T]

@@ -12,7 +12,7 @@ object Test {
 
   def f: Expr[Int] = '{
     def ff: Int = {
-      ~g
+      $g
     }
     ff
   }

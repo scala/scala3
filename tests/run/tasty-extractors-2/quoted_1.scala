@@ -5,7 +5,7 @@ import scala.tasty._
 object Macros {
 
   implicit inline def printTree[T](x: => T): Unit =
-    ~impl('(x))
+    ${ impl('x) }
 
   def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -16,8 +16,8 @@ object Macros {
     val treeTpeStr = tree.tpe.show
 
     '{
-      println(~treeStr.toExpr)
-      println(~treeTpeStr.toExpr)
+      println(${treeStr.toExpr})
+      println(${treeTpeStr.toExpr})
       println()
     }
   }

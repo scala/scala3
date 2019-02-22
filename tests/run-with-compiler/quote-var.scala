@@ -9,21 +9,23 @@ object Test {
 
   object Var {
     def apply(init: Expr[String])(body: Var => Expr[String]): Expr[String] = '{
-      var x = ~init
-      ~body(
-        new Var {
-          def get: Expr[String] = '(x)
-          def update(e: Expr[String]): Expr[Unit] = '{ x = ~e }
-        }
-      )
+      var x = $init
+      ${
+        body(
+          new Var {
+            def get: Expr[String] = 'x
+            def update(e: Expr[String]): Expr[Unit] = '{ x = $e }
+          }
+        )
+      }
     }
   }
 
 
-  def test1(): Expr[String] = Var('("abc")) { x =>
+  def test1(): Expr[String] = Var('{"abc"}) { x =>
     '{
-      ~x.update('("xyz"))
-      ~x.get
+      ${ x.update('{"xyz"}) }
+      ${ x.get }
     }
   }
 

@@ -12,7 +12,7 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: => Boolean): Unit =
-    ~impl('(cond))
+    ${impl('cond)}
 
   def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -34,9 +34,9 @@ object Asserts {
 
     tree match {
       case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op), right :: Nil)) =>
-        '(assertTrue(~left.seal[Boolean])) // Buggy code. To generate the errors
+        '{assertTrue(${left.seal[Boolean]})} // Buggy code. To generate the errors
       case _ =>
-        '(assertTrue(~cond))
+        '{assertTrue($cond)}
     }
 
   }

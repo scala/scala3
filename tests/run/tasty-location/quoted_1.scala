@@ -6,7 +6,7 @@ case class Location(owners: List[String])
 
 object Location {
 
-  implicit inline def location: Location = ~impl
+  implicit inline def location: Location = ${impl}
 
   def impl(implicit reflect: Reflection): Expr[Location] = {
     import reflect._
@@ -16,11 +16,11 @@ object Location {
       else listOwnerNames(sym.owner, sym.name :: acc)
 
     val list = listOwnerNames(rootContext.owner, Nil)
-    '(new Location(~list.toExpr))
+    '{new Location(${list.toExpr})}
   }
 
   private implicit def ListIsLiftable[T : Liftable : Type]: Liftable[List[T]] = {
-    case x :: xs  => '{ ~x.toExpr :: ~xs.toExpr }
+    case x :: xs  => '{ ${x.toExpr} :: ${xs.toExpr} }
     case Nil => '{ List.empty[T] }
   }
 }

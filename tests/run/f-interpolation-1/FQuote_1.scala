@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object FQuote {
 
   implicit class SCOps(ctx: StringContext) {
-    inline def ff(args: => Any*): String = ~impl('(this), '(args))
+    inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
@@ -16,8 +16,8 @@ object FQuote {
       case x :: xs  =>
         val head = x.seal[Any]
         val tail = liftListOfAny(xs)
-        '{ ~head :: ~tail }
-      case Nil => '(Nil)
+        '{ $head :: $tail }
+      case Nil => '{Nil}
     }
 
     def isStringConstant(tree: Term) = tree match {
@@ -47,12 +47,12 @@ object FQuote {
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {
-        return '(s"`${~arg.showCode.toExpr}` is not of type Int")
+        return '{s"`${${arg.showCode.toExpr}}` is not of type Int"}
       }
 
     }
 
     val string = parts.mkString("")
-    '{ new collection.immutable.StringOps(~string.toExpr).format(~args: _*) }
+    '{ new collection.immutable.StringOps(${string.toExpr}).format($args: _*) }
   }
 }

@@ -8,11 +8,11 @@ class LineNumber(val value: Int) {
 
 object LineNumber {
 
-  implicit inline def line: LineNumber = ~lineImpl
+  implicit inline def line: LineNumber = ${lineImpl}
 
   def lineImpl(implicit reflect: Reflection): Expr[LineNumber] = {
     import reflect._
-    '(new LineNumber(~rootPosition.startLine.toExpr))
+    '{new LineNumber(${rootPosition.startLine.toExpr})}
   }
 
 }

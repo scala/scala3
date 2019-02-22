@@ -21,6 +21,7 @@ import util.Spans._
 import Constants._
 import ScriptParsers._
 import Decorators._
+import scala.tasty.util.Chars.isIdentifierStart
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.patch
 
@@ -46,6 +47,13 @@ object Parsers {
 
   @sharable object ParamOwner extends Enumeration {
     val Class, Type, TypeParam, Def: Value = Value
+  }
+
+  type StageKind = Int
+  object StageKind {
+    val None = 0
+    val Quoted = 1
+    val Spliced = 2
   }
 
   private implicit class AddDeco(val buf: ListBuffer[Tree]) extends AnyVal {
@@ -198,6 +206,16 @@ object Parsers {
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
+
+    /** A '$' identifier is treated as a splice if followed by a `{`.
+     *  A longer identifier starting with `$` is treated as a splice/id combination
+     *  in a quoted block '{...'
+     */
+    def isSplice: Boolean =
+      in.token == IDENTIFIER && in.name(0) == '$' && {
+        if (in.name.length == 1) in.lookaheadIn(BitSet(LBRACE))
+        else (staged & StageKind.Quoted) != 0
+      }
 
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
@@ -352,6 +370,14 @@ object Parsers {
       inEnum = isEnum
       try body
       finally inEnum = saved
+    }
+
+    private[this] var staged = StageKind.None
+    def withinStaged[T](kind: StageKind)(op: => T): T = {
+      val saved = staged
+      staged |= kind
+      try op
+      finally staged = saved
     }
 
     def migrationWarningOrError(msg: String, offset: Int = in.offset): Unit =
@@ -677,30 +703,16 @@ object Parsers {
     def qualId(): Tree = dotSelectors(termIdent())
 
     /** SimpleExpr    ::= literal
-     *                  | symbol
+     *                  | 'id | 'this | 'true | 'false | 'null
      *                  | null
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset = in.offset.
      */
     def literal(negOffset: Int = in.offset, inPattern: Boolean = false): Tree = {
-      def finish(value: Any): Tree = {
-        val t = atSpan(negOffset) { Literal(Constant(value)) }
-        in.nextToken()
-        t
-      }
-      val isNegated = negOffset < in.offset
-      atSpan(negOffset) {
-        if (in.token == SYMBOLLIT) {
-          migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
-                                      |use a string literal "${in.name}" or an application Symbol("${in.name}") instead.""")
-          if (in.isScala2Mode) {
-            patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
-            patch(source, Span(in.charOffset - 1), "\")")
-          }
-          atSpan(in.skipToken()) { SymbolLit(in.strVal) }
-        }
-        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
-        else finish(in.token match {
+
+      def literalOf(token: Token): Literal = {
+        val isNegated = negOffset < in.offset
+        val value = token match {
           case CHARLIT                => in.charVal
           case INTLIT                 => in.intVal(isNegated).toInt
           case LONGLIT                => in.intVal(isNegated)
@@ -713,7 +725,41 @@ object Parsers {
           case _                      =>
             syntaxErrorOrIncomplete(IllegalLiteral())
             null
-        })
+        }
+        Literal(Constant(value))
+      }
+
+      atSpan(negOffset) {
+        if (in.token == QUOTEID) {
+          if ((staged & StageKind.Spliced) != 0 && isIdentifierStart(in.name(0))) {
+            val t = atSpan(in.offset + 1) {
+              val tok = in.toToken(in.name)
+              tok match {
+                case TRUE | FALSE | NULL => literalOf(tok)
+                case THIS => This(EmptyTypeIdent)
+                case _ => Ident(in.name)
+              }
+            }
+            in.nextToken()
+            Quote(t)
+          }
+          else {
+            migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
+                                        |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                                        |or enclose in braces '{${in.name}} if you want a quoted expression.""")
+            if (in.isScala2Mode) {
+              patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
+              patch(source, Span(in.charOffset - 1), "\")")
+            }
+            atSpan(in.skipToken()) { SymbolLit(in.strVal) }
+          }
+        }
+        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
+        else {
+          val t = literalOf(in.token)
+          in.nextToken()
+          t
+        }
       }
     }
 
@@ -918,15 +964,40 @@ object Parsers {
         })
       else t
 
+    /** The block in a quote or splice */
+    def stagedBlock() =
+      inDefScopeBraces(block()) match {
+        case t @ Block(Nil, expr) if !expr.isEmpty => expr
+        case t => t
+      }
+
+    /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
+     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
+     */
+    def splice(isType: Boolean): Tree =
+      atSpan(in.offset) {
+        val expr =
+          if (in.name.length == 1) {
+            in.nextToken()
+            withinStaged(StageKind.Spliced)(stagedBlock())
+          }
+          else atSpan(in.offset + 1) {
+            val id = Ident(in.name.drop(1))
+            in.nextToken()
+            id
+          }
+        if (isType) TypSplice(expr) else Splice(expr)
+      }
+
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
      *                     |  StableId
-     *                     |  ['~'] StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
      *                     |  Refinement
      *                     |  Literal
+     *                     |  ‘$’ ‘{’ Block ‘}’
      */
     def simpleType(): Tree = simpleTypeRest {
       if (in.token == LPAREN)
@@ -940,8 +1011,8 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       }
-      else if (isIdent(nme.raw.TILDE) && in.lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
-        atSpan(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
+      else if (isSplice)
+        splice(isType = true)
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
@@ -1402,9 +1473,10 @@ object Parsers {
 
     /** SimpleExpr    ::= ‘new’ (ConstrApp [TemplateBody] | TemplateBody)
      *                 |  BlockExpr
-     *                 |  ‘'{’ BlockExprContents ‘}’
-     *                 |  ‘'(’ ExprsInParens ‘)’
-     *                 |  ‘'[’ Type ‘]’
+     *                 |  ‘'’ ‘{’ Block ‘}’
+     *                 |  ‘'’ ‘[’ Type ‘]’
+     *                 |  ‘$’ ‘{’ Block ‘}’
+     *                 |  quoteId
      *                 |  SimpleExpr1 [`_']
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
@@ -1419,7 +1491,10 @@ object Parsers {
       val t = in.token match {
         case XMLSTART =>
           xmlLiteral()
-        case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
+        case IDENTIFIER =>
+          if (isSplice) splice(isType = false)
+          else path(thisOK = true)
+        case BACKQUOTED_IDENT | THIS | SUPER =>
           path(thisOK = true)
         case USCORE =>
           val start = in.skipToken()
@@ -1433,15 +1508,15 @@ object Parsers {
         case LBRACE =>
           canApply = false
           blockExpr()
-        case QPAREN =>
-          in.token = LPAREN
-          atSpan(in.offset)(Quote(simpleExpr()))
-        case QBRACE =>
-          in.token = LBRACE
-          atSpan(in.offset)(Quote(simpleExpr()))
-        case QBRACKET =>
-          in.token = LBRACKET
-          atSpan(in.offset)(Quote(inBrackets(typ())))
+        case QUOTE =>
+          atSpan(in.skipToken()) {
+            withinStaged(StageKind.Quoted) {
+              Quote {
+                if (in.token == LBRACKET) inBrackets(typ())
+                else stagedBlock()
+              }
+            }
+          }
         case NEW =>
           canApply = false
           newExpr()

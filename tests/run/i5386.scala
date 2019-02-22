@@ -1,10 +1,5 @@
 object Test extends App {
 
-  ~{
-    println("!")
-    1
-  }
-
   +{
     println("!")
     1

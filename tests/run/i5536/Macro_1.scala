@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.tasty._
 
 object scalatest {
-  inline def assert(condition: => Boolean): Unit = ~assertImpl('(condition))
+  inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
   def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
@@ -18,8 +18,8 @@ object scalatest {
         op match {
           case "===" =>
             '{
-              val _left   = ~left
-              val _right  = ~right
+              val _left   = $left
+              val _right  = $right
               val _result = _left == _right
               scala.Predef.assert(_result)
             }

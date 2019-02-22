@@ -76,18 +76,24 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
             enteredSyms = enteredSyms.tail
           }
 
+      def dropEmptyBlocks(tree: Tree): Tree = tree match {
+        case Block(Nil, expr) => dropEmptyBlocks(expr)
+        case _ => tree
+      }
+
       tree match {
-        case Quoted(Spliced(t)) =>
-          transform(t) // '(~x) --> x
 
         case Quoted(quotedTree) =>
-          transformQuotation(quotedTree, tree)
+          dropEmptyBlocks(quotedTree) match {
+            case Spliced(t) => transform(t) // '{ $x } --> x
+            case _ => transformQuotation(quotedTree, tree)
+          }
 
-        case Spliced(Quoted(quotedTree)) =>
-          transform(quotedTree) // ~('x) --> x
-
-        case tree @ Spliced(_) =>
-          transformSplice(tree)
+        case tree @ Spliced(splicedTree) =>
+          dropEmptyBlocks(splicedTree) match {
+            case Quoted(t) => transform(t) // ${ 'x } --> x
+            case _ => transformSplice(tree)
+          }
 
         case Block(stats, _) =>
           val last = enteredSyms

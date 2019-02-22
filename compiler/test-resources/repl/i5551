@@ -1,9 +1,9 @@
 scala> import scala.quoted._
 
-scala> def assertImpl(expr: Expr[Boolean]) = '{ if !(~expr) then throw new AssertionError("failed assertion")}
+scala> def assertImpl(expr: Expr[Boolean]) = '{ if !($expr) then throw new AssertionError("failed assertion")}
 def assertImpl(expr: quoted.Expr[Boolean]): quoted.Expr[Unit]
 
-scala>   inline def assert(expr: => Boolean): Unit =  ~ assertImpl('(expr))
+scala>   inline def assert(expr: => Boolean): Unit =  ${ assertImpl('{expr}) }
 def assert(expr: => Boolean): Unit
 
 scala> assert(0 == 0)

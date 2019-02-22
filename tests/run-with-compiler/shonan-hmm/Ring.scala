@@ -25,11 +25,11 @@ object RingInt extends Ring[Int] {
 }
 
 object RingIntExpr extends Ring[Expr[Int]] {
-  val zero = '(0)
-  val one  = '(1)
-  val add  = (x, y) => '(~x + ~y)
-  val sub  = (x, y) => '(~x - ~y)
-  val mul  = (x, y) => '(~x * ~y)
+  val zero = '{0}
+  val one  = '{1}
+  val add  = (x, y) => '{$x + $y}
+  val sub  = (x, y) => '{$x - $y}
+  val mul  = (x, y) => '{$x * $y}
   override def toString(): String = "RingIntExpr"
 }
 

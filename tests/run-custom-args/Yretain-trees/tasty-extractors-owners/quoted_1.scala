@@ -5,7 +5,7 @@ import scala.tasty._
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
-    ~impl('(x))
+    ${ impl('x) }
 
   def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -42,7 +42,7 @@ object Macros {
 
     val tree = x.unseal
     output.traverseTree(tree)
-    '(print(~buff.result().toExpr))
+    '{print(${buff.result().toExpr})}
   }
 
 }

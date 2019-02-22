@@ -5,7 +5,7 @@ import scala.tasty._
 object Macros {
 
   implicit inline def foo(i: Int): String =
-    ~impl('(i))
+    ${ impl('i) }
 
   def impl(i: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
     value(i).toString.toExpr

@@ -4,7 +4,7 @@ import scala.tasty._
 
 object Macros {
 
-  inline def testDefinitions(): Unit = ~testDefinitionsImpl
+  inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
   def testDefinitionsImpl(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -93,7 +93,7 @@ object Macros {
     printout(definitions.StringType.show)
 
 
-    '(println(~buff.result().mkString("\n").toExpr))
+    '{println(${buff.result().mkString("\n").toExpr})}
   }
 
 }

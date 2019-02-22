@@ -11,7 +11,7 @@ object Test {
   }
 
   inline def power2(x: Double) = {
-    inline def power(x: Double, inline n: Long) = ~PowerMacro.powerCode('(x), n)
+    inline def power(x: Double, inline n: Long) = ${ PowerMacro.powerCode('x, n) }
     power(x, 2)
   }
 }
