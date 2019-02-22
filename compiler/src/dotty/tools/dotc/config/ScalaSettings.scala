@@ -64,7 +64,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val Xhelp: Setting[Boolean] = BooleanSetting("-X", "Print a synopsis of advanced options.")
   val XnoForwarders: Setting[Boolean] = BooleanSetting("-Xno-forwarders", "Do not generate static forwarders in mirror classes.")
   val XmaxInlines: Setting[Int] = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 32)
-  val XmaxClassfileName: Setting[Int] = IntSetting("-Xmax-classfile-name", "Maximum filename length for generated classes", 255, 72 to 255)
   val Xmigration: Setting[ScalaVersion] = VersionSetting("-Xmigration", "Warn about constructs whose behavior may have changed since version.")
   val Xprint: Setting[List[String]] = PhasesSetting("-Xprint", "Print out program after")
   val XprintTypes: Setting[Boolean] = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
