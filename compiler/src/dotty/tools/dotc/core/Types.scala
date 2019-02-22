@@ -4378,6 +4378,8 @@ object Types {
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
       tp.derivedWildcardType(bounds)
+    protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
+      tp.derivedSkolemType(info)
     protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type =
       tp.derivedClassInfo(pre)
     protected def derivedJavaArrayType(tp: JavaArrayType, elemtp: Type): Type =
@@ -4475,7 +4477,7 @@ object Types {
           derivedMatchType(tp, this(tp.bound), this(tp.scrutinee), tp.cases.mapConserve(this))
 
         case tp: SkolemType =>
-          tp
+          derivedSkolemType(tp, this(tp.info))
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
@@ -4754,6 +4756,13 @@ object Types {
       }
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType = {
       tp.derivedWildcardType(rangeToBounds(bounds))
+    }
+
+    override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
+      case Range(lo, hi) =>
+        range(tp.derivedSkolemType(lo), tp.derivedSkolemType(hi))
+      case _ =>
+        tp.derivedSkolemType(info)
     }
 
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
