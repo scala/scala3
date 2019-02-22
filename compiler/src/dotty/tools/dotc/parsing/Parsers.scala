@@ -133,6 +133,9 @@ object Parsers {
      */
     def syntaxError(msg: => Message, span: Span): Unit =
       ctx.error(msg, source.atSpan(span))
+
+    def unimplementedExpr(implicit ctx: Context): Select =
+      Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {
@@ -1445,6 +1448,17 @@ object Parsers {
         case NEW =>
           canApply = false
           newExpr()
+        case MACRO =>
+          val start = in.skipToken()
+          val call = ident()
+          // The standard library uses "macro ???" to denote "fast track" macros
+          // hardcoded in the compiler, don't issue an error for those macros
+          // since we want to be able to compile the standard library.
+          if (call `ne` nme.???)
+            syntaxError(
+              "Scala 2 macros are not supported, see http://dotty.epfl.ch/docs/reference/dropped-features/macros.html",
+              start)
+          unimplementedExpr
         case _ =>
           if (isLiteral) literal()
           else {

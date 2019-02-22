@@ -21,3 +21,5 @@ implicit-match.scala
 implicit-match-nested.scala
 implicit-match-and-inline-match.scala
 
+# Need to add backquotes around "macro" since it's a keyword
+macro-deprecate-dont-touch-backquotedidents.scala
