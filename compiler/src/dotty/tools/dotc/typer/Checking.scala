@@ -80,8 +80,8 @@ object Checking {
     if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
-      case tp @ AppliedType(tycon, args) =>
-        if (tycon.isLambdaSub && args.exists(_.isInstanceOf[TypeBounds]))
+      case tp @ AppliedType(tycon, _) =>
+        if (tycon.isLambdaSub && tp.hasWildcardArg)
           ctx.errorOrMigrationWarning(
             ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
             tree.sourcePos)

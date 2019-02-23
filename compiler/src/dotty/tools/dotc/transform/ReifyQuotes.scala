@@ -282,7 +282,7 @@ class ReifyQuotes extends MacroTransform {
                 val argTpe =
                   if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
                   else defn.QuotedExprType.appliedTo(tpw)
-                val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
+                val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1
                 embedded.addTree(tree, capturedArg.symbol)

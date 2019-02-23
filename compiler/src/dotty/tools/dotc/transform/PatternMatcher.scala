@@ -330,7 +330,7 @@ object PatternMatcher {
       swapBind(tree) match {
         case Typed(pat, tpt) =>
           TestPlan(TypeTest(tpt), scrutinee, tree.span,
-            letAbstract(ref(scrutinee).asInstance(tpt.tpe)) { casted =>
+            letAbstract(ref(scrutinee).cast(tpt.tpe)) { casted =>
               nonNull += casted
               patternPlan(casted, pat, onSuccess)
             })

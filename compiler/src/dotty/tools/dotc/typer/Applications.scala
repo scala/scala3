@@ -1075,7 +1075,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.sourcePos)
-        for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
+        for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs =
           if (argTypes.nonEmpty && argTypes.last.isRepeatedParam)
             args.lastOption match {

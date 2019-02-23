@@ -166,8 +166,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) eq tvar)
   }
 
-  private def isBounds(tp: Type) = tp.isInstanceOf[TypeBounds]
-
 // ---------- Dependency handling ----------------------------------------------
 
   def lower(param: TypeParamRef): List[TypeParamRef] = lowerLens(this, param.binder, param.paramNum)

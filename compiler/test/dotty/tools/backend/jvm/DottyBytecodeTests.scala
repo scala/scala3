@@ -418,35 +418,11 @@ class TestBCode extends DottyBytecodeTest {
       val method = getMethod(moduleNode, "test")
 
       val instructions = instructionsFromMethod(method)
-      val expected = List(
-        VarOp(Opcodes.ALOAD, 1),
-        VarOp(Opcodes.ASTORE, 2),
-        VarOp(Opcodes.ALOAD, 2),
-        TypeOp(Opcodes.INSTANCEOF, "Test"),
-        Jump(Opcodes.IFEQ, Label(11)),
-        VarOp(Opcodes.ALOAD, 2),
-        TypeOp(Opcodes.CHECKCAST, "Test"),
-        VarOp(Opcodes.ASTORE, 3),
-        Field(Opcodes.GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
-        Invoke(Opcodes.INVOKEVIRTUAL, "scala/Predef$", "$qmark$qmark$qmark", "()Lscala/runtime/Nothing$;", false),
-        Op(Opcodes.ATHROW),
-        Label(11),
-        FrameEntry(1, List("java/lang/Object"), List()),
-        TypeOp(Opcodes.NEW, "scala/MatchError"),
-        Op(Opcodes.DUP),
-        VarOp(Opcodes.ALOAD, 2),
-        Invoke(Opcodes.INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(Opcodes.ATHROW),
-        Label(18),
-        FrameEntry(0, List(), List("java/lang/Throwable")),
-        Op(Opcodes.ATHROW),
-        Label(21),
-        FrameEntry(4, List(), List("java/lang/Throwable")),
-        Op(Opcodes.ATHROW)
-      )
-      assert(instructions == expected,
-        "`test` was not properly generated\n" + diffInstructions(instructions, expected))
-
+      val hasReturn = instructions.exists {
+        case Op(Opcodes.RETURN) => true
+        case _ => false
+      }
+      assertFalse(hasReturn)
     }
   }
 

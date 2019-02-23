@@ -159,7 +159,7 @@ trait Dynamic { self: Typer with Applications =>
 
     fun.tpe.widen match {
       case tpe: ValueType =>
-        structuralCall(nme.selectDynamic, Nil).asInstance(tpe)
+        structuralCall(nme.selectDynamic, Nil).cast(tpe)
 
       case tpe: MethodType =>
         def isDependentMethod(tpe: Type): Boolean = tpe match {
@@ -176,7 +176,7 @@ trait Dynamic { self: Typer with Applications =>
         else {
           val ctags = tpe.paramInfoss.flatten.map(pt =>
             implicitArgTree(defn.ClassTagType.appliedTo(pt.widenDealias :: Nil), fun.span.endPos))
-          structuralCall(nme.applyDynamic, ctags).asInstance(tpe.finalResultType)
+          structuralCall(nme.applyDynamic, ctags).cast(tpe.finalResultType)
         }
 
       // (@allanrenucci) I think everything below is dead code

@@ -481,7 +481,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, toText(rhs))
           case LambdaTypeTree(tparams, body) =>
             recur(body, tparamsText(tparams))
-          case rhs: TypeTree if rhs.typeOpt.isInstanceOf[TypeBounds] =>
+          case rhs: TypeTree if isBounds(rhs.typeOpt) =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))

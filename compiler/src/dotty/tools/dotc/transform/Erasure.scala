@@ -319,8 +319,14 @@ object Erasure {
   class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
     import Boxing._
 
+    def isErased(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+      case TypeApply(Select(qual, _), _) if tree.symbol == defn.Any_typeCast =>
+        isErased(qual)
+      case _ => tree.symbol.isEffectivelyErased
+    }
+
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
-      if (tree.symbol.isEffectivelyErased && !ctx.mode.is(Mode.Type))
+      if (isErased(tree) && !ctx.mode.is(Mode.Type))
         ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
       tree
     }

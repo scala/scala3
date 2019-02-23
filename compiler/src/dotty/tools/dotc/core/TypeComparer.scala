@@ -130,21 +130,51 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
   }
 
-  private[this] var approx: ApproxState = NoApprox
+  /** The current approximation state. See `ApproxState`. */
+  private[this] var approx: ApproxState = FreshApprox
   protected def approxState: ApproxState = approx
 
+  /** The original left-hand type of the comparison. Gets reset
+   *  everytime we compare components of the previous pair of types.
+   *  This type is used for capture conversion in `isSubArgs`.
+   */
+  private [this] var leftRoot: Type = _
+
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
-    val saved = approx
-    this.approx = a
+    val savedApprox = approx
+    val savedLeftRoot = leftRoot
+    if (a == FreshApprox) {
+      this.approx = NoApprox
+      this.leftRoot = tp1
+    }
+    else this.approx = a
     try recur(tp1, tp2)
     catch {
       case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
     }
-    finally this.approx = saved
+    finally {
+      this.approx = savedApprox
+      this.leftRoot = savedLeftRoot
+    }
   }
 
-  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, NoApprox)
+  def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, FreshApprox)
 
+  /** The inner loop of the isSubType comparison.
+   *  Recursive calls from recur should go to recur directly if the two types
+   *  compared in the callee are essentially the same as the types compared in the
+   *  caller. "The same" means: represent essentially the same sets of values.
+   * `recur` should not be used to compare components of types. In this case
+   *  one should use `isSubType(_, _)`.
+   *  `recur` should also not be used to compare approximated versions of the original
+   *  types (as when we go from an abstract type to one of its bounds). In that case
+   *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation.
+   *
+   *  Note: Logicaly, `recur` could be nested in `isSubType`, which would avoid
+   *  the instance state consisting `approx` and `leftRoot`. But then the implemented
+   *  code would have two extra parameters for each of the many calls that go from
+   *  one sub-part of isSubType to another.
+   */
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
     def monitoredIsSubType = {
@@ -277,7 +307,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case tp2: SuperType =>
         def compareSuper = tp1 match {
           case tp1: SuperType =>
-            isSubType(tp1.thistpe, tp2.thistpe) &&
+            recur(tp1.thistpe, tp2.thistpe) &&
             isSameType(tp1.supertpe, tp2.supertpe)
           case _ =>
             secondTry
@@ -355,7 +385,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
       case tp1: SkolemType =>
         tp2 match {
-          case tp2: SkolemType if !ctx.phase.isTyper && isSubType(tp1.info, tp2.info) => true
+          case tp2: SkolemType if !ctx.phase.isTyper && recur(tp1.info, tp2.info) => true
           case _ => thirdTry
         }
       case tp1: TypeVar =>
@@ -449,7 +479,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             // So if the constraint is not yet frozen, we do the same comparison again
             // with a frozen constraint, which means that we get a chance to do the
             // widening in `fourthTry` before adding to the constraint.
-            if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
+            if (frozenConstraint) recur(tp1, bounds(tp2).lo)
             else isSubTypeWhenFrozen(tp1, tp2)
           alwaysTrue || {
             if (canConstrain(tp2) && !approx.low)
@@ -879,7 +909,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
                 tycon2.name.toString.startsWith("Tuple") &&
-                  defn.isTupleType(tp2) && isSubType(tp1, tp2.toNestedPairs) ||
+                  defn.isTupleType(tp2) && recur(tp1, tp2.toNestedPairs) ||
                 tryBaseType(info2.cls)
               case _ =>
                 fourthTry
@@ -1001,44 +1031,93 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   }
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
-  *  variances in type parameters `tparams`.
+  *   variances in type parameters `tparams2`.
+  *   @param  tp1       The applied type containing `args1`
+  *   @param  tparams2  The type parameters of the type constructor applied to `args2`
   */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams: List[ParamInfo]): Boolean =
-    if (args1.isEmpty) args2.isEmpty
-    else args2.nonEmpty && {
-      val tparam = tparams.head
-      val v = tparam.paramVariance
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
 
-      def compareCaptured(arg1: Type, arg2: Type): Boolean = arg1 match {
-        case arg1: TypeBounds =>
-          val captured = TypeRef(tp1, tparam.asInstanceOf[TypeSymbol])
-          isSubArg(captured, arg2)
-        case _ =>
-          false
-      }
+    /** The bounds of parameter `tparam`, where all references to type paramneters
+     *  are replaced by corresponding arguments (or their approximations in the case of
+     *  wildcard arguments).
+     */
+    def paramBounds(tparam: Symbol): TypeBounds =
+      tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-      def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
-        case arg2: TypeBounds =>
-          arg2.contains(arg1) || compareCaptured(arg1, arg2)
-        case _ =>
-          arg1 match {
-            case arg1: TypeBounds =>
-              compareCaptured(arg1, arg2)
-            case _ =>
-              (v > 0 || isSubType(arg2, arg1)) &&
-              (v < 0 || isSubType(arg1, arg2))
-          }
-      }
+    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
+      if (args1.isEmpty) args2.isEmpty
+      else args2.nonEmpty && {
+        val tparam = tparams2.head
+        val v = tparam.paramVariance
 
-      val arg1 = args1.head
-      val arg2 = args2.head
-      isSubArg(arg1, arg2) || {
-        // last effort: try to adapt variances of higher-kinded types if this is sound.
-        // TODO: Move this to eta-expansion?
-        val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
-        adapted2.ne(arg2) && isSubArg(arg1, adapted2)
-      }
-    } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
+        /** Try a capture conversion:
+         *  If the original left-hand type `leftRoot` is a path `p.type`,
+         *  and the current widened left type is an application with wildcard arguments
+         *  such as `C[_]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
+         *  compare with `C[p.X]` instead. Otherwise return `false`.
+         *  Also do a capture conversion in either of the following cases:
+         *
+         *   - If we are after typer. We generally relax soundness requirements then.
+         *     We need the relaxed condition to correctly compute overriding relationships.
+         *     Missing this case led to AbstractMethod errors in the bootstrap.
+         *
+         *   - If we are in mode TypevarsMissContext, which means we test implicits
+         *     for eligibility. In this case, we can be more permissive, since it's
+         *     just a pre-check. This relaxation is needed since the full
+         *     implicit typing might perform an adaptation that skolemizes the
+         *     type of a synthesized tree before comparing it with an expected type.
+         *     But no such adaptation is applied for implicit eligibility
+         *     testing, so we have to compensate.
+         *
+         *  Note: Doing the capture conversion on path types is actually not necessary
+         *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
+         *  But performance tests indicate that it's better to do it, since we avoid
+         *  skolemizations, which are more expensive . And, besides, capture conversion on
+         *  paths is less intrusive than skolemization.
+         */
+        def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
+          case tparam: Symbol
+          if leftRoot.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext) =>
+            val captured = TypeRef(leftRoot, tparam)
+            assert(captured.exists, i"$leftRoot has no member $tparam in isSubArgs($args1, $args2, $tp1, $tparams2)")
+            isSubArg(captured, arg2)
+          case _ =>
+            false
+        }
+
+        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
+          case arg2: TypeBounds =>
+            val arg1norm = arg1 match {
+              case arg1: TypeBounds =>
+                tparam match {
+                  case tparam: Symbol => arg1 & paramBounds(tparam)
+                  case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
+                }
+              case _ => arg1
+            }
+            arg2.contains(arg1norm)
+          case _ =>
+            arg1 match {
+              case arg1: TypeBounds =>
+                compareCaptured(arg1, arg2)
+              case _ =>
+                (v > 0 || isSubType(arg2, arg1)) &&
+                (v < 0 || isSubType(arg1, arg2))
+            }
+        }
+
+        val arg1 = args1.head
+        val arg2 = args2.head
+        isSubArg(arg1, arg2) || {
+          // last effort: try to adapt variances of higher-kinded types if this is sound.
+          // TODO: Move this to eta-expansion?
+          val adapted2 = arg2.adaptHkVariances(tparam.paramInfo)
+          adapted2.ne(arg2) && isSubArg(arg1, adapted2)
+        }
+      } && recurArgs(args1.tail, args2.tail, tparams2.tail)
+
+    recurArgs(args1, args2, tparams2)
+  }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
@@ -1493,7 +1572,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           if (common.exists) common
           else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
           else if (v < 0) lub(arg1.loBound, arg2.loBound)
-          else if (arg1.isInstanceOf[TypeBounds] || arg2.isInstanceOf[TypeBounds])
+          else if (isBounds(arg1) || isBounds(arg2))
             TypeBounds(lub(arg1.loBound, arg2.loBound),
                        glb(arg1.hiBound, arg2.hiBound))
           else if (homogenizeArgs && !frozenConstraint && isSameType(arg1, arg2)) arg1
@@ -1813,6 +1892,12 @@ object TypeComparer {
   private val LoApprox = 1
   private val HiApprox = 2
 
+  /** The approximation state indicates how the pair of types currently compared
+   *  relates to the types compared originally.
+   *   - `NoApprox`: They are still the same types
+   *   - `LoApprox`: The left type is approximated (i.e widened)"
+   *   - `HiApprox`: The right type is approximated (i.e narrowed)"
+   */
   class ApproxState(private val bits: Int) extends AnyVal {
     override def toString: String = {
       val lo = if ((bits & LoApprox) != 0) "LoApprox" else ""
@@ -1826,6 +1911,12 @@ object TypeComparer {
   }
 
   val NoApprox: ApproxState = new ApproxState(0)
+
+  /** A special approximation state to indicate that this is the first time we
+   *  compare (approximations of) this pair of types. It's converted to `NoApprox`
+   *  in `isSubType`, but also leads to `leftRoot` being set there.
+   */
+  val FreshApprox: ApproxState = new ApproxState(4)
 
   /** Show trace of comparison operations when performing `op` as result string */
   def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
