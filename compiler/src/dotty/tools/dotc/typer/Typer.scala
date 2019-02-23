@@ -1886,6 +1886,7 @@ class Typer extends Namer
   def typedInfixOp(tree: untpd.InfixOp, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.InfixOp(l, op, r) = tree
     val app = typedApply(desugar.binop(l, op, r), pt)
+    checkValidInfix(tree, app)
     if (untpd.isLeftAssoc(op.name)) app
     else {
       val defs = new mutable.ListBuffer[Tree]

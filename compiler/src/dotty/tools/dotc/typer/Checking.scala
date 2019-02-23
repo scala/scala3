@@ -20,19 +20,23 @@ import rewrites.Rewrites.patch
 import util.Spans.Span
 
 import util.SourcePosition
+import util.Spans.Span
+import rewrites.Rewrites.patch
 import transform.SymUtils._
+import transform.ValueClasses._
 import Decorators._
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
+import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
 
+
 import collection.mutable
-import SymDenotations.{NoCompleter, NoDenotation}
-import dotty.tools.dotc.reporting.diagnostic.Message
-import dotty.tools.dotc.reporting.diagnostic.messages._
-import dotty.tools.dotc.transform.ValueClasses._
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages._
+import scala.tasty.util.Chars.isOperatorPart
 
 object Checking {
   import tpd._
@@ -716,6 +720,24 @@ trait Checking {
           i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
     }
 
+  /** Check that `tree` is a valid infix operation. That is, if the
+   *  operator is alphanumeric, it must be declared `@infix`.
+   */
+  def checkValidInfix(tree: untpd.InfixOp, app: Tree)(implicit ctx: Context): Unit =
+    tree.op match {
+      case Ident(name: SimpleName)
+      if !name.exists(isOperatorPart) && !app.symbol.hasAnnotation(defn.InfixAnnot) && false =>
+        ctx.deprecationWarning(
+          i"""alphanumeric method $name is not declared @infix; should not be used as infix operator.
+             |The operation can be rewritten automatically under -migration -rewrite""",
+          tree.op.sourcePos)
+        if (ctx.scala2Mode) {
+          patch(Span(tree.op.span.start, tree.op.span.start), "`")
+          patch(Span(tree.op.span.end, tree.op.span.end), "`")
+        }
+      case _ =>
+    }
+
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(name: TermName,
                    description: => String,
@@ -1099,5 +1121,6 @@ trait NoChecking extends ReChecking {
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
+  override def checkValidInfix(tree: untpd.InfixOp, app: Tree)(implicit ctx: Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }
