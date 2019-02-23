@@ -75,7 +75,11 @@ Explicit arguments to inferable parameters _must_ be written using `given`,
 mirroring the definition syntax. E.g, `max(2, 3) given IntOrd`.
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
-The `infer` method corresponds to `implicitly` in Scala 2.
+The `the` method corresponds to `implicitly` in Scala 2.
+It is precisely the same as the `the` method in Shapeless.
+The difference between `the` (in both versions) and `implicitly` is
+that `the` can return a more precise type than the type that was
+asked for.
 
 ### Context Bounds
 

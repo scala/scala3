@@ -9,8 +9,8 @@ class C extends A {
 }
 object M {
   def f given B, C : String = {
-    implied a for A = infer[B]
-    infer[A].show
+    implied a for A = the[B]
+    the[A].show
   }
 }
 object Test extends App {
