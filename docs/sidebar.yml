@@ -95,6 +95,8 @@ sidebar:
               url: docs/reference/changed-features/lazy-vals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
+            - title: Operators
+              url: docs/reference/changed-features/operators.html
             - title: Type Checking
               url: docs/reference/changed-features/type-checking.html
             - title: Type Inference
