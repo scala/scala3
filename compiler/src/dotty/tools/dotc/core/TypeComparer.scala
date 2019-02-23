@@ -168,7 +168,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  one should use `isSubType(_, _)`.
    *  `recur` should also not be used to compare approximated versions of the original
    *  types (as when we go from an abstract type to one of its bounds). In that case
-   *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation
+   *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation.
+   *
+   *  Note: Logicaly, `recur` could be nested in `isSubType`, which would avoid
+   *  the instance state consisting `approx` and `leftRoot`. But then the implemented
+   *  code would have two extra parameters for each of the many calls that go from
+   *  one sub-part of isSubType to another.
    */
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
@@ -1063,6 +1068,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
          *     type of a synthesized tree before comparing it with an expected type.
          *     But no such adaptation is applied for implicit eligibility
          *     testing, so we have to compensate.
+         *
+         *  Note: Doing the capture conversion on path types is actually not necessary
+         *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
+         *  But performance tests indicate that it's better to do it, since we avoid
+         *  skolemizations, which are more expensive . And, besides, capture conversion on
+         *  paths is less intrusive than skolemization.
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
           case tparam: Symbol
