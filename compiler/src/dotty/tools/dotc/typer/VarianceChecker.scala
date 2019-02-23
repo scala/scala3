@@ -48,6 +48,8 @@ object VarianceChecker {
             case tref: TypeParamRef if tref.binder `eq` tl =>
               val v = tl.typeParams(tref.paramNum).paramVariance
               varianceConforms(variance, v) || { error(tref); false }
+            case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
+              x
             case _ =>
               foldOver(x, t)
           }
