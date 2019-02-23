@@ -192,5 +192,5 @@ object IArray {
    *  @param x the selector value
    *  @return  sequence wrapped in a [[scala.Some]], if `x` is a Seq, otherwise `None`
    */
-   def unapplySeq[T](x: IArray[T]): Option[IndexedSeq[T]] = Array.unapplySeq[T](x.asInstanceOf[Array[T]])
+   def unapplySeq[T](x: IArray[T]) = Array.unapplySeq[T](x.asInstanceOf[Array[T]])
 }
