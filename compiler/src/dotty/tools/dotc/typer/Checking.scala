@@ -720,18 +720,29 @@ trait Checking {
           i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
     }
 
+  private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
+    case _: untpd.Block | _: untpd.Match => true
+    case _ => false
+  }
+
   /** Check that `tree` is a valid infix operation. That is, if the
    *  operator is alphanumeric, it must be declared `@infix`.
    */
   def checkValidInfix(tree: untpd.InfixOp, app: Tree)(implicit ctx: Context): Unit =
     tree.op match {
+      case _: untpd.BackquotedIdent =>
+        ()
       case Ident(name: SimpleName)
-      if !name.exists(isOperatorPart) && !app.symbol.hasAnnotation(defn.InfixAnnot) && false =>
+      if !name.exists(isOperatorPart) &&
+         !app.symbol.hasAnnotation(defn.InfixAnnot) &&
+         !app.symbol.maybeOwner.is(Scala2x) &&
+         !infixOKSinceFollowedBy(tree.right) &&
+         ctx.settings.strict.value =>
         ctx.deprecationWarning(
           i"""alphanumeric method $name is not declared @infix; should not be used as infix operator.
-             |The operation can be rewritten automatically under -migration -rewrite""",
+             |The operation can be rewritten automatically to `$name` under -deprecation -rewrite""",
           tree.op.sourcePos)
-        if (ctx.scala2Mode) {
+        if (ctx.settings.deprecation.value) {
           patch(Span(tree.op.span.start, tree.op.span.start), "`")
           patch(Span(tree.op.span.end, tree.op.span.end), "`")
         }

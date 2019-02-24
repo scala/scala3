@@ -78,8 +78,17 @@ s1 difference s2    // gives a deprecation warning
 s1 * s2             // OK
 s1.*(s2)            // also OK, but unusual
 ```
-Infix operations involving alphanumeric operators that do not carry @infix annotations are deprecated. Infix operations involving symbolic operators are always allowed, so `@infix` is redundant for methods with symbolic names. Infix operations are also allowed
-if an alphanumeric operator name is given in backticks (as in the third call of `difference` above).
+Infix operations involving alphanumeric operators are deprecated, unless
+one of the following conditions holds:
+
+ - the operator definition carries an `@infix` annotation, or
+ - the operator was compiled with Scala 2, or
+ - the operator is followed by an opening brace.
+
+An alphanumeric operator is an operator consisting entirely of letters, digits, the `$` and `_` characters, or
+any unicode character `c` for which `java.lang.Character.isIdentifierPart(c)` returns `true`.
+
+Infix operations involving symbolic operators are always allowed, so `@infix` is redundant for methods with symbolic names.
 
 The @infix annotation can also be given to a type:
 ```
@@ -116,3 +125,5 @@ The purpose of the `@infix` annotation is to achieve consistency across a code b
 
     can be applied using infix syntax, i.e. `A op B`.
 
+ 5. To smooth migration to Scala 3.0, alphanumeric operations will only be deprecated from Scala 3.1 onwards,
+or if the `-strict` option is given in Dotty/Scala 3.
