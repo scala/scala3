@@ -441,7 +441,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         EmptyTree
       else if (receiver.isEmpty) {
         def findGetter(cx: Context): Tree = {
-          if (cx eq NoContext) EmptyTree
+          if (cx `eq` NoContext) EmptyTree
           else if (cx.scope != cx.outer.scope &&
             cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
             val denot = cx.denotNamed(getterName)
@@ -670,7 +670,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     private def firstDiff[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
       case x :: xs1 =>
         ys match {
-          case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
+          case y :: ys1 => if (x `ne` y) n else firstDiff(xs1, ys1, n + 1)
           case nil => n
         }
       case nil =>
@@ -687,7 +687,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs.dropWhile(_ eq EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
+          if (!sameSeq(args, orderedArgs.dropWhile(_ `eq` EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
 
@@ -824,7 +824,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 // or not was already taken but might have to be revised when an implicit
                 // is inserted on the qualifier.
                 tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
-                  if (proto eq originalProto) fail
+                  if (proto `eq` originalProto) fail
                   else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
           }
       }
@@ -912,7 +912,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, typedArgs, pt)
           case _                                             => tree.withType(TryDynamicCallType)
         }
-        if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
+        if (typedFn.tpe `eq` TryDynamicCallType) tryDynamicTypeApply()
         else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
     }
   }
@@ -1097,7 +1097,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
-        if ((ownType eq selType) || ownType.isError) result
+        if ((ownType `eq` selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
@@ -1198,7 +1198,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    */
   def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
-    assert(alt1 ne alt2)
+    assert(alt1 `ne` alt2)
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ?
@@ -1442,7 +1442,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def adaptByResult(chosen: TermRef) = pt match {
       case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt.symbol, alt, pt.resultType)))
+          (alt `ne` chosen) && ctx.test(implicit ctx => resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2
@@ -1586,7 +1586,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
       else {
         val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+        if (deepPt `ne` pt) resolveOverloaded(alts, deepPt, targs)
         else alts
       }
     }
@@ -1710,7 +1710,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val origConstraint = ctx.typerState.constraint
       val origElems = op
       val harmonizedElems = harmonize(origElems)
-      if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
+      if (harmonizedElems `ne` origElems) ctx.typerState.constraint = origConstraint
       harmonizedElems
     }
     else op

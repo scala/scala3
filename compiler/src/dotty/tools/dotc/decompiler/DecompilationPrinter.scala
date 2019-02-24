@@ -30,8 +30,8 @@ class DecompilationPrinter extends Phase {
         ps = new PrintStream(os, /* autoFlush = */ false, "UTF-8")
         printToOutput(ps)
       } finally {
-        if (os ne null) os.close()
-        if (ps ne null) ps.close()
+        if (os != null) os.close()
+        if (ps != null) ps.close()
       }
     }
   }

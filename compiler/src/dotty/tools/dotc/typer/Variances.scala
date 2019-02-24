@@ -70,7 +70,7 @@ object Variances {
     case tp @ TypeRef(pre, _) =>
       if (tp.symbol == tparam) Covariant else varianceInType(pre)(tparam)
     case tp @ TypeBounds(lo, hi) =>
-      if (lo eq hi) cut(varianceInType(hi)(tparam))
+      if (lo `eq` hi) cut(varianceInType(hi)(tparam))
       else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)
     case tp @ RefinedType(parent, _, rinfo) =>
       varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)

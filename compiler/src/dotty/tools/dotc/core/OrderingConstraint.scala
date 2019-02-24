@@ -49,14 +49,14 @@ object OrderingConstraint {
     def update(prev: OrderingConstraint, current: OrderingConstraint,
         poly: TypeLambda, idx: Int, entry: T)(implicit ctx: Context): OrderingConstraint = {
       var es = entries(current, poly)
-      if (es != null && (es(idx) eq entry)) current
+      if (es != null && (es(idx) `eq` entry)) current
       else {
         val result =
           if (es == null) {
             es = Array.fill(poly.paramNames.length)(initial)
             updateEntries(current, poly, es)
           }
-          else if (es ne entries(prev, poly))
+          else if (es `ne` entries(prev, poly))
             current // can re-use existing entries array.
           else {
             es = es.clone
@@ -163,7 +163,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val origin = tvar.origin
     val entries = boundsMap(origin.binder)
     val pnum = origin.paramNum
-    entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) eq tvar)
+    entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) `eq` tvar)
   }
 
 // ---------- Dependency handling ----------------------------------------------
@@ -449,8 +449,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def remove(pt: TypeLambda)(implicit ctx: Context): This = {
     def removeFromOrdering(po: ParamOrdering) = {
       def removeFromBoundss(key: TypeLambda, bndss: Array[List[TypeParamRef]]): Array[List[TypeParamRef]] = {
-        val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
-        if (bndss.corresponds(bndss1)(_ eq _)) bndss else bndss1
+        val bndss1 = bndss.map(_.filterConserve(_.binder `ne` pt))
+        if (bndss.corresponds(bndss1)(_ `eq` _)) bndss else bndss1
       }
       po.remove(pt).mapValuesNow(removeFromBoundss)
     }
@@ -523,11 +523,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     // Must be symmetric
     def mergeEntries(e1: Type, e2: Type): Type =
       (e1, e2) match {
-        case _ if e1 eq e2 => e1
+        case _ if e1 `eq` e2 => e1
         case (e1: TypeBounds, e2: TypeBounds) => e1 & e2
         case (e1: TypeBounds, _) if e1 contains e2 => e2
         case (_, e2: TypeBounds) if e2 contains e1 => e1
-        case (tv1: TypeVar, tv2: TypeVar) if tv1.instanceOpt eq tv2.instanceOpt => e1
+        case (tv1: TypeVar, tv2: TypeVar) if tv1.instanceOpt `eq` tv2.instanceOpt => e1
         case _ =>
           if (otherHasErrors)
             e1

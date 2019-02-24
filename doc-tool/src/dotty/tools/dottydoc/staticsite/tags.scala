@@ -20,7 +20,7 @@ object tags {
 
     private[this] var _baseurl: String = _
     def baseurl(implicit ctx: Context): String = {
-      if (_baseurl eq null) {
+      if (_baseurl == null) {
         _baseurl =
           params.get("site").flatMap {
             case map: JMap[String, String] @unchecked =>
@@ -45,9 +45,9 @@ object tags {
     override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(tctx) match {
       case map: JMap[String, AnyRef] @unchecked =>
         val link = map.get("scala")
-        if (link.isInstanceOf[MaterializableLink] && (link ne null))
+        if (link.isInstanceOf[MaterializableLink] && (link != null))
           renderLink(baseurl, link.asInstanceOf[MaterializableLink])
-        else if (link eq null)
+        else if (link == null)
           null // Option[Reference] was None
         else {
           ctx.docbase.error(s"illegal argument: $link, to `renderLink` function")
@@ -116,8 +116,8 @@ object tags {
     override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(tctx) match {
       case map: JMap[String, AnyRef] @unchecked =>
         val ref = map.get("scala")
-        if (ref.isInstanceOf[Reference] && (ref ne null)) renderReference(ref.asInstanceOf[Reference])
-        else if (ref eq null) null // Option[Reference] was None
+        if (ref.isInstanceOf[Reference] && (ref != null)) renderReference(ref.asInstanceOf[Reference])
+        else if (ref == null) null // Option[Reference] was None
         else {
           ctx.docbase.error(s"illegal argument: $ref, to `renderRef` function")
           null

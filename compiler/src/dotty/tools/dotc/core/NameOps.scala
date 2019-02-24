@@ -39,7 +39,7 @@ object NameOps {
 
         val cs = s.toArray
         val bytes = Codec toUTF8 cs
-        md5 update bytes
+        md5.update(bytes)
         val md5chars = (md5.digest() map (b => (b & 0xFF).toHexString)).mkString
 
         prefix + marker + md5chars + marker + suffix
@@ -64,8 +64,8 @@ object NameOps {
     def isConstructorName: Boolean = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName: Boolean = name == STATIC_CONSTRUCTOR
     def isLocalDummyName: Boolean = name startsWith str.LOCALDUMMY_PREFIX
-    def isReplWrapperName: Boolean = name.toString contains str.REPL_SESSION_LINE
-    def isReplAssignName: Boolean = name.toString contains str.REPL_ASSIGN_SUFFIX
+    def isReplWrapperName: Boolean = name.toString `contains` str.REPL_SESSION_LINE
+    def isReplAssignName: Boolean = name.toString `contains` str.REPL_ASSIGN_SUFFIX
     def isSetterName: Boolean = name endsWith str.SETTER_SUFFIX
     def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
@@ -188,7 +188,7 @@ object NameOps {
 
     /** Is a function name, i.e one of FunctionXXL, FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
      */
-    def isFunction: Boolean = (name eq tpnme.FunctionXXL) || functionArity >= 0
+    def isFunction: Boolean = (name `eq` tpnme.FunctionXXL) || functionArity >= 0
 
     /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */
@@ -277,7 +277,7 @@ object NameOps {
 
     def unmangle(kinds: List[NameKind]): N = {
       val unmangled = (name /: kinds)(_.unmangle(_))
-      if (unmangled eq name) name else unmangled.unmangle(kinds)
+      if (unmangled `eq` name) name else unmangled.unmangle(kinds)
     }
   }
 

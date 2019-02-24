@@ -98,7 +98,7 @@ object Scala2Unpickler {
       case cinfo => (Nil, cinfo)
     }
     val ost =
-      if ((selfInfo eq NoType) && (denot is ModuleClass) && denot.sourceModule.exists)
+      if ((selfInfo `eq` NoType) && (denot is ModuleClass) && denot.sourceModule.exists)
         // it seems sometimes the source module does not exist for a module class.
         // An example is `scala.reflect.internal.Trees.Template$. Without the
         // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
@@ -305,9 +305,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   protected def at[T <: AnyRef](i: Int, op: () => T): T = {
     var r = entries(i)
-    if (r eq null) {
+    if (r == null) {
       r = atReadPos(index(i), op)
-      assert(entries(i) eq null, entries(i))
+      assert(entries(i) == null, entries(i))
       entries(i) = r
     }
     r.asInstanceOf[T]
@@ -665,7 +665,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case arg: TypeRef if isBound(arg) => arg.symbol.info
           case _ => arg
         }
-        if (tycon1 ne tycon) elim(tycon1.appliedTo(args))
+        if (tycon1 `ne` tycon) elim(tycon1.appliedTo(args))
         else tp.derivedAppliedType(tycon, args.map(mapArg))
       case _ =>
         tp
@@ -835,11 +835,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def readSymbolRef()(implicit ctx: Context): Symbol = { //OPT inlined from: at(readNat(), readSymbol) to save on closure creation
     val i = readNat()
     var r = entries(i)
-    if (r eq null) {
+    if (r == null) {
       val savedIndex = readIndex
       readIndex = index(i)
       r = readSymbol()
-      assert(entries(i) eq null, entries(i))
+      assert(entries(i) == null, entries(i))
       entries(i) = r
       readIndex = savedIndex
     }

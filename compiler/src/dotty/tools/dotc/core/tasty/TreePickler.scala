@@ -69,7 +69,7 @@ class TreePickler(pickler: TastyPickler) {
 
   private def pickleNameAndSig(name: Name, sig: Signature): Unit =
     pickleName(
-      if (sig eq Signature.NotAMethod) name
+      if (sig `eq` Signature.NotAMethod) name
       else SignedName(name.toTermName, sig))
 
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
@@ -369,7 +369,7 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(qual)
           }
         case Apply(fun, args) =>
-          if (fun.symbol eq defn.throwMethod) {
+          if (fun.symbol `eq` defn.throwMethod) {
             writeByte(THROW)
             pickleTree(args.head)
           } else {
@@ -515,7 +515,7 @@ class TreePickler(pickler: TastyPickler) {
             pickleParams(params)
             tree.parents.foreach(pickleTree)
             val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
-            if ((selfInfo ne NoType) || !tree.self.isEmpty) {
+            if ((selfInfo `ne` NoType) || !tree.self.isEmpty) {
               writeByte(SELFDEF)
               pickleName(tree.self.name)
 
@@ -579,7 +579,7 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(TYPEBOUNDStpt)
           withLength {
             pickleTree(lo);
-            if (hi ne lo) pickleTree(hi)
+            if (hi `ne` lo) pickleTree(hi)
           }
         case Hole(idx, args) =>
           writeByte(HOLE)

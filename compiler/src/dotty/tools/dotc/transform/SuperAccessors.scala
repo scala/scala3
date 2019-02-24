@@ -135,9 +135,9 @@ class SuperAccessors(thisPhase: DenotTransformer) {
      */
     private def isDisallowed(sym: Symbol)(implicit ctx: Context) =
       sym.isTypeTestOrCast ||
-      (sym eq defn.Any_==) ||
-      (sym eq defn.Any_!=) ||
-      (sym eq defn.Any_##)
+      (sym `eq` defn.Any_==) ||
+      (sym `eq` defn.Any_!=) ||
+      (sym `eq` defn.Any_##)
 
     /** Transform select node, adding super and protected accessors as needed */
     def transformSelect(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {

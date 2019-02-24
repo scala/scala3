@@ -108,7 +108,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       // Drop the Local flag from all private[this] and protected[this] members
       // that will be moved to the companion object.
       if (ref.is(Local) && isDerivedValueClass(ref.owner)) {
-        if (ref1 ne ref) ref1.resetFlag(Local)
+        if (ref1 `ne` ref) ref1.resetFlag(Local)
         else ref1 = ref1.copySymDenotation(initFlags = ref1.flags &~ Local)
       }
       ref1

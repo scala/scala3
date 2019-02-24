@@ -44,7 +44,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
-      myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
+      myCaseModuleSymbols = myCaseSymbols.filter(_ `ne` defn.Any_equals)
     }
 
   def valueSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myValueSymbols }
@@ -148,7 +148,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *
      *  ```
      *  def equals(that: Any): Boolean =
-     *    (this eq that) || {
+     *    (this `eq` that) || {
      *      that match {
      *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y
      *        case _ => false

@@ -59,7 +59,7 @@ object Docstrings {
   }
 
   private def expandComment(sym: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] = {
-    if (sym eq NoSymbol) None
+    if (sym `eq` NoSymbol) None
     else {
       for {
         cmt <- docCtx.docstring(sym) if !cmt.isExpanded

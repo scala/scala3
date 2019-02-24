@@ -227,7 +227,7 @@ trait Symbols { this: Context =>
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stubCompleter = new StubInfo()
-    val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
+    val normalizedOwner = if (owner `is` ModuleVal) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
@@ -273,7 +273,7 @@ trait Symbols { this: Context =>
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
-    ctx.newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+    ctx.newSymbol(cls, name, SelfSymFlags, selfInfo `orElse` cls.classInfo.selfType, coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
@@ -317,8 +317,8 @@ trait Symbols { this: Context =>
    */
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false): List[Symbol] =
     if (originals.forall(sym =>
-        (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
+        (ttmap.mapType(sym.info) `eq` sym.info) &&
+        !(ttmap.oldOwners `contains` sym.owner)) && !mapAlways)
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
@@ -329,7 +329,7 @@ trait Symbols { this: Context =>
             newNakedSymbol[original.ThisName](original.coord)
         }
       val ttmap1 = ttmap.withSubstitution(originals, copies)
-      (originals, copies).zipped foreach { (original, copy) =>
+      (originals, copies).zipped `foreach` { (original, copy) =>
         val odenot = original.denot
         val oinfo = original.info match {
           case ClassInfo(pre, _, parents, decls, selfInfo) =>
@@ -365,7 +365,7 @@ trait Symbols { this: Context =>
 
   def requiredPackage(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_ is Package).asTerm
+    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_ `is` Package).asTerm
   }
 
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
@@ -391,14 +391,14 @@ trait Symbols { this: Context =>
 
   def requiredModule(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name).requiredSymbol("object", name)(_ is Module).asTerm
+    base.staticRef(name).requiredSymbol("object", name)(_ `is` Module).asTerm
   }
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
 
   def requiredMethod(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name).requiredSymbol("method", name)(_ is Method).asTerm
+    base.staticRef(name).requiredSymbol("method", name)(_ `is` Method).asTerm
   }
 
   def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
@@ -475,7 +475,7 @@ object Symbols {
     private def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
       val now = ctx.period
       checkedPeriod = now
-      if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
+      if (lastd.validFor `contains` now) lastd else recomputeDenot(lastd)
     }
 
     /** Overridden in NoSymbol */
@@ -506,7 +506,7 @@ object Symbols {
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(implicit ctx: Context): Boolean =
       (lastDenot.validFor.runId == ctx.runId || ctx.stillValid(lastDenot)) &&
-      (lastDenot.symbol eq this)
+      (lastDenot.symbol `eq` this)
         // the last condition is needed because under ctx.staleOK overwritten
         // members keep denotations pointing to the new symbol, so the validity
         // periods check out OK. But once a package member is overridden it is not longer
@@ -552,7 +552,7 @@ object Symbols {
     final def entered(implicit ctx: Context): this.type = {
       assert(this.owner.isClass, s"symbol ($this) entered the scope of non-class owner ${this.owner}") // !!! DEBUG
       this.owner.asClass.enter(this)
-      if (this is Module) this.owner.asClass.enter(this.moduleClass)
+      if (this `is` Module) this.owner.asClass.enter(this.moduleClass)
       this
     }
 
@@ -566,7 +566,7 @@ object Symbols {
       else {
         if (this.owner.is(Package)) {
           denot.validFor |= InitialPeriod
-          if (this is Module) this.moduleClass.validFor |= InitialPeriod
+          if (this `is` Module) this.moduleClass.validFor |= InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
         assert(isPrivate || phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
@@ -576,7 +576,7 @@ object Symbols {
     /** Remove symbol from scope of owning class */
     final def drop()(implicit ctx: Context): Unit = {
       this.owner.asClass.delete(this)
-      if (this is Module) this.owner.asClass.delete(this.moduleClass)
+      if (this `is` Module) this.owner.asClass.delete(this.moduleClass)
     }
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
@@ -757,7 +757,7 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
-      if (assocFile != null || (this.owner is PackageClass) || this.isEffectiveRoot) assocFile
+      if (assocFile != null || (this.owner `is` PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
 
     private[this] var mySource: SourceFile = NoSource

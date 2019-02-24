@@ -24,7 +24,7 @@ trait Phases {
   def phase: Phase = base.phases(period.firstPhaseId)
 
   def phasesStack: List[Phase] =
-    if ((this eq NoContext) || !phase.exists) Nil
+    if ((this `eq` NoContext) || !phase.exists) Nil
     else {
       val rest = outersIterator.dropWhile(_.phase == phase)
       phase :: (if (rest.hasNext) rest.next().phasesStack else Nil)

@@ -368,13 +368,13 @@ class TypeApplications(val self: Type) extends AnyVal {
                 case _ => false
               }
             }
-            if ((dealiased eq stripped) || followAlias)
+            if ((dealiased `eq` stripped) || followAlias)
               try dealiased.instantiate(args)
               catch { case ex: IndexOutOfBoundsException => AppliedType(self, args) }
             else AppliedType(self, args)
           }
           else dealiased.resType match {
-            case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
+            case AppliedType(tycon, args1) if tycon.safeDealias `ne` tycon =>
               // In this case we should always dealias since we cannot handle
               // higher-kinded applications to wildcard arguments.
               dealiased

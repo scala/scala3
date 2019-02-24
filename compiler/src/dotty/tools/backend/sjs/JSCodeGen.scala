@@ -1398,9 +1398,9 @@ class JSCodeGen()(implicit ctx: Context) {
       }
       genModuleApplyMethod(equalsMethod, List(lsrc, rsrc))
     } else {
-      // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
+      // if (lsrc == null) rsrc == null else lsrc.equals(rsrc)
       if (lsym == defn.StringClass) {
-        // String.equals(that) === (this eq that)
+        // String.equals(that) === (this `eq` that)
         js.BinaryOp(js.BinaryOp.===, lsrc, rsrc)
       } else {
         /* This requires to evaluate both operands in local values first.

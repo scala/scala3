@@ -226,7 +226,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     }
 
   /** Is this case guarded? */
-  def isGuardedCase(cdef: CaseDef): Boolean = cdef.guard ne EmptyTree
+  def isGuardedCase(cdef: CaseDef): Boolean = cdef.guard `ne` EmptyTree
 
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
@@ -663,7 +663,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)
-            if (x1 ne x) tree :: x1 else x1
+            if (x1 `ne` x) tree :: x1 else x1
           }
         else x
       }
@@ -708,7 +708,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  tree must be reachable from come tree stored in an enclosing context.
    */
   def definingStats(sym: Symbol)(implicit ctx: Context): List[Tree] =
-    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
+    if (!sym.span.exists || (ctx `eq` NoContext) || ctx.compilationUnit == null) Nil
     else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
         def verify(stats: List[Tree]) =

@@ -164,7 +164,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: C
   }
 
   override def afterPhase(phase: Phase, snapBefore: ProfileSnap): Unit = {
-    assert(mainThread eq Thread.currentThread())
+    assert(mainThread `eq` Thread.currentThread())
     val initialSnap = snapThread(0)
     if (ctx.settings.YprofileExternalTool.value.contains(phase.toString)) {
       println("Profile hook stop")
@@ -179,7 +179,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(implicit ctx: C
   }
 
   override def beforePhase(phase: Phase): ProfileSnap = {
-    assert(mainThread eq Thread.currentThread())
+    assert(mainThread `eq` Thread.currentThread())
     if (ctx.settings.YprofileRunGcBetweenPhases.value.contains(phase.toString))
       doGC
     if (ctx.settings.YprofileExternalTool.value.contains(phase.toString)) {

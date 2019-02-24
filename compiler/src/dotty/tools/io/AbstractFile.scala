@@ -121,7 +121,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
 
   /** Does this abstract file denote an existing file? */
   def exists: Boolean = {
-    (jpath eq null) || Files.exists(jpath)
+    (jpath == null) || Files.exists(jpath)
   }
 
   /** Does this abstract file represent something which can contain classfiles? */
@@ -229,7 +229,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
       assert(index < 0 || start < index, ((path, directory, start, index)))
       val name = path.substring(start, if (index < 0) length else index)
       file = getFile(file, name, if (index < 0) directory else true)
-      if ((file eq null) || index < 0) return file
+      if ((file == null) || index < 0) return file
       start = index + 1
     }
     file

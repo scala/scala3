@@ -115,7 +115,7 @@ trait MessageRendering {
     if (pos.exists) Blue({
       val file = s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
       val errId =
-        if (message.errorId ne ErrorMessageID.NoExplanationID) {
+        if (message.errorId `ne` ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber()
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
         } else ""

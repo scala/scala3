@@ -161,7 +161,7 @@ class Typer extends Namer
        */
       def checkNewOrShadowed(found: Type, newPrec: Int, scala2pkg: Boolean = false)(implicit ctx: Context): Type =
         if (!previous.exists || ctx.typeComparer.isSameRef(previous, found)) found
-        else if ((prevCtx.scope eq ctx.scope) &&
+        else if ((prevCtx.scope `eq` ctx.scope) &&
                  (newPrec == definition ||
                   newPrec == namedImport && prevPrec == wildImport)) {
           // special cases: definitions beat imports, and named imports beat
@@ -249,7 +249,7 @@ class Typer extends Namer
       /** Would import of kind `prec` be not shadowed by a nested higher-precedence definition? */
       def isPossibleImport(prec: Int)(implicit ctx: Context) =
         !noImports &&
-        (prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope))
+        (prevPrec < prec || prevPrec == prec && (prevCtx.scope `eq` ctx.scope))
 
       @tailrec def loop(lastCtx: Context)(implicit ctx: Context): Type = {
         if (ctx.scope == null) previous
@@ -272,8 +272,8 @@ class Typer extends Namer
           // with an error on CI which I cannot replicate locally (not even
           // with the exact list of files given).
           val isNewDefScope =
-            if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
-            else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) &&
+            if (curOwner.is(Package) && !curOwner.isRoot) curOwner `ne` ctx.outer.owner
+            else ((ctx.scope `ne` lastCtx.scope) || (curOwner `ne` lastCtx.owner)) &&
               !curOwner.isPackageObject
               // Package objects are never searched directly. We wait until we
               // hit the enclosing package. That way we make sure we consider
@@ -320,7 +320,7 @@ class Typer extends Namer
               if (curImport.unimported.exists) unimported += curImport.unimported
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
+            else if (isPossibleImport(namedImport) && (curImport `ne` outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 findRefRecur(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
@@ -454,7 +454,7 @@ class Typer extends Namer
         case qual1 =>
           if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.sourcePos)
           val select = typedSelect(tree, pt, qual1)
-          if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
+          if (select.tpe `ne` TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
           else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
           else typedDynamicSelect(tree, Nil, pt)
       }
@@ -535,7 +535,7 @@ class Typer extends Namer
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        if (checkClassType(tpt1.tpe, tpt1.sourcePos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
+        if (checkClassType(tpt1.tpe, tpt1.sourcePos, traitReq = false, stablePrefixReq = true) `eq` defn.ObjectType)
           tpt1 = TypeTree(defn.ObjectType).withSpan(tpt1.span)
 
         tpt1 match {
@@ -1189,7 +1189,7 @@ class Typer extends Namer
 
   def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = track("typedWhileDo") {
     val cond1 =
-      if (tree.cond eq EmptyTree) EmptyTree
+      if (tree.cond `eq` EmptyTree) EmptyTree
       else typed(tree.cond, defn.BooleanType)
     val body1 = typed(tree.body, defn.UnitType)
     assignType(cpy.WhileDo(tree)(cond1, body1))
@@ -1638,7 +1638,7 @@ class Typer extends Namer
     /** Checks if one of the decls is a type with the same name as class type member in selfType */
     def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
       val selfType = self.tpt.tpe
-      if (!selfType.exists || (selfType.classSymbol eq cls)) false
+      if (!selfType.exists || (selfType.classSymbol `eq` cls)) false
       else {
         def memberInSelfButNotThis(decl: Symbol) =
           selfType.member(decl.name).symbol.filter(other => other.isClass && other.owner != cls)
@@ -1825,7 +1825,7 @@ class Typer extends Namer
       case tree1: TypeTree => tree1  // no change owner necessary here ...
       case tree1: Ident => tree1     // ... or here, since these trees cannot contain bindings
       case tree1 =>
-        if (ctx.owner ne tree.owner) tree1.changeOwner(tree.owner, ctx.owner)
+        if (ctx.owner `ne` tree.owner) tree1.changeOwner(tree.owner, ctx.owner)
         else tree1
     }
 
@@ -2256,7 +2256,7 @@ class Typer extends Namer
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither { implicit ctx =>
           val qual1 = adapt(qual, qualProto, locked)
-          if ((qual eq qual1) || ctx.reporter.hasErrors) None
+          if ((qual `eq` qual1) || ctx.reporter.hasErrors) None
           else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt, locked))
         } { (_, _) => None
         }
@@ -2396,7 +2396,7 @@ class Typer extends Namer
       val constraint = ctx.typerState.constraint
       def inst(tp: Type): Type = tp match {
         case TypeBounds(lo, hi)
-        if (lo eq hi) || ctx.test(implicit ctx => hi <:< lo) =>
+        if (lo `eq` hi) || ctx.test(implicit ctx => hi <:< lo) =>
           inst(lo)
         case tp: TypeParamRef =>
           constraint.typeVarOfParam(tp).orElse(tp)
@@ -2729,7 +2729,7 @@ class Typer extends Namer
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
-      if (folded ne tree)
+      if (folded `ne` tree)
         return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
 
       // Try to capture wildcards in type
@@ -2817,7 +2817,7 @@ class Typer extends Namer
 
     def adaptType(tp: Type): Tree = {
       val tree1 =
-        if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
+        if ((pt `eq` AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
         else {
           val tp1 =
             if (ctx.compilationUnit.isJava)

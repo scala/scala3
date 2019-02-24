@@ -50,7 +50,7 @@ class PluginsTest {
     }
 
     val updatedPlan = Plugins.schedule(basicPlan, M1 :: Nil)
-    assert(updatedPlan(3)(0) eq M1)
+    assert(updatedPlan(3)(0) `eq` M1)
   }
 
   @Test
@@ -60,7 +60,7 @@ class PluginsTest {
     }
 
     val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil)
-    assert(updatedPlan(6)(0) eq ConstFold)
+    assert(updatedPlan(6)(0) `eq` ConstFold)
   }
 
   @Test
@@ -72,7 +72,7 @@ class PluginsTest {
 
     // prefers the runsBefore
     val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil)
-    assert(updatedPlan(6)(0) eq ConstFold)
+    assert(updatedPlan(6)(0) `eq` ConstFold)
   }
 
   @Test
@@ -103,13 +103,13 @@ class PluginsTest {
 
     // M1 inserted to plan first
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
-    assert(updatedPlan1(6)(0) eq M1)
-    assert(updatedPlan1(7)(0) eq M2)
+    assert(updatedPlan1(6)(0) `eq` M1)
+    assert(updatedPlan1(7)(0) `eq` M2)
 
     // M2 inserted to plan first
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
-    assert(updatedPlan2(6)(0) eq M1)
-    assert(updatedPlan2(7)(0) eq M2)
+    assert(updatedPlan2(6)(0) `eq` M1)
+    assert(updatedPlan2(7)(0) `eq` M2)
   }
 
   @Test
@@ -124,13 +124,13 @@ class PluginsTest {
 
     // M1 inserted to plan first
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
-    assert(updatedPlan1(4)(0) eq M1)
-    assert(updatedPlan1(3)(0) eq M2)
+    assert(updatedPlan1(4)(0) `eq` M1)
+    assert(updatedPlan1(3)(0) `eq` M2)
 
     // M2 inserted to plan first
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
-    assert(updatedPlan2(4)(0) eq M1)
-    assert(updatedPlan2(3)(0) eq M2)
+    assert(updatedPlan2(4)(0) `eq` M1)
+    assert(updatedPlan2(3)(0) `eq` M2)
   }
 
   @Test
@@ -146,13 +146,13 @@ class PluginsTest {
 
     // M1 inserted to plan first
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
-    assert(updatedPlan1(7)(0) eq M1)
-    assert(updatedPlan1(4)(0) eq M2)
+    assert(updatedPlan1(7)(0) `eq` M1)
+    assert(updatedPlan1(4)(0) `eq` M2)
 
     // M2 inserted to plan first
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
-    assert(updatedPlan2(7)(0) eq M1)
-    assert(updatedPlan2(4)(0) eq M2)
+    assert(updatedPlan2(7)(0) `eq` M1)
+    assert(updatedPlan2(4)(0) `eq` M2)
   }
 
   @Test
@@ -168,13 +168,13 @@ class PluginsTest {
 
     // M1 inserted to plan first
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
-    assert(updatedPlan1(4)(0) eq M1)
-    assert(updatedPlan1(5)(0) eq M2)
+    assert(updatedPlan1(4)(0) `eq` M1)
+    assert(updatedPlan1(5)(0) `eq` M2)
 
     // M2 inserted to plan first
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
-    assert(updatedPlan2(4)(0) eq M1)
-    assert(updatedPlan2(5)(0) eq M2)
+    assert(updatedPlan2(4)(0) `eq` M1)
+    assert(updatedPlan2(5)(0) `eq` M2)
   }
 
   @Test
@@ -194,15 +194,15 @@ class PluginsTest {
 
     // M1 inserted to plan first
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: M3 :: Nil)
-    assert(updatedPlan1(3)(0) eq M1)
-    assert(updatedPlan1(4)(0) eq M2)
-    assert(updatedPlan1(5)(0) eq M3)
+    assert(updatedPlan1(3)(0) `eq` M1)
+    assert(updatedPlan1(4)(0) `eq` M2)
+    assert(updatedPlan1(5)(0) `eq` M3)
 
     // M2 inserted to plan first
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: M3 :: Nil)
-    assert(updatedPlan1(3)(0) eq M1)
-    assert(updatedPlan1(4)(0) eq M2)
-    assert(updatedPlan1(5)(0) eq M3)
+    assert(updatedPlan1(3)(0) `eq` M1)
+    assert(updatedPlan1(4)(0) `eq` M2)
+    assert(updatedPlan1(5)(0) `eq` M3)
   }
 
 
@@ -218,11 +218,11 @@ class PluginsTest {
     }
 
     val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
-    assert(updatedPlan1(6)(0) eq M1)
-    assert(updatedPlan1(7)(0) eq M2)
+    assert(updatedPlan1(6)(0) `eq` M1)
+    assert(updatedPlan1(7)(0) `eq` M2)
 
     val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
-    assert(updatedPlan1(6)(0) eq M1)
-    assert(updatedPlan1(7)(0) eq M2)
+    assert(updatedPlan1(6)(0) `eq` M1)
+    assert(updatedPlan1(7)(0) `eq` M2)
   }
 }

@@ -240,7 +240,7 @@ object Settings {
           @tailrec def loop(settings: List[Setting[_]]): ArgsSummary = settings match {
             case setting :: settings1 =>
               val state1 = setting.tryToSet(state)
-              if (state1 ne state) processArguments(state1, processAll, skipped)
+              if (state1 `ne` state) processArguments(state1, processAll, skipped)
               else loop(settings1)
             case Nil =>
               processArguments(state.warn(s"bad option '$x' was ignored"), processAll, skipped)

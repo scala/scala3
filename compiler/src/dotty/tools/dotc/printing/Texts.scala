@@ -90,11 +90,11 @@ object Texts {
       case Fluid(relems) =>
         val elems = relems.reverse
         val head = elems.head.stripPrefix(pre)
-        if (head eq elems.head) this else Fluid((head :: elems.tail).reverse)
+        if (head `eq` elems.head) this else Fluid((head :: elems.tail).reverse)
       case Vertical(relems) =>
         val elems = relems.reverse
         val head = elems.head.stripPrefix(pre)
-        if (head eq elems.head) this else Vertical((head :: elems.tail).reverse)
+        if (head `eq` elems.head) this else Vertical((head :: elems.tail).reverse)
     }
 
     private def indented: Text = this match {

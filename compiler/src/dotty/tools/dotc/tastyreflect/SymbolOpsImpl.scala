@@ -74,7 +74,7 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
     }
 
     def treeOpt(implicit ctx: Context): Option[Definition] =
-      if (symbol eq core.Symbols.NoSymbol) None
+      if (symbol `eq` core.Symbols.NoSymbol) None
       else Some(FromSymbol.definitionFromSym(symbol))
 
     def annots(implicit ctx: Context): List[Term] = {
@@ -225,6 +225,6 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
   }
 
   object NoSymbol extends NoSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Boolean = symbol ne core.Symbols.NoSymbol
+    def unapply(symbol: Symbol)(implicit ctx: Context): Boolean = symbol `ne` core.Symbols.NoSymbol
   }
 }

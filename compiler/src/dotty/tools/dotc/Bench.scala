@@ -15,7 +15,7 @@ object Bench extends Driver {
   @sharable private[this] var numRuns = 1
 
   private def ntimes(n: Int)(op: => Reporter): Reporter =
-    (emptyReporter /: (0 until n)) ((_, _) => op)
+    (emptyReporter /: (0 `until` n)) ((_, _) => op)
 
   override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     ntimes(numRuns) {
@@ -31,9 +31,9 @@ object Bench extends Driver {
     }
 
   def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) = {
-    val pos = args indexOf name
+    val pos = args `indexOf` name
     if (pos < 0) (default, args)
-    else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
+    else (args(pos + 1).toInt, (args `take` pos) ++ (args `drop` (pos + 2)))
   }
 
   override def process(args: Array[String], rootCtx: Context): Reporter = {

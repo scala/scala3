@@ -22,7 +22,7 @@ class TreeTransformerTest extends DottyTest {
       val transformed = transformer.transformUnit(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
-        tree eq transformed
+        tree `eq` transformed
       )
   }
 

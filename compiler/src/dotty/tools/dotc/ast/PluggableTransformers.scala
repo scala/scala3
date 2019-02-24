@@ -60,7 +60,7 @@ object PluggableTransformers {
     }
 
     def postIdent(tree: Ident[T], old: Tree[T], c: Context, ops: PluginOps[Ident[T]]) =
-      if (ops eq NoOps) tree
+      if (ops `eq` NoOps) tree
       else finishIdent(ops(tree, old, c), old, c, ops.next)
 
     override def finishIdent(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
@@ -69,7 +69,7 @@ object PluggableTransformers {
     }
 
     def postSelect(tree: Select[T], old: Tree[T], c: Context, ops: PluginOps[Select[T]]) =
-      if (ops eq NoOps) tree
+      if (ops `eq` NoOps) tree
       else finishSelect(ops(tree, old, c), old, c, ops.next)
 
     override def finishSelect(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {

@@ -738,7 +738,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               val noposErrors = line.sliding("// nopos-error".length).count(_.mkString == "// nopos-error")
               if (noposErrors > 0) {
                 val nopos = errorMap.get("nopos")
-                val existing: Integer = if (nopos eq null) 0 else nopos
+                val existing: Integer = if (nopos == null) 0 else nopos
                 errorMap.put("nopos", noposErrors + existing)
               }
 
@@ -758,7 +758,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
           val errors = errorMap.get(key)
 
-          if (errors ne null) {
+          if (errors != null) {
             if (errors == 1) errorMap.remove(key)
             else errorMap.put(key, errors - 1)
             true
@@ -1237,7 +1237,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     require(
       sourceFile.exists && !sourceFile.isDirectory &&
-      (parent ne null) && parent.exists && parent.isDirectory,
+      (parent != null) && parent.exists && parent.isDirectory,
       s"Source file: $f, didn't exist"
     )
 

@@ -47,7 +47,7 @@ object Uniques {
     private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.prefix eq prefix) && (e.designator eq designator)) return e
+        if ((e.prefix `eq` prefix) && (e.designator `eq` designator)) return e
         e = nextEntryByHash(h)
       }
       e
@@ -62,7 +62,7 @@ object Uniques {
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)
-        if ((r ne null) && (r.isTerm == isTerm)) r else addEntryAfterScan(newType)
+        if ((r != null) && (r.isTerm == isTerm)) r else addEntryAfterScan(newType)
       }
     }
   }
@@ -73,7 +73,7 @@ object Uniques {
     private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.tycon eq tycon) && e.args.eqElements(args)) return e
+        if ((e.tycon `eq` tycon) && e.args.eqElements(args)) return e
         e = nextEntryByHash(h)
       }
       e
@@ -86,7 +86,7 @@ object Uniques {
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, tycon, args)
-        if (r ne null) r else addEntryAfterScan(newType)
+        if (r != null) r else addEntryAfterScan(newType)
       }
     }
   }

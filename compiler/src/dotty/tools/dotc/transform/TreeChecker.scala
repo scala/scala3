@@ -70,7 +70,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     if (sym.isClass && !sym.isAbsent) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
-        (sym eq defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists) ||
+        (sym `eq` defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists) ||
         sym.isRefinementClass
 
       assert(validSuperclass, i"$sym has no superclass set")
@@ -100,7 +100,7 @@ class TreeChecker extends Phase with SymTransformer {
       val previousSubPhases = previousPhases(subPhases.toList)
       if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
       else previousSubPhases
-    case phase :: phases1 if phase ne ctx.phase =>
+    case phase :: phases1 if phase `ne` ctx.phase =>
       phase :: previousPhases(phases1)
     case _ =>
       Nil
@@ -145,7 +145,7 @@ class TreeChecker extends Phase with SymTransformer {
             assert(isValidJVMName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
             everDefinedSyms.get(sym) match {
               case Some(t)  =>
-                if (t ne tree)
+                if (t `ne` tree)
                   ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
               // should become an error
               case None =>
@@ -156,7 +156,7 @@ class TreeChecker extends Phase with SymTransformer {
             if (ctx.settings.YcheckMods.value) {
               tree match {
                 case t: untpd.MemberDef =>
-                  if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+                  if (t.name `ne` sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
                 // todo: compare trees inside annotations
                 case _ =>
               }
@@ -266,7 +266,7 @@ class TreeChecker extends Phase with SymTransformer {
         case _ =>
           val tree1 = super.typedUnadapted(tree, pt, locked)
           def isSubType(tp1: Type, tp2: Type) =
-            (tp1 eq tp2) || // accept NoType / NoType
+            (tp1 `eq` tp2) || // accept NoType / NoType
             (tp1 <:< tp2)
           def divergenceMsg(tp1: Type, tp2: Type) =
             s"""Types differ
@@ -385,7 +385,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context): Tree =
       withDefinedSyms(ddef.tparams) {
         withDefinedSyms(ddef.vparamss.flatten) {
-          if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
+          if (!sym.isClassConstructor && !(sym.name `eq` nme.STATIC_CONSTRUCTOR))
             assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
           ddef.vparamss.foreach(_.foreach { vparam =>
@@ -444,7 +444,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = {
-      assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
+      assert((tree.cond `ne` EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
 

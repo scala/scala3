@@ -76,7 +76,7 @@ class Pickler extends Phase {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) {
+      if (pickling `ne` noPrinter) {
         println(i"**** pickled info of $cls")
         println(new TastyPrinter(pickler.assembleParts()).printContents())
       }

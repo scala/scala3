@@ -84,7 +84,7 @@ object TestReporter {
   private[this] var outFile: JFile = _
   private[this] var logWriter: PrintWriter = _
 
-  private[this] def initLog() = if (logWriter eq null) {
+  private[this] def initLog() = if (logWriter == null) {
     val date = new Date
     val df0 = new SimpleDateFormat("yyyy-MM-dd")
     val df1 = new SimpleDateFormat("yyyy-MM-dd-'T'HH-mm-ss")
@@ -106,7 +106,7 @@ object TestReporter {
   }
 
   def logFlush(): Unit =
-    if (logWriter ne null) logWriter.flush()
+    if (logWriter != null) logWriter.flush()
 
   def logPath: String = {
     initLog()

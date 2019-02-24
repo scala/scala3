@@ -290,7 +290,7 @@ object GenericSignatures {
 
         case _ =>
           val etp = erasure(tp)
-          if (etp eq tp) throw new UnknownSig
+          if (etp `eq` tp) throw new UnknownSig
           else jsig(etp, toplevel, primitiveOK)
       }
     }
@@ -333,7 +333,7 @@ object GenericSignatures {
       } else {
         // implement new spec for erasure of refined types.
         def isUnshadowed(psym: Symbol) =
-          !(psyms exists (qsym => (psym ne qsym) && (qsym isSubClass psym)))
+          !(psyms exists (qsym => (psym `ne` qsym) && (qsym isSubClass psym)))
         val cs = parents.iterator.filter { p => // isUnshadowed is a bit expensive, so try classes first
           val psym = p.classSymbol
           psym.ensureCompleted()

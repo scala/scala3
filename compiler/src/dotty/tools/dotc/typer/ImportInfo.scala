@@ -151,7 +151,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
       else if (isImportOwner && excluded.contains(feature)) false
       else {
         var c = ctx.outer
-        while (c.importInfo eq ctx.importInfo) c = c.outer
+        while (c.importInfo `eq` ctx.importInfo) c = c.outer
         (c.importInfo != null) && c.importInfo.featureImported(owner, feature)(c)
       }
     }

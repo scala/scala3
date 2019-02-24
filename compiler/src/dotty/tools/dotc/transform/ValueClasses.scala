@@ -17,7 +17,7 @@ object ValueClasses {
     !ctx.settings.XnoValueClasses.value &&
     !d.isRefinementClass &&
     d.isValueClass &&
-    (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
+    (d.initial.symbol `ne` defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
     !d.isPrimitiveValueClass
   }
 

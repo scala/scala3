@@ -120,8 +120,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   // Subtype testing `<:<`
 
   def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
-    if (tp2 eq NoType) return false
-    if ((tp2 eq tp1) || (tp2 eq WildcardType)) return true
+    if (tp2 `eq` NoType) return false
+    if ((tp2 `eq` tp1) || (tp2 `eq` WildcardType)) return true
     try isSubType(tp1, tp2)
     finally {
       monitored = false
@@ -249,13 +249,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                   // For convenience we want X$ <:< X.type
                   // This is safe because X$ self-type is X.type
                   sym1 = sym1.companionModule
-                if ((sym1 ne NoSymbol) && (sym1 eq sym2))
+                if ((sym1 `ne` NoSymbol) && (sym1 `eq` sym2))
                   ctx.erasedTypes ||
                   sym1.isStaticOwner ||
                   isSubType(tp1.prefix, tp2.prefix) ||
                   thirdTryNamed(tp2)
                 else
-                  (  (tp1.name eq tp2.name)
+                  (  (tp1.name `eq` tp2.name)
                   && tp1.isMemberRef
                   && tp2.isMemberRef
                   && isSubType(tp1.prefix, tp2.prefix)
@@ -316,12 +316,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case AndType(tp21, tp22) =>
         recur(tp1, tp21) && recur(tp1, tp22)
       case OrType(tp21, tp22) =>
-        if (tp21.stripTypeVar eq tp22.stripTypeVar) recur(tp1, tp21)
+        if (tp21.stripTypeVar `eq` tp22.stripTypeVar) recur(tp1, tp21)
         else secondTry
       case TypeErasure.ErasedValueType(tycon1, underlying2) =>
         def compareErasedValueType = tp1 match {
           case TypeErasure.ErasedValueType(tycon2, underlying1) =>
-            (tycon1.symbol eq tycon2.symbol) && isSameType(underlying1, underlying2)
+            (tycon1.symbol `eq` tycon2.symbol) && isSameType(underlying1, underlying2)
           case _ =>
             secondTry
         }
@@ -353,7 +353,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return false
           case _ =>
-            if (tp1 eq NothingType) return true
+            if (tp1 `eq` NothingType) return true
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -404,7 +404,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case tp1: AnnotatedType if !tp1.isRefining =>
         recur(tp1.parent, tp2)
       case AndType(tp11, tp12) =>
-        if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
+        if (tp11.stripTypeVar `eq` tp12.stripTypeVar) recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
@@ -442,13 +442,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         val cls2 = tp2.symbol
         if (cls2.isClass) {
           if (cls2.typeParams.isEmpty) {
-            if (cls2 eq AnyKindClass) return true
+            if (cls2 `eq` AnyKindClass) return true
             if (tp1.isRef(NothingClass)) return true
             if (tp1.isLambdaSub) return false
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
-            if (cls2 eq AnyClass) return true
+            if (cls2 `eq` AnyClass) return true
             if (cls2 == defn.SingletonClass && tp1.isStable) return true
             return tryBaseType(cls2)
           }
@@ -497,7 +497,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         def compareRefined: Boolean = {
           val tp1w = tp1.widen
           val skipped2 = skipMatching(tp1w, tp2)
-          if ((skipped2 eq tp2) || !Config.fastPathForRefinedSubtype)
+          if ((skipped2 `eq` tp2) || !Config.fastPathForRefinedSubtype)
             tp1 match {
               case tp1: AndType =>
                 // Delay calling `compareRefinedSlow` because looking up a member
@@ -569,7 +569,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         compareTypeLambda
       case OrType(tp21, tp22) =>
         val tp1a = tp1.widenDealiasKeepRefiningAnnots
-        if (tp1a ne tp1)
+        if (tp1a `ne` tp1)
           // Follow the alias; this might avoid truncating the search space in the either below
           // Note that it's safe to widen here because singleton types cannot be part of `|`.
           return recur(tp1a, tp2)
@@ -627,8 +627,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case tp2 @ TypeBounds(lo2, hi2) =>
         def compareTypeBounds = tp1 match {
           case tp1 @ TypeBounds(lo1, hi1) =>
-            ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-            ((hi2 eq AnyType) && !hi1.isLambdaSub || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
+            ((lo2 `eq` NothingType) || isSubType(lo2, lo1)) &&
+            ((hi2 `eq` AnyType) && !hi1.isLambdaSub || (hi2 `eq` AnyKindType) || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
             tp2 contains tp1
           case _ =>
@@ -641,7 +641,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case ClassInfo(pre2, cls2, _, _, _) =>
         def compareClassInfo = tp1 match {
           case ClassInfo(pre1, cls1, _, _, _) =>
-            (cls1 eq cls2) && isSubType(pre1, pre2)
+            (cls1 `eq` cls2) && isSubType(pre1, pre2)
           case _ =>
             false
         }
@@ -683,8 +683,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               case _ => false
             }
             val sym1 = tp1.symbol
-            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
-            (sym1 eq NullClass) && isNullable(tp2)
+            (sym1 `eq` NothingClass) && tp2.isValueTypeOrLambda ||
+            (sym1 `eq` NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
         compareAppliedType1(tp1, tycon1, args1)
@@ -718,7 +718,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         compareHKLambda
       case AndType(tp11, tp12) =>
         val tp2a = tp2.dealiasKeepRefiningAnnots
-        if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
+        if (tp2a `ne` tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
 
         // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
@@ -985,8 +985,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       tp1.eq(tp2) || tp2.ne(NothingType) && isSubType(tp1, tp2, approx.addHigh)
 
     // begin recur
-    if (tp2 eq NoType) false
-    else if (tp1 eq tp2) true
+    if (tp2 `eq` NoType) false
+    else if (tp1 `eq` tp2) true
     else {
       val saved = constraint
       val savedSuccessCount = successCount
@@ -1154,7 +1154,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     }
     def fixOrElse(tp: Type, fallback: Type) = {
       val tp1 = fix(tp)
-      if (tp1 ne tp) tp1 else fallback
+      if (tp1 `ne` tp) tp1 else fallback
     }
     fix(tp)
   }
@@ -1225,7 +1225,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       //
       // where TV is a type variable. See i2397.scala for an example of the latter.
       def matchAbstractTypeMember(info1: Type) = info1 match {
-        case TypeBounds(lo, hi) if lo ne hi =>
+        case TypeBounds(lo, hi) if lo `ne` hi =>
           tp2.refinedInfo match {
             case rinfo2: TypeBounds if tp1.isStable =>
               val ref1 = tp1.widenExpr.select(name)
@@ -1285,7 +1285,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
     }
     hasSubRefinement(tp1, tp2.refinedInfo) && (
-      (tp2.parent eq limit) ||
+      (tp2.parent `eq` limit) ||
       isSubRefinements(
         tp1.parent.asInstanceOf[RefinedType], tp2.parent.asInstanceOf[RefinedType], limit))
   }
@@ -1405,8 +1405,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
   /** Two types are the same if are mutual subtypes of each other */
   def isSameType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean =
-    if (tp1 eq NoType) false
-    else if (tp1 eq tp2) true
+    if (tp1 `eq` NoType) false
+    else if (tp1 `eq` tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
 
   /** Same as `isSameType` but also can be applied to overloaded TermRefs, where
@@ -1449,7 +1449,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
-    if (tp1 eq tp2) tp1
+    if (tp1 `eq` tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
     else if ((tp1 isRef AnyClass) && !tp2.isLambdaSub || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp2
@@ -1463,10 +1463,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             tp11 & tp2 | tp12 & tp2
           case _ =>
             val tp1a = dropIfSuper(tp1, tp2)
-            if (tp1a ne tp1) glb(tp1a, tp2)
+            if (tp1a `ne` tp1) glb(tp1a, tp2)
             else {
               val tp2a = dropIfSuper(tp2, tp1)
-              if (tp2a ne tp2) glb(tp1, tp2a)
+              if (tp2a `ne` tp2) glb(tp1, tp2a)
               else tp1 match {
                 case tp1: ConstantType =>
                   tp2 match {
@@ -1497,7 +1497,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  @note  We do not admit singleton types in or-types as lubs.
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
-    if (tp1 eq tp2) tp1
+    if (tp1 `eq` tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
     else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp1
@@ -1511,7 +1511,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         else {
           val tp1w = tp1.widen
           val tp2w = tp2.widen
-          if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
+          if ((tp1 `ne` tp1w) || (tp2 `ne` tp2w)) lub(tp1w, tp2w)
           else orType(tp1w, tp2w) // no need to check subtypes again
         }
       }
@@ -1606,11 +1606,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     else tp2 match {
       case tp2 @ AndType(tp21, tp22) =>
         val lower1 = mergeIfSub(tp1, tp21)
-        if (lower1 eq tp21) tp2
+        if (lower1 `eq` tp21) tp2
         else if (lower1.exists) lower1 & tp22
         else {
           val lower2 = mergeIfSub(tp1, tp22)
-          if (lower2 eq tp22) tp2
+          if (lower2 `eq` tp22) tp2
           else if (lower2.exists) tp21 & lower2
           else NoType
         }
@@ -1627,11 +1627,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     else tp2 match {
       case tp2 @ OrType(tp21, tp22) =>
         val higher1 = mergeIfSuper(tp1, tp21, canConstrain)
-        if (higher1 eq tp21) tp2
+        if (higher1 `eq` tp21) tp2
         else if (higher1.exists) higher1 | tp22
         else {
           val higher2 = mergeIfSuper(tp1, tp22, canConstrain)
-          if (higher2 eq tp22) tp2
+          if (higher2 `eq` tp22) tp2
           else if (higher2.exists) tp21 | higher2
           else NoType
         }

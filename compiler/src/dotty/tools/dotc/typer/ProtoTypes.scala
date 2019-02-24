@@ -166,12 +166,12 @@ object ProtoTypes {
     def underlying(implicit ctx: Context): Type = WildcardType
 
     def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto =
-      if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
+      if ((name `eq` this.name) && (memberProto `eq` this.memberProto) && (compat `eq` this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
     override def equals(that: Any): Boolean = that match {
       case that: SelectionProto =>
-        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
+        (name `eq` that.name) && (memberProto == that.memberProto) && (compat `eq` that.compat) && (privateOK == that.privateOK)
       case _ =>
         false
     }
@@ -182,7 +182,7 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
 
     override def computeHash(bs: Hashable.Binders): Int = {
-      val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
+      val delta = (if (compat `eq` NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
     }
   }
@@ -193,7 +193,7 @@ object ProtoTypes {
   object SelectionProto {
     def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(implicit ctx: Context): SelectionProto = {
       val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK)
-      if (compat eq NoViewsAllowed) unique(selproto) else selproto
+      if (compat `eq` NoViewsAllowed) unique(selproto) else selproto
     }
   }
 
@@ -259,7 +259,7 @@ object ProtoTypes {
     }
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
-      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
+      if ((args `eq` this.args) && (resultType `eq` this.resultType) && (typer `eq` this.typer)) this
       else new FunProto(args, resultType)(typer, isContextual)
 
     override def notApplied: Type = WildcardType
@@ -414,7 +414,7 @@ object ProtoTypes {
       }
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context): ViewProto =
-      if ((argType eq this.argType) && (resultType eq this.resultType)) this
+      if ((argType `eq` this.argType) && (resultType `eq` this.resultType)) this
       else ViewProto(argType, resultType)
 
     def map(tm: TypeMap)(implicit ctx: Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
@@ -454,7 +454,7 @@ object ProtoTypes {
     }
 
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
-      if ((targs eq this.targs) && (resType eq this.resType)) this
+      if ((targs `eq` this.targs) && (resType `eq` this.resType)) this
       else PolyProto(targs, resType)
 
     override def notApplied: Type = WildcardType
@@ -578,7 +578,7 @@ object ProtoTypes {
             case pt: IgnoredProto  =>
               tp
             case pt: ApplyingProto =>
-              if (rt eq mt.resultType) tp
+              if (rt `eq` mt.resultType) tp
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)

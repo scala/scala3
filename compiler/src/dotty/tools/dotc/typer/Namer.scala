@@ -76,7 +76,7 @@ trait NamerContextOps { this: Context =>
             case Some(sym) => sym
             case None =>
               var cx = ctx.outer
-              while (cx.typeAssigner eq typer) cx = cx.outer
+              while (cx.typeAssigner `eq` typer) cx = cx.outer
               go(cx)
           }
         case _ => NoSymbol
@@ -400,12 +400,12 @@ class Namer { typer: Typer =>
   /** Create package if it does not yet exist. */
   private def createPackageSymbol(pid: RefTree)(implicit ctx: Context): Symbol = {
     val pkgOwner = pid match {
-      case Ident(_) => if (ctx.owner eq defn.EmptyPackageClass) defn.RootClass else ctx.owner
+      case Ident(_) => if (ctx.owner `eq` defn.EmptyPackageClass) defn.RootClass else ctx.owner
       case Select(qual: RefTree, _) => createPackageSymbol(qual).moduleClass
     }
     val existing = pkgOwner.info.decls.lookup(pid.name)
 
-    if ((existing is Package) && (pkgOwner eq existing.owner)) {
+    if ((existing is Package) && (pkgOwner `eq` existing.owner)) {
       existing.moduleClass.denot match {
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
@@ -782,7 +782,7 @@ class Namer { typer: Typer =>
     final override def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       if (Config.showCompletions && ctx.typerState != this.ctx.typerState) {
         def levels(c: Context): Int =
-          if (c.typerState eq this.ctx.typerState) 0
+          if (c.typerState `eq` this.ctx.typerState) 0
           else if (c.typerState == null) -1
           else if (c.outer.typerState == c.typerState) levels(c.outer)
           else levels(c.outer) + 1
@@ -974,7 +974,7 @@ class Namer { typer: Typer =>
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.sourcePos,
-              traitReq = parent ne parents.head, stablePrefixReq = true)
+              traitReq = parent `ne` parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
               case Select(qual: Super, _) if ctx.scala2Mode =>

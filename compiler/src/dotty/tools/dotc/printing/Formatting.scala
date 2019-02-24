@@ -117,7 +117,7 @@ object Formatting {
         case _ => e1
       }
       lazy val dealiased = followAlias(entry)
-      var alts = apply(str).dropWhile(alt => dealiased ne followAlias(alt))
+      var alts = apply(str).dropWhile(alt => dealiased `ne` followAlias(alt))
       if (alts.isEmpty) {
         alts = entry :: apply(str)
         update(str, alts)
@@ -154,8 +154,8 @@ object Formatting {
     }
 
     def addendum(cat: String, info: Type): String = info match {
-      case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
-        if (lo eq hi) i" which is an alias of $lo"
+      case bounds @ TypeBounds(lo, hi) if bounds `ne` TypeBounds.empty =>
+        if (lo `eq` hi) i" which is an alias of $lo"
         else i" with $cat ${boundsStr(bounds)}"
       case _ =>
         ""

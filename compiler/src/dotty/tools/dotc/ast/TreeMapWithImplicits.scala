@@ -29,7 +29,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     @tailrec def traverse(curStats: List[Tree])(implicit ctx: Context): List[Tree] = {
 
       def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(implicit ctx: Context): List[Tree] = {
-        if (stats eq curStats) {
+        if (stats `eq` curStats) {
           val rest1 = transformStats(rest, exprOwner)
           changed match {
             case Thicket(trees) => trees ::: rest1
@@ -50,7 +50,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
             case _ => ctx
           }
           val stat1 = transform(stat)(statCtx)
-          if (stat1 ne stat) recur(stats, stat1, rest)(restCtx)
+          if (stat1 `ne` stat) recur(stats, stat1, rest)(restCtx)
           else traverse(rest)(restCtx)
         case nil =>
           stats

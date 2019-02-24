@@ -51,7 +51,7 @@ object ConstFold {
   @forceInline private def finish[T <: Tree](tree: T)(compX: => Constant)(implicit ctx: Context): T =
     try {
       val x = compX
-      if (x ne null) tree.withType(ConstantType(x)).asInstanceOf[T]
+      if (x != null) tree.withType(ConstantType(x)).asInstanceOf[T]
       else tree
     } catch {
       case _: ArithmeticException => tree   // the code will crash at runtime,

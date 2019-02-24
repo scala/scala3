@@ -83,12 +83,12 @@ object PickledQuotes {
     if (tree.span.exists)
       new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-    if (quotePickling ne noPrinter)
+    if (quotePickling `ne` noPrinter)
       println(i"**** pickling quote of \n${tree.show}")
 
     val pickled = pickler.assembleParts()
 
-    if (quotePickling ne noPrinter)
+    if (quotePickling `ne` noPrinter)
       println(new TastyPrinter(pickled).printContents())
 
     pickled
@@ -96,7 +96,7 @@ object PickledQuotes {
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
-    if (quotePickling ne noPrinter) {
+    if (quotePickling `ne` noPrinter) {
       println(i"**** unpickling quote from TASTY")
       println(new TastyPrinter(bytes).printContents())
     }
@@ -106,7 +106,7 @@ object PickledQuotes {
     unpickler.enter(Set.empty)
     val tree = unpickler.tree
 
-    if (quotePickling ne noPrinter)
+    if (quotePickling `ne` noPrinter)
       println(i"**** unpickle quote ${tree.show}")
 
     tree

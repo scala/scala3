@@ -702,7 +702,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
         case Apply(t :TypeApply, _) =>
           generatedType =
-            if (t.symbol ne Object_synchronized) genTypeApply(t)
+            if (t.symbol `ne` Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
         // 'super' call: Note: since constructors are supposed to
@@ -1300,7 +1300,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val op = testOpForPrimitive(code)
         val nonNullSide = if (ScalaPrimitivesOps.isReferenceEqualityOp(code)) ifOneIsNull(l, r) else null
         if (nonNullSide != null) {
-          // special-case reference (in)equality test for null (null eq x, x eq null)
+          // special-case reference (in)equality test for null (null `eq` x, x == null)
           genLoad(nonNullSide, ObjectReference)
           genCZJUMP(success, failure, op, ObjectReference, targetIfNoJump)
         } else {
@@ -1359,7 +1359,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /*
      * Generate the "==" code for object references. It is equivalent of
-     * if (l eq null) r eq null else l.equals(r);
+     * if (l == null) r == null else l.equals(r);
      *
      * @param l       left-hand-side  of the '=='
      * @param r       right-hand-side of the '=='
@@ -1394,11 +1394,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
       else {
         if (isNull(l)) {
-          // null == expr -> expr eq null
+          // null == expr -> expr == null
           genLoad(r, ObjectReference)
           genCZJUMP(success, failure, Primitives.EQ, ObjectReference, targetIfNoJump)
         } else if (isNull(r)) {
-          // expr == null -> expr eq null
+          // expr == null -> expr == null
           genLoad(l, ObjectReference)
           genCZJUMP(success, failure, Primitives.EQ, ObjectReference, targetIfNoJump)
         } else if (isNonNullExpr(l)) {
@@ -1408,7 +1408,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genCallMethod(Object_equals, InvokeStyle.Virtual)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
-          // l == r -> if (l eq null) r eq null else l.equals(r)
+          // l == r -> if (l == null) r == null else l.equals(r)
           val eqEqTempLocal = locals.makeLocal(ObjectReference, nme_EQEQ_LOCAL_VAR.mangledString, Object_Type, r.pos)
           val lNull    = new asm.Label
           val lNonNull = new asm.Label

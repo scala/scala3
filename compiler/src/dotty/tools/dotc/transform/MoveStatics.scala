@@ -39,7 +39,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
       val pairs = classes.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]
 
       def rebuild(orig: TypeDef, newBody: List[Tree]): Tree = {
-        if (orig eq null) return EmptyTree
+        if (orig == null) return EmptyTree
 
         val staticFields = newBody.filter(x => x.isInstanceOf[ValDef] && x.symbol.hasAnnotation(defn.ScalaStaticAnnot)).asInstanceOf[List[ValDef]]
         val newBodyWithStaticConstr =

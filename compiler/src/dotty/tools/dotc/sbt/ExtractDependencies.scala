@@ -354,7 +354,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
             addImported(name)
           case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
             addImported(name)
-            if (rename ne nme.WILDCARD) {
+            if (rename `ne` nme.WILDCARD) {
               addUsedName(rename, UseScope.Default)
             }
           case _ =>

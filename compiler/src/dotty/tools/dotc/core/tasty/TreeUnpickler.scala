@@ -422,7 +422,7 @@ class TreeUnpickler(reader: TastyReader,
       val prefix = readType()
       val res = NamedType(prefix, sym)
       prefix match {
-        case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
+        case prefix: ThisType if prefix.cls `eq` sym.owner => res.withDenot(sym.denot)
           // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
           // the problem arises when a self type of a trait is a type parameter of the same trait.
         case _ => res
@@ -543,7 +543,7 @@ class TreeUnpickler(reader: TastyReader,
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val coord = coordAt(start)
       val sym =
-        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+        roots.find(root => (root.owner `eq` ctx.owner) && root.name == name) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.symbol.coord = coord

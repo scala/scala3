@@ -19,7 +19,7 @@ class ClassOf extends MiniPhase {
   override def phaseName: String = "classOf"
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
-    if (tree.symbol eq defn.Predef_classOf) {
+    if (tree.symbol `eq` defn.Predef_classOf) {
       val targ = tree.args.head.tpe
       clsOf(targ).ensureConforms(tree.tpe).withSpan(tree.span)
     }

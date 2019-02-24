@@ -115,7 +115,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformClosure(tree: Closure)(implicit ctx: Context): tpd.Tree = {
-    if (tree.tpt ne EmptyTree) {
+    if (tree.tpt `ne` EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
         ctx.error("Not a single abstract method type, requires an outer pointer", tree.sourcePos)
@@ -256,7 +256,7 @@ object ExplicitOuter {
       case ref: ThisType =>
         isOuterSym(ref.cls)
       case ref: TermRef =>
-        if (ref.prefix ne NoPrefix)
+        if (ref.prefix `ne` NoPrefix)
           !ref.symbol.isStatic && isOuterRef(ref.prefix)
         else (
           (ref.symbol is Hoistable) &&
@@ -298,7 +298,7 @@ object ExplicitOuter {
     case tpe: TypeRef =>
       tpe.symbol match {
         case cls: ClassSymbol =>
-          if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
+          if (tpe.prefix `eq` NoPrefix) cls.owner.enclosingClass.thisType
           else tpe.prefix
         case _ =>
           // Need to be careful to dealias before erasure, otherwise we lose prefixes.

@@ -182,7 +182,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
           stat.rhs match {
             case Block(superCall :: stats, expr) =>
               val superCall1 = hoistSuperArgsFromCall(superCall, stat)
-              if (superCall1 eq superCall) stat.rhs
+              if (superCall1 `eq` superCall) stat.rhs
               else cpy.Block(stat.rhs)(superCall1 :: stats, expr)
             case _ =>
               hoistSuperArgsFromCall(stat.rhs, stat)

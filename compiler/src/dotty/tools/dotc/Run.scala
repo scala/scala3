@@ -86,7 +86,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     *  from TASTY.
     */
   def files: Set[AbstractFile] = {
-    if (myUnits ne myUnitsCached) {
+    if (myUnits `ne` myUnitsCached) {
       myUnitsCached = myUnits
       myFiles = myUnits.map(_.source.file).toSet
     }
@@ -115,7 +115,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  account. I think the latter would be preferable.
    */
   def compileSources(sources: List[SourceFile]): Unit =
-    if (sources forall (_.exists)) {
+    if (sources `forall` (_.exists)) {
       units = sources.map(CompilationUnit(_))
       compileUnits()
     }

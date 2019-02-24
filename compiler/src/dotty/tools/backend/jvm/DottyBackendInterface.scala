@@ -160,7 +160,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
   override def isSyntheticArrayConstructor(s: Symbol): Boolean = {
-    s eq defn.newArrayMethod
+    s `eq` defn.newArrayMethod
   }
 
   def isBox(sym: Symbol): Boolean =
@@ -615,7 +615,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         fun.tpe.widen match {
           case MethodType(names) =>
             (names zip args).filter {
-              case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
+              case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix `eq` NoPrefix) => false
               case _ => true
             }
         }
@@ -670,7 +670,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isInterface: Boolean = (sym is Flags.PureInterface) || (sym is Flags.Trait)
     def isGetter: Boolean = toDenot(sym).isGetter
     def isSetter: Boolean = toDenot(sym).isSetter
-    def isGetClass: Boolean = sym eq defn.Any_getClass
+    def isGetClass: Boolean = sym `eq` defn.Any_getClass
     def isJavaDefined: Boolean = sym is Flags.JavaDefined
     def isJavaDefaultMethod: Boolean = !((sym is Flags.Deferred)  || toDenot(sym).isClassConstructor)
     def isDeferred: Boolean = sym is Flags.Deferred
@@ -682,15 +682,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     def isFinal: Boolean = sym is Flags.Final
-    def isStaticMember: Boolean = (sym ne NoSymbol) &&
+    def isStaticMember: Boolean = (sym `ne` NoSymbol) &&
       ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
-    def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
+    def isBottomClass: Boolean = (sym `ne` defn.NullClass) && (sym `ne` defn.NothingClass)
     def isBridge: Boolean = sym is Flags.Bridge
     def isArtifact: Boolean = sym is Flags.Artifact
     def hasEnumFlag: Boolean = sym is Flags.JavaEnum
-    def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
+    def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) `ne` defn.RootClass
     def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
     def isDeprecated: Boolean = false
     def isMutable: Boolean = sym is Flags.Mutable
@@ -722,7 +722,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
-    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
+    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name `eq` nme.STATIC_CONSTRUCTOR)
 
 
     // navigation
@@ -985,7 +985,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     var desugared: tpd.Select = null
 
     override def isEmpty: Boolean =
-      desugared eq null
+      desugared == null
 
     def _1: Tree =  desugared.qualifier
 
@@ -1038,7 +1038,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def get: Tree = field.args.head
 
     override def unapply(s: Throw): Throw.type = {
-      if (s.fun.symbol eq defn.throwMethod) {
+      if (s.fun.symbol `eq` defn.throwMethod) {
         field = s
       } else {
         field = null

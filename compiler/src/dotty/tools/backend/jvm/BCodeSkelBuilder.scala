@@ -321,7 +321,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def unregisterCleanup(finCleanup: asm.Label): Unit = {
       if (finCleanup != null) {
-        assert(cleanups.head eq finCleanup,
+        assert(cleanups.head `eq` finCleanup,
                s"Bad nesting of cleanup operations: $cleanups trying to unregister: $finCleanup")
         cleanups = cleanups.tail
       }

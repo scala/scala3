@@ -38,19 +38,19 @@ trait Page {
 
   /** YAML front matter from the top of the file */
   def yaml(implicit ctx: Context): Map[String, AnyRef] = {
-    if (_yaml eq null) initFields
+    if (_yaml == null) initFields
     _yaml
   }
 
   /** HTML generated from page */
   def html(implicit ctx: Context): Option[String] = {
-    if (_html eq null) initFields
+    if (_html == null) initFields
     _html
   }
 
   /** First paragraph of page extracted from rendered HTML */
   def firstParagraph(implicit ctx: Context): String = {
-    if (_html eq null) initFields
+    if (_html == null) initFields
 
     _html.map { _html =>
       val sb = new StringBuilder

@@ -117,7 +117,7 @@ trait TypeAssigner {
           val lo = ctx.typeComparer.instanceType(
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
           val lo1 = apply(lo)
-          if (lo1 ne lo) lo1 else tp
+          if (lo1 `ne` lo) lo1 else tp
         case _ =>
           mapOver(tp)
       }
@@ -132,7 +132,7 @@ trait TypeAssigner {
        *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
        */
       override def derivedSelect(tp: NamedType, pre: Type) =
-        if (pre eq tp.prefix)
+        if (pre `eq` tp.prefix)
           tp
         else tryWiden(tp, tp.prefix).orElse {
           if (tp.isTerm && variance > 0 && !pre.isSingleton)
@@ -168,7 +168,7 @@ trait TypeAssigner {
         denot.exists && !denot.isAbsent
       case denot: SingleDenotation =>
         val sym = denot.symbol
-        (sym eq NoSymbol) || reallyExists(sym.denot)
+        (sym `eq` NoSymbol) || reallyExists(sym.denot)
       case _ =>
         true
     }
@@ -350,7 +350,7 @@ trait TypeAssigner {
    */
   def safeSubstParam(tp: Type, pref: ParamRef, argType: Type)(implicit ctx: Context): Type = {
     val tp1 = tp.substParam(pref, argType)
-    if ((tp1 eq tp) || argType.isStable) tp1
+    if ((tp1 `eq` tp) || argType.isStable) tp1
     else tp.substParam(pref, SkolemType(argType.widen))
   }
 
@@ -501,7 +501,7 @@ trait TypeAssigner {
     tree.withType(defn.NothingType)
 
   def assignType(tree: untpd.WhileDo)(implicit ctx: Context): WhileDo =
-    tree.withType(if (tree.cond eq EmptyTree) defn.NothingType else defn.UnitType)
+    tree.withType(if (tree.cond `eq` EmptyTree) defn.NothingType else defn.UnitType)
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(implicit ctx: Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)
@@ -558,7 +558,7 @@ trait TypeAssigner {
     tree.withType(ExprType(result.tpe))
 
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
-    tree.withType(if (lo eq hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
+    tree.withType(if (lo `eq` hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context): Bind =
     tree.withType(NamedType(NoPrefix, sym))

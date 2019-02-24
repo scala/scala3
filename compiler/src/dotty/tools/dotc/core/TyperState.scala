@@ -141,10 +141,10 @@ class TyperState(previous: TyperState /* | Null */) {
     val targetState = ctx.typerState
     assert(isCommittable)
     targetState.constraint =
-      if (targetState.constraint eq previousConstraint) constraint
+      if (targetState.constraint `eq` previousConstraint) constraint
       else targetState.constraint & (constraint, otherHasErrors = reporter.errorsReported)
     constraint foreachTypeVar { tvar =>
-      if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
+      if (tvar.owningState.get `eq` this) tvar.owningState = new WeakReference(targetState)
     }
     targetState.ownedVars ++= ownedVars
     targetState.gc()
@@ -161,7 +161,7 @@ class TyperState(previous: TyperState /* | Null */) {
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
         val inst = ctx.typeComparer.instType(tvar)
-        if (inst.exists && (tvar.owningState.get eq this)) {
+        if (inst.exists && (tvar.owningState.get `eq` this)) {
           tvar.inst = inst
           val lam = tvar.origin.binder
           if (constraint.isRemovable(lam)) toCollect += lam

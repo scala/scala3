@@ -48,7 +48,7 @@ object Utility {
           sb.append(theChar)
         }
         else {
-          if (rfb eq null) rfb = new StringBuilder()
+          if (rfb == null) rfb = new StringBuilder()
           rfb append c
           c = it.next()
           while (c != ';') {

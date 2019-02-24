@@ -27,8 +27,8 @@ class ScalaPrimitivesOps {
   final val ASR = 32                           // x >> y
 
   // Comparison operations
-  final val ID = 40                            // x eq y
-  final val NI = 41                            // x ne y
+  final val ID = 40                            // x `eq` y
+  final val NI = 41                            // x `ne` y
   final val EQ = 42                            // x == y
   final val NE = 43                            // x != y
   final val LT = 44                            // x < y

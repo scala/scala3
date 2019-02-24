@@ -232,7 +232,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   abstract class DeconstructorCommon[T >: Null <: AnyRef] {
     var field: T = null
     def get: this.type = this
-    def isEmpty: Boolean = field eq null
+    def isEmpty: Boolean = field == null
     def isDefined = !isEmpty
     def unapply(s: T): this.type ={
       field = s
@@ -243,7 +243,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   abstract class Deconstructor1Common[T >: Null <: AnyRef, R]{
     var field: T = _
     def get: R
-    def isEmpty: Boolean = field eq null
+    def isEmpty: Boolean = field == null
     def isDefined = !isEmpty
     def unapply(s: T): this.type ={
       field = s
@@ -794,7 +794,7 @@ abstract class BackendInterfaceDefinitions { self: BackendInterface =>
     case Literal(_) => true
     case _ => false
   }
-  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((t.symbol ne null) && t.symbol.isModule)
+  def isNonNullExpr(t: Tree): Boolean = isLiteral(t) || ((t.symbol != null) && t.symbol.isModule)
   def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
 
   private val primitiveCompilationUnits = Set(

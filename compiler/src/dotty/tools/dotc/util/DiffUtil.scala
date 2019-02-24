@@ -83,7 +83,7 @@ object DiffUtil {
     }
 
     val expectedDiff =
-      if (expected eq EOF) eof()
+      if (expected `eq` EOF) eof()
       else diff.collect {
         case Unmodified(str) => str
         case Inserted(str) => added(str)
@@ -92,7 +92,7 @@ object DiffUtil {
       }.mkString
 
     val actualDiff =
-      if (actual eq EOF) eof()
+      if (actual `eq` EOF) eof()
       else diff.collect {
         case Unmodified(str) => str
         case Inserted(_) => ""

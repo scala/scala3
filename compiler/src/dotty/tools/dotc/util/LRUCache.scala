@@ -33,7 +33,7 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
     @tailrec
     def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value = {
       val follow = nx(current)
-      if (keys(current) eq key) {
+      if (keys(current) `eq` key) {
         // arrange so that found element is at position `first`.
         if (current == last) last = prev
         else if (prev != last) {

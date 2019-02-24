@@ -19,7 +19,7 @@ object Attachment {
     final def getAttachment[V](key: Key[V]): Option[V] = {
       val nx = next
       if (nx == null) None
-      else if (nx.key eq key) Some(nx.value.asInstanceOf[V])
+      else if (nx.key `eq` key) Some(nx.value.asInstanceOf[V])
       else nx.getAttachment[V](key)
     }
 
@@ -29,7 +29,7 @@ object Attachment {
     final def attachment[V](key: Key[V]): V = {
       val nx = next
       if (nx == null) throw new NoSuchElementException
-      else if (nx.key eq key) nx.value.asInstanceOf[V]
+      else if (nx.key `eq` key) nx.value.asInstanceOf[V]
       else nx.attachment(key)
     }
 
@@ -39,7 +39,7 @@ object Attachment {
     final def attachmentOrElse[V](key: Key[V], default: V): V = {
       val nx = next
       if (nx == null) default
-      else if (nx.key eq key) nx.value.asInstanceOf[V]
+      else if (nx.key `eq` key) nx.value.asInstanceOf[V]
       else nx.attachmentOrElse(key, default)
     }
 
@@ -54,7 +54,7 @@ object Attachment {
         next = new Link(key, value, null)
         None
       }
-      else if (nx.key eq key) {
+      else if (nx.key `eq` key) {
         next = new Link(key, value, nx.next)
         Some(nx.value.asInstanceOf[V])
       }
@@ -68,7 +68,7 @@ object Attachment {
       val nx = next
       if (nx == null)
         None
-      else if (nx.key eq key) {
+      else if (nx.key `eq` key) {
         next = nx.next
         Some(nx.value.asInstanceOf[V])
       }

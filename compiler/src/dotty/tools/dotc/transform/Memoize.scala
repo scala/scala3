@@ -106,9 +106,9 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
 
     def erasedBottomTree(sym: Symbol) = {
-      if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))
-      else if (sym eq defn.NullClass) Literal(Constant(null))
-      else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
+      if (sym `eq` defn.NothingClass) Throw(Literal(Constant(null)))
+      else if (sym `eq` defn.NullClass) Literal(Constant(null))
+      else if (sym `eq` defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
       else {
         assert(false, sym + " has no erased bottom tree")
         EmptyTree
@@ -122,7 +122,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
       def isErasableBottomField(cls: Symbol): Boolean =
-        !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
+        !field.isVolatile && ((cls `eq` defn.NothingClass) || (cls `eq` defn.NullClass) || (cls `eq` defn.BoxedUnitClass))
 
       if (sym.isGetter) {
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)

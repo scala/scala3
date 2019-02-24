@@ -83,7 +83,7 @@ object RefChecks {
    *  (Forwarding tends to hide problems by binding parameter names).
    */
   private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
-    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.is(ModuleOrFinal) =>
+    case ClassInfo(_, _, _, _, tp: Type) if (tp `ne` cls.typeRef) && !cls.is(ModuleOrFinal) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -1454,7 +1454,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         case TypeRef(pre, _, args) =>
           // checking the prefix here gives us spurious errors on e.g. a private[process]
           // object which contains a type alias, which normalizes to a visible type.
-          args filterNot (_ eq NoPrefix) flatMap (tp => lessAccessibleSymsInType(tp, memberSym))
+          args filterNot (_ `eq` NoPrefix) flatMap (tp => lessAccessibleSymsInType(tp, memberSym))
         case _ =>
           Nil
       }
@@ -1490,7 +1490,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         // if the unnormalized type is accessible, that's good enough
         if (inaccessible.isEmpty) ()
         // or if the normalized type is, that's good too
-        else if ((tpe ne tpe.normalize) && lessAccessibleSymsInType(tpe.dealiasWiden, member).isEmpty) ()
+        else if ((tpe `ne` tpe.normalize) && lessAccessibleSymsInType(tpe.dealiasWiden, member).isEmpty) ()
         // otherwise warn about the inaccessible syms in the unnormalized type
         else inaccessible foreach (sym => warnLessAccessible(sym, member))
       }

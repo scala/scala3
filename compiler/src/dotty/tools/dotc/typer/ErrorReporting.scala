@@ -105,7 +105,7 @@ object ErrorReporting {
       }
       val found1 = dropJavaMethod(found)
       val expected1 = dropJavaMethod(expected)
-      if ((found1 eq found) != (expected eq expected1) && (found1 <:< expected1))
+      if ((found1 `eq` found) != (expected `eq` expected1) && (found1 <:< expected1))
         i"""
            |(Note that Scala's and Java's representation of this type differs)"""
       else if (ctx.settings.explainTypes.value)

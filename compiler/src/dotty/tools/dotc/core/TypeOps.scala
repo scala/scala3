@@ -33,7 +33,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
        *  the current variance is <= 0, return a range.
        */
       def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
+        if ((pre `eq` NoType) || (pre `eq` NoPrefix) || (cls is PackageClass))
           tp
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
@@ -83,7 +83,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
           case tp1: NamedType if tp1.denotationIsCurrent =>
             val tp2 = tp1.reduceProjection
-            //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
+            //if (tp2 `ne` tp1) println(i"simplified $tp1 -> $tp2")
             tp2
           case tp1 => tp1
         }
@@ -167,7 +167,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           }
         case tp1 @ TypeRef(pre1, _) =>
           tp2 match {
-            case tp2 @ TypeRef(pre2, _) if tp1.name eq tp2.name =>
+            case tp2 @ TypeRef(pre2, _) if tp1.name `eq` tp2.name =>
               tp1.derivedSelect(pre1 | pre2)
             case _ => fail
           }
@@ -304,7 +304,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       ctx.importInfo.featureImported(owner, feature)(ctx.withPhase(ctx.typerPhase))
     def hasOption = {
       def toPrefix(sym: Symbol): String =
-        if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
+        if (!sym.exists || (sym `eq` defn.LanguageModuleClass)) ""
         else toPrefix(sym.owner) + sym.name + "."
       val featureName = toPrefix(owner) + feature
       ctx.base.settings.language.value exists (s => s == featureName || s == "_")

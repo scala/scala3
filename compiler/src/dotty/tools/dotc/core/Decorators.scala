@@ -55,18 +55,18 @@ object Decorators {
       @tailrec
       def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty) {
-          if (mapped eq null) unchanged
+          if (mapped `eq` null) unchanged
           else mapped.prependToList(unchanged)
         } else {
           val head0 = pending.head
           val head1 = f(head0)
 
-          if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
+          if (head1.asInstanceOf[AnyRef] `eq` head0.asInstanceOf[AnyRef])
             loop(mapped, unchanged, pending.tail)
           else {
-            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            val b = if (mapped `eq` null) new ListBuffer[U] else mapped
             var xc = unchanged
-            while (xc ne pending) {
+            while (xc `ne` pending) {
               b += xc.head
               xc = xc.tail
             }
@@ -78,7 +78,7 @@ object Decorators {
       loop(null, xs.asInstanceOf[List[U]], xs)
     }
 
-    /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
+    /** Like `xs.filter(p)` but returns list `xs` itself  - instead of a copy -
      *  if `p` is true for all elements and `xs` is not longer
      *  than `MaxFilterRecursions`.
      */
@@ -89,10 +89,10 @@ object Decorators {
           if (nrec < MaxFilterRecursions) {
             val ys1 = loop(xs1, nrec + 1)
             if (p(x))
-              if (ys1 eq xs1) xs else x :: ys1
+              if (ys1 `eq` xs1) xs else x :: ys1
             else
               ys1
-          } else xs filter p
+          } else xs.filter(p)
       }
       loop(xs, 0)
     }
@@ -107,8 +107,8 @@ object Decorators {
       else {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eq xs.tail)) xs
+        if ((x1.asInstanceOf[AnyRef] `eq` xs.head.asInstanceOf[AnyRef]) &&
+            (xs1 `eq` xs.tail)) xs
         else x1 :: xs1
       }
 
@@ -131,15 +131,15 @@ object Decorators {
     }
 
     /** Union on lists seen as sets */
-    def | (ys: List[T]): List[T] = xs ::: (ys filterNot (xs contains _))
+    def | (ys: List[T]): List[T] = xs ::: ys.filterNot(xs.contains(_))
 
     /** Intersection on lists seen as sets */
-    def & (ys: List[T]): List[T] = xs filter (ys contains _)
+    def & (ys: List[T]): List[T] = xs.filter(ys.contains(_))
   }
 
   implicit class ListOfListDecorator[T](val xss: List[List[T]]) extends AnyVal {
-    def nestedMap[U](f: T => U): List[List[U]] = xss map (_ map f)
-    def nestedMapconserve[U](f: T => U): List[List[U]] = xss mapconserve (_ mapconserve f)
+    def nestedMap[U](f: T => U): List[List[U]] = xss.map(_.map(f))
+    def nestedMapconserve[U](f: T => U): List[List[U]] = xss.mapconserve(_.mapconserve(f))
   }
 
   implicit class TextToString(val text: Text) extends AnyVal {

@@ -50,7 +50,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
     case NonFatal(ex) => {
       // TODO: when we reimplement the liquid parser, this can go away. For now
       // this is an OK approximation of what went wrong.
-      if ((ex.getCause eq null) || ex.getMessage.contains("exceeded the max amount of time")) {
+      if ((ex.getCause == null) || ex.getMessage.contains("exceeded the max amount of time")) {
         ctx.docbase.error(
           "unknown error occurred in " +
           Blue(path).toString +

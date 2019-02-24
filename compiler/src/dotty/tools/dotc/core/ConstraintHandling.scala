@@ -70,7 +70,7 @@ trait ConstraintHandling[AbstractContext] {
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
         val b = bound.dealias
-        (b eq param) || {
+        (b `eq` param) || {
           b match {
             case b: AndType => occursIn(b.tp1) || occursIn(b.tp2)
             case b: OrType  => occursIn(b.tp1) || occursIn(b.tp2)
@@ -84,7 +84,7 @@ trait ConstraintHandling[AbstractContext] {
         assert(!occursIn(bound), s"$param occurs in $bound")
 
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
+      val equalBounds = isUpper && (lo `eq` bound) || !isUpper && (bound `eq` hi)
       if (equalBounds && !bound.existsPart(_.isInstanceOf[WildcardType])) {
         // The narrowed bounds are equal and do not contain wildcards,
         // so we can remove `param` from the constraint.
@@ -106,7 +106,7 @@ trait ConstraintHandling[AbstractContext] {
           finally homogenizeArgs = saved
         }
         val c1 = constraint.updateEntry(param, narrowedBounds)
-        (c1 eq constraint) || {
+        (c1 `eq` constraint) || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param)
           isSubType(lo, hi)
@@ -232,7 +232,7 @@ trait ConstraintHandling[AbstractContext] {
         tp match {
           case tp @ AppliedType(tycon, args) =>
             tp.derivedAppliedType(tycon, args.mapConserve(avoidInArg))
-          case tp: RefinedType if param occursIn tp.refinedInfo =>
+          case tp: RefinedType if param `occursIn` tp.refinedInfo =>
             tp.parent
           case tp: WildcardType =>
             val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
@@ -326,8 +326,8 @@ trait ConstraintHandling[AbstractContext] {
    *  narrowing it with further bounds.
    */
   protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
-    if (c2 eq pre) true
-    else if (c1 eq pre) false
+    if (c2 `eq` pre) true
+    else if (c1 `eq` pre) false
     else {
       val saved = constraint
       try
@@ -414,7 +414,7 @@ trait ConstraintHandling[AbstractContext] {
           val approx = new ApproximatingTypeMap {
             if (fromBelow) variance = -1
             def apply(t: Type): Type = t match {
-              case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
+              case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas `contains` tl =>
                 val bounds = tl.paramInfos(n)
                 range(bounds.lo, bounds.hi)
               case _ =>
@@ -478,7 +478,7 @@ trait ConstraintHandling[AbstractContext] {
           val p2 = prune(bound.tp2)
           if (p1.exists && p2.exists) bound.derivedOrType(p1, p2)
           else NoType
-        case bound: TypeVar if constraint contains bound.origin =>
+        case bound: TypeVar if constraint `contains` bound.origin =>
           prune(bound.underlying)
         case bound: TypeParamRef =>
           constraint.entry(bound) match {
@@ -495,7 +495,7 @@ trait ConstraintHandling[AbstractContext] {
       }
 
       try bound match {
-        case bound: TypeParamRef if constraint contains bound =>
+        case bound: TypeParamRef if constraint `contains` bound =>
           addParamBound(bound)
         case _ =>
           val pbound = prune(bound)
@@ -513,7 +513,7 @@ trait ConstraintHandling[AbstractContext] {
       if (addConstraint(param, tp, fromBelow = true) &&
           addConstraint(param, tp, fromBelow = false)) constraint.replace(param, tp)
       else saved
-    constraint ne saved
+    constraint `ne` saved
   }
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */

@@ -81,7 +81,7 @@ trait Constructors {
 }
 
 trait Companion extends Entity {
-  def hasCompanion: Boolean = companionPath ne Nil
+  def hasCompanion: Boolean = companionPath `ne` Nil
 
   def companionPath: List[String]
 

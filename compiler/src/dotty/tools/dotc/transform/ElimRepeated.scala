@@ -35,7 +35,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
     super.transform(ref) match {
-      case ref1: SymDenotation if (ref1 ne ref) && overridesJava(ref1.symbol) =>
+      case ref1: SymDenotation if (ref1 `ne` ref) && overridesJava(ref1.symbol) =>
         // This method won't override the corresponding Java method at the end of this phase,
         // only the bridge added by `addVarArgsBridge` will.
         ref1.copySymDenotation(initFlags = ref1.flags &~ Override)

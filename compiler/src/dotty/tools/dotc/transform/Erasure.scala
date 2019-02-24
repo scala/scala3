@@ -50,7 +50,7 @@ class Erasure extends Phase with DenotTransformer {
         }
 
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
-      if (ref.symbol eq defn.ObjectClass) {
+      if (ref.symbol `eq` defn.ObjectClass) {
         // After erasure, all former Any members are now Object members
         val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
         val extendedScope = decls.cloneScope
@@ -64,11 +64,11 @@ class Erasure extends Phase with DenotTransformer {
       else {
         val oldSymbol = ref.symbol
         val newSymbol =
-          if ((oldSymbol.owner eq defn.AnyClass) && oldSymbol.isConstructor)
+          if ((oldSymbol.owner `eq` defn.AnyClass) && oldSymbol.isConstructor)
             defn.ObjectClass.primaryConstructor
         else oldSymbol
         val oldOwner = ref.owner
-        val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
+        val newOwner = if (oldOwner `eq` defn.AnyClass) defn.ObjectClass else oldOwner
         val oldInfo = ref.info
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
@@ -77,9 +77,9 @@ class Erasure extends Phase with DenotTransformer {
           else oldFlags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
 
         // TODO: define derivedSymDenotation?
-        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
+        if ((oldSymbol `eq` newSymbol) && (oldOwner `eq` newOwner) && (oldInfo `eq` newInfo) && (oldFlags == newFlags)) ref
         else {
-          assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
+          assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner `eq` newOwner} ${oldInfo `eq` newInfo}")
           ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
         }
       }
@@ -188,10 +188,10 @@ object Erasure {
           New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
-          if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
-          else if (cls eq defn.NothingClass) tree // a non-terminating expression doesn't need boxing
+          if (cls `eq` defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
+          else if (cls `eq` defn.NothingClass) tree // a non-terminating expression doesn't need boxing
           else {
-            assert(cls ne defn.ArrayClass)
+            assert(cls `ne` defn.ArrayClass)
             val arg = safelyRemovableUnboxArg(tree)
             if (arg.isEmpty) ref(boxMethod(cls.asClass)).appliedTo(tree)
             else {
@@ -231,9 +231,9 @@ object Erasure {
           cast(tree1, pt)
         case _ =>
           val cls = pt.widen.classSymbol
-          if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
+          if (cls `eq` defn.UnitClass) constant(tree, Literal(Constant(())))
           else {
-            assert(cls ne defn.ArrayClass)
+            assert(cls `ne` defn.ArrayClass)
             ref(unboxMethod(cls.asClass)).appliedTo(tree)
           }
       }
@@ -415,7 +415,7 @@ object Erasure {
 
       val origSym = tree.symbol
       val owner = mapOwner(origSym)
-      val sym = if (owner eq origSym.owner) origSym else owner.info.decl(origSym.name).symbol
+      val sym = if (owner `eq` origSym.owner) origSym else owner.info.decl(origSym.name).symbol
       assert(sym.exists, origSym.showLocated)
 
       def select(qual: Tree, sym: Symbol): Tree =
@@ -448,7 +448,7 @@ object Erasure {
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))
-        else if (sym.owner eq defn.ArrayClass)
+        else if (sym.owner `eq` defn.ArrayClass)
           selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
         else {
           val qual1 = adaptIfSuper(qual)

@@ -100,7 +100,7 @@ object Comments {
         else {
           val start1 = span.start + start
           val end1 = span.end + end
-          span withStart start1 withPoint start1 withEnd end1
+          span.withStart(start1).withPoint(start1).withEnd(end1)
         }
 
       val codeStart = skipWhitespace(body, start + "@usecase".length)
@@ -180,7 +180,7 @@ object Comments {
 
     /** The cooked doc comment of an overridden symbol */
     protected def superComment(sym: Symbol)(implicit ctx: Context): Option[String] =
-      allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "")
+      allInheritedOverriddenSymbols(sym).iterator.map(x => cookedDocComment(x)).find(_ != "")
 
     private val cookedDocComments = newMutableSymbolMap[String]
 
@@ -221,12 +221,12 @@ object Comments {
       val dstTParams   = paramDocs(dst, "@tparam", dstSections)
       val out          = new StringBuilder
       var copied       = 0
-      var tocopy       = startTag(dst, dstSections dropWhile (!isMovable(dst, _)))
+      var tocopy       = startTag(dst, dstSections.dropWhile(!isMovable(dst, _)))
 
       if (copyFirstPara) {
         val eop = // end of comment body (first para), which is delimited by blank line, or tag, or end of comment
-          (findNext(src, 0)(src.charAt(_) == '\n')) min startTag(src, srcSections)
-        out append src.substring(0, eop).trim
+          (findNext(src, 0)(src.charAt(_) == '\n')) `min` startTag(src, srcSections)
+        out.append(src.substring(0, eop).trim)
         copied = 3
         tocopy = 3
       }
@@ -237,10 +237,10 @@ object Comments {
         case None =>
           srcSec match {
             case Some((start1, end1)) => {
-              out append dst.substring(copied, tocopy).trim
-              out append "\n"
+              out.append(dst.substring(copied, tocopy).trim)
+              out.append("\n")
               copied = tocopy
-              out append src.substring(start1, end1).trim
+              out.append(src.substring(start1, end1).trim)
             }
             case None =>
           }
@@ -259,7 +259,7 @@ object Comments {
 
       if (out.length == 0) dst
       else {
-        out append dst.substring(copied)
+        out.append(dst.substring(copied))
         out.toString
       }
     }
@@ -358,14 +358,14 @@ object Comments {
         // necessary to document things like Symbol#decode
         def isEscaped = idx > 0 && str.charAt(idx - 1) == '\\'
         while (idx < str.length) {
-          if ((str charAt idx) != '$' || isEscaped)
+          if ((str `charAt` idx) != '$' || isEscaped)
             idx += 1
           else {
             val vstart = idx
             idx = skipVariable(str, idx + 1)
             def replaceWith(repl: String) = {
-              out append str.substring(copied, vstart)
-              out append repl
+              out.append(str.substring(copied, vstart))
+              out.append(repl)
               copied = idx
             }
             variableName(str.substring(vstart + 1, idx)) match {
@@ -374,7 +374,7 @@ object Comments {
                   val superSections = tagIndex(sc)
                   replaceWith(sc.substring(3, startTag(sc, superSections)))
                   for (sec @ (start, end) <- superSections)
-                    if (!isMovable(sc, sec)) out append sc.substring(start, end)
+                    if (!isMovable(sc, sec)) out.append(sc.substring(start, end))
                 }
               case "" => idx += 1
               case vname  =>
@@ -388,7 +388,7 @@ object Comments {
         }
         if (out.length == 0) str
         else {
-          out append str.substring(copied)
+          out.append(str.substring(copied))
           expandInternal(out.toString, depth + 1)
         }
       }
@@ -417,7 +417,7 @@ object Comments {
     /** Maps symbols to the variable -> replacement maps that are defined
      *  in their doc comments
      */
-    private val defs = mutable.HashMap[Symbol, Map[String, String]]() withDefaultValue Map()
+    private val defs = mutable.HashMap[Symbol, Map[String, String]]() `withDefaultValue` Map()
 
     /** Lookup definition of variable.
      *
@@ -431,9 +431,9 @@ object Comments {
           if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
           else site.info.baseClasses
 
-        searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
-          case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
-          case res                             => res orElse lookupVariable(vble, site.owner)
+        searchList collectFirst { case x if defs(x) `contains` vble => defs(x)(vble) } match {
+          case Some(str) if str `startsWith` "$" => lookupVariable(str.tail, site)
+          case res                               => res `orElse` lookupVariable(vble, site.owner)
         }
     }
 

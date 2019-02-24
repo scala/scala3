@@ -45,7 +45,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
-    while (entry ne null) {
+    while (entry != null) {
       if (isEqual(x, entry)) return entry
       if (Stats.enabled) misses += 1
       h = index(h + 1)
@@ -67,7 +67,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
-    while ((entry ne null) && !isEqual(x, entry)) {
+    while ((entry != null) && !isEqual(x, entry)) {
       if (Stats.enabled) misses += 1
       h = index(h + 1)
       entry = entryAt(h)
@@ -82,7 +82,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
-    while (entry ne null) {
+    while (entry != null) {
       if (isEqual(x, entry)) return
       if (Stats.enabled) misses += 1
       h = index(h + 1)
@@ -102,7 +102,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   def iterator: Iterator[T] = new Iterator[T] {
     private[this] var i = 0
     def hasNext: Boolean = {
-      while (i < table.length && (table(i) eq null)) i += 1
+      while (i < table.length && (table(i) == null)) i += 1
       i < table.length
     }
     def next(): T =
@@ -122,7 +122,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   protected def nextEntryByHash(hashCode: Int): T = {
     if (Stats.enabled) accesses += 1
     var entry = table(rover)
-    while (entry ne null) {
+    while (entry != null) {
       rover = index(rover + 1)
       if (hash(entry.asInstanceOf[T]) == hashCode) return entry.asInstanceOf[T]
       if (Stats.enabled) misses += 1
@@ -141,7 +141,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   private def addOldEntry(x: T): Unit = {
     var h = index(hash(x))
     var entry = entryAt(h)
-    while (entry ne null) {
+    while (entry != null) {
       h = index(h + 1)
       entry = entryAt(h)
     }
@@ -154,7 +154,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     var i = 0
     while (i < oldtable.length) {
       val entry = oldtable(i)
-      if (entry ne null) addOldEntry(entry.asInstanceOf[T])
+      if (entry != null) addOldEntry(entry.asInstanceOf[T])
       i += 1
     }
   }

@@ -79,7 +79,7 @@ trait RunnerOrchestration {
 
       /** Destroys the underlying process and kills IO streams */
       def kill(): Unit = {
-        if (process ne null) process.destroy()
+        if (process != null) process.destroy()
         process = null
         childStdout = null
         childStdin = null
@@ -95,7 +95,7 @@ trait RunnerOrchestration {
           // need to clean up ourselves.
           summaryReport.addCleanup(() => killAll())
         }
-        assert(process ne null,
+        assert(process != null,
           "Runner was killed and then reused without setting a new process")
 
         // Makes the encapsulating RunnerMonitor spawn a new runner
@@ -106,7 +106,7 @@ trait RunnerOrchestration {
           childStdin = null
         }
 
-        if (childStdin eq null)
+        if (childStdin == null)
           childStdin = new PrintStream(process.getOutputStream, /* autoFlush = */ true)
 
         // pass file to running process
@@ -116,7 +116,7 @@ trait RunnerOrchestration {
         val readOutput = Future {
           val sb = new StringBuilder
 
-          if (childStdout eq null)
+          if (childStdout == null)
             childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, "UTF-8"))
 
           var childOutput: String = childStdout.readLine()

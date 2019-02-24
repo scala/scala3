@@ -70,7 +70,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
 
   trait CodegenCore {
 
-    // assert(owner ne null); assert(owner ne NoSymbol)
+    // assert(owner `ne` null); assert(owner `ne` NoSymbol)
     def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) = {
       ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos)
     }
@@ -152,8 +152,8 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
 
   class Rebindings(val lhs: List[Symbol], val rhs: List[Tree]) {
     def >>(other: Rebindings) = {
-      if (other eq NoRebindings) this
-      else if (this eq NoRebindings) other
+      if (other `eq` NoRebindings) this
+      else if (this `eq` NoRebindings) other
       else {
         assert((lhs.toSet ++ other.lhs.toSet).size == lhs.length + other.lhs.length, "no double assignments")
         new Rebindings(this.lhs ++ other.lhs, this.rhs ++ other.rhs)
@@ -449,13 +449,13 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
         * important *when* the substitution happens (can't accumulate and do at once after the full matcher has been constructed)
         */
       def rebindings: Rebindings =
-        if (currSub eq null) introducedRebindings
+        if (currSub == null) introducedRebindings
         else currSub
 
       protected def introducedRebindings: Rebindings
 
       private[TreeMakers] def incorporateOuterRebinding(outerSubst: Rebindings): Unit = {
-        if (currSub ne null) {
+        if (currSub `ne` null) {
           ctx.debuglog("BUG: incorporateOuterRebinding called more than once for " + ((this, currSub, outerSubst)))
           if (ctx.debug) Thread.dumpStack()
         }
@@ -493,7 +493,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
     case class BodyTreeMaker(body: Tree, matchPt: Type) extends TreeMaker with NoNewBinders {
       def pos = body.pos
 
-      def chainBefore(next: Tree)(casegen: Casegen): Tree = // assert(next eq EmptyTree)
+      def chainBefore(next: Tree)(casegen: Casegen): Tree = // assert(next `eq` EmptyTree)
         /*atPos(body.pos)*/(casegen.one(body)) // since SubstOnly treemakers are dropped, need to do it here
       override def toString = "B" + ((body, matchPt))
     }
@@ -538,11 +538,11 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
 
       val nextBinder: Symbol
       lazy val introducedRebindings = /*
-        if (nextBinder ne prevBinder) Rebindings(prevBinder, nextBinder)
+        if (nextBinder `ne` prevBinder) Rebindings(prevBinder, nextBinder)
         else */ NoRebindings
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree =
-        if (prevBinder ne nextBinder) // happens when typeTest is known to succeed
+        if (prevBinder `ne` nextBinder) // happens when typeTest is known to succeed
           /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
         else casegen.flatMapGuard(cond, next)
     }
@@ -752,9 +752,9 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       def nonNullImpliedByTestChecker(binder: Symbol) = new TypeTestCondStrategy {
         type Result = Boolean
 
-        def typeTest(testedBinder: Symbol, expectedTp: Type): Result  = testedBinder eq binder
+        def typeTest(testedBinder: Symbol, expectedTp: Type): Result  = testedBinder `eq` binder
         def outerTest(testedBinder: Symbol, expectedTp: Type): Result = false
-        def nonNullTest(testedBinder: Symbol): Result                 = testedBinder eq binder
+        def nonNullTest(testedBinder: Symbol): Result                 = testedBinder `eq` binder
         def equalsTest(pat: Tree, testedBinder: Symbol): Result       = false // could in principle analyse pat and see if it's statically known to be non-null
         def eqTest(pat: Tree, testedBinder: Symbol): Result           = false // could in principle analyse pat and see if it's statically known to be non-null
         def and(a: Result, b: Result): Result                         = a || b
@@ -773,7 +773,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
 
         - A singleton type p.type.
           This type pattern matches only the value denoted by the path p
-          (that is, a pattern match involved a comparison of the matched value with p using method eq in class AnyRef). // TODO: the actual pattern matcher uses ==, so that's what I'm using for now
+          (that is, a pattern match involved a comparison of the matched value with p using method `eq` in class AnyRef). // TODO: the actual pattern matcher uses ==, so that's what I'm using for now
           // https://issues.scala-lang.org/browse/SI-4577 "pattern matcher, still disappointing us at equality time"
 
         - A compound type pattern T1 with ... with Tn where each Ti is a type pat- tern.
@@ -813,7 +813,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       // the logic to generate the run-time test that follows from the fact that
       // a `prevBinder` is expected to have type `expectedTp`
       // the actual tree-generation logic is factored out, since the analyses generate Cond(ition)s rather than Trees
-      // TODO: `null match { x : T }` will yield a check that (indirectly) tests whether `null ne null`
+      // TODO: `null match { x : T }` will yield a check that (indirectly) tests whether `null `ne` null`
       // don't bother (so that we don't end up with the warning "comparing values of types Null and Null using `ne' will always yield false")
       def renderCondition(cs: TypeTestCondStrategy): cs.Result = {
         import cs._
@@ -886,7 +886,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
     // need to substitute to deal with existential types -- TODO: deal with existentials better, don't substitute (see RichClass during quick.comp)
     case class EqualityTestTreeMaker(prevBinder: Symbol, subpatBinder: Symbol, patTree: Tree, override val pos: Position) extends CondTreeMaker {
       val nextBinderTp = patTree.tpe & prevBinder.info
-      val nextBinder = if (prevBinder eq subpatBinder) freshSym(pos, nextBinderTp) else subpatBinder
+      val nextBinder = if (prevBinder `eq` subpatBinder) freshSym(pos, nextBinderTp) else subpatBinder
 
       // NOTE: generate `patTree == patBinder`, since the extractor must be in control of the equals method (also, patBinder may be null)
       // equals need not be well-behaved, so don't intersect with pattern's (stabilized) type (unlike MaybeBoundTyped's accumType, where it's required)

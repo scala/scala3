@@ -264,8 +264,8 @@ object Implicits {
     override val level: Int =
       if (outerImplicits == null) 1
       else if (ctx.scala2Mode ||
-               (ctx.owner eq outerImplicits.ctx.owner) &&
-               (ctx.scope eq outerImplicits.ctx.scope) &&
+               (ctx.owner `eq` outerImplicits.ctx.owner) &&
+               (ctx.scope `eq` outerImplicits.ctx.scope) &&
                !refs.head.implicitName.is(LazyImplicitName)) outerImplicits.level
       else outerImplicits.level + 1
 
@@ -274,7 +274,7 @@ object Implicits {
      */
     private def isOuterMost = {
       val finalImplicits = NoContext.implicits
-      (this eq finalImplicits) || (outerImplicits eq finalImplicits)
+      (this `eq` finalImplicits) || (outerImplicits `eq` finalImplicits)
     }
 
     /** The implicit references that are eligible for type `tp`. */
@@ -291,7 +291,7 @@ object Implicits {
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
         }
-        else if (ctx eq NoContext) Nil
+        else if (ctx `eq` NoContext) Nil
         else {
           val result = computeEligible(tp)
           eligibleCache.put(tp, result)
@@ -323,7 +323,7 @@ object Implicits {
       else {
         val outerExcluded = outerImplicits exclude root
         if (ctx.importInfo.site.termSymbol == root) outerExcluded
-        else if (outerExcluded eq outerImplicits) this
+        else if (outerExcluded `eq` outerImplicits) this
         else new ContextualImplicits(refs, outerExcluded)(ctx)
       }
   }
@@ -480,7 +480,7 @@ trait ImplicitRunInfo { self: Run =>
           val pre = tp.prefix
           def joinClass(tp: Type, cls: ClassSymbol) =
             AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
-          val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
+          val lead = if (tp.prefix `eq` NoPrefix) defn.AnyType else apply(tp.prefix)
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
@@ -561,13 +561,13 @@ trait ImplicitRunInfo { self: Run =>
       def computeIScope() = {
         val liftedTp = if (isLifted) tp else liftToClasses(tp)
         val refs =
-          if (liftedTp ne tp)
+          if (liftedTp `ne` tp)
             iscope(liftedTp, isLifted = true).companionRefs
           else
             collectCompanions(tp)
         val result = new OfTypeImplicits(tp, refs)(ctx)
         if (canCache &&
-            ((tp eq rootTp) ||          // first type traversed is always cached
+            ((tp `eq` rootTp) ||          // first type traversed is always cached
              !incomplete.contains(tp))) // other types are cached if they are not incomplete
           implicitScopeCache(tp) = result
         result
@@ -613,7 +613,7 @@ trait Implicits { self: Typer =>
         || (from.tpe isRef defn.NullClass)
         || !(ctx.mode is Mode.ImplicitsEnabled)
         || from.isInstanceOf[Super]
-        || (from.tpe eq NoPrefix)) NoMatchingImplicitsFailure
+        || (from.tpe `eq` NoPrefix)) NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
         case SelectionProto(name, memberProto, compat, true) =>
@@ -908,7 +908,7 @@ trait Implicits { self: Typer =>
       case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
-        def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
+        def addendum = if (qt1 `eq` qt) "" else (i"\nwhich is an alias of: $qt1")
         em"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
         em"parameter ${paramName} of $methodStr"
@@ -985,7 +985,7 @@ trait Implicits { self: Typer =>
             result
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
-            if (deepPt ne pt) inferImplicit(deepPt, argument, span)
+            if (deepPt `ne` pt) inferImplicit(deepPt, argument, span)
             else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution)) {
               inferImplicit(pt, argument, span)(ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
@@ -1102,7 +1102,7 @@ trait Implicits { self: Typer =>
        *  an implicit starting with the reference was found.
        */
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
-        if (prev.ref eq ref) 0
+        if (prev.ref `eq` ref) 0
         else if (prev.level != level) prev.level - level
         else nestedContext().test(implicit ctx => compare(prev.ref, ref))
 
@@ -1171,7 +1171,7 @@ trait Implicits { self: Typer =>
                 else disambiguate(found, best) match {
                   case retained: SearchSuccess =>
                     val newPending =
-                      if (retained eq found) remaining
+                      if (retained `eq` found) remaining
                       else remaining.filter(cand =>
                         compareCandidate(retained, cand.ref, cand.level) <= 0)
                     rank(newPending, retained, rfailures)

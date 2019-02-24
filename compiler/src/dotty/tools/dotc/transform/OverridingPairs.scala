@@ -94,7 +94,7 @@ object OverridingPairs {
     var overridden: Symbol = _
 
     //@M: note that next is called once during object initialization
-    final def hasNext: Boolean = nextEntry ne null
+    final def hasNext: Boolean = nextEntry != null
 
     /**  @post
      *     curEntry   = the next candidate that may override something else
@@ -103,7 +103,7 @@ object OverridingPairs {
      */
     private def nextOverriding(): Unit = {
       @tailrec def loop(): Unit =
-        if (curEntry ne null) {
+        if (curEntry != null) {
           overriding = curEntry.sym
           if (visited.contains(overriding)) {
             curEntry = curEntry.prev
@@ -120,9 +120,9 @@ object OverridingPairs {
      *    overridden = overridden member of the pair, provided hasNext is true
      */
     @tailrec final def next(): Unit =
-      if (nextEntry ne null) {
+      if (nextEntry != null) {
         nextEntry = decls.lookupNextEntry(nextEntry)
-        if (nextEntry ne null) {
+        if (nextEntry != null) {
           try {
             overridden = nextEntry.sym
             if (overriding.owner != overridden.owner && matches(overriding, overridden)) {

@@ -46,7 +46,7 @@ object DesugarEnums {
    */
   def interpolatedEnumParent(span: Span)(implicit ctx: Context): Tree = {
     val tparams = enumClass.typeParams
-    def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) eq tp
+    def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) `eq` tp
     val targs = tparams map { tparam =>
       if (tparam.variance > 0 && isGround(tparam.info.bounds.lo))
         tparam.info.bounds.lo

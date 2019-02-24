@@ -155,7 +155,7 @@ object Contexts {
     private[this] var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
-      if (_typeComparer.ctx ne this)
+      if (_typeComparer.ctx `ne` this)
         _typeComparer = _typeComparer.copyIn(this)
       _typeComparer
     }
@@ -224,7 +224,7 @@ object Contexts {
             else Nil
           val outerImplicits =
             if (isImportContext && importInfo.unimported.exists)
-              outer.implicits exclude importInfo.unimported
+              outer.implicits.exclude(importInfo.unimported)
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -270,7 +270,7 @@ object Contexts {
       else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
       else {
         val ctx1 = fresh.setPhase(phaseId)
-        if (phasedCtx eq this) phasedCtx = ctx1
+        if (phasedCtx `eq` this) phasedCtx = ctx1
         else {
           if (phasedCtxs == null) phasedCtxs = new Array[Context](base.phases.length)
           phasedCtxs(phaseId) = ctx1
@@ -320,15 +320,15 @@ object Contexts {
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
-      owner.isClass && (owner ne outer.owner)
+      owner.isClass && (owner `ne` outer.owner)
 
     /** Is this a context that introduces an import clause? */
     def isImportContext: Boolean =
-      (this ne NoContext) && (this.importInfo ne outer.importInfo)
+      (this `ne` NoContext) && (this.importInfo `ne` outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
-      (this.scope ne outer.scope) && !this.scope.isEmpty
+      (this.scope `ne` outer.scope) && !this.scope.isEmpty
 
     /** Is this a context for typechecking an inlined body? */
     def isInlineContext: Boolean =
@@ -436,7 +436,7 @@ object Contexts {
     def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
 
     final def withOwner(owner: Symbol): Context =
-      if (owner ne this.owner) fresh.setOwner(owner) else this
+      if (owner `ne` this.owner) fresh.setOwner(owner) else this
 
     private var sourceCtx: SimpleIdentityMap[SourceFile, Context] = null
 
@@ -466,7 +466,7 @@ object Contexts {
     override def toString: String = {
       def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
-      (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
+      (outersIterator.map(ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}").mkString("\n"))
     }
 
     def typerPhase: Phase                  = base.typerPhase
@@ -836,7 +836,7 @@ object Contexts {
       (
         stripInternalTypeVar(internalizedBound) match {
           case boundTvar: TypeVar =>
-            if (boundTvar eq symTvar) true
+            if (boundTvar `eq` symTvar) true
             else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
             else addLess(boundTvar.origin, symTvar.origin)
           case bound =>
@@ -879,7 +879,7 @@ object Contexts {
       }
     }
 
-    override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
+    override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) != null
 
     override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = {
       val res = removeTypeVars(approximation(tvar(sym).origin, fromBelow = fromBelow))

@@ -153,7 +153,7 @@ class DocASTPhase extends Phase {
 
     // This function mutates packages in place as not to create any orphaned references
     def mergedPackages(old: PackageImpl, newPkg: PackageImpl): PackageImpl = {
-      if (old.symbol eq NoSymbol) old.symbol = newPkg.symbol
+      if (old.symbol `eq` NoSymbol) old.symbol = newPkg.symbol
       if (old.annotations.isEmpty) old.annotations = newPkg.annotations
       mergeMembers(newPkg, old)
       if (old.superTypes.isEmpty) old.superTypes = newPkg.superTypes

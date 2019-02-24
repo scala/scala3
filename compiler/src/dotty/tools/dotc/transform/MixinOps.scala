@@ -81,7 +81,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
     cls.baseClasses.iterator
-      .filter(_ ne meth.owner)
+      .filter(_ `ne` meth.owner)
       .map(base => meth.overriddenSymbol(base, cls))
       .filter(_.exists)
   }

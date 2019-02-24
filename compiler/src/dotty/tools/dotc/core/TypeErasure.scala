@@ -149,7 +149,7 @@ object TypeErasure {
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
       val tp1 = ctx.makePackageObjPrefixExplicit(tp)
-      if (tp1 ne tp) erasedRef(tp1)
+      if (tp1 `ne` tp) erasedRef(tp1)
       else TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
     case tp: ThisType =>
       tp
@@ -261,7 +261,7 @@ object TypeErasure {
         tp2 match {
           case JavaArrayType(elem2) =>
             if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType) {
-              if (elem1.classSymbol eq elem2.classSymbol) // same primitive
+              if (elem1.classSymbol `eq` elem2.classSymbol) // same primitive
                 JavaArrayType(elem1)
               else defn.ObjectType
             } else JavaArrayType(erasedLub(elem1, elem2))
@@ -446,7 +446,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           case _ => apply(tp)
         }
         val erasedParents: List[Type] =
-          if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
+          if ((cls `eq` defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
           else parents.mapConserve(eraseParent) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
@@ -516,7 +516,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseResult(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TypeRef =>
       val sym = tp.typeSymbol
-      if (sym eq defn.UnitClass) sym.typeRef
+      if (sym `eq` defn.UnitClass) sym.typeRef
       // For a value class V, "new V(x)" should have type V for type adaptation to work
       // correctly (see SIP-15 and [[Erasure.Boxing.adaptToType]]), so the return type of a
       // constructor method should not be semi-erased.
@@ -589,7 +589,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         sigName(tp.optBounds)
       case _ =>
         val erasedTp = this(tp)
-        assert(erasedTp ne tp, tp)
+        assert(erasedTp `ne` tp, tp)
         sigName(erasedTp)
     }
   } catch {

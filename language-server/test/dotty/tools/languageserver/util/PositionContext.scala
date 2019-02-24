@@ -7,7 +7,7 @@ class PositionContext(positionMap: Map[CodeMarker, (TestFile, Int, Int)]) {
   private[this] var lastKey: CodeMarker = _
   private[this] var lastValue: (TestFile, Int, Int) = _
   def positionOf(pos: CodeMarker): (TestFile, Int, Int) = {
-    if (lastKey eq pos) lastValue
+    if (lastKey `eq` pos) lastValue
     else {
       lastValue = positionMap.getOrElse(pos,
         { assert(false, "CodePosition was not found in the code: " + pos); null }

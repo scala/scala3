@@ -152,7 +152,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           if (sym.owner.isConstructor) ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
-          if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
+          if ((fn1 `ne` fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
             fn1 // in this case, fn1.symbol was an alias for a parameter in a superclass
           else cpy.Apply(tree)(fn1, Nil)
         case _ =>
@@ -233,7 +233,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           val assigns = Assign(ref(target), ref(param)).withSpan(tree.span) :: Nil
           if (acc.name != nme.OUTER) assigns
           else {
-            // insert test: if ($outer eq null) throw new NullPointerException
+            // insert test: if ($outer == null) throw new NullPointerException
             val nullTest =
               If(ref(param).select(defn.Object_eq).appliedTo(Literal(Constant(null))),
                  Throw(New(defn.NullPointerExceptionClass.typeRef, Nil)),

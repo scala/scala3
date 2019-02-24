@@ -54,7 +54,7 @@ case class Site(
     *       extension.
     */
   def staticAssets(implicit ctx: Context): Array[JFile] = {
-    if (_staticAssets eq null) initFiles
+    if (_staticAssets == null) initFiles
     _staticAssets
   }
 
@@ -65,7 +65,7 @@ case class Site(
     * @note files that are considered compilable end in `.md` or `.html`
     */
   def compilableFiles(implicit ctx: Context): Array[JFile] = {
-    if (_compilableFiles eq null) initFiles
+    if (_compilableFiles == null) initFiles
     _compilableFiles
   }
 
@@ -78,7 +78,7 @@ case class Site(
     * where `ext` is either markdown or html.
     */
   def blogposts(implicit ctx: Context): Array[JFile] = {
-    if (_blogposts eq null) initFiles
+    if (_blogposts == null) initFiles
     _blogposts
   }
 
@@ -94,7 +94,7 @@ case class Site(
 
   private[this] var _blogInfo: Array[BlogPost] = _
   protected def blogInfo(implicit ctx: Context): Array[BlogPost] = {
-    if (_blogInfo eq null) {
+    if (_blogInfo == null) {
       _blogInfo =
         blogposts
         .flatMap { file =>

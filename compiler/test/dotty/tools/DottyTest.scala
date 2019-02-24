@@ -50,7 +50,7 @@ trait DottyTest extends ContextEscapeDetection {
       val allPhases = super.phases
       val targetPhase = allPhases.flatten.find(p => p.phaseName == phase).get
       val groupsBefore = allPhases.takeWhile(x => !x.contains(targetPhase))
-      val lastGroup = allPhases.find(x => x.contains(targetPhase)).get.takeWhile(x => !(x eq targetPhase))
+      val lastGroup = allPhases.find(x => x.contains(targetPhase)).get.takeWhile(x => !(x `eq` targetPhase))
       val checker = new Phase {
         def phaseName = "assertionChecker"
         override def run(implicit ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)

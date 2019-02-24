@@ -169,7 +169,7 @@ class ReifyQuotes extends MacroTransform {
      *  core and splices as arguments.
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
-      val isType = quote.symbol eq defn.QuotedType_apply
+      val isType = quote.symbol `eq` defn.QuotedType_apply
       assert(!body.symbol.isSplice)
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
@@ -394,7 +394,7 @@ object ReifyQuotes {
     /** Adds the tree and returns it's index */
     def addTree(tree: tpd.Tree, liftedSym: Symbol): Int = {
       trees += tree
-      if (liftedSym ne NoSymbol)
+      if (liftedSym `ne` NoSymbol)
         map.put(liftedSym, tree)
       trees.length - 1
     }

@@ -154,7 +154,7 @@ object Names {
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
 
     override def hashCode: Int = System.identityHashCode(this)
-    override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
+    override def equals(that: Any): Boolean = this `eq` that.asInstanceOf[AnyRef]
   }
 
   /** Names for terms, can be simple or derived */
@@ -220,7 +220,7 @@ object Names {
     }
 
     private def rewrap(underlying: TermName) =
-      if (underlying eq this.underlying) this else underlying.add(info)
+      if (underlying `eq` this.underlying) this else underlying.add(info)
 
     override def derived(info: NameInfo): TermName = {
       val thisKind = this.info.kind
@@ -613,7 +613,7 @@ object Names {
 
     val next = table(h)
     var name = next
-    while (name ne null) {
+    while (name `ne` null) {
       if (name.length == len && equals(name.start, cs, offset, len))
         return name
       name = name.next
@@ -705,7 +705,7 @@ object Names {
     def compare(x: Name, y: Name): Int = {
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
-      else if (x eq y) 0
+      else if (x `eq` y) 0
       else compareTermNames(x.toTermName, y.toTermName)
     }
   }

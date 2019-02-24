@@ -480,17 +480,17 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         //
         // The sbt API representations of `foo` and `bar` (let's call them `apiFoo`
         // and `apiBar`) will both be instances of `Structure`. If `typeCache` was
-        // the only cache, then in some cases we would have `apiFoo eq apiBar` and
+        // the only cache, then in some cases we would have `apiFoo `eq` apiBar` and
         // in other cases we would just have `apiFoo == apiBar` (this happens
         // because the dotty representation of `a.b.T` is unstable, see the comment
         // in the `NamedType` case above).
         //
-        // The fact that we may or may not have `apiFoo eq apiBar` is more than
+        // The fact that we may or may not have `apiFoo `eq` apiBar` is more than
         // an optimisation issue: it will determine whether the sbt name hash for
         // `Bla` contains one or two entries (because sbt `NameHashing` will not
         // traverse both `apiFoo` and `apiBar` if they are `eq`), therefore the
         // name hash of `Bla` will be unstable, unless we make sure that
-        // `apiFoo == apiBar` always imply `apiFoo eq apiBar`. This is what
+        // `apiFoo == apiBar` always imply `apiFoo `eq` apiBar`. This is what
         // `refinedTypeCache` is for.
         refinedTypeCache.getOrElseUpdate((parent, decl), {
           val adecl: Array[api.ClassDefinition] = if (decl == null) Array() else Array(decl)
@@ -573,7 +573,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       Constants.protectedLocal
     else {
       val qualifier =
-        if (sym.privateWithin eq NoSymbol)
+        if (sym.privateWithin `eq` NoSymbol)
           Constants.unqualified
         else
           api.IdQualifier.of(sym.privateWithin.fullName.toString)

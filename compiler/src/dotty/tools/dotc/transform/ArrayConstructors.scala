@@ -28,10 +28,10 @@ class ArrayConstructors extends MiniPhase {
     def expand(elemType: Type, dims: List[Tree]) =
       tpd.newArray(elemType, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
-    if (tree.fun.symbol eq defn.ArrayConstructor) {
+    if (tree.fun.symbol `eq` defn.ArrayConstructor) {
       val TypeApply(tycon, targ :: Nil) = tree.fun
       expand(targ.tpe, tree.args)
-    } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
+    } else if ((tree.fun.symbol.maybeOwner `eq` defn.ArrayModule) && (tree.fun.symbol.name `eq` nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
       val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree
       val cs = tp.tpe.widen.classSymbol
       tree.fun match {

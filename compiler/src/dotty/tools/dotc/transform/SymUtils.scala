@@ -32,7 +32,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     val superCls = self.asClass.superClass
     val baseClasses = self.asClass.baseClasses
     if (baseClasses.isEmpty) Nil
-    else baseClasses.tail.takeWhile(_ ne superCls).reverse
+    else baseClasses.tail.takeWhile(_ `ne` superCls).reverse
   }
 
   /** All traits implemented by a class, except for those inherited through the superclass.
@@ -82,7 +82,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
     @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =
       if (from.isEmpty) self
-      else if (self eq from.head) to.head
+      else if (self `eq` from.head) to.head
       else loop(from.tail, to.tail)
     loop(from, to)
   }

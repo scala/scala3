@@ -99,8 +99,8 @@ object desugar {
       val relocate = new TypeMap {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
-          case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
-            val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
+          case tp: NamedType if tp.symbol.exists && (tp.symbol.owner `eq` originalOwner) =>
+            val defctx = ctx.outersIterator.dropWhile(_.scope `eq` ctx.scope).next()
             var local = defctx.denotNamed(tp.name ++ suffix).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
@@ -1237,7 +1237,7 @@ object desugar {
        *  withFilter call.
        *
        *  def withFilter(f: Elem => Boolean) =
-       *    if (f eq alwaysTrue) this // or rather identity filter monadic applied to this
+       *    if (f `eq` alwaysTrue) this // or rather identity filter monadic applied to this
        *    else real withFilter
        */
       def makePatFilter(rhs: Tree, pat: Tree): Tree = {
@@ -1429,7 +1429,7 @@ object desugar {
     val parentCores = stripToCore(parent.tpe)
     val untpdParent = TypedSplice(parent)
     val (classParents, self) =
-      if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
+      if (parentCores.length == 1 && (parent.tpe `eq` parentCores.head)) (untpdParent :: Nil, EmptyValDef)
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
     val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)

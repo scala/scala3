@@ -77,7 +77,7 @@ class Definitions {
         def instantiate(tpe: Type) =
           if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
           else tpe
-        val parents = parentConstrs.toList map instantiate
+        val parents = parentConstrs.toList.map(instantiate)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, paramDecls)
       }
     }
@@ -162,7 +162,7 @@ class Definitions {
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags,
                     useCompleter: Boolean = false) = {
     val tparamNames = PolyType.syntheticParamNames(typeParamCount)
-    val tparamInfos = tparamNames map (_ => TypeBounds.empty)
+    val tparamInfos = tparamNames.map(_ => TypeBounds.empty)
     def ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
     val info =
       if (useCompleter)
@@ -1051,7 +1051,7 @@ class Definitions {
    */
   def isXXLFunctionClass(cls: Symbol): Boolean = {
     val name = scalaClassName(cls)
-    (name eq tpnme.FunctionXXL) || name.functionArity > MaxImplementedFunctionArity
+    (name `eq` tpnme.FunctionXXL) || name.functionArity > MaxImplementedFunctionArity
   }
 
   /** Is a synthetic function class
@@ -1108,7 +1108,7 @@ class Definitions {
 
   /** Is `cls` the predef module class, or a class inherited by Predef? */
   def isPredefClass(cls: Symbol): Boolean =
-    (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
+    (cls.owner `eq` ScalaPackageClass) && predefClassNames.contains(cls.name)
 
   val StaticRootImportFns: List[() => TermRef] = List[() => TermRef](
     () => JavaLangPackageVal.termRef,
@@ -1147,7 +1147,7 @@ class Definitions {
   lazy val NoInitClasses: Set[Symbol] = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
-     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq Object_synchronized)
+     (sym `eq` Any_isInstanceOf) || (sym `eq` Any_asInstanceOf) || (sym `eq` Object_synchronized)
 
   def isTupleType(tp: Type)(implicit ctx: Context): Boolean = {
     val arity = tp.dealias.argInfos.length
@@ -1305,7 +1305,7 @@ class Definitions {
 
 //  /** The `Class[_]` of a primitive value type name */
 //  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
-//    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
+//    valueTypeNamesToJavaType.get(if (name.firstPart `eq` nme.scala_) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int
 

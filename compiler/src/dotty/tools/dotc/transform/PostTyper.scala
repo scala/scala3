@@ -175,7 +175,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def handleMeta(sym: Symbol)(implicit ctx: Context): Unit = {
 
       def markAsMacro(c: Context): Unit =
-        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+        if (c.owner `eq` c.outer.owner) markAsMacro(c.outer)
         else if (c.owner.isInlineMethod) {
           c.owner.setFlag(Macro)
         }

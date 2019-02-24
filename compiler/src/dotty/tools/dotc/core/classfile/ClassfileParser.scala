@@ -39,10 +39,10 @@ object ClassfileParser {
         tp.derivedAppliedType(mapOver(tycon), args.mapConserve(this))
       case tp @ TempPolyType(_, tpe) =>
         val tpe1 = this(tpe)
-        if (tpe1 eq tpe) tp else tp.copy(tpe = tpe1)
+        if (tpe1 `eq` tpe) tp else tp.copy(tpe = tpe1)
       case tp @ TempClassInfoType(parents, _, _) =>
         val parents1 = parents.mapConserve(this)
-        if (parents eq parents1) tp else tp.copy(parentTypes = parents1)
+        if (parents `eq` parents1) tp else tp.copy(parentTypes = parents1)
       case _ =>
         mapOver(tp)
     }
@@ -233,7 +233,7 @@ class ClassfileParser(
         val jflags = in.nextChar
         val isEnum = (jflags & JAVA_ACC_ENUM) != 0
         val name = pool.getName(in.nextChar)
-        val isConstructor = name eq nme.CONSTRUCTOR
+        val isConstructor = name `eq` nme.CONSTRUCTOR
 
         /** Strip leading outer param from constructor and trailing access tag for
          *  private inner constructors.
@@ -568,7 +568,7 @@ class ClassfileParser(
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
           val c1 = convertTo(c, symtype)
-          if (c1 ne null) newType = ConstantType(c1)
+          if (c1 != null) newType = ConstantType(c1)
           else println("failure to convert " + c + " to " + symtype); //debug
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
@@ -948,7 +948,7 @@ class ClassfileParser(
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
       val result = getMember(owner, innerName.toTypeName)(ctx.withPhase(ctx.typerPhase))
-      assert(result ne NoSymbol,
+      assert(result `ne` NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},
            |outerName = $outerName,
@@ -1058,11 +1058,11 @@ class ClassfileParser(
     def getClassSymbol(index: Int)(implicit ctx: Context): Symbol = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var c = values(index).asInstanceOf[Symbol]
-      if (c eq null) {
+      if (c == null) {
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name.endsWith("$") && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
+        if (name.endsWith("$") && (name `ne` nme.nothingRuntimeClass) && (name `ne` nme.nullRuntimeClass))
           // Null$ and Nothing$ ARE classes
           c = ctx.requiredModule(name.dropRight(1))
         else c = classNameToSymbol(name)
@@ -1088,7 +1088,7 @@ class ClassfileParser(
       if (index <= 0 || len <= index) errorBadIndex(index)
       val value = values(index)
       var c: Type = null
-      if (value eq null) {
+      if (value == null) {
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
@@ -1118,7 +1118,7 @@ class ClassfileParser(
     def getConstant(index: Int, tag: Int = -1)(implicit ctx: Context): Constant = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var value = values(index)
-      if (value eq null) {
+      if (value == null) {
         val start = starts(index)
         value = (in.buf(start).toInt: @switch) match {
           case CONSTANT_STRING =>
@@ -1169,7 +1169,7 @@ class ClassfileParser(
     def getBytes(index: Int): Array[Byte] = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var value = values(index).asInstanceOf[Array[Byte]]
-      if (value eq null) {
+      if (value == null) {
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
         val len   = in.getChar(start + 1)
@@ -1184,7 +1184,7 @@ class ClassfileParser(
     def getBytes(indices: List[Int]): Array[Byte] = {
       assert(!indices.isEmpty, indices)
       var value = values(indices.head).asInstanceOf[Array[Byte]]
-      if (value eq null) {
+      if (value == null) {
         val bytesBuffer = ArrayBuffer.empty[Byte]
         for (index <- indices) {
           if (index <= 0 || ConstantPool.this.len <= index) errorBadIndex(index)

@@ -44,7 +44,7 @@ class GenBCode extends Phase {
   private[this] var myOutput: AbstractFile = _
 
   private def outputDir(implicit ctx: Context): AbstractFile = {
-    if (myOutput eq null)
+    if (myOutput == null)
       myOutput = ctx.settings.outputDir.value
     myOutput
   }
@@ -216,7 +216,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-            val store = if (mirrorC ne null) mirrorC else plainC
+            val store = if (mirrorC != null) mirrorC else plainC
             val tasty =
               if (!ctx.settings.YemitTastyInClass.value) {
                 val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")

@@ -71,7 +71,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
       def mapOverTree(lastEntered: List[Symbol]) =
         try super.transform(tree)
         finally
-          while (enteredSyms ne lastEntered) {
+          while (enteredSyms `ne` lastEntered) {
             levelOfMap -= enteredSyms.head
             enteredSyms = enteredSyms.tail
           }

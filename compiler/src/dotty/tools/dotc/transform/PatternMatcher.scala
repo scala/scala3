@@ -169,7 +169,7 @@ object PatternMatcher {
     }
     case class LengthTest(len: Int, exact: Boolean) extends Test  // scrutinee (== | >=) len
     case object NonEmptyTest extends Test                         // !scrutinee.isEmpty
-    case object NonNullTest extends Test                          // scrutinee ne null
+    case object NonNullTest extends Test                          // scrutinee != null
     case object GuardTest extends Test                            // scrutinee
 
     // ------- Generating plans from trees ------------------------

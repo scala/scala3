@@ -23,7 +23,7 @@ class CollectEntryPoints extends MiniPhase {
   def phaseName: String = "Collect entry points"
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
-    if ((tree.symbol ne NoSymbol) && CollectEntryPoints.isJavaEntryPoint(tree.symbol)) {
+    if ((tree.symbol `ne` NoSymbol) && CollectEntryPoints.isJavaEntryPoint(tree.symbol)) {
       ctx.genBCodePhase.asInstanceOf[GenBCode].registerEntryPoint(tree.symbol)
     }
     tree

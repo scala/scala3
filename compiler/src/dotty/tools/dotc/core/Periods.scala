@@ -108,7 +108,7 @@ object Periods {
 
     /** The intersection of two periods */
     def & (that: Period): Period =
-      if (this overlaps that)
+      if (this `overlaps` that)
         Period(
           this.runId,
           this.firstPhaseId max that.firstPhaseId,

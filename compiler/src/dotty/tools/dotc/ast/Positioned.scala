@@ -129,7 +129,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
       case _ =>
         false
     }
-    (this eq that) ||
+    (this `eq` that) ||
       (this.span contains that.span) && {
         var n = productArity
         var found = false

@@ -20,7 +20,7 @@ class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class PlainFile(val givenPath: Path) extends AbstractFile {
-  assert(path ne null)
+  assert(path != null)
 
   dotc.util.Stats.record("new PlainFile")
 

@@ -109,7 +109,7 @@ object Flags {
     /** The list of non-empty names of flags that are set in this FlagSet */
     def flagStrings: Seq[String] = {
       val rawStrings = (2 to MaxFlag).flatMap(flagString)
-      if (this is Local)
+      if (this `is` Local)
         rawStrings.filter(_ != "<local>").map {
           case "private" => "private[this]"
           case "protected" => "protected[this]"

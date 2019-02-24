@@ -292,12 +292,12 @@ class TailRec extends MiniPhase {
         val calledMethod = tree.fun.symbol
         val prefix = tree.fun match {
           case Select(qual, _) => qual
-          case x: Ident if x.symbol eq method => EmptyTree
+          case x: Ident if x.symbol `eq` method => EmptyTree
           case x => x
         }
 
-        val isRecursiveCall = calledMethod eq method
-        def isRecursiveSuperCall = (method.name eq calledMethod.name) &&
+        val isRecursiveCall = calledMethod `eq` method
+        def isRecursiveSuperCall = (method.name `eq` calledMethod.name) &&
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
@@ -317,7 +317,7 @@ class TailRec extends MiniPhase {
             }
 
             val assignThisAndParamPairs = {
-              if (prefix eq EmptyTree) assignParamPairs
+              if (prefix `eq` EmptyTree) assignParamPairs
               else {
                 // TODO Opt: also avoid assigning `this` if the prefix is `this.`
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
@@ -387,7 +387,7 @@ class TailRec extends MiniPhase {
 
         case tree: Try =>
           val expr = noTailTransform(tree.expr)
-          if (tree.finalizer eq EmptyTree) {
+          if (tree.finalizer `eq` EmptyTree) {
             // SI-1672 Catches are in tail position when there is no finalizer
             cpy.Try(tree)(expr, transformSub(tree.cases), EmptyTree)
           }

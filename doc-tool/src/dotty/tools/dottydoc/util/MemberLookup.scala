@@ -46,7 +46,7 @@ trait MemberLookup {
      */
     def globalLookup: Option[Entity] = {
       def longestMatch(list: List[String]): List[String] =
-        if (list eq Nil) Nil
+        if (list `eq` Nil) Nil
         else
           packages
           .get(list.mkString("."))

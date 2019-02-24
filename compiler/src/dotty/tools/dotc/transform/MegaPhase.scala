@@ -444,7 +444,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       if (cls.eq(classOf[MiniPhase])) false
       else {
         var clsMethods = clsMethodsCache.get(cls)
-        if (clsMethods eq null) {
+        if (clsMethods == null) {
           clsMethods = cls.getDeclaredMethods
           clsMethodsCache.put(cls, clsMethods)
         }
@@ -462,10 +462,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     for (idx <- miniPhases.length - 1 to 0 by -1) {
       val subPhase = miniPhases(idx)
       if (defines(subPhase, methName)) {
-        if (nx eq emptyNxArray) nx = newNxArray
+        if (nx `eq` emptyNxArray) nx = newNxArray
         nx(idx) = subPhase
       }
-      else if (nx ne emptyNxArray) nx(idx) = nx(idx + 1)
+      else if (nx `ne` emptyNxArray) nx(idx) = nx(idx + 1)
     }
     nx
   }

@@ -75,7 +75,7 @@ class ReplCompiler extends Compiler {
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
     val flattened = trees match {
       case List(Block(stats, expr)) =>
-        if (expr eq EmptyTree) stats // happens when expr is not an expression
+        if (expr `eq` EmptyTree) stats // happens when expr is not an expression
         else stats :+ expr
       case _ =>
         trees

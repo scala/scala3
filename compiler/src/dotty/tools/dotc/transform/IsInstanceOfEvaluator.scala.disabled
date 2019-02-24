@@ -100,7 +100,7 @@ class IsInstanceOfEvaluator extends MiniPhase {
         else literal
       }
 
-    /** Attempts to rewrite type test to either `scrutinee ne null` or a
+    /** Attempts to rewrite type test to either `scrutinee `ne` null` or a
      *  constant. Any_typeTest nodes have been rewritten to Any_isInstanceOf at this point.
      *  @param   tree       the whole type test <qualifier>.asInstanceOf[T]
      *  @param   qualifier  the <qualifier> part

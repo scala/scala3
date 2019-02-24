@@ -369,7 +369,7 @@ object Inferencing {
           constraint.upper(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
         }
       }
-      if (vmap1 eq vmap) vmap else propagate(vmap1)
+      if (vmap1 `eq` vmap) vmap else propagate(vmap1)
     }
 
     propagate(accu(SimpleIdentityMap.Empty, tp))

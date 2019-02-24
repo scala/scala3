@@ -77,7 +77,7 @@ object NavigateAST {
           case xs: List[_] => childPath(xs.iterator, path)
           case _ => path
         }
-        if (path1 ne path) return path1
+        if (path1 `ne` path) return path1
       }
       path
     }

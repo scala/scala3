@@ -29,7 +29,7 @@ class ZipAndJarFileLookupFactoryTest {
 
       // We expect get a cache hit as the underlying zip hasn't changed
       val cp2 = createCp
-      assert(cp2 eq cp1)
+      assert(cp2 `eq` cp1)
 
       // check things work after the cache hit
       cp1.findClassFile("p2.X").get.toByteArray
@@ -42,7 +42,7 @@ class ZipAndJarFileLookupFactoryTest {
 
       // Our classpath cache should create a new instance
       val cp3 = createCp
-      assert(cp1 ne cp3, (System.identityHashCode(cp1), System.identityHashCode(cp3)))
+      assert(cp1 `ne` cp3, (System.identityHashCode(cp1), System.identityHashCode(cp3)))
       // And that instance should see D, not C, in package p1.
       assert(cp3.findClass("p1.C").isEmpty)
       assert(cp3.findClass("p1.D").isDefined)

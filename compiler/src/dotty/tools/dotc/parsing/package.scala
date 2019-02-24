@@ -15,7 +15,7 @@ package object parsing {
    * [SIP-33]: https://docs.scala-lang.org/sips/priority-based-infix-type-precedence.html
    */
   def precedence(operator: Name): Int =
-    if (operator eq nme.ERROR) -1
+    if (operator `eq` nme.ERROR) -1
     else {
       val firstCh = operator.firstPart.head
       if (isScalaLetter(firstCh)) 1

@@ -28,7 +28,7 @@ trait PropertiesTrait {
   @sharable protected lazy val scalaProps: java.util.Properties = {
     val props = new java.util.Properties
     val stream = pickJarBasedOn getResourceAsStream propFilename
-    if (stream ne null)
+    if (stream != null)
       quietlyDispose(props load stream, stream.close)
 
     props

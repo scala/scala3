@@ -635,7 +635,7 @@ object Parsers {
      */
     def selectors(t: Tree, finish: Tree => Tree): Tree = {
       val t1 = finish(t)
-      if (t1 ne t) t1 else dotSelectors(selector(t), finish)
+      if (t1 `ne` t) t1 else dotSelectors(selector(t), finish)
     }
 
     /** DotSelectors ::= { `.' id }

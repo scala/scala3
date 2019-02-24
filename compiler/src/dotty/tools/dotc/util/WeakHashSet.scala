@@ -107,7 +107,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
         val bucket = bucketFor(stale.hash)
 
         @tailrec
-        def linkedListLoop(prevEntry: Entry[A], entry: Entry[A]): Unit = if (stale eq entry) remove(bucket, prevEntry, entry)
+        def linkedListLoop(prevEntry: Entry[A], entry: Entry[A]): Unit = if (stale `eq` entry) remove(bucket, prevEntry, entry)
         else if (entry != null) linkedListLoop(entry, entry.tail)
 
         linkedListLoop(null, table(bucket))
@@ -147,7 +147,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
     tableLoop(0)
   }
 
-  def contains(elem: A): Boolean = findEntry(elem) ne null
+  def contains(elem: A): Boolean = findEntry(elem) != null
 
   // from scala.reflect.internal.Set, find an element or null if it isn't contained
   def findEntry(elem: A): A = elem match {

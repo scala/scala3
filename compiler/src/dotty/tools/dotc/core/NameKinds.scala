@@ -372,7 +372,7 @@ object NameKinds {
   object SignedName extends NameKind(SIGNED) {
 
     case class SignedInfo(sig: Signature) extends Info {
-      assert(sig ne Signature.NotAMethod)
+      assert(sig `ne` Signature.NotAMethod)
       override def toString: String = s"$infoString $sig"
     }
     type ThisInfo = SignedInfo

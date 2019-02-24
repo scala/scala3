@@ -70,7 +70,7 @@ class Getters extends MiniPhase with SymTransformer {
 
     // Drop the Local flag from all private[this] and protected[this] members.
     if (d1.is(Local)) {
-      if (d1 ne d) d1.resetFlag(Local)
+      if (d1 `ne` d) d1.resetFlag(Local)
       else d1 = d1.copySymDenotation(initFlags = d1.flags &~ Local)
     }
     d1

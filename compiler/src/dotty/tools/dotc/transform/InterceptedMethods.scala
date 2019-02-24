@@ -36,7 +36,7 @@ class InterceptedMethods extends MiniPhase {
     transformRefTree(tree)
 
   private def transformRefTree(tree: RefTree)(implicit ctx: Context): Tree = {
-    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol)) {
+    if (tree.symbol.isTerm && (defn.Any_## `eq` tree.symbol)) {
       val qual = tree match {
         case id: Ident => tpd.desugarIdentPrefix(id)
         case sel: Select => sel.qualifier

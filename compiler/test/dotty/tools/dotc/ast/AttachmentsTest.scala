@@ -25,7 +25,7 @@ class AttachmentsTests extends DottyTest {
         assertEquals(Some(msg), clazz.getAttachment(TestKey))
 
         val copy = tpd.cpy.TypeDef(clazz)(rhs = tpd.EmptyTree)
-        assertTrue("A copy should have been returned", clazz ne copy)
+        assertTrue("A copy should have been returned", clazz `ne` copy)
         assertTrue("Attachment shouldn't be present", copy.getAttachment(TestKey).isEmpty)
 
       case _ =>
@@ -50,7 +50,7 @@ class AttachmentsTests extends DottyTest {
         assertEquals(Some(msg), clazz.getAttachment(StickyTestKey))
 
         val copy = tpd.cpy.TypeDef(clazz)(rhs = tpd.EmptyTree)
-        assertTrue("A copy should have been returned", clazz ne copy)
+        assertTrue("A copy should have been returned", clazz `ne` copy)
         assertTrue("Attachment should be present", copy.getAttachment(StickyTestKey).isDefined)
         assertTrue("Attachment shouldn't be present", copy.getAttachment(TestKey).isEmpty)
         assertTrue("Attachment should be present", copy.getAttachment(StickyTestKey2).isDefined)

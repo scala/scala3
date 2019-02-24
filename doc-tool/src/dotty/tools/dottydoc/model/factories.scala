@@ -45,7 +45,7 @@ object factories {
   def alias(t: Type)(implicit ctx: Context): Option[Reference] = {
     val defn = ctx.definitions
     t match {
-      case TypeBounds(low, high) if (low eq defn.NothingType) && (high eq defn.AnyType) =>
+      case TypeBounds(low, high) if (low `eq` defn.NothingType) && (high `eq` defn.AnyType) =>
         None
       case t => Some(returnType(t))
     }

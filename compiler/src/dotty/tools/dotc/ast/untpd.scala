@@ -183,14 +183,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else copy(flags = flags)
 
     def withAddedMod(mod: Mod): Modifiers =
-      if (mods.exists(_ eq mod)) this
+      if (mods.exists(_ `eq` mod)) this
       else withMods(mods :+ mod)
 
     /** Modifiers with given list of Mods. It is checked that
      *  all modifiers are already accounted for in `flags` and `privateWithin`.
      */
     def withMods(ms: List[Mod]): Modifiers = {
-      if (mods eq ms) this
+      if (mods `eq` ms) this
       else {
         if (ms.nonEmpty)
           for (m <- ms)
@@ -202,11 +202,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
 
     def withAddedAnnotation(annot: Tree): Modifiers =
-      if (annotations.exists(_ eq annot)) this
+      if (annotations.exists(_ `eq` annot)) this
       else withAnnotations(annotations :+ annot)
 
     def withAnnotations(annots: List[Tree]): Modifiers =
-      if (annots eq annotations) this
+      if (annots `eq` annotations) this
       else copy(annotations = annots)
 
     def withPrivateWithin(pw: TypeName): Modifiers =
@@ -449,11 +449,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }.asInstanceOf[copied.ThisTree[Untyped]]
 
     def ModuleDef(tree: Tree)(name: TermName, impl: Template)(implicit ctx: Context): ModuleDef = tree match {
-      case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
+      case tree: ModuleDef if (name `eq` tree.name) && (impl `eq` tree.impl) => tree
       case _ => finalize(tree, untpd.ModuleDef(name, impl)(tree.source))
     }
     def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: ParsedTry if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
+      case tree: ParsedTry if (expr `eq` tree.expr) && (handler `eq` tree.handler) && (finalizer `eq` tree.finalizer) => tree
       case _ => finalize(tree, untpd.ParsedTry(expr, handler, finalizer)(tree.source))
     }
     def SymbolLit(tree: Tree)(str: String)(implicit ctx: Context): TermTree = tree match {
@@ -461,75 +461,75 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => finalize(tree, untpd.SymbolLit(str)(tree.source))
     }
     def InterpolatedString(tree: Tree)(id: TermName, segments: List[Tree])(implicit ctx: Context): TermTree = tree match {
-      case tree: InterpolatedString if (id eq tree.id) && (segments eq tree.segments) => tree
+      case tree: InterpolatedString if (id `eq` tree.id) && (segments `eq` tree.segments) => tree
       case _ => finalize(tree, untpd.InterpolatedString(id, segments)(tree.source))
     }
     def Function(tree: Tree)(args: List[Tree], body: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
+      case tree: Function if (args `eq` tree.args) && (body `eq` tree.body) => tree
       case _ => finalize(tree, untpd.Function(args, body)(tree.source))
     }
     def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: InfixOp if (left eq tree.left) && (op eq tree.op) && (right eq tree.right) => tree
+      case tree: InfixOp if (left `eq` tree.left) && (op `eq` tree.op) && (right `eq` tree.right) => tree
       case _ => finalize(tree, untpd.InfixOp(left, op, right)(tree.source))
     }
     def PostfixOp(tree: Tree)(od: Tree, op: Ident)(implicit ctx: Context): Tree = tree match {
-      case tree: PostfixOp if (od eq tree.od) && (op eq tree.op) => tree
+      case tree: PostfixOp if (od `eq` tree.od) && (op `eq` tree.op) => tree
       case _ => finalize(tree, untpd.PostfixOp(od, op)(tree.source))
     }
     def PrefixOp(tree: Tree)(op: Ident, od: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: PrefixOp if (op eq tree.op) && (od eq tree.od) => tree
+      case tree: PrefixOp if (op `eq` tree.op) && (od `eq` tree.od) => tree
       case _ => finalize(tree, untpd.PrefixOp(op, od)(tree.source))
     }
     def Parens(tree: Tree)(t: Tree)(implicit ctx: Context): ProxyTree = tree match {
-      case tree: Parens if t eq tree.t => tree
+      case tree: Parens if t `eq` tree.t => tree
       case _ => finalize(tree, untpd.Parens(t)(tree.source))
     }
     def Tuple(tree: Tree)(trees: List[Tree])(implicit ctx: Context): Tree = tree match {
-      case tree: Tuple if trees eq tree.trees => tree
+      case tree: Tuple if trees `eq` tree.trees => tree
       case _ => finalize(tree, untpd.Tuple(trees)(tree.source))
     }
     def Throw(tree: Tree)(expr: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: Throw if expr eq tree.expr => tree
+      case tree: Throw if expr `eq` tree.expr => tree
       case _ => finalize(tree, untpd.Throw(expr)(tree.source))
     }
     def Quote(tree: Tree)(t: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Quote if t eq tree.t => tree
+      case tree: Quote if t `eq` tree.t => tree
       case _ => finalize(tree, untpd.Quote(t)(tree.source))
     }
     def Splice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Splice if expr eq tree.expr => tree
+      case tree: Splice if expr `eq` tree.expr => tree
       case _ => finalize(tree, untpd.Splice(expr)(tree.source))
     }
     def TypSplice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: TypSplice if expr eq tree.expr => tree
+      case tree: TypSplice if expr `eq` tree.expr => tree
       case _ => finalize(tree, untpd.TypSplice(expr)(tree.source))
     }
     def DoWhile(tree: Tree)(body: Tree, cond: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: DoWhile if (body eq tree.body) && (cond eq tree.cond) => tree
+      case tree: DoWhile if (body `eq` tree.body) && (cond `eq` tree.cond) => tree
       case _ => finalize(tree, untpd.DoWhile(body, cond)(tree.source))
     }
     def ForYield(tree: Tree)(enums: List[Tree], expr: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: ForYield if (enums eq tree.enums) && (expr eq tree.expr) => tree
+      case tree: ForYield if (enums `eq` tree.enums) && (expr `eq` tree.expr) => tree
       case _ => finalize(tree, untpd.ForYield(enums, expr)(tree.source))
     }
     def ForDo(tree: Tree)(enums: List[Tree], body: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: ForDo if (enums eq tree.enums) && (body eq tree.body) => tree
+      case tree: ForDo if (enums `eq` tree.enums) && (body `eq` tree.body) => tree
       case _ => finalize(tree, untpd.ForDo(enums, body)(tree.source))
     }
     def GenFrom(tree: Tree)(pat: Tree, expr: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: GenFrom if (pat eq tree.pat) && (expr eq tree.expr) => tree
+      case tree: GenFrom if (pat `eq` tree.pat) && (expr `eq` tree.expr) => tree
       case _ => finalize(tree, untpd.GenFrom(pat, expr)(tree.source))
     }
     def GenAlias(tree: Tree)(pat: Tree, expr: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: GenAlias if (pat eq tree.pat) && (expr eq tree.expr) => tree
+      case tree: GenAlias if (pat `eq` tree.pat) && (expr `eq` tree.expr) => tree
       case _ => finalize(tree, untpd.GenAlias(pat, expr)(tree.source))
     }
     def ContextBounds(tree: Tree)(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit ctx: Context): TypTree = tree match {
-      case tree: ContextBounds if (bounds eq tree.bounds) && (cxBounds eq tree.cxBounds) => tree
+      case tree: ContextBounds if (bounds `eq` tree.bounds) && (cxBounds `eq` tree.cxBounds) => tree
       case _ => finalize(tree, untpd.ContextBounds(bounds, cxBounds)(tree.source))
     }
     def PatDef(tree: Tree)(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
+      case tree: PatDef if (mods `eq` tree.mods) && (pats `eq` tree.pats) && (tpt `eq` tree.tpt) && (rhs `eq` tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context): ProxyTree = tree match {

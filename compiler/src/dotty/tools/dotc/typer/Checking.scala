@@ -143,7 +143,7 @@ object Checking {
   /** Check that type `tp` is realizable. */
   def checkRealizable(tp: Type, posd: Positioned, what: String = "path")(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
-    if (rstatus ne Realizable)
+    if (rstatus `ne` Realizable)
       ctx.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", posd.sourcePos)
   }
 
@@ -480,12 +480,12 @@ object Checking {
               tp
             }
             else mapOver(tp)
-          if ((errors ne prevErrors) && !sym.isType && tp.info.isTypeAlias) {
+          if ((errors `ne` prevErrors) && !sym.isType && tp.info.isTypeAlias) {
             // try to dealias to avoid a leak error
             val savedErrors = errors
             errors = prevErrors
             val tp2 = apply(tp.superType)
-            if (errors eq prevErrors) tp1 = tp2
+            if (errors `eq` prevErrors) tp1 = tp2
             else errors = savedErrors
           }
           tp1
@@ -589,7 +589,7 @@ trait Checking {
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = {
     val rstatus = boundsRealizability(cls.thisType)
-    if (rstatus ne Realizable)
+    if (rstatus `ne` Realizable)
       ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
