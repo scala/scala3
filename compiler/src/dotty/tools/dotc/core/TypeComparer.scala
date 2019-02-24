@@ -1757,7 +1757,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         case ExprType(rt2) =>
           ExprType(rt1 & rt2)
         case _ =>
-          rt1 & tp2
+          NoType
       }
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
@@ -1777,7 +1777,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    */
   private def distributeOr(tp1: Type, tp2: Type): Type = tp1 match {
     case ExprType(rt1) =>
-      ExprType(rt1 | tp2.widenExpr)
+      tp2 match {
+        case ExprType(rt2) =>
+          ExprType(rt1 | rt2)
+        case _ =>
+          NoType
+      }
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying | tp2
     case tp1: AnnotatedType if !tp1.isRefining =>
