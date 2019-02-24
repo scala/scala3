@@ -119,7 +119,7 @@ object Applications {
       def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
       def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
       def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.SeqType.appliedTo(elemTp))
-      def toSeqTp(elemTp: Type) = ExprType(defn.SeqType.appliedTo(elemTp))
+      def toSeqTp(elemTp: Type) = defn.SeqType.appliedTo(elemTp)
 
       // the result type of `def apply(i: Int): T`
       val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
@@ -603,7 +603,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    * argument trees.
    */
   class ApplicableToTreesDirectly(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
-    override def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) <:< formal
+    override def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) <:< formal.widenExpr
   }
 
   /** Subclass of Application for applicability tests with value argument types. */

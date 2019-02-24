@@ -647,7 +647,7 @@ object Denotations {
           }
 
         case _ =>
-          try tp1 & tp2
+          try tp1.widenExpr & tp2.widenExpr
           catch {
             case ex: Throwable =>
               println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")

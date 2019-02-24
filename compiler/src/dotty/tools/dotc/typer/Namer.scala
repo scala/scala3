@@ -1215,7 +1215,7 @@ class Namer { typer: Typer =>
 
       var rhsCtx = ctx.addMode(Mode.InferringReturnType)
       if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
-      def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
+      def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
       val deskolemize = new ApproximatingTypeMap {

@@ -621,7 +621,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           // ()T <:< => T, since everything one can do with a => T one can
           // also do with a ()T by automatic () insertion.
           case tp1 @ MethodType(Nil) => isSubType(tp1.resultType, restpe2)
-          case _ => isSubType(tp1.widenExpr, restpe2)
+          case tp1 @ ExprType(restpe1) => isSubType(restpe1, restpe2)
+          case _ => fourthTry
         }
         compareExpr
       case tp2 @ TypeBounds(lo2, hi2) =>
@@ -1237,7 +1238,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
 
       def qualifies(m: SingleDenotation) =
-        isSubType(m.info, rinfo2) || matchAbstractTypeMember(m.info)
+        isSubType(m.info.widenExpr, rinfo2.widenExpr) || matchAbstractTypeMember(m.info)
 
       tp1.member(name) match { // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
