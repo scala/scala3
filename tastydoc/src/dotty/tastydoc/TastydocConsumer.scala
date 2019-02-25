@@ -45,7 +45,7 @@ class TastydocConsumer extends TastyConsumer {
     }
 
     def convertTypeOrBounds(tpe: reflect.TypeOrBounds) : String = tpe match {
-      case reflect.Type.AppliedType(tycon, args) => convertTypeOrBounds(tycon) + "[" + args.map(convertTypeOrBounds).foldLeft("")((x, y) => x + ", " + y) + "]"
+      case reflect.Type.AppliedType(tycon, args) => convertTypeOrBounds(tycon) + "[" + (args.map(convertTypeOrBounds)).reduce((x, y) => x + ", " + y) + "]"
       case reflect.Type.TypeRef(name, qualifier) => name //TODO: handle qualifier
       case tpe => tpe.toString
     }
@@ -65,7 +65,7 @@ class TastydocConsumer extends TastyConsumer {
             }) +
             ") : " +
             convertTypeTree(tpt) + "\n"
-          case _ => "FAILED MATCH FOR DEFDEF"
+          case _ => ""
         }
       }
       def findValDef(level: Int, child: reflect.Tree) : String = {
@@ -74,7 +74,13 @@ class TastydocConsumer extends TastyConsumer {
             (0 until level).map(_ => "  ").foldLeft("")(_+_) +
             name + " : " +
             convertTypeTree(tpt)
-          case _ => "FAILED MATCH FOR VALDEF"
+          case _ => ""
+        }
+      }
+
+      def findTypeDef(level: Int, child: reflect.Tree) : String = {
+        child match {
+          case _ => "toimpl"
         }
       }
 
@@ -87,13 +93,16 @@ class TastydocConsumer extends TastyConsumer {
         case reflect.Import(impliedOnly, expr, selectors) =>
           "import " + expr + selectors + "\n"
         case reflect.ClassDef(name, constr, parents, derived, self, body) =>
+          //TODO: Generic type
+          //TODO: Classes inside class
           "Class: " + name + "\n" +
           (0 until level+1).map(_ => "  ").foldLeft("")(_+_) +
           "Methods:" + "\n" +
           body.map(findDefDef(level+2, _)).foldLeft("")(_+_) +
           (0 until level+1).map(_ => "  ").foldLeft("")(_+_) +
           "Values:" + "\n" +
-          body.map(findValDef(level+2, _)).foldLeft("")(_+_)
+          body.map(findValDef(level+2, _)).foldLeft("")(_+_) +
+          "Types" + "\n"
         case _ =>
           "No match in traverse" + "\n"
       })
