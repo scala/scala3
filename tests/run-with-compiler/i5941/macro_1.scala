@@ -203,10 +203,6 @@ object Prism {
   def impl[S: Type, A <: S : Type](implicit refl: Reflection): Expr[Prism[S, A]] = {
     import refl._
     import util._
-    import quoted.Toolbox.Default._
-
-    val tpS = typeOf[S]
-    val tpA = typeOf[A]
 
     '{
       val get = (p: S) =>  if (p.isInstanceOf[A]) Some(p.asInstanceOf[A]) else None

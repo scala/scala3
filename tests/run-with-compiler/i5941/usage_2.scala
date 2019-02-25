@@ -24,10 +24,10 @@ object Test {
     assert(len2.get(employee2) == 5)
 
     // prism
-    // val jStr: Prism[Json, JStr] = GenPrism[Json, JStr]
-    // assert(jStr.getOption(JNum(4.5)) == None)
-    // assert(jStr.getOption(JStr("hello")) == Some(JStr("hello")))
-    // assert(jStr(JStr("world")) == JStr("world"))
+    val jStr: Prism[Json, JStr] = GenPrism[Json, JStr]
+    assert(jStr.getOption(JNum(4.5)) == None)
+    assert(jStr.getOption(JStr("hello")) == Some(JStr("hello")))
+    assert(jStr(JStr("world")) == JStr("world"))
 
     assert(GenIso[JStr, String].to(JStr("Hello")) == "Hello")
     assert(GenIso.unit[JNull.type].to(JNull) == 1)
