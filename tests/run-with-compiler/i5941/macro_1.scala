@@ -58,8 +58,8 @@ object Lens {
     getter.unseal match {
       case Function(param :: Nil, Path(o, parts)) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ~setterBody(('(s)).unseal, ('(t)).unseal, parts).seal[S]
-          apply(~getter)(setter)
+          val setter = (t: T) => (s: S) => ${ setterBody(('s).unseal, ('t).unseal, parts).seal[S] }
+          apply($getter)(setter)
         }
       case _ =>
         throw new QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
@@ -77,7 +77,7 @@ object GenLens {
 
   def apply[S] = new MkGenLens[S]
   class MkGenLens[S] {
-    inline def apply[T](get: => (S => T)): Lens[S, T] = ~Lens.impl('(get))
+    inline def apply[T](get: => (S => T)): Lens[S, T] = ${ Lens.impl('get) }
   }
 }
 
@@ -122,9 +122,9 @@ object Iso {
 
     '{
       // (p: S) => p._1
-      val to = (p: S) =>  ~{ Term.Select.unique(('(p)).unseal, "_1").seal[A] }
+      val to = (p: S) =>  ${ Term.Select.unique(('p).unseal, "_1").seal[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ~{ Term.Select.overloaded(Term.Ident(companion), "apply", Nil, ('(p)).unseal :: Nil).seal[S] }
+      val from = (p: A) =>  ${ Term.Select.overloaded(Term.Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal[S] }
       apply(from)(to)
     }
   }
@@ -139,7 +139,7 @@ object Iso {
     if (tpS.isSingleton) {
       val ident = Term.Ident(tpS.asInstanceOf[TermRef]).seal[S]
       '{
-        Iso[S, 1](Function.const(~ident))(Function.const(1))
+        Iso[S, 1](Function.const($ident))(Function.const(1))
       }
     }
     else if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).nonEmpty) {
@@ -156,7 +156,7 @@ object Iso {
       val obj = Term.Select.overloaded(Term.Ident(companion), "apply", Nil, Nil).seal[S]
 
       '{
-        Iso[S, 1](Function.const(~obj))(Function.const(1))
+        Iso[S, 1](Function.const($obj))(Function.const(1))
       }
     }
     else {
@@ -176,12 +176,12 @@ object GenIso {
    *     { p => p._1 }
    *     { p => Person(p) }
    */
-  inline def apply[S, A]: Iso[S, A] = ~Iso.impl[S, A]
+  inline def apply[S, A]: Iso[S, A] = ${ Iso.impl[S, A] }
 
   // TODO: require whitebox macro
-  inline def fields[S]: Iso[S, Any] = ~Iso.implFields[S]
+  inline def fields[S]: Iso[S, Any] = ${ Iso.implFields[S] }
 
-  inline def unit[S]: Iso[S, 1] = ~Iso.implUnit[S]
+  inline def unit[S]: Iso[S, 1] = ${ Iso.implUnit[S] }
 }
 
 trait Prism[S, A] { outer =>
@@ -221,5 +221,5 @@ object GenPrism {
    *     case _       => None
    *   }(jstr => jstr)
    */
-  inline def apply[S, A <: S]: Prism[S, A] = ~Prism.impl[S, A]
+  inline def apply[S, A <: S]: Prism[S, A] = ${ Prism.impl[S, A] }
 }

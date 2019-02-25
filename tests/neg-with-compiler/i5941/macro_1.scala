@@ -31,8 +31,8 @@ object Lens {
         )
       ) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ~setterBody('(s), '(t), field)
-          apply(~getter)(setter)
+          val setter = (t: T) => (s: S) => ${ setterBody('s, 't, field) }
+          apply($getter)(setter)
         }
       case _ =>
         throw new QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
@@ -50,6 +50,6 @@ object GenLens {
 
   def apply[S] = new MkGenLens[S]
   class MkGenLens[S] {
-    inline def apply[T](get: => (S => T)): Lens[S, T] = ~Lens.impl('(get))
+    inline def apply[T](get: => (S => T)): Lens[S, T] = ${ Lens.impl('get) }
   }
 }
