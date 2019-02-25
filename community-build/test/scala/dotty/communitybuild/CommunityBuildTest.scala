@@ -5,7 +5,9 @@ import java.io.{PrintWriter, File}
 import java.nio.charset.StandardCharsets.UTF_8
 import org.junit.{Ignore, Test}
 import org.junit.Assert.{assertEquals, fail}
+import org.junit.experimental.categories.Category
 
+@Category(Array(classOf[TestCategory]))
 class CommunityBuildTest {
   lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir") + "/community-build/")
 
@@ -19,10 +21,11 @@ class CommunityBuildTest {
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
    *  and expects community-build/sbt-dotty-sbt to set the compiler plugin.
    *
-   *  @param project  The project name, should be a git submodule in community-build/
-   *  @param command  The sbt command used to build the project
+   *  @param project        The project name, should be a git submodule in community-build/
+   *  @param command        The sbt command used to test the project
+   *  @param updateCommand  The sbt command used to update the project
    */
-  def test(project: String, command: String): Unit = {
+  def test(project: String, testCommand: String, updateCommand: String): Unit = {
     def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
     log(s"Building $project with dotty-bootstrapped $compilerVersion...")
@@ -57,7 +60,7 @@ class CommunityBuildTest {
     val arguments = Seq(
       "-sbt-version", "1.2.7",
       s"--addPluginSbtFile=$pluginFilePath",
-      s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $command"
+      s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $testCommand"
     )
 
     val exitCode = exec("sbt", arguments: _*)
@@ -80,69 +83,91 @@ class CommunityBuildTest {
   }
 
   @Test def algebra = test(
-    project = "algebra",
-    command = "coreJVM/compile"
+    project       = "algebra",
+    testCommand   = "coreJVM/compile",
+    updateCommand = "coreJVM/update"
   )
 
   @Test def scalacheck = test(
-    project = "scalacheck",
-    command = "jvm/test:compile"
+    project       = "scalacheck",
+    testCommand   = "jvm/test:compile",
+    updateCommand = "jvm/test:update"
   )
 
   @Test def scalatest = test(
-    project = "scalatest",
-    command = "scalatest/compile"
+    project       = "scalatest",
+    testCommand   = "scalatest/compile",
+    updateCommand = "scalatest/update"
   )
 
   @Test def scopt = test(
-    project = "scopt",
-    command = "scoptJVM/compile"
+    project       = "scopt",
+    testCommand   = "scoptJVM/compile",
+    updateCommand = "scoptJVM/update"
   )
 
   @Test def scalap = test(
-    project = "scalap",
-    command = "scalap/compile"
+    project       = "scalap",
+    testCommand   = "scalap/compile",
+    updateCommand = "scalap/update"
   )
 
   @Test def squants = test(
-    project = "squants",
-    command = "squantsJVM/compile"
+    project       = "squants",
+    testCommand   = "squantsJVM/compile",
+    updateCommand = "squantsJVM/update"
   )
 
   @Test def betterfiles = test(
-    project = "betterfiles",
-    command = "dotty-community-build/compile"
+    project       = "betterfiles",
+    testCommand   = "dotty-community-build/compile",
+    updateCommand = "dotty-community-build/update"
   )
 
   @Test def ScalaPB = test(
-    project = "ScalaPB",
-    command = "dotty-community-build/compile"
+    project       = "ScalaPB",
+    testCommand   = "dotty-community-build/compile",
+    updateCommand = "dotty-community-build/update"
   )
 
   @Test def minitest = test(
-    project = "minitest",
-    command = "dotty-community-build/compile"
+    project       = "minitest",
+    testCommand   = "dotty-community-build/compile",
+    updateCommand = "dotty-community-build/update"
   )
 
   @Test def fastparse = test(
-    project = "fastparse",
-    command = "fastparseJVM/compile"
+    project       = "fastparse",
+    testCommand   = "fastparseJVM/compile",
+    updateCommand = "fastparseJVM/update"
   )
 
   // TODO: revert to sourcecodeJVM/test
   @Test def sourcecode = test(
-    project = "sourcecode",
-    command = "sourcecodeJVM/compile"
+    project       = "sourcecode",
+    testCommand   = "sourcecodeJVM/compile",
+    updateCommand = "sourcecodeJVM/update"
   )
 
   @Test def stdLib213 = test(
-    project = "stdLib213",
-    command = "library/compile"
+    project       = "stdLib213",
+    testCommand   = "library/compile",
+    updateCommand = "library/update"
   )
 
   // TODO @oderky? It got broken by #5458
   // @Test def pdbp = test(
-  //   project = "pdbp",
-  //   command = "compile"
+  //   project       = "pdbp",
+  //   testCommand   = "compile",
+  //   updateCommand = "update"
   // )
+}
+
+class TestCategory
+class UpdateCategory
+
+@Category(Array(classOf[UpdateCategory]))
+class CommunityBuildUpdate extends CommunityBuildTest {
+  override def test(project: String, testCommand: String, updateCommand: String): Unit =
+    super.test(project, updateCommand, null)
 }
