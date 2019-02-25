@@ -839,7 +839,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
       case Empty => ""
-      case Typ(c: ConstantType, _) => c.value.show
+      case Typ(c: ConstantType, _) => c.value.value.toString
       case Typ(tp: TermRef, _) => tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
