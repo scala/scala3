@@ -8,7 +8,7 @@ case class Xml(parts: String, args: List[Any])
 object XmlQuote {
 
   implicit class SCOps(ctx: StringContext) {
-    inline def xml(args: => Any*): Xml = ~XmlQuote.impl('(this), '(args))
+    inline def xml(args: => Any*): Xml = ${XmlQuote.impl('this, 'args)}
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
@@ -29,8 +29,8 @@ object XmlQuote {
       case x :: xs  =>
         val head = x.seal[Any]
         val tail = liftListOfAny(xs)
-        '{ ~head :: ~tail }
-      case Nil => '(Nil)
+        '{ $head :: $tail }
+      case Nil => '{Nil}
     }
 
     def isStringConstant(tree: Term) = tree match {
@@ -59,6 +59,6 @@ object XmlQuote {
     val Typed(Repeated(args0, _), _) = args.unseal.underlyingArgument
 
     val string = parts.mkString("??")
-    '(new Xml(~string.toExpr, ~liftListOfAny(args0)))
+    '{new Xml(${string.toExpr}, ${liftListOfAny(args0)})}
   }
 }

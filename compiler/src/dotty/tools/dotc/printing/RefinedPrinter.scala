@@ -232,7 +232,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
         }
-        return "FunProto(" ~ argsText ~ "):" ~ toText(resultType)
+        return "FunProto(" ~ (Str("given ") provided tp.isContextual) ~ argsText ~ "):" ~ toText(resultType)
       case IgnoredProto(ignored) =>
         return "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided ctx.settings.verbose.value)
       case tp @ PolyProto(targs, resType) =>
@@ -302,6 +302,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => toTextGlobal(arg)
     }
 
+    def dropBlock(tree: Tree): Tree = tree match {
+      case Block(Nil, expr) => expr
+      case _ => tree
+    }
+
     tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
@@ -323,8 +328,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (tree.hasType && tree.symbol == defn.QuotedExpr_~) keywordStr("~(") ~ toTextLocal(qual) ~ keywordStr(")")
-        else if (tree.hasType && tree.symbol == defn.QuotedType_~) typeText("~(") ~ toTextLocal(qual) ~ typeText(")")
+        if (tree.hasType && tree.symbol == defn.QuotedExpr_splice) keywordStr("${") ~ toTextLocal(qual) ~ keywordStr("}")
+        else if (tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case tree: This =>
@@ -476,7 +481,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, toText(rhs))
           case LambdaTypeTree(tparams, body) =>
             recur(body, tparamsText(tparams))
-          case rhs: TypeTree if rhs.typeOpt.isInstanceOf[TypeBounds] =>
+          case rhs: TypeTree if isBounds(rhs.typeOpt) =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
@@ -572,7 +577,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("try ") ~ toText(expr) ~ " " ~ keywordStr("catch") ~ " {" ~ toText(handler) ~ "}" ~ optText(finalizer)(keywordStr(" finally ") ~ _)
         }
       case Quote(tree) =>
-        if (tree.isType) keywordStr("'[") ~ toTextGlobal(tree) ~ keywordStr("]") else keywordStr("'{") ~ toTextGlobal(tree) ~ keywordStr("}")
+        if (tree.isType) keywordStr("'[") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("]")
+        else keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
+      case Splice(tree) =>
+        keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>

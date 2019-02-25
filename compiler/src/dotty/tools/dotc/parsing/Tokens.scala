@@ -43,7 +43,7 @@ abstract class TokensCommon {
   final val STRINGLIT = 8;         enter(STRINGLIT, "string literal")
   final val STRINGPART = 9;        enter(STRINGPART, "string literal", "string literal part")
   //final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  //final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
+  //final val QUOTEID = 11;        enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
   /** identifiers */
   final val IDENTIFIER = 12;       enter(IDENTIFIER, "identifier")
@@ -149,7 +149,7 @@ object Tokens extends TokensCommon {
   final def maxToken: Int = XMLSTART
 
   final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
+  final val QUOTEID = 11;          enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
   final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
 
@@ -180,6 +180,7 @@ object Tokens extends TokensCommon {
   final val ERASED = 63;           enter(ERASED, "erased")
   final val IMPLIED = 64;          enter(IMPLIED, "implied")
   final val GIVEN = 65;            enter(GIVEN, "given")
+  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -193,28 +194,26 @@ object Tokens extends TokensCommon {
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
-  final val QPAREN = 85;           enter(QPAREN, "'(")
-  final val QBRACE = 86;           enter(QBRACE, "'{")
-  final val QBRACKET = 87;         enter(QBRACKET, "'[")
+  final val QUOTE = 85;            enter(QUOTE, "'")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, GIVEN)
+  final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
-  final val symbolicTokens: TokenSet = tokenRange(COMMA, VIEWBOUND)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
   final val allTokens: TokenSet = tokenRange(minToken, maxToken)
 
-  final val simpleLiteralTokens: TokenSet = tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, SYMBOLLIT)
+  final val simpleLiteralTokens: TokenSet =
+    tokenRange(CHARLIT, STRINGLIT) | BitSet(TRUE, FALSE, QUOTEID) // TODO: drop QUOTEID when symbol literals are gone
   final val literalTokens: TokenSet = simpleLiteralTokens | BitSet(INTERPOLATIONID, NULL)
 
   final val atomicExprTokens: TokenSet = literalTokens | identifierTokens | BitSet(
-    USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
+    USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
   final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QBRACE, QPAREN, QBRACKET, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)

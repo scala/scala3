@@ -4,13 +4,13 @@ class Test {
 
   '{
 
-    val b = '(3)
+    val b = '{3}
 
     '{
       b // error
-      ~(b)
-      ~('(b)) // error
-      '( '(~b) ) // error
+      ${b}
+      ${ '{b} } // error
+      '{ '{$b} } // error
     }
 
   }

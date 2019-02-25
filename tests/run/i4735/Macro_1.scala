@@ -4,21 +4,21 @@ import scala.quoted._
 object Macro {
 
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int], f: => Int => Unit): Unit = // or f: Int => Unit
-    ~unrolledForeachImpl(unrollSize, '(seq), '(f))
+    ${ unrolledForeachImpl(unrollSize, 'seq, 'f) }
 
   private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
-    val size = (~seq).length
-    assert(size % (~unrollSize.toExpr) == 0) // for simplicity of the implementation
+    val size = ($seq).length
+    assert(size % (${unrollSize.toExpr}) == 0) // for simplicity of the implementation
     var i = 0
     while (i < size) {
       println("<log> start loop")
-      ~{
+      ${
         for (j <- new UnrolledRange(0, unrollSize)) '{
-          val element = (~seq)(i + ~j.toExpr)
-          ~f('(element)) // or `(~f)(element)` if `f` should not be inlined
+          val element = ($seq)(i + ${j.toExpr})
+          ${f('element)} // or `($f)(element)` if `f` should not be inlined
         }
       }
-      i += ~unrollSize.toExpr
+      i += ${unrollSize.toExpr}
     }
 
   }
@@ -26,9 +26,9 @@ object Macro {
   private class UnrolledRange(start: Int, end: Int) {
     def foreach(f: Int => Expr[Unit]): Expr[Unit] = {
       @tailrec def loop(i: Int, acc: Expr[Unit]): Expr[Unit] =
-        if (i >= 0) loop(i - 1, '{ ~f(i); ~acc })
+        if (i >= 0) loop(i - 1, '{ ${f(i)}; $acc })
       else acc
-      loop(end - 1, '())
+      loop(end - 1, '{})
     }
   }
 }

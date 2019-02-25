@@ -10,7 +10,7 @@ case class Xml(parts: String, args: List[Any])
 object XmlQuote {
 
   class SCOps(ctx: => StringContext) {
-    inline def xml(args: Any*): Xml = ~XmlQuote.impl('(this), '(args))
+    inline def xml(args: Any*): Xml = ${ XmlQuote.impl('this, 'args) }
   }
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
@@ -58,11 +58,11 @@ object XmlQuote {
       case Typed(Repeated(args0, _), _) => // statically known args, make list directly
         args0.map(_.seal[Any]).toExprOfList
       case _ =>
-        '((~args).toList)
+        '{$args.toList}
 
     }
 
     val string = parts.mkString("??")
-    '(new Xml(~string.toExpr, ~args2))
+    '{new Xml(${string.toExpr}, $args2)}
   }
 }

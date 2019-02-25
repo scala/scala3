@@ -1166,7 +1166,8 @@ object Types {
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
       case tp: AppliedType =>
-        tp.superType.underlyingClassRef(refinementOK)
+        if (tp.tycon.isLambdaSub) NoType
+        else tp.superType.underlyingClassRef(refinementOK)
       case tp: AnnotatedType =>
         tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
@@ -1442,6 +1443,13 @@ object Types {
      */
     final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type =
       ctx.substSym(this, from, to, null)
+
+    /** Substitute all occurrences of symbols in `from` by corresponding types in `to`.
+     *  Unlike for `subst`, the `to` types can be type bounds. A TypeBounds target
+     *  will be replaced by range that gets absorbed in an approximating type map.
+     */
+    final def substApprox(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
+      new ctx.SubstApproxMap(from, to).apply(this)
 
 // ----- misc -----------------------------------------------------------
 
@@ -2060,7 +2068,7 @@ object Types {
           var tp1 = argForParam(base.tp1)
           var tp2 = argForParam(base.tp2)
           val variance = tparam.paramVariance
-          if (tp1.isInstanceOf[TypeBounds] || tp2.isInstanceOf[TypeBounds] || variance == 0) {
+          if (isBounds(tp1) || isBounds(tp2) || variance == 0) {
             // compute argument as a type bounds instead of a point type
             tp1 = tp1.bounds
             tp2 = tp2.bounds
@@ -3472,6 +3480,8 @@ object Types {
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 
+    def hasWildcardArg(implicit ctx: Context): Boolean = args.exists(isBounds)
+
     def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
@@ -3609,7 +3619,7 @@ object Types {
 
   // ----- Skolem types -----------------------------------------------
 
-  /** A skolem type reference with underlying type `binder`. */
+  /** A skolem type reference with underlying type `info` */
   case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
     def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =
@@ -4365,6 +4375,8 @@ object Types {
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
       tp.derivedWildcardType(bounds)
+    protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
+      tp.derivedSkolemType(info)
     protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type =
       tp.derivedClassInfo(pre)
     protected def derivedJavaArrayType(tp: JavaArrayType, elemtp: Type): Type =
@@ -4462,7 +4474,7 @@ object Types {
           derivedMatchType(tp, this(tp.bound), this(tp.scrutinee), tp.cases.mapConserve(this))
 
         case tp: SkolemType =>
-          tp
+          derivedSkolemType(tp, this(tp.info))
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
@@ -4741,6 +4753,13 @@ object Types {
       }
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType = {
       tp.derivedWildcardType(rangeToBounds(bounds))
+    }
+
+    override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
+      case Range(lo, hi) =>
+        range(tp.derivedSkolemType(lo), tp.derivedSkolemType(hi))
+      case _ =>
+        tp.derivedSkolemType(info)
     }
 
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
@@ -5080,4 +5099,6 @@ object Types {
   private val keepAlways: AnnotatedType => Context => Boolean = _ => _ => true
   private val keepNever: AnnotatedType => Context => Boolean = _ => _ => false
   private val keepIfRefining: AnnotatedType => Context => Boolean = tp => ctx => tp.isRefining(ctx)
+
+  val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 }

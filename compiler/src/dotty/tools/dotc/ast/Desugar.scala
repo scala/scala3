@@ -499,7 +499,7 @@ object desugar {
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
-            .withFlags(Synthetic | constr1.mods.flags & copiedAccessFlags) :: Nil
+            .withMods(Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags, constr1.mods.privateWithin)) :: Nil
         }
       }
 
@@ -577,11 +577,18 @@ object desugar {
           else
             enumApplyResult(cdef, parents, derivedEnumParams, appliedRef(enumClassRef, derivedEnumParams))
 
+        // true if access to the apply method has to be restricted
+        // i.e. if the case class constructor is either private or qualified private
+        def restrictedAccess = {
+          val mods = constr1.mods
+          mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
+        }
+
         val companionParent =
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
               mods.is(Abstract) ||
-              constr.mods.is(Private)) anyRef
+              restrictedAccess) anyRef
           else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
             (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
@@ -592,8 +599,13 @@ object desugar {
           if (mods is Abstract) Nil
           else {
             val copiedFlagsMask = DefaultParameterized | (copiedAccessFlags & Private)
+            val appMods = {
+              val mods = Modifiers(Synthetic | constr1.mods.flags & copiedFlagsMask)
+              if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
+              else mods
+            }
             val app = DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
-              .withFlags(Synthetic | constr1.mods.flags & copiedFlagsMask)
+              .withMods(appMods)
             app :: widenDefs
           }
         val unapplyMeth = {
@@ -1313,11 +1325,15 @@ object desugar {
     val desugared = tree match {
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
-      case Quote(expr) =>
-        if (expr.isType)
-          TypeApply(ref(defn.QuotedType_applyR), List(expr))
+      case Quote(t) =>
+        if (t.isType)
+          TypeApply(ref(defn.QuotedType_applyR), List(t))
         else
-          Apply(ref(defn.QuotedExpr_applyR), expr)
+          Apply(ref(defn.QuotedExpr_applyR), t)
+      case Splice(expr) =>
+        Select(expr, nme.splice)
+      case TypSplice(expr) =>
+        Select(expr, tpnme.splice)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

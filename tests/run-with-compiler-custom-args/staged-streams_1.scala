@@ -14,13 +14,15 @@ object Test {
 
   object Var {
     def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]): Expr[U] = '{
-      var x = ~init
-      ~body(
-        new Var[T] {
-          def get: Expr[T] = '(x)
-          def update(e: Expr[T]): Expr[Unit] = '{ x = ~e }
-        }
-      )
+      var x = $init
+      ${
+        body(
+          new Var[T] {
+            def get: Expr[T] = 'x
+            def update(e: Expr[T]): Expr[Unit] = '{ x = $e }
+          }
+        )
+      }
     }
   }
 
@@ -95,16 +97,17 @@ object Test {
       * @tparam W  the type of the accumulator
       * @return
       */
-     def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
-       Var(z) { s: Var[W] => '{
-           ~foldRaw[Expr[A]]((a: Expr[A]) => '{
-             ~s.update(f(s.get, a))
-           }, stream)
-
-           ~s.get
-         }
-       }
-     }
+    def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
+      Var(z) { s: Var[W] => '{
+          ${
+            foldRaw[Expr[A]]((a: Expr[A]) => '{
+              ${ s.update(f(s.get, a)) }
+            }, stream)
+          }
+          ${ s.get }
+        }
+      }
+    }
 
      private def foldRaw[A](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
        stream match {
@@ -112,14 +115,14 @@ object Test {
            producer.card match {
              case Many =>
                producer.init(sp => '{
-                 while(~producer.hasNext(sp)) {
-                   ~producer.step(sp, consumer)
+                 while(${producer.hasNext(sp)}) {
+                   ${producer.step(sp, consumer)}
                  }
                })
              case AtMost1 =>
                producer.init(sp => '{
-                 if (~producer.hasNext(sp)) {
-                   ~producer.step(sp, consumer)
+                 if (${producer.hasNext(sp)}) {
+                   ${producer.step(sp, consumer)}
                  }
                })
            }
@@ -137,7 +140,7 @@ object Test {
       * @return   a new stream resulting from applying `mapRaw` and threading the element of the first stream downstream.
       */
     def map[B : Type](f: (Expr[A] => Expr[B])): Stream[B] = {
-      Stream(mapRaw[Expr[A], Expr[B]](a => k => '{ ~k(f(a)) }, stream))
+      Stream(mapRaw[Expr[A], Expr[B]](a => k => k(f(a)), stream))
     }
 
     /** Handles generically the mapping of elements from one producer to another.
@@ -299,15 +302,15 @@ object Test {
         def step(st: St, k: (((Var[Int], A)) => Expr[Unit])): Expr[Unit] = {
           val (counter, currentState) = st
           producer.step(currentState, el => '{
-            ~k((counter, el))
+            ${k((counter, el))}
           })
         }
 
         def hasNext(st: St): Expr[Boolean] = {
           val (counter, currentState) = st
           producer.card match {
-            case Many => '{ ~counter.get > 0 && ~producer.hasNext(currentState) }
-            case AtMost1 => '{ ~producer.hasNext(currentState) }
+            case Many => '{ ${counter.get} > 0 && ${producer.hasNext(currentState)} }
+            case AtMost1 => producer.hasNext(currentState)
           }
         }
       }
@@ -329,8 +332,8 @@ object Test {
           // Map an enhanced stream to a stream that produces the elements. Before
           // invoking the continuation for the element, "use" the variable accordingly.
           mapRaw[(Var[Int], A), A]((t: (Var[Int], A)) => k => '{
-            ~t._1.update('{~t._1.get - 1})
-            ~k(t._2)
+            ${t._1.update('{${t._1.get} - 1})}
+            ${k(t._2)}
           }, enhancedStream)
         }
         case nested: Nested[A, bt] => {
@@ -340,9 +343,9 @@ object Test {
             // Before invoking the continuation for the element, "use" the variable accordingly.
             // In contrast to the linear case, the variable is initialized in the originating stream.
             mapRaw[A, A]((el => k => '{
-              ~t._1.update('{~t._1.get - 1})
-              ~k(el)
-            }), addTerminationCondition(b => '{ ~t._1.get > 0 && ~b}, nested.nestedf(t._2)))
+              ${t._1.update('{${t._1.get} - 1})}
+              ${k(el)}
+            }), addTerminationCondition(b => '{ ${t._1.get} > 0 && $b}, nested.nestedf(t._2)))
           })
         }
       }
@@ -361,7 +364,7 @@ object Test {
           pushLinear[A = Expr[A], C = B](producer1, producer2, nestf2)
 
         case (Nested(producer1, nestf1), Linear(producer2)) =>
-          mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[A = B, C = Expr[A]](producer2, producer1, nestf1))
+          mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ${k((t._2, t._1))} }), pushLinear[A = B, C = Expr[A]](producer2, producer1, nestf1))
 
         case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
           zipRaw[A, B](Linear(makeLinear(stream1)), stream2)
@@ -442,27 +445,27 @@ object Test {
               case Linear(producer) =>
                 producer.card match {
                   case AtMost1 => producer.init(st => '{
-                    if(~producer.hasNext(st)) {
-                      ~producer.step(st, k)
+                    if(${producer.hasNext(st)}) {
+                      ${producer.step(st, k)}
                     }
                     else {
-                      val f = ~nadv.get
+                      val f = ${nadv.get}
                       f(())
                     }
                   })
                   case Many => producer.init(st => '{
-                    val oldnadv: Unit => Unit = ~nadv.get
+                    val oldnadv: Unit => Unit = ${nadv.get}
                     val adv1: Unit => Unit = { _: Unit => {
-                      if(~producer.hasNext(st)) {
-                        ~producer.step(st, k)
+                      if(${producer.hasNext(st)}) {
+                        ${producer.step(st, k)}
                       }
                       else {
-                        ~nadv.update('{oldnadv})
+                        ${nadv.update('oldnadv)}
                         oldnadv(())
                       }
                     }}
 
-                    ~nadv.update('{adv1})
+                    ${nadv.update('adv1)}
                     adv1(())
                   })
                 }
@@ -486,17 +489,17 @@ object Test {
 
                         // Code generation of the `adv` function
                         def adv: Unit => Unit = { _ =>
-                          ~hasNext.update(producer.hasNext(st))
-                          if(~hasNext.get) {
-                            ~producer.step(st, el => {
+                          ${hasNext.update(producer.hasNext(st))}
+                          if(${hasNext.get}) {
+                            ${producer.step(st, el => {
                               makeAdvanceFunction[Expr[A]](nadv, (a => curr.update(a)), nestedf(el))
-                            })
+                            })}
                           }
                         }
 
-                        ~nadv.update('{adv})
+                        ${nadv.update('adv)}
                         adv(())
-                        ~k((hasNext, curr, nadv))
+                        ${k((hasNext, curr, nadv))}
                      }}
                   }}
                 }})
@@ -505,10 +508,10 @@ object Test {
             def step(st: St, k: Expr[A] => Expr[Unit]): Expr[Unit] = {
               val (flag, current, nadv) = st
               '{
-                var el = ~current.get
-                val f: Unit => Unit = ~nadv.get
+                var el = ${current.get}
+                val f: Unit => Unit = ${nadv.get}
                 f(())
-                ~k('(el))
+                ${k('el)}
               }
 
             }
@@ -529,20 +532,20 @@ object Test {
         val card: Cardinality = Many
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
-          producer.init(s1 => '{ ~nestedProducer.init(s2 =>
-            Var('{ ~producer.hasNext(s1) }) { flag =>
+          producer.init(s1 => '{ ${nestedProducer.init(s2 =>
+            Var(producer.hasNext(s1)) { flag =>
               k((flag, s1, s2))
-            })})
+            })}})
         }
 
         def step(st: St, k: ((Var[Boolean], producer.St, B)) => Expr[Unit]): Expr[Unit] = {
           val (flag, s1, s2) = st
-          nestedProducer.step(s2, b => '{ ~k((flag, s1, b)) })
+          nestedProducer.step(s2, b => '{ ${k((flag, s1, b))} })
         }
 
         def hasNext(st: St): Expr[Boolean] = {
           val (flag, s1, s2) = st
-          '{ ~flag.get && ~nestedProducer.hasNext(s2) }
+          '{ ${flag.get} && ${nestedProducer.hasNext(s2)} }
         }
       }
 
@@ -550,9 +553,9 @@ object Test {
         val (flag, s1, b) = t
 
         mapRaw[C, (A, C)]((c => k => '{
-          ~producer.step(s1, a => '{ ~k((a, c)) })
-          ~flag.update(producer.hasNext(s1))
-        }), addTerminationCondition((b_flag: Expr[Boolean]) => '{ ~flag.get && ~b_flag }, nestedf(b)))
+          ${producer.step(s1, a => '{ ${k((a, c))} })}
+          ${flag.update(producer.hasNext(s1))}
+        }), addTerminationCondition((b_flag: Expr[Boolean]) => '{ ${flag.get} && $b_flag }, nestedf(b)))
       })
     }
 
@@ -564,17 +567,17 @@ object Test {
         val card: Cardinality = Many
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
-          producer1.init(s1 => '{ ~producer2.init(s2 => '{ ~k((s1, s2)) })})
+          producer1.init(s1 => producer2.init(s2 => k((s1, s2)) ))
         }
 
         def step(st: St, k: ((A, B)) => Expr[Unit]): Expr[Unit] = {
           val (s1, s2) = st
-          producer1.step(s1, el1 => '{ ~producer2.step(s2, el2 => '{ ~k((el1, el2)) })})
+          producer1.step(s1, el1 => producer2.step(s2, el2 => k((el1, el2)) ))
         }
 
         def hasNext(st: St): Expr[Boolean] = {
           val (s1, s2) = st
-          '{ ~producer1.hasNext(s1) && ~producer2.hasNext(s2) }
+          '{ ${producer1.hasNext(s1)} && ${producer2.hasNext(s2)} }
         }
       }
     }
@@ -582,7 +585,7 @@ object Test {
     /** zip **/
     def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
       val Stream(stream_b) = stream2
-      Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => '{ ~k(f(t._1)(t._2)) }), zipRaw[A, Expr[B]](stream, stream_b)))
+      Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
 
@@ -594,7 +597,7 @@ object Test {
         val card = Many
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
-          Var('{(~arr).length}) { n =>
+          Var('{($arr).length}) { n =>
             Var(0.toExpr){ i =>
               k((i, n, arr))
             }
@@ -604,16 +607,16 @@ object Test {
         def step(st: St, k: (Expr[A] => Expr[Unit])): Expr[Unit] = {
           val (i, _, arr) = st
           '{
-              val el = (~arr).apply(~i.get)
-              ~i.update('{ ~i.get + 1 })
-              ~k('(el))
+              val el = ($arr).apply(${i.get})
+              ${i.update('{ ${i.get} + 1 })}
+              ${k('el)}
           }
         }
 
         def hasNext(st: St): Expr[Boolean] =  {
           val (i, n, _) = st
           '{
-              (~i.get < ~n.get)
+              (${i.get} < ${n.get})
           }
         }
       }
@@ -624,53 +627,53 @@ object Test {
 
   def test1() = Stream
     .of('{Array(1, 2, 3)})
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test2() = Stream
     .of('{Array(1, 2, 3)})
-    .map((a: Expr[Int]) => '{ ~a * 2 })
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .map((a: Expr[Int]) => '{ $a * 2 })
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test3() = Stream
     .of('{Array(1, 2, 3)})
-    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d * ~dp }))
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test4() = Stream
     .of('{Array(1, 2, 3)})
-    .filter((d: Expr[Int]) => '{ ~d % 2 == 0 })
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .filter((d: Expr[Int]) => '{ $d % 2 == 0 })
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test5() = Stream
     .of('{Array(1, 2, 3)})
     .take('{2})
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test6() = Stream
     .of('{Array(1, 1, 1)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
     .take('{5})
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test7() = Stream
     .of('{Array(1, 2, 3)})
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}))
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test8() = Stream
     .of('{Array(1, 2, 3)})
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp })))
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test9() = Stream
-    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp }))
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}) )
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def test10() = Stream
-    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp }))
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp })) )
-    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make

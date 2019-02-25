@@ -3,7 +3,8 @@ package scala.quoted
 import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Expr[+T] {
-  final def unary_~ : T = throw new Error("~ should have been compiled away")
+
+  final def `$splice`: T = throw new Error("splice should have been compiled away")
 
   /** Evaluate the contents of this expression and return the result.
    *
@@ -13,6 +14,7 @@ sealed abstract class Expr[+T] {
 
   /** Show a source code like representation of this expression */
   final def show(implicit toolbox: Toolbox): String = toolbox.show(this)
+
 }
 
 object Expr {
@@ -146,7 +148,7 @@ object Exprs {
   // TODO Use a List in FunctionAppliedTo(val f: Expr[_], val args: List[Expr[_]])
   // FIXME: Having the List in the code above trigers an assertion error while testing dotty.tools.dotc.reporting.ErrorMessagesTests.i3187
   //        This test does redefine `scala.collection`. Further investigation is needed.
-  /** An Expr representing `'{(~f).apply(~x1, ..., ~xn)}` but it is beta-reduced when the closure is known */
+  /** An Expr representing `'{($f).apply($x1, ..., $xn)}` but it is beta-reduced when the closure is known */
   final class FunctionAppliedTo[+R](val f: Expr[_], val args: Array[Expr[_]]) extends Expr[R] {
     override def toString: String = s"Expr($f <applied to> ${args.toList})"
   }

@@ -7,10 +7,10 @@ object Test {
   }
   def foo[H : Type]: Expr[H] = {
     val t = '[H]
-    '{ null.asInstanceOf[~t] }
+    '{ null.asInstanceOf[$t] }
   }
   def bar[H : Type]: Expr[List[H]] = {
     val t = '[List[H]]
-    '{ null.asInstanceOf[~t] }
+    '{ null.asInstanceOf[$t] }
   }
 }

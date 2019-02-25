@@ -3,7 +3,7 @@ import scala.tasty._
 
 object Macros {
 
-  implicit inline def identityMaped[T](x: => T): T = ~impl('(x))
+  implicit inline def identityMaped[T](x: => T): T = ${ impl('x) }
 
   def impl[T: Type](x: Expr[T])(implicit reflection: Reflection): Expr[T] = {
     import reflection._

@@ -10,8 +10,8 @@ object Test {
     println(f(43))
   }
 
-  def f1: Expr[Int => Int] = '{ n => ~f2('(n)) }
-  def f2: Expr[Int => Int] = '{ n => ~f3('(n)) }
-  def f3: Expr[Int => Int] = '{ n => ~f4('(n)) }
+  def f1: Expr[Int => Int] = '{ n => ${f2('n)} }
+  def f2: Expr[Int => Int] = '{ n => ${f3('n)} }
+  def f3: Expr[Int => Int] = '{ n => ${f4('n)} }
   def f4: Expr[Int => Int] = '{ n => n }
 }

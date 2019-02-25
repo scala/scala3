@@ -409,7 +409,7 @@ trait Deriving { this: Typer =>
                 case caseType =>
                   val args =
                     for ((elemTp, idx) <- elems.zipWithIndex)
-                    yield paramRef.select(nme.apply).appliedTo(Literal(Constant(idx))).asInstance(elemTp)
+                    yield paramRef.select(nme.apply).appliedTo(Literal(Constant(idx))).cast(elemTp)
                   New(caseType, args)
               }
               shape match {

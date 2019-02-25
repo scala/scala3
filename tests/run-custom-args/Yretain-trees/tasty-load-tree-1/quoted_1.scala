@@ -5,7 +5,7 @@ import scala.tasty._
 object Foo {
 
   inline def inspectBody(i: => Int): String =
-    ~inspectBodyImpl('(i))
+    ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
@@ -14,7 +14,7 @@ object Foo {
       case IsClassSymbol(sym) => sym.tree.show.toExpr
       case IsDefSymbol(sym) => sym.tree.show.toExpr
       case IsValSymbol(sym) => sym.tree.show.toExpr
-      case _ => '("NO DEFINTION")
+      case _ => '{"NO DEFINTION"}
     }
 
     x.unseal match {

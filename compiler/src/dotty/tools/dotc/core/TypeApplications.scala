@@ -106,7 +106,7 @@ object TypeApplications {
     private[this] var available = (0 until args.length).toSet
     var allReplaced: Boolean = true
     def hasWildcardArg(p: TypeParamRef): Boolean =
-      p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
+      p.binder == tycon && isBounds(args(p.paramNum))
     def canReduceWildcard(p: TypeParamRef): Boolean =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
     def atNestedLevel(op: => Type): Type = {
@@ -356,7 +356,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     else dealiased match {
       case dealiased: HKTypeLambda =>
         def tryReduce =
-          if (!args.exists(_.isInstanceOf[TypeBounds])) {
+          if (!args.exists(isBounds)) {
             val followAlias = Config.simplifyApplications && {
               dealiased.resType match {
                 case AppliedType(tyconBody, dealiasedArgs) =>

@@ -4,7 +4,7 @@ import scala.tasty.Reflection
 object SourceFiles {
 
   implicit inline def getThisFile: String =
-    ~getThisFileImpl
+    ${getThisFileImpl}
 
   private def getThisFileImpl(implicit reflect: Reflection): Expr[String] = {
     import reflect._

@@ -10,6 +10,6 @@ object Test {
     println(fooString(foo.Bar.Baz))
   }
 
-  inline def fooString(inline x: Any): String = ~Macros.impl(x)
+  inline def fooString(inline x: Any): String = ${Macros.impl(x)}
 
 }

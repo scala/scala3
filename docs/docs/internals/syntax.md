@@ -44,6 +44,7 @@ id               ::=  plainid
                    |  ‘`’ { charNoBackQuoteOrNewline | UnicodeEscape | charEscapeSeq } ‘`’
                    |  INT                           // interpolation id, only for quasi-quotes
 idrest           ::=  {letter | digit} [‘_’ op]
+quoteId          ::=  ‘'’ alphaid
 
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit {digit}
@@ -77,7 +78,7 @@ escape           ::=  ‘$$’
                    |  ‘{’ Block  [‘;’ whiteSpace stringFormat whiteSpace] ‘}’
 stringFormat     ::=  {printableChar \ (‘"’ | ‘}’ | ‘ ’ | ‘\t’ | ‘\n’)}
 
-symbolLiteral    ::=  ‘'’ plainid
+symbolLiteral    ::=  ‘'’ plainid // until 2.13
 
 comment          ::=  ‘/*’ “any sequence of characters; nested comments are allowed” ‘*/’
                    |  ‘//’ “any sequence of characters up to end of line”
@@ -153,12 +154,12 @@ AnnotType         ::=  SimpleType {Annotation}                                  
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
-                    |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘_’ SubtypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
+                    |  ‘$’ ‘{’ Block ‘}’
 ArgTypes          ::=  Type {‘,’ Type}
                     |  NamedTypeArg {‘,’ NamedTypeArg}
 FunArgType        ::=  Type
@@ -208,9 +209,10 @@ InfixExpr         ::=  PrefixExpr
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
-                    |  ''{’ BlockExprContents ‘}’
-                    |  ‘'(’ ExprsInParens ‘)’
-                    |  ‘'[’ Type ‘]’
+                    |  ‘'’ ‘{’ Block ‘}’
+                    |  ‘'’ ‘[’ Type ‘]’
+                    |  ‘$’ ‘{’ Block ‘}’
+                    |  quoteId     // only inside splices
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
                     |  Path
@@ -227,8 +229,7 @@ ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                            
                     |  ‘(’ [ExprsInParens] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
-BlockExpr         ::=  ‘{’ BlockExprContents ‘}’
-BlockExprContents ::=  CaseClauses | Block
+BlockExpr         ::=  ‘{’ CaseClauses | Block ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def

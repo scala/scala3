@@ -123,7 +123,7 @@ object Comments {
         tree match {
           case tree: untpd.DefDef =>
             val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
-            tree.copy(name = newName)
+            untpd.cpy.DefDef(tree)(name = newName)
           case _ =>
             ctx.error(ProperDefinitionNotFound(), ctx.source.atSpan(codePos))
             tree

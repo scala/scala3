@@ -669,7 +669,7 @@ trait Implicits { self: Typer =>
             case t @ TypeRef(NoPrefix, _) =>
               inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, span) match {
                 case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
-                  tag.tpe.select(defn.QuotedType_~)
+                  tag.tpe.select(defn.QuotedType_splice)
                 case _ =>
                   ok = false
                   t

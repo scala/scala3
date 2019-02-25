@@ -4,7 +4,7 @@ case class A(x: scala.Int) {
     acc = scala.runtime.Statics.mix(acc, A.this.x)
     scala.runtime.Statics.finalizeHash(acc, 1)
   }
-  override def equals(x$0: scala.Any): scala.Boolean = A.this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
+  override def equals(x$0: scala.Any): scala.Boolean = A.this.eq(x$0.$asInstanceOf$[java.lang.Object]).||(x$0 match {
     case x$0: A @scala.unchecked =>
       A.this.x.==(x$0.x)
     case _ =>

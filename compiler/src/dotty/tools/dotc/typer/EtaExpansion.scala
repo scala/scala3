@@ -218,7 +218,7 @@ object EtaExpansion extends LiftImpure {
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
-    if (mt.isContextual) body.pushAttachment(WithApply, ())
+    if (mt.isContextual) body.pushAttachment(ApplyGiven, ())
     if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
     val fn =
       if (mt.isContextual) new untpd.FunctionWithMods(params, body, Modifiers(Implicit | Given))

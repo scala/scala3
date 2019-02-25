@@ -9,7 +9,7 @@ object Test {
 
     def test[T: Type](clazz: java.lang.Class[T]): Unit = {
       val lclazz = clazz.toExpr
-      val name = '{ (~lclazz).getCanonicalName }
+      val name = '{ ($lclazz).getCanonicalName }
       println()
       println(name.show)
       println(name.run)

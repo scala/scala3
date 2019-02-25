@@ -6,7 +6,7 @@ object Arrays {
   implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T]): Liftable[Array[List[T]]] = {
     new Liftable[Array[List[T]]] {
       def toExpr(arr: Array[List[T]]): Expr[Array[List[T]]] = '{
-        new Array[List[~t]](~arr.length.toExpr)
+        new Array[List[$t]](${arr.length.toExpr})
         // TODO add elements
       }
     }
@@ -16,7 +16,7 @@ object Arrays {
 object Test {
   def main(args: Array[String]): Unit = {
     import Arrays._
-    implicit val ct: Expr[ClassTag[Int]] = '(ClassTag.Int)
+    implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}
     val arr: Expr[Array[List[Int]]] = Array[List[Int]](List(1, 2, 3)).toExpr
     println(arr.show)
   }

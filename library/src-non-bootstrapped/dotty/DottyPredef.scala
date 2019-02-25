@@ -4,7 +4,6 @@ import scala.forceInline
 
 object DottyPredef {
 
-
   @forceInline final def assert(assertion: => Boolean, message: => Any): Unit = {
     if (!assertion)
       assertFail(message)
@@ -36,6 +35,4 @@ object DottyPredef {
    * @group utilities
    */
   @forceInline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
-
-  @forceInline def infer[T](implicit x: T) = x
 }

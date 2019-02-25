@@ -164,7 +164,9 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
-      val comparisons = accessors map { accessor =>
+      // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
+      val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
+      val comparisons = sortedAccessors.map { accessor =>
         This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       val rhs = // this.x == this$0.x && this.y == x$0.y
         if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
@@ -173,7 +175,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       val matchExpr = Match(that, List(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
       else {
-        val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.asInstance(defn.ObjectType))
+        val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
         eqCompare or matchExpr
       }
     }

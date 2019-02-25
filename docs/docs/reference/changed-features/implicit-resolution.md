@@ -35,9 +35,26 @@ affect implicits on the language level.
 
     This will now resolve the `implicitly` call to `j`, because `j` is nested
     more deeply than `i`. Previously, this would have resulted in an
-    ambiguity error.
+    ambiguity error. The previous possibility of an implicit search failure
+    due to _shadowing_ (where an implicit is hidden by a nested definition)
+    no longer applies.
 
- 3. The treatment of ambiguity errors has changed. If an ambiguity is encountered
+ 3. Package prefixes no longer contribute to the implicit scope of a type.
+    Example:
+
+        package p
+        implied a for A
+
+        object o {
+          implied b for B
+          type C
+        }
+
+    Both `a` and `b` are visible as implicits at the point of the definition
+    of `type C`. However, a reference to `p.o.C` outside of package `p` will
+    have only `b` in its implicit scope but not `a`.
+
+ 4. The treatment of ambiguity errors has changed. If an ambiguity is encountered
     in some recursive step of an implicit search, the ambiguity is propagated to the caller.
     Example: Say you have the following definitions:
 
@@ -65,14 +82,14 @@ affect implicits on the language level.
     which implements negation directly. For any query type `Q`: `Not[Q]` succeeds if and only if
     the implicit search for `Q` fails.
 
- 4. The treatment of divergence errors has also changed. A divergent implicit is
+ 5. The treatment of divergence errors has also changed. A divergent implicit is
     treated as a normal failure, after which alternatives are still tried. This also makes
     sense: Encountering a divergent implicit means that we assume that no finite
     solution can be found on the given path, but another path can still be tried. By contrast
     most (but not all) divergence errors in Scala 2 would terminate the implicit
     search as a whole.
 
- 5. Scala-2 gives a lower level of priority to implicit conversions with call-by-name
+ 6. Scala-2 gives a lower level of priority to implicit conversions with call-by-name
     parameters relative to implicit conversions with call-by-value parameters. Dotty
     drops this distinction. So the following code snippet would be ambiguous in Dotty:
 
@@ -80,5 +97,26 @@ affect implicits on the language level.
         implicit def conv2(x: => Int): A = new A(x)
         def buzz(y: A) = ???
         buzz(1)   // error: ambiguous
+
+ 7. The rule for picking a _most specific_ alternative among a set of overloaded or implicit
+    alternatives is refined to take inferable parameters into account. All else
+    being equal, an alternative that takes more inferable parameters is taken to be more specific
+    than an alternative that takes fewer. If both alternatives take the same number of
+    inferable parameters, we try to choose between them as if they were methods with regular parameters.
+    The following paragraph in the SLS is affected by this change:
+
+    _Original version:_
+
+    > An alternative A is _more specific_ than an alternative B if the relative weight of A over B is greater than the relative weight of B over A.
+
+    _Modified version:_
+
+    An alternative A is _more specific_ than an alternative B if
+
+     - the relative weight of A over B is greater than the relative weight of B over A, or
+     - the relative weights are the same and A takes more inferable parameters than B, or
+     - the relative weights and the number of inferable parameters are the same and
+       A is more specific than B if all inferable parameters in either alternative are
+       replaced by regular parameters.
 
 [//]: # todo: expand with precise rules

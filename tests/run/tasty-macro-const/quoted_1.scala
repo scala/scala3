@@ -3,7 +3,7 @@ import scala.tasty._
 
 object Macros {
 
-  inline def natConst(x: Int): Int = ~natConstImpl('(x))
+  inline def natConst(x: Int): Int = ${ natConstImpl('x) }
 
   def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
     import reflection._

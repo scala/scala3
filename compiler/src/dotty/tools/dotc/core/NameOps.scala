@@ -13,6 +13,8 @@ object NameOps {
   object compactify {
     lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
 
+    final val CLASSFILE_NAME_CHAR_LIMIT = 240
+
     /** COMPACTIFY
      *
      *  The hashed name has the form (prefix + marker + md5 + marker + suffix), where
@@ -25,10 +27,11 @@ object NameOps {
      *
      *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
      */
-    def apply(s: String)(implicit ctx: Context): String = {
+    def apply(s: String): String = {
       val marker = "$$$$"
-      val limit: Int = ctx.settings.XmaxClassfileName.value
-      val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
+
+      val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6) min
+        2 * (CLASSFILE_NAME_CHAR_LIMIT - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
         val prefix = s take edge

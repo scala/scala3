@@ -4,7 +4,7 @@ import scala.tasty._
 object Foo {
 
   inline def inspectBody(i: => Int): String =
-    ~inspectBodyImpl('(i))
+    ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
     import reflect._

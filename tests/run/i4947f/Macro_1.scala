@@ -6,9 +6,9 @@ object Macros {
   }
   def assertImpl(expr: Expr[Boolean]) = '{
     printStack("assertImpl")
-    println(~expr)
+    println($expr)
   }
 
-  inline def assert2(expr: => Boolean): Unit =  ~Macros.assertImpl('(expr))
+  inline def assert2(expr: => Boolean): Unit = ${ Macros.assertImpl('expr) }
 
 }

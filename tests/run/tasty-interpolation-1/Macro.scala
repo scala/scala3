@@ -8,26 +8,26 @@ import scala.quoted.Toolbox.Default._
 object Macro {
 
   class StringContextOps(strCtx: => StringContext) {
-    inline def s2(args: Any*): String = ~SIntepolator('(strCtx), '(args))
-    inline def raw2(args: Any*): String = ~RawIntepolator('(strCtx), '(args))
-    inline def foo(args: Any*): String = ~FooIntepolator('(strCtx), '(args))
+    inline def s2(args: Any*): String = ${SIntepolator('strCtx, 'args)}
+    inline def raw2(args: Any*): String = ${RawIntepolator('strCtx, 'args)}
+    inline def foo(args: Any*): String = ${FooIntepolator('strCtx, 'args)}
   }
   implicit inline def SCOps(strCtx: => StringContext): StringContextOps = new StringContextOps(strCtx)
 }
 
 object SIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(implicit reflect: Reflection): Expr[String] =
-    '((~strCtx.toExpr).s(~args.toExprOfList: _*))
+    '{(${strCtx.toExpr}).s(${args.toExprOfList}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(implicit reflect: Reflection): Expr[String] =
-    '((~strCtx.toExpr).raw(~args.toExprOfList: _*))
+    '{(${strCtx.toExpr}).raw(${args.toExprOfList}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(implicit reflect: Reflection): Expr[String] =
-    '((~strCtx.toExpr).s(~args.map(_ => '("foo")).toExprOfList: _*))
+    '{(${strCtx.toExpr}).s(${args.map(_ => '{"foo"}).toExprOfList}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
@@ -80,11 +80,11 @@ abstract class MacroStringInterpolator[T] {
       // TODO define in stdlib?
       implicit def ListIsLiftable: Liftable[List[String]] = new Liftable[List[String]] {
         override def toExpr(list: List[String]): Expr[List[String]] = list match {
-          case x :: xs => '(~x.toExpr :: ~toExpr(xs))
-          case Nil => '(Nil)
+          case x :: xs => '{${x.toExpr} :: ${toExpr(xs)}}
+          case Nil => '{Nil}
         }
       }
-      '(StringContext(~strCtx.parts.toList.toExpr: _*))
+      '{StringContext(${strCtx.parts.toList.toExpr}: _*)}
     }
   }
 

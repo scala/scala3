@@ -4,21 +4,21 @@ object Test {
 
   inline def foo1: Int = { // error
     println()
-    ~impl(1.toExpr)
+    ${ impl(1.toExpr) }
   }
 
   inline def foo2: Int = { // error
-    ~impl(1.toExpr)
-    ~impl(2.toExpr)
+    ${ impl(1.toExpr) }
+    ${ impl(2.toExpr) }
   }
 
   inline def foo3: Int = { // error
     val a = 1
-    ~impl('(a))
+    ${ impl('a) }
   }
 
   inline def foo4: Int = { // error
-    ~impl('(1))
+    ${ impl('{1}) }
     1
   }
 

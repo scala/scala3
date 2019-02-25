@@ -16,8 +16,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   abstract class OpTree(implicit @constructorOnly src: SourceFile) extends Tree {
     def op: Ident
-    override def isTerm: Boolean = op.name.isTermName
-    override def isType: Boolean = op.name.isTypeName
+    override def isTerm: Boolean = op.isTerm
+    override def isType: Boolean = op.isType
   }
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSplice
@@ -84,10 +84,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   case class InfixOp(left: Tree, op: Ident, right: Tree)(implicit @constructorOnly src: SourceFile) extends OpTree
   case class PostfixOp(od: Tree, op: Ident)(implicit @constructorOnly src: SourceFile) extends OpTree
-  case class PrefixOp(op: Ident, od: Tree)(implicit @constructorOnly src: SourceFile) extends OpTree {
-    override def isType: Boolean = op.isType
-    override def isTerm: Boolean = op.isTerm
-  }
+  case class PrefixOp(op: Ident, od: Tree)(implicit @constructorOnly src: SourceFile) extends OpTree
   case class Parens(t: Tree)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
     def forwardTo: Tree = t
   }
@@ -96,7 +93,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType: Boolean = !isTerm
   }
   case class Throw(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
-  case class Quote(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
+  case class Quote(t: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
+  case class Splice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
+  case class TypSplice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
   case class DoWhile(body: Tree, cond: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForYield(enums: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForDo(enums: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
@@ -274,8 +273,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   val OriginalSymbol: Property.Key[Symbol] = new Property.Key
 
-  /** Property key for contextual Apply trees of the form `fn with arg` */
-  val WithApply: Property.StickyKey[Unit] = new Property.StickyKey
+  /** Property key for contextual Apply trees of the form `fn given arg` */
+  val ApplyGiven: Property.StickyKey[Unit] = new Property.StickyKey
 
   // ------ Creation methods for untyped only -----------------
 
@@ -493,9 +492,17 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Throw if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.Throw(expr)(tree.source))
     }
-    def Quote(tree: Tree)(expr: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: Quote if expr eq tree.expr => tree
-      case _ => finalize(tree, untpd.Quote(expr)(tree.source))
+    def Quote(tree: Tree)(t: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: Quote if t eq tree.t => tree
+      case _ => finalize(tree, untpd.Quote(t)(tree.source))
+    }
+    def Splice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: Splice if expr eq tree.expr => tree
+      case _ => finalize(tree, untpd.Splice(expr)(tree.source))
+    }
+    def TypSplice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: TypSplice if expr eq tree.expr => tree
+      case _ => finalize(tree, untpd.TypSplice(expr)(tree.source))
     }
     def DoWhile(tree: Tree)(body: Tree, cond: Tree)(implicit ctx: Context): TermTree = tree match {
       case tree: DoWhile if (body eq tree.body) && (cond eq tree.cond) => tree
@@ -557,8 +564,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.Tuple(tree)(transform(trees))
       case Throw(expr) =>
         cpy.Throw(tree)(transform(expr))
-      case Quote(expr) =>
-        cpy.Quote(tree)(transform(expr))
+      case Quote(t) =>
+        cpy.Quote(tree)(transform(t))
+      case Splice(expr) =>
+        cpy.Splice(tree)(transform(expr))
+      case TypSplice(expr) =>
+        cpy.TypSplice(tree)(transform(expr))
       case DoWhile(body, cond) =>
         cpy.DoWhile(tree)(transform(body), transform(cond))
       case ForYield(enums, expr) =>
@@ -606,7 +617,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, trees)
       case Throw(expr) =>
         this(x, expr)
-      case Quote(expr) =>
+      case Quote(t) =>
+        this(x, t)
+      case Splice(expr) =>
+        this(x, expr)
+      case TypSplice(expr) =>
         this(x, expr)
       case DoWhile(body, cond) =>
         this(this(x, body), cond)

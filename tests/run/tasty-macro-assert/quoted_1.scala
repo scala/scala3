@@ -12,7 +12,7 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: => Boolean): Unit =
-    ~impl('(cond))
+    ${impl('cond)}
 
   def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -35,11 +35,11 @@ object Asserts {
     tree match {
       case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op), right :: Nil)) =>
         op match {
-          case "===" => '(assertEquals(~left.seal[Any], ~right.seal[Any]))
-          case "!==" => '(assertNotEquals(~left.seal[Any], ~right.seal[Any]))
+          case "===" => '{assertEquals(${left.seal[Any]}, ${right.seal[Any]})}
+          case "!==" => '{assertNotEquals(${left.seal[Any]}, ${right.seal[Any]})}
         }
       case _ =>
-        '(assertTrue(~cond))
+        '{assertTrue($cond)}
     }
 
   }

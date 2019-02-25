@@ -5,7 +5,7 @@ import scala.tasty.Reflection
 object Macros {
 
   implicit inline def printTypes[T](x: => T): Unit =
-    ~impl('(x))
+    ${impl('x)}
 
   def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
@@ -21,6 +21,6 @@ object Macros {
 
     val tree = x.unseal
     traverser.traverseTree(tree)
-    '(print(~buff.result().toExpr))
+    '{print(${buff.result().toExpr})}
   }
 }

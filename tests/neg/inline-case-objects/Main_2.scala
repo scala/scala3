@@ -6,6 +6,6 @@ object Test {
     println(fooString(bar.Baz)) // error
   }
 
-  inline def fooString(inline x: Any): String = ~Macros.impl(x)
+  inline def fooString(inline x: Any): String = ${ Macros.impl(x) }
 
 }

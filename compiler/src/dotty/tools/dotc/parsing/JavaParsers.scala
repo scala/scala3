@@ -104,9 +104,6 @@ object JavaParsers {
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
 
-    def unimplementedExpr(implicit ctx: Context): Select =
-      Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
-
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
         case (meth: DefDef) :: rest if meth.name == nme.CONSTRUCTOR => (meth, rest)

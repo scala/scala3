@@ -1075,7 +1075,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.sourcePos)
-        for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
+        for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs =
           if (argTypes.nonEmpty && argTypes.last.isRepeatedParam)
             args.lastOption match {
@@ -1191,6 +1191,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *
    *   - A1's owner derives from A2's owner.
    *   - A1's type is more specific than A2's type.
+   *
+   *  If that tournament yields a draw, a tiebreak is applied where
+   *  an alternative that takes more implicit parameters wins over one
+   *  that takes fewer.
    */
   def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
@@ -1290,12 +1294,49 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
       }
 
-    /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type): Type = tp match {
+    // # skipped implicit parameters in tp1  -  # skipped implicit parameters in tp2
+    var implicitBalance: Int = 0
+
+    /** Widen the result type of synthetic implied methods from the implementation class to the
+     *  type that's implemented. Example
+     *
+     *      implied I[X] for T { ... }
+     *
+     *  This desugars to
+     *
+     *      class I[X] extends T { ... }
+     *      implied def I[X]: I[X] = new I[X]
+     *
+     *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
+     *  No such widening is performed for implied aliases, which are not synthetic. E.g.
+     *
+     *      implied J[X] for T = rhs
+     *
+     *  already has the right result type `T`. Neither is widening performed for implied
+     *  objects, since these are anyway taken to be more specific than methods
+     *  (by condition 3a above).
+     */
+    def widenImplied(tp: Type, alt: TermRef): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
+        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenImplied(mt.resultType, alt))
+      case pt: PolyType =>
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenImplied(pt.resultType, alt))
+      case _ =>
+        if (alt.symbol.is(SyntheticImpliedMethod))
+          tp.parents match {
+            case Nil => tp
+            case ps => ps.reduceLeft(AndType(_, _))
+          }
+        else tp
+    }
+
+    /** Drop any implicit parameter section */
+    def stripImplicit(tp: Type, weight: Int): Type = tp match {
+      case mt: MethodType if mt.isImplicitMethod =>
+        implicitBalance += mt.paramInfos.length * weight
         resultTypeApprox(mt)
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, weight))
       case _ =>
         tp
     }
@@ -1304,21 +1345,32 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
     val ownerScore = compareOwner(owner1, owner2)
 
-    val tp1 = stripImplicit(alt1.widen)
-    val tp2 = stripImplicit(alt2.widen)
-    def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
-    def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
+    def compareWithTypes(tp1: Type, tp2: Type) = {
+      def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
+      def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
-    overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
+      overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
+      if (ownerScore == 1)
+	      if (winsType1 || !winsType2) 1 else 0
+	    else if (ownerScore == -1)
+	      if (winsType2 || !winsType1) -1 else 0
+	    else if (winsType1)
+	      if (winsType2) 0 else 1
+	    else
+        if (winsType2) -1 else 0
+    }
 
-    if (ownerScore == 1)
-      if (winsType1 || !winsType2) 1 else 0
-    else if (ownerScore == -1)
-      if (winsType2 || !winsType1) -1 else 0
-    else if (winsType1)
-      if (winsType2) 0 else 1
-    else
-      if (winsType2) -1 else 0
+    val fullType1 = widenImplied(alt1.widen, alt1)
+    val fullType2 = widenImplied(alt2.widen, alt2)
+    val strippedType1 = stripImplicit(fullType1, -1)
+    val strippedType2 = stripImplicit(fullType2, +1)
+
+    val result = compareWithTypes(strippedType1, strippedType2)
+    if (result != 0) result
+    else if (implicitBalance != 0) -implicitBalance.signum
+    else if ((strippedType1 `ne` fullType1) || (strippedType2 `ne` fullType2))
+      compareWithTypes(fullType1, fullType2)
+    else 0
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
@@ -1685,7 +1737,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val app =
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
         ctx.addMode(Mode.SynthesizeExtMethodReceiver))
-    if (!app.symbol.is(Extension))
+    val appSym =
+      app match {
+        case Inlined(call, _, _) => call.symbol
+        case _ => app.symbol
+      }
+    if (!appSym.is(Extension))
       ctx.error(em"not an extension method: $methodRef", receiver.sourcePos)
     app
   }

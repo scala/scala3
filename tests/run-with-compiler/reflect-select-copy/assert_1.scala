@@ -3,7 +3,7 @@ import scala.tasty._
 
 object scalatest {
 
-  inline def assert(condition: => Boolean): Unit = ~assertImpl('(condition), '(""))
+  inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
@@ -21,7 +21,7 @@ object scalatest {
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
-              val code = '{ scala.Predef.assert(~b) }
+              val code = '{ scala.Predef.assert(${b}) }
               code.unseal
             }
           }
@@ -34,7 +34,7 @@ object scalatest {
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
-              val code = '{ scala.Predef.assert(~b) }
+              val code = '{ scala.Predef.assert(${b}) }
               code.unseal
             }
           }
