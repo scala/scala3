@@ -1898,11 +1898,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
      *  It should hold that `tp` and `decompose(tp).reduce(_ or _)`
      *  denote the same set of values.
      */
-    def decompose(sym: Symbol, tp: Type): List[Type] = {
-      import dotty.tools.dotc.transform.patmat.SpaceEngine
-      val se = new SpaceEngine
-      sym.children.map(x => se.refine(tp, x)).filter(_.exists)
-    }
+    def decompose(sym: Symbol, tp: Type): List[Type] =
+      sym.children.map(x => ctx.typer.refineUsingParent(tp, x)).filter(_.exists)
 
     (tp1.dealias, tp2.dealias) match {
       case (tp1: ConstantType, tp2: ConstantType) =>
