@@ -9,7 +9,7 @@ trait QuotedOps extends Core {
       kernel.QuotedExpr_unseal(expr)
   }
 
-  implicit class QuotedTypeAPI[T](tpe: scala.quoted.Type[T]) {
+  implicit class QuotedTypeAPI[T <: AnyKind](tpe: scala.quoted.Type[T]) {
     /** View this expression `Type[T]` as a `TypeTree` */
     def unseal(implicit ctx: Context): TypeTree =
       kernel.QuotedType_unseal(tpe)

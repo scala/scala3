@@ -1,0 +1,15 @@
+{
+  val y: collection.immutable.List[scala.Int] = scala.List.apply[scala.Int](1, 2, 3)
+  (y: collection.immutable.List[evidence$1$_~$1])
+}
+List(1, 2, 3)
+{
+  val y: scala.Option[scala.Int] = scala.Option.apply[scala.Int](4)
+  (y: scala.Option[evidence$1$_~$1])
+}
+Some(4)
+{
+  val y: collection.immutable.Map[scala.Int, scala.Int] = scala.Predef.Map.apply[scala.Int, scala.Int](scala.Predef.ArrowAssoc[scala.Int](4).->[scala.Int](1))
+  (y: collection.immutable.Map[scala.Int, evidence$1$_~$1])
+}
+Map(4 -> 1)

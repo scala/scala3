@@ -4,14 +4,14 @@ import scala.quoted.Types.TaggedType
 import scala.reflect.ClassTag
 import scala.runtime.quoted.Unpickler.Pickled
 
-sealed abstract class Type[T] {
+sealed abstract class Type[T <: AnyKind] {
   type `$splice` = T
 }
 
 /** Some basic type tags, currently incomplete */
 object Type {
   /** A term quote is desugared by the compiler into a call to this method */
-  def apply[T]: Type[T] =
+  def apply[T <: AnyKind]: Type[T] =
     throw new Error("Internal error: this method call should have been replaced by the compiler")
 
   implicit def UnitTag: Type[Unit] = new TaggedType[Unit]

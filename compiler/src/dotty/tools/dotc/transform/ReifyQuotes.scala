@@ -352,8 +352,14 @@ class ReifyQuotes extends MacroTransform {
             transformSplice(spliceTree)
 
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
-            val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            transformSplice(ref(splicedType).select(tpnme.splice).withSpan(tree.span))
+            tree.tpe.stripTypeVar match {
+              case tp: AppliedType =>
+                val splicedType = tp.tycon.asInstanceOf[TypeRef].prefix.termSymbol
+                AppliedTypeTree(transformSplice(ref(splicedType).select(tpnme.splice)), tp.args.map(TypeTree(_))).withSpan(tree.span)
+              case tp: TypeRef =>
+                val splicedType = tp.prefix.termSymbol
+                transformSplice(ref(splicedType).select(tpnme.splice).withSpan(tree.span))
+            }
 
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val t = capturers(tree.symbol).apply(tree)
