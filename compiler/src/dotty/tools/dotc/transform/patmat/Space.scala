@@ -424,7 +424,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
-        if (isProductMatch(mt.finalResultType, argLen) && !isUnapplySeq) {
+        if (productArity(mt.finalResultType, unappSym.sourcePos) > 0 && !isUnapplySeq) {
           productSelectors(mt.finalResultType).take(argLen)
             .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
         }
