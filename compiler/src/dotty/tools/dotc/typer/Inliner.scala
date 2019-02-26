@@ -10,6 +10,7 @@ import Symbols._
 import Types._
 import Decorators._
 import Constants._
+import StagingContext._
 import StdNames._
 import transform.SymUtils._
 import Contexts.Context
@@ -957,20 +958,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
       val res =
-        if (tree.symbol == defn.QuotedExpr_splice && StagingContext.level == 0) expandMacro(qual1, tree.span)
+        if (tree.symbol == defn.QuotedExpr_splice && level == 0) expandMacro(qual1, tree.span)
         else untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
       res
     }
 
     private def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
-      assert(StagingContext.level == 0)
-      // TODO cache macro classloader
-      val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-      val macroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
-
+      assert(level == 0)
       val inlinedFrom = enclosingInlineds.last
-      val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, macroClassLoader)(ctx.withSource(inlinedFrom.source))
+      val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx.withSource(inlinedFrom.source))
       if (ctx.reporter.hasErrors) EmptyTree
       else evaluatedSplice.withSpan(span)
     }
