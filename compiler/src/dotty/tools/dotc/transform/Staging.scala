@@ -88,7 +88,6 @@ object Staging {
 
   class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
     import tpd._
-    import PCPCheckAndHeal._
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
@@ -273,22 +272,4 @@ object Staging {
       }
     }
 
-
-  }
-
-  object PCPCheckAndHeal {
-    import tpd._
-
-    /** InlineSplice is used to detect cases where the expansion
-     *  consists of a (possibly multiple & nested) block or a sole expression.
-     */
-    object InlineSplice {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-        case Spliced(code) if Splicer.canBeSpliced(code) => Some(code)
-        case Block(List(stat), Literal(Constant(()))) => unapply(stat)
-        case Block(Nil, expr) => unapply(expr)
-        case Typed(expr, _) => unapply(expr)
-        case _ => None
-      }
-    }
   }

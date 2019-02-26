@@ -1556,36 +1556,7 @@ class Typer extends Namer
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
     if (sym.isInlineMethod) {
-      if (ctx.phase.isTyper) {
-        import PCPCheckAndHeal.InlineSplice
-        import TreeMapWithStages._
-        var isMacro = false
-        new TreeMapWithStages(freshStagingContext) {
-          override protected def transformSplice(splice: tpd.Select)(implicit ctx: Context): tpd.Tree = {
-            isMacro = true
-            splice
-          }
-        }.transform(rhs1)
-
-        if (isMacro) {
-          sym.setFlag(Macro)
-          if (level == 0)
-          rhs1 match {
-            case InlineSplice(_) =>
-              new PCPCheckAndHeal(freshStagingContext).transform(rhs1) // Ignore output, only check PCP
-            case _ =>
-              ctx.error(
-                """Malformed macro.
-                  |
-                  |Expected the ~ to be at the top of the RHS:
-                  |  inline def foo(inline x: X, ..., y: Y): Int = ~impl(x, ... '(y))
-                  |
-                  | * The contents of the splice must call a static method
-                  | * All arguments must be quoted or inline
-                """.stripMargin, ddef.sourcePos)
-          }
-        }
-      }
+      PrepareInlineable.checkInlineMacro(sym, rhs1, ddef.sourcePos)
       PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
     }
 

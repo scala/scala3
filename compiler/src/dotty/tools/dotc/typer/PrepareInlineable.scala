@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.{Trees, untpd, tpd}
+import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import Trees._
 import core._
 import Flags._
@@ -15,9 +15,11 @@ import Contexts.Context
 import Names.Name
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import Annotations._
-import transform.AccessProxies
+import transform.{AccessProxies, PCPCheckAndHeal, Splicer, TreeMapWithStages}
 import config.Printers.inlining
-import util.Property
+import util.{Property, SourcePosition}
+import dotty.tools.dotc.core.StagingContext._
+import dotty.tools.dotc.transform.TreeMapWithStages._
 
 object PrepareInlineable {
   import tpd._
@@ -249,4 +251,52 @@ object PrepareInlineable {
         em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
         body.sourcePos)
   }
+
+  def checkInlineMacro(sym: Symbol, rhs: Tree, pos: SourcePosition)(implicit ctx: Context) = {
+    if (ctx.phase.isTyper) {
+
+      /** InlineSplice is used to detect cases where the expansion
+       *  consists of a (possibly multiple & nested) block or a sole expression.
+       */
+      object InlineSplice {
+        def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
+          case Spliced(code) if Splicer.canBeSpliced(code) => Some(code)
+          case Block(List(stat), Literal(Constants.Constant(()))) => unapply(stat)
+          case Block(Nil, expr) => unapply(expr)
+          case Typed(expr, _) => unapply(expr)
+          case _ => None
+        }
+      }
+
+      var isMacro = false
+      new TreeMapWithStages(freshStagingContext) {
+        override protected def transformSplice(splice: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+          isMacro = true
+          splice
+        }
+        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
+          if (isMacro) tree else super.transform(tree)
+      }.transform(rhs)
+
+      if (isMacro) {
+        sym.setFlag(Macro)
+        if (level == 0)
+          rhs match {
+            case InlineSplice(_) =>
+              new PCPCheckAndHeal(freshStagingContext).transform(rhs) // Ignore output, only check PCP
+            case _ =>
+              ctx.error(
+                """Malformed macro.
+                  |
+                  |Expected the ~ to be at the top of the RHS:
+                  |  inline def foo(inline x: X, ..., y: Y): Int = ~impl(x, ... '(y))
+                  |
+                  | * The contents of the splice must call a static method
+                  | * All arguments must be quoted or inline
+                """.stripMargin, pos)
+          }
+      }
+    }
+  }
+
 }
