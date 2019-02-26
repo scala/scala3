@@ -262,8 +262,6 @@ object PatternMatcher {
 
       /** Plan for matching the sequence in `getResult` against sequence elements
        *  and a possible last varargs argument `args`.
-       *
-       *  `getResult` could also be a product, where the last element is a sequence of elements.
        */
       def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
         case Some(VarArgPattern(arg)) =>
