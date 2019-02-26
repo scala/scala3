@@ -47,10 +47,21 @@ object Applications {
 
   /** Does `tp` fit the "product match" conditions as an unapply result type
    *  for a pattern with `numArgs` subpatterns?
-   *  This is the case of `tp` has members `_1` to `_N` where `N == numArgs`.
+   *  This is the case if `tp` has members `_1` to `_N` where `N == numArgs`.
    */
   def isProductMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean =
     numArgs > 0 && productArity(tp, errorPos) == numArgs
+
+  /** Does `tp` fit the "product-seq match" conditions as an unapply result type
+   *  for a pattern with `numArgs` subpatterns?
+   *  This is the case if (1) `tp` has members `_1` to `_N` where `N <= numArgs + 1`.
+   *                      (2) `tp._N` conforms to Seq match
+   */
+  def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean = {
+    val arity = productArity(tp, errorPos)
+    arity > 0 && arity <= numArgs + 1 &&
+      unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
+  }
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
@@ -59,6 +70,39 @@ object Applications {
   def isGetMatch(tp: Type, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean =
     extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
     extractorMemberType(tp, nme.get, errorPos).exists
+
+  /** If `getType` is of the form:
+    *  ```
+    *  {
+    *    def lengthCompare(len: Int): Int // or, def length: Int
+    *    def apply(i: Int): T = a(i)
+    *    def drop(n: Int): scala.Seq[T]
+    *    def toSeq: scala.Seq[T]
+    *  }
+    *  ```
+    *  returns `T`, otherwise NoType.
+    */
+  def unapplySeqTypeElemTp(getTp: Type)(implicit ctx: Context): Type = {
+    def lengthTp = ExprType(defn.IntType)
+    def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
+    def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
+    def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.SeqType.appliedTo(elemTp))
+    def toSeqTp(elemTp: Type) = ExprType(defn.SeqType.appliedTo(elemTp))
+
+    // the result type of `def apply(i: Int): T`
+    val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
+
+    def hasMethod(name: Name, tp: Type) =
+      getTp.member(name).suchThat(getTp.memberInfo(_) <:< tp).exists
+
+    val isValid =
+      elemTp.exists &&
+      (hasMethod(nme.lengthCompare, lengthCompareTp) || hasMethod(nme.length, lengthTp)) &&
+      hasMethod(nme.drop, dropTp(elemTp)) &&
+      hasMethod(nme.toSeq, toSeqTp(elemTp))
+
+    if (isValid) elemTp else NoType
+  }
 
   def productSelectorTypes(tp: Type, errorPos: SourcePosition)(implicit ctx: Context): List[Type] = {
     def tupleSelectors(n: Int, tp: Type): List[Type] = {
@@ -89,8 +133,16 @@ object Applications {
     if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
+      else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args, pos)
       else tp :: Nil
     } else tp :: Nil
+
+  def productSeqSelectors(tp: Type, args: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): List[Type] = {
+      val selTps = productSelectorTypes(tp, pos)
+      val arity = selTps.length
+      val elemTp = unapplySeqTypeElemTp(selTps.last)
+      (0 until args.length).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
+    }
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): List[Type] = {
 
@@ -103,43 +155,11 @@ object Applications {
       Nil
     }
 
-    /** If `getType` is of the form:
-     *  ```
-     *  {
-     *    def lengthCompare(len: Int): Int // or, def length: Int
-     *    def apply(i: Int): T = a(i)
-     *    def drop(n: Int): scala.Seq[T]
-     *    def toSeq: scala.Seq[T]
-     *  }
-     *  ```
-     *  returns `T`, otherwise NoType.
-     */
-    def unapplySeqTypeElemTp(getTp: Type): Type = {
-      def lengthTp = ExprType(defn.IntType)
-      def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
-      def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-      def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.SeqType.appliedTo(elemTp))
-      def toSeqTp(elemTp: Type) = defn.SeqType.appliedTo(elemTp)
-
-      // the result type of `def apply(i: Int): T`
-      val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
-
-      def hasMethod(name: Name, tp: Type) =
-        getTp.member(name).suchThat(getTp.memberInfo(_) <:< tp).exists
-
-      val isValid =
-        elemTp.exists &&
-        (hasMethod(nme.lengthCompare, lengthCompareTp) || hasMethod(nme.length, lengthTp)) &&
-        hasMethod(nme.drop, dropTp(elemTp)) &&
-        hasMethod(nme.toSeq, toSeqTp(elemTp))
-
-      if (isValid) elemTp else NoType
-    }
-
-    if (unapplyName == nme.unapplySeq) {
+    if (unapplyName == nme.unapplySeq) { //  && ctx.scala2Mode
       if (isGetMatch(unapplyResult, pos)) {
         val elemTp = unapplySeqTypeElemTp(getTp)
         if (elemTp.exists) args.map(Function.const(elemTp))
+        else if (isProductSeqMatch(getTp, args.length, pos)) productSeqSelectors(getTp, args, pos)
         else fail
       }
       else fail
@@ -148,6 +168,8 @@ object Applications {
       assert(unapplyName == nme.unapply)
       if (isProductMatch(unapplyResult, args.length, pos))
         productSelectorTypes(unapplyResult, pos)
+      else if (isProductSeqMatch(unapplyResult, args.length, pos))
+        productSeqSelectors(unapplyResult, args, pos)
       else if (isGetMatch(unapplyResult, pos))
         getUnapplySelectors(getTp, args, pos)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
