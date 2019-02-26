@@ -107,7 +107,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
         val bucket = bucketFor(stale.hash)
 
         @tailrec
-        def linkedListLoop(prevEntry: Entry[A], entry: Entry[A]): Unit = if (stale `eq` entry) remove(bucket, prevEntry, entry)
+        def linkedListLoop(prevEntry: Entry[A], entry: Entry[A]): Unit = if (stale eq entry) remove(bucket, prevEntry, entry)
         else if (entry != null) linkedListLoop(entry, entry.tail)
 
         linkedListLoop(null, table(bucket))

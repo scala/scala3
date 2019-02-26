@@ -21,7 +21,7 @@ object Annotations {
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
 
     def derivedAnnotation(tree: Tree)(implicit ctx: Context): Annotation =
-      if (tree `eq` this.tree) this else Annotation(tree)
+      if (tree eq this.tree) this else Annotation(tree)
 
     def arguments(implicit ctx: Context): List[Tree] = ast.tpd.arguments(tree)
 
@@ -64,7 +64,7 @@ object Annotations {
   abstract class BodyAnnotation extends Annotation {
     override def symbol(implicit ctx: Context): ClassSymbol = defn.BodyAnnot
     override def derivedAnnotation(tree: Tree)(implicit ctx: Context): Annotation =
-      if (tree `eq` this.tree) this else ConcreteBodyAnnotation(tree)
+      if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
     override def arguments(implicit ctx: Context): List[Tree] = Nil
     override def ensureCompleted(implicit ctx: Context): Unit = ()
   }

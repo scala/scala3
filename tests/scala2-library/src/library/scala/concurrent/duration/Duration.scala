@@ -167,7 +167,7 @@ object Duration {
    *
    * The particular comparison semantics mirror those of Double.NaN.
    *
-   * '''''Use `eq` when checking an input of a method against this value.'''''
+   * '''''Use eq when checking an input of a method against this value.'''''
    */
   val Undefined: Infinite = new Infinite {
     override def toString = "Duration.Undefined"

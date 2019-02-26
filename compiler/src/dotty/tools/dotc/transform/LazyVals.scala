@@ -426,7 +426,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val cas =     Select(ref(helperModule), lazyNme.RLazyVals.cas)
 
     val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
-    if (flag `eq` EmptyTree)
+    if (flag eq EmptyTree)
       Thicket(containerTree, accessor)
     else Thicket(containerTree, flag, accessor)
   }

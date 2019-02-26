@@ -195,11 +195,11 @@ object Completion {
       addImportCompletions
 
       var outer = ctx.outer
-      while ((outer.owner `eq` ctx.owner) && (outer.scope `eq` ctx.scope)) {
+      while ((outer.owner eq ctx.owner) && (outer.scope eq ctx.scope)) {
         addImportCompletions(outer)
         outer = outer.outer
       }
-      if (outer `ne` NoContext) addScopeCompletions(outer)
+      if (outer ne NoContext) addScopeCompletions(outer)
     }
 
     /**

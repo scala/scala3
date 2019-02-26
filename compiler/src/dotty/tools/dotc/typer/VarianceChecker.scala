@@ -45,7 +45,7 @@ object VarianceChecker {
         }
         def apply(x: Boolean, t: Type) = x && {
           t match {
-            case tref: TypeParamRef if tref.binder `eq` tl =>
+            case tref: TypeParamRef if tref.binder eq tl =>
               val v = tl.typeParams(tref.paramNum).paramVariance
               varianceConforms(variance, v) || { error(tref); false }
             case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>

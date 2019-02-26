@@ -124,7 +124,7 @@ object Denotations {
     /** The denotation with info(s) as seen from prefix type */
     final def asSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult =
       if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix `ne` pre) || ctx.period != validAsSeenFrom) {
+        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
           cachedAsSeenFrom = computeAsSeenFrom(pre)
           cachedPrefix = pre
           validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
@@ -394,7 +394,7 @@ object Denotations {
             else NoDenotation
           }
         case denot1: SingleDenotation =>
-          if (denot1 `eq` denot2) denot1
+          if (denot1 eq denot2) denot1
           else if (denot1.matches(denot2)) mergeSingleDenot(denot1, denot2)
           else NoDenotation
       }
@@ -411,10 +411,10 @@ object Denotations {
         /** Does `sym1` come before `sym2` in the linearization of `pre`? */
         def precedes(sym1: Symbol, sym2: Symbol) = {
           def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
-            case bc :: bcs1 => (sym1 `eq` bc) || !(sym2 `eq` bc) && precedesIn(bcs1)
+            case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
             case Nil => false
           }
-          (sym1 `ne` sym2) &&
+          (sym1 ne sym2) &&
             (sym1.derivesFrom(sym2) ||
               !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses))
         }
@@ -493,7 +493,7 @@ object Denotations {
         }
       }
 
-      if (this `eq` that) this
+      if (this eq that) this
       else if (!this.exists) that
       else if (!that.exists) this
       else that match {
@@ -517,14 +517,14 @@ object Denotations {
           val sym2 = denot2.symbol
           val info1 = denot1.info
           val info2 = denot2.info
-          val sameSym = sym1 `eq` sym2
+          val sameSym = sym1 eq sym2
           if (sameSym && (info1 frozen_<:< info2)) denot2
           else if (sameSym && (info2 frozen_<:< info1)) denot1
           else {
             val jointSym =
               if (sameSym) sym1
               else {
-                val owner2 = if (sym2 `ne` NoSymbol) sym2.owner else NoSymbol
+                val owner2 = if (sym2 ne NoSymbol) sym2.owner else NoSymbol
                 /** Determine a symbol which is overridden by both sym1 and sym2.
                  *  Preference is given to accessible symbols.
                  */
@@ -546,7 +546,7 @@ object Denotations {
         }
         else NoDenotation
 
-      if (this `eq` that) this
+      if (this eq that) this
       else if (!this.exists) this
       else if (!that.exists) that
       else this match {
@@ -570,7 +570,7 @@ object Denotations {
     // ------ PreDenotation ops ----------------------------------------------
 
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
-    final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol `eq` sym)
+    final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
   }
 
   // ------ Info meets and joins ---------------------------------------------
@@ -590,7 +590,7 @@ object Denotations {
       *  the possibility of raising a merge error.
       */
     def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type = {
-      if (tp1 `eq` tp2) tp1
+      if (tp1 eq tp2) tp1
       else tp1 match {
         case tp1: TypeBounds =>
           tp2 match {
@@ -600,7 +600,7 @@ object Denotations {
           }
         case tp1: ClassInfo =>
           tp2 match {
-            case tp2: ClassInfo if tp1.cls `eq` tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
+            case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
             case tp2: TypeBounds if tp2 contains tp1 => tp1
             case _ => mergeConflict(sym1, sym2, tp1, tp2)
           }
@@ -668,7 +668,7 @@ object Denotations {
         }
       case tp1: ClassInfo =>
         tp2 match {
-          case tp2: ClassInfo if tp1.cls `eq` tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
+          case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
           case tp2: TypeBounds if tp2 contains tp1 => tp2
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
@@ -721,7 +721,7 @@ object Denotations {
       }
 
     def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
-      if ((symbol `eq` this.symbol) && (info `eq` this.info)) this
+      if ((symbol eq this.symbol) && (info eq this.info)) this
       else newLikeThis(symbol, info)
 
     def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation =
@@ -792,7 +792,7 @@ object Denotations {
         b += (current)
         current = current.nextInRun
       }
-      while (current `ne` initial)
+      while (current ne initial)
       b.toList
     }
 
@@ -807,7 +807,7 @@ object Denotations {
         d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
         d.invalidateInheritedInfo()
         d = d.nextInRun
-      } while (d `ne` this)
+      } while (d ne this)
       this
     }
 
@@ -841,7 +841,7 @@ object Denotations {
     private def nextDefined: SingleDenotation = {
       var p1 = this
       var p2 = nextInRun
-      while (p1.validFor == Nowhere && (p1 `ne` p2)) {
+      while (p1.validFor == Nowhere && (p1 ne p2)) {
         p1 = p1.nextInRun
         p2 = p2.nextInRun.nextInRun
       }
@@ -911,7 +911,7 @@ object Denotations {
                   println(s"error while transforming $this") // DEBUG
                   throw ex
               }
-              if (next `eq` cur)
+              if (next eq cur)
                 startPid = cur.validFor.firstPhaseId
               else {
                 next match {
@@ -984,7 +984,7 @@ object Denotations {
       var hasNext = true
       while ((current.validFor.firstPhaseId >= phase.id) && hasNext) {
         val current1: SingleDenotation = f(current.asSymDenotation)
-        if (current1 `ne` current) {
+        if (current1 ne current) {
           current1.validFor = current.validFor
           current.replaceWith(current1)
         }
@@ -1010,7 +1010,7 @@ object Denotations {
      */
     private[dotc] def replaceWith(newd: SingleDenotation): Unit = {
       var prev = this
-      while (prev.nextInRun `ne` this) prev = prev.nextInRun
+      while (prev.nextInRun ne this) prev = prev.nextInRun
       // order of next two assignments is important!
       prev.nextInRun = newd
       newd.nextInRun = nextInRun
@@ -1041,7 +1041,7 @@ object Denotations {
         cnt += 1
         assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
         interval |= cur.validFor
-      } while (cur `ne` this)
+      } while (cur ne this)
       interval
     }
 
@@ -1063,7 +1063,7 @@ object Denotations {
         cur = cur.nextInRun
         cnt += 1
         if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
-      } while (cur `ne` this)
+      } while (cur ne this)
       sb.toString
     }
 
@@ -1163,7 +1163,7 @@ object Denotations {
    */
   def isDoubleDef(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean =
     (sym1.exists && sym2.exists &&
-    (sym1 `ne` sym2) && (sym1.effectiveOwner `eq` sym2.effectiveOwner) &&
+    (sym1 ne sym2) && (sym1.effectiveOwner eq sym2.effectiveOwner) &&
     !sym1.is(Bridge) && !sym2.is(Bridge))
 
   def doubleDefError(denot1: Denotation, denot2: Denotation, pre: Type = NoPrefix)(implicit ctx: Context): Nothing = {
@@ -1200,7 +1200,7 @@ object Denotations {
     def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
-      if ((denot1 `eq` this.denot1) && (denot2 `eq` this.denot2)) this
+      if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
       else denot1 `union` denot2
   }
 
@@ -1225,7 +1225,7 @@ object Denotations {
     final def name(implicit ctx: Context): Name = denot1.name
     final def signature(implicit ctx: Context): Signature = Signature.OverloadedSignature
     def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): Denotation =
-      if (sig `eq` Signature.OverloadedSignature) this
+      if (sig eq Signature.OverloadedSignature) this
       else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
     def current(implicit ctx: Context): Denotation =
       derivedUnionDenotation(denot1.current, denot2.current)
@@ -1253,7 +1253,7 @@ object Denotations {
     def mapInfo(f: Type => Type)(implicit ctx: Context): Denotation =
       derivedUnionDenotation(denot1.mapInfo(f), denot2.mapInfo(f))
     def derivedUnionDenotation(d1: Denotation, d2: Denotation): Denotation =
-      if ((d1 `eq` denot1) && (d2 `eq` denot2)) this
+      if ((d1 eq denot1) && (d2 eq denot2)) this
       else if (!d1.exists) d2
       else if (!d2.exists) d1
       else MultiDenotation(d1, d2)

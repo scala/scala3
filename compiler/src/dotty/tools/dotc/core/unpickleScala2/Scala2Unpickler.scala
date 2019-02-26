@@ -98,7 +98,7 @@ object Scala2Unpickler {
       case cinfo => (Nil, cinfo)
     }
     val ost =
-      if ((selfInfo `eq` NoType) && (denot is ModuleClass) && denot.sourceModule.exists)
+      if ((selfInfo eq NoType) && (denot is ModuleClass) && denot.sourceModule.exists)
         // it seems sometimes the source module does not exist for a module class.
         // An example is `scala.reflect.internal.Trees.Template$. Without the
         // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
@@ -665,7 +665,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case arg: TypeRef if isBound(arg) => arg.symbol.info
           case _ => arg
         }
-        if (tycon1 `ne` tycon) elim(tycon1.appliedTo(args))
+        if (tycon1 ne tycon) elim(tycon1.appliedTo(args))
         else tp.derivedAppliedType(tycon, args.map(mapArg))
       case _ =>
         tp

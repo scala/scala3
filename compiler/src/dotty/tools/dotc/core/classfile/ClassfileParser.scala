@@ -39,10 +39,10 @@ object ClassfileParser {
         tp.derivedAppliedType(mapOver(tycon), args.mapConserve(this))
       case tp @ TempPolyType(_, tpe) =>
         val tpe1 = this(tpe)
-        if (tpe1 `eq` tpe) tp else tp.copy(tpe = tpe1)
+        if (tpe1 eq tpe) tp else tp.copy(tpe = tpe1)
       case tp @ TempClassInfoType(parents, _, _) =>
         val parents1 = parents.mapConserve(this)
-        if (parents `eq` parents1) tp else tp.copy(parentTypes = parents1)
+        if (parents eq parents1) tp else tp.copy(parentTypes = parents1)
       case _ =>
         mapOver(tp)
     }
@@ -233,7 +233,7 @@ class ClassfileParser(
         val jflags = in.nextChar
         val isEnum = (jflags & JAVA_ACC_ENUM) != 0
         val name = pool.getName(in.nextChar)
-        val isConstructor = name `eq` nme.CONSTRUCTOR
+        val isConstructor = name eq nme.CONSTRUCTOR
 
         /** Strip leading outer param from constructor and trailing access tag for
          *  private inner constructors.
@@ -948,7 +948,7 @@ class ClassfileParser(
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
       val result = getMember(owner, innerName.toTypeName)(ctx.withPhase(ctx.typerPhase))
-      assert(result `ne` NoSymbol,
+      assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},
            |outerName = $outerName,
@@ -1062,7 +1062,7 @@ class ClassfileParser(
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name.endsWith("$") && (name `ne` nme.nothingRuntimeClass) && (name `ne` nme.nullRuntimeClass))
+        if (name.endsWith("$") && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
           // Null$ and Nothing$ ARE classes
           c = ctx.requiredModule(name.dropRight(1))
         else c = classNameToSymbol(name)

@@ -49,7 +49,7 @@ trait SymDenotations { this: Context =>
     else {
       val initial = denot.initial
       val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
-      if ((initial `ne` denot) || ctx.phaseId != firstPhaseId)
+      if ((initial ne denot) || ctx.phaseId != firstPhaseId)
         ctx.withPhase(firstPhaseId).stillValidInOwner(initial)
       else
         stillValidInOwner(denot)
@@ -82,7 +82,7 @@ trait SymDenotations { this: Context =>
         else {
           implicit val ctx = this
           val initial = denot.initial
-          if ((initial `ne` denot) || ctx.phaseId != initial.validFor.firstPhaseId) {
+          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId) {
             ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial)
           } else try {
             val owner = denot.owner.denot
@@ -354,7 +354,7 @@ object SymDenotations {
     final def unforcedDecls(implicit ctx: Context): Scope = myInfo match {
       case cinfo: LazyType =>
         val knownDecls = cinfo.decls
-        if (knownDecls `ne` EmptyScope) knownDecls
+        if (knownDecls ne EmptyScope) knownDecls
         else { completeFrom(cinfo); unforcedDecls } // complete-once
       case _ => info.decls
     }
@@ -467,13 +467,13 @@ object SymDenotations {
     /** Is symbol known to not exist? */
     final def isAbsent(implicit ctx: Context): Boolean = {
       ensureCompleted()
-      (myInfo `eq` NoType) ||
+      (myInfo eq NoType) ||
       (this `is` (ModuleVal, butNot = Package)) && moduleClass.isAbsent
     }
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
-      (maybeOwner `eq` NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
+      (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
 
     /** Is this symbol the empty package class or its companion object? */
     final def isEmptyPackage(implicit ctx: Context): Boolean =
@@ -570,8 +570,8 @@ object SymDenotations {
      */
     final def isContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean = {
       def recur(sym: Symbol): Boolean =
-        if (sym `eq` boundary) true
-        else if (sym `eq` NoSymbol) false
+        if (sym eq boundary) true
+        else if (sym eq NoSymbol) false
         else if ((sym `is` PackageClass) && !(boundary `is` PackageClass)) false
         else recur(sym.owner)
       recur(symbol)
@@ -582,7 +582,7 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context): Boolean =
-      (if (maybeOwner `eq` NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
+      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
         myFlags.is(JavaStatic)
 
     /** Is this a package class or module class that defines static symbols? */
@@ -708,7 +708,7 @@ object SymDenotations {
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
         val linked = boundary.linkedClass
-        (linked `ne` NoSymbol) && accessWithin(linked)
+        (linked ne NoSymbol) && accessWithin(linked)
       }
 
       /** Is `pre` the same as C.thisThis, where C is exactly the owner of this symbol,
@@ -716,7 +716,7 @@ object SymDenotations {
        */
       def isCorrectThisType(pre: Type): Boolean = pre match {
         case pre: ThisType =>
-          (pre.cls `eq` owner) || (this `is` Protected) && pre.cls.derivesFrom(owner)
+          (pre.cls eq owner) || (this `is` Protected) && pre.cls.derivesFrom(owner)
         case pre: TermRef =>
           pre.symbol.moduleClass == owner
         case _ =>
@@ -748,8 +748,8 @@ object SymDenotations {
         else true
       }
 
-      if (pre `eq` NoPrefix) true
-      else if (info `eq` NoType) false
+      if (pre eq NoPrefix) true
+      else if (info eq NoType) false
       else {
         val boundary = accessBoundary(owner)
 
@@ -777,8 +777,8 @@ object SymDenotations {
       !(  this.isTerm
        || this.isStaticOwner && !this.isOpaqueCompanion
        || ctx.erasedTypes
-       || (pre `eq` NoPrefix)
-       || (pre `eq` thisType)
+       || (pre eq NoPrefix)
+       || (pre eq thisType)
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -1058,11 +1058,11 @@ object SymDenotations {
       else if (ctx.scope.lookup(this.name) == symbol)
         ctx.scope.lookup(name)
       else
-        companionNamed(name)(ctx.outersIterator.dropWhile(_.scope `eq` ctx.scope).next())
+        companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
 
     /** Is this symbol the same or a linked class of `sym`? */
     final def isLinkedWith(sym: Symbol)(implicit ctx: Context): Boolean =
-      (symbol `eq` sym) || (linkedClass `eq` sym)
+      (symbol eq sym) || (linkedClass eq sym)
 
     /** If this is a class, the module class of its companion object.
      *  If this is a module class, its companion class.
@@ -1136,7 +1136,7 @@ object SymDenotations {
 
     /** The symbol, in class `inClass`, that is overridden by this denotation in class `siteClass`.*/
     final def overriddenSymbol(inClass: ClassSymbol, siteClass: ClassSymbol = owner.asClass)(implicit ctx: Context): Symbol =
-      if (!canMatchInheritedSymbols && (owner `ne` inClass)) NoSymbol
+      if (!canMatchInheritedSymbols && (owner ne inClass)) NoSymbol
       else matchingDecl(inClass, siteClass.thisType)
 
     /** All symbols overridden by this denotation. */
@@ -1335,7 +1335,7 @@ object SymDenotations {
       info2 match {
         case info2: ClassInfo =>
           info1 match {
-            case info1: ClassInfo => info1.classParents `ne` info2.classParents
+            case info1: ClassInfo => info1.classParents ne info2.classParents
             case _ => completersMatter
           }
         case _ => completersMatter
@@ -1460,7 +1460,7 @@ object SymDenotations {
           if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
           else {
             val di = initial
-            if (this `ne` di) di.typeParams
+            if (this ne di) di.typeParams
             else infoOrCompleter match {
               case info: TypeParamsCompleter => info.completerTypeParams(symbol)
               case _ => typeParamsFromDecls
@@ -1565,15 +1565,15 @@ object SymDenotations {
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
       !isAbsent &&
       base.isClass &&
-      (  (symbol `eq` base)
+      (  (symbol eq base)
       || (baseClassSet `contains` base)
       )
 
     final override def isSubClass(base: Symbol)(implicit ctx: Context): Boolean =
       derivesFrom(base) ||
         base.isClass && (
-          (symbol `eq` defn.NothingClass) ||
-            (symbol `eq` defn.NullClass) && (base `ne` defn.NothingClass))
+          (symbol eq defn.NothingClass) ||
+            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
 
     final override def typeParamCreationFlags: FlagSet = ClassTypeParamCreationFlags
 
@@ -1723,7 +1723,7 @@ object SymDenotations {
       }
 
       def ensureAcyclic(baseTp: Type) = {
-        if (baseTp `eq` NoPrefix) throw CyclicReference(this)
+        if (baseTp eq NoPrefix) throw CyclicReference(this)
         baseTp
       }
 
@@ -1752,12 +1752,12 @@ object SymDenotations {
               tpSym.denot match {
                 case clsd: ClassDenotation =>
                   def isOwnThis = prefix match {
-                    case prefix: ThisType => prefix.cls `eq` clsd.owner
+                    case prefix: ThisType => prefix.cls eq clsd.owner
                     case NoPrefix => true
                     case _ => false
                   }
                   val baseTp =
-                    if (tpSym `eq` symbol)
+                    if (tpSym eq symbol)
                       tp
                     else if (isOwnThis)
                       if (clsd.baseClassSet.contains(symbol))
@@ -1785,7 +1785,7 @@ object SymDenotations {
             def computeApplied = {
               btrCache.put(tp, NoPrefix)
               val baseTp =
-              	if (tycon.typeSymbol `eq` symbol) tp
+              	if (tycon.typeSymbol eq symbol) tp
               	else (tycon.typeParams: @unchecked) match {
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)
@@ -1827,7 +1827,7 @@ object SymDenotations {
                   val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
                   combined match {
                     case combined: AndOrType
-                    if (combined.tp1 `eq` tp1) && (combined.tp2 `eq` tp2) && (combined.isAnd == tp.isAnd) => tp
+                    if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
                     case _ => combined
                   }
                 }
@@ -1871,7 +1871,7 @@ object SymDenotations {
           for (name <- p.classSymbol.asClass.memberNames(keepOnly))
             maybeAdd(name)
         val ownSyms =
-          if (keepOnly `eq` implicitFilter)
+          if (keepOnly eq implicitFilter)
             if (this `is` Package) Iterator.empty
               // implicits in package objects are added by the overriding `memberNames` in `PackageClassDenotation`
             else info.decls.iterator filter (_ `is` ImplicitOrImplied)
@@ -1921,7 +1921,7 @@ object SymDenotations {
         val prevCtx = ctx.withPhase(phase)
         val prevClassInfo = current(prevCtx).asInstanceOf[ClassDenotation].classInfo(prevCtx)
         val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
-        if (prevClassInfo.decls `eq` decls)
+        if (prevClassInfo.decls eq decls)
           copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
             .copyCaches(this, phase.next)
             .installAfter(phase)
@@ -2008,7 +2008,7 @@ object SymDenotations {
           if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))
           else directMembers
       }
-      if (symbol `eq` defn.ScalaPackageClass) {
+      if (symbol eq defn.ScalaPackageClass) {
         val denots = super.computeNPMembersNamed(name)
         if (denots.exists) denots
         else recur(packageObjs, NoDenotation)

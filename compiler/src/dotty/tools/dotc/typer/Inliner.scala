@@ -612,7 +612,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case binding: ValDef =>
           val rhs1 = reduceProjection(binding.rhs)
           binding.symbol.defTree = rhs1
-          if (rhs1 `eq` binding.rhs) binding
+          if (rhs1 eq binding.rhs) binding
           else {
             binding.symbol.info = rhs1.tpe
             cpy.ValDef(binding)(tpt = TypeTree(rhs1.tpe), rhs = rhs1)
@@ -1087,7 +1087,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             super.transform(t1)
           case t: Apply =>
             val t1 = super.transform(t)
-            if (t1 `eq` t) t else reducer.betaReduce(t1)
+            if (t1 eq t) t else reducer.betaReduce(t1)
           case Block(Nil, expr) =>
             super.transform(expr)
           case _ =>
@@ -1096,7 +1096,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
       val retained = termBindings.filterConserve(binding => retain(binding.symbol))
-      if (retained `eq` termBindings) {
+      if (retained eq termBindings) {
         (termBindings, tree)
       }
       else {

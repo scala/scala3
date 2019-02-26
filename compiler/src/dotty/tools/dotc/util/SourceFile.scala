@@ -61,7 +61,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def pathName: PathName = file.absolutePath.toTermName
 
   override def equals(that: Any): Boolean =
-    (this `eq` that.asInstanceOf[AnyRef]) || {
+    (this eq that.asInstanceOf[AnyRef]) || {
       that match {
         case that : SourceFile => file == that.file && start == that.start
         case _ => false
@@ -87,7 +87,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     if (span.exists) SourcePosition(underlying, span)
     else NoSourcePosition
 
-  def isSelfContained: Boolean = underlying `eq` this
+  def isSelfContained: Boolean = underlying eq this
 
   /** Map a position to a position in the underlying source file.
    *  For regular source files, simply return the argument.

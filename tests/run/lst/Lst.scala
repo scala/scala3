@@ -496,7 +496,7 @@ object Lst {
 
   private type Arr = Array[Any]
 
-  private def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] `eq` y.asInstanceOf[AnyRef]
+  private def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
   private val eqFn = (x: Any, y: Any) => eq(x, y)
 
   val Empty = new Lst[Nothing](null)

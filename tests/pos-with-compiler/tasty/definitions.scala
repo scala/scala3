@@ -188,8 +188,8 @@ object definitions {
 
     case class MethodType(paramNames: List[String], private[Type] var _pinfos: List[Type], private[Type] var _restpe: Type)
     extends LambdaType[Type, MethodType](MethodType) {
-      def isImplicit = (companion `eq` ImplicitMethodType) || (companion `eq` ErasedImplicitMethodType)
-      def isErased = (companion `eq` ErasedMethodType) || (companion `eq` ErasedImplicitMethodType)
+      def isImplicit = (companion eq ImplicitMethodType) || (companion eq ErasedImplicitMethodType)
+      def isErased = (companion eq ErasedMethodType) || (companion eq ErasedImplicitMethodType)
     }
 
     case class PolyType(paramNames: List[String], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)

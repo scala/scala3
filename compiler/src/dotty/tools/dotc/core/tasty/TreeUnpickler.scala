@@ -333,7 +333,7 @@ class TreeUnpickler(reader: TastyReader,
             case TYPEBOUNDS =>
               val lo = readType()
               val hi = readType()
-              if (lo.isMatch && (lo `eq` hi)) MatchAlias(lo)
+              if (lo.isMatch && (lo eq hi)) MatchAlias(lo)
               else TypeBounds(lo, hi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
@@ -422,7 +422,7 @@ class TreeUnpickler(reader: TastyReader,
       val prefix = readType()
       val res = NamedType(prefix, sym)
       prefix match {
-        case prefix: ThisType if prefix.cls `eq` sym.owner => res.withDenot(sym.denot)
+        case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
           // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
           // the problem arises when a self type of a trait is a type parameter of the same trait.
         case _ => res
@@ -543,7 +543,7 @@ class TreeUnpickler(reader: TastyReader,
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val coord = coordAt(start)
       val sym =
-        roots.find(root => (root.owner `eq` ctx.owner) && root.name == name) match {
+        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.symbol.coord = coord
@@ -704,7 +704,7 @@ class TreeUnpickler(reader: TastyReader,
      */
     def processPackage[T](op: (RefTree, Addr) => Context => T)(implicit ctx: Context): T = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return processPackage(op)(sctx)
+      if (sctx ne ctx) return processPackage(op)(sctx)
       readByte()
       val end = readEnd()
       val pid = ref(readTermRef()).asInstanceOf[RefTree]
@@ -748,7 +748,7 @@ class TreeUnpickler(reader: TastyReader,
 
     private def readNewDef()(implicit ctx: Context): Tree = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readNewDef()(sctx)
+      if (sctx ne ctx) return readNewDef()(sctx)
       val start = currentAddr
       val sym = symAtAddr(start)
       val tag = readByte()
@@ -1001,7 +1001,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readTerm()(implicit ctx: Context): Tree = {  // TODO: rename to readTree
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readTerm()(sctx)
+      if (sctx ne ctx) return readTerm()(sctx)
       val start = currentAddr
       val tag = readByte()
       pickling.println(s"reading term ${astTagToString(tag)} at $start, ${ctx.source}")
@@ -1212,7 +1212,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readTpt()(implicit ctx: Context): Tree = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readTpt()(sctx)
+      if (sctx ne ctx) return readTpt()(sctx)
       val start = currentAddr
       val tree = nextByte match {
         case SHAREDterm =>
@@ -1252,7 +1252,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readCase()(implicit ctx: Context): CaseDef = {
       val sctx = sourceChangeContext()
-      if (sctx `ne` ctx) return readCase()(sctx)
+      if (sctx ne ctx) return readCase()(sctx)
       val start = currentAddr
       assert(readByte() == CASEDEF)
       val end = readEnd()

@@ -266,7 +266,7 @@ object Interactive {
   def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = stats match {
     case Nil =>
       ctx
-    case first :: _ if first `eq` stat =>
+    case first :: _ if first eq stat =>
       ctx.exprContext(stat, exprOwner)
     case (imp: Import) :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, imp.symbol(ctx)))
@@ -282,7 +282,7 @@ object Interactive {
       try encl match {
         case tree @ PackageDef(pkg, stats) =>
           assert(tree.symbol.exists)
-          if (nested `eq` pkg) outer
+          if (nested eq pkg) outer
           else contextOfStat(stats, nested, pkg.symbol.moduleClass, outer.packageContext(tree, tree.symbol))
         case tree: DefDef =>
           assert(tree.symbol.exists)
@@ -302,7 +302,7 @@ object Interactive {
             case _ =>
           }
           contextOfStat(stats, nested, ctx.owner, localCtx)
-        case tree @ CaseDef(pat, guard, rhs) if nested `eq` rhs =>
+        case tree @ CaseDef(pat, guard, rhs) if nested eq rhs =>
           val localCtx = outer.fresh.setNewScope
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)
@@ -433,7 +433,7 @@ object Interactive {
 
   /** Are the two names the same? */
   def sameName(n0: Name, n1: Name): Boolean = {
-    n0.stripModuleClassSuffix.toTermName `eq` n1.stripModuleClassSuffix.toTermName
+    n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
   }
 
   private[interactive] def safely[T](op: => List[T]): List[T] =

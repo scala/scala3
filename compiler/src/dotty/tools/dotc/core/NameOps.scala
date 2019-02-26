@@ -188,7 +188,7 @@ object NameOps {
 
     /** Is a function name, i.e one of FunctionXXL, FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
      */
-    def isFunction: Boolean = (name `eq` tpnme.FunctionXXL) || functionArity >= 0
+    def isFunction: Boolean = (name eq tpnme.FunctionXXL) || functionArity >= 0
 
     /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */
@@ -277,7 +277,7 @@ object NameOps {
 
     def unmangle(kinds: List[NameKind]): N = {
       val unmangled = (name /: kinds)(_.unmangle(_))
-      if (unmangled `eq` name) name else unmangled.unmangle(kinds)
+      if (unmangled eq name) name else unmangled.unmangle(kinds)
     }
   }
 

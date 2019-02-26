@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 import collection.mutable.ListBuffer
 
-/** A simple linked set with `eq` as the comparison, optimized for small sets.
+/** A simple linked set with eq as the comparison, optimized for small sets.
  *  It has linear complexity for `contains`, `+`, and `-`.
  */
 abstract class SimpleIdentitySet[+Elem <: AnyRef] {
@@ -39,8 +39,8 @@ object SimpleIdentitySet {
     def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] =
       if (contains(x)) this else new Set2[E](x0, x)
     def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem] =
-      if (x `eq` x0) empty else this
-    def contains[E >: Elem <: AnyRef](x: E): Boolean = x `eq` x0
+      if (x eq x0) empty else this
+    def contains[E >: Elem <: AnyRef](x: E): Boolean = x eq x0
     def foreach(f: Elem => Unit): Unit = f(x0.asInstanceOf[Elem])
   }
 
@@ -49,10 +49,10 @@ object SimpleIdentitySet {
     def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] =
       if (contains(x)) this else new Set3(x0, x1, x)
     def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem] =
-      if (x `eq` x0) new Set1(x1)
-      else if (x `eq` x1) new Set1(x0)
+      if (x eq x0) new Set1(x1)
+      else if (x eq x1) new Set1(x0)
       else this
-    def contains[E >: Elem <: AnyRef](x: E): Boolean = (x `eq` x0) || (x `eq` x1)
+    def contains[E >: Elem <: AnyRef](x: E): Boolean = (x eq x0) || (x eq x1)
     def foreach(f: Elem => Unit): Unit = { f(x0.asInstanceOf[Elem]); f(x1.asInstanceOf[Elem]) }
   }
 
@@ -69,11 +69,11 @@ object SimpleIdentitySet {
         new SetN[E](xs)
       }
     def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem] =
-      if (x `eq` x0) new Set2(x1, x2)
-      else if (x `eq` x1) new Set2(x0, x2)
-      else if (x `eq` x2) new Set2(x0, x1)
+      if (x eq x0) new Set2(x1, x2)
+      else if (x eq x1) new Set2(x0, x2)
+      else if (x eq x2) new Set2(x0, x1)
       else this
-    def contains[E >: Elem <: AnyRef](x: E): Boolean = (x `eq` x0) || (x `eq` x1) || (x `eq` x2)
+    def contains[E >: Elem <: AnyRef](x: E): Boolean = (x eq x0) || (x eq x1) || (x eq x2)
     def foreach(f: Elem => Unit): Unit = {
       f(x0.asInstanceOf[Elem]); f(x1.asInstanceOf[Elem]); f(x2.asInstanceOf[Elem])
     }
@@ -91,7 +91,7 @@ object SimpleIdentitySet {
       }
     def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem] = {
       var i = 0
-      while (i < size && (xs(i) `ne` x)) i += 1
+      while (i < size && (xs(i) ne x)) i += 1
       if (i == size) this
       else if (size == 4)
         if (i == 0) new Set3(xs(1), xs(2), xs(3))
@@ -107,7 +107,7 @@ object SimpleIdentitySet {
     }
     def contains[E >: Elem <: AnyRef](x: E): Boolean = {
       var i = 0
-      while (i < size && (xs(i) `ne` x)) i += 1
+      while (i < size && (xs(i) ne x)) i += 1
       i < size
     }
     def foreach(f: Elem => Unit): Unit = {

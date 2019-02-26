@@ -86,7 +86,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     *  from TASTY.
     */
   def files: Set[AbstractFile] = {
-    if (myUnits `ne` myUnitsCached) {
+    if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
       myFiles = myUnits.map(_.source.file).toSet
     }

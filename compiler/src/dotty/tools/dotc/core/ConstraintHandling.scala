@@ -70,7 +70,7 @@ trait ConstraintHandling[AbstractContext] {
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
         val b = bound.dealias
-        (b `eq` param) || {
+        (b eq param) || {
           b match {
             case b: AndType => occursIn(b.tp1) || occursIn(b.tp2)
             case b: OrType  => occursIn(b.tp1) || occursIn(b.tp2)
@@ -84,7 +84,7 @@ trait ConstraintHandling[AbstractContext] {
         assert(!occursIn(bound), s"$param occurs in $bound")
 
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = isUpper && (lo `eq` bound) || !isUpper && (bound `eq` hi)
+      val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
       if (equalBounds && !bound.existsPart(_.isInstanceOf[WildcardType])) {
         // The narrowed bounds are equal and do not contain wildcards,
         // so we can remove `param` from the constraint.
@@ -106,7 +106,7 @@ trait ConstraintHandling[AbstractContext] {
           finally homogenizeArgs = saved
         }
         val c1 = constraint.updateEntry(param, narrowedBounds)
-        (c1 `eq` constraint) || {
+        (c1 eq constraint) || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param)
           isSubType(lo, hi)
@@ -326,8 +326,8 @@ trait ConstraintHandling[AbstractContext] {
    *  narrowing it with further bounds.
    */
   protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
-    if (c2 `eq` pre) true
-    else if (c1 `eq` pre) false
+    if (c2 eq pre) true
+    else if (c1 eq pre) false
     else {
       val saved = constraint
       try
@@ -375,14 +375,14 @@ trait ConstraintHandling[AbstractContext] {
 
   /** Can `param` be constrained with new bounds? */
   final def canConstrain(param: TypeParamRef): Boolean =
-    (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
+    (!frozenConstraint || (caseLambda eq param.binder)) && constraint.contains(param)
 
   /** Is `param` assumed to be a sub- and super-type of any other type?
    *  This holds if `TypeVarsMissContext` is set unless `param` is a part
    *  of a MatchType that is currently normalized.
    */
   final def assumedTrue(param: TypeParamRef)(implicit actx: AbstractContext): Boolean =
-    ctx.mode.is(Mode.TypevarsMissContext) && (caseLambda `ne` param.binder)
+    ctx.mode.is(Mode.TypevarsMissContext) && (caseLambda ne param.binder)
 
   /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
    *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
@@ -513,7 +513,7 @@ trait ConstraintHandling[AbstractContext] {
       if (addConstraint(param, tp, fromBelow = true) &&
           addConstraint(param, tp, fromBelow = false)) constraint.replace(param, tp)
       else saved
-    constraint `ne` saved
+    constraint ne saved
   }
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */

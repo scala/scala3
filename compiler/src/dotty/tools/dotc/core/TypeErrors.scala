@@ -170,7 +170,7 @@ class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Typ
   }
 
   protected def addendum(implicit ctx: Context): String =
-    if (prefix `eq` NoPrefix) ""
+    if (prefix eq NoPrefix) ""
     else {
       val owner = prefix match {
         case prefix: ThisType => prefix.cls.show

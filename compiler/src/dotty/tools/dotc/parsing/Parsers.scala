@@ -571,7 +571,7 @@ object Parsers {
         }
         else if (in.token == GIVEN) {
           val top1 = reduceStack(base, top, minInfixPrec, leftAssoc = true, nme.WITHkw, isType)
-          assert(opStack `eq` base)
+          assert(opStack eq base)
           val app = atSpan(startOffset(top1), in.offset) {
             in.nextToken()
             val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
@@ -635,7 +635,7 @@ object Parsers {
      */
     def selectors(t: Tree, finish: Tree => Tree): Tree = {
       val t1 = finish(t)
-      if (t1 `ne` t) t1 else dotSelectors(selector(t), finish)
+      if (t1 ne t) t1 else dotSelectors(selector(t), finish)
     }
 
     /** DotSelectors ::= { `.' id }
@@ -1529,7 +1529,7 @@ object Parsers {
           // The standard library uses "macro ???" to denote "fast track" macros
           // hardcoded in the compiler, don't issue an error for those macros
           // since we want to be able to compile the standard library.
-          if (call `ne` nme.???)
+          if (call ne nme.???)
             syntaxError(
               "Scala 2 macros are not supported, see http://dotty.epfl.ch/docs/reference/dropped-features/macros.html",
               start)

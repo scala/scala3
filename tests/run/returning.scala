@@ -19,7 +19,7 @@ object NonLocalReturns {
     try op given returner
     catch {
       case ex: ReturnThrowable[_] =>
-       if (ex `eq` returner) ex.result.asInstanceOf[T] else throw ex
+       if (ex eq returner) ex.result.asInstanceOf[T] else throw ex
     }
   }
 }

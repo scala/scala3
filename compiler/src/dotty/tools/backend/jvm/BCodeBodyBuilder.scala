@@ -702,7 +702,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
         case Apply(t :TypeApply, _) =>
           generatedType =
-            if (t.symbol `ne` Object_synchronized) genTypeApply(t)
+            if (t.symbol ne Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
         // 'super' call: Note: since constructors are supposed to
@@ -1300,7 +1300,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val op = testOpForPrimitive(code)
         val nonNullSide = if (ScalaPrimitivesOps.isReferenceEqualityOp(code)) ifOneIsNull(l, r) else null
         if (nonNullSide != null) {
-          // special-case reference (in)equality test for null (null `eq` x, x == null)
+          // special-case reference (in)equality test for null (null eq x, x == null)
           genLoad(nonNullSide, ObjectReference)
           genCZJUMP(success, failure, op, ObjectReference, targetIfNoJump)
         } else {

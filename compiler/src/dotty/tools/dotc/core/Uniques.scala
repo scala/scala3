@@ -47,7 +47,7 @@ object Uniques {
     private def findPrevious(h: Int, prefix: Type, designator: Designator): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.prefix `eq` prefix) && (e.designator `eq` designator)) return e
+        if ((e.prefix eq prefix) && (e.designator eq designator)) return e
         e = nextEntryByHash(h)
       }
       e
@@ -73,7 +73,7 @@ object Uniques {
     private def findPrevious(h: Int, tycon: Type, args: List[Type]): AppliedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.tycon `eq` tycon) && e.args.eqElements(args)) return e
+        if ((e.tycon eq tycon) && e.args.eqElements(args)) return e
         e = nextEntryByHash(h)
       }
       e
