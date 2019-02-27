@@ -1,6 +1,6 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.13.0-RC1
+title: Announcing Dotty 0.13.0-RC1 with Spark support and redesigned implicits
 author: Aggelos Biboudis
 authorImg: /images/aggelos.jpg
 date: 2019-03-01
@@ -32,6 +32,27 @@ This is our 132th scheduled release according to our
 [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
 
 # What’s new in the 0.13.0-RC1 technology preview?
+
+## Experimental support for Spark
+
+Dotty projects have always been able to [depend on Scala 2
+libraries](https://github.com/lampepfl/dotty-example-project#getting-your-project-to-compile-with-dotty),
+and this usually works fine as long as the Dotty code does not call a Scala 2
+macro directly. However, [Spark](http://spark.apache.org/) was known to not work
+correctly as it heavily relies on Java serialization which we were not fully
+supporting.
+
+Meanwhile, at EPFL, we've started updating our Scala courses to use Dotty
+instead of Scala 2, the *Functional Programming* course given last semester went
+smoothly, but the *Parallelism and Concurrency* course given in the
+Spring semester teaches Spark, which means we needed to support it in Dotty!
+
+Luckily, this turned out to be mostly straightforward: we adopted the [object
+serialization scheme](https://github.com/lampepfl/dotty/pull/5775) and [lambda
+serialization scheme](https://github.com/lampepfl/dotty/pull/5837) pioneered by
+Scala 2, and that was enough to make our Spark assignments run correctly! This
+doesn't mean that our support is perfect however, so don't hesitate to [open an
+issue](http://github.com/lampepfl/dotty/issues) if something is amiss.
 
 ## All things impl... implied
 
@@ -260,16 +281,7 @@ at the documentation linked or at the relevant PR
 please read our documentation page under the new section named [*Contextual
 Abstractions*](https://dotty.epfl.ch/docs/).**
 
-## SemanticDB generator
-
-[SemanticDB](https://github.com/scalameta/scalameta/tree/master/semanticdb) is a
-data model for semantic information such as symbols and types about programs in
-Scala and other languages. SemanticDB decouples production and consumption of
-semantic information, establishing documented means for communication between
-tools. With PR [#5761](https://github.com/lampepfl/dotty/pull/5761) we add the
-first prototype for the generation of SemanticDB information from TASTy.
-
-## Change Implicit Resolution Rules
+## Implicit resolution rule changes
 
 PR [#5887](https://github.com/lampepfl/dotty/pull/5887) applies the following
 changes to implicit resolution:
@@ -278,11 +290,14 @@ changes to implicit resolution:
 2. no more shadowing checks
 3. package prefixes are not considered.
 
-## Add support for lambda serialization
+## SemanticDB generator
 
-PR [#5837](https://github.com/lampepfl/dotty/pull/5837) added support for lambda
-serialization using well-known `java.io.Serializable` interface. This enables
-further progress on support Spark with Dotty.
+[SemanticDB](https://github.com/scalameta/scalameta/tree/master/semanticdb) is a
+data model for semantic information such as symbols and types about programs in
+Scala and other languages. SemanticDB decouples production and consumption of
+semantic information, establishing documented means for communication between
+tools. With PR [#5761](https://github.com/lampepfl/dotty/pull/5761) we add the
+first prototype for the generation of SemanticDB information from TASTy.
 
 ## And much more!
 
