@@ -4,12 +4,11 @@ package reflect
 /** Tasty reflect case definition */
 trait CaseDefOps extends Core {
 
-  trait CaseDefAPI {
-    def pattern(implicit ctx: Context): Pattern
-    def guard(implicit ctx: Context): Option[Term]
-    def rhs(implicit ctx: Context): Term
+  implicit class CaseDefAPI(caseDef: CaseDef) {
+    def pattern(implicit ctx: Context): Pattern = kernel.CaseDef_pattern(caseDef)
+    def guard(implicit ctx: Context): Option[Term] = kernel.CaseDef_guard(caseDef)
+    def rhs(implicit ctx: Context): Term = kernel.CaseDef_rhs(caseDef)
   }
-  implicit def CaseDefDeco(caseDef: CaseDef): CaseDefAPI
 
   val CaseDef: CaseDefModule
   abstract class CaseDefModule {
@@ -22,11 +21,10 @@ trait CaseDefOps extends Core {
   }
 
 
-  trait TypeCaseDefAPI {
-    def pattern(implicit ctx: Context): TypeTree
-    def rhs(implicit ctx: Context): TypeTree
+  implicit class TypeCaseDefAPI(caseDef: TypeCaseDef) {
+    def pattern(implicit ctx: Context): TypeTree = kernel.TypeCaseDef_pattern(caseDef)
+    def rhs(implicit ctx: Context): TypeTree = kernel.TypeCaseDef_rhs(caseDef)
   }
-  implicit def TypeCaseDefDeco(caseDef: TypeCaseDef): TypeCaseDefAPI
 
   val TypeCaseDef: TypeCaseDefModule
   abstract class TypeCaseDefModule {

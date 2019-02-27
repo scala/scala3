@@ -8,9 +8,4 @@ trait SignatureOpsImpl extends scala.tasty.reflect.SignatureOps with CoreImpl {
     }
   }
 
-  def SignatureDeco(sig: Signature): SignatureAPI = new SignatureAPI {
-    def paramSigs: List[String] = sig.paramsSig.map(_.toString)
-    def resultSig: String = sig.resSig.toString
-  }
-
 }

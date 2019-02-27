@@ -3,11 +3,28 @@ package reflect
 
 trait PatternOps extends Core {
 
-  implicit def ValueDeco(value: Value): Pattern.ValueAPI
-  implicit def BindDeco(bind: Bind): Pattern.BindAPI
-  implicit def UnapplyDeco(unapply: Unapply): Pattern.UnapplyAPI
-  implicit def AlternativeDeco(alternatives: Alternatives): Pattern.AlternativesAPI
-  implicit def TypeTestDeco(typeTest: TypeTest): Pattern.TypeTestAPI
+  implicit class ValueAPI(value: Value) {
+    def value(implicit ctx: Context): Term = kernel.Pattern_Value_value(value)
+  }
+
+  implicit class BindAPI(bind: Bind) {
+    def name(implicit ctx: Context): String = kernel.Pattern_Bind_name(bind)
+    def pattern(implicit ctx: Context): Pattern = kernel.Pattern_Bind_pattern(bind)
+  }
+
+  implicit class UnapplyAPI(unapply: Unapply) {
+    def fun(implicit ctx: Context): Term = kernel.Pattern_Unapply_fun(unapply)
+    def implicits(implicit ctx: Context): List[Term] = kernel.Pattern_Unapply_implicits(unapply)
+    def patterns(implicit ctx: Context): List[Pattern] = kernel.Pattern_Unapply_patterns(unapply)
+  }
+
+  implicit class AlternativesAPI(alternatives: Alternatives) {
+    def patterns(implicit ctx: Context): List[Pattern] = kernel.Pattern_Alternatives_patterns(alternatives)
+  }
+
+  implicit class TypeTestAPI(typeTest: TypeTest) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.Pattern_TypeTest_tpt(typeTest)
+  }
 
   trait PatternAPI {
     /** Position in the source code */
@@ -34,10 +51,6 @@ trait PatternOps extends Core {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Term]
     }
 
-    trait ValueAPI {
-      def value(implicit ctx: Context): Term
-    }
-
     val IsBind: IsBindModule
     abstract class IsBindModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Bind]
@@ -48,11 +61,6 @@ trait PatternOps extends Core {
       // TODO def apply(name: String, pattern: Pattern)(implicit ctx: Context): Bind
       def copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(String, Pattern)]
-    }
-
-    trait BindAPI {
-      def name(implicit ctx: Context): String
-      def pattern(implicit ctx: Context): Pattern
     }
 
     val IsUnapply: IsUnapplyModule
@@ -67,12 +75,6 @@ trait PatternOps extends Core {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])]
     }
 
-    trait UnapplyAPI {
-      def fun(implicit ctx: Context): Term
-      def implicits(implicit ctx: Context): List[Term]
-      def patterns(implicit ctx: Context): List[Pattern]
-    }
-
     val IsAlternatives: IsAlternativesModule
     abstract class IsAlternativesModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Alternatives]
@@ -85,10 +87,6 @@ trait PatternOps extends Core {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[List[Pattern]]
     }
 
-    trait AlternativesAPI {
-      def patterns(implicit ctx: Context): List[Pattern]
-    }
-
     val IsTypeTest: IsTypeTestModule
     abstract class IsTypeTestModule {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]
@@ -99,10 +97,6 @@ trait PatternOps extends Core {
       def apply(tpt: TypeTree)(implicit ctx: Context): TypeTest
       def copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTree]
-    }
-
-    trait TypeTestAPI {
-      def tpt(implicit ctx: Context): TypeTree
     }
 
   }

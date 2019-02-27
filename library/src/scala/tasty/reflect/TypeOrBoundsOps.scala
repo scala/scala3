@@ -3,60 +3,18 @@ package reflect
 
 trait TypeOrBoundsOps extends Core {
 
-  implicit def TypeDeco(tpe: Type): TypeAPI
-
-  implicit def ConstantTypeDeco(x: ConstantType): Type.ConstantTypeAPI
-
-  implicit def SymRefDeco(x: SymRef): Type.SymRefAPI
-
-  implicit def TermRefDeco(x: TermRef): Type.TermRefAPI
-
-  implicit def TypeRefDeco(x: TypeRef): Type.TypeRefAPI
-
-  implicit def SuperTypeDeco(x: SuperType): Type.SuperTypeAPI
-
-  implicit def RefinementDeco(x: Refinement): Type.RefinementAPI
-
-  implicit def AppliedTypeDeco(x: AppliedType): Type.AppliedTypeAPI
-
-  implicit def AnnotatedTypeDeco(x: AnnotatedType): Type.AnnotatedTypeAPI
-
-  implicit def AndTypeDeco(x: AndType): Type.AndTypeAPI
-
-  implicit def OrTypeDeco(x: OrType): Type.OrTypeAPI
-
-  implicit def MatchTypeDeco(x: MatchType): Type.MatchTypeAPI
-
-  implicit def ByNameTypeDeco(x: ByNameType): Type.ByNameTypeAPI
-
-  implicit def ParamRefDeco(x: ParamRef): Type.ParamRefAPI
-
-  implicit def ThisTypeDeco(x: ThisType): Type.ThisTypeAPI
-
-  implicit def RecursiveThisDeco(x: RecursiveThis): Type.RecursiveThisAPI
-
-  implicit def RecursiveTypeDeco(x: RecursiveType): Type.RecursiveTypeAPI
-
-  implicit def MethodTypeDeco(x: MethodType): Type.MethodTypeAPI
-
-  implicit def PolyTypeDeco(x: PolyType): Type.PolyTypeAPI
-
-  implicit def TypeLambdaDeco(x: TypeLambda): Type.TypeLambdaAPI
-
-  implicit def TypeBoundsDeco(bounds: TypeBounds): TypeBoundsAPI
-
   // ----- Types ----------------------------------------------------
 
   def typeOf[T: scala.quoted.Type]: Type
 
-  trait TypeAPI {
-    def =:=(other: Type)(implicit ctx: Context): Boolean
-    def <:<(other: Type)(implicit ctx: Context): Boolean
-    def widen(implicit ctx: Context): Type
-    def classSymbol(implicit ctx: Context): Option[ClassSymbol]
-    def typeSymbol(implicit ctx: Context): Symbol
-    def isSingleton(implicit ctx: Context): Boolean
-    def memberType(member: Symbol)(implicit ctx: Context): Type
+  implicit class TypeAPI(self: Type) {
+    def =:=(that: Type)(implicit ctx: Context): Boolean = kernel.`Type_=:=`(self)(that)
+    def <:<(that: Type)(implicit ctx: Context): Boolean = kernel.`Type_<:<`(self)(that)
+    def widen(implicit ctx: Context): Type = kernel.Type_widen(self)
+    def classSymbol(implicit ctx: Context): Option[ClassSymbol] = kernel.Type_classSymbol(self)
+    def typeSymbol(implicit ctx: Context): Symbol = kernel.Type_typeSymbol(self)
+    def isSingleton(implicit ctx: Context): Boolean = kernel.Type_isSingleton(self)
+    def memberType(member: Symbol)(implicit ctx: Context): Type = kernel.Type_memberType(self)(member)
   }
 
   val IsType: IsTypeModule
@@ -73,10 +31,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType]
     }
 
-    trait ConstantTypeAPI {
-      def value(implicit ctx: Context): Any
-    }
-
     val ConstantType: ConstantTypeModule
     abstract class ConstantTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Constant]
@@ -88,10 +42,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]
     }
 
-    trait SymRefAPI {
-      def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */
-    }
-
     val SymRef: SymRefModule
     abstract class SymRefModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
@@ -101,10 +51,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsTermRefModule {
       /** Matches any TermRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]
-    }
-
-    trait TermRefAPI {
-      def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */
     }
 
     val TermRef: TermRefModule
@@ -119,11 +65,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]
     }
 
-    trait TypeRefAPI {
-      def name(implicit ctx: Context): String
-      def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */
-    }
-
     val TypeRef: TypeRefModule
     abstract class TypeRefModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
@@ -133,11 +74,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsSuperTypeModule {
       /** Matches any SuperType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType]
-    }
-
-    trait SuperTypeAPI {
-      def thistpe(implicit ctx: Context): Type
-      def supertpe(implicit ctx: Context): Type
     }
 
     val SuperType: SuperTypeModule
@@ -151,12 +87,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement]
     }
 
-    trait RefinementAPI {
-      def parent(implicit ctx: Context): Type
-      def name(implicit ctx: Context): String
-      def info(implicit ctx: Context): TypeOrBounds
-    }
-
     val Refinement: RefinementModule
     abstract class RefinementModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)]
@@ -166,11 +96,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsAppliedTypeModule {
       /** Matches any AppliedType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType]
-    }
-
-    trait AppliedTypeAPI {
-      def tycon(implicit ctx: Context): Type
-      def args(implicit ctx: Context): List[TypeOrBounds /* Type | TypeBounds */]
     }
 
     val AppliedType: AppliedTypeModule
@@ -184,11 +109,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType]
     }
 
-    trait AnnotatedTypeAPI {
-      def underlying(implicit ctx: Context): Type
-      def annot(implicit ctx: Context): Term
-    }
-
     val AnnotatedType: AnnotatedTypeModule
     abstract class AnnotatedTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)]
@@ -198,11 +118,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsAndTypeModule {
       /** Matches any AndType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType]
-    }
-
-    trait AndTypeAPI {
-      def left(implicit ctx: Context): Type
-      def right(implicit ctx: Context): Type
     }
 
     val AndType: AndTypeModule
@@ -216,11 +131,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType]
     }
 
-    trait OrTypeAPI {
-      def left(implicit ctx: Context): Type
-      def right(implicit ctx: Context): Type
-    }
-
     val OrType: OrTypeModule
     abstract class OrTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
@@ -230,12 +140,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsMatchTypeModule {
       /** Matches any MatchType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType]
-    }
-
-    trait MatchTypeAPI {
-      def bound(implicit ctx: Context): Type
-      def scrutinee(implicit ctx: Context): Type
-      def cases(implicit ctx: Context): List[Type]
     }
 
     val MatchType: MatchTypeModule
@@ -249,10 +153,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType]
     }
 
-    trait ByNameTypeAPI {
-      def underlying(implicit ctx: Context): Type
-    }
-
     val ByNameType: ByNameTypeModule
     abstract class ByNameTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
@@ -262,11 +162,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsParamRefModule {
       /** Matches any ParamRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef]
-    }
-
-    trait ParamRefAPI {
-      def binder(implicit ctx: Context): LambdaType[TypeOrBounds]
-      def paramNum(implicit ctx: Context): Int
     }
 
     val ParamRef: ParamRefModule
@@ -280,10 +175,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType]
     }
 
-    trait ThisTypeAPI {
-      def underlying(implicit ctx: Context): Type
-    }
-
     val ThisType: ThisTypeModule
     abstract class ThisTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
@@ -293,10 +184,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsRecursiveThisModule {
       /** Matches any RecursiveThis and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis]
-    }
-
-    trait RecursiveThisAPI {
-      def binder(implicit ctx: Context): RecursiveType
     }
 
     val RecursiveThis: RecursiveThisModule
@@ -310,10 +197,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
     }
 
-    trait RecursiveTypeAPI {
-      def underlying(implicit ctx: Context): Type
-    }
-
     val RecursiveType: RecursiveTypeModule
     abstract class RecursiveTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
@@ -323,14 +206,6 @@ trait TypeOrBoundsOps extends Core {
     abstract class IsMethodTypeModule {
       /** Matches any MethodType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]
-    }
-
-    trait MethodTypeAPI {
-      def isImplicit: Boolean
-      def isErased: Boolean
-      def paramNames(implicit ctx: Context): List[String]
-      def paramTypes(implicit ctx: Context): List[Type]
-      def resType(implicit ctx: Context): Type
     }
 
     val MethodType: MethodTypeModule
@@ -344,12 +219,6 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType]
     }
 
-    trait PolyTypeAPI {
-      def paramNames(implicit ctx: Context): List[String]
-      def paramBounds(implicit ctx: Context): List[TypeBounds]
-      def resType(implicit ctx: Context): Type
-    }
-
     val PolyType: PolyTypeModule
     abstract class PolyTypeModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
@@ -361,17 +230,106 @@ trait TypeOrBoundsOps extends Core {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda]
     }
 
-    trait TypeLambdaAPI {
-      def paramNames(implicit ctx: Context): List[String]
-      def paramBounds(implicit ctx: Context): List[TypeBounds]
-      def resType(implicit ctx: Context): Type
-    }
-
     val TypeLambda: TypeLambdaModule
     abstract class TypeLambdaModule {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
     }
 
+  }
+
+  implicit class Type_ConstantTypeAPI(self: ConstantType) {
+    def value(implicit ctx: Context): Any = kernel.ConstantType_value(self)
+  }
+
+  implicit class Type_SymRefAPI(self: SymRef) {
+    def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.SymRef_qualifier(self)
+  }
+
+  implicit class Type_TermRefAPI(self: TermRef) {
+    def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.TermRef_qualifier(self)
+  }
+
+  implicit class Type_TypeRefAPI(self: TypeRef) {
+    def name(implicit ctx: Context): String = kernel.TypeRef_name(self)
+    def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.TypeRef_qualifier(self)
+  }
+
+  implicit class Type_SuperTypeAPI(self: SuperType) {
+    def thistpe(implicit ctx: Context): Type = kernel.SuperType_thistpe(self)
+    def supertpe(implicit ctx: Context): Type = kernel.SuperType_supertpe(self)
+  }
+
+  implicit class Type_RefinementAPI(self: Refinement) {
+    def parent(implicit ctx: Context): Type = kernel.Refinement_parent(self)
+    def name(implicit ctx: Context): String = kernel.Refinement_name(self)
+    def info(implicit ctx: Context): TypeOrBounds = kernel.Refinement_info(self)
+  }
+
+  implicit class Type_AppliedTypeAPI(self: AppliedType) {
+    def tycon(implicit ctx: Context): Type = kernel.AppliedType_tycon(self)
+    def args(implicit ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = kernel.AppliedType_args(self)
+  }
+
+  implicit class Type_AnnotatedTypeAPI(self: AnnotatedType) {
+    def underlying(implicit ctx: Context): Type = kernel.AnnotatedType_underlying(self)
+    def annot(implicit ctx: Context): Term = kernel.AnnotatedType_annot(self)
+  }
+
+  implicit class Type_AndTypeAPI(self: AndType) {
+    def left(implicit ctx: Context): Type = kernel.AndType_left(self)
+    def right(implicit ctx: Context): Type = kernel.AndType_right(self)
+  }
+
+  implicit class Type_OrTypeAPI(self: OrType) {
+    def left(implicit ctx: Context): Type = kernel.OrType_left(self)
+    def right(implicit ctx: Context): Type = kernel.OrType_right(self)
+  }
+
+  implicit class Type_MatchTypeAPI(self: MatchType) {
+    def bound(implicit ctx: Context): Type = kernel.MatchType_bound(self)
+    def scrutinee(implicit ctx: Context): Type = kernel.MatchType_scrutinee(self)
+    def cases(implicit ctx: Context): List[Type] = kernel.MatchType_cases(self)
+  }
+
+  implicit class Type_ByNameTypeAPI(self: ByNameType) {
+    def underlying(implicit ctx: Context): Type = kernel.ByNameType_underlying(self)
+  }
+
+  implicit class Type_ParamRefAPI(self: ParamRef) {
+    def binder(implicit ctx: Context): LambdaType[TypeOrBounds] = kernel.ParamRef_binder(self)
+    def paramNum(implicit ctx: Context): Int = kernel.ParamRef_paramNum(self)
+  }
+
+  implicit class Type_ThisTypeAPI(self: ThisType) {
+    def underlying(implicit ctx: Context): Type = kernel.ThisType_underlying(self)
+  }
+
+  implicit class Type_RecursiveThisAPI(self: RecursiveThis) {
+    def binder(implicit ctx: Context): RecursiveType = kernel.RecursiveThis_binder(self)
+  }
+
+  implicit class Type_RecursiveTypeAPI(self: RecursiveType) {
+    def underlying(implicit ctx: Context): Type = kernel.RecursiveType_underlying(self)
+  }
+
+  implicit class Type_MethodTypeAPI(self: MethodType) {
+    def isImplicit: Boolean = kernel.MethodType_isImplicit(self)
+    def isErased: Boolean = kernel.MethodType_isErased(self)
+    def paramNames(implicit ctx: Context): List[String] = kernel.MethodType_paramNames(self)
+    def paramTypes(implicit ctx: Context): List[Type] = kernel.MethodType_paramTypes(self)
+    def resType(implicit ctx: Context): Type = kernel.MethodType_resType(self)
+  }
+
+  implicit class Type_PolyTypeAPI(self: PolyType) {
+    def paramNames(implicit ctx: Context): List[String] = kernel.PolyType_paramNames(self)
+    def paramBounds(implicit ctx: Context): List[TypeBounds] = kernel.PolyType_paramBounds(self)
+    def resType(implicit ctx: Context): Type = kernel.PolyType_resType(self)
+  }
+
+  implicit class Type_TypeLambdaAPI(self: TypeLambda) {
+    def paramNames(implicit ctx: Context): List[String] = kernel.TypeLambda_paramNames(self)
+    def paramBounds(implicit ctx: Context): List[TypeBounds] = kernel.TypeLambda_paramBounds(self)
+    def resType(implicit ctx: Context): Type = kernel.TypeLambda_resType(self)
   }
 
   // ----- TypeBounds -----------------------------------------------
@@ -386,9 +344,9 @@ trait TypeOrBoundsOps extends Core {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
   }
 
-  trait TypeBoundsAPI {
-    def low(implicit ctx: Context): Type
-    def hi(implicit ctx: Context): Type
+  implicit class TypeBoundsAPI(self: TypeBounds) {
+    def low(implicit ctx: Context): Type = kernel.TypeBounds_low(self)
+    def hi(implicit ctx: Context): Type = kernel.TypeBounds_hi(self)
   }
 
   // ----- NoPrefix -------------------------------------------------

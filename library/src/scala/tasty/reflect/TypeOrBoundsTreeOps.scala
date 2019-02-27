@@ -3,39 +3,23 @@ package reflect
 
 trait TypeOrBoundsTreeOps extends Core {
 
-  implicit def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): TypeOrBoundsTreeAPI
-
-  implicit def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI
-  implicit def InferredDeco(x: TypeTree.Inferred): TypeTree.InferredAPI
-  implicit def TypeIdentDeco(x: TypeTree.Ident): TypeTree.IdentAPI
-  implicit def TypeSelectDeco(x: TypeTree.Select): TypeTree.SelectAPI
-  implicit def ProjectionDeco(x: TypeTree.Projection): TypeTree.ProjectionAPI
-  implicit def SingletonDeco(x: TypeTree.Singleton): TypeTree.SingletonAPI
-  implicit def RefinedDeco(x: TypeTree.Refined): TypeTree.RefinedAPI
-  implicit def AppliedDeco(x: TypeTree.Applied): TypeTree.AppliedAPI
-  implicit def AnnotatedDeco(x: TypeTree.Annotated): TypeTree.AnnotatedAPI
-  implicit def MatchTypeTreeDeco(x: TypeTree.MatchType): TypeTree.MatchTypeAPI
-  implicit def ByNameDeco(x: TypeTree.ByName): TypeTree.ByNameAPI
-  implicit def LambdaTypeTreeDeco(x: TypeTree.LambdaTypeTree): TypeTree.LambdaTypeTreeAPI
-  implicit def TypeBindDeco(x: TypeTree.TypeBind): TypeTree.TypeBindAPI
-  implicit def TypeBlockDeco(x: TypeTree.TypeBlock): TypeTree.TypeBlockAPI
-
-  implicit def TypeBoundsTreeDeco(tpt: TypeBoundsTree): TypeBoundsTreeAPI
-
   implicit def typeTreeAsParent(term: TypeTree): TermOrTypeTree
 
-  trait TypeOrBoundsTreeAPI {
-    def tpe(implicit ctx: Context): TypeOrBounds
+  implicit class TypeOrBoundsTreeAPI(self: TypeOrBoundsTree) {
+    def tpe(implicit ctx: Context): TypeOrBounds = kernel.TypeOrBoundsTree_tpe(self)
   }
 
   // ----- TypeTrees ------------------------------------------------
 
-  trait TypeTreeAPI {
+  implicit class TypeTreeAPI(self: TypeTree) {
     /** Position in the source code */
-    def pos(implicit ctx: Context): Position
+    def pos(implicit ctx: Context): Position = kernel.TypeTree_pos(self)
 
-    def tpe(implicit ctx: Context): Type
-    def symbol(implicit ctx: Context): Symbol
+    /** Type of this type tree */
+    def tpe(implicit ctx: Context): Type = kernel.TypeTree_tpe(self)
+
+    /** Symbol of this type tree */
+    def symbol(implicit ctx: Context): Symbol = kernel.TypeTree_symbol(self)
   }
 
   val IsTypeTree: IsTypeTreeModule
@@ -53,9 +37,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Inferred]
     }
 
-    trait InferredAPI {
-    }
-
     /** TypeTree containing an inferred type */
     val Inferred: InferredModule
     abstract class InferredModule {
@@ -68,10 +49,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class IsIdentModule {
       /** Matches any Ident and returns it */
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Ident]
-    }
-
-    trait IdentAPI {
-      def name(implicit ctx: Context): String
     }
 
     val Ident: IdentModule
@@ -87,11 +64,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Select]
     }
 
-    trait SelectAPI {
-      def qualifier(implicit ctx: Context): Term
-      def name(implicit ctx: Context): String
-    }
-
     val Select: SelectModule
     abstract class SelectModule {
       def apply(qualifier: Term, name: String)(implicit ctx: Context): Select
@@ -103,11 +75,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class IsProjectionModule {
       /** Matches any Projection and returns it */
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Projection]
-    }
-
-    trait ProjectionAPI {
-      def qualifier(implicit ctx: Context): TypeTree
-      def name(implicit ctx: Context): String
     }
 
     val Projection: ProjectionModule
@@ -123,10 +90,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Singleton]
     }
 
-    trait SingletonAPI {
-      def ref(implicit ctx: Context): Term
-    }
-
     val Singleton: SingletonModule
     abstract class SingletonModule {
       def apply(ref: Term)(implicit ctx: Context): Singleton
@@ -138,11 +101,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class IsRefinedModule {
       /** Matches any Refined and returns it */
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Refined]
-    }
-
-    trait RefinedAPI {
-      def tpt(implicit ctx: Context): TypeTree
-      def refinements(implicit ctx: Context): List[Definition]
     }
 
     val Refined: RefinedModule
@@ -158,11 +116,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Applied]
     }
 
-    trait AppliedAPI {
-      def tpt(implicit ctx: Context): TypeTree
-      def args(implicit ctx: Context): List[TypeOrBoundsTree]
-    }
-
     val Applied: AppliedModule
     abstract class AppliedModule {
       def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied
@@ -174,11 +127,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class IsAnnotatedModule {
       /** Matches any Annotated and returns it */
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Annotated]
-    }
-
-    trait AnnotatedAPI {
-      def arg(implicit ctx: Context): TypeTree
-      def annotation(implicit ctx: Context): Term
     }
 
     val Annotated: AnnotatedModule
@@ -194,12 +142,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[MatchType]
     }
 
-    trait MatchTypeAPI {
-      def bound(implicit ctx: Context): Option[TypeTree]
-      def selector(implicit ctx: Context): TypeTree
-      def cases(implicit ctx: Context): List[TypeCaseDef]
-    }
-
     val MatchType: MatchTypeModule
     abstract class MatchTypeModule {
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType
@@ -211,10 +153,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class IsByNameModule {
       /** Matches any ByName and returns it */
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[ByName]
-    }
-
-    trait ByNameAPI {
-      def result(implicit ctx: Context): TypeTree
     }
 
     val ByName: ByNameModule
@@ -230,11 +168,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[LambdaTypeTree]
     }
 
-    trait LambdaTypeTreeAPI {
-      def tparams(implicit ctx: Context): List[TypeDef]
-      def body(implicit ctx: Context): TypeOrBoundsTree
-    }
-
     val LambdaTypeTree: LambdaTypeTreeModule
     abstract class LambdaTypeTreeModule {
       def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree
@@ -246,11 +179,6 @@ trait TypeOrBoundsTreeOps extends Core {
     abstract class IsTypeBindModule {
       /** Matches any TypeBind and returns it */
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBind]
-    }
-
-    trait TypeBindAPI {
-      def name(implicit ctx: Context): String
-      def body(implicit ctx: Context): TypeOrBoundsTree
     }
 
     val TypeBind: TypeBindModule
@@ -266,11 +194,6 @@ trait TypeOrBoundsTreeOps extends Core {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBlock]
     }
 
-    trait TypeBlockAPI {
-      def aliases(implicit ctx: Context): List[TypeDef]
-      def tpt(implicit ctx: Context): TypeTree
-    }
-
     val TypeBlock: TypeBlockModule
     abstract class TypeBlockModule {
       def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock
@@ -279,12 +202,70 @@ trait TypeOrBoundsTreeOps extends Core {
     }
   }
 
+  implicit class TypeTree_IdentAPI(self: TypeTree.Ident) {
+    def name(implicit ctx: Context): String = kernel.TypeTree_Ident_name(self)
+  }
+
+  implicit class TypeTree_SelectAPI(self: TypeTree.Select) {
+    def qualifier(implicit ctx: Context): Term = kernel.TypeTree_Select_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.TypeTree_Select_name(self)
+  }
+
+  implicit class TypeTree_ProjectionAPI(self: TypeTree.Projection) {
+    def qualifier(implicit ctx: Context): TypeTree = kernel.TypeTree_Projection_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.TypeTree_Projection_name(self)
+  }
+
+  implicit class TypeTree_SingletonAPI(self: TypeTree.Singleton) {
+    def ref(implicit ctx: Context): Term = kernel.TypeTree_Singleton_ref(self)
+  }
+
+  implicit class TypeTree_RefinedAPI(self: TypeTree.Refined) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.TypeTree_Refined_tpt(self)
+    def refinements(implicit ctx: Context): List[Definition] = kernel.TypeTree_Refined_refinements(self)
+  }
+
+  implicit class TypeTree_AppliedAPI(self: TypeTree.Applied) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.TypeTree_Applied_tpt(self)
+    def args(implicit ctx: Context): List[TypeOrBoundsTree] = kernel.TypeTree_Applied_args(self)
+  }
+
+  implicit class TypeTree_AnnotatedAPI(self: TypeTree.Annotated) {
+    def arg(implicit ctx: Context): TypeTree = kernel.TypeTree_Annotated_arg(self)
+    def annotation(implicit ctx: Context): Term = kernel.TypeTree_Annotated_annotation(self)
+  }
+
+  implicit class TypeTree_MatchTypeAPI(self: TypeTree.MatchType) {
+    def bound(implicit ctx: Context): Option[TypeTree] = kernel.TypeTree_MatchType_bound(self)
+    def selector(implicit ctx: Context): TypeTree = kernel.TypeTree_MatchType_selector(self)
+    def cases(implicit ctx: Context): List[TypeCaseDef] = kernel.TypeTree_MatchType_cases(self)
+  }
+
+  implicit class TypeTree_ByNameAPI(self: TypeTree.ByName) {
+    def result(implicit ctx: Context): TypeTree = kernel.TypeTree_ByName_result(self)
+  }
+
+  implicit class TypeTree_LambdaTypeTreeAPI(self: TypeTree.LambdaTypeTree) {
+    def tparams(implicit ctx: Context): List[TypeDef] = kernel.TypeTree_LambdaTypeTree_tparams(self)
+    def body(implicit ctx: Context): TypeOrBoundsTree = kernel.TypeTree_LambdaTypeTree_body(self)
+  }
+
+  implicit class TypeTree_TypeBindAPI(self: TypeTree.TypeBind) {
+    def name(implicit ctx: Context): String = kernel.TypeTree_TypeBind_name(self)
+    def body(implicit ctx: Context): TypeOrBoundsTree = kernel.TypeTree_TypeBind_body(self)
+  }
+
+  implicit class TypeTree_TypeBlockAPI(self: TypeTree.TypeBlock) {
+    def aliases(implicit ctx: Context): List[TypeDef] = kernel.TypeTree_TypeBlock_aliases(self)
+    def tpt(implicit ctx: Context): TypeTree = kernel.TypeTree_TypeBlock_tpt(self)
+  }
+
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  trait TypeBoundsTreeAPI {
-    def tpe(implicit ctx: Context): TypeBounds
-    def low(implicit ctx: Context): TypeTree
-    def hi(implicit ctx: Context): TypeTree
+  implicit class TypeBoundsTreeAPI(self: TypeBoundsTree) {
+    def tpe(implicit ctx: Context): TypeBounds = kernel.TypeBoundsTree_tpe(self)
+    def low(implicit ctx: Context): TypeTree = kernel.TypeBoundsTree_low(self)
+    def hi(implicit ctx: Context): TypeTree = kernel.TypeBoundsTree_hi(self)
   }
 
   val IsTypeBoundsTree: IsTypeBoundsTreeModule

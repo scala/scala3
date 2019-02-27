@@ -7,32 +7,6 @@ import dotty.tools.dotc.core.StdNames.nme
 
 trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with RootPositionImpl {
 
-  def ValueDeco(value: Value): Pattern.ValueAPI = new Pattern.ValueAPI {
-    def value(implicit ctx: Context): Term = value
-  }
-  def BindDeco(bind: Bind): Pattern.BindAPI = new Pattern.BindAPI {
-    def name(implicit ctx: Context): String = bind.name.toString
-    def pattern(implicit ctx: Context): Pattern = bind.body
-  }
-  def UnapplyDeco(unapply: Unapply): Pattern.UnapplyAPI = new Pattern.UnapplyAPI {
-    def fun(implicit ctx: Context): Term = unapply.fun
-    def implicits(implicit ctx: Context): List[Term] = unapply.implicits
-    def patterns(implicit ctx: Context): List[Pattern] = effectivePatterns(unapply.patterns)
-
-    private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
-      case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
-      case _ => patterns
-    }
-  }
-  def AlternativeDeco(alternatives: Alternatives): Pattern.AlternativesAPI = new Pattern.AlternativesAPI {
-    def patterns(implicit ctx: Context): List[Pattern] = alternatives.trees
-  }
-  def TypeTestDeco(typeTest: TypeTest): Pattern.TypeTestAPI = new Pattern.TypeTestAPI {
-    def tpt(implicit ctx: Context): TypeTree = typeTest.tpt
-  }
-
-  // ----- Patterns -------------------------------------------------
-
   def PatternDeco(pattern: Pattern): PatternAPI = new PatternAPI {
     def pos(implicit ctx: Context): Position = pattern.sourcePos
     def tpe(implicit ctx: Context): Type = pattern.tpe.stripTypeVar
@@ -96,7 +70,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with RootPositionImp
         withDefaultPos(ctx => tpd.cpy.UnApply(original)(fun, implicits, patterns)(ctx))
 
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
-        case IsUnapply(x) => Some((x.fun, x.implicits, UnapplyDeco(x).patterns))
+        case IsUnapply(x) => Some((x.fun, x.implicits, UnapplyAPI(x).patterns))
         case _ => None
       }
     }

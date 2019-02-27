@@ -1,183 +1,12 @@
 package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
-import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 
 trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with Helpers {
-
-  def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
-    def pos(implicit ctx: Context): Position = tree.sourcePos
-    def symbol(implicit ctx: Context): Symbol = tree.symbol
-  }
-
-  def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {
-    def pid(implicit ctx: Context): Term.Ref = pack.pid
-    def stats(implicit ctx: Context): List[Tree] = pack.stats
-  }
-
-  def ImportDeco(imp: Import): ImportAPI = new ImportAPI {
-    def impliedOnly: Boolean = imp.impliedOnly
-    def expr(implicit ctx: Context): Tree = imp.expr
-    def selectors(implicit ctx: Context): List[ImportSelector] = imp.selectors
-  }
-
-  def DefinitionDeco(definition: Definition): DefinitionAPI = new DefinitionAPI {
-    def name(implicit ctx: Context): String = definition.symbol.name.toString
-  }
-
-  def ClassDefDeco(cdef: ClassDef): ClassDefAPI = new ClassDefAPI {
-    private def rhs = cdef.rhs.asInstanceOf[tpd.Template]
-    def constructor(implicit ctx: Context): DefDef = rhs.constr
-    def parents(implicit ctx: Context): List[TermOrTypeTree] = rhs.parents
-    def derived(implicit ctx: Context): List[TypeTree] = rhs.derived.asInstanceOf[List[TypeTree]]
-    def self(implicit ctx: Context): Option[tpd.ValDef] = optional(rhs.self)
-    def body(implicit ctx: Context): List[Statement] = rhs.body
-    def symbol(implicit ctx: Context): ClassSymbol = cdef.symbol.asClass
-  }
-
-  def DefDefDeco(ddef: DefDef): DefDefAPI = new DefDefAPI {
-    def typeParams(implicit ctx: Context): List[TypeDef] = ddef.tparams
-    def paramss(implicit ctx: Context): List[List[ValDef]] = ddef.vparamss
-    def returnTpt(implicit ctx: Context): TypeTree = ddef.tpt
-    def rhs(implicit ctx: Context): Option[Tree] = optional(ddef.rhs)
-    def symbol(implicit ctx: Context): DefSymbol = ddef.symbol.asTerm
-  }
-
-  def ValDefDeco(vdef: ValDef): ValDefAPI = new ValDefAPI {
-    def tpt(implicit ctx: Context): TypeTree = vdef.tpt
-    def rhs(implicit ctx: Context): Option[Tree] = optional(vdef.rhs)
-    def symbol(implicit ctx: Context): ValSymbol = vdef.symbol.asTerm
-  }
-  def TypeDefDeco(tdef: TypeDef): TypeDefAPI = new TypeDefAPI {
-    def rhs(implicit ctx: Context): TypeOrBoundsTree = tdef.rhs
-    def symbol(implicit ctx: Context): TypeSymbol = tdef.symbol.asType
-  }
-
-  def PackageDefDeco(pdef: PackageDef): PackageDefAPI = new PackageDefAPI {
-
-    def owner(implicit ctx: Context): PackageDefinition = packageDefFromSym(pdef.symbol.owner)
-
-    def members(implicit ctx: Context): List[Statement] = {
-      if (pdef.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
-      else pdef.symbol.info.decls.iterator.map(definitionFromSym).toList
-    }
-
-    def symbol(implicit ctx: Context): PackageSymbol = pdef.symbol
-  }
-
-  def IdentDeco(x: Term.Ident): Term.IdentAPI = new Term.IdentAPI {
-    def name(implicit ctx: Context): String = x.name.show
-  }
-
-  def SelectDeco(x: Term.Select): Term.SelectAPI = new Term.SelectAPI {
-    def qualifier(implicit ctx: Context): Term = x.qualifier
-    def name(implicit ctx: Context): String = x.name.toString
-    def signature(implicit ctx: Context): Option[Signature] =
-      if (x.symbol.signature == core.Signature.NotAMethod) None
-      else Some(x.symbol.signature)
-  }
-
-  def LiteralDeco(x: Term.Literal): Term.LiteralAPI = new Term.LiteralAPI {
-    def constant(implicit ctx: Context): Constant = x.const
-  }
-
-  def ThisDeco(x: Term.This): Term.ThisAPI = new Term.ThisAPI {
-    def id(implicit ctx: Context): Option[Id] = optional(x.qual)
-  }
-
-  def NewDeco(x: Term.New): Term.NewAPI = new Term.NewAPI {
-    def tpt(implicit ctx: Context): TypeTree = x.tpt
-  }
-
-  def NamedArgDeco(x: Term.NamedArg): Term.NamedArgAPI = new Term.NamedArgAPI {
-    def name(implicit ctx: Context): String = x.name.toString
-    def value(implicit ctx: Context): Term = x.arg
-  }
-
-  def ApplyDeco(x: Term.Apply): Term.ApplyAPI = new Term.ApplyAPI {
-    def fun(implicit ctx: Context): Term = x.fun
-    def args(implicit ctx: Context): List[Term] = x.args
-  }
-
-  def TypeApplyDeco(x: Term.TypeApply): Term.TypeApplyAPI = new Term.TypeApplyAPI {
-    def fun(implicit ctx: Context): Term = x.fun
-    def args(implicit ctx: Context): List[TypeTree] = x.args
-  }
-
-  def SuperDeco(x: Term.Super): Term.SuperAPI = new Term.SuperAPI {
-    def qualifier(implicit ctx: Context): Term = x.qual
-    def id(implicit ctx: Context): Option[untpd.Ident] = optional(x.mix)
-  }
-
-  def TypedDeco(x: Term.Typed): Term.TypedAPI = new Term.TypedAPI {
-    def expr(implicit ctx: Context): Term = x.expr
-    def tpt(implicit ctx: Context): TypeTree = x.tpt
-  }
-
-  def AssignDeco(x: Term.Assign): Term.AssignAPI = new Term.AssignAPI {
-    def lhs(implicit ctx: Context): Term = x.lhs
-    def rhs(implicit ctx: Context): Term = x.rhs
-  }
-
-  def BlockDeco(x: Term.Block): Term.BlockAPI = new Term.BlockAPI {
-    def statements(implicit ctx: Context): List[Statement] = x.stats
-    def expr(implicit ctx: Context): Term = x.expr
-  }
-
-  def InlinedDeco(x: Term.Inlined): Term.InlinedAPI = new Term.InlinedAPI {
-    def call(implicit ctx: Context): Option[Term] = optional(x.call)
-    def bindings(implicit ctx: Context): List[Definition] = x.bindings
-    def body(implicit ctx: Context): Term = x.expansion
-  }
-
-  def LambdaDeco(x: Term.Lambda): Term.LambdaAPI = new Term.LambdaAPI {
-    def meth(implicit ctx: Context): Term = x.meth
-    def tptOpt(implicit ctx: Context): Option[TypeTree] = optional(x.tpt)
-  }
-
-  def IfDeco(x: Term.If): Term.IfAPI = new Term.IfAPI {
-    def cond(implicit ctx: Context): Term = x.cond
-    def thenp(implicit ctx: Context): Term = x.thenp
-    def elsep(implicit ctx: Context): Term = x.elsep
-  }
-
-  def MatchDeco(x: Term.Match): Term.MatchAPI = new Term.MatchAPI {
-    def scrutinee(implicit ctx: Context): Term = x.selector
-    def cases(implicit ctx: Context): List[tpd.CaseDef] = x.cases
-  }
-
-  def TryDeco(x: Term.Try): Term.TryAPI = new Term.TryAPI {
-    def body(implicit ctx: Context): Term = x.expr
-    def cases(implicit ctx: Context): List[CaseDef] = x.cases
-    def finalizer(implicit ctx: Context): Option[Term] = optional(x.finalizer)
-  }
-
-  def ReturnDeco(x: Term.Return): Term.ReturnAPI = new Term.ReturnAPI {
-    def expr(implicit ctx: Context): Term = x.expr
-  }
-
-  def RepeatedDeco(x: Term.Repeated): Term.RepeatedAPI = new Term.RepeatedAPI {
-    def elems(implicit ctx: Context): List[Term] = x.elems
-    def elemtpt(implicit ctx: Context): TypeTree = x.elemtpt
-  }
-
-  def SelectOuterDeco(x: Term.SelectOuter): Term.SelectOuterAPI = new Term.SelectOuterAPI {
-    def qualifier(implicit ctx: Context): Term = x.qualifier
-    def level(implicit ctx: Context): Int = {
-      val NameKinds.OuterSelectName(_, levels) = x.name
-      levels
-    }
-    def tpe(implicit ctx: Context): Type = x.tpe.stripTypeVar
-  }
-
-  def WhileDeco(x: Term.While): Term.WhileAPI = new Term.WhileAPI {
-    def cond(implicit ctx: Context): Term = x.cond
-    def body(implicit ctx: Context): Term = x.body
-  }
 
   // ----- Tree ----------------------------------------------------
 
@@ -353,14 +182,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
   // ----- Terms ----------------------------------------------------
 
-  def TermDeco(term: Term): TermAPI = new TermAPI {
-    import tpd._
-    def pos(implicit ctx: Context): Position = term.sourcePos
-    def tpe(implicit ctx: Context): Type = term.tpe
-    def underlyingArgument(implicit ctx: Context): Term = term.underlyingArgument
-    def underlying(implicit ctx: Context): Term = term.underlying
-  }
-
   object IsTerm extends IsTermModule {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
       if (tree.isTerm) Some(tree) else None
@@ -484,11 +305,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case x: tpd.New => Some(x.tpt)
         case _ => None
       }
-    }
-
-    def NamedArgDeco(x: Term.NamedArg): Term.NamedArgAPI = new Term.NamedArgAPI {
-      def name(implicit ctx: Context): String = x.name.toString
-      def value(implicit ctx: Context): Term = x.arg
     }
 
     object IsNamedArg extends IsNamedArgModule {

@@ -6,66 +6,83 @@ trait SymbolOps extends Core {
 
   // Symbol
 
-  trait SymbolAPI {
+  implicit class SymbolDeco(self: Symbol) {
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined. */
-    def owner(implicit ctx: Context): Symbol
+    def owner(implicit ctx: Context): Symbol = kernel.Symbol_owner(self)
 
     /** Flags of this symbol */
-    def flags(implicit ctx: Context): Flags
-
-    def isLocalDummy(implicit ctx: Context): Boolean
-    def isRefinementClass(implicit ctx: Context): Boolean
-    def isAliasType(implicit ctx: Context): Boolean
-    def isAnonymousClass(implicit ctx: Context): Boolean
-    def isAnonymousFunction(implicit ctx: Context): Boolean
-    def isAbstractType(implicit ctx: Context): Boolean
-    def isClassConstructor(implicit ctx: Context): Boolean
+    def flags(implicit ctx: Context): Flags = kernel.Symbol_flags(self)
 
     /** This symbol is private within the resulting type. */
-    def privateWithin(implicit ctx: Context): Option[Type]
+    def privateWithin(implicit ctx: Context): Option[Type] = kernel.Symbol_privateWithin(self)
 
     /** This symbol is protected within the resulting type. */
-    def protectedWithin(implicit ctx: Context): Option[Type]
+    def protectedWithin(implicit ctx: Context): Option[Type] = kernel.Symbol_protectedWithin(self)
 
     /** The name of this symbol. */
-    def name(implicit ctx: Context): String
+    def name(implicit ctx: Context): String = kernel.Symbol_name(self)
 
     /** The full name of this symbol up to the root package. */
-    def fullName(implicit ctx: Context): String
+    def fullName(implicit ctx: Context): String = kernel.Symbol_fullName(self)
 
     /** The position of this symbol */
-    def pos(implicit ctx: Context): Position
+    def pos(implicit ctx: Context): Position = kernel.Symbol_pos(self)
+
+    def localContext(implicit ctx: Context): Context = kernel.Symbol_localContext(self)
 
     /** The comment for this symbol, if any */
-    def comment(implicit ctx: Context): Option[Comment]
-
-    def localContext(implicit ctx: Context): Context
+    def comment(implicit ctx: Context): Option[Comment] = kernel.Symbol_comment(self)
 
     /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safly check and cast to PackageSymbol */
-    def asPackage(implicit ctx: Context): PackageSymbol
+    def asPackage(implicit ctx: Context): PackageSymbol = self match {
+      case IsPackageSymbol(self) => self
+      case _ => throw new Exception("not a PackageSymbol")
+    }
 
     /** Unsafe cast as to ClassSymbol. Use IsClassSymbol to safly check and cast to ClassSymbol */
-    def asClass(implicit ctx: Context): ClassSymbol
+    def asClass(implicit ctx: Context): ClassSymbol = self match {
+      case IsClassSymbol(self) => self
+      case _ => throw new Exception("not a ClassSymbol")
+    }
 
     /** Unsafe cast as to DefSymbol. Use IsDefSymbol to safly check and cast to DefSymbol */
-    def asDef(implicit ctx: Context): DefSymbol
+    def asDef(implicit ctx: Context): DefSymbol = self match {
+      case IsDefSymbol(self) => self
+      case _ => throw new Exception("not a DefSymbol")
+    }
 
     /** Unsafe cast as to ValSymbol. Use IsValSymbol to safly check and cast to ValSymbol */
-    def asVal(implicit ctx: Context): ValSymbol
+    def asVal(implicit ctx: Context): ValSymbol = self match {
+      case IsValSymbol(self) => self
+      case _ => throw new Exception("not a ValSymbol")
+    }
 
     /** Unsafe cast as to TypeSymbol. Use IsTypeSymbol to safly check and cast to TypeSymbol */
-    def asType(implicit ctx: Context): TypeSymbol
+    def asType(implicit ctx: Context): TypeSymbol = self match {
+      case IsTypeSymbol(self) => self
+      case _ => throw new Exception("not a TypeSymbol")
+    }
 
     /** Unsafe cast as to BindSymbol. Use IsBindSymbol to safly check and cast to BindSymbol */
-    def asBind(implicit ctx: Context): BindSymbol
+    def asBind(implicit ctx: Context): BindSymbol = self match {
+      case IsBindSymbol(self) => self
+      case _ => throw new Exception("not a BindSymbol")
+    }
 
     /** Annotations attached to this symbol */
-    def annots(implicit ctx: Context): List[Term]
+    def annots(implicit ctx: Context): List[Term] = kernel.Symbol_annots(self)
 
-    def isDefinedInCurrentRun(implicit ctx: Context): Boolean
+    def isDefinedInCurrentRun(implicit ctx: Context): Boolean = kernel.Symbol_isDefinedInCurrentRun(self)
+
+    def isLocalDummy(implicit ctx: Context): Boolean = kernel.Symbol_isLocalDummy(self)
+    def isRefinementClass(implicit ctx: Context): Boolean = kernel.Symbol_isRefinementClass(self)
+    def isAliasType(implicit ctx: Context): Boolean = kernel.Symbol_isAliasType(self)
+    def isAnonymousClass(implicit ctx: Context): Boolean = kernel.Symbol_isAnonymousClass(self)
+    def isAnonymousFunction(implicit ctx: Context): Boolean = kernel.Symbol_isAnonymousFunction(self)
+    def isAbstractType(implicit ctx: Context): Boolean = kernel.Symbol_isAbstractType(self)
+    def isClassConstructor(implicit ctx: Context): Boolean = kernel.Symbol_isClassConstructor(self)
   }
-  implicit def SymbolDeco(symbol: Symbol): SymbolAPI
 
   // PackageSymbol
 

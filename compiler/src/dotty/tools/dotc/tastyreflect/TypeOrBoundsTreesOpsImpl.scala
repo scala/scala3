@@ -8,79 +8,6 @@ import dotty.tools.dotc.core.{Contexts, Types}
 
 trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with RootPositionImpl {
 
-  def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
-    def pos(implicit ctx: Context): Position = tpt.sourcePos
-    def symbol(implicit ctx: Context): Symbol = tpt.symbol
-    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
-  }
-
-  def InferredDeco(x: TypeTree.Inferred): TypeTree.InferredAPI = new TypeTree.InferredAPI {
-  }
-
-  def TypeIdentDeco(x: TypeTree.Ident): TypeTree.IdentAPI = new TypeTree.IdentAPI {
-    def name(implicit ctx: Contexts.Context): String = x.name.toString
-  }
-
-  def TypeSelectDeco(x: TypeTree.Select): TypeTree.SelectAPI = new TypeTree.SelectAPI {
-    def qualifier(implicit ctx: Contexts.Context): Term = x.qualifier
-    def name(implicit ctx: Contexts.Context): String = x.name.toString
-  }
-
-  def ProjectionDeco(x: TypeTree.Projection): TypeTree.ProjectionAPI = new TypeTree.ProjectionAPI {
-    def qualifier(implicit ctx: Contexts.Context): TypeTree = x.qualifier
-    def name(implicit ctx: Contexts.Context): String = x.name.toString
-  }
-
-  def SingletonDeco(x: TypeTree.Singleton): TypeTree.SingletonAPI = new TypeTree.SingletonAPI {
-    def ref(implicit ctx: Contexts.Context): Term = x.ref
-  }
-
-  def RefinedDeco(x: TypeTree.Refined): TypeTree.RefinedAPI = new TypeTree.RefinedAPI {
-    def tpt(implicit ctx: Contexts.Context): TypeTree = x.tpt
-    def refinements(implicit ctx: Contexts.Context): List[Definition] = x.refinements
-  }
-
-  def AppliedDeco(x: TypeTree.Applied): TypeTree.AppliedAPI = new TypeTree.AppliedAPI {
-    def tpt(implicit ctx: Contexts.Context): TypeTree = x.tpt
-    def args(implicit ctx: Contexts.Context): List[TypeOrBoundsTree] = x.args
-  }
-
-  def AnnotatedDeco(x: TypeTree.Annotated): TypeTree.AnnotatedAPI = new TypeTree.AnnotatedAPI {
-    def arg(implicit ctx: Contexts.Context): TypeTree = x.arg
-    def annotation(implicit ctx: Contexts.Context): Term = x.annot
-  }
-
-  def MatchTypeTreeDeco(x: TypeTree.MatchType): TypeTree.MatchTypeAPI = new TypeTree.MatchTypeAPI {
-    def bound(implicit ctx: Contexts.Context): Option[TypeTree] = if (x.bound == tpd.EmptyTree) None else Some(x.bound)
-    def selector(implicit ctx: Contexts.Context): TypeTree = x.selector
-    def cases(implicit ctx: Contexts.Context): List[CaseDef] = x.cases
-  }
-
-  def ByNameDeco(x: TypeTree.ByName): TypeTree.ByNameAPI = new TypeTree.ByNameAPI {
-    def result(implicit ctx: Contexts.Context): TypeTree = x.result
-  }
-
-  def LambdaTypeTreeDeco(x: TypeTree.LambdaTypeTree): TypeTree.LambdaTypeTreeAPI = new TypeTree.LambdaTypeTreeAPI {
-    def tparams(implicit ctx: Contexts.Context): List[TypeDef] = x.tparams
-    def body(implicit ctx: Contexts.Context): TypeOrBoundsTree = x.body
-  }
-
-  def TypeBindDeco(x: TypeTree.TypeBind): TypeTree.TypeBindAPI = new TypeTree.TypeBindAPI {
-    def name(implicit ctx: Contexts.Context): String = x.name.toString
-    def body(implicit ctx: Contexts.Context): TypeOrBoundsTree = x.body
-  }
-
-  def TypeBlockDeco(x: TypeTree.TypeBlock): TypeTree.TypeBlockAPI = new TypeTree.TypeBlockAPI {
-    def aliases(implicit ctx: Contexts.Context): List[TypeDef] = x.stats.map { case alias: TypeDef => alias }
-    def tpt(implicit ctx: Contexts.Context): TypeTree = x.expr
-  }
-
-  // ----- TypeOrBoundsTree ------------------------------------------------
-
-  def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): TypeOrBoundsTreeAPI = new TypeOrBoundsTreeAPI {
-    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
-  }
-
   // ----- TypeTrees ------------------------------------------------
 
   object IsTypeTree extends IsTypeTreeModule {
@@ -343,12 +270,6 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
-
-  def TypeBoundsTreeDeco(bounds: TypeBoundsTree): TypeBoundsTreeAPI = new TypeBoundsTreeAPI {
-    def tpe(implicit ctx: Context): TypeBounds = bounds.tpe.asInstanceOf[Types.TypeBounds]
-    def low(implicit ctx: Context): TypeTree = bounds.lo
-    def hi(implicit ctx: Context): TypeTree = bounds.hi
-  }
 
   object IsTypeBoundsTree extends IsTypeBoundsTreeModule {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] = x match {

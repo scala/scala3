@@ -4,12 +4,6 @@ import dotty.tools.dotc.ast.tpd
 
 trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with CoreImpl with Helpers {
 
-  def CaseDefDeco(caseDef: CaseDef): CaseDefAPI = new CaseDefAPI {
-    def pattern(implicit ctx: Context): Pattern = caseDef.pat
-    def guard(implicit ctx: Context): Option[Term] = optional(caseDef.guard)
-    def rhs(implicit ctx: Context): Term = caseDef.body
-  }
-
   object CaseDef extends CaseDefModule {
     def apply(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef =
       tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), body)
@@ -18,11 +12,6 @@ trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with CoreImpl with H
       tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
     def unapply(x: CaseDef): Some[(Pattern, Option[Term], Term)] = Some(x.pat, optional(x.guard), x.body)
-  }
-
-  def TypeCaseDefDeco(caseDef: TypeCaseDef): TypeCaseDefAPI = new TypeCaseDefAPI {
-    def pattern(implicit ctx: Context): Pattern = caseDef.pat
-    def rhs(implicit ctx: Context): Term = caseDef.body
   }
 
   object TypeCaseDef extends TypeCaseDefModule {

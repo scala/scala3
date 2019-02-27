@@ -9,12 +9,14 @@ trait SignatureOps extends Core {
     def unapply(sig: Signature)(implicit ctx: Context): Option[(List[String], String)]
   }
 
-  trait SignatureAPI {
-    /** The (JVM) erased signatures of the parameters. */
-    def paramSigs: List[String]
-    /** The (JVM) erased result type. */
-    def resultSig: String
+  implicit class SignatureAPI(sig: Signature) {
+
+    /** The (JVM) erased signatures of the parameters */
+    def paramSigs: List[String]= kernel.Signature_paramSigs(sig)
+
+    /** The (JVM) erased result type */
+    def resultSig: String = kernel.Signature_resultSig(sig)
+
   }
-  implicit def SignatureDeco(sig: Signature): SignatureAPI
 
 }

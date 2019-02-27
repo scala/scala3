@@ -5,10 +5,6 @@ import dotty.tools.dotc.core.Constants
 
 trait ConstantOpsImpl extends scala.tasty.reflect.ConstantOps with CoreImpl {
 
-  def ConstantDeco(const: Constant): ConstantAPI = new ConstantAPI {
-    def value: Any = const.value
-  }
-
   object Constant extends ConstantModule {
 
     object Unit extends UnitModule {

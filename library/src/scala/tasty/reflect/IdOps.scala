@@ -3,12 +3,15 @@ package reflect
 
 trait IdOps extends Core {
 
-  trait IdAPI {
+  implicit class IdAPI(id: Id) {
+
     /** Position in the source code */
-    def pos(implicit ctx: Context): Position
-    def name(implicit ctx: Context): String
+    def pos(implicit ctx: Context): Position = kernel.Id_pos(id)
+
+    /** Name of the identifier */
+    def name(implicit ctx: Context): String = kernel.Id_name(id)
+
   }
-  implicit def IdDeco(id: Id): IdAPI
 
   val Id: IdModule
   abstract class IdModule {

@@ -2,49 +2,18 @@ package scala.tasty
 package reflect
 
 trait TreeOps extends Core {
-  // Decorators
 
-  implicit def TreeDeco(tree: Tree): TreeAPI
-  implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
-  implicit def ImportDeco(imp: Import): ImportAPI
-  implicit def DefinitionDeco(definition: Definition): DefinitionAPI
-  implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
-  implicit def DefDefDeco(ddef: DefDef): DefDefAPI
-  implicit def ValDefDeco(vdef: ValDef): ValDefAPI
-  implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
-  implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
-  implicit def TermDeco(term: Term): TermAPI
-  implicit def IdentDeco(ident: Term.Ident): Term.IdentAPI
-  implicit def SelectDeco(select: Term.Select): Term.SelectAPI
-  implicit def LiteralDeco(x: Term.Literal): Term.LiteralAPI
-  implicit def ThisDeco(x: Term.This): Term.ThisAPI
-  implicit def NewDeco(x: Term.New): Term.NewAPI
-  implicit def NamedArgDeco(x: Term.NamedArg): Term.NamedArgAPI
-  implicit def ApplyDeco(x: Term.Apply): Term.ApplyAPI
-  implicit def TypeApplyDeco(x: Term.TypeApply): Term.TypeApplyAPI
-  implicit def SuperDeco(x: Term.Super): Term.SuperAPI
-  implicit def TypedDeco(x: Term.Typed): Term.TypedAPI
-  implicit def AssignDeco(x: Term.Assign): Term.AssignAPI
-  implicit def BlockDeco(x: Term.Block): Term.BlockAPI
-  implicit def LambdaDeco(x: Term.Lambda): Term.LambdaAPI
-  implicit def IfDeco(x: Term.If): Term.IfAPI
-  implicit def MatchDeco(x: Term.Match): Term.MatchAPI
-  implicit def TryDeco(x: Term.Try): Term.TryAPI
-  implicit def ReturnDeco(x: Term.Return): Term.ReturnAPI
-  implicit def RepeatedDeco(x: Term.Repeated): Term.RepeatedAPI
-  implicit def InlinedDeco(x: Term.Inlined): Term.InlinedAPI
-  implicit def SelectOuterDeco(x: Term.SelectOuter): Term.SelectOuterAPI
-  implicit def WhileDeco(x: Term.While): Term.WhileAPI
+  // Decorators
 
   implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree
 
   // ----- Tree -----------------------------------------------------
 
-  trait TreeAPI {
+  implicit class TreeAPI(self: Tree) {
     /** Position in the source code */
-    def pos(implicit ctx: Context): Position
+    def pos(implicit ctx: Context): Position = kernel.Tree_pos(self)
 
-    def symbol(implicit ctx: Context): Symbol
+    def symbol(implicit ctx: Context): Symbol = kernel.Tree_symbol(self)
   }
 
   val IsPackageClause: IsPackageClauseModule
@@ -59,9 +28,9 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term.Ref, List[Tree])]
   }
 
-  trait PackageClauseAPI {
-    def pid(implicit ctx: Context): Term.Ref
-    def stats(implicit ctx: Context): List[Tree]
+  implicit class PackageClauseAPI(self: PackageClause) {
+    def pid(implicit ctx: Context): Term.Ref = kernel.PackageClause_pid(self)
+    def stats(implicit ctx: Context): List[Tree] = kernel.PackageClause_stats(self)
   }
 
   val IsImport: IsImportModule
@@ -76,10 +45,10 @@ trait TreeOps extends Core {
     def unapply(imp: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])]
   }
 
-  trait ImportAPI {
-    def impliedOnly: Boolean
-    def expr(implicit ctx: Context): Term
-    def selectors(implicit ctx: Context): List[ImportSelector]
+  implicit class ImportAPI(self: Import)  {
+    def impliedOnly: Boolean = kernel.Import_impliedOnly(self)
+    def expr(implicit ctx: Context): Term = kernel.Import_expr(self)
+    def selectors(implicit ctx: Context): List[ImportSelector] = kernel.Import_selectors(self)
   }
 
   val IsStatement: IsStatementModule
@@ -95,8 +64,8 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Definition]
   }
 
-  trait DefinitionAPI {
-    def name(implicit ctx: Context): String
+  implicit class DefinitionAPI(self: Definition) {
+    def name(implicit ctx: Context): String = kernel.Definition_name(self)
   }
 
   // ClassDef
@@ -113,14 +82,13 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])]
   }
 
-  trait ClassDefAPI {
-    def constructor(implicit ctx: Context): DefDef
-    def parents(implicit ctx: Context): List[TermOrTypeTree]
-    def derived(implicit ctx: Context): List[TypeTree]
-    def self(implicit ctx: Context): Option[ValDef]
-    def body(implicit ctx: Context): List[Statement]
-
-    def symbol(implicit ctx: Context): ClassSymbol
+  implicit class ClassDefAPI(self: ClassDef) {
+    def constructor(implicit ctx: Context): DefDef = kernel.ClassDef_constructor(self)
+    def parents(implicit ctx: Context): List[TermOrTypeTree] = kernel.ClassDef_parents(self)
+    def derived(implicit ctx: Context): List[TypeTree] = kernel.ClassDef_derived(self)
+    def self(implicit ctx: Context): Option[ValDef] = kernel.ClassDef_self(self)
+    def body(implicit ctx: Context): List[Statement] = kernel.ClassDef_body(self)
+    def symbol(implicit ctx: Context): ClassSymbol = kernel.ClassDef_symbol(self)
   }
 
   // DefDef
@@ -137,13 +105,12 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
 
-  trait DefDefAPI {
-    def typeParams(implicit ctx: Context): List[TypeDef]
-    def paramss(implicit ctx: Context): List[List[ValDef]]
-    def returnTpt(implicit ctx: Context): TypeTree
-    def rhs(implicit ctx: Context): Option[Term]
-
-    def symbol(implicit ctx: Context): DefSymbol
+  implicit class DefDefAPI(self: DefDef) {
+    def typeParams(implicit ctx: Context): List[TypeDef] = kernel.DefDef_typeParams(self)
+    def paramss(implicit ctx: Context): List[List[ValDef]] = kernel.DefDef_paramss(self)
+    def returnTpt(implicit ctx: Context): TypeTree = kernel.DefDef_returnTpt(self)
+    def rhs(implicit ctx: Context): Option[Term] = kernel.DefDef_rhs(self)
+    def symbol(implicit ctx: Context): DefSymbol = kernel.DefDef_symbol(self)
   }
 
   // ValDef
@@ -160,11 +127,10 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
   }
 
-  trait ValDefAPI {
-    def tpt(implicit ctx: Context): TypeTree
-    def rhs(implicit ctx: Context): Option[Term]
-
-    def symbol(implicit ctx: Context): ValSymbol
+  implicit class ValDefAPI(self: ValDef) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.ValDef_tpt(self)
+    def rhs(implicit ctx: Context): Option[Term] = kernel.ValDef_rhs(self)
+    def symbol(implicit ctx: Context): ValSymbol = kernel.ValDef_symbol(self)
   }
 
   // TypeDef
@@ -181,9 +147,9 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
   }
 
-  trait TypeDefAPI {
-    def rhs(implicit ctx: Context): TypeOrBoundsTree
-    def symbol(implicit ctx: Context): TypeSymbol
+  implicit class TypeDefAPI(self: TypeDef) {
+    def rhs(implicit ctx: Context): TypeOrBoundsTree = kernel.TypeDef_rhs(self)
+    def symbol(implicit ctx: Context): TypeSymbol = kernel.TypeDef_symbol(self)
   }
 
   // PackageDef
@@ -193,10 +159,10 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef]
   }
 
-  trait PackageDefAPI {
-    def owner(implicit ctx: Context): PackageDef
-    def members(implicit ctx: Context): List[Statement]
-    def symbol(implicit ctx: Context): PackageSymbol
+  implicit class PackageDefAPI(self: PackageDef) {
+    def owner(implicit ctx: Context): PackageDef = kernel.PackageDef_owner(self)
+    def members(implicit ctx: Context): List[Statement] = kernel.PackageDef_members(self)
+    def symbol(implicit ctx: Context): PackageSymbol = kernel.PackageDef_symbol(self)
   }
 
   val PackageDef: PackageDefModule
@@ -206,11 +172,11 @@ trait TreeOps extends Core {
 
   // ----- Terms ----------------------------------------------------
 
-  trait TermAPI {
-    def tpe(implicit ctx: Context): Type
-    def pos(implicit ctx: Context): Position
-    def underlyingArgument(implicit ctx: Context): Term
-    def underlying(implicit ctx: Context): Term
+  implicit class TermAPI(self: Term) {
+    def tpe(implicit ctx: Context): Type = kernel.Term_tpe(self)
+    def pos(implicit ctx: Context): Position = kernel.Term_pos(self)
+    def underlyingArgument(implicit ctx: Context): Term = kernel.Term_underlyingArgument(self)
+    def underlying(implicit ctx: Context): Term = kernel.Term_underlying(self)
   }
 
   val IsTerm: IsTermModule
@@ -229,10 +195,6 @@ trait TreeOps extends Core {
     abstract class IsIdentModule {
       /** Matches any Ident and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Ident]
-    }
-
-    trait IdentAPI {
-      def name(implicit ctx: Context): String
     }
 
     val Ref: RefModule
@@ -263,12 +225,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Select]
     }
 
-    trait SelectAPI {
-      def qualifier(implicit ctx: Context): Term
-      def name(implicit ctx: Context): String
-      def signature(implicit ctx: Context): Option[Signature]
-    }
-
     /** Scala term selection */
     val Select: SelectModule
     abstract class SelectModule {
@@ -295,10 +251,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Literal]
     }
 
-    trait LiteralAPI {
-      def constant(implicit ctx: Context): Constant
-    }
-
     /** Scala literal constant */
     val Literal: LiteralModule
     abstract class LiteralModule {
@@ -317,10 +269,6 @@ trait TreeOps extends Core {
     abstract class IsThisModule {
       /** Matches any This and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[This]
-    }
-
-    trait ThisAPI {
-      def id(implicit ctx: Context): Option[Id]
     }
 
     /** Scala `this` or `this[id]` */
@@ -343,10 +291,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[New]
     }
 
-    trait NewAPI {
-      def tpt(implicit ctx: Context): TypeTree
-    }
-
     /** Scala `new` */
     val New: NewModule
     abstract class NewModule {
@@ -365,11 +309,6 @@ trait TreeOps extends Core {
     abstract class IsNamedArgModule {
       /** Matches any NamedArg and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[NamedArg]
-    }
-
-    trait NamedArgAPI {
-      def name(implicit ctx: Context): String
-      def value(implicit ctx: Context): Term
     }
 
     /** Scala named argument `x = y` in argument position */
@@ -392,11 +331,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Apply]
     }
 
-    trait ApplyAPI {
-      def fun(implicit ctx: Context): Term
-      def args(implicit ctx: Context): List[Term]
-    }
-
     /** Scala parameter application */
     val Apply: ApplyModule
     abstract class ApplyModule {
@@ -415,11 +349,6 @@ trait TreeOps extends Core {
     abstract class IsTypeApplyModule {
       /** Matches any TypeApply and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[TypeApply]
-    }
-
-    trait TypeApplyAPI {
-      def fun(implicit ctx: Context): Term
-      def args(implicit ctx: Context): List[TypeTree]
     }
 
     /** Scala type parameter application */
@@ -442,11 +371,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Super]
     }
 
-    trait SuperAPI {
-      def qualifier(implicit ctx: Context): Term
-      def id(implicit ctx: Context): Option[Id]
-    }
-
     /** Scala `x.super` or `x.super[id]` */
     val Super: SuperModule
     abstract class SuperModule {
@@ -465,11 +389,6 @@ trait TreeOps extends Core {
     abstract class IsTypedModule {
       /** Matches any Typed and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Typed]
-    }
-
-    trait TypedAPI {
-      def expr(implicit ctx: Context): Term
-      def tpt(implicit ctx: Context): Term
     }
 
     /** Scala ascription `x: T` */
@@ -492,11 +411,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Assign]
     }
 
-    trait AssignAPI {
-      def lhs(implicit ctx: Context): Term
-      def rhs(implicit ctx: Context): Term
-    }
-
     /** Scala assign `x = y` */
     val Assign: AssignModule
     abstract class AssignModule {
@@ -515,11 +429,6 @@ trait TreeOps extends Core {
     abstract class IsBlockModule {
       /** Matches any Block and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Block]
-    }
-
-    trait BlockAPI {
-      def statements(implicit ctx: Context): List[Statement]
-      def expr(implicit ctx: Context): Term
     }
 
     /** Scala code block `{ stat0; ...; statN; expr }` term */
@@ -542,11 +451,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda]
     }
 
-    trait LambdaAPI {
-      def meth(implicit ctx: Context): Term
-      def tptOpt(implicit ctx: Context): Option[TypeTree]
-    }
-
     val Lambda: LambdaModule
     abstract class LambdaModule {
 
@@ -562,12 +466,6 @@ trait TreeOps extends Core {
     abstract class IsIfModule {
       /** Matches any If and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[If]
-    }
-
-    trait IfAPI {
-      def cond(implicit ctx: Context): Term
-      def thenp(implicit ctx: Context): Term
-      def elsep(implicit ctx: Context): Term
     }
 
     /** Scala `if`/`else` term */
@@ -590,11 +488,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Match]
     }
 
-    trait MatchAPI {
-      def scrutinee(implicit ctx: Context): Term
-      def cases(implicit ctx: Context): List[CaseDef]
-    }
-
     /** Scala `match` term */
     val Match: MatchModule
     abstract class MatchModule {
@@ -613,12 +506,6 @@ trait TreeOps extends Core {
     abstract class IsTryModule {
       /** Matches any Try and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Try]
-    }
-
-    trait TryAPI {
-      def body(implicit ctx: Context): Term
-      def cases(implicit ctx: Context): List[CaseDef]
-      def finalizer(implicit ctx: Context): Option[Term]
     }
 
     /** Scala `try`/`catch`/`finally` term */
@@ -641,10 +528,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Return]
     }
 
-    trait ReturnAPI {
-      def expr(implicit ctx: Context): Term
-    }
-
     /** Scala local `return` */
     val Return: ReturnModule
     abstract class ReturnModule {
@@ -665,11 +548,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated]
     }
 
-    trait RepeatedAPI {
-      def elems(implicit ctx: Context): List[Term]
-      def elemtpt(implicit ctx: Context): TypeTree
-    }
-
     val Repeated: RepeatedModule
     abstract class RepeatedModule {
 
@@ -685,12 +563,6 @@ trait TreeOps extends Core {
     abstract class IsInlinedModule {
       /** Matches any Inlined and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Inlined]
-    }
-
-    trait InlinedAPI {
-      def call(implicit ctx: Context): Option[TermOrTypeTree]
-      def bindings(implicit ctx: Context): List[Definition]
-      def body(implicit ctx: Context): Term
     }
 
     val Inlined: InlinedModule
@@ -710,12 +582,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter]
     }
 
-    trait SelectOuterAPI {
-      def qualifier(implicit ctx: Context): Term
-      def level(implicit ctx: Context): Int
-      def tpe(implicit ctx: Context): Type
-    }
-
     val SelectOuter: SelectOuterModule
     abstract class SelectOuterModule {
 
@@ -733,11 +599,6 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[While]
     }
 
-    trait WhileAPI {
-      def cond(implicit ctx: Context): Term
-      def body(implicit ctx: Context): Term
-    }
-
     val While: WhileModule
     abstract class WhileModule {
 
@@ -750,6 +611,111 @@ trait TreeOps extends Core {
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
 
     }
+  }
+
+  implicit class Term_IdentAPI(self: Term.Ident) {
+    def name(implicit ctx: Context): String = kernel.Term_Ident_name(self)
+  }
+
+  implicit class Term_SelectAPI(self: Term.Select) {
+    def qualifier(implicit ctx: Context): Term = kernel.Term_Select_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.Term_Select_name(self)
+    def signature(implicit ctx: Context): Option[Signature] = kernel.Term_Select_signature(self)
+  }
+
+  implicit class Term_LiteralAPI(self: Term.Literal) {
+    def constant(implicit ctx: Context): Constant = kernel.Term_Literal_constant(self)
+  }
+
+  implicit class Term_ThisAPI(self: Term.This) {
+    def id(implicit ctx: Context): Option[Id] = kernel.Term_This_id(self)
+  }
+
+  implicit class Term_NewAPI(self: Term.New) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.Term_New_tpt(self)
+  }
+
+  implicit class Term_NamedArgAPI(self: Term.NamedArg) {
+    def name(implicit ctx: Context): String = kernel.Term_NamedArg_name(self)
+    def value(implicit ctx: Context): Term = kernel.Term_NamedArg_value(self)
+  }
+
+  implicit class Term_ApplyAPI(self: Term.Apply) {
+    def fun(implicit ctx: Context): Term = kernel.Term_Apply_fun(self)
+    def args(implicit ctx: Context): List[Term] = kernel.Term_Apply_args(self)
+  }
+
+  implicit class Term_TypeApplyAPI(self: Term.TypeApply) {
+    def fun(implicit ctx: Context): Term = kernel.Term_TypeApply_fun(self)
+    def args(implicit ctx: Context): List[TypeTree] = kernel.Term_TypeApply_args(self)
+  }
+
+  implicit class Term_SuperAPI(self: Term.Super) {
+    def qualifier(implicit ctx: Context): Term = kernel.Term_Super_qualifier(self)
+    def id(implicit ctx: Context): Option[Id] = kernel.Term_Super_id(self)
+  }
+
+  implicit class Term_TypedAPI(self: Term.Typed) {
+    def expr(implicit ctx: Context): Term = kernel.Term_Typed_expr(self)
+    def tpt(implicit ctx: Context): TypeTree = kernel.Term_Typed_tpt(self)
+  }
+
+  implicit class Term_AssignAPI(self: Term.Assign) {
+    def lhs(implicit ctx: Context): Term = kernel.Term_Assign_lhs(self)
+    def rhs(implicit ctx: Context): Term = kernel.Term_Assign_rhs(self)
+  }
+
+  implicit class Term_BlockAPI(self: Term.Block) {
+    def statements(implicit ctx: Context): List[Statement] = kernel.Term_Block_statements(self)
+    def expr(implicit ctx: Context): Term = kernel.Term_Block_expr(self)
+  }
+
+  implicit class Term_LambdaAPI(self: Term.Lambda) {
+    def meth(implicit ctx: Context): Term = kernel.Term_Lambda_meth(self)
+    def tptOpt(implicit ctx: Context): Option[TypeTree] = kernel.Term_Lambda_tptOpt(self)
+  }
+
+  implicit class Term_IfAPI(self: Term.If) {
+    def cond(implicit ctx: Context): Term = kernel.Term_If_cond(self)
+    def thenp(implicit ctx: Context): Term = kernel.Term_If_thenp(self)
+    def elsep(implicit ctx: Context): Term = kernel.Term_If_elsep(self)
+  }
+
+  implicit class Term_MatchAPI(self: Term.Match) {
+    def scrutinee(implicit ctx: Context): Term = kernel.Term_Match_scrutinee(self)
+    def cases(implicit ctx: Context): List[CaseDef] = kernel.Term_Match_cases(self)
+  }
+
+  implicit class Term_TryAPI(self: Term.Try) {
+    def body(implicit ctx: Context): Term = kernel.Term_Try_body(self)
+    def cases(implicit ctx: Context): List[CaseDef] = kernel.Term_Try_cases(self)
+    def finalizer(implicit ctx: Context): Option[Term] = kernel.Term_Try_finalizer(self)
+  }
+
+  implicit class Term_ReturnAPI(self: Term.Return) {
+    def expr(implicit ctx: Context): Term = kernel.Term_Return_expr(self)
+  }
+
+  implicit class Term_RepeatedAPI(self: Term.Repeated) {
+    def elems(implicit ctx: Context): List[Term] = kernel.Term_Repeated_elems(self)
+    def elemtpt(implicit ctx: Context): TypeTree = kernel.Term_Repeated_elemtpt(self)
+  }
+
+  implicit class Term_InlinedAPI(self: Term.Inlined) {
+    def call(implicit ctx: Context): Option[TermOrTypeTree] = kernel.Term_Inlined_call(self)
+    def bindings(implicit ctx: Context): List[Definition] = kernel.Term_Inlined_bindings(self)
+    def body(implicit ctx: Context): Term = kernel.Term_Inlined_body(self)
+  }
+
+  implicit class Term_SelectOuterAPI(self: Term.SelectOuter) {
+    def qualifier(implicit ctx: Context): Term = kernel.Term_SelectOuter_qualifier(self)
+    def level(implicit ctx: Context): Int = kernel.Term_SelectOuter_level(self)
+    def tpe(implicit ctx: Context): Type = kernel.Term_SelectOuter_tpe(self)
+  }
+
+  implicit class Term_WhileAPI(self: Term.While) {
+    def cond(implicit ctx: Context): Term = kernel.Term_While_cond(self)
+    def body(implicit ctx: Context): Term = kernel.Term_While_body(self)
   }
 
 }

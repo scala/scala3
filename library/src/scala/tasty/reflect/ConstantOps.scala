@@ -3,10 +3,9 @@ package reflect
 
 trait ConstantOps extends Core {
 
-  trait ConstantAPI {
-    def value: Any
+  implicit class ConstantAPI(const: Constant) {
+    def value: Any = kernel.Constant_value(const)
   }
-  implicit def ConstantDeco(const: Constant): ConstantAPI
 
   /** Module of Constant literals */
   val Constant: ConstantModule
