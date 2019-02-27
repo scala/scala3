@@ -101,9 +101,11 @@ export class Tracer {
             'the content of every Scala file in your project and ' +
             'every interaction with Scala files in the IDE, including keystrokes. ' +
             'This data will be stored anonymously (we won\'t know your name) on servers at EPFL in Switzerland.',
-            'Allow', 'Deny',
-        ).then((value: string | undefined) => {
-            if (value === 'Allow' || value === 'Deny') this.tracingConsent.set(value)
+            { 'modal': true },
+            { title: 'Allow' },
+            { title: 'Deny', isCloseAffordance: true }
+        ).then(value => {
+            if (value !== undefined && (value.title === 'Allow' || value.title === 'Deny')) this.tracingConsent.set(value.title)
         })
     }
 
