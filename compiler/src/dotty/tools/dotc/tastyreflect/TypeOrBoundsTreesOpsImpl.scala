@@ -95,7 +95,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
   }
 
-  object TypeTree extends TypeTreeModule with TypeTreeCoreModuleImpl {
+  object TypeTree extends TypeTreeModule with TypeTreeCoreModule {
 
     object IsInferred extends IsInferredModule {
       def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Inferred] = tpt match {

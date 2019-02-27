@@ -368,7 +368,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
   }
 
-  object Term extends TermModule with TermCoreModuleImpl {
+  object Term extends TermModule with TermCoreModule {
 
     object IsIdent extends IsIdentModule {
       def unapply(x: Term)(implicit ctx: Context): Option[Ident] = x match {
@@ -376,7 +376,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
 
     object Ref extends RefModule {
       def apply(sym: Symbol)(implicit ctx: Context): Ref = withDefaultPos(ctx => tpd.ref(sym)(ctx).asInstanceOf[tpd.RefTree])

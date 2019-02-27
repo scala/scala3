@@ -14,6 +14,6 @@ trait CommentOps extends Core {
     def usecases: List[(String, Option[DefDef])]
 
   }
-  implicit def CommentDeco(com: Comment): CommentAPI
+  implicit def CommentDeco(comment: Comment): CommentAPI
 
 }
