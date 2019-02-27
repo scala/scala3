@@ -133,15 +133,15 @@ object Applications {
     if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
-      else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args, pos)
+      else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
       else tp :: Nil
     } else tp :: Nil
 
-  def productSeqSelectors(tp: Type, args: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): List[Type] = {
+  def productSeqSelectors(tp: Type, argsNum: Int, pos: SourcePosition)(implicit ctx: Context): List[Type] = {
       val selTps = productSelectorTypes(tp, pos)
       val arity = selTps.length
       val elemTp = unapplySeqTypeElemTp(selTps.last)
-      (0 until args.length).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
+      (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
     }
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(implicit ctx: Context): List[Type] = {
@@ -159,7 +159,7 @@ object Applications {
       if (isGetMatch(unapplyResult, pos)) {
         val elemTp = unapplySeqTypeElemTp(getTp)
         if (elemTp.exists) args.map(Function.const(elemTp))
-        else if (isProductSeqMatch(getTp, args.length, pos)) productSeqSelectors(getTp, args, pos)
+        else if (isProductSeqMatch(getTp, args.length, pos)) productSeqSelectors(getTp, args.length, pos)
         else fail
       }
       else fail
@@ -169,7 +169,7 @@ object Applications {
       if (isProductMatch(unapplyResult, args.length, pos))
         productSelectorTypes(unapplyResult, pos)
       else if (isProductSeqMatch(unapplyResult, args.length, pos))
-        productSeqSelectors(unapplyResult, args, pos)
+        productSeqSelectors(unapplyResult, args.length, pos)
       else if (isGetMatch(unapplyResult, pos))
         getUnapplySelectors(getTp, args, pos)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
