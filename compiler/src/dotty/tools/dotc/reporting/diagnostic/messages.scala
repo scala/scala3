@@ -282,8 +282,8 @@ object messages {
     val explanation: String = {
       hl"""|The identifier for `$treeKind$name` is not bound, that is,
            |no declaration for this identifier can be found.
-           |That can happen for instance if $name or its declaration has either been
-           |misspelt, or if you're forgetting an import"""
+           |That can happen, for instance, if `$name` or its declaration has either been
+           |misspelt or if an import is missing."""
     }
   }
 
