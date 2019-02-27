@@ -1,0 +1,407 @@
+---
+layout: blog-page
+title: Announcing Dotty 0.13.0-RC1
+author: Aggelos Biboudis
+authorImg: /images/aggelos.jpg
+date: 2019-03-01
+---
+
+Hello hello! This is the second release for 2019, let's call it the _Contextual_
+release and you will understand why we are super excited in a bit! ✨🎊🎉
+
+Without further ado, today we release the version 0.13.0-RC1 of the Dotty compiler.
+This release serves as a technology preview that demonstrates new language features and the
+compiler supporting them.
+
+Dotty is the project name for technologies that are considered for inclusion in Scala 3. Scala has
+pioneered the fusion of object-oriented and functional programming in a typed setting. Scala 3 will
+be a big step towards realising the full potential of these ideas. Its main objectives are to
+
+- become more opinionated by promoting programming idioms we found to work well,
+- simplify where possible,
+- eliminate inconsistencies and surprising behaviours,
+- build on strong foundations to ensure the design hangs well together,
+- consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
+  performance.
+
+You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+
+<!--more-->
+
+This is our 132th scheduled release according to our
+[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+
+# What’s new in the 0.13.0-RC1 technology preview?
+
+## All things impl... implied
+
+Scala's implicits are its most distinguished feature. They are _the_ fundamental
+way to abstract over context. They represent a single concept with an extremely
+varied number of use cases, among them: implementing type classes, establishing
+context, dependency injection, expressing capabilities, computing new types and
+proving relationships between them.
+
+However, we identify a few side-effects that implicits gave rise to, as a
+programming style. Firstly, users used implicit conversions between types, in an
+undisciplined matter. This overuse of implicit conversions declattered code for
+sure, but it made it harder for people to reason about.
+
+```scala
+implicit def i1(implicit x: T): C[T] = ... // 1: conditional implicit value
+implicit def i2(x: T): C[T] = ...          // 2: implicit conversion
+```
+
+The `implicit` keyword is used for both implicit conversions and conditional
+implicit values and we identify that their semantic differences must be
+communicated more clearly syntactically. Secondly, implicits pose challenges for
+tooling such as error reporting for failed implicit searches. Furthermore, the
+`implicit` keyword is way too overloaded (implicit vals, defs, objects,
+parameters, or arguments) and users may use it as a mechanism rather than an
+intent. Another consideration is that the `implicit` keyword annotates a whole
+parameter section instead of a single parameter, and passing an argument to an
+implicit parameter looks like a regular application. This is problematic because
+it can create confusion regarding what parameter gets instantiated in a call.
+Last but not least, some times implicit parameters are merely propagated in
+nested function calls and not used at all, so names of implicit parameters are
+not always necessary.
+
+Consequently, we introduce two new language features:
+
+1. _implied instance definitions_ designated syntactically by the scheme `implied ... for` and,
+2. _inferable parameters_ designated by the keyword `given`.
+
+In the code below we demonstrate both of them. This code defines a trait `Ord`
+and two `implied` instance definitions. `IntOrd` defines an `implied` instance
+for the type `Ord[Int]` whereas `ListOrd[T]` defines implied instances of
+`Ord[List[T]]` for all types `T` that come with an implied `Ord[T]` instance
+themselves. The `given` clause in `ListOrd` defines an _inferable parameter_.
+
+```scala
+trait Ord[T] {
+  def compare(x: T, y: T): Int
+  def (x: T) < (y: T) = compare(x, y) < 0
+  def (x: T) > (y: T) = compare(x, y) > 0
+}
+
+implied IntOrd for Ord[Int] {
+  def compare(x: Int, y: Int) =
+    if (x < y) -1 else if (x > y) +1 else 0
+}
+
+implied ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] {
+  def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
+    case (Nil, Nil) => 0
+    case (Nil, _) => -1
+    case (_, Nil) => +1
+    case (x :: xs1, y :: ys1) =>
+      val fst = ord.compare(x, y)
+      if (fst != 0) fst else xs1.compareTo(ys1)
+  }
+}
+```
+
+ A `given` clause can also designate an inferable parameter for functions:
+
+```scala
+def max[T](x: T, y: T) given (ord: Ord[T]): T =
+  if (ord.compare(x, y) < 1) y else x
+```
+
+With this scheme all invocations of the `max` function below are equally valid:
+```scala
+max(2, 3) given IntOrd
+max(List(1, 2, 3), Nil)
+max(2, 3)
+```
+
+We introduce _Anonymous Implied Instances_ which are used when we do not need a name for an implied
+instance:
+
+```scala
+implied for Ord[Int] { ... }
+```
+
+For convenience, we also introduce _Implied Alias Instances_. They offer aliases
+for implied instances. For example, the line below offers an alias with the name
+`ctx` (could also be anonymous if name can be omitted). Each time an implied
+instance of `ExecutionContext` is demanded the right-hand side is returned.
+
+```scala
+implied ctx for ExecutionContext = currentThreadPool().context
+```
+
+For symmetry, we define our well-known `implicitly` from `Predef` in terms of
+`given` and for simplicity we rename it to `the`. Functions like `the` that have
+only _inferable parameters_ are also called _context queries_ from now on.
+Consequently, to create an implied instance of `Ord[List[Int]]` we write:
+
+```scala
+the[Ord[List[Int]]]
+```
+
+How do we import implied instances in scope? From now on, normal import clauses
+fetch all definitions *except* implied instance into scope whereas _Implied
+Imports_ bring only implied instances in scope.
+
+```scala
+object A {
+  class TC
+  implied tc for TC
+  def f given TC = ???
+}
+object B {
+  import A._         // normal import clause
+  import implied A._ // implied import clause
+}
+```
+
+You can read more about [implied
+imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html)
+from the docs or the relevant PR
+[#5868](https://github.com/lampepfl/dotty/pull/5868).
+
+As we mentioned above, *context queries* are functions with (only) inferable
+parameters. Here is an example of such a function:
+
+```scala
+type Contextual[T] = given Context => T
+```
+
+Context queries--previously named implicit function types--are now also
+expressed with `given`, providing types for first-class context queries. This is
+merely an alignment of IFTs into the new scheme.
+
+You can read about the alternative to implicits through the *Contextual
+Abstractions* section of our documentation or for a deep dive from the relevant
+PR chain that originated from
+[#5458](https://github.com/lampepfl/dotty/pull/5458). The syntax changes for new
+implicits are summarized in
+[#5825](https://github.com/lampepfl/dotty/pull/5825).
+
+This release offers the support for _typeclass derivation_ as a language
+feature. Typeclass derivation is a way to generate instances of certain type
+classes automatically or with minimal code hints, and is now supported natively
+with *dedicated language support*. A type class in this sense is any trait or
+class with a type parameter that describes the type being operated on. Commonly
+used examples are `Ordering`, `Show`, or `Pickling`. We introduce a new
+`derives` clause that generates implied instances of the `Eql`, `Ordering`, and
+`Pickling` traits in the companion object `Tree`. Take a look at the example
+below:
+
+```scala
+enum Tree[T] derives Eql, Ordering, Pickling {
+  case Branch(left: Tree[T], right: Tree[T])
+  case Leaf(elem: T)
+}
+```
+
+where the generated implied instances are the ones below:
+```scala
+implied [T: Eq]       for Eq[Tree[T]]       = Eq.derived
+implied [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
+implied [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
+```
+
+Note, the new syntax:
+
+```scala
+A extends B, C { ... }
+```
+
+which replaces:
+
+```scala
+A extends B with C { ... }
+```
+
+With typeclass derivation we can also derive types. A trait or class can appear
+in a derives clause if its companion object defines a method named `derived`.
+The type and implementation of a `derived` method are arbitrary, but typically
+it has a definition like this:
+
+```scala
+def derived[T] given Generic[T] = ...
+```
+
+You can read more about [Typeclass
+Derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) or
+for a deep dive at the relevant PRs:
+[#5540](https://github.com/lampepfl/dotty/pull/5540) and
+[#5839](https://github.com/lampepfl/dotty/pull/5839).
+
+`Multiversal equality` is now supported through the `Eql` marker trait (renamed
+from `Eq` to differentiate it from Cats' `Eq`). For example, in order to be able
+to compare integers with strings now, instead of a custom implicit we can
+provide a derived implicit instance:
+
+```scala
+implied for Eql[Int, String] = Eql.derived
+```
+
+You can read how we based multiversal equality on typeclass derivation through
+the relevant PR [#5843](https://github.com/lampepfl/dotty/pull/5843).
+
+_Implicit conversions_ are now defined by implied instances of the
+`scala.Conversion` class. For example:
+
+```scala
+implied for Conversion[String, Token] {
+  def apply(str: String): Token = new KeyWord(str)
+}
+```
+
+It is worth mentioning that we now allow arbitrary definitions at the toplevel.
+This means package objects are now redundant, and will be phased out.
+You can read about [dropping package objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
+at the documentation linked or at the relevant PR
+[#5754](https://github.com/lampepfl/dotty/pull/5754).
+
+**This blogpost offers only a brief summary of the new features, for more details
+please read our documentation page under the new section named [*Contextual
+Abstractions*](https://dotty.epfl.ch/docs/).**
+
+## SemanticDB generator
+
+[SemanticDB](https://github.com/scalameta/scalameta/tree/master/semanticdb) is a
+data model for semantic information such as symbols and types about programs in
+Scala and other languages. SemanticDB decouples production and consumption of
+semantic information, establishing documented means for communication between
+tools. With PR [#5761](https://github.com/lampepfl/dotty/pull/5761) we add the
+first prototype for the generation of SemanticDB information from TASTy.
+
+## Change Implicit Resolution Rules
+
+PR [#5887](https://github.com/lampepfl/dotty/pull/5887) applies the following
+changes to implicit resolution:
+
+1. nested implicits always take precedence over outer ones
+2. no more shadowing checks
+3. package prefixes are not considered.
+
+## Add support for lambda serialization
+
+PR [#5837](https://github.com/lampepfl/dotty/pull/5837) added support for lambda
+serialization using well-known `java.io.Serializable` interface. This enables
+further progress on support Spark with Dotty.
+
+## And much more!
+
+Other significant changes in this release are the following:
+
+
+
+Please read our [release notes](https://github.com/lampepfl/dotty/releases/tag/0.13.0-RC1)
+for more details!
+
+# Trying out Dotty
+
+## sbt
+
+You can set up a new sbt project with Dotty as the compiler by running:
+
+```shell
+sbt new lampepfl/dotty.g8
+```
+
+For more details on using Dotty with sbt, see the
+[example project](https://github.com/lampepfl/dotty-example-project).
+
+## [Mill](http://www.lihaoyi.com/mill/)
+
+The Mill build tool version 0.2.6 introduced experimental support for Dotty. For more details on
+using Dotty with Mill, see the
+[example project](https://github.com/lampepfl/dotty-example-project/tree/mill).
+
+## IDE support
+
+Start using the Dotty IDE in any Dotty project by following
+the [IDE guide](https://dotty.epfl.ch/docs/usage/ide-support.html).
+
+## Standalone installation
+
+Releases are available for download on the _Releases_
+section of the Dotty repository:
+[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+
+For MacOs users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
+running:
+
+```shell
+brew install lampepfl/brew/dotty
+```
+
+In case you have already installed Dotty via `brew`, you should instead update it:
+
+```shell
+brew upgrade dotty
+```
+
+# Let us know what you think!
+
+If you have questions or any sort of feedback, feel free to send us a message on our
+[Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
+[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+
+## Contributing
+
+Thank you to all the contributors who made this release possible!
+
+According to `git shortlog -sn --no-merges 0.12.0-RC1..0.13.0-RC1` these are:
+
+```
+   309  Martin Odersky
+   116  Nicolas Stucki
+    52  Guillaume Martres
+    42  poechsel
+    22  Aggelos Biboudis
+    20  Paolo G. Giarrusso
+    19  Olivier Blanvillain
+    11  Liu Fengyun
+     5  Allan Renucci
+     4  Miles Sabin
+     3  Tobias Bordenca
+     3  LPTK
+     3  Abel Nieto
+     2  Lukas Rytz
+     1  lpwisniewski
+     1  Adriaan Moors
+     1  Georg Schmid
+     1  Jentsch
+     1  Marc Karassev
+     1  Daniel Murray
+     1  Olivier ROLAND
+     1  Raphael Jolly
+     1  Stéphane Micheloud
+     1  Sébastien Doeraene
+     1  Umayah Abdennabi
+```
+
+If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
+Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+They make perfect entry points into hacking on the compiler.
+
+We are looking forward to having you join the team of contributors.
+
+## Library authors: Join our community build
+
+Dotty now has a set of widely-used community libraries that are built against every nightly Dotty
+snapshot. Currently this includes ScalaPB, algebra, scalatest, scopt and squants.
+Join our [community build](https://github.com/lampepfl/dotty-community-build)
+to make sure that our regression suite includes your library.
+
+[Scastie]: https://scastie.scala-lang.org/?target=dotty
+
+[@odersky]: https://github.com/odersky
+[@DarkDimius]: https://github.com/DarkDimius
+[@smarter]: https://github.com/smarter
+[@felixmulder]: https://github.com/felixmulder
+[@nicolasstucki]: https://github.com/nicolasstucki
+[@liufengyun]: https://github.com/liufengyun
+[@OlivierBlanvillain]: https://github.com/OlivierBlanvillain
+[@biboudis]: https://github.com/biboudis
+[@allanrenucci]: https://github.com/allanrenucci
+[@Blaisorblade]: https://github.com/Blaisorblade
+[@Duhemm]: https://github.com/Duhemm
+[@AleksanderBG]: https://github.com/AleksanderBG
+[@milessabin]: https://github.com/milessabin
