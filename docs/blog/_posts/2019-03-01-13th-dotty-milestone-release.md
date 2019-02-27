@@ -375,7 +375,7 @@ According to `git shortlog -sn --no-merges 0.12.0-RC1..0.13.0-RC1` these are:
      5  Allan Renucci
      4  Miles Sabin
      3  Tobias Bordenca
-     3  LPTK
+     3  Lionel Parreaux
      3  Abel Nieto
      2  Lukas Rytz
      1  lpwisniewski
