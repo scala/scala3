@@ -776,7 +776,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         def reporterOutputLines(reporters: List[TestReporter]): List[String] = {
           reporters.flatMap(_.allErrors).sortBy(_.pos.source.toString).flatMap { error =>
-            (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().lines.toList
+            (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().linesIterator.toList
           }
         }
         def checkFileTest(sourceName: String, checkFile: JFile, actual: List[String]) = {
