@@ -467,7 +467,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp =>
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          ctx.typer.refineUsingParent(tp, sym1)
+          val refined = ctx.typer.refineUsingParent(tp, sym1)
+          val inhabited = new TypeAccumulator[Boolean] {
+            override def apply(x: Boolean, tp: Type) = x && {
+              tp match {
+                case AndType(tp1, tp2) => ctx.typeComparer.intersecting(tp1, tp2)
+                case OrType(tp1, tp2) => foldOver(x, tp1) || foldOver(x, tp2)
+                case _ => foldOver(x, tp)
+              }
+            }
+          }
+          if (inhabited.apply(true, refined)) refined
+          else NoType
         } filter(_.exists)
 
         debug.println(s"${tp.show} decomposes to [${parts.map(_.show).mkString(", ")}]")
@@ -735,7 +746,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
               ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
           }
-
         }
       }
     }
