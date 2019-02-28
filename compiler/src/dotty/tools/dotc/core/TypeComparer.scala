@@ -1973,7 +1973,21 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 // instantiated to `Any` belongs to both types.
                 true
               else
-                isSameType(arg1, arg2) // TODO: handle uninstanciated types
+                isSameType(arg1, arg2) || {
+                  // We can only trust a "no" from `isSameType` when both
+                  // `arg1` and `arg2` are fully instantiated.
+                  val fullyInstantiated = new TypeAccumulator[Boolean] {
+                    override def apply(x: Boolean, t: Type) =
+                      x && {
+                        t match {
+                          case _: SkolemType | _: TypeVar | _: TypeParamRef => false
+                          case _ => foldOver(x, t)
+                        }
+                      }
+                  }
+                  !(fullyInstantiated.apply(true, arg1) &&
+                    fullyInstantiated.apply(true, arg2))
+                }
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
         intersecting(tp1.resType, tp2.resType)
