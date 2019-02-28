@@ -378,6 +378,10 @@ trait Kernel {
   /** Pattern tree of the pattern part of a CaseDef */
   type Pattern <: AnyRef
 
+  def Pattern_pos(self: Pattern)(implicit ctx: Context): Position
+  def Pattern_tpe(self: Pattern)(implicit ctx: Context): Type
+  def Pattern_symbol(self: Pattern)(implicit ctx: Context): Symbol
+
   /** Pattern representing a value. This includes `1`, ```x``` and `_` */
   type Value <: Pattern
 

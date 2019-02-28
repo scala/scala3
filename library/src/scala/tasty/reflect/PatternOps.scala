@@ -26,15 +26,14 @@ trait PatternOps extends Core {
     def tpt(implicit ctx: Context): TypeTree = kernel.Pattern_TypeTest_tpt(typeTest)
   }
 
-  trait PatternAPI {
+  implicit class PatternAPI(self: Pattern) {
     /** Position in the source code */
-    def pos(implicit ctx: Context): Position
+    def pos(implicit ctx: Context): Position = kernel.Pattern_pos(self)
 
-    def tpe(implicit ctx: Context): Type
+    def tpe(implicit ctx: Context): Type = kernel.Pattern_tpe(self)
 
-    def symbol(implicit ctx: Context): Symbol
+    def symbol(implicit ctx: Context): Symbol = kernel.Pattern_symbol(self)
   }
-  implicit def PatternDeco(pattern: Pattern): PatternAPI
 
   val Pattern: PatternModule
   abstract class PatternModule {

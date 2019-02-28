@@ -238,6 +238,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   //
 
   type Pattern = tpd.Tree
+
+  def Pattern_pos(self: Pattern)(implicit ctx: Context): Position = self.sourcePos
+  def Pattern_tpe(self: Pattern)(implicit ctx: Context): Type = self.tpe.stripTypeVar
+  def Pattern_symbol(self: Pattern)(implicit ctx: Context): Symbol = self.symbol
+
   type Value = tpd.Tree
 
   def Pattern_Value_value(self: Value)(implicit ctx: Context): Term = self
