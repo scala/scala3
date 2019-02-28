@@ -3,6 +3,6 @@ package tastyreflect
 
 trait CoreImpl extends scala.tasty.reflect.Core {
 
-  final val kernel: KernelImpl = new KernelImpl
+  val kernel: KernelImpl
 
 }

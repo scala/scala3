@@ -12,6 +12,6 @@ trait ContextOps extends Core {
   }
 
   /** Context of the macro expansion */
-  implicit def rootContext: Context
+  implicit def rootContext: Context = kernel.rootContext
 
 }
