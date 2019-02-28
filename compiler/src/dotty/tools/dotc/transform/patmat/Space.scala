@@ -298,16 +298,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       // Since projections of types don't include null, intersection with null is empty.
       return Empty
     }
-    val and = AndType(tp1, tp2)
-    // Then, no leaf of the and-type tree `and` is a subtype of `and`.
-    val res = inhabited(and)
+    val res = ctx.typeComparer.intersecting(tp1, tp2)
 
-    debug.println(s"atomic intersection: ${and.show} = ${res}")
+    debug.println(s"atomic intersection: ${AndType(tp1, tp2).show} = ${res}")
 
     if (!res) Empty
     else if (tp1.isSingleton) Typ(tp1, true)
     else if (tp2.isSingleton) Typ(tp2, true)
-    else Typ(and, true)
+    else Typ(AndType(tp1, tp2), true)
   }
 
   /** Whether the extractor is irrefutable */
@@ -516,101 +514,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
-    val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
-
-    if (!resTp.exists || !inhabited(resTp)) {
-      debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
-      NoType
-    }
-    else {
-      debug.println(s"$child instantiated ------> $resTp")
-      resTp.dealias
-    }
-  }
-
-  /** Can this type be inhabited by a value?
-   *
-   *  Check is based on the following facts:
-   *
-   *  - single inheritance of classes
-   *  - final class cannot be extended
-   *  - intersection of a singleton type with another irrelevant type  (patmat/i3574.scala)
-   *
-   */
-  def inhabited(tp: Type)(implicit ctx: Context): Boolean = {
-    // convert top-level type shape into "conjunctive normal form"
-    def cnf(tp: Type): Type = tp match {
-      case AndType(OrType(l, r), tp)      =>
-        OrType(cnf(AndType(l, tp)), cnf(AndType(r, tp)))
-      case AndType(tp, o: OrType)         =>
-        cnf(AndType(o, tp))
-      case AndType(l, r)                  =>
-        val l1 = cnf(l)
-        val r1 = cnf(r)
-        if (l1.ne(l) || r1.ne(r)) cnf(AndType(l1, r1))
-        else AndType(l1, r1)
-      case OrType(l, r)                   =>
-        OrType(cnf(l), cnf(r))
-      case tp @ RefinedType(OrType(tp1, tp2), _, _)  =>
-        OrType(
-          cnf(tp.derivedRefinedType(tp1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)),
-          cnf(tp.derivedRefinedType(tp2, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo))
-        )
-      case tp: RefinedType                =>
-        val parent1 = cnf(tp.parent)
-        val tp1 = tp.derivedRefinedType(parent1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)
-
-        if (parent1.ne(tp.parent)) cnf(tp1) else tp1
-      case tp: TypeAlias                  =>
-        cnf(tp.alias)
-      case _                              =>
-        tp
-    }
-
-    def isSingleton(tp: Type): Boolean = tp.dealias match {
-      case AndType(l, r)  => isSingleton(l) || isSingleton(r)
-      case OrType(l, r)   => isSingleton(l) && isSingleton(r)
-      case tp             => tp.isSingleton
-    }
-
-    def recur(tp: Type): Boolean = tp.dealias match {
-      case AndType(tp1, tp2) =>
-        recur(tp1) && recur(tp2) && {
-          val bases1 = tp1.widenDealias.classSymbols
-          val bases2 = tp2.widenDealias.classSymbols
-
-          debug.println(s"bases of ${tp1.show}: " + bases1)
-          debug.println(s"bases of ${tp2.show}: " + bases2)
-          debug.println(s"${tp1.show} <:< ${tp2.show} : " +  (tp1 <:< tp2))
-          debug.println(s"${tp2.show} <:< ${tp1.show} : " +  (tp2 <:< tp1))
-
-          val noClassConflict =
-            bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym1.isSubClass(sym2))) ||
-            bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym2.isSubClass(sym1)))
-
-          debug.println(s"class conflict for ${tp.show}? " + !noClassConflict)
-
-          noClassConflict &&
-            (!isSingleton(tp1) || tp1 <:< tp2) &&
-            (!isSingleton(tp2) || tp2 <:< tp1) &&
-            (!bases1.exists(_ is Final) || tp1 <:< maxTypeMap.apply(tp2)) &&
-            (!bases2.exists(_ is Final) || tp2 <:< maxTypeMap.apply(tp1))
-        }
-      case OrType(tp1, tp2) =>
-        recur(tp1) || recur(tp2)
-      case tp: RefinedType =>
-        recur(tp.parent)
-      case tp: TypeRef =>
-        recur(tp.prefix) && !(tp.classSymbol.is(AbstractFinal))
-      case _ =>
-        true
-    }
-
-    val res = recur(cnf(tp))
-
-    debug.println(s"${tp.show} inhabited?  " + res)
-
-    res
+    instantiate(childTp, parent)(ctx.fresh.setNewTyperState()).dealias
   }
 
   /** expose abstract type references to their bounds or tvars according to variance */
