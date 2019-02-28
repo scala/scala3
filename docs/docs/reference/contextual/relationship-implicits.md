@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Relationship with Scala 2 Implicits"
+title: Relationship with Scala 2 Implicits
 ---
 
 Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits. This page gives a rundown on the relationships between new and old features.
