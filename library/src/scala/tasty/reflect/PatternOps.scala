@@ -35,67 +35,74 @@ trait PatternOps extends Core {
     def symbol(implicit ctx: Context): Symbol = kernel.Pattern_symbol(self)
   }
 
-  val Pattern: PatternModule
-  abstract class PatternModule {
+  object Pattern {
 
-    val IsValue: IsValueModule
-    abstract class IsValueModule {
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Value]
+    object IsValue {
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Value] =
+        kernel.isPattern_Value(pattern)
     }
 
-    val Value: ValueModule
-    abstract class ValueModule {
-      def apply(tpt: Term)(implicit ctx: Context): Value
-      def copy(original: Value)(tpt: Term)(implicit ctx: Context): Value
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Term]
+    object Value {
+      def apply(tpt: Term)(implicit ctx: Context): Value =
+        kernel.Pattern_Value_module_apply(tpt)
+      def copy(original: Value)(tpt: Term)(implicit ctx: Context): Value =
+        kernel.Pattern_Value_module_copy(original)(tpt)
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Term] =
+        kernel.isPattern_Value(pattern).map(_.value)
     }
 
-    val IsBind: IsBindModule
-    abstract class IsBindModule {
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Bind]
+    object IsBind {
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Bind] =
+        kernel.isPattern_Bind(pattern)
     }
 
-    val Bind: BindModule
-    abstract class BindModule {
+    object Bind {
       // TODO def apply(name: String, pattern: Pattern)(implicit ctx: Context): Bind
-      def copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[(String, Pattern)]
+      def copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind =
+        kernel.Pattern_Bind_module_copy(original)(name, pattern)
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[(String, Pattern)] =
+        kernel.isPattern_Bind(pattern).map(x => (x.name, x.pattern))
     }
 
-    val IsUnapply: IsUnapplyModule
-    abstract class IsUnapplyModule {
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply]
+    object IsUnapply {
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply] =
+        kernel.isPattern_Unapply(pattern)
     }
 
-    val Unapply: UnapplyModule
-    abstract class UnapplyModule {
+    object Unapply {
       // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply
-      def copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])]
+      def copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply =
+        kernel.Pattern_Unapply_module_copy(original)(fun, implicits, patterns)
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] =
+        kernel.isPattern_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
     }
 
-    val IsAlternatives: IsAlternativesModule
-    abstract class IsAlternativesModule {
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Alternatives]
+    object IsAlternatives {
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[Alternatives] =
+        kernel.isPattern_Alternatives(pattern)
     }
 
-    val Alternatives: AlternativesModule
-    abstract class AlternativesModule {
-      def apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives
-      def copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[List[Pattern]]
+    object Alternatives {
+      def apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
+        kernel.Pattern_Alternatives_module_apply(patterns)
+      def copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
+        kernel.Pattern_Alternatives_module_copy(original)(patterns)
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[List[Pattern]] =
+        kernel.isPattern_Alternatives(pattern).map(_.patterns)
     }
 
-    val IsTypeTest: IsTypeTestModule
-    abstract class IsTypeTestModule {
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]
+    object IsTypeTest {
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTest] =
+        kernel.isPattern_TypeTest(pattern)
     }
 
-    val TypeTest: TypeTestModule
-    abstract class TypeTestModule {
-      def apply(tpt: TypeTree)(implicit ctx: Context): TypeTest
-      def copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest
-      def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTree]
+    object TypeTest {
+      def apply(tpt: TypeTree)(implicit ctx: Context): TypeTest =
+        kernel.Pattern_TypeTest_module_apply(tpt)
+      def copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
+        kernel.Pattern_TypeTest_module_copy(original)(tpt)
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTree] =
+        kernel.isPattern_TypeTest(pattern).map(_.tpt)
     }
 
   }

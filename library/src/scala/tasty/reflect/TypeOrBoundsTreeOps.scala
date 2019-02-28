@@ -22,183 +22,205 @@ trait TypeOrBoundsTreeOps extends Core {
     def symbol(implicit ctx: Context): Symbol = kernel.TypeTree_symbol(self)
   }
 
-  val IsTypeTree: IsTypeTreeModule
-  abstract class IsTypeTreeModule {
-    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
-    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree]
+  object IsTypeTree {
+    def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
+      kernel.isTypeTree(tpt)
+    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
+      kernel.isTypeTreeNotTerm(termOrTypeTree)
   }
 
   val TypeTree: TypeTreeModule
   abstract class TypeTreeModule extends TypeTreeCoreModule {
 
-    val IsInferred: IsInferredModule
-    abstract class IsInferredModule {
+    object IsInferred {
       /** Matches any Inferred and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Inferred]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Inferred] =
+        kernel.isTypeTree_Inferred(tpt)
     }
 
     /** TypeTree containing an inferred type */
-    val Inferred: InferredModule
-    abstract class InferredModule {
-      def apply(tpe: Type)(implicit ctx: Context): Inferred
+    object Inferred {
+      def apply(tpe: Type)(implicit ctx: Context): Inferred =
+        kernel.TypeTree_Inferred_apply(tpe)
       /** Matches a TypeTree containing an inferred type */
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean =
+        kernel.isTypeTree_Inferred(typeOrBoundsTree).isDefined
     }
 
-    val IsIdent: IsIdentModule
-    abstract class IsIdentModule {
+    object IsIdent {
       /** Matches any Ident and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Ident]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Ident] =
+        kernel.isTypeTree_Ident(tpt)
     }
 
-    val Ident: IdentModule
-    abstract class IdentModule {
+    object Ident {
       // TODO def apply(name: String)(implicit ctx: Context): Ident
-      def copy(original: Ident)(name: String)(implicit ctx: Context): Ident
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String]
+      def copy(original: Ident)(name: String)(implicit ctx: Context): Ident =
+        kernel.TypeTree_Ident_copy(original)(name)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String] =
+        kernel.isTypeTree_Ident(typeOrBoundsTree).map(_.name)
     }
 
-    val IsSelect: IsSelectModule
-    abstract class IsSelectModule {
+    object IsSelect {
       /** Matches any Select and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Select]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Select] =
+        kernel.isTypeTree_Select(tpt)
     }
 
-    val Select: SelectModule
-    abstract class SelectModule {
-      def apply(qualifier: Term, name: String)(implicit ctx: Context): Select
-      def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)]
+    object Select {
+      def apply(qualifier: Term, name: String)(implicit ctx: Context): Select =
+        kernel.TypeTree_Select_apply(qualifier, name)
+      def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select =
+        kernel.TypeTree_Select_copy(original)(qualifier, name)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)] =
+        kernel.isTypeTree_Select(typeOrBoundsTree).map(x => (x.qualifier, x.name))
     }
 
-    val IsProjection: IsProjectionModule
-    abstract class IsProjectionModule {
+    object IsProjection {
       /** Matches any Projection and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Projection]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Projection] =
+        kernel.isTypeTree_Projection(tpt)
     }
 
-    val Projection: ProjectionModule
-    abstract class ProjectionModule {
+    object Projection {
       // TODO def apply(qualifier: TypeTree, name: String)(implicit ctx: Context): Project
-      def copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)]
+      def copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection =
+        kernel.TypeTree_Projection_copy(original)(qualifier, name)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)] =
+        kernel.isTypeTree_Projection(typeOrBoundsTree).map(x => (x.qualifier, x.name))
     }
 
-    val IsSingleton: IsSingletonModule
-    abstract class IsSingletonModule {
+    object IsSingleton {
       /** Matches any Singleton and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Singleton]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Singleton] =
+        kernel.isTypeTree_Singleton(tpt)
     }
 
-    val Singleton: SingletonModule
-    abstract class SingletonModule {
-      def apply(ref: Term)(implicit ctx: Context): Singleton
-      def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[Term]
+    object Singleton {
+      def apply(ref: Term)(implicit ctx: Context): Singleton =
+        kernel.TypeTree_Singleton_apply(ref)
+      def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton =
+        kernel.TypeTree_Singleton_copy(original)(ref)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[Term] =
+        kernel.isTypeTree_Singleton(typeOrBoundsTree).map(_.ref)
     }
 
-    val IsRefined: IsRefinedModule
-    abstract class IsRefinedModule {
+    object IsRefined {
       /** Matches any Refined and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Refined]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Refined] =
+        kernel.isTypeTree_Refined(tpt)
     }
 
-    val Refined: RefinedModule
-    abstract class RefinedModule {
+    object Refined {
       // TODO def apply(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined
-      def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])]
+      def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined =
+        kernel.TypeTree_Refined_copy(original)(tpt, refinements)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] =
+        kernel.isTypeTree_Refined(typeOrBoundsTree).map(x => (x.tpt, x.refinements))
     }
 
-    val IsApplied: IsAppliedModule
-    abstract class IsAppliedModule {
+    object IsApplied {
       /** Matches any Applied and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Applied]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Applied] =
+        kernel.isTypeTree_Applied(tpt)
     }
 
-    val Applied: AppliedModule
-    abstract class AppliedModule {
-      def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied
-      def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])]
+    object Applied {
+      def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
+        kernel.TypeTree_Applied_apply(tpt, args)
+      def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
+        kernel.TypeTree_Applied_copy(original)(tpt, args)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])] =
+        kernel.isTypeTree_Applied(typeOrBoundsTree).map(x => (x.tpt, x.args))
     }
 
-    val IsAnnotated: IsAnnotatedModule
-    abstract class IsAnnotatedModule {
+    object IsAnnotated {
       /** Matches any Annotated and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Annotated]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Annotated] =
+        kernel.isTypeTree_Annotated(tpt)
     }
 
-    val Annotated: AnnotatedModule
-    abstract class AnnotatedModule {
-      def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated
-      def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, Term)]
+    object Annotated {
+      def apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
+        kernel.TypeTree_Annotated_apply(arg, annotation)
+      def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
+        kernel.TypeTree_Annotated_copy(original)(arg, annotation)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, Term)] =
+        kernel.isTypeTree_Annotated(typeOrBoundsTree).map(x => (x.arg, x.annotation))
     }
 
-    val IsMatchType: IsMatchTypeModule
-    abstract class IsMatchTypeModule {
+    object IsMatchType {
       /** Matches any MatchType and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[MatchType]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[MatchType] =
+        kernel.isTypeTree_MatchType(tpt)
     }
 
-    val MatchType: MatchTypeModule
-    abstract class MatchTypeModule {
-      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType
-      def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
+    object MatchType {
+      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
+        kernel.TypeTree_MatchType_apply(bound, selector, cases)
+      def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
+        kernel.TypeTree_MatchType_copy(original)(bound, selector, cases)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
+        kernel.isTypeTree_MatchType(typeOrBoundsTree).map(x => (x.bound, x.selector, x.cases))
     }
 
-    val IsByName: IsByNameModule
-    abstract class IsByNameModule {
+    object IsByName {
       /** Matches any ByName and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[ByName]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[ByName] =
+        kernel.isTypeTree_ByName(tpt)
     }
 
-    val ByName: ByNameModule
-    abstract class ByNameModule {
-      def apply(result: TypeTree)(implicit ctx: Context): ByName
-      def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
+    object ByName {
+      def apply(result: TypeTree)(implicit ctx: Context): ByName =
+        kernel.TypeTree_ByName_apply(result)
+      def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName =
+        kernel.TypeTree_ByName_copy(original)(result)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
+        kernel.isTypeTree_ByName(typeOrBoundsTree).map(_.result)
     }
 
-    val IsLambdaTypeTree: IsLambdaTypeTreeModule
-    abstract class IsLambdaTypeTreeModule {
+    object IsLambdaTypeTree {
       /** Matches any LambdaTypeTree and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[LambdaTypeTree]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[LambdaTypeTree] =
+        kernel.isTypeTree_LambdaTypeTree(tpt)
     }
 
-    val LambdaTypeTree: LambdaTypeTreeModule
-    abstract class LambdaTypeTreeModule {
-      def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree
-      def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)]
+    object LambdaTypeTree {
+      def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
+        kernel.TypeTree_LambdaTypeTree_apply(tparams, body)
+      def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
+        kernel.TypeTree_LambdaTypeTree_copy(original)(tparams, body)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)] =
+        kernel.isTypeTree_LambdaTypeTree(typeOrBoundsTree).map(x => (x.tparams, x.body))
     }
 
-    val IsTypeBind: IsTypeBindModule
-    abstract class IsTypeBindModule {
+    object IsTypeBind {
       /** Matches any TypeBind and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBind]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBind] =
+        kernel.isTypeTree_TypeBind(tpt)
     }
 
-    val TypeBind: TypeBindModule
-    abstract class TypeBindModule {
+    object TypeBind {
       // TODO def apply(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind
-      def copy(original: TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)]
+      def copy(original: TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind =
+        kernel.TypeTree_TypeBind_copy(original)(name, tpt)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)] =
+        kernel.isTypeTree_TypeBind(typeOrBoundsTree).map(x => (x.name, x.body))
     }
 
-    val IsTypeBlock: IsTypeBlockModule
-    abstract class IsTypeBlockModule {
+    object IsTypeBlock {
       /** Matches any TypeBlock and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBlock]
+      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBlock] =
+        kernel.isTypeTree_TypeBlock(tpt)
     }
 
-    val TypeBlock: TypeBlockModule
-    abstract class TypeBlockModule {
-      def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock
-      def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)]
+    object TypeBlock {
+      def apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
+        kernel.TypeTree_TypeBlock_apply(aliases, tpt)
+      def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
+        kernel.TypeTree_TypeBlock_copy(original)(aliases, tpt)
+      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] =
+        kernel.isTypeTree_TypeBlock(typeOrBoundsTree).map(x => (x.aliases, x.tpt))
     }
   }
 
@@ -268,21 +290,26 @@ trait TypeOrBoundsTreeOps extends Core {
     def hi(implicit ctx: Context): TypeTree = kernel.TypeBoundsTree_hi(self)
   }
 
-  val IsTypeBoundsTree: IsTypeBoundsTreeModule
-  abstract class IsTypeBoundsTreeModule {
-    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree]
+  object IsTypeBoundsTree {
+    def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] =
+      kernel.isTypeBoundsTree(tpt)
   }
 
-  val TypeBoundsTree: TypeBoundsTreeModule
-  abstract class TypeBoundsTreeModule {
-    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
+  object TypeBoundsTree {
+    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
+      kernel.isTypeBoundsTree(typeOrBoundsTree).map(x => (x.low, x.hi))
+  }
+
+  object IsWildcardTypeTree {
+    def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree] =
+      kernel.isWildcardTypeTree(tpt)
   }
 
   /** TypeBoundsTree containing wildcard type bounds */
-  val WildcardTypeTree: WildcardTypeTreeModule
-  abstract class WildcardTypeTreeModule {
+  object WildcardTypeTree {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
-    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
+    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean =
+      kernel.isWildcardTypeTree(typeOrBoundsTree).isDefined
   }
 
 }

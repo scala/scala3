@@ -13,9 +13,8 @@ trait IdOps extends Core {
 
   }
 
-  val Id: IdModule
-  abstract class IdModule {
-    def unapply(id: Id): Option[String]
+  object Id {
+    def unapply(id: Id)(implicit ctx: Context): Option[String] = Some(id.name)
   }
 
 }

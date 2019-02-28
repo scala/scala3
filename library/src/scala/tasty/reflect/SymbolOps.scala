@@ -86,9 +86,9 @@ trait SymbolOps extends Core {
 
   // PackageSymbol
 
-  val IsPackageSymbol: IsPackageSymbolModule
-  abstract class IsPackageSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
+  object IsPackageSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
+      kernel.isPackageSymbol(symbol)
   }
 
   trait PackageSymbolAPI {
@@ -98,9 +98,9 @@ trait SymbolOps extends Core {
 
   // ClassSymbol
 
-  val IsClassSymbol: IsClassSymbolModule
-  abstract class IsClassSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
+  object IsClassSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
+      kernel.isClassSymbol(symbol)
   }
 
   val ClassSymbol: ClassSymbolModule
@@ -146,9 +146,9 @@ trait SymbolOps extends Core {
 
   // TypeSymbol
 
-  val IsTypeSymbol: IsTypeSymbolModule
-  abstract class IsTypeSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
+  object IsTypeSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+      kernel.isTypeSymbol(symbol)
   }
 
   trait TypeSymbolAPI {
@@ -161,9 +161,9 @@ trait SymbolOps extends Core {
 
   // DefSymbol
 
-  val IsDefSymbol: IsDefSymbolModule
-  abstract class IsDefSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
+  object IsDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
+      kernel.isDefSymbol(symbol)
   }
 
   trait DefSymbolAPI {
@@ -176,9 +176,9 @@ trait SymbolOps extends Core {
 
   // ValSymbol
 
-  val IsValSymbol: IsValSymbolModule
-  abstract class IsValSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
+  object IsValSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
+      kernel.isValSymbol(symbol)
   }
 
   trait ValSymbolAPI {
@@ -194,9 +194,9 @@ trait SymbolOps extends Core {
 
   // BindSymbol
 
-  val IsBindSymbol: IsBindSymbolModule
-  abstract class IsBindSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]
+  object IsBindSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
+      kernel.isBindSymbol(symbol)
   }
 
   trait BindSymbolAPI {
@@ -207,8 +207,8 @@ trait SymbolOps extends Core {
 
   // NoSymbol
 
-  val NoSymbol: NoSymbolModule
-  abstract class NoSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Boolean
+  object NoSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Boolean =
+      kernel.isNoSymbol(symbol)
   }
 }

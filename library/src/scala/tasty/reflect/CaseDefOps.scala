@@ -10,28 +10,31 @@ trait CaseDefOps extends Core {
     def rhs(implicit ctx: Context): Term = kernel.CaseDef_rhs(caseDef)
   }
 
-  val CaseDef: CaseDefModule
-  abstract class CaseDefModule {
+  object CaseDef {
+    def apply(pattern: Pattern, guard: Option[Term], rhs: Term)(implicit ctx: Context): CaseDef =
+      kernel.CaseDef_module_apply(pattern, guard, rhs)
 
-    def apply(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef
+    def copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], rhs: Term)(implicit ctx: Context): CaseDef =
+      kernel.CaseDef_module_copy(original)(pattern, guard, rhs)
 
-    def copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef
-
-    def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)]
+    def unapply(x: CaseDef)(implicit ctx: Context): Option[(Pattern, Option[Term], Term)] =
+      Some((x.pattern, x.guard, x.rhs))
   }
-
 
   implicit class TypeCaseDefAPI(caseDef: TypeCaseDef) {
     def pattern(implicit ctx: Context): TypeTree = kernel.TypeCaseDef_pattern(caseDef)
     def rhs(implicit ctx: Context): TypeTree = kernel.TypeCaseDef_rhs(caseDef)
   }
 
-  val TypeCaseDef: TypeCaseDefModule
-  abstract class TypeCaseDefModule {
-    def apply(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef
+  object TypeCaseDef {
+    def apply(pattern: TypeTree, rhs: TypeTree)(implicit ctx: Context): TypeCaseDef =
+      kernel.TypeCaseDef_module_apply(pattern, rhs)
 
-    def copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef
+    def copy(original: TypeCaseDef)(pattern: TypeTree, rhs: TypeTree)(implicit ctx: Context): TypeCaseDef =
+      kernel.TypeCaseDef_module_copy(original)(pattern, rhs)
 
-    def unapply(x: TypeCaseDef): Option[(TypeTree, TypeTree)]
+    def unapply(x: TypeCaseDef)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((x.pattern, x.rhs))
   }
+
 }

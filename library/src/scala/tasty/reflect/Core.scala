@@ -321,7 +321,7 @@ trait Core {
      *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
      *  represents a type but has `TypeBound`a inside.
      */
-    type WildcardType = kernel.WildcardType
+    type WildcardTypeTree = kernel.WildcardTypeTree
 
   /** Type or bounds */
   type TypeOrBounds = kernel.TypeOrBounds
@@ -404,6 +404,9 @@ trait Core {
    *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
    */
   type ImportSelector = kernel.ImportSelector
+  type SimpleSelector = kernel.SimpleSelector
+  type RenameSelector = kernel.RenameSelector
+  type OmitSelector = kernel.OmitSelector
 
   /** Untyped identifier */
   type Id = kernel.Id

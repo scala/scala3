@@ -7,18 +7,8 @@ import dotty.tools.dotc.core.Decorators._
 
 trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
-  object IsPackageSymbol extends IsPackageSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
-      if (symbol.is(Flags.Package)) Some(symbol) else None
-  }
-
   def PackageSymbolDeco(symbol: PackageSymbol): PackageSymbolAPI = new PackageSymbolAPI {
     def tree(implicit ctx: Context): PackageDef = FromSymbol.packageDefFromSym(symbol)
-  }
-
-  object IsTypeSymbol extends IsTypeSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
-      if (symbol.isType) Some(symbol.asType) else None
   }
 
   def TypeSymbolDeco(symbol: TypeSymbol): TypeSymbolAPI = new TypeSymbolAPI {
@@ -29,11 +19,6 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
   object ClassSymbol extends ClassSymbolModule {
     def of(fullName: String)(implicit ctx: Context): ClassSymbol = ctx.requiredClass(fullName)
-  }
-
-  object IsClassSymbol extends IsClassSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
-      if (symbol.isClass) Some(symbol.asClass) else None
   }
 
   def ClassSymbolDeco(symbol: ClassSymbol): ClassSymbolAPI = new ClassSymbolAPI {
@@ -100,22 +85,12 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
     private def isField(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
   }
 
-  object IsDefSymbol extends IsDefSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
-      if (symbol.isTerm && symbol.is(Flags.Method)) Some(symbol.asTerm) else None
-  }
-
   def DefSymbolDeco(symbol: DefSymbol): DefSymbolAPI = new DefSymbolAPI {
     def tree(implicit ctx: Context): DefDef = FromSymbol.defDefFromSym(symbol)
 
     def signature(implicit ctx: Context): Signature = {
       symbol.signature
     }
-  }
-
-  object IsValSymbol extends IsValSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
-      if (symbol.isTerm && !symbol.is(Flags.Method) && !symbol.is(Flags.Case)) Some(symbol.asTerm) else None
   }
 
   def ValSymbolDeco(symbol: ValSymbol): ValSymbolAPI = new ValSymbolAPI {
@@ -132,16 +107,8 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
     }
   }
 
-  object IsBindSymbol extends IsBindSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
-      if (symbol.isTerm && symbol.is(Flags.Case)) Some(symbol.asTerm) else None // TODO
-  }
-
   def BindSymbolDeco(symbol: BindSymbol): BindSymbolAPI = new BindSymbolAPI {
     def tree(implicit ctx: Context): Bind = FromSymbol.bindFromSym(symbol)
   }
 
-  object NoSymbol extends NoSymbolModule {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Boolean = symbol ne core.Symbols.NoSymbol
-  }
 }
