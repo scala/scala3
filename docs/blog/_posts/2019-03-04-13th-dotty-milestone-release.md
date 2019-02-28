@@ -3,7 +3,7 @@ layout: blog-page
 title: Announcing Dotty 0.13.0-RC1 with Spark support and redesigned implicits
 author: Aggelos Biboudis
 authorImg: /images/aggelos.jpg
-date: 2019-03-01
+date: 2019-03-04
 ---
 
 Hello hello! This is the second release for 2019, let's call it the _Contextual_
@@ -13,14 +13,15 @@ Without further ado, today we release the version 0.13.0-RC1 of the Dotty compil
 This release serves as a technology preview that demonstrates new language features and the
 compiler supporting them.
 
-Dotty is the project name for technologies that are considered for inclusion in Scala 3. Scala has
-pioneered the fusion of object-oriented and functional programming in a typed setting. Scala 3 will
-be a big step towards realising the full potential of these ideas. Its main objectives are to
+Dotty is the project name for technologies that are being considered for
+inclusion in Scala 3. Scala has pioneered the fusion of object-oriented and
+functional programming in a typed setting. Scala 3 will be a big step towards
+realising the full potential of these ideas. Its main objectives are to
 
 - become more opinionated by promoting programming idioms we found to work well,
 - simplify where possible,
 - eliminate inconsistencies and surprising behaviours,
-- build on strong foundations to ensure the design hangs well together,
+- build on strong foundations to ensure the design hangs together well,
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
@@ -28,7 +29,7 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 
 <!--more-->
 
-This is our 132th scheduled release according to our
+This is our 13th scheduled release according to our
 [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
 
 # What’s new in the 0.13.0-RC1 technology preview?
@@ -62,9 +63,9 @@ varied number of use cases, among them: implementing type classes, establishing
 context, dependency injection, expressing capabilities, computing new types and
 proving relationships between them.
 
-However, we identify a few side-effects that implicits gave rise to, as a
+However, we identify a few consequences that implicits gave rise to, as a
 programming style. Firstly, users used implicit conversions between types, in an
-undisciplined matter. This overuse of implicit conversions declattered code for
+unprincipled matter. This overuse of implicit conversions decluttered code for
 sure, but it made it harder for people to reason about.
 
 ```scala
@@ -77,14 +78,17 @@ implicit values and we identify that their semantic differences must be
 communicated more clearly syntactically. Secondly, implicits pose challenges for
 tooling such as error reporting for failed implicit searches. Furthermore, the
 `implicit` keyword is way too overloaded (implicit vals, defs, objects,
-parameters, or arguments) and users may use it as a mechanism rather than an
-intent. Another consideration is that the `implicit` keyword annotates a whole
-parameter section instead of a single parameter, and passing an argument to an
-implicit parameter looks like a regular application. This is problematic because
-it can create confusion regarding what parameter gets instantiated in a call.
-Last but not least, some times implicit parameters are merely propagated in
-nested function calls and not used at all, so names of implicit parameters are
-not always necessary.
+parameters). For instance, a newcomer can easily confuse the two
+examples above while they demonstrate completely different things, a typeclass
+instance is an implicit object or val if unconditional and an implicit def with
+implicit parameters if conditional; arguably all of them are surprisingly
+similar (syntactically). Another consideration is that the `implicit` keyword
+annotates a whole parameter section instead of a single parameter, and passing
+an argument to an implicit parameter looks like a regular application. This is
+problematic because it can create confusion regarding what parameter gets passed
+in a call. Last but not least, sometimes implicit parameters are merely
+propagated in nested function calls and not used at all, so names of implicit
+parameters are not always necessary.
 
 Consequently, we introduce two new language features:
 
@@ -154,7 +158,7 @@ implied ctx for ExecutionContext = currentThreadPool().context
 For symmetry, we define our well-known `implicitly` from `Predef` in terms of
 `given` and for simplicity we rename it to `the`. Functions like `the` that have
 only _inferable parameters_ are also called _context queries_ from now on.
-Consequently, to create an implied instance of `Ord[List[Int]]` we write:
+Consequently, to summon an implied instance of `Ord[List[Int]]` we write:
 
 ```scala
 the[Ord[List[Int]]]
@@ -188,7 +192,7 @@ parameters. Here is an example of such a function:
 type Contextual[T] = given Context => T
 ```
 
-Context queries--previously named implicit function types--are now also
+Context queries--previously named implicit function types (IFTs)--are now also
 expressed with `given`, providing types for first-class context queries. This is
 merely an alignment of IFTs into the new scheme.
 
@@ -250,7 +254,7 @@ for a deep dive at the relevant PRs:
 [#5540](https://github.com/lampepfl/dotty/pull/5540) and
 [#5839](https://github.com/lampepfl/dotty/pull/5839).
 
-`Multiversal equality` is now supported through the `Eql` marker trait (renamed
+_Multiversal equality_ is now supported through the `Eql` marker trait (renamed
 from `Eq` to differentiate it from Cats' `Eq`). For example, in order to be able
 to compare integers with strings now, instead of a custom implicit we can
 provide a derived implicit instance:
@@ -271,9 +275,26 @@ implied for Conversion[String, Token] {
 }
 ```
 
-It is worth mentioning that we now allow arbitrary definitions at the toplevel.
-This means package objects are now redundant, and will be phased out.
-You can read about [dropping package objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
+_Top level_ definitions are now supported. This means that package objects are
+now redundant, and will be phased out. This means that all kinds of definitions
+can be written at the top level.
+
+```scala
+package p.
+
+type Labelled[T] = (String, T)
+val a: Labelled[Int] = ("count", 1)
+def b = a._2
+
+case class C()
+
+implicit object Cops {
+  def (x: C) pair (y: C) = (x, y)
+}
+```
+
+You can read about [dropping package
+objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
 at the documentation linked or at the relevant PR
 [#5754](https://github.com/lampepfl/dotty/pull/5754).
 
@@ -301,10 +322,6 @@ first prototype for the generation of SemanticDB information from TASTy.
 
 ## And much more!
 
-Other significant changes in this release are the following:
-
-
-
 Please read our [release notes](https://github.com/lampepfl/dotty/releases/tag/0.13.0-RC1)
 for more details!
 
@@ -321,11 +338,11 @@ sbt new lampepfl/dotty.g8
 For more details on using Dotty with sbt, see the
 [example project](https://github.com/lampepfl/dotty-example-project).
 
-## [Mill](http://www.lihaoyi.com/mill/)
+<!-- ## [Mill](http://www.lihaoyi.com/mill/)
 
 The Mill build tool version 0.2.6 introduced experimental support for Dotty. For more details on
 using Dotty with Mill, see the
-[example project](https://github.com/lampepfl/dotty-example-project/tree/mill).
+[example project](https://github.com/lampepfl/dotty-example-project/tree/mill). -->
 
 ## IDE support
 
@@ -338,7 +355,7 @@ Releases are available for download on the _Releases_
 section of the Dotty repository:
 [https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
 
-For MacOs users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
+For macOS users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
 running:
 
 ```shell
