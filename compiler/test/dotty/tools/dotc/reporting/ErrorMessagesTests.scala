@@ -1554,7 +1554,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def notAnExtractor() =
     checkMessagesAfter(FrontEnd.name) {
       """
-        | class Foo
+        | trait Foo
+        | object Foo
         | object Test {
         |   def test(foo: Foo) = foo match {
         |       case Foo(name) => ???

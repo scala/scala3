@@ -941,7 +941,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val Apply(qual, args) = tree
 
     def notAnExtractor(tree: Tree) =
-      if (tree.tpe.isErroneous) tree
+      if (!tree.tpe.isError && tree.tpe.isErroneous) tree
       else errorTree(tree, NotAnExtractor(qual))
 
     /** If this is a term ref tree, try to typecheck with its type name.
