@@ -184,8 +184,8 @@ class Definitions {
     arr
   }
 
-  private def completeClass(cls: ClassSymbol): ClassSymbol = {
-    ensureConstructor(cls, EmptyScope)
+  private def completeClass(cls: ClassSymbol, ensureCtor: Boolean = true): ClassSymbol = {
+    if (ensureCtor) ensureConstructor(cls, EmptyScope)
     if (cls.linkedClass.exists) cls.linkedClass.info = NoType
     cls
   }
@@ -262,7 +262,7 @@ class Definitions {
    *       def getClass: java.lang.Class[T] = ???
    *     }
    */
-  lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
+  lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
   lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
   def AnyValType: TypeRef = AnyValClass.typeRef
