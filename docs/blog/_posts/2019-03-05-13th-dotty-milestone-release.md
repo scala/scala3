@@ -3,15 +3,16 @@ layout: blog-page
 title: Announcing Dotty 0.13.0-RC1 with Spark support, top level definitions and redesigned implicits
 author: Aggelos Biboudis
 authorImg: /images/aggelos.jpg
-date: 2019-03-04
+date: 2019-03-05
 ---
 
-Hello hello! This is the second release for 2019, let's call it the _Contextual_
-release and you will understand why we are super excited in a bit! ✨🎊🎉
+Hello hello! This is the second release for 2019. Spark, top level definitions
+and redesigned implicits ✨🎊🎉 are the most important inclusions in this release
+and you will understand why we are super excited, in a bit!
 
-Without further ado, today we release the version 0.13.0-RC1 of the Dotty compiler.
-This release serves as a technology preview that demonstrates new language features and the
-compiler supporting them.
+Without further ado, today we release the version 0.13.0-RC1 of the Dotty
+compiler. This release serves as a technology preview that demonstrates new
+language features and the compiler supporting them.
 
 Dotty is the project name for technologies that are being considered for
 inclusion in Scala 3. Scala has pioneered the fusion of object-oriented and
@@ -38,8 +39,8 @@ This is our 13th scheduled release according to our
 
 Dotty projects have always been able to [depend on Scala 2
 libraries](https://github.com/lampepfl/dotty-example-project#getting-your-project-to-compile-with-dotty),
-and this usually works fine as long as the Dotty code does not call a Scala 2
-macro directly. However, [Spark](http://spark.apache.org/) was known to not work
+and this usually works fine (as long as the Dotty code does not call a Scala 2
+macro directly). However, [Spark](http://spark.apache.org/) was known to not work
 correctly as it heavily relies on Java serialization which we were not fully
 supporting.
 
@@ -55,6 +56,26 @@ Scala 2, and that was enough to make our Spark assignments run correctly! This
 doesn't mean that our support is perfect however, so don't hesitate to [open an
 issue](http://github.com/lampepfl/dotty/issues) if something is amiss.
 
+## Introducing top level definitions
+
+_Top level_ definitions are now supported. This means that package objects are
+now redundant, and will be phased out. This means that all kinds of definitions
+can be written at the top level.
+
+```scala
+package p
+
+type Labelled[T] = (String, T)
+
+val a: Labelled[Int] = ("count", 1)
+def b = a._2
+```
+
+You can read about [dropping package
+objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
+at the documentation linked or at the relevant PR
+[#5754](https://github.com/lampepfl/dotty/pull/5754).
+
 ## All things impl... implied
 
 Scala's implicits are its most distinguished feature. They are _the_ fundamental
@@ -63,32 +84,39 @@ varied number of use cases, among them: implementing type classes, establishing
 context, dependency injection, expressing capabilities, computing new types and
 proving relationships between them.
 
-However, we identify a few consequences that implicits gave rise to, as a
-programming style. Firstly, users used implicit conversions between types, in an
-unprincipled matter. This overuse of implicit conversions decluttered code for
-sure, but it made it harder for people to reason about.
+However, with great power comes great responsibility. The current design of
+implicits has shown some limitations, which we have been trying to identify and
+address to make Scala a clearer and more pleasant language. First of all, we
+found that the syntactic similarity was too great between implicit _conversions_
+and implicit _values_ that depend on other implicit values. Both of them appear
+in the snippet below:
 
 ```scala
 implicit def i1(implicit x: T): C[T] = ... // 1: conditional implicit value
 implicit def i2(x: T): C[T] = ...          // 2: implicit conversion
 ```
 
+Some users used implicit conversions, in an unprincipled matter. This overuse of
+implicit conversions decluttered code. However, while implicit conversions can
+be useful to remove clutter, their abuse makes it harder for people to reason
+about the code.
+
 The `implicit` keyword is used for both implicit conversions and conditional
-implicit values and we identify that their semantic differences must be
-communicated more clearly syntactically. Secondly, implicits pose challenges for
-tooling such as error reporting for failed implicit searches. Furthermore, the
-`implicit` keyword is way too overloaded (implicit vals, defs, objects,
-parameters). For instance, a newcomer can easily confuse the two
-examples above while they demonstrate completely different things, a typeclass
-instance is an implicit object or val if unconditional and an implicit def with
-implicit parameters if conditional; arguably all of them are surprisingly
-similar (syntactically). Another consideration is that the `implicit` keyword
-annotates a whole parameter section instead of a single parameter, and passing
-an argument to an implicit parameter looks like a regular application. This is
-problematic because it can create confusion regarding what parameter gets passed
-in a call. Last but not least, sometimes implicit parameters are merely
-propagated in nested function calls and not used at all, so names of implicit
-parameters are not always necessary.
+implicit values and we identified that their semantic differences must be
+communicated more clearly syntactically. Furthermore, the `implicit` keyword is
+ascribed too many overloaded meanings in the language (implicit vals, defs,
+objects, parameters). For instance, a newcomer can easily confuse the two
+examples above, although they demonstrate completely different things, a
+typeclass instance is an implicit object or val if unconditional and an implicit
+def with implicit parameters if conditional; arguably all of them are
+surprisingly similar (syntactically). Another consideration is that the
+`implicit` keyword annotates a whole parameter section instead of a single
+parameter, and passing an argument to an implicit parameter looks like a regular
+application. This is problematic because it can create confusion regarding what
+parameter gets passed in a call. Last but not least, sometimes implicit
+parameters are merely propagated in nested function calls and not used at all,
+so giving names to implicit parameters is often redundant and only adds noise to
+a function signature.
 
 Consequently, we introduce two new language features:
 
@@ -125,7 +153,7 @@ implied ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] {
 }
 ```
 
- A `given` clause can also designate an inferable parameter for functions:
+A `given` clause can also designate an inferable parameter for functions:
 
 ```scala
 def max[T](x: T, y: T) given (ord: Ord[T]): T =
@@ -155,10 +183,10 @@ instance of `ExecutionContext` is demanded the right-hand side is returned.
 implied ctx for ExecutionContext = currentThreadPool().context
 ```
 
-For symmetry, we define our well-known `implicitly` from `Predef` in terms of
-`given` and for simplicity we rename it to `the`. Functions like `the` that have
-only _inferable parameters_ are also called _context queries_ from now on.
-Consequently, to summon an implied instance of `Ord[List[Int]]` we write:
+We have also added a synonym to `implicitly`, which is often more natural to
+spell out in user code. Functions like `the` that have only _inferable
+parameters_ are also called _context queries_ from now on. Consequently, to
+summon an implied instance of `Ord[List[Int]]` we write:
 
 ```scala
 the[Ord[List[Int]]]
@@ -180,7 +208,7 @@ object B {
 }
 ```
 
-You can read more about [implied
+**You can read more about** [implied
 imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html)
 from the docs or the relevant PR
 [#5868](https://github.com/lampepfl/dotty/pull/5868).
@@ -196,7 +224,7 @@ Context queries--previously named implicit function types (IFTs)--are now also
 expressed with `given`, providing types for first-class context queries. This is
 merely an alignment of IFTs into the new scheme.
 
-You can read about the alternative to implicits through the *Contextual
+**You can read more about** the alternative to implicits through the *Contextual
 Abstractions* section of our documentation or for a deep dive from the relevant
 PR chain that originated from
 [#5458](https://github.com/lampepfl/dotty/pull/5458). The syntax changes for new
@@ -222,7 +250,7 @@ enum Tree[T] derives Eql, Ordering, Pickling {
 
 where the generated implied instances are the ones below:
 ```scala
-implied [T: Eq]       for Eq[Tree[T]]       = Eq.derived
+implied [T: Eql]      for Eql[Tree[T]]      = Eql.derived
 implied [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
 implied [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
 ```
@@ -248,9 +276,9 @@ it has a definition like this:
 def derived[T] given Generic[T] = ...
 ```
 
-You can read more about [Typeclass
+**You can read more about** [Typeclass
 Derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) or
-for a deep dive at the relevant PRs:
+have a deep dive at the relevant PRs:
 [#5540](https://github.com/lampepfl/dotty/pull/5540) and
 [#5839](https://github.com/lampepfl/dotty/pull/5839).
 
@@ -263,7 +291,7 @@ provide a derived implicit instance:
 implied for Eql[Int, String] = Eql.derived
 ```
 
-You can read how we based multiversal equality on typeclass derivation through
+**You can read more about** how we based multiversal equality on typeclass derivation through
 the relevant PR [#5843](https://github.com/lampepfl/dotty/pull/5843).
 
 _Implicit conversions_ are now defined by implied instances of the
@@ -275,32 +303,11 @@ implied for Conversion[String, Token] {
 }
 ```
 
-_Top level_ definitions are now supported. This means that package objects are
-now redundant, and will be phased out. This means that all kinds of definitions
-can be written at the top level.
-
-```scala
-package p
-
-type Labelled[T] = (String, T)
-val a: Labelled[Int] = ("count", 1)
-def b = a._2
-
-case class C()
-
-implicit object Cops {
-  def (x: C) pair (y: C) = (x, y)
-}
-```
-
-You can read about [dropping package
-objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
-at the documentation linked or at the relevant PR
-[#5754](https://github.com/lampepfl/dotty/pull/5754).
-
-**This blogpost offers only a brief summary of the new features, for more details
-please read our documentation page under the new section named [*Contextual
-Abstractions*](https://dotty.epfl.ch/docs/).**
+**Note:** that these release notes contain only a brief summary of the new
+features, for more details please read our documentation page under the new
+section named [*Contextual Abstractions*](https://dotty.epfl.ch/docs/). Equally
+important with the documentation of each feature, please consult the
+[Relationship with Scala 2 Implicits](https://dotty.epfl.ch/docs/reference/contextual/relationship-implicits.html) section as well.
 
 ## Implicit resolution rule changes
 
