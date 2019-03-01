@@ -18,7 +18,7 @@ object B {
 In the code above, the `import A._` clause of object `B` will import all members
 of `A` _except_ the implied instance `tc`. Conversely, the second import `import implied A._` will import _only_ that implied instance.
 
-Generally, a normal import clause brings all definitions except implied instances into scope whereas an `import implied` clause beings only implied instances into scope.
+Generally, a normal import clause brings all definitions except implied instances into scope whereas an `import implied` clause brings only implied instances into scope.
 
 There are two main benefits arising from these rules:
 
