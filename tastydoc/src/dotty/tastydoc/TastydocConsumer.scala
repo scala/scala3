@@ -40,14 +40,15 @@ class TastydocConsumer extends TastyConsumer {
             case List()::xs => handleParams(xs, str + "()")
             case args::xs => handleParams(xs, str + "(" + args.map{case ValDef(vname, vtype, _) => vname + ": " + beautifyType(vtype)}.reduce((x, y) => x + ", " + y) + ")")
           }
-          new DefContainer(name +
+          new DefContainer("def " +
+            name +
             handleParams(paramss, "") +
             " : " +
             beautifyType(tpt)
           )
 
         case reflect.ValDef(name, tpt, rhs) =>
-          new ValContainer(
+          new ValContainer("val " +
             name +
             " : " +
             beautifyType(tpt)
