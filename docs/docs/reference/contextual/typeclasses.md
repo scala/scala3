@@ -17,7 +17,7 @@ trait Monoid[T] extends SemiGroup[T] {
   def unit: T
 }
 object Monoid {
-  def apply[T] = the[Monoid[T]]
+  def apply[T] given Monoid[T] = the[Monoid[T]]
 }
 
 implied for Monoid[String] {
