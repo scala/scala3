@@ -280,7 +280,7 @@ now redundant, and will be phased out. This means that all kinds of definitions
 can be written at the top level.
 
 ```scala
-package p.
+package p
 
 type Labelled[T] = (String, T)
 val a: Labelled[Int] = ("count", 1)
