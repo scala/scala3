@@ -20,40 +20,38 @@ class TastydocConsumer extends TastyConsumer {
 
     def traverse(child: reflect.Tree) : Container = {
 
+      def beautifyType(typeTree: reflect.TypeTree) : String = {
+        typeTree.tpe.showCode
+        .replaceAll("\u001B\\[[;\\d]*m", "") //TODO: Other way to remove color?
+        //.stripPrefix("scala.")
+      }
+
+      def beautifyImport(expr: reflect.Term, selectors: List[reflect.ImportSelector]) : String = {
+        expr.showCode.replaceAll("\u001B\\[[;\\d]*m", "") +
+        "." +
+        selectors
+      }
+
       def convertToContainer(reflectType : reflect.Statement) : Container = reflectType match {
         case reflect.DefDef(name, typeParams, paramss, tpt, rhs) =>
 
           @tailrec def handleParams(ls: List[List[ValDef]], str: String) : String = ls match {
             case Nil => str
             case List()::xs => handleParams(xs, str + "()")
-            case args::xs => handleParams(xs, str + "(" + args.map{case ValDef(vname, vtype, _) => vname + ": " + convertTypeTree(vtype)}.reduce((x, y) => x + ", " + y) + ")")
+            case args::xs => handleParams(xs, str + "(" + args.map{case ValDef(vname, vtype, _) => vname + ": " + beautifyType(vtype)}.reduce((x, y) => x + ", " + y) + ")")
           }
           new DefContainer(name +
             handleParams(paramss, "") +
             " : " +
-            convertTypeTree(tpt)
+            beautifyType(tpt)
           )
 
         case reflect.ValDef(name, tpt, rhs) =>
           new ValContainer(
             name +
             " : " +
-            convertTypeTree(tpt)
+            beautifyType(tpt)
           )
-      }
-
-      def convertTypeTree(typeTree: reflect.TypeTree) : String = typeTree match {
-        case _ => typeTree.tpe.showCode.replaceAll("\u001B\\[[;\\d]*m", "") //TODO: Other way to remove color?
-        //case reflect.TypeTree.Ident(id) => id
-        //case reflect.TypeTree.Applied(tycon, args) => convertType(tycon) + "[" + args.map(x => convertType(x)).reduceLeft
-        //case reflect.Type.AppliedType(tycon, args) =>
-        //case tpt => convertTypeOrBounds(tpt.tpe)
-      }
-
-      def convertTypeOrBounds(tpe: reflect.TypeOrBounds) : String = tpe match {
-        case reflect.Type.AppliedType(tycon, args) => convertTypeOrBounds(tycon) + "[" + (args.map(convertTypeOrBounds)).reduce((x, y) => x + ", " + y) + "]"
-        case reflect.Type.TypeRef(name, qualifier) => name //TODO: handle qualifier
-        case tpe => tpe.show
       }
 
       child match {
@@ -63,7 +61,7 @@ class TastydocConsumer extends TastyConsumer {
           //stats.map(traverse(level+1, _)).foldLeft("")(_+_)
           new PackageContainer("package " + pid, stats.map(traverse(_))) //TODO: Optional new?
         case reflect.Import(impliedOnly, expr, selectors) =>
-          new ImportContainer("import " + expr + selectors)
+          new ImportContainer("import " + beautifyImport(expr, selectors))
         case reflect.ClassDef(name, constr, parents, derived, self, body) =>
           //TODO: Generic type
           //TODO: TypeDef
@@ -83,7 +81,7 @@ class TastydocConsumer extends TastyConsumer {
     }
 
     print(formatToMarkdown(traverse(root), 0))
-    val pw = new PrintWriter(new File("./tastydoc/docoutputtest.md" ))
+    val pw = new PrintWriter(new File("./tastydoc/docOutputTest.md" ))
     pw.write(formatToMarkdown(traverse(root), 0))
     pw.close()
   }

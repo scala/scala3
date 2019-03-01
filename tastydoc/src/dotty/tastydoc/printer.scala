@@ -48,15 +48,10 @@ def format(container: Container, level: Int) : String = container match {
 
 def formatToMarkdown(container: Container, level: Int) : String = container match {
   case PackageContainer(sign, content) =>
-    (0 until level).map(_ => "  ").foldLeft("")(_+_) +
-    sign +
-    "\n" +
-    content.map(formatToMarkdown(_, level+1)).foldLeft("")(_+_) +
-    "\n"
+    Md.header(sign, level + 2) +
+    content.map(formatToMarkdown(_, level)).foldLeft("")(_+_)
   case ImportContainer(sign) =>
-    (0 until level).map(_ => "  ").foldLeft("")(_+_) +
-    sign +
-    "\n"
+    Md.header(sign, level + 3)
   case ClassContainer(sign, defdef, valdef, typedef) =>
     Md.header(sign, level + 1) + //TODO: Bound level everywhere
     Md.header("Methods :", level + 2) +
