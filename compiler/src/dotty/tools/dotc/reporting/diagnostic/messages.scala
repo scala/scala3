@@ -2137,18 +2137,30 @@ object messages {
     val explanation: String = ""
   }
 
-  case class DoubleDeclaration(decl: Symbol, previousDecl: Symbol)(implicit ctx: Context) extends Message(DoubleDeclarationID) {
+  case class DoubleDefinition(decl: Symbol, previousDecl: Symbol)(implicit ctx: Context) extends Message(DoubleDefinitionID) {
     val kind: String = "Duplicate Symbol"
     val msg: String = {
       val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
         // compare the signatures when both symbols represent methods
         decl.signature.matchDegree(previousDecl.signature) match {
-          /* case Signature.NoMatch => // can't happen because decl.matches(previousDecl) is checked before reporting this error */
-          case Signature.ParamMatch => "\nOverloads with matching parameter types are not allowed."
-          case _ /* Signature.FullMatch */ => "\nThe definitions have matching type signatures after erasure."
+          case Signature.NoMatch =>
+            "" // shouldn't be reachable
+          case Signature.ParamMatch =>
+            "have matching parameter types."
+          case Signature.FullMatch =>
+            "have the same type after erasure."
         }
       } else ""
-      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} ${if (previousDecl.span.exists) s"at line ${previousDecl.sourcePos.line + 1}" else ""}." + details
+      def symLocation(sym: Symbol) = {
+        val lineDesc =
+          if (sym.span.exists && sym.span != sym.owner.span)
+            s" at line ${sym.sourcePos.line + 1}" else ""
+        i"in ${sym.owner}${lineDesc}"
+      }
+      em"""Double definition:
+          |${previousDecl.initial.showDcl} ${symLocation(previousDecl)} and
+          |${decl.initial.showDcl} ${symLocation(decl)}
+          |""" + details
     }
     val explanation: String = ""
   }
