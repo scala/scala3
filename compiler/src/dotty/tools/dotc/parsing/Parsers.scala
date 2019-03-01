@@ -2556,6 +2556,11 @@ object Parsers {
       val clsName = modName.toTypeName
       val constr = classConstr()
       val templ = templateOpt(constr, isEnum = true)
+      templ match {
+        case Template(_, _, _, List(EmptyTree)) =>
+          syntaxError("enum body should not be empty.", start)
+        case _ =>
+      }
       finalizeDef(TypeDef(clsName, templ), addMod(mods, enumMod), start)
     }
 
