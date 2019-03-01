@@ -1,6 +1,6 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.13.0-RC1 with Spark support and redesigned implicits
+title: Announcing Dotty 0.13.0-RC1 with Spark support, top level definitions and redesigned implicits
 author: Aggelos Biboudis
 authorImg: /images/aggelos.jpg
 date: 2019-03-04
