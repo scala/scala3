@@ -651,10 +651,15 @@ object DottyLanguageServer {
       if (isWorksheet(uri)) toWrappedPosition(pos)
       else pos
     val source = driver.openedFiles(uri)
-    if (source.exists) {
-      val p = Spans.Span(source.lineToOffset(actualPosition.getLine) + actualPosition.getCharacter)
-      new SourcePosition(source, p)
-    }
+    if (source.exists)
+      source.lineToOffsetOpt(actualPosition.getLine).map(_ + actualPosition.getCharacter) match {
+        // `<=` to allow an offset to point to the end of the file
+        case Some(offset) if offset <= source.content().length =>
+          val p = Spans.Span(offset)
+          new SourcePosition(source, p)
+        case _ =>
+          NoSourcePosition
+      }
     else NoSourcePosition
   }
 

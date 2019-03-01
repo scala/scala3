@@ -115,6 +115,13 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** Map line to offset of first character in line */
   def lineToOffset(index: Int): Int = lineIndices(index)
 
+  /** Like `lineToOffset`, but doesn't crash if the index is out of bounds. */
+  def lineToOffsetOpt(index: Int): Option[Int] =
+    if (index < 0 || index >= lineIndices.length)
+      None
+    else
+      Some(lineToOffset(index))
+
   /** A cache to speed up offsetToLine searches to similar lines */
   private[this] var lastLine = 0
 
