@@ -1905,11 +1905,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case (tp1: ConstantType, tp2: ConstantType) =>
         tp1 == tp2
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol.isClass && tp2.symbol.isClass =>
-        if (isSubType(tp1, tp2) || isSubType(tp2, tp1)) {
+        val cls1 = tp1.classSymbol
+        val cls2 = tp2.classSymbol
+        if (cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)) {
           true
         } else {
-          val cls1 = tp1.classSymbol
-          val cls2 = tp2.classSymbol
           if (cls1.is(Final) || cls2.is(Final))
             // One of these types is final and they are not mutually
             // subtype, so they must be unrelated.

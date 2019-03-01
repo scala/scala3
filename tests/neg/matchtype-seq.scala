@@ -143,3 +143,13 @@ object Test {
   identity[TD[Box2_C[Int, Int, Int]]](1)
   identity[TD[Box2_C[Int, Int, String]]]("") // error
 }
+
+object Test2 {
+  type M[A] = A match {
+    case Option[Int] => String
+    case Some[_]     => Int
+  }
+
+  def a[A]: M[Some[A]] = 1  // error
+  def b[A]: M[Some[A]] = "" // error
+}
