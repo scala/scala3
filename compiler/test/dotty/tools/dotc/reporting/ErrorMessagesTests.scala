@@ -22,7 +22,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def caseClassExtendsEnum =
     checkMessagesAfter(RefChecks.name) {
       """
-        |enum Foo {}
+        |enum Foo { case A, B }
         |case class Bar() extends Foo
       """.stripMargin
     }
