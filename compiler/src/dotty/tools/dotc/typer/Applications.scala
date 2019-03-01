@@ -42,7 +42,7 @@ object Applications {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    ref.info.widenExpr.annotatedToRepeated.dealiasKeepAnnots
+    ref.info.widenExpr.annotatedToRepeated
   }
 
   /** Does `tp` fit the "product match" conditions as an unapply result type

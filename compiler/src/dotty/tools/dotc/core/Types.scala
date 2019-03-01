@@ -3764,21 +3764,9 @@ object Types {
 
     override def tryNormalize(implicit ctx: Context): Type = reduced.normalized
 
-    final def cantPossiblyMatch(cas: Type)(implicit ctx: Context): Boolean =
-      true  // should be refined if we allow overlapping cases
-
     def reduced(implicit ctx: Context): Type = {
       val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
       val typeComparer = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
-
-      def reduceSequential(cases: List[Type])(implicit ctx: Context): Type = cases match {
-        case Nil => NoType
-        case cas :: cases1 =>
-          val r = typeComparer.matchCase(scrutinee, cas, instantiate = true)
-          if (r.exists) r
-          else if (cantPossiblyMatch(cas)) reduceSequential(cases1)
-          else NoType
-      }
 
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
@@ -3812,7 +3800,7 @@ object Types {
           trace(i"reduce match type $this $hashCode", typr, show = true) {
             try
               if (defn.isBottomType(scrutinee)) defn.NothingType
-              else reduceSequential(cases)(trackingCtx)
+              else typeComparer.matchCases(scrutinee, cases)(trackingCtx)
             catch {
               case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)

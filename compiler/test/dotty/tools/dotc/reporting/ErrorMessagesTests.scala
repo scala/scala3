@@ -1362,7 +1362,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertMessageCount(1, messages)
         val UnapplyInvalidNumberOfArguments(qual, argTypes) :: Nil = messages
         assertEquals("Boo", qual.show)
-        assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
+        assertEquals("(class Int, type String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
       }
 
   @Test def unapplyInvalidReturnType =
