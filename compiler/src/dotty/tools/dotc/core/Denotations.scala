@@ -518,8 +518,8 @@ object Denotations {
           val info1 = denot1.info
           val info2 = denot2.info
           val sameSym = sym1 eq sym2
-          if (sameSym && (info1 frozen_<:< info2)) denot2
-          else if (sameSym && (info2 frozen_<:< info1)) denot1
+          if (sameSym && (info1.widenExpr frozen_<:< info2.widenExpr)) denot2
+          else if (sameSym && (info2.widenExpr frozen_<:< info1.widenExpr)) denot1
           else {
             val jointSym =
               if (sameSym) sym1
@@ -586,9 +586,11 @@ object Denotations {
       (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
        yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
 
-    /** Normally, `tp1 & tp2`. Special cases for matching methods and classes, with
-      *  the possibility of raising a merge error.
-      */
+    /** Normally, `tp1 & tp2`.
+     *  Special cases for matching methods and classes, with
+     *  the possibility of raising a merge error.
+     *  Special handling of ExprTypes, where mixed intersections widen the ExprType away.
+     */
     def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type = {
       if (tp1 eq tp2) tp1
       else tp1 match {
@@ -645,9 +647,13 @@ object Denotations {
             case _ =>
               mergeConflict(sym1, sym2, tp1, tp2)
           }
-
+        case ExprType(rtp1) =>
+          tp2 match {
+            case ExprType(rtp2) => ExprType(rtp1 & rtp2)
+            case _ => rtp1 & tp2
+          }
         case _ =>
-          try tp1 & tp2
+          try tp1 & tp2.widenExpr
           catch {
             case ex: Throwable =>
               println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
@@ -656,9 +662,11 @@ object Denotations {
       }
     }
 
-    /** Normally, `tp1 | tp2`. Special cases for matching methods and classes, with
-      *  the possibility of raising a merge error.
-      */
+    /** Normally, `tp1 | tp2`.
+     *  Special cases for matching methods and classes, with
+     *  the possibility of raising a merge error.
+     *  Special handling of ExprTypes, where mixed unions widen the ExprType away.
+     */
     def infoJoin(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Type = tp1 match {
       case tp1: TypeBounds =>
         tp2 match {
@@ -697,8 +705,13 @@ object Denotations {
           case _ =>
             mergeConflict(sym1, sym2, tp1, tp2)
         }
+      case ExprType(rtp1) =>
+        tp2 match {
+          case ExprType(rtp2) => ExprType(rtp1 | rtp2)
+          case _ => rtp1 | tp2
+        }
       case _ =>
-        tp1 | tp2
+        tp1 | tp2.widenExpr
     }
 
   /** A non-overloaded denotation */

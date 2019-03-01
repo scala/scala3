@@ -54,7 +54,9 @@ trait TypeAssigner {
           required = EmptyFlagConjunction, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
-      if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
+      if (inheritedInfo.exists &&
+          decl.info.widenExpr <:< inheritedInfo.widenExpr &&
+          !(inheritedInfo.widenExpr <:< decl.info.widenExpr)) {
         val r = RefinedType(parent, decl.name, decl.info)
         typr.println(i"add ref $parent $decl --> " + r)
         r
