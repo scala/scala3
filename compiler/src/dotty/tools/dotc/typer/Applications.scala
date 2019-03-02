@@ -941,6 +941,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val Apply(qual, args) = tree
 
     def notAnExtractor(tree: Tree) =
+      // prefer inner errors
+      // e.g. report not found ident instead of not an extractor in tests/neg/i2950.scala
       if (!tree.tpe.isError && tree.tpe.isErroneous) tree
       else errorTree(tree, NotAnExtractor(qual))
 
