@@ -82,6 +82,10 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
       else NoMatch
     else NoMatch
 
+  /** Does this signature potentially clash with `that` ? */
+  def clashes(that: Signature)(implicit ctx: Context): Boolean =
+    matchDegree(that) == FullMatch
+
   /** name.toString == "" or name.toString == "_" */
   private def isWildcard(name: TypeName) = name.isEmpty || name == tpnme.WILDCARD
 

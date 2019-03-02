@@ -1,3 +1,13 @@
+<2471..2471> in doubleDefinition.scala
+Double definition:
+def foo: [T <: Int](x: T): T in class Test20 at line 143 and
+def foo: [S <: Int, T <: Int](x: S): T in class Test20 at line 144
+have the same type after erasure.
+<2338..2338> in doubleDefinition.scala
+Double definition:
+def foo: [T <: Int](x: T): T in class Test19 at line 137 and
+def foo(x: Int): Int in class Test19 at line 138
+have the same type after erasure.
 <2016..2016> in doubleDefinition.scala
 Double definition:
 var foo: Int in class Test16 at line 115 and

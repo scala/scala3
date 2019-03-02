@@ -131,3 +131,15 @@ class Test18 {
 	def foo(a: A) = 1
 	def foo(b: B) = 1
 }
+
+// Error when overloading polymorphic and non-polymorphic methods
+class Test19 {
+  def foo[T <: Int](x: T): T = x
+  def foo(x: Int): Int = x // error
+}
+
+// Error when overloading polymorphic methods
+class Test20 {
+  def foo[T <: Int](x: T): T = x
+  def foo[S <: Int, T <: Int](x: S): T = ??? // error
+}
