@@ -5,14 +5,14 @@ date: February 28, 2019
 author: Martin Odersky
 ---
 
-This document provides an overview of the features proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into seven categories: Essential foundations, simplifications, restrictions, dropped features, changed features, new features, and features oriented towards meta-programming with the aim to replace existing macros.
+This document provides an overview of the features proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into seven groups: Essential foundations, simplifications, restrictions, dropped features, changed features, new features, and features oriented towards meta-programming with the aim to replace existing macros.
 
-Each feature group contains sections classifying the status (i.e. relative importance to be a part of Scala-3, and relative urgency when to decide this) and the migration cost
+Each feature group contains sections classifying the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and the migration cost
 of the features in it.
 
 The current document reflects the state of things as of end of February, 2019. It will be updated to reflect any future changes in that status.
 
-### Essential Foundations
+## Essential Foundations
 
 These new features directly model core features of DOT, higher-kinded types, and the [SI calculus for implicit resolution](https://infoscience.epfl.ch/record/229878/files/simplicitly_1.pdf).
 
@@ -25,13 +25,13 @@ These new features directly model core features of DOT, higher-kinded types, and
 
 **Status: essential**
 
-These are essential core features of Scala-3. Without them, Scala-3 would be a completely different language, with different foundations.
+These are essential core features of Scala 3. Without them, Scala 3 would be a completely different language, with different foundations.
 
 **Migration cost: none to low**
 
 Since these are additions, there's generally no migration cost for old code. An exception are intersection types which replace compound types with slightly cleaned-up semantics. But few programs would be affected by this change.
 
-### Simplifications
+## Simplifications
 
 These features replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
@@ -42,7 +42,7 @@ These features replace existing constructs with the aim of making the language s
  - [Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) replace implicit classes with a clearer and simpler mechanism,
  - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) replace most uses
    of value classes while guaranteeing absence of boxing,
- - [Toplevel definitions](https://dotty.epfl.ch/docs/referene/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate,
+ - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate,
  - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
  - [Synthesized creation methods](https://contributors.scala-lang.org/t/expunging-new-from-scala-3/2868/81)
  replace `new` expressions (under discussion, not implemented),
@@ -51,7 +51,7 @@ These features replace existing constructs with the aim of making the language s
 
 With the exception of early initializers and old-style vararg patterns, all superseded features continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
-Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM (as is planned by project Valhalla).
+Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM as is planned by project Valhalla.
 
 **Status: bimodal: now or never / can delay**
 
@@ -64,7 +64,7 @@ On the other hand, we need to decide now only about the new features in this lis
 For the next several versions, old features will remain available and deprecation and rewrite techniques can make any migration effort low and gradual.
 
 
-### Restrictions
+## Restrictions
 
 These features are restricted to make the language safer.
 
@@ -81,11 +81,11 @@ These are essential restrictions. If we decide to adopt them, we should do it fo
 
 **Migration cost: low to high**
 
- - low: multiversal equality rules out code that is nonsensical, so any rewrites required by its adoption should be classified as bug fixes.
- - moderate: Restrictions to implicits can be accommodated by straightforward rewriting.
- - high: Unrestricted type projection cannot always rewritten directly since it is unsound in general.
+ - _low_: multiversal equality rules out code that is nonsensical, so any rewrites required by its adoption should be classified as bug fixes.
+ - _moderate_: Restrictions to implicits can be accommodated by straightforward rewriting.
+ - _high_: Unrestricted type projection cannot always rewritten directly since it is unsound in general.
 
-### Dropped Features
+## Dropped Features
 
 These features are proposed to be dropped without a new feature replacing them. The motivation for dropping these features is to simplify the language and its implementation.
 
@@ -120,7 +120,7 @@ Currently implemented features could stay around indefinitely. Updated docs may 
 Dropped features require rewrites to avoid their use in programs. These rewrites can sometimes be automatic (e.g. for procedure syntax, symbol literals, auto application)
 and sometimes need to be manual (e.g. class shadowing, auto tupling). Sometimes the rewrites would have to be non-local, affecting use sites as well as definition sites (e.g., in the case of DelayedInit, unless we find a solution).
 
-### Changes
+## Changes
 
 These features have undergone changes in Scala 3 to make them more regular and useful.
 
@@ -139,7 +139,7 @@ The features have been implemented in their new form in Scala 3.0's compiler. Th
 
 Only a few programs should require changes, but some necessary changes might be non-local (as in the case of restrictions to implicit scope).
 
-### New Features
+## New Features
 
 These are additions to the language that make it more powerful or pleasant to use.
 
@@ -159,13 +159,13 @@ Enums offer an essential simplification of core features, so they should be adop
 
 Being new features, existing code migrates without changes. To be sure, sometimes it would be attractive to rewrite code to make use of the new features in order to increase clarity and conciseness.
 
-### Meta Programming
+## Meta Programming
 
 The following features together try to put meta programming in Scala on a new basis. So far, meta programming was achieved by a combination of macros and libraries such as Shapeless that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
 
 It's worth noting that macros were never included in the Scala 2 language specification and were so far made available only under an `-experimental` flag. This has not prevented their widespread usage.
 
-To enable porting most uses of macros, we propose the advanced language features listed below. These propositions are more provisional than the rest of the proposed language features for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
+To enable porting most uses of macros, we propose the advanced language features listed below. These designs are more provisional than the rest of the proposed language features for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
 
 - [Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) allow computation on types.
 - [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
@@ -183,20 +183,20 @@ We know we need a practical replacement for current macros. The features listed 
 
 Existing macro libraries will have to be rewritten from the ground up. In many cases the rewritten libraries will turn out to be simpler and more robust than the old ones, but that does not relieve one of the cost of the rewrites. It's currently unclear to what degree users of macro libraries will be affected. We aim to provide sufficient functionality so that core macros can be re-implemented fully, but given the vast feature set of the various macro extensions to Scala 2 it is difficult to arrive at a workable limitation of scope.
 
-### Changes to Type Checking and Inference
+## Changes to Type Checking and Inference
 
-The Scala-3 compiler uses a new algorithm for type inference, which relies on
+The Scala 3 compiler uses a new algorithm for type inference, which relies on
 a general subtype constraint solver. The new algorithm often
-[works better than the old](https://contributors.scala-lang.org/t/better-type-inference-for-scala-send-us-your-problematic-cases/2410), but there are inevitably situations where the results of both algorithms differ, leading to errors diagnosed by Scala 3 for programs that the Scala 2 accepts.
+[works better than the old](https://contributors.scala-lang.org/t/better-type-inference-for-scala-send-us-your-problematic-cases/2410), but there are inevitably situations where the results of both algorithms differ, leading to errors diagnosed by Scala 3 for programs that the Scala 2 compiler accepts.
 
 **Status: essential**
 
-The new type-checking and inferencing algorithms are the essential core of the new compiler. They cannot be reverted without dropping the whole implementation of Scala 3.
+The new type-checking and inference algorithms are the essential core of the new compiler. They cannot be reverted without dropping the whole implementation of Scala 3.
 
 **Migration cost: high**
 
 Some existing programs will break and, given the complex nature of type inference, it will not always be clear what change caused the breakage and how to fix it.
 
-In our experience macros and changes in type and implicit argument inference together cause the large majority of problems when porting existing code to Scala 3. The latter source of problems could be addressed systematically by a tool that added all inferred types and implicit arguments to a Scala 2 source code file. Most likely such a tool would be implemented as a Scala 2 compiler plugin. The resulting code would have a greatly increased likelihood to compile under Scala 3, but would often be bulky to the point of being unreadable. A second part of the rewriting tool should then selectively and iteratively remove type and implicit annotations that were synthesized by the first part as long as they compile under Scala 3. This second part could be implemented as a program that invokes the Scala 3 compiler `dotc` programmatically.
+In our experience, macros and changes in type and implicit argument inference together cause the large majority of problems encountered when porting existing code to Scala 3. The latter source of problems could be addressed systematically by a tool that added all inferred types and implicit arguments to a Scala 2 source code file. Most likely such a tool would be implemented as a Scala 2 compiler plugin. The resulting code would have a greatly increased likelihood to compile under Scala 3, but would often be bulky to the point of being unreadable. A second part of the rewriting tool should then selectively and iteratively remove type and implicit annotations that were synthesized by the first part as long as they compile under Scala 3. This second part could be implemented as a program that invokes the Scala 3 compiler `dotc` programmatically.
 
 Several people have proposed such a tool for some time now. I believe it is time we find the will and the resources to actually implement it.
