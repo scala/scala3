@@ -141,3 +141,5 @@ The primary goal of the language constructs in this section is to enable high-le
    will be generated for them. Typical candidates for erased parameters are type
    constraints such as `=:=` and `<:<` that are expressed through implicits.
    Erased parameters improve both run times (since no argument has to be constructed) and compile times (since potentially large arguments can be eliminated early).
+
+See also: [A classification of proposed language features](./features-classification.html)

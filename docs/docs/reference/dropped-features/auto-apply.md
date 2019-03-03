@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Auto-Application"
+title: "Dropped: Auto-Application"
 ---
 
 Previously an empty argument list `()` was implicitly inserted when
