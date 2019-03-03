@@ -5,7 +5,7 @@ date: February 28, 2019
 author: Martin Odersky
 ---
 
-This document provides an overview of the features proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into seven groups: Essential foundations, simplifications, restrictions, dropped features, changed features, new features, and features oriented towards meta-programming with the aim to replace existing macros.
+This document provides an overview of the features proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into eight groups: (1) essential foundations, (2) simplifications, (3) restrictions, (4) dropped features, (5) changed features, (6) new features, (7) features oriented towards meta-programming with the aim to replace existing macros, and (8) changes to type checking and inference.
 
 Each feature group contains sections classifying the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and the migration cost
 of the features in it.
