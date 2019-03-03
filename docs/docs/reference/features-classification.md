@@ -46,8 +46,6 @@ These features replace existing constructs with the aim of making the language s
  - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
  - [Synthesized creation methods](https://contributors.scala-lang.org/t/expunging-new-from-scala-3/2868/81)
  replace `new` expressions (under discussion, not implemented),
- - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
- replace unrestricted infix operations and symbolic names (proposed, not implemented).
 
 With the exception of early initializers and old-style vararg patterns, all superseded features continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
@@ -72,6 +70,8 @@ These features are restricted to make the language safer.
  - [Implied Imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](https://dotty.epfl.ch/docs/reference/dropped-features/type-projection.html): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality.html) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
+ - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
+ make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
 
 Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other features in the list above are available only under `-language:Scala2`.
 
@@ -127,7 +127,7 @@ These features have undergone changes in Scala 3 to make them more regular and u
  - [Structural Types](https://dotty.epfl.ch/docs/reference/changed-features/structural-types.html): They now allow pluggable implementations, which greatly increases their usefulness. Some usage patterns are restricted compared to the status quo.
  - [Name-based pattern matching](https://dotty.epfl.ch/docs/reference/changed-features/pattern-matching.html): The existing undocumented Scala 2 implementation has been codified in a slightly simplified form.
  - [Eta expansion](https://dotty.epfl.ch/docs/reference/changed-features/eta-expansion.html) is now performed universally also in the absence of an expected type. The postfix `_` operator is thus made redundant. It will be deprecated and dropped after Scala 3.0.
-- [Implicit Resolution](https://dotty.epfl.ch/docs/reference/changed-features/implicit-resolution.html): The implicit resolution rules have been cleaned up to make them more useful and less surprising. Implicit scope is restricted to no longer include package prefixes.
+ - [Implicit Resolution](https://dotty.epfl.ch/docs/reference/changed-features/implicit-resolution.html): The implicit resolution rules have been cleaned up to make them more useful and less surprising. Implicit scope is restricted to no longer include package prefixes.
 
 Most aspects of old-style implicit resolution are still available under `-language:Scala2`. The other changes in this list are applied unconditionally.
 
