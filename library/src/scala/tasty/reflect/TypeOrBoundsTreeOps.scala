@@ -29,8 +29,7 @@ trait TypeOrBoundsTreeOps extends Core {
       kernel.isTypeTreeNotTerm(termOrTypeTree)
   }
 
-  val TypeTree: TypeTreeModule
-  abstract class TypeTreeModule extends TypeTreeCoreModule {
+  object TypeTree extends TypeTreeCoreModule {
 
     object IsInferred {
       /** Matches any Inferred and returns it */
