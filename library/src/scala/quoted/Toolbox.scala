@@ -18,6 +18,9 @@ object Toolbox {
 
   def make(implicit settings: Settings): Toolbox = {
     val cl = getClass.getClassLoader
+    println(">>>>>")
+    cl.asInstanceOf[java.net.URLClassLoader].getURLs().toList.foreach(println)
+
     try {
       val toolboxImplCls = cl.loadClass("dotty.tools.dotc.quoted.ToolboxImpl")
       val makeMeth = toolboxImplCls.getMethod("make", classOf[Settings])
