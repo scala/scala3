@@ -5,7 +5,7 @@ trait TreeOps extends Core {
 
   // Decorators
 
-  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree
+  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree = term.asInstanceOf[TermOrTypeTree]
 
   // ----- Tree -----------------------------------------------------
 

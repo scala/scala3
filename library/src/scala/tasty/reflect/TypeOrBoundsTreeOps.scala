@@ -3,7 +3,7 @@ package reflect
 
 trait TypeOrBoundsTreeOps extends Core {
 
-  implicit def typeTreeAsParent(term: TypeTree): TermOrTypeTree
+  implicit def typeTreeAsParent(term: TypeTree): TermOrTypeTree = term.asInstanceOf[TermOrTypeTree]
 
   implicit class TypeOrBoundsTreeAPI(self: TypeOrBoundsTree) {
     def tpe(implicit ctx: Context): TypeOrBounds = kernel.TypeOrBoundsTree_tpe(self)
