@@ -1926,7 +1926,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           else
             true
         }
-      case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) =>
+      case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
         // Unboxed x.zip(y).zip(z).forall { case ((a, b), c) => f(a, b, c) }
         def zip_zip_forall[A, B, C](x: List[A], y: List[B], z: List[C])(f: (A, B, C) => Boolean): Boolean =
           x match {
@@ -1940,7 +1940,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             case _ => true
           }
 
-        tycon1 == tycon2 &&
           zip_zip_forall(args1, args2, tycon1.typeParams) {
             (arg1, arg2, tparam) =>
               val v = tparam.paramVariance
