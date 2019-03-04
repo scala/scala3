@@ -1980,6 +1980,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                     override def apply(x: Boolean, t: Type) =
                       x && {
                         t match {
+                          case tp: TypeRef if tp.symbol.is(TypeParam) => false
                           case _: SkolemType | _: TypeVar | _: TypeParamRef => false
                           case _ => foldOver(x, t)
                         }

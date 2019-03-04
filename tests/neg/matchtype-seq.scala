@@ -153,3 +153,19 @@ object Test2 {
   def a[A]: M[Some[A]] = 1  // error
   def b[A]: M[Some[A]] = "" // error
 }
+
+object Test3 {
+  trait Inv[T]
+
+  type M[A] = A match {
+    case Inv[Int] => String
+    case _ => Int
+  }
+
+  def test[A]: Unit = {
+    // We need to be careful here, we cannot trust the output of type
+    // comparer on `isSameType(A, Int)` since `A` is a type parameter...
+    val a: M[Inv[A]] = 1 // error
+    ()
+  }
+}
