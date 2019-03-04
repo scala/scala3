@@ -8,7 +8,6 @@ class ReflectionImpl private (ctx: Contexts.Context, pos: SourcePosition)
     with CoreImpl
     with ContextOpsImpl
     with CommentOpsImpl
-    with PrintersImpl
     with SymbolOpsImpl
     with TreeOpsImpl
     with TypeOrBoundsTreesOpsImpl

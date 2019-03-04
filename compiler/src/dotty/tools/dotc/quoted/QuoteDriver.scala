@@ -47,7 +47,8 @@ class QuoteDriver extends Driver {
       val tree1 =
         if (ctx.settings.YshowRawQuoteTrees.value) tree
         else (new TreeCleaner).transform(tree)
-      ReflectionImpl(ctx).showSourceCode.showTree(tree1)
+      val refl = ReflectionImpl(ctx)
+      new refl.SourceCodePrinter().showTree(tree1)
     }
     withTree(expr, show, settings)
   }
