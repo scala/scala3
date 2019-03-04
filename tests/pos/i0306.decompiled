@@ -4,10 +4,12 @@ object bar {
   val y: scala.collection.Seq[_ >: scala.Nothing <: scala.Any] = bar.x match {
     case x: bar.C[u] =>
       def xx: u = xx
+
       ((xx: u): scala.collection.Seq[_ >: scala.Nothing <: scala.Any])
   }
   val z: java.lang.String = {
     def xx: scala.Predef.String = xx
+
     (xx: java.lang.String)
   }
 }

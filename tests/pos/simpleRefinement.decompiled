@@ -32,6 +32,7 @@ class Foo() {
       def w[T]: scala.Predef.String = "a"
       def w2[T](a: scala.Null)(b: scala.Null): scala.Null = null
     }
+
     (new $anon(): Bar {
       type S >: scala.Int <: scala.Int
       type T >: scala.Function1[scala.Int, scala.Int] <: scala.Function1[scala.Int, scala.Int]
