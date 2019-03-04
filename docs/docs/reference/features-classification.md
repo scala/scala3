@@ -44,8 +44,8 @@ These features replace existing constructs with the aim of making the language s
    of value classes while guaranteeing absence of boxing,
  - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate,
  - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
- - [Synthesized creation methods](https://contributors.scala-lang.org/t/expunging-new-from-scala-3/2868/81)
- replace `new` expressions (under discussion, not implemented),
+ - [Synthesized creation methods](https://contributors.scala-lang.org/t/expunging-new-from-scala-3/2868/81) allow to use simple function call syntax
+ instead of `new` expressions (under discussion, not implemented).
 
 With the exception of early initializers and old-style vararg patterns, all superseded features continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
@@ -153,7 +153,7 @@ These are additions to the language that make it more powerful or pleasant to us
 
 **Status: mixed**
 
-Enums offer an essential simplification of core features, so they should be adopted for Scala 3.0. Auto-parameter tupling is a very small change that removes some awkwardness, so it might as well be adopted now. The other features constitute more specialized functionality which could be introduced in later versions. On the other hand, except for polymorphic function types they are all fully implemented, so if the Scala 3.0 spec does not include them, they might be still made available under a language flag.
+Enums offer an essential simplification of fundamental use patterns, so they should be adopted for Scala 3.0. Auto-parameter tupling is a very small change that removes some awkwardness, so it might as well be adopted now. The other features constitute more specialized functionality which could be introduced in later versions. On the other hand, except for polymorphic function types they are all fully implemented, so if the Scala 3.0 spec does not include them, they might be still made available under a language flag.
 
 **Migration cost: none**
 
