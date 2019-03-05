@@ -144,7 +144,8 @@ public enum ErrorMessageID {
     OverloadInRefinementID,
     NoMatchingOverloadID,
     StableIdentPatternID,
-    StaticFieldsShouldPrecedeNonStaticID
+    StaticFieldsShouldPrecedeNonStaticID,
+    IllegalSuperAccessorID
     ;
 
     public int errorNumber() {
