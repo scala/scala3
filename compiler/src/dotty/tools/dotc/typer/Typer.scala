@@ -2272,8 +2272,37 @@ class Typer extends Namer
       else try adapt(simplify(sel, pt1, locked), pt1, locked) finally sel.removeAttachment(InsertedApply)
     }
 
+    def tryNew(fallBack: => Tree): Tree = {
+
+      def tryNewWithType(tpt: untpd.Tree): Tree =
+        tryEither { implicit ctx =>
+          val tycon = typed(tpt.withSpan(tree.span))
+          if (ctx.reporter.hasErrors)
+            EmptyTree // signal that we should return the error in fallBack
+          else
+            typed(untpd.Select(untpd.New(untpd.TypedSplice(tycon)), nme.CONSTRUCTOR), pt)
+        } { (nu, nuState) =>
+          if (nu.isEmpty) fallBack
+          else {
+            // we found a type constructor, signal the error in its application instead of the original one
+            nuState.commit()
+            nu
+          }
+        }
+
+      tree match {
+        case Ident(name) =>
+          tryNewWithType(untpd.Ident(name.toTypeName))
+        case Select(qual, name) =>
+          tryNewWithType(untpd.Select(untpd.TypedSplice(qual), name.toTypeName))
+        case _ =>
+          fallBack
+      }
+    }
+
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked)
+        .getOrElse(tryNew(fallBack))
 
     if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
       // Suppress insertion of apply or implicit conversion on extension method receiver
