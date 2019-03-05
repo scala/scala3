@@ -3,18 +3,18 @@ layout: doc-page
 title: Typeclass Derivation
 ---
 
-Typeclass derivation is a way to generate instances of certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eq`, `Ordering`, `Show`, or `Pickling`. Example:
+Typeclass derivation is a way to generate instances of certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
 ```scala
-enum Tree[T] derives Eq, Ordering, Pickling {
+enum Tree[T] derives Eql, Ordering, Pickling {
   case Branch(left: Tree[T], right: Tree[T])
   case Leaf(elem: T)
 }
 ```
-The `derives` clause generates implied instances of the `Eq`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
+The `derives` clause generates implied instances of the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
-implied [T: Eq]       for Eq[Tree[T]]       = Eq.derived
-implied [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
-implied [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
+implied [T: Eql]       for Eql[Tree[T]]       = Eql.derived
+implied [T: Ordering]  for Ordering[Tree[T]] = Ordering.derived
+implied [T: Pickling]  for Pickling[Tree[T]] = Pickling.derived
 ```
 
 ### Deriving Types
@@ -27,9 +27,9 @@ Besides for `enums`, typeclasses can also be derived for other sets of classes a
  Examples:
 
  ```scala
-case class Labelled[T](x: T, label: String) derives Eq, Show
+case class Labelled[T](x: T, label: String) derives Eql, Show
 
-sealed trait Option[T] derives Eq
+sealed trait Option[T] derives Eql
 case class Some[T] extends Option[T]
 case object None extends Option[Nothing]
 ```
@@ -209,16 +209,16 @@ a mirror over that array, and finally uses the `reify` method in `Reflected` to 
 ### How to Write Generic Typeclasses
 
 Based on the machinery developed so far it becomes possible to define type classes generically. This means that the `derived` method will compute a type class instance for any ADT that has a `Generic` instance, recursively.
-The implementation of these methods typically uses three new type-level constructs in Dotty: inline methods, inline matches, and implicit matches. As an example, here is one possible implementation of a generic `Eq` type class, with explanations. Let's assume `Eq` is defined by the following trait:
+The implementation of these methods typically uses three new type-level constructs in Dotty: inline methods, inline matches, and implicit matches. As an example, here is one possible implementation of a generic `Eql` type class, with explanations. Let's assume `Eql` is defined by the following trait:
 ```scala
-trait Eq[T] {
+trait Eql[T] {
   def eql(x: T, y: T): Boolean
 }
 ```
-We need to implement a method `Eq.derived` that produces an instance of `Eq[T]` provided
+We need to implement a method `Eql.derived` that produces an instance of `Eql[T]` provided
 there exists evidence of type `Generic[T]`. Here's a possible solution:
 ```scala
-  inline def derived[T] given (ev: Generic[T]): Eq[T] = new Eq[T] {
+  inline def derived[T] given (ev: Generic[T]): Eql[T] = new Eql[T] {
     def eql(x: T, y: T): Boolean = {
       val mx = ev.reflect(x)                    // (1)
       val my = ev.reflect(y)                    // (2)
@@ -232,7 +232,7 @@ there exists evidence of type `Generic[T]`. Here's a possible solution:
     }
   }
 ```
-The implementation of the inline method `derived` creates an instance of `Eq[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
+The implementation of the inline method `derived` creates an instance of `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
 `(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
   1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` evidence `(1)`, `(2)`.
@@ -300,22 +300,22 @@ non-empty, say of form `elem *: elems1`, the following code is produced:
 The last, and in a sense most interesting part of the derivation is the comparison of a pair of element values in `tryEql`. Here is the definition of this method:
 ```scala
   inline def tryEql[T](x: T, y: T) = implicit match {
-    case ev: Eq[T] =>
+    case ev: Eql[T] =>
       ev.eql(x, y)                              // (15)
     case _ =>
-      error("No `Eq` instance was found for $T")
+      error("No `Eql` instance was found for $T")
   }
 ```
-`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find an implied instance of `Eq[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
-this signals a compilation error: the user tried a generic derivation of `Eq` for a class with an element type that does not support an `Eq` instance itself. The error is signaled by
+`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find an implied instance of `Eql[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
+this signals a compilation error: the user tried a generic derivation of `Eql` for a class with an element type that does not support an `Eql` instance itself. The error is signaled by
 calling the `error` method defined in `scala.compiletime`.
 
 **Note:** At the moment our error diagnostics for metaprogramming does not support yet interpolated string arguments for the `scala.compiletime.error` method that is called in the second case above. As an alternative, one can simply leave off the second case, then a missing typeclass would result in a "failure to reduce match" error.
 
-**Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eq` instance of class `Tree`.
+**Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eql` instance of class `Tree`.
 
 ```scala
-implied [T] given (elemEq: Eq[T]) for Eq[Tree[T]] {
+implied [T] given (elemEq: Eql[T]) for Eql[Tree[T]] {
   def eql(x: Tree[T], y: Tree[T]): Boolean = {
     val ev = the[Generic[Tree[T]]]
     val mx = ev.reflect(x)
@@ -334,7 +334,7 @@ implied [T] given (elemEq: Eq[T]) for Eq[Tree[T]] {
 }
 ```
 
-One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implied instance of `Eq[T]` (which can of course be produced in turn using `Eq.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
+One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implied instance of `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
 
 ### Derived Instances Elsewhere
 

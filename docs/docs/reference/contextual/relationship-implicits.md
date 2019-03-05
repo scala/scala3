@@ -107,9 +107,9 @@ Extension methods in implicit instances have no direct counterpart in Scala-2. T
 
 Typeclass derivation has no direct counterpart in the Scala 2 language. Comparable functionality can be achieved by macro-based libraries such as Shapeless, Magnolia, or scalaz-deriving.
 
-### Implicit Function Types
+### Context Query types
 
-Implicit function types have no analogue in Scala 2.
+Context Query types have no analogue in Scala 2.
 
 ### Implicit By-Name Parameters
 
