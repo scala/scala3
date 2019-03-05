@@ -982,7 +982,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   } catch {
     case ex: TypeError =>
-      ctx.error(ex.toMessage, tree.sourcePos)
+      ctx.error(ex.toMessage, tree.sourcePos, sticky = true)
       tree
   }
 

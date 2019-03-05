@@ -249,7 +249,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
           case ex: TypeError =>
             // See neg/i1750a for an example where a cyclic error can arise.
             // The root cause in this example is an illegal "override" of an inner trait
-            ctx.error(ex.toMessage, csym.sourcePos)
+            ctx.error(ex.toMessage, csym.sourcePos, sticky = true)
             defn.ObjectType :: Nil
         }
       if (ValueClasses.isDerivedValueClass(csym)) {

@@ -95,8 +95,8 @@ trait Reporting { this: Context =>
     if (this.settings.strict.value) error(msg, pos)
     else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos))
 
-  def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Error(msg, pos))
+  def error(msg: => Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit =
+    reporter.report(if (sticky) new StickyError(msg, pos) else new Error(msg, pos))
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
@@ -177,6 +177,9 @@ abstract class Reporter extends interfaces.ReporterResult {
   def hasWarnings: Boolean = warningCount > 0
   private[this] var errors: List[Error] = Nil
   def allErrors: List[Error] = errors
+
+  /** Were sticky errors reported? Overridden in StoreReporter. */
+  def hasStickyErrors: Boolean = false
 
   /** Have errors been reported by this reporter, or in the
    *  case where this is a StoreReporter, by an outer reporter?

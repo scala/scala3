@@ -2100,7 +2100,7 @@ class Typer extends Namer
         try adapt(typedUnadapted(tree, pt, locked), pt, locked)
         catch {
           case ex: TypeError =>
-            errorTree(tree, ex.toMessage, tree.sourcePos.focus)
+            errorTree(tree, ex.toMessage, tree.sourcePos.focus, sticky = true)
             // This uses tree.span.focus instead of the default tree.span, because:
             // - since tree can be a top-level definition, tree.span can point to the whole definition
             // - that would in turn hide all other type errors inside tree.
@@ -2190,7 +2190,7 @@ class Typer extends Namer
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(nestedCtx)
-    if (nestedCtx.reporter.hasErrors) {
+    if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors)
       record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
     }
@@ -2815,7 +2815,7 @@ class Typer extends Namer
               }
             }
             catch {
-              case ex: TypeError => errorTree(tree, ex.toMessage, tree.sourcePos)
+              case ex: TypeError => errorTree(tree, ex.toMessage, tree.sourcePos, sticky = true)
             }
           val nestedCtx = ctx.fresh.setNewTyperState()
           val app = tryExtension(nestedCtx)
