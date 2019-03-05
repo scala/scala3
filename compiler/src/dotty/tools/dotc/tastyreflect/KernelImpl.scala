@@ -55,13 +55,13 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Term_Ref = self.pid
+  def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Ref = self.pid
   def PackageClause_stats(self: PackageClause)(implicit ctx: Context): List[Tree] = self.stats
 
-  def PackageClause_apply(pid: Term_Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
+  def PackageClause_apply(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
     withDefaultPos(ctx => tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats)(ctx))
 
-  def PackageClause_copy(original: PackageClause)(pid: Term_Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
+  def PackageClause_copy(original: PackageClause)(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
     tpd.cpy.PackageDef(original)(pid, stats)
 
   type Statement = tpd.Tree
@@ -201,196 +201,196 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Term_underlyingArgument(self: Term)(implicit ctx: Context): Term = self.underlyingArgument
   def Term_underlying(self: Term)(implicit ctx: Context): Term = self.underlying
 
-  type Term_Ref = tpd.RefTree
+  type Ref = tpd.RefTree
 
-  def Term_Ref_apply(sym: Symbol)(implicit ctx: Context): Term_Ref =
+  def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref =
     withDefaultPos(ctx => tpd.ref(sym)(ctx).asInstanceOf[tpd.RefTree])
 
-  type Term_Ident = tpd.Ident
+  type Ident = tpd.Ident
 
-  def matchTerm_Ident(x: Term)(implicit ctx: Context): Option[Term_Ident] = x match {
+  def matchIdent(x: Term)(implicit ctx: Context): Option[Ident] = x match {
     case x: tpd.Ident if x.isTerm => Some(x)
     case _ => None
   }
 
-  def Term_Ident_name(self: Term_Ident)(implicit ctx: Context): String = self.name.show
+  def Ident_name(self: Ident)(implicit ctx: Context): String = self.name.show
 
-  def Term_Ident_apply(tmref: TermRef)(implicit ctx: Context): Term =
+  def Ident_apply(tmref: TermRef)(implicit ctx: Context): Term =
     withDefaultPos(implicit ctx => tpd.ref(tmref).asInstanceOf[Term])
 
-  def Term_Ident_copy(original: Tree)(name: String)(implicit ctx: Context): Term_Ident =
+  def Ident_copy(original: Tree)(name: String)(implicit ctx: Context): Ident =
     tpd.cpy.Ident(original)(name.toTermName)
 
-  type Term_Select = tpd.Select
+  type Select = tpd.Select
 
-  def matchTerm_Select(x: Term)(implicit ctx: Context): Option[Term_Select] = x match {
+  def matchSelect(x: Term)(implicit ctx: Context): Option[Select] = x match {
     case x: tpd.Select if x.isTerm => Some(x)
     case _ => None
   }
 
-  def Term_Select_qualifier(self: Term_Select)(implicit ctx: Context): Term = self.qualifier
-  def Term_Select_name(self: Term_Select)(implicit ctx: Context): String = self.name.toString
-  def Term_Select_signature(self: Term_Select)(implicit ctx: Context): Option[Signature] =
+  def Select_qualifier(self: Select)(implicit ctx: Context): Term = self.qualifier
+  def Select_name(self: Select)(implicit ctx: Context): String = self.name.toString
+  def Select_signature(self: Select)(implicit ctx: Context): Option[Signature] =
     if (self.symbol.signature == core.Signature.NotAMethod) None
     else Some(self.symbol.signature)
 
-  def Term_Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Term_Select = {
+  def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select = {
     val denot = qualifier.tpe.member(name.toTermName)
     assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
     withDefaultPos(implicit ctx => tpd.Select(qualifier, name.toTermName))
   }
 
   // TODO rename, this returns an Apply and not a Select
-  def Term_Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Term_Apply =
-    withDefaultPos(implicit ctx => tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Term_Apply])
+  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply =
+    withDefaultPos(implicit ctx => tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
 
-  def Term_Select_copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Term_Select =
+  def Select_copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select =
     tpd.cpy.Select(original)(qualifier, name.toTermName)
 
-  type Term_Literal = tpd.Literal
+  type Literal = tpd.Literal
 
-  def matchTerm_Literal(x: Term)(implicit ctx: Context): Option[Term_Literal] = x match {
+  def matchLiteral(x: Term)(implicit ctx: Context): Option[Literal] = x match {
     case x: tpd.Literal => Some(x)
     case _ => None
   }
 
-  def Term_Literal_constant(self: Term_Literal)(implicit ctx: Context): Constant = self.const
+  def Literal_constant(self: Literal)(implicit ctx: Context): Constant = self.const
 
-  def Term_Literal_apply(constant: Constant)(implicit ctx: Context): Term_Literal =
+  def Literal_apply(constant: Constant)(implicit ctx: Context): Literal =
     withDefaultPos(ctx => tpd.Literal(constant)(ctx))
 
-  def Term_Literal_copy(original: Tree)(constant: Constant)(implicit ctx: Context): Term_Literal =
+  def Literal_copy(original: Tree)(constant: Constant)(implicit ctx: Context): Literal =
     tpd.cpy.Literal(original)(constant)
 
-  type Term_This = tpd.This
+  type This = tpd.This
 
-  def matchTerm_This(x: Term)(implicit ctx: Context): Option[Term_This] = x match {
+  def matchThis(x: Term)(implicit ctx: Context): Option[This] = x match {
     case x: tpd.This => Some(x)
     case _ => None
   }
 
-  def Term_This_id(self: Term_This)(implicit ctx: Context): Option[Id] = optional(self.qual)
+  def This_id(self: This)(implicit ctx: Context): Option[Id] = optional(self.qual)
 
-  def Term_This_apply(cls: ClassSymbol)(implicit ctx: Context): Term_This =
+  def This_apply(cls: ClassSymbol)(implicit ctx: Context): This =
     withDefaultPos(ctx => tpd.This(cls)(ctx))
 
-  def Term_This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): Term_This =
+  def This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =
     tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
-  type Term_New = tpd.New
+  type New = tpd.New
 
-  def matchTerm_New(x: Term)(implicit ctx: Context): Option[Term_New] = x match {
+  def matchNew(x: Term)(implicit ctx: Context): Option[New] = x match {
     case x: tpd.New => Some(x)
     case _ => None
   }
 
-  def Term_New_tpt(self: Term_New)(implicit ctx: Context): TypeTree = self.tpt
+  def New_tpt(self: New)(implicit ctx: Context): TypeTree = self.tpt
 
-  def Term_New_apply(tpt: TypeTree)(implicit ctx: Context): Term_New = withDefaultPos(ctx => tpd.New(tpt)(ctx))
+  def New_apply(tpt: TypeTree)(implicit ctx: Context): New = withDefaultPos(ctx => tpd.New(tpt)(ctx))
 
-  def Term_New_copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): Term_New =
+  def New_copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): New =
     tpd.cpy.New(original)(tpt)
 
-  type Term_NamedArg = tpd.NamedArg
+  type NamedArg = tpd.NamedArg
 
-  def matchTerm_NamedArg(x: Term)(implicit ctx: Context): Option[Term_NamedArg] = x match {
+  def matchNamedArg(x: Term)(implicit ctx: Context): Option[NamedArg] = x match {
     case x: tpd.NamedArg if x.name.isInstanceOf[core.Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
     case _ => None
   }
 
-  def Term_NamedArg_name(self: Term_NamedArg)(implicit ctx: Context): String = self.name.toString
-  def Term_NamedArg_value(self: Term_NamedArg)(implicit ctx: Context): Term = self.arg
+  def NamedArg_name(self: NamedArg)(implicit ctx: Context): String = self.name.toString
+  def NamedArg_value(self: NamedArg)(implicit ctx: Context): Term = self.arg
 
-  def Term_NamedArg_apply(name: String, arg: Term)(implicit ctx: Context): Term_NamedArg =
+  def NamedArg_apply(name: String, arg: Term)(implicit ctx: Context): NamedArg =
     withDefaultPos(ctx => tpd.NamedArg(name.toTermName, arg)(ctx))
 
-  def Term_NamedArg_copy(tree: Term_NamedArg)(name: String, arg: Term)(implicit ctx: Context): Term_NamedArg =
+  def NamedArg_copy(tree: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg =
     tpd.cpy.NamedArg(tree)(name.toTermName, arg)
 
-  type Term_Apply = tpd.Apply
+  type Apply = tpd.Apply
 
-  def matchTerm_Apply(x: Term)(implicit ctx: Context): Option[Term_Apply] = x match {
+  def matchApply(x: Term)(implicit ctx: Context): Option[Apply] = x match {
     case x: tpd.Apply => Some(x)
     case _ => None
   }
 
-  def Term_Apply_fun(self: Term_Apply)(implicit ctx: Context): Term = self.fun
-  def Term_Apply_args(self: Term_Apply)(implicit ctx: Context): List[Term] = self.args
+  def Apply_fun(self: Apply)(implicit ctx: Context): Term = self.fun
+  def Apply_args(self: Apply)(implicit ctx: Context): List[Term] = self.args
 
 
-  def Term_Apply_apply(fn: Term, args: List[Term])(implicit ctx: Context): Term_Apply =
+  def Apply_apply(fn: Term, args: List[Term])(implicit ctx: Context): Apply =
     withDefaultPos(ctx => tpd.Apply(fn, args)(ctx))
 
-  def Term_Apply_copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Term_Apply =
+  def Apply_copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Apply =
     tpd.cpy.Apply(original)(fun, args)
 
-  type Term_TypeApply = tpd.TypeApply
+  type TypeApply = tpd.TypeApply
 
-  def matchTerm_TypeApply(x: Term)(implicit ctx: Context): Option[Term_TypeApply] = x match {
+  def matchTypeApply(x: Term)(implicit ctx: Context): Option[TypeApply] = x match {
     case x: tpd.TypeApply => Some(x)
     case _ => None
   }
 
-  def Term_TypeApply_fun(self: Term_TypeApply)(implicit ctx: Context): Term = self.fun
-  def Term_TypeApply_args(self: Term_TypeApply)(implicit ctx: Context): List[TypeTree] = self.args
+  def TypeApply_fun(self: TypeApply)(implicit ctx: Context): Term = self.fun
+  def TypeApply_args(self: TypeApply)(implicit ctx: Context): List[TypeTree] = self.args
 
-  def Term_TypeApply_apply(fn: Term, args: List[TypeTree])(implicit ctx: Context): Term_TypeApply =
+  def TypeApply_apply(fn: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply =
     withDefaultPos(ctx => tpd.TypeApply(fn, args)(ctx))
 
-  def Term_TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): Term_TypeApply =
+  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply =
     tpd.cpy.TypeApply(original)(fun, args)
 
-  type Term_Super = tpd.Super
+  type Super = tpd.Super
 
-  def matchTerm_Super(x: Term)(implicit ctx: Context): Option[Term_Super] = x match {
+  def matchSuper(x: Term)(implicit ctx: Context): Option[Super] = x match {
     case x: tpd.Super => Some(x)
     case _ => None
   }
 
-  def Term_Super_qualifier(self: Term_Super)(implicit ctx: Context): Term = self.qual
-  def Term_Super_id(self: Term_Super)(implicit ctx: Context): Option[Id] = optional(self.mix)
+  def Super_qualifier(self: Super)(implicit ctx: Context): Term = self.qual
+  def Super_id(self: Super)(implicit ctx: Context): Option[Id] = optional(self.mix)
 
-  def Term_Super_apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Term_Super =
+  def Super_apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
     withDefaultPos(ctx => tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol)(ctx))
 
-  def Term_Super_copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Term_Super =
+  def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
     tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
 
-  type Term_Typed = tpd.Typed
+  type Typed = tpd.Typed
 
-  def matchTerm_Typed(x: Term)(implicit ctx: Context): Option[Term_Typed] = x match {
+  def matchTyped(x: Term)(implicit ctx: Context): Option[Typed] = x match {
     case x: tpd.Typed => Some(x)
     case _ => None
   }
 
-  def Term_Typed_expr(self: Term_Typed)(implicit ctx: Context): Term = self.expr
-  def Term_Typed_tpt(self: Term_Typed)(implicit ctx: Context): TypeTree = self.tpt
+  def Typed_expr(self: Typed)(implicit ctx: Context): Term = self.expr
+  def Typed_tpt(self: Typed)(implicit ctx: Context): TypeTree = self.tpt
 
-  def Term_Typed_apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Term_Typed =
+  def Typed_apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed =
     withDefaultPos(ctx => tpd.Typed(expr, tpt)(ctx))
 
-  def Term_Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Term_Typed =
+  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed =
     tpd.cpy.Typed(original)(expr, tpt)
 
-  type Term_Assign = tpd.Assign
+  type Assign = tpd.Assign
 
-  def matchTerm_Assign(x: Term)(implicit ctx: Context): Option[Term_Assign] = x match {
+  def matchAssign(x: Term)(implicit ctx: Context): Option[Assign] = x match {
     case x: tpd.Assign => Some(x)
     case _ => None
   }
 
-  def Term_Assign_lhs(self: Term_Assign)(implicit ctx: Context): Term = self.lhs
-  def Term_Assign_rhs(self: Term_Assign)(implicit ctx: Context): Term = self.rhs
+  def Assign_lhs(self: Assign)(implicit ctx: Context): Term = self.lhs
+  def Assign_rhs(self: Assign)(implicit ctx: Context): Term = self.rhs
 
-  def Term_Assign_apply(lhs: Term, rhs: Term)(implicit ctx: Context): Term_Assign =
+  def Assign_apply(lhs: Term, rhs: Term)(implicit ctx: Context): Assign =
     withDefaultPos(ctx => tpd.Assign(lhs, rhs)(ctx))
 
-  def Term_Assign_copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Term_Assign =
+  def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Assign =
     tpd.cpy.Assign(original)(lhs, rhs)
 
-  type Term_Block = tpd.Block
+  type Block = tpd.Block
 
-  def matchTerm_Block(x: Term)(implicit ctx: Context): Option[Term_Block] = normalizedLoops(x) match {
+  def matchBlock(x: Term)(implicit ctx: Context): Option[Block] = normalizedLoops(x) match {
     case x: tpd.Block => Some(x)
     case _ => None
   }
@@ -424,132 +424,132 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => false
   }
 
-  def Term_Block_statements(self: Term_Block)(implicit ctx: Context): List[Statement] = self.stats
-  def Term_Block_expr(self: Term_Block)(implicit ctx: Context): Term = self.expr
+  def Block_statements(self: Block)(implicit ctx: Context): List[Statement] = self.stats
+  def Block_expr(self: Block)(implicit ctx: Context): Term = self.expr
 
-  def Term_Block_apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Term_Block =
+  def Block_apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Block =
     withDefaultPos(ctx => tpd.Block(stats, expr)(ctx))
 
-  def Term_Block_copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Term_Block =
+  def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Block =
     tpd.cpy.Block(original)(stats, expr)
 
-  type Term_Inlined = tpd.Inlined
+  type Inlined = tpd.Inlined
 
-  def matchTerm_Inlined(x: Term)(implicit ctx: Context): Option[Term_Inlined] = x match {
+  def matchInlined(x: Term)(implicit ctx: Context): Option[Inlined] = x match {
     case x: tpd.Inlined => Some(x)
     case _ => None
   }
 
-  def Term_Inlined_call(self: Term_Inlined)(implicit ctx: Context): Option[TermOrTypeTree] = optional(self.call)
-  def Term_Inlined_bindings(self: Term_Inlined)(implicit ctx: Context): List[Definition] = self.bindings
-  def Term_Inlined_body(self: Term_Inlined)(implicit ctx: Context): Term = self.expansion
+  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[TermOrTypeTree] = optional(self.call)
+  def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition] = self.bindings
+  def Inlined_body(self: Inlined)(implicit ctx: Context): Term = self.expansion
 
-  def Term_Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Term_Inlined =
+  def Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     withDefaultPos(ctx => tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion)(ctx))
 
-  def Term_Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Term_Inlined =
+  def Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
 
-  type Term_Lambda = tpd.Closure
+  type Lambda = tpd.Closure
 
-  def matchTerm_Lambda(x: Term)(implicit ctx: Context): Option[Term_Lambda] = x match {
+  def matchLambda(x: Term)(implicit ctx: Context): Option[Lambda] = x match {
     case x: tpd.Closure => Some(x)
     case _ => None
   }
 
-  def Term_Lambda_meth(self: Term_Lambda)(implicit ctx: Context): Term = self.meth
-  def Term_Lambda_tptOpt(self: Term_Lambda)(implicit ctx: Context): Option[TypeTree] = optional(self.tpt)
+  def Lambda_meth(self: Lambda)(implicit ctx: Context): Term = self.meth
+  def Lambda_tptOpt(self: Lambda)(implicit ctx: Context): Option[TypeTree] = optional(self.tpt)
 
-  def Term_Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Term_Lambda =
+  def Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
     withDefaultPos(ctx => tpd.Closure(Nil, meth, tpt.getOrElse(tpd.EmptyTree))(ctx))
 
-  def Term_Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Term_Lambda =
+  def Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
     tpd.cpy.Closure(original)(Nil, meth, tpt.getOrElse(tpd.EmptyTree))
 
-  type Term_If = tpd.If
+  type If = tpd.If
 
-  def matchTerm_If(x: Term)(implicit ctx: Context): Option[Term_If] = x match {
+  def matchIf(x: Term)(implicit ctx: Context): Option[If] = x match {
     case x: tpd.If => Some(x)
     case _ => None
   }
 
-  def Term_If_cond(self: Term_If)(implicit ctx: Context): Term = self.cond
-  def Term_If_thenp(self: Term_If)(implicit ctx: Context): Term = self.thenp
-  def Term_If_elsep(self: Term_If)(implicit ctx: Context): Term = self.elsep
+  def If_cond(self: If)(implicit ctx: Context): Term = self.cond
+  def If_thenp(self: If)(implicit ctx: Context): Term = self.thenp
+  def If_elsep(self: If)(implicit ctx: Context): Term = self.elsep
 
-  def Term_If_apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): Term_If =
+  def If_apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If =
     withDefaultPos(ctx => tpd.If(cond, thenp, elsep)(ctx))
 
-  def Term_If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): Term_If =
+  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If =
     tpd.cpy.If(original)(cond, thenp, elsep)
 
-  type Term_Match = tpd.Match
+  type Match = tpd.Match
 
-  def matchTerm_Match(x: Term)(implicit ctx: Context): Option[Term_Match] = x match {
+  def matchMatch(x: Term)(implicit ctx: Context): Option[Match] = x match {
     case x: tpd.Match => Some(x)
     case _ => None
   }
 
-  def Term_Match_scrutinee(self: Term_Match)(implicit ctx: Context): Term = self.selector
-  def Term_Match_cases(self: Term_Match)(implicit ctx: Context): List[CaseDef] = self.cases
+  def Match_scrutinee(self: Match)(implicit ctx: Context): Term = self.selector
+  def Match_cases(self: Match)(implicit ctx: Context): List[CaseDef] = self.cases
 
-  def Term_Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Term_Match =
+  def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
     withDefaultPos(ctx => tpd.Match(selector, cases)(ctx))
 
-  def Term_Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Term_Match =
+  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
     tpd.cpy.Match(original)(selector, cases)
 
-  type Term_Try = tpd.Try
+  type Try = tpd.Try
 
-  def matchTerm_Try(x: Term)(implicit ctx: Context): Option[Term_Try] = x match {
+  def matchTry(x: Term)(implicit ctx: Context): Option[Try] = x match {
     case x: tpd.Try => Some(x)
     case _ => None
   }
 
-  def Term_Try_body(self: Term_Try)(implicit ctx: Context): Term = self.expr
-  def Term_Try_cases(self: Term_Try)(implicit ctx: Context): List[CaseDef] = self.cases
-  def Term_Try_finalizer(self: Term_Try)(implicit ctx: Context): Option[Term] = optional(self.finalizer)
+  def Try_body(self: Try)(implicit ctx: Context): Term = self.expr
+  def Try_cases(self: Try)(implicit ctx: Context): List[CaseDef] = self.cases
+  def Try_finalizer(self: Try)(implicit ctx: Context): Option[Term] = optional(self.finalizer)
 
-  def Term_Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Term_Try =
+  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try =
     withDefaultPos(ctx => tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree))(ctx))
 
-  def Term_Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Term_Try =
+  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try =
     tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
 
-  type Term_Return = tpd.Return
+  type Return = tpd.Return
 
-  def matchTerm_Return(x: Term)(implicit ctx: Context): Option[Term_Return] = x match {
+  def matchReturn(x: Term)(implicit ctx: Context): Option[Return] = x match {
     case x: tpd.Return => Some(x)
     case _ => None
   }
 
-  def Term_Return_expr(self: Term_Return)(implicit ctx: Context): Term = self.expr
+  def Return_expr(self: Return)(implicit ctx: Context): Term = self.expr
 
-  def Term_Return_apply(expr: Term)(implicit ctx: Context): Term_Return =
+  def Return_apply(expr: Term)(implicit ctx: Context): Return =
     withDefaultPos(ctx => tpd.Return(expr, ctx.owner)(ctx))
 
-  def Term_Return_copy(original: Tree)(expr: Term)(implicit ctx: Context): Term_Return =
+  def Return_copy(original: Tree)(expr: Term)(implicit ctx: Context): Return =
     tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
 
-  type Term_Repeated = tpd.SeqLiteral
+  type Repeated = tpd.SeqLiteral
 
-  def matchTerm_Repeated(x: Term)(implicit ctx: Context): Option[Term_Repeated] = x match {
+  def matchRepeated(x: Term)(implicit ctx: Context): Option[Repeated] = x match {
     case x: tpd.SeqLiteral => Some(x)
     case _ => None
   }
 
-  def Term_Repeated_elems(self: Term_Repeated)(implicit ctx: Context): List[Term] = self.elems
-  def Term_Repeated_elemtpt(self: Term_Repeated)(implicit ctx: Context): TypeTree = self.elemtpt
+  def Repeated_elems(self: Repeated)(implicit ctx: Context): List[Term] = self.elems
+  def Repeated_elemtpt(self: Repeated)(implicit ctx: Context): TypeTree = self.elemtpt
 
-  def Term_Repeated_apply(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Term_Repeated =
+  def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated =
     withDefaultPos(ctx => tpd.SeqLiteral(elems, elemtpt)(ctx))
 
-  def Term_Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Term_Repeated =
+  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated =
     tpd.cpy.SeqLiteral(original)(elems, elemtpt)
 
-  type Term_SelectOuter = tpd.Select
+  type SelectOuter = tpd.Select
 
-  def matchTerm_SelectOuter(x: Term)(implicit ctx: Context): Option[Term_SelectOuter] = x match {
+  def matchSelectOuter(x: Term)(implicit ctx: Context): Option[SelectOuter] = x match {
     case x: tpd.Select =>
       x.name match {
         case NameKinds.OuterSelectName(_, _) => Some(x)
@@ -558,33 +558,33 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Term_SelectOuter_qualifier(self: Term_SelectOuter)(implicit ctx: Context): Term = self.qualifier
-  def Term_SelectOuter_level(self: Term_SelectOuter)(implicit ctx: Context): Int = {
+  def SelectOuter_qualifier(self: SelectOuter)(implicit ctx: Context): Term = self.qualifier
+  def SelectOuter_level(self: SelectOuter)(implicit ctx: Context): Int = {
     val NameKinds.OuterSelectName(_, levels) = self.name
     levels
   }
-  def Term_SelectOuter_tpe(self: Term_SelectOuter)(implicit ctx: Context): Type = self.tpe.stripTypeVar
+  def SelectOuter_tpe(self: SelectOuter)(implicit ctx: Context): Type = self.tpe.stripTypeVar
 
-  def Term_SelectOuter_apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): Term_SelectOuter =
+  def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter =
     withDefaultPos(ctx => tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))(ctx))
 
-  def Term_SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): Term_SelectOuter =
+  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter =
     tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
 
-  type Term_While = tpd.WhileDo
+  type While = tpd.WhileDo
 
-  def matchTerm_While(x: Term)(implicit ctx: Context): Option[Term_While] = x match {
+  def matchWhile(x: Term)(implicit ctx: Context): Option[While] = x match {
     case x: tpd.WhileDo => Some(x)
     case _ => None
   }
 
-  def Term_While_cond(self: Term_While)(implicit ctx: Context): Term = self.cond
-  def Term_While_body(self: Term_While)(implicit ctx: Context): Term = self.body
+  def While_cond(self: While)(implicit ctx: Context): Term = self.cond
+  def While_body(self: While)(implicit ctx: Context): Term = self.body
 
-  def Term_While_apply(cond: Term, body: Term)(implicit ctx: Context): Term_While =
+  def While_apply(cond: Term, body: Term)(implicit ctx: Context): While =
     withDefaultPos(ctx => tpd.WhileDo(cond, body)(ctx))
 
-  def Term_While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): Term_While =
+  def While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While =
     tpd.cpy.WhileDo(original)(cond, body)
 
   //

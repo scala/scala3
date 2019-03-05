@@ -12,28 +12,28 @@ package scala.tasty.reflect
  *                         |               +- DefDef
  *                         |               +- ValDef
  *                         |
- *                         +- Term --------+- Term_Ref -+- Term_Ident
- *                                         |            +- Term_Select
+ *                         +- Term --------+- Ref -+- Ident
+ *                                         |       +- Select
  *                                         |
- *                                         +- Term_Literal
- *                                         +- Term_This
- *                                         +- Term_New
- *                                         +- Term_NamedArg
- *                                         +- Term_Apply
- *                                         +- Term_TypeApply
- *                                         +- Term_Super
- *                                         +- Term_Typed
- *                                         +- Term_Assign
- *                                         +- Term_Block
- *                                         +- Term_Lambda
- *                                         +- Term_If
- *                                         +- Term_Match
- *                                         +- Term_Try
- *                                         +- Term_Return
- *                                         +- Term_Repeated
- *                                         +- Term_Inlined
- *                                         +- Term_SelectOuter
- *                                         +- Term_While
+ *                                         +- Literal
+ *                                         +- This
+ *                                         +- New
+ *                                         +- NamedArg
+ *                                         +- Apply
+ *                                         +- TypeApply
+ *                                         +- Super
+ *                                         +- Typed
+ *                                         +- Assign
+ *                                         +- Block
+ *                                         +- Lambda
+ *                                         +- If
+ *                                         +- Match
+ *                                         +- Try
+ *                                         +- Return
+ *                                         +- Repeated
+ *                                         +- Inlined
+ *                                         +- SelectOuter
+ *                                         +- While
  *
  *
  *                         +- TypeTree ----+- TypeTree_Inferred
@@ -166,12 +166,12 @@ trait Kernel {
 
   def matchPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause]
 
-  def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Term_Ref
+  def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Ref
   def PackageClause_stats(self: PackageClause)(implicit ctx: Context): List[Tree]
 
-  def PackageClause_apply(pid: Term_Ref, stats: List[Tree])(implicit ctx: Context): PackageClause
+  def PackageClause_apply(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause
 
-  def PackageClause_copy(original: PackageClause)(pid: Term_Ref, stats: List[Tree])(implicit ctx: Context): PackageClause
+  def PackageClause_copy(original: PackageClause)(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause
 
   /** Tree representing a statement in the source code */
   type Statement <: Tree
@@ -271,242 +271,242 @@ trait Kernel {
   def Term_underlying(self: Term)(implicit ctx: Context): Term
 
   /** Tree representing a reference to definition */
-  type Term_Ref <: Term
+  type Ref <: Term
 
-  def Term_Ref_apply(sym: Symbol)(implicit ctx: Context): Term_Ref
+  def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref
 
   /** Tree representing a reference to definition with a given name */
-  type Term_Ident <: Term_Ref
+  type Ident <: Ref
 
-  def matchTerm_Ident(tree: Tree)(implicit ctx: Context): Option[Term_Ident]
+  def matchIdent(tree: Tree)(implicit ctx: Context): Option[Ident]
 
-  def Term_Ident_name(self: Term_Ident)(implicit ctx: Context): String
+  def Ident_name(self: Ident)(implicit ctx: Context): String
 
-  def Term_Ident_apply(tmref: TermRef)(implicit ctx: Context): Term
-  def Term_Ident_copy(original: Tree)(name: String)(implicit ctx: Context): Term_Ident
+  def Ident_apply(tmref: TermRef)(implicit ctx: Context): Term
+  def Ident_copy(original: Tree)(name: String)(implicit ctx: Context): Ident
 
   /** Tree representing a selection of definition with a given name on a given prefix */
-  type Term_Select <: Term_Ref
+  type Select <: Ref
 
-  def matchTerm_Select(tree: Tree)(implicit ctx: Context): Option[Term_Select]
+  def matchSelect(tree: Tree)(implicit ctx: Context): Option[Select]
 
-  def Term_Select_qualifier(self: Term_Select)(implicit ctx: Context): Term
-  def Term_Select_name(self: Term_Select)(implicit ctx: Context): String
-  def Term_Select_signature(self: Term_Select)(implicit ctx: Context): Option[Signature]
+  def Select_qualifier(self: Select)(implicit ctx: Context): Term
+  def Select_name(self: Select)(implicit ctx: Context): String
+  def Select_signature(self: Select)(implicit ctx: Context): Option[Signature]
 
-  def Term_Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Term_Select
+  def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select
   // TODO rename, this returns an Apply and not a Select
-  def Term_Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Term_Apply
-  def Term_Select_copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Term_Select
+  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply
+  def Select_copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select
 
   /** Tree representing a literal value in the source code */
-  type Term_Literal <: Term
+  type Literal <: Term
 
-  def matchTerm_Literal(tree: Tree)(implicit ctx: Context): Option[Term_Literal]
+  def matchLiteral(tree: Tree)(implicit ctx: Context): Option[Literal]
 
-  def Term_Literal_constant(self: Term_Literal)(implicit ctx: Context): Constant
+  def Literal_constant(self: Literal)(implicit ctx: Context): Constant
 
-  def Term_Literal_apply(constant: Constant)(implicit ctx: Context): Term_Literal
-  def Term_Literal_copy(original: Tree)(constant: Constant)(implicit ctx: Context): Term_Literal
+  def Literal_apply(constant: Constant)(implicit ctx: Context): Literal
+  def Literal_copy(original: Tree)(constant: Constant)(implicit ctx: Context): Literal
 
   /** Tree representing `this` in the source code */
-  type Term_This <: Term
+  type This <: Term
 
-  def matchTerm_This(tree: Tree)(implicit ctx: Context): Option[Term_This]
+  def matchThis(tree: Tree)(implicit ctx: Context): Option[This]
 
-  def Term_This_id(self: Term_This)(implicit ctx: Context): Option[Id]
+  def This_id(self: This)(implicit ctx: Context): Option[Id]
 
-  def Term_This_apply(cls: ClassSymbol)(implicit ctx: Context): Term_This
-  def Term_This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): Term_This
+  def This_apply(cls: ClassSymbol)(implicit ctx: Context): This
+  def This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This
 
   /** Tree representing `new` in the source code */
-  type Term_New <: Term
+  type New <: Term
 
-  def matchTerm_New(tree: Tree)(implicit ctx: Context): Option[Term_New]
+  def matchNew(tree: Tree)(implicit ctx: Context): Option[New]
 
-  def Term_New_tpt(self: Term_New)(implicit ctx: Context): TypeTree
+  def New_tpt(self: New)(implicit ctx: Context): TypeTree
 
-  def Term_New_apply(tpt: TypeTree)(implicit ctx: Context): Term_New
-  def Term_New_copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): Term_New
+  def New_apply(tpt: TypeTree)(implicit ctx: Context): New
+  def New_copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): New
 
   /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
-  type Term_NamedArg <: Term
+  type NamedArg <: Term
 
-  def matchTerm_NamedArg(tree: Tree)(implicit ctx: Context): Option[Term_NamedArg]
+  def matchNamedArg(tree: Tree)(implicit ctx: Context): Option[NamedArg]
 
-  def Term_NamedArg_name(self: Term_NamedArg)(implicit ctx: Context): String
-  def Term_NamedArg_value(self: Term_NamedArg)(implicit ctx: Context): Term
+  def NamedArg_name(self: NamedArg)(implicit ctx: Context): String
+  def NamedArg_value(self: NamedArg)(implicit ctx: Context): Term
 
-  def Term_NamedArg_apply(name: String, arg: Term)(implicit ctx: Context): Term_NamedArg
-  def Term_NamedArg_copy(tree: Term_NamedArg)(name: String, arg: Term)(implicit ctx: Context): Term_NamedArg
+  def NamedArg_apply(name: String, arg: Term)(implicit ctx: Context): NamedArg
+  def NamedArg_copy(tree: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg
 
   /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s */
-  type Term_Apply <: Term
+  type Apply <: Term
 
-  def matchTerm_Apply(tree: Tree)(implicit ctx: Context): Option[Term_Apply]
+  def matchApply(tree: Tree)(implicit ctx: Context): Option[Apply]
 
-  def Term_Apply_fun(self: Term_Apply)(implicit ctx: Context): Term
-  def Term_Apply_args(self: Term_Apply)(implicit ctx: Context): List[Term]
+  def Apply_fun(self: Apply)(implicit ctx: Context): Term
+  def Apply_args(self: Apply)(implicit ctx: Context): List[Term]
 
-  def Term_Apply_apply(fn: Term, args: List[Term])(implicit ctx: Context): Term_Apply
-  def Term_Apply_copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Term_Apply
+  def Apply_apply(fn: Term, args: List[Term])(implicit ctx: Context): Apply
+  def Apply_copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Apply
 
   /** Tree an application of type arguments */
-  type Term_TypeApply <: Term
+  type TypeApply <: Term
 
-  def matchTerm_TypeApply(tree: Tree)(implicit ctx: Context): Option[Term_TypeApply]
+  def matchTypeApply(tree: Tree)(implicit ctx: Context): Option[TypeApply]
 
-  def Term_TypeApply_fun(self: Term_TypeApply)(implicit ctx: Context): Term
-  def Term_TypeApply_args(self: Term_TypeApply)(implicit ctx: Context): List[TypeTree]
+  def TypeApply_fun(self: TypeApply)(implicit ctx: Context): Term
+  def TypeApply_args(self: TypeApply)(implicit ctx: Context): List[TypeTree]
 
-  def Term_TypeApply_apply(fn: Term, args: List[TypeTree])(implicit ctx: Context): Term_TypeApply
-  def Term_TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): Term_TypeApply
+  def TypeApply_apply(fn: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply
+  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply
 
   /** Tree representing `super` in the source code */
-  type Term_Super <: Term
+  type Super <: Term
 
-  def matchTerm_Super(tree: Tree)(implicit ctx: Context): Option[Term_Super]
+  def matchSuper(tree: Tree)(implicit ctx: Context): Option[Super]
 
-  def Term_Super_qualifier(self: Term_Super)(implicit ctx: Context): Term
-  def Term_Super_id(self: Term_Super)(implicit ctx: Context): Option[Id]
+  def Super_qualifier(self: Super)(implicit ctx: Context): Term
+  def Super_id(self: Super)(implicit ctx: Context): Option[Id]
 
-  def Term_Super_apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Term_Super
-  def Term_Super_copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Term_Super
+  def Super_apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
+  def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
 
   /** Tree representing a type ascription `x: T` in the source code */
-  type Term_Typed <: Term
+  type Typed <: Term
 
-  def matchTerm_Typed(tree: Tree)(implicit ctx: Context): Option[Term_Typed]
+  def matchTyped(tree: Tree)(implicit ctx: Context): Option[Typed]
 
-  def Term_Typed_expr(self: Term_Typed)(implicit ctx: Context): Term
-  def Term_Typed_tpt(self: Term_Typed)(implicit ctx: Context): TypeTree
+  def Typed_expr(self: Typed)(implicit ctx: Context): Term
+  def Typed_tpt(self: Typed)(implicit ctx: Context): TypeTree
 
-  def Term_Typed_apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Term_Typed
-  def Term_Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Term_Typed
+  def Typed_apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed
+  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed
 
   /** Tree representing an assignment `x = y` in the source code */
-  type Term_Assign <: Term
+  type Assign <: Term
 
-  def matchTerm_Assign(tree: Tree)(implicit ctx: Context): Option[Term_Assign]
+  def matchAssign(tree: Tree)(implicit ctx: Context): Option[Assign]
 
-  def Term_Assign_lhs(self: Term_Assign)(implicit ctx: Context): Term
-  def Term_Assign_rhs(self: Term_Assign)(implicit ctx: Context): Term
+  def Assign_lhs(self: Assign)(implicit ctx: Context): Term
+  def Assign_rhs(self: Assign)(implicit ctx: Context): Term
 
-  def Term_Assign_apply(lhs: Term, rhs: Term)(implicit ctx: Context): Term_Assign
-  def Term_Assign_copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Term_Assign
+  def Assign_apply(lhs: Term, rhs: Term)(implicit ctx: Context): Assign
+  def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Assign
 
   /** Tree representing a block `{ ... }` in the source code */
-  type Term_Block <: Term
+  type Block <: Term
 
-  def matchTerm_Block(tree: Tree)(implicit ctx: Context): Option[Term_Block]
+  def matchBlock(tree: Tree)(implicit ctx: Context): Option[Block]
 
-  def Term_Block_statements(self: Term_Block)(implicit ctx: Context): List[Statement]
-  def Term_Block_expr(self: Term_Block)(implicit ctx: Context): Term
+  def Block_statements(self: Block)(implicit ctx: Context): List[Statement]
+  def Block_expr(self: Block)(implicit ctx: Context): Term
 
-  def Term_Block_apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Term_Block
-  def Term_Block_copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Term_Block
+  def Block_apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Block
+  def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Block
 
   /** Tree representing a lambda `(...) => ...` in the source code */
-  type Term_Lambda <: Term
+  type Lambda <: Term
 
-  def matchTerm_Lambda(tree: Tree)(implicit ctx: Context): Option[Term_Lambda]
+  def matchLambda(tree: Tree)(implicit ctx: Context): Option[Lambda]
 
-  def Term_Lambda_meth(self: Term_Lambda)(implicit ctx: Context): Term
-  def Term_Lambda_tptOpt(self: Term_Lambda)(implicit ctx: Context): Option[TypeTree]
+  def Lambda_meth(self: Lambda)(implicit ctx: Context): Term
+  def Lambda_tptOpt(self: Lambda)(implicit ctx: Context): Option[TypeTree]
 
-  def Term_Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Term_Lambda
-  def Term_Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Term_Lambda
+  def Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda
+  def Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda
 
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
-  type Term_If <: Term
+  type If <: Term
 
-  def matchTerm_If(tree: Tree)(implicit ctx: Context): Option[Term_If]
+  def matchIf(tree: Tree)(implicit ctx: Context): Option[If]
 
-  def Term_If_cond(self: Term_If)(implicit ctx: Context): Term
-  def Term_If_thenp(self: Term_If)(implicit ctx: Context): Term
-  def Term_If_elsep(self: Term_If)(implicit ctx: Context): Term
+  def If_cond(self: If)(implicit ctx: Context): Term
+  def If_thenp(self: If)(implicit ctx: Context): Term
+  def If_elsep(self: If)(implicit ctx: Context): Term
 
-  def Term_If_apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): Term_If
-  def Term_If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): Term_If
+  def If_apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If
+  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If
 
   /** Tree representing a pattern match `x match  { ... }` in the source code */
-  type Term_Match <: Term
+  type Match <: Term
 
-  def matchTerm_Match(tree: Tree)(implicit ctx: Context): Option[Term_Match]
+  def matchMatch(tree: Tree)(implicit ctx: Context): Option[Match]
 
-  def Term_Match_scrutinee(self: Term_Match)(implicit ctx: Context): Term
-  def Term_Match_cases(self: Term_Match)(implicit ctx: Context): List[CaseDef]
+  def Match_scrutinee(self: Match)(implicit ctx: Context): Term
+  def Match_cases(self: Match)(implicit ctx: Context): List[CaseDef]
 
-  def Term_Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Term_Match
-  def Term_Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Term_Match
+  def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
+  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
 
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
-  type Term_Try <: Term
+  type Try <: Term
 
-  def matchTerm_Try(tree: Tree)(implicit ctx: Context): Option[Term_Try]
+  def matchTry(tree: Tree)(implicit ctx: Context): Option[Try]
 
-  def Term_Try_body(self: Term_Try)(implicit ctx: Context): Term
-  def Term_Try_cases(self: Term_Try)(implicit ctx: Context): List[CaseDef]
-  def Term_Try_finalizer(self: Term_Try)(implicit ctx: Context): Option[Term]
+  def Try_body(self: Try)(implicit ctx: Context): Term
+  def Try_cases(self: Try)(implicit ctx: Context): List[CaseDef]
+  def Try_finalizer(self: Try)(implicit ctx: Context): Option[Term]
 
-  def Term_Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Term_Try
-  def Term_Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Term_Try
+  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try
+  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try
 
   /** Tree representing a `return` in the source code */
-  type Term_Return <: Term
+  type Return <: Term
 
-  def matchTerm_Return(tree: Tree)(implicit ctx: Context): Option[Term_Return]
+  def matchReturn(tree: Tree)(implicit ctx: Context): Option[Return]
 
-  def Term_Return_expr(self: Term_Return)(implicit ctx: Context): Term
+  def Return_expr(self: Return)(implicit ctx: Context): Term
 
-  def Term_Return_apply(expr: Term)(implicit ctx: Context): Term_Return
-  def Term_Return_copy(original: Tree)(expr: Term)(implicit ctx: Context): Term_Return
+  def Return_apply(expr: Term)(implicit ctx: Context): Return
+  def Return_copy(original: Tree)(expr: Term)(implicit ctx: Context): Return
 
   /** Tree representing a variable argument list in the source code */
-  type Term_Repeated <: Term
+  type Repeated <: Term
 
-  def matchTerm_Repeated(tree: Tree)(implicit ctx: Context): Option[Term_Repeated]
+  def matchRepeated(tree: Tree)(implicit ctx: Context): Option[Repeated]
 
-  def Term_Repeated_elems(self: Term_Repeated)(implicit ctx: Context): List[Term]
-  def Term_Repeated_elemtpt(self: Term_Repeated)(implicit ctx: Context): TypeTree
+  def Repeated_elems(self: Repeated)(implicit ctx: Context): List[Term]
+  def Repeated_elemtpt(self: Repeated)(implicit ctx: Context): TypeTree
 
-  def Term_Repeated_apply(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Term_Repeated
-  def Term_Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Term_Repeated
+  def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated
+  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated
 
   /** Tree representing the scope of an inlined tree */
-  type Term_Inlined <: Term
+  type Inlined <: Term
 
-  def matchTerm_Inlined(tree: Tree)(implicit ctx: Context): Option[Term_Inlined]
+  def matchInlined(tree: Tree)(implicit ctx: Context): Option[Inlined]
 
-  def Term_Inlined_call(self: Term_Inlined)(implicit ctx: Context): Option[TermOrTypeTree]
-  def Term_Inlined_bindings(self: Term_Inlined)(implicit ctx: Context): List[Definition]
-  def Term_Inlined_body(self: Term_Inlined)(implicit ctx: Context): Term
+  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[TermOrTypeTree]
+  def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition]
+  def Inlined_body(self: Inlined)(implicit ctx: Context): Term
 
-  def Term_Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Term_Inlined
-  def Term_Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Term_Inlined
+  def Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
+  def Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
 
   /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
-  type Term_SelectOuter <: Term
+  type SelectOuter <: Term
 
-  def matchTerm_SelectOuter(tree: Tree)(implicit ctx: Context): Option[Term_SelectOuter]
+  def matchSelectOuter(tree: Tree)(implicit ctx: Context): Option[SelectOuter]
 
-  def Term_SelectOuter_qualifier(self: Term_SelectOuter)(implicit ctx: Context): Term
-  def Term_SelectOuter_level(self: Term_SelectOuter)(implicit ctx: Context): Int
-  def Term_SelectOuter_tpe(self: Term_SelectOuter)(implicit ctx: Context): Type
+  def SelectOuter_qualifier(self: SelectOuter)(implicit ctx: Context): Term
+  def SelectOuter_level(self: SelectOuter)(implicit ctx: Context): Int
+  def SelectOuter_tpe(self: SelectOuter)(implicit ctx: Context): Type
 
-  def Term_SelectOuter_apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): Term_SelectOuter
-  def Term_SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): Term_SelectOuter
+  def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter
+  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter
 
   /** Tree representing a while loop */
-  type Term_While <: Term
+  type While <: Term
 
-  def matchTerm_While(tree: Tree)(implicit ctx: Context): Option[Term_While]
+  def matchWhile(tree: Tree)(implicit ctx: Context): Option[While]
 
-  def Term_While_cond(self: Term_While)(implicit ctx: Context): Term
-  def Term_While_body(self: Term_While)(implicit ctx: Context): Term
+  def While_cond(self: While)(implicit ctx: Context): Term
+  def While_body(self: While)(implicit ctx: Context): Term
 
-  def Term_While_apply(cond: Term, body: Term)(implicit ctx: Context): Term_While
-  def Term_While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): Term_While
+  def While_apply(cond: Term, body: Term)(implicit ctx: Context): While
+  def While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While
 
   //
   // CASES

@@ -170,70 +170,70 @@ trait Core {
       trait TermCoreModule {
 
         /** Tree representing a reference to definition */
-        type Ref = kernel.Term_Ref
+        type Ref = kernel.Ref
 
           /** Tree representing a reference to definition with a given name */
-          type Ident = kernel.Term_Ident
+          type Ident = kernel.Ident
 
           /** Tree representing a selection of definition with a given name on a given prefix */
-          type Select = kernel.Term_Select
+          type Select = kernel.Select
 
         /** Tree representing a literal value in the source code */
-        type Literal = kernel.Term_Literal
+        type Literal = kernel.Literal
 
         /** Tree representing `this` in the source code */
-        type This = kernel.Term_This
+        type This = kernel.This
 
         /** Tree representing `new` in the source code */
-        type New = kernel.Term_New
+        type New = kernel.New
 
         /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
-        type NamedArg = kernel.Term_NamedArg
+        type NamedArg = kernel.NamedArg
 
         /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
-        type Apply = kernel.Term_Apply
+        type Apply = kernel.Apply
 
         /** Tree an application of type arguments */
-        type TypeApply = kernel.Term_TypeApply
+        type TypeApply = kernel.TypeApply
 
         /** Tree representing `super` in the source code */
-        type Super = kernel.Term_Super
+        type Super = kernel.Super
 
         /** Tree representing a type ascription `x: T` in the source code */
-        type Typed = kernel.Term_Typed
+        type Typed = kernel.Typed
 
         /** Tree representing an assignment `x = y` in the source code */
-        type Assign = kernel.Term_Assign
+        type Assign = kernel.Assign
 
         /** Tree representing a block `{ ... }` in the source code */
-        type Block = kernel.Term_Block
+        type Block = kernel.Block
 
         /** Tree representing a lambda `(...) => ...` in the source code */
-        type Lambda = kernel.Term_Lambda
+        type Lambda = kernel.Lambda
 
         /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
-        type If = kernel.Term_If
+        type If = kernel.If
 
         /** Tree representing a pattern match `x match  { ... }` in the source code */
-        type Match = kernel.Term_Match
+        type Match = kernel.Match
 
         /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
-        type Try = kernel.Term_Try
+        type Try = kernel.Try
 
         /** Tree representing a `return` in the source code */
-        type Return = kernel.Term_Return
+        type Return = kernel.Return
 
         /** Tree representing a variable argument list in the source code */
-        type Repeated = kernel.Term_Repeated
+        type Repeated = kernel.Repeated
 
         /** Tree representing the scope of an inlined tree */
-        type Inlined = kernel.Term_Inlined
+        type Inlined = kernel.Inlined
 
         /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
-        type SelectOuter = kernel.Term_SelectOuter
+        type SelectOuter = kernel.SelectOuter
 
         /** Tree representing a while loop */
-        type While = kernel.Term_While
+        type While = kernel.While
 
       }
 
