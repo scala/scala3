@@ -10,7 +10,7 @@ trait ImportSelectorOps extends Core {
 
   object SimpleSelector {
     def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id] =
-      kernel.isSimpleSelector(importSelector).map(_.selection)
+      kernel.matchSimpleSelector(importSelector).map(_.selection)
   }
 
   implicit class RenameSelectorAPI(self: RenameSelector) {
@@ -23,7 +23,7 @@ trait ImportSelectorOps extends Core {
 
   object RenameSelector {
     def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[(Id, Id)] =
-      kernel.isRenameSelector(importSelector).map(x => (x.from, x.to))
+      kernel.matchRenameSelector(importSelector).map(x => (x.from, x.to))
   }
 
   implicit class OmitSelectorAPI(self: OmitSelector) {
@@ -33,7 +33,7 @@ trait ImportSelectorOps extends Core {
 
   object OmitSelector {
     def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id] =
-      kernel.isOmitSelector(importSelector).map(_.omitted)
+      kernel.matchOmitSelector(importSelector).map(_.omitted)
   }
 
 }

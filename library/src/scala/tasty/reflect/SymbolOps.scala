@@ -88,7 +88,7 @@ trait SymbolOps extends Core {
 
   object IsPackageSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
-      kernel.isPackageSymbol(symbol)
+      kernel.matchPackageSymbol(symbol)
   }
 
   implicit class PackageSymbolAPI(self: PackageSymbol) {
@@ -100,7 +100,7 @@ trait SymbolOps extends Core {
 
   object IsClassSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
-      kernel.isClassSymbol(symbol)
+      kernel.matchClassSymbol(symbol)
   }
 
   object ClassSymbol {
@@ -159,7 +159,7 @@ trait SymbolOps extends Core {
 
   object IsTypeSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
-      kernel.isTypeSymbol(symbol)
+      kernel.matchTypeSymbol(symbol)
   }
 
   implicit class TypeSymbolAPI(self: TypeSymbol) {
@@ -175,7 +175,7 @@ trait SymbolOps extends Core {
 
   object IsDefSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
-      kernel.isDefSymbol(symbol)
+      kernel.matchDefSymbol(symbol)
   }
 
   implicit class DefSymbolAPI(self: DefSymbol) {
@@ -192,7 +192,7 @@ trait SymbolOps extends Core {
 
   object IsValSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
-      kernel.isValSymbol(symbol)
+      kernel.matchValSymbol(symbol)
   }
 
   implicit class ValSymbolAPI(self: ValSymbol) {
@@ -212,7 +212,7 @@ trait SymbolOps extends Core {
 
   object IsBindSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
-      kernel.isBindSymbol(symbol)
+      kernel.matchBindSymbol(symbol)
   }
 
   implicit class BindSymbolAPI(self: BindSymbol) {
@@ -225,6 +225,6 @@ trait SymbolOps extends Core {
 
   object NoSymbol {
     def unapply(symbol: Symbol)(implicit ctx: Context): Boolean =
-      kernel.isNoSymbol(symbol)
+      kernel.matchNoSymbol(symbol)
   }
 }

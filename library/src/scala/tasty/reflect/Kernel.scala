@@ -164,7 +164,7 @@ trait Kernel {
   /** Tree representing a pacakage clause in the source code */
   type PackageClause <: Tree
 
-  def isPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause]
+  def matchPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause]
 
   def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Term_Ref
   def PackageClause_stats(self: PackageClause)(implicit ctx: Context): List[Tree]
@@ -176,12 +176,12 @@ trait Kernel {
   /** Tree representing a statement in the source code */
   type Statement <: Tree
 
-  def isStatement(tree: Tree)(implicit ctx: Context): Option[Statement]
+  def matchStatement(tree: Tree)(implicit ctx: Context): Option[Statement]
 
   /** Tree representing an import in the source code */
   type Import <: Statement
 
-  def isImport(tree: Tree)(implicit ctx: Context): Option[Import]
+  def matchImport(tree: Tree)(implicit ctx: Context): Option[Import]
 
   def Import_impliedOnly(self: Import): Boolean
   def Import_expr(self: Import)(implicit ctx: Context): Term
@@ -194,14 +194,14 @@ trait Kernel {
   /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement
 
-  def isDefinition(tree: Tree)(implicit ctx: Context): Option[Definition]
+  def matchDefinition(tree: Tree)(implicit ctx: Context): Option[Definition]
 
   def Definition_name(self: Definition)(implicit ctx: Context): String
 
   /** Tree representing a package definition. This includes definitions in all source files */
   type PackageDef <: Definition
 
-  def isPackageDef(tree: Tree)(implicit ctx: Context): Option[PackageDef]
+  def matchPackageDef(tree: Tree)(implicit ctx: Context): Option[PackageDef]
 
   def PackageDef_owner(self: PackageDef)(implicit ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(implicit ctx: Context): List[Statement]
@@ -210,7 +210,7 @@ trait Kernel {
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef <: Definition
 
-  def isClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef]
+  def matchClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef]
 
   def ClassDef_constructor(self: ClassDef)(implicit ctx: Context): DefDef
   def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[TermOrTypeTree]
@@ -224,7 +224,7 @@ trait Kernel {
   /** Tree representing a type (paramter or member) definition in the source code */
   type TypeDef <: Definition
 
-  def isTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef]
+  def matchTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): TypeOrBoundsTree
   def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeSymbol
@@ -235,7 +235,7 @@ trait Kernel {
   /** Tree representing a method definition in the source code */
   type DefDef <: Definition
 
-  def isDefDef(tree: Tree)(implicit ctx: Context): Option[DefDef]
+  def matchDefDef(tree: Tree)(implicit ctx: Context): Option[DefDef]
 
   def DefDef_typeParams(self: DefDef)(implicit ctx: Context): List[TypeDef]
   def DefDef_paramss(self: DefDef)(implicit ctx: Context): List[List[ValDef]]
@@ -249,7 +249,7 @@ trait Kernel {
   /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
   type ValDef <: Definition
 
-  def isValDef(tree: Tree)(implicit ctx: Context): Option[ValDef]
+  def matchValDef(tree: Tree)(implicit ctx: Context): Option[ValDef]
 
   def ValDef_tpt(self: ValDef)(implicit ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(implicit ctx: Context): Option[Term]
@@ -261,9 +261,9 @@ trait Kernel {
   /** Tree representing an expression in the source code */
   type Term <: Statement
 
-  def isTerm(tree: Tree)(implicit ctx: Context): Option[Term]
+  def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term]
 
-  def isTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term]
+  def matchTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term]
 
   def Term_pos(self: Term)(implicit ctx: Context): Position
   def Term_tpe(self: Term)(implicit ctx: Context): Type
@@ -278,7 +278,7 @@ trait Kernel {
   /** Tree representing a reference to definition with a given name */
   type Term_Ident <: Term_Ref
 
-  def isTerm_Ident(tree: Tree)(implicit ctx: Context): Option[Term_Ident]
+  def matchTerm_Ident(tree: Tree)(implicit ctx: Context): Option[Term_Ident]
 
   def Term_Ident_name(self: Term_Ident)(implicit ctx: Context): String
 
@@ -288,7 +288,7 @@ trait Kernel {
   /** Tree representing a selection of definition with a given name on a given prefix */
   type Term_Select <: Term_Ref
 
-  def isTerm_Select(tree: Tree)(implicit ctx: Context): Option[Term_Select]
+  def matchTerm_Select(tree: Tree)(implicit ctx: Context): Option[Term_Select]
 
   def Term_Select_qualifier(self: Term_Select)(implicit ctx: Context): Term
   def Term_Select_name(self: Term_Select)(implicit ctx: Context): String
@@ -302,7 +302,7 @@ trait Kernel {
   /** Tree representing a literal value in the source code */
   type Term_Literal <: Term
 
-  def isTerm_Literal(tree: Tree)(implicit ctx: Context): Option[Term_Literal]
+  def matchTerm_Literal(tree: Tree)(implicit ctx: Context): Option[Term_Literal]
 
   def Term_Literal_constant(self: Term_Literal)(implicit ctx: Context): Constant
 
@@ -312,7 +312,7 @@ trait Kernel {
   /** Tree representing `this` in the source code */
   type Term_This <: Term
 
-  def isTerm_This(tree: Tree)(implicit ctx: Context): Option[Term_This]
+  def matchTerm_This(tree: Tree)(implicit ctx: Context): Option[Term_This]
 
   def Term_This_id(self: Term_This)(implicit ctx: Context): Option[Id]
 
@@ -322,7 +322,7 @@ trait Kernel {
   /** Tree representing `new` in the source code */
   type Term_New <: Term
 
-  def isTerm_New(tree: Tree)(implicit ctx: Context): Option[Term_New]
+  def matchTerm_New(tree: Tree)(implicit ctx: Context): Option[Term_New]
 
   def Term_New_tpt(self: Term_New)(implicit ctx: Context): TypeTree
 
@@ -332,7 +332,7 @@ trait Kernel {
   /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
   type Term_NamedArg <: Term
 
-  def isTerm_NamedArg(tree: Tree)(implicit ctx: Context): Option[Term_NamedArg]
+  def matchTerm_NamedArg(tree: Tree)(implicit ctx: Context): Option[Term_NamedArg]
 
   def Term_NamedArg_name(self: Term_NamedArg)(implicit ctx: Context): String
   def Term_NamedArg_value(self: Term_NamedArg)(implicit ctx: Context): Term
@@ -343,7 +343,7 @@ trait Kernel {
   /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s */
   type Term_Apply <: Term
 
-  def isTerm_Apply(tree: Tree)(implicit ctx: Context): Option[Term_Apply]
+  def matchTerm_Apply(tree: Tree)(implicit ctx: Context): Option[Term_Apply]
 
   def Term_Apply_fun(self: Term_Apply)(implicit ctx: Context): Term
   def Term_Apply_args(self: Term_Apply)(implicit ctx: Context): List[Term]
@@ -354,7 +354,7 @@ trait Kernel {
   /** Tree an application of type arguments */
   type Term_TypeApply <: Term
 
-  def isTerm_TypeApply(tree: Tree)(implicit ctx: Context): Option[Term_TypeApply]
+  def matchTerm_TypeApply(tree: Tree)(implicit ctx: Context): Option[Term_TypeApply]
 
   def Term_TypeApply_fun(self: Term_TypeApply)(implicit ctx: Context): Term
   def Term_TypeApply_args(self: Term_TypeApply)(implicit ctx: Context): List[TypeTree]
@@ -365,7 +365,7 @@ trait Kernel {
   /** Tree representing `super` in the source code */
   type Term_Super <: Term
 
-  def isTerm_Super(tree: Tree)(implicit ctx: Context): Option[Term_Super]
+  def matchTerm_Super(tree: Tree)(implicit ctx: Context): Option[Term_Super]
 
   def Term_Super_qualifier(self: Term_Super)(implicit ctx: Context): Term
   def Term_Super_id(self: Term_Super)(implicit ctx: Context): Option[Id]
@@ -376,7 +376,7 @@ trait Kernel {
   /** Tree representing a type ascription `x: T` in the source code */
   type Term_Typed <: Term
 
-  def isTerm_Typed(tree: Tree)(implicit ctx: Context): Option[Term_Typed]
+  def matchTerm_Typed(tree: Tree)(implicit ctx: Context): Option[Term_Typed]
 
   def Term_Typed_expr(self: Term_Typed)(implicit ctx: Context): Term
   def Term_Typed_tpt(self: Term_Typed)(implicit ctx: Context): TypeTree
@@ -387,7 +387,7 @@ trait Kernel {
   /** Tree representing an assignment `x = y` in the source code */
   type Term_Assign <: Term
 
-  def isTerm_Assign(tree: Tree)(implicit ctx: Context): Option[Term_Assign]
+  def matchTerm_Assign(tree: Tree)(implicit ctx: Context): Option[Term_Assign]
 
   def Term_Assign_lhs(self: Term_Assign)(implicit ctx: Context): Term
   def Term_Assign_rhs(self: Term_Assign)(implicit ctx: Context): Term
@@ -398,7 +398,7 @@ trait Kernel {
   /** Tree representing a block `{ ... }` in the source code */
   type Term_Block <: Term
 
-  def isTerm_Block(tree: Tree)(implicit ctx: Context): Option[Term_Block]
+  def matchTerm_Block(tree: Tree)(implicit ctx: Context): Option[Term_Block]
 
   def Term_Block_statements(self: Term_Block)(implicit ctx: Context): List[Statement]
   def Term_Block_expr(self: Term_Block)(implicit ctx: Context): Term
@@ -409,7 +409,7 @@ trait Kernel {
   /** Tree representing a lambda `(...) => ...` in the source code */
   type Term_Lambda <: Term
 
-  def isTerm_Lambda(tree: Tree)(implicit ctx: Context): Option[Term_Lambda]
+  def matchTerm_Lambda(tree: Tree)(implicit ctx: Context): Option[Term_Lambda]
 
   def Term_Lambda_meth(self: Term_Lambda)(implicit ctx: Context): Term
   def Term_Lambda_tptOpt(self: Term_Lambda)(implicit ctx: Context): Option[TypeTree]
@@ -420,7 +420,7 @@ trait Kernel {
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
   type Term_If <: Term
 
-  def isTerm_If(tree: Tree)(implicit ctx: Context): Option[Term_If]
+  def matchTerm_If(tree: Tree)(implicit ctx: Context): Option[Term_If]
 
   def Term_If_cond(self: Term_If)(implicit ctx: Context): Term
   def Term_If_thenp(self: Term_If)(implicit ctx: Context): Term
@@ -432,7 +432,7 @@ trait Kernel {
   /** Tree representing a pattern match `x match  { ... }` in the source code */
   type Term_Match <: Term
 
-  def isTerm_Match(tree: Tree)(implicit ctx: Context): Option[Term_Match]
+  def matchTerm_Match(tree: Tree)(implicit ctx: Context): Option[Term_Match]
 
   def Term_Match_scrutinee(self: Term_Match)(implicit ctx: Context): Term
   def Term_Match_cases(self: Term_Match)(implicit ctx: Context): List[CaseDef]
@@ -443,7 +443,7 @@ trait Kernel {
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Term_Try <: Term
 
-  def isTerm_Try(tree: Tree)(implicit ctx: Context): Option[Term_Try]
+  def matchTerm_Try(tree: Tree)(implicit ctx: Context): Option[Term_Try]
 
   def Term_Try_body(self: Term_Try)(implicit ctx: Context): Term
   def Term_Try_cases(self: Term_Try)(implicit ctx: Context): List[CaseDef]
@@ -455,7 +455,7 @@ trait Kernel {
   /** Tree representing a `return` in the source code */
   type Term_Return <: Term
 
-  def isTerm_Return(tree: Tree)(implicit ctx: Context): Option[Term_Return]
+  def matchTerm_Return(tree: Tree)(implicit ctx: Context): Option[Term_Return]
 
   def Term_Return_expr(self: Term_Return)(implicit ctx: Context): Term
 
@@ -465,7 +465,7 @@ trait Kernel {
   /** Tree representing a variable argument list in the source code */
   type Term_Repeated <: Term
 
-  def isTerm_Repeated(tree: Tree)(implicit ctx: Context): Option[Term_Repeated]
+  def matchTerm_Repeated(tree: Tree)(implicit ctx: Context): Option[Term_Repeated]
 
   def Term_Repeated_elems(self: Term_Repeated)(implicit ctx: Context): List[Term]
   def Term_Repeated_elemtpt(self: Term_Repeated)(implicit ctx: Context): TypeTree
@@ -476,7 +476,7 @@ trait Kernel {
   /** Tree representing the scope of an inlined tree */
   type Term_Inlined <: Term
 
-  def isTerm_Inlined(tree: Tree)(implicit ctx: Context): Option[Term_Inlined]
+  def matchTerm_Inlined(tree: Tree)(implicit ctx: Context): Option[Term_Inlined]
 
   def Term_Inlined_call(self: Term_Inlined)(implicit ctx: Context): Option[TermOrTypeTree]
   def Term_Inlined_bindings(self: Term_Inlined)(implicit ctx: Context): List[Definition]
@@ -488,7 +488,7 @@ trait Kernel {
   /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
   type Term_SelectOuter <: Term
 
-  def isTerm_SelectOuter(tree: Tree)(implicit ctx: Context): Option[Term_SelectOuter]
+  def matchTerm_SelectOuter(tree: Tree)(implicit ctx: Context): Option[Term_SelectOuter]
 
   def Term_SelectOuter_qualifier(self: Term_SelectOuter)(implicit ctx: Context): Term
   def Term_SelectOuter_level(self: Term_SelectOuter)(implicit ctx: Context): Int
@@ -500,7 +500,7 @@ trait Kernel {
   /** Tree representing a while loop */
   type Term_While <: Term
 
-  def isTerm_While(tree: Tree)(implicit ctx: Context): Option[Term_While]
+  def matchTerm_While(tree: Tree)(implicit ctx: Context): Option[Term_While]
 
   def Term_While_cond(self: Term_While)(implicit ctx: Context): Term
   def Term_While_body(self: Term_While)(implicit ctx: Context): Term
@@ -545,7 +545,7 @@ trait Kernel {
   /** Pattern representing a value. This includes `1`, ```x``` and `_` */
   type Value <: Pattern
 
-  def isPattern_Value(pattern: Pattern): Option[Value]
+  def matchPattern_Value(pattern: Pattern): Option[Value]
 
   def Pattern_Value_value(self: Value)(implicit ctx: Context): Term
 
@@ -555,7 +555,7 @@ trait Kernel {
   /** Pattern representing a `_ @ _` binding. */
   type Bind <: Pattern
 
-  def isPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind]
+  def matchPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind]
 
   def Pattern_Bind_name(self: Bind)(implicit ctx: Context): String
 
@@ -566,7 +566,7 @@ trait Kernel {
   /** Pattern representing a `Xyz(...)` unapply. */
   type Unapply <: Pattern
 
-  def isPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply]
+  def matchPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply]
 
   def Pattern_Unapply_fun(self: Unapply)(implicit ctx: Context): Term
 
@@ -579,7 +579,7 @@ trait Kernel {
   /** Pattern representing `X | Y | ...` alternatives. */
   type Alternatives <: Pattern
 
-  def isPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives]
+  def matchPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives]
 
   def Pattern_Alternatives_patterns(self: Alternatives)(implicit ctx: Context): List[Pattern]
 
@@ -589,7 +589,7 @@ trait Kernel {
   /** Pattern representing a `x: Y` type test. */
   type TypeTest <: Pattern
 
-  def isPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]
+  def matchPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]
 
   def Pattern_TypeTest_tpt(self: TypeTest)(implicit ctx: Context): TypeTree
 
@@ -608,8 +608,8 @@ trait Kernel {
   /** Type tree representing a type written in the source */
   type TypeTree <: TypeOrBoundsTree
 
-  def isTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
-  def isTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree]
+  def matchTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
+  def matchTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree]
 
   def TypeTree_pos(self: TypeTree)(implicit ctx: Context): Position
   def TypeTree_symbol(self: TypeTree)(implicit ctx: Context): Symbol
@@ -618,14 +618,14 @@ trait Kernel {
   /** Type tree representing an inferred type */
   type TypeTree_Inferred <: TypeTree
 
-  def isTypeTree_Inferred(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Inferred]
+  def matchTypeTree_Inferred(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Inferred]
 
   def TypeTree_Inferred_apply(tpe: Type)(implicit ctx: Context): TypeTree_Inferred
 
   /** Type tree representing a reference to definition with a given name */
   type TypeTree_Ident <: TypeTree
 
-  def isTypeTree_Ident(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Ident]
+  def matchTypeTree_Ident(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Ident]
 
   def TypeTree_Ident_name(self: TypeTree_Ident)(implicit ctx: Context): String
 
@@ -634,7 +634,7 @@ trait Kernel {
   /** Type tree representing a selection of definition with a given name on a given term prefix */
   type TypeTree_Select <: TypeTree
 
-  def isTypeTree_Select(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Select]
+  def matchTypeTree_Select(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Select]
 
   def TypeTree_Select_qualifier(self: TypeTree_Select)(implicit ctx: Context): Term
   def TypeTree_Select_name(self: TypeTree_Select)(implicit ctx: Context): String
@@ -645,7 +645,7 @@ trait Kernel {
   /** Type tree representing a selection of definition with a given name on a given type prefix */
   type TypeTree_Projection <: TypeTree
 
-  def isTypeTree_Projection(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Projection]
+  def matchTypeTree_Projection(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Projection]
 
   def TypeTree_Projection_qualifier(self: TypeTree_Projection)(implicit ctx: Context): TypeTree
   def TypeTree_Projection_name(self: TypeTree_Projection)(implicit ctx: Context): String
@@ -655,7 +655,7 @@ trait Kernel {
   /** Type tree representing a singleton type */
   type TypeTree_Singleton <: TypeTree
 
-  def isTypeTree_Singleton(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Singleton]
+  def matchTypeTree_Singleton(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Singleton]
 
   def TypeTree_Singleton_ref(self: TypeTree_Singleton)(implicit ctx: Context): Term
 
@@ -665,7 +665,7 @@ trait Kernel {
   /** Type tree representing a type refinement */
   type TypeTree_Refined <: TypeTree
 
-  def isTypeTree_Refined(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Refined]
+  def matchTypeTree_Refined(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Refined]
 
   def TypeTree_Refined_tpt(self: TypeTree_Refined)(implicit ctx: Context): TypeTree
   def TypeTree_Refined_refinements(self: TypeTree_Refined)(implicit ctx: Context): List[Definition]
@@ -675,7 +675,7 @@ trait Kernel {
   /** Type tree representing a type application */
   type TypeTree_Applied <: TypeTree
 
-  def isTypeTree_Applied(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Applied]
+  def matchTypeTree_Applied(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Applied]
 
   def TypeTree_Applied_tpt(self: TypeTree_Applied)(implicit ctx: Context): TypeTree
   def TypeTree_Applied_args(self: TypeTree_Applied)(implicit ctx: Context): List[TypeOrBoundsTree]
@@ -686,7 +686,7 @@ trait Kernel {
   /** Type tree representing an annotated type */
   type TypeTree_Annotated <: TypeTree
 
-  def isTypeTree_Annotated(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Annotated]
+  def matchTypeTree_Annotated(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Annotated]
 
   def TypeTree_Annotated_arg(self: TypeTree_Annotated)(implicit ctx: Context): TypeTree
   def TypeTree_Annotated_annotation(self: TypeTree_Annotated)(implicit ctx: Context): Term
@@ -697,7 +697,7 @@ trait Kernel {
   /** Type tree representing a type match */
   type TypeTree_MatchType <: TypeTree
 
-  def isTypeTree_MatchType(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_MatchType]
+  def matchTypeTree_MatchType(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_MatchType]
 
   def TypeTree_MatchType_bound(self: TypeTree_MatchType)(implicit ctx: Context): Option[TypeTree]
   def TypeTree_MatchType_selector(self: TypeTree_MatchType)(implicit ctx: Context): TypeTree
@@ -711,7 +711,7 @@ trait Kernel {
 
   def TypeTree_ByName_result(self: TypeTree_ByName)(implicit ctx: Context): TypeTree
 
-  def isTypeTree_ByName(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_ByName]
+  def matchTypeTree_ByName(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_ByName]
 
   def TypeTree_ByName_apply(result: TypeTree)(implicit ctx: Context): TypeTree_ByName
   def TypeTree_ByName_copy(original: TypeTree_ByName)(result: TypeTree)(implicit ctx: Context): TypeTree_ByName
@@ -719,7 +719,7 @@ trait Kernel {
   /** Type tree representing a lambda abstraction type */
   type TypeTree_LambdaTypeTree <: TypeTree
 
-  def isTypeTree_LambdaTypeTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree]
+  def matchTypeTree_LambdaTypeTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree]
 
   def TypeTree_LambdaTypeTree_tparams(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): List[TypeDef]
   def TypeTree_LambdaTypeTree_body(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): TypeOrBoundsTree
@@ -730,7 +730,7 @@ trait Kernel {
   /** Type tree representing a type binding */
   type TypeTree_TypeBind <: TypeTree
 
-  def isTypeTree_TypeBind(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBind]
+  def matchTypeTree_TypeBind(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBind]
 
   def TypeTree_TypeBind_name(self: TypeTree_TypeBind)(implicit ctx: Context): String
   def TypeTree_TypeBind_body(self: TypeTree_TypeBind)(implicit ctx: Context): TypeOrBoundsTree
@@ -740,7 +740,7 @@ trait Kernel {
   /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
   type TypeTree_TypeBlock <: TypeTree
 
-  def isTypeTree_TypeBlock(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBlock]
+  def matchTypeTree_TypeBlock(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBlock]
 
   def TypeTree_TypeBlock_aliases(self: TypeTree_TypeBlock)(implicit ctx: Context): List[TypeDef]
   def TypeTree_TypeBlock_tpt(self: TypeTree_TypeBlock)(implicit ctx: Context): TypeTree
@@ -751,7 +751,7 @@ trait Kernel {
   /** Type tree representing a type bound written in the source */
   type TypeBoundsTree <: TypeOrBoundsTree
 
-  def isTypeBoundsTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree]
+  def matchTypeBoundsTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree]
 
   def TypeBoundsTree_tpe(self: TypeBoundsTree)(implicit ctx: Context): TypeBounds
   def TypeBoundsTree_low(self: TypeBoundsTree)(implicit ctx: Context): TypeTree
@@ -763,7 +763,7 @@ trait Kernel {
    */
   type WildcardTypeTree <: TypeOrBoundsTree
 
-  def isWildcardTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree]
+  def matchWildcardTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree]
 
   //
   // TYPES
@@ -775,12 +775,12 @@ trait Kernel {
   /** NoPrefix for a type selection */
   type NoPrefix <: TypeOrBounds
 
-  def isNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix]
+  def matchNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix]
 
   /** Type bounds */
   type TypeBounds <: TypeOrBounds
 
-  def isTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds]
+  def matchTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds]
 
   def TypeBounds_low(self: TypeBounds)(implicit ctx: Context): Type
   def TypeBounds_hi(self: TypeBounds)(implicit ctx: Context): Type
@@ -788,7 +788,7 @@ trait Kernel {
   /** A type */
   type Type <: TypeOrBounds
 
-  def isType(x: TypeOrBounds)(implicit ctx: Context): Option[Type]
+  def matchType(x: TypeOrBounds)(implicit ctx: Context): Option[Type]
 
   def `Type_=:=`(self: Type)(that: Type)(implicit ctx: Context): Boolean
   def `Type_<:<`(self: Type)(that: Type)(implicit ctx: Context): Boolean
@@ -815,24 +815,24 @@ trait Kernel {
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
 
-  def isConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType]
+  def matchConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType]
 
   def ConstantType_constant(self: ConstantType)(implicit ctx: Context): Constant
 
   /** Type of a reference to a symbol */
   type SymRef <: Type
 
-  def isSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]
+  def matchSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]
 
   // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
-  def isSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
+  def matchSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
 
   def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds
 
   /** Type of a reference to a term */
   type TermRef <: Type
 
-  def isTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]
+  def matchTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]
 
   def TermRef_name(self: TermRef)(implicit ctx: Context): String
   def TermRef_qualifier(self: TermRef)(implicit ctx: Context): TypeOrBounds
@@ -842,7 +842,7 @@ trait Kernel {
   /** Type of a reference to a type */
   type TypeRef <: Type
 
-  def isTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]
+  def matchTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]
 
   def TypeRef_name(self: TypeRef)(implicit ctx: Context): String
   def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds
@@ -850,7 +850,7 @@ trait Kernel {
   /** Type of a `super` refernce */
   type SuperType <: Type
 
-  def isSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType]
+  def matchSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType]
 
   def SuperType_thistpe(self: SuperType)(implicit ctx: Context): Type
   def SuperType_supertpe(self: SuperType)(implicit ctx: Context): Type
@@ -858,7 +858,7 @@ trait Kernel {
   /** A type with a type refinement `T { type U }` */
   type Refinement <: Type
 
-  def isRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement]
+  def matchRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement]
 
   def Refinement_parent(self: Refinement)(implicit ctx: Context): Type
   def Refinement_name(self: Refinement)(implicit ctx: Context): String
@@ -867,7 +867,7 @@ trait Kernel {
   /** A higher kinded type applied to some types `T[U]` */
   type AppliedType <: Type
 
-  def isAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType]
+  def matchAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType]
 
   def AppliedType_tycon(self: AppliedType)(implicit ctx: Context): Type
   def AppliedType_args(self: AppliedType)(implicit ctx: Context): List[TypeOrBounds]
@@ -875,7 +875,7 @@ trait Kernel {
   /** A type with an anottation `T @foo` */
   type AnnotatedType <: Type
 
-  def isAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType]
+  def matchAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType]
 
   def AnnotatedType_underlying(self: AnnotatedType)(implicit ctx: Context): Type
   def AnnotatedType_annot(self: AnnotatedType)(implicit ctx: Context): Term
@@ -883,7 +883,7 @@ trait Kernel {
   /** Intersection type `T & U` */
   type AndType <: Type
 
-  def isAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType]
+  def matchAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType]
 
   def AndType_left(self: AndType)(implicit ctx: Context): Type
   def AndType_right(self: AndType)(implicit ctx: Context): Type
@@ -891,7 +891,7 @@ trait Kernel {
   /** Union type `T | U` */
   type OrType <: Type
 
-  def isOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType]
+  def matchOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType]
 
   def OrType_left(self: OrType)(implicit ctx: Context): Type
   def OrType_right(self: OrType)(implicit ctx: Context): Type
@@ -899,7 +899,7 @@ trait Kernel {
   /** Type match `T match { case U => ... }` */
   type MatchType <: Type
 
-  def isMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType]
+  def matchMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType]
 
   def MatchType_bound(self: MatchType)(implicit ctx: Context): Type
   def MatchType_scrutinee(self: MatchType)(implicit ctx: Context): Type
@@ -908,14 +908,14 @@ trait Kernel {
   /** Type of a by by name parameter */
   type ByNameType <: Type
 
-  def isByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType]
+  def matchByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType]
 
   def ByNameType_underlying(self: ByNameType)(implicit ctx: Context): Type
 
   /** Type of a parameter reference */
   type ParamRef <: Type
 
-  def isParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef]
+  def matchParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef]
 
   def ParamRef_binder(self: ParamRef)(implicit ctx: Context): LambdaType[TypeOrBounds]
   def ParamRef_paramNum(self: ParamRef)(implicit ctx: Context): Int
@@ -923,21 +923,21 @@ trait Kernel {
   /** Type of `this` */
   type ThisType <: Type
 
-  def isThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType]
+  def matchThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType]
 
   def ThisType_tref(self: ThisType)(implicit ctx: Context): Type
 
   /** A type that is recursively defined `this` */
   type RecursiveThis <: Type
 
-  def isRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis]
+  def matchRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis]
 
   def RecursiveThis_binder(self: RecursiveThis)(implicit ctx: Context): RecursiveType
 
   /** A type that is recursively defined */
   type RecursiveType <: Type
 
-  def isRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
+  def matchRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
 
   def RecursiveType_underlying(self: RecursiveType)(implicit ctx: Context): Type
 
@@ -949,7 +949,7 @@ trait Kernel {
   /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
   type MethodType <: LambdaType[Type]
 
-  def isMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]
+  def matchMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]
 
   def MethodType_isErased(self: MethodType): Boolean
   def MethodType_isImplicit(self: MethodType): Boolean
@@ -960,7 +960,7 @@ trait Kernel {
   /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
   type PolyType <: LambdaType[TypeBounds]
 
-  def isPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType]
+  def matchPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType]
 
   def PolyType_paramNames(self: PolyType)(implicit ctx: Context): List[String]
   def PolyType_paramBounds(self: PolyType)(implicit ctx: Context): List[TypeBounds]
@@ -969,7 +969,7 @@ trait Kernel {
   /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
   type TypeLambda <: LambdaType[TypeBounds]
 
-  def isTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda]
+  def matchTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda]
 
   def TypeLambda_paramNames(self: TypeLambda)(implicit ctx: Context): List[String]
   def TypeLambda_paramBounds(self: TypeLambda)(implicit ctx: Context): List[TypeBounds]
@@ -988,20 +988,20 @@ trait Kernel {
 
   type SimpleSelector <: ImportSelector
 
-  def isSimpleSelector(self: ImportSelector)(implicit ctx: Context): Option[SimpleSelector]
+  def matchSimpleSelector(self: ImportSelector)(implicit ctx: Context): Option[SimpleSelector]
 
   def SimpleSelector_selection(self: SimpleSelector)(implicit ctx: Context): Id
 
   type RenameSelector <: ImportSelector
 
-  def isRenameSelector(self: ImportSelector)(implicit ctx: Context): Option[RenameSelector]
+  def matchRenameSelector(self: ImportSelector)(implicit ctx: Context): Option[RenameSelector]
 
   def RenameSelector_from(self: RenameSelector)(implicit ctx: Context): Id
   def RenameSelector_to(self: RenameSelector)(implicit ctx: Context): Id
 
   type OmitSelector <: ImportSelector
 
-  def isOmitSelector(self: ImportSelector)(implicit ctx: Context): Option[OmitSelector]
+  def matchOmitSelector(self: ImportSelector)(implicit ctx: Context): Option[OmitSelector]
 
   def SimpleSelector_omited(self: OmitSelector)(implicit ctx: Context): Id
 
@@ -1081,19 +1081,19 @@ trait Kernel {
 
   def Constant_value(const: Constant): Any
 
-  def isConstant_Unit(constant: Constant): Boolean
-  def isConstant_Null(constant: Constant): Boolean
-  def isConstant_Boolean(constant: Constant): Option[Boolean]
-  def isConstant_Byte(constant: Constant): Option[Byte]
-  def isConstant_Short(constant: Constant): Option[Short]
-  def isConstant_Char(constant: Constant): Option[Char]
-  def isConstant_Int(constant: Constant): Option[Int]
-  def isConstant_Long(constant: Constant): Option[Long]
-  def isConstant_Float(constant: Constant): Option[Float]
-  def isConstant_Double(constant: Constant): Option[Double]
-  def isConstant_String(constant: Constant): Option[String]
-  def isConstant_ClassTag(constant: Constant): Option[Type]
-  def isConstant_Symbol(constant: Constant): Option[scala.Symbol]
+  def matchConstant_Unit(constant: Constant): Boolean
+  def matchConstant_Null(constant: Constant): Boolean
+  def matchConstant_Boolean(constant: Constant): Option[Boolean]
+  def matchConstant_Byte(constant: Constant): Option[Byte]
+  def matchConstant_Short(constant: Constant): Option[Short]
+  def matchConstant_Char(constant: Constant): Option[Char]
+  def matchConstant_Int(constant: Constant): Option[Int]
+  def matchConstant_Long(constant: Constant): Option[Long]
+  def matchConstant_Float(constant: Constant): Option[Float]
+  def matchConstant_Double(constant: Constant): Option[Double]
+  def matchConstant_String(constant: Constant): Option[String]
+  def matchConstant_ClassTag(constant: Constant): Option[Type]
+  def matchConstant_Symbol(constant: Constant): Option[scala.Symbol]
 
   def Constant_Unit_apply(): Constant
   def Constant_Null_apply(): Constant
@@ -1166,14 +1166,14 @@ trait Kernel {
   /** Symbol of a package definition */
   type PackageSymbol <: Symbol
 
-  def isPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
+  def matchPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
 
   def PackageSymbol_tree(self: PackageSymbol)(implicit ctx: Context): PackageDef
 
   /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
   type ClassSymbol <: Symbol
 
-  def isClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
+  def matchClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
 
   /** ClassDef tree of this defintion */
   def ClassSymbol_tree(self: ClassSymbol)(implicit ctx: Context): ClassDef
@@ -1213,7 +1213,7 @@ trait Kernel {
   /** Symbol of a type (parameter or member) definition. */
   type TypeSymbol <: Symbol
 
-  def isTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
+  def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
 
   def TypeSymbol_isTypeParam(self: TypeSymbol)(implicit ctx: Context): Boolean
 
@@ -1223,7 +1223,7 @@ trait Kernel {
   /** Symbol representing a method definition. */
   type DefSymbol <: Symbol
 
-  def isDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
+  def matchDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
 
   /** DefDef tree of this defintion */
   def DefSymbol_tree(self: DefSymbol)(implicit ctx: Context): DefDef
@@ -1234,7 +1234,7 @@ trait Kernel {
   /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
   type ValSymbol <: Symbol
 
-  def isValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
+  def matchValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
 
   /** ValDef tree of this defintion */
   def ValSymbol_tree(self: ValSymbol)(implicit ctx: Context): ValDef
@@ -1247,7 +1247,7 @@ trait Kernel {
   /** Symbol representing a bind definition. */
   type BindSymbol <: Symbol
 
-  def isBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]
+  def matchBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]
 
   /** Bind pattern of this definition */
   def BindSymbol_tree(self: BindSymbol)(implicit ctx: Context): Bind
@@ -1255,7 +1255,7 @@ trait Kernel {
   /** No symbol available. */
   type NoSymbol <: Symbol
 
-  def isNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean
+  def matchNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean
 
   //
   // FLAGS

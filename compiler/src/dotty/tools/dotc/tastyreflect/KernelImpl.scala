@@ -50,7 +50,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type PackageClause = tpd.PackageDef
 
-  def isPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause] = tree match {
+  def matchPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause] = tree match {
     case x: tpd.PackageDef => Some(x)
     case _ => None
   }
@@ -66,14 +66,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Statement = tpd.Tree
 
-  def isStatement(tree: Tree)(implicit ctx: Context): Option[Statement] = tree match {
+  def matchStatement(tree: Tree)(implicit ctx: Context): Option[Statement] = tree match {
     case tree if tree.isTerm => Some(tree)
-    case _ => isDefinition(tree)
+    case _ => matchDefinition(tree)
   }
 
   type Import = tpd.Import
 
-  override def isImport(tree: Tree)(implicit ctx: Context): Option[Import] = tree match {
+  def matchImport(tree: Tree)(implicit ctx: Context): Option[Import] = tree match {
     case tree: tpd.Import => Some(tree)
     case _ => None
   }
@@ -90,7 +90,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Definition = tpd.Tree
 
-  def isDefinition(tree: Tree)(implicit ctx: Context): Option[Definition] = tree match {
+  def matchDefinition(tree: Tree)(implicit ctx: Context): Option[Definition] = tree match {
     case tree: tpd.MemberDef => Some(tree)
     case tree: PackageDefinition => Some(tree)
     case _ => None
@@ -103,7 +103,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type PackageDef = PackageDefinition
 
-  def isPackageDef(tree: Tree)(implicit ctx: Context): Option[PackageDef] = tree match {
+  def matchPackageDef(tree: Tree)(implicit ctx: Context): Option[PackageDef] = tree match {
     case x: PackageDefinition => Some(x)
     case _ => None
   }
@@ -119,7 +119,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ClassDef = tpd.TypeDef
 
-  def isClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef] = tree match {
+  def matchClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef] = tree match {
     case x: tpd.TypeDef if x.isClassDef => Some(x)
     case _ => None
   }
@@ -139,7 +139,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeDef = tpd.TypeDef
 
-  def isTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef] = tree match {
+  def matchTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef] = tree match {
     case x: tpd.TypeDef if !x.symbol.isClass => Some(x)
     case _ => None
   }
@@ -153,7 +153,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type DefDef = tpd.DefDef
 
-  def isDefDef(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
+  def matchDefDef(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
     case x: tpd.DefDef => Some(x)
     case _ => None
   }
@@ -172,7 +172,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ValDef = tpd.ValDef
 
-  def isValDef(tree: Tree)(implicit ctx: Context): Option[ValDef] = tree match {
+  def matchValDef(tree: Tree)(implicit ctx: Context): Option[ValDef] = tree match {
     case x: tpd.ValDef => Some(x)
     case _ => None
   }
@@ -189,11 +189,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term = tpd.Tree
 
-  def isTerm(tree: Tree)(implicit ctx: Context): Option[Term] =
+  def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term] =
     if (tree.isTerm) Some(tree) else None
 
   // TODO move to Kernel and use isTerm directly with a cast
-  def isTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term] =
+  def matchTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term] =
     if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
 
   def Term_pos(self: Term)(implicit ctx: Context): Position = self.sourcePos
@@ -208,7 +208,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Ident = tpd.Ident
 
-  def isTerm_Ident(x: Term)(implicit ctx: Context): Option[Term_Ident] = x match {
+  def matchTerm_Ident(x: Term)(implicit ctx: Context): Option[Term_Ident] = x match {
     case x: tpd.Ident if x.isTerm => Some(x)
     case _ => None
   }
@@ -223,7 +223,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Select = tpd.Select
 
-  def isTerm_Select(x: Term)(implicit ctx: Context): Option[Term_Select] = x match {
+  def matchTerm_Select(x: Term)(implicit ctx: Context): Option[Term_Select] = x match {
     case x: tpd.Select if x.isTerm => Some(x)
     case _ => None
   }
@@ -249,7 +249,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Literal = tpd.Literal
 
-  def isTerm_Literal(x: Term)(implicit ctx: Context): Option[Term_Literal] = x match {
+  def matchTerm_Literal(x: Term)(implicit ctx: Context): Option[Term_Literal] = x match {
     case x: tpd.Literal => Some(x)
     case _ => None
   }
@@ -264,7 +264,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_This = tpd.This
 
-  def isTerm_This(x: Term)(implicit ctx: Context): Option[Term_This] = x match {
+  def matchTerm_This(x: Term)(implicit ctx: Context): Option[Term_This] = x match {
     case x: tpd.This => Some(x)
     case _ => None
   }
@@ -279,7 +279,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_New = tpd.New
 
-  def isTerm_New(x: Term)(implicit ctx: Context): Option[Term_New] = x match {
+  def matchTerm_New(x: Term)(implicit ctx: Context): Option[Term_New] = x match {
     case x: tpd.New => Some(x)
     case _ => None
   }
@@ -293,7 +293,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_NamedArg = tpd.NamedArg
 
-  def isTerm_NamedArg(x: Term)(implicit ctx: Context): Option[Term_NamedArg] = x match {
+  def matchTerm_NamedArg(x: Term)(implicit ctx: Context): Option[Term_NamedArg] = x match {
     case x: tpd.NamedArg if x.name.isInstanceOf[core.Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
     case _ => None
   }
@@ -309,7 +309,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Apply = tpd.Apply
 
-  def isTerm_Apply(x: Term)(implicit ctx: Context): Option[Term_Apply] = x match {
+  def matchTerm_Apply(x: Term)(implicit ctx: Context): Option[Term_Apply] = x match {
     case x: tpd.Apply => Some(x)
     case _ => None
   }
@@ -326,7 +326,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_TypeApply = tpd.TypeApply
 
-  def isTerm_TypeApply(x: Term)(implicit ctx: Context): Option[Term_TypeApply] = x match {
+  def matchTerm_TypeApply(x: Term)(implicit ctx: Context): Option[Term_TypeApply] = x match {
     case x: tpd.TypeApply => Some(x)
     case _ => None
   }
@@ -342,7 +342,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Super = tpd.Super
 
-  def isTerm_Super(x: Term)(implicit ctx: Context): Option[Term_Super] = x match {
+  def matchTerm_Super(x: Term)(implicit ctx: Context): Option[Term_Super] = x match {
     case x: tpd.Super => Some(x)
     case _ => None
   }
@@ -358,7 +358,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Typed = tpd.Typed
 
-  def isTerm_Typed(x: Term)(implicit ctx: Context): Option[Term_Typed] = x match {
+  def matchTerm_Typed(x: Term)(implicit ctx: Context): Option[Term_Typed] = x match {
     case x: tpd.Typed => Some(x)
     case _ => None
   }
@@ -374,7 +374,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Assign = tpd.Assign
 
-  def isTerm_Assign(x: Term)(implicit ctx: Context): Option[Term_Assign] = x match {
+  def matchTerm_Assign(x: Term)(implicit ctx: Context): Option[Term_Assign] = x match {
     case x: tpd.Assign => Some(x)
     case _ => None
   }
@@ -390,7 +390,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Block = tpd.Block
 
-  def isTerm_Block(x: Term)(implicit ctx: Context): Option[Term_Block] = normalizedLoops(x) match {
+  def matchTerm_Block(x: Term)(implicit ctx: Context): Option[Term_Block] = normalizedLoops(x) match {
     case x: tpd.Block => Some(x)
     case _ => None
   }
@@ -435,7 +435,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Inlined = tpd.Inlined
 
-  def isTerm_Inlined(x: Term)(implicit ctx: Context): Option[Term_Inlined] = x match {
+  def matchTerm_Inlined(x: Term)(implicit ctx: Context): Option[Term_Inlined] = x match {
     case x: tpd.Inlined => Some(x)
     case _ => None
   }
@@ -452,7 +452,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Lambda = tpd.Closure
 
-  def isTerm_Lambda(x: Term)(implicit ctx: Context): Option[Term_Lambda] = x match {
+  def matchTerm_Lambda(x: Term)(implicit ctx: Context): Option[Term_Lambda] = x match {
     case x: tpd.Closure => Some(x)
     case _ => None
   }
@@ -468,7 +468,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_If = tpd.If
 
-  def isTerm_If(x: Term)(implicit ctx: Context): Option[Term_If] = x match {
+  def matchTerm_If(x: Term)(implicit ctx: Context): Option[Term_If] = x match {
     case x: tpd.If => Some(x)
     case _ => None
   }
@@ -485,7 +485,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Match = tpd.Match
 
-  def isTerm_Match(x: Term)(implicit ctx: Context): Option[Term_Match] = x match {
+  def matchTerm_Match(x: Term)(implicit ctx: Context): Option[Term_Match] = x match {
     case x: tpd.Match => Some(x)
     case _ => None
   }
@@ -501,7 +501,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Try = tpd.Try
 
-  def isTerm_Try(x: Term)(implicit ctx: Context): Option[Term_Try] = x match {
+  def matchTerm_Try(x: Term)(implicit ctx: Context): Option[Term_Try] = x match {
     case x: tpd.Try => Some(x)
     case _ => None
   }
@@ -518,7 +518,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Return = tpd.Return
 
-  def isTerm_Return(x: Term)(implicit ctx: Context): Option[Term_Return] = x match {
+  def matchTerm_Return(x: Term)(implicit ctx: Context): Option[Term_Return] = x match {
     case x: tpd.Return => Some(x)
     case _ => None
   }
@@ -533,7 +533,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_Repeated = tpd.SeqLiteral
 
-  def isTerm_Repeated(x: Term)(implicit ctx: Context): Option[Term_Repeated] = x match {
+  def matchTerm_Repeated(x: Term)(implicit ctx: Context): Option[Term_Repeated] = x match {
     case x: tpd.SeqLiteral => Some(x)
     case _ => None
   }
@@ -549,7 +549,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_SelectOuter = tpd.Select
 
-  def isTerm_SelectOuter(x: Term)(implicit ctx: Context): Option[Term_SelectOuter] = x match {
+  def matchTerm_SelectOuter(x: Term)(implicit ctx: Context): Option[Term_SelectOuter] = x match {
     case x: tpd.Select =>
       x.name match {
         case NameKinds.OuterSelectName(_, _) => Some(x)
@@ -573,7 +573,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term_While = tpd.WhileDo
 
-  def isTerm_While(x: Term)(implicit ctx: Context): Option[Term_While] = x match {
+  def matchTerm_While(x: Term)(implicit ctx: Context): Option[Term_While] = x match {
     case x: tpd.WhileDo => Some(x)
     case _ => None
   }
@@ -626,7 +626,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Value = tpd.Tree
 
-  def isPattern_Value(pattern: Pattern): Option[Value] = pattern match {
+  def matchPattern_Value(pattern: Pattern): Option[Value] = pattern match {
     case lit: tpd.Literal => Some(lit)
     case ref: tpd.RefTree if ref.isTerm => Some(ref)
     case ths: tpd.This => Some(ths)
@@ -648,7 +648,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Bind = tpd.Bind
 
-  def isPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind] = x match {
+  def matchPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind] = x match {
     case x: tpd.Bind if x.name.isTermName => Some(x)
     case _ => None
   }
@@ -662,7 +662,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Unapply = tpd.UnApply
 
-  def isPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply] = pattern match {
+  def matchPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply] = pattern match {
     case pattern @ Trees.UnApply(_, _, _) => Some(pattern)
     case Trees.Typed(pattern @ Trees.UnApply(_, _, _), _) => Some(pattern)
     case _ => None
@@ -682,7 +682,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Alternatives = tpd.Alternative
 
-  def isPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives] = pattern match {
+  def matchPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives] = pattern match {
     case pattern: tpd.Alternative => Some(pattern)
     case _ => None
   }
@@ -697,7 +697,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTest = tpd.Typed
 
-  def isPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest] = pattern match {
+  def matchPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest] = pattern match {
     case Trees.Typed(_: tpd.UnApply, _) => None
     case pattern: tpd.Typed => Some(pattern)
     case _ => None
@@ -721,13 +721,13 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree = tpd.Tree
 
-  def isTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] = x match {
+  def matchTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] = x match {
     case x: tpd.TypeBoundsTree => None
     case _ => if (x.isType) Some(x) else None
   }
 
   // TODO move to Kernel and use isTypeTree directly with a cast
-  def isTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree] = termOrTypeTree match {
+  def matchTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree] = termOrTypeTree match {
     case _: tpd.TypeBoundsTree => None
     case _ => if (termOrTypeTree.isType) Some(termOrTypeTree) else None
   }
@@ -738,7 +738,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Inferred = tpd.TypeTree
 
-  def isTypeTree_Inferred(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Inferred] = tpt match {
+  def matchTypeTree_Inferred(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Inferred] = tpt match {
     case tpt: tpd.TypeTree if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
     case _ => None
   }
@@ -747,7 +747,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Ident = tpd.Ident
 
-  def isTypeTree_Ident(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Ident] = tpt match {
+  def matchTypeTree_Ident(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Ident] = tpt match {
     case tpt: tpd.Ident if tpt.isType => Some(tpt)
     case _ => None
   }
@@ -759,7 +759,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Select = tpd.Select
 
-  def isTypeTree_Select(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Select] = tpt match {
+  def matchTypeTree_Select(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Select] = tpt match {
     case tpt: tpd.Select if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
     case _ => None
   }
@@ -776,7 +776,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Projection = tpd.Select
 
-  def isTypeTree_Projection(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Projection] = tpt match {
+  def matchTypeTree_Projection(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Projection] = tpt match {
     case tpt: tpd.Select if tpt.isType && tpt.qualifier.isType => Some(tpt)
     case _ => None
   }
@@ -789,7 +789,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Singleton = tpd.SingletonTypeTree
 
-  def isTypeTree_Singleton(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Singleton] = tpt match {
+  def matchTypeTree_Singleton(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Singleton] = tpt match {
     case tpt: tpd.SingletonTypeTree => Some(tpt)
     case _ => None
   }
@@ -804,7 +804,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Refined = tpd.RefinedTypeTree
 
-  def isTypeTree_Refined(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Refined] = tpt match {
+  def matchTypeTree_Refined(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Refined] = tpt match {
     case tpt: tpd.RefinedTypeTree => Some(tpt)
     case _ => None
   }
@@ -817,7 +817,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Applied = tpd.AppliedTypeTree
 
-  def isTypeTree_Applied(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Applied] = tpt match {
+  def matchTypeTree_Applied(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Applied] = tpt match {
     case tpt: tpd.AppliedTypeTree => Some(tpt)
     case _ => None
   }
@@ -833,7 +833,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_Annotated = tpd.Annotated
 
-  def isTypeTree_Annotated(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Annotated] = tpt match {
+  def matchTypeTree_Annotated(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Annotated] = tpt match {
     case tpt: tpd.Annotated => Some(tpt)
     case _ => None
   }
@@ -849,7 +849,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_MatchType = tpd.MatchTypeTree
 
-  def isTypeTree_MatchType(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_MatchType] = tpt match {
+  def matchTypeTree_MatchType(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_MatchType] = tpt match {
     case tpt: tpd.MatchTypeTree => Some(tpt)
     case _ => None
   }
@@ -866,7 +866,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_ByName = tpd.ByNameTypeTree
 
-  def isTypeTree_ByName(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_ByName] = tpt match {
+  def matchTypeTree_ByName(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_ByName] = tpt match {
     case tpt: tpd.ByNameTypeTree => Some(tpt)
     case _ => None
   }
@@ -881,7 +881,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_LambdaTypeTree = tpd.LambdaTypeTree
 
-  def isTypeTree_LambdaTypeTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree] = tpt match {
+  def matchTypeTree_LambdaTypeTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree] = tpt match {
     case tpt: tpd.LambdaTypeTree => Some(tpt)
     case _ => None
   }
@@ -897,7 +897,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_TypeBind = tpd.Bind
 
-  def isTypeTree_TypeBind(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBind] = tpt match {
+  def matchTypeTree_TypeBind(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBind] = tpt match {
     case tpt: tpd.Bind if tpt.name.isTypeName => Some(tpt)
     case _ => None
   }
@@ -910,7 +910,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeTree_TypeBlock = tpd.Block
 
-  def isTypeTree_TypeBlock(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBlock] = tpt match {
+  def matchTypeTree_TypeBlock(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBlock] = tpt match {
     case tpt: tpd.Block => Some(tpt)
     case _ => None
   }
@@ -926,7 +926,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeBoundsTree = tpd.TypeBoundsTree
 
-  def isTypeBoundsTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] = x match {
+  def matchTypeBoundsTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] = x match {
     case x: tpd.TypeBoundsTree => Some(x)
     case x @ Trees.TypeTree() =>
       // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
@@ -944,7 +944,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type WildcardTypeTree = tpd.Ident
 
-  def isWildcardTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree] = x match {
+  def matchWildcardTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree] = x match {
     case x @ Trees.Ident(nme.WILDCARD) => Some(x)
     case _ => None
   }
@@ -957,12 +957,12 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type NoPrefix = Types.NoPrefix.type
 
-  def isNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix] =
+  def matchNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix] =
     if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
 
   type TypeBounds = Types.TypeBounds
 
-  def isTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] = x match {
+  def matchTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] = x match {
     case x: Types.TypeBounds => Some(x)
     case _ => None
   }
@@ -972,7 +972,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Type = Types.Type
 
-  def isType(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
+  def matchType(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
     case x: TypeBounds => None
     case x if x == Types.NoPrefix => None
     case _ => Some(x)
@@ -1005,7 +1005,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ConstantType = Types.ConstantType
 
-  def isConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] = tpe match {
+  def matchConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] = tpe match {
     case tpe: Types.ConstantType => Some(tpe)
     case _ => None
   }
@@ -1014,7 +1014,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type SymRef = Types.NamedType
 
-  def isSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] = tpe match {
+  def matchSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] = tpe match {
     case tp: Types.NamedType =>
       tp.designator match {
         case sym: Symbol => Some(tp)
@@ -1026,7 +1026,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds = self.prefix
 
   // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
-  def isSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] = tpe match {
+  def matchSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
         case sym: Symbol => Some((sym, tpe.prefix))
@@ -1037,7 +1037,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TermRef = Types.NamedType
 
-  def isTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] = tpe match {
+  def matchTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
         case name: Names.TermName => Some(tpe)
@@ -1054,7 +1054,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeRef = Types.NamedType
 
-  def isTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef] = tpe match {
+  def matchTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
         case name: Names.TypeName => Some(tpe)
@@ -1068,7 +1068,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type SuperType = Types.SuperType
 
-  def isSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType] = tpe match {
+  def matchSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType] = tpe match {
     case tpe: Types.SuperType => Some(tpe)
     case _ => None
   }
@@ -1078,7 +1078,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Refinement = Types.RefinedType
 
-  def isRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement] = tpe match {
+  def matchRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement] = tpe match {
     case tpe: Types.RefinedType => Some(tpe)
     case _ => None
   }
@@ -1089,7 +1089,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type AppliedType = Types.AppliedType
 
-  def isAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType] = tpe match {
+  def matchAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType] = tpe match {
     case tpe: Types.AppliedType => Some(tpe)
     case _ => None
   }
@@ -1099,7 +1099,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type AnnotatedType = Types.AnnotatedType
 
-  def isAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType] = tpe match {
+  def matchAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType] = tpe match {
     case tpe: Types.AnnotatedType => Some(tpe)
     case _ => None
   }
@@ -1109,7 +1109,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type AndType = Types.AndType
 
-  def isAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType] = tpe match {
+  def matchAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType] = tpe match {
     case tpe: Types.AndType => Some(tpe)
     case _ => None
   }
@@ -1119,7 +1119,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type OrType = Types.OrType
 
-  def isOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType] = tpe match {
+  def matchOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType] = tpe match {
     case tpe: Types.OrType => Some(tpe)
     case _ => None
   }
@@ -1129,7 +1129,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type MatchType = Types.MatchType
 
-  def isMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType] = tpe match {
+  def matchMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType] = tpe match {
     case tpe: Types.MatchType => Some(tpe)
     case _ => None
   }
@@ -1140,7 +1140,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ByNameType = Types.ExprType
 
-  def isByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType] = tpe match {
+  def matchByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType] = tpe match {
     case tpe: Types.ExprType => Some(tpe)
     case _ => None
   }
@@ -1149,7 +1149,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ParamRef = Types.ParamRef
 
-  def isParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef] = tpe match {
+  def matchParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef] = tpe match {
     case tpe: Types.TypeParamRef => Some(tpe)
     case tpe: Types.TermParamRef => Some(tpe)
     case _ => None
@@ -1161,7 +1161,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ThisType = Types.ThisType
 
-  def isThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType] = tpe match {
+  def matchThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType] = tpe match {
     case tpe: Types.ThisType => Some(tpe)
     case _ => None
   }
@@ -1170,7 +1170,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type RecursiveThis = Types.RecThis
 
-  def isRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis] = tpe match {
+  def matchRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis] = tpe match {
     case tpe: Types.RecThis => Some(tpe)
     case _ => None
   }
@@ -1179,7 +1179,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type RecursiveType = Types.RecType
 
-  def isRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] = tpe match {
+  def matchRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] = tpe match {
     case tpe: Types.RecType => Some(tpe)
     case _ => None
   }
@@ -1190,7 +1190,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type MethodType = Types.MethodType
 
-  def isMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType] = tpe match {
+  def matchMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType] = tpe match {
     case tpe: Types.MethodType => Some(tpe)
     case _ => None
   }
@@ -1203,7 +1203,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type PolyType = Types.PolyType
 
-  def isPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType] = tpe match {
+  def matchPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType] = tpe match {
     case tpe: Types.PolyType => Some(tpe)
     case _ => None
   }
@@ -1214,7 +1214,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeLambda = Types.TypeLambda
 
-  def isTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda] = tpe match {
+  def matchTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda] = tpe match {
     case tpe: Types.TypeLambda => Some(tpe)
     case _ => None
   }
@@ -1231,7 +1231,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type SimpleSelector = untpd.Ident
 
-  def isSimpleSelector(self: ImportSelector)(implicit ctx: Context): Option[SimpleSelector] = self match {
+  def matchSimpleSelector(self: ImportSelector)(implicit ctx: Context): Option[SimpleSelector] = self match {
     case self: untpd.Ident => Some(self)
     case _ => None
   }
@@ -1240,7 +1240,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type RenameSelector = untpd.Thicket
 
-  def isRenameSelector(self: ImportSelector)(implicit ctx: Context): Option[RenameSelector] = self match {
+  def matchRenameSelector(self: ImportSelector)(implicit ctx: Context): Option[RenameSelector] = self match {
     case self @ Trees.Thicket((id1: untpd.Ident) :: (id2: untpd.Ident) :: Nil) if id2.name != nme.WILDCARD => Some(self)
     case _ => None
   }
@@ -1252,7 +1252,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type OmitSelector = untpd.Thicket
 
-  def isOmitSelector(self: ImportSelector)(implicit ctx: Context): Option[OmitSelector] = self match {
+  def matchOmitSelector(self: ImportSelector)(implicit ctx: Context): Option[OmitSelector] = self match {
     case self @ Trees.Thicket((id: untpd.Ident) :: Trees.Ident(nme.WILDCARD) :: Nil) => Some(self)
     case _ => None
   }
@@ -1321,29 +1321,29 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Constant_value(const: Constant): Any = const.value
 
-  def isConstant_Unit(x: Constant): Boolean = x.tag == Constants.UnitTag
-  def isConstant_Null(x: Constant): Boolean = x.tag == Constants.NullTag
-  def isConstant_Boolean(x: Constant): Option[Boolean] =
+  def matchConstant_Unit(x: Constant): Boolean = x.tag == Constants.UnitTag
+  def matchConstant_Null(x: Constant): Boolean = x.tag == Constants.NullTag
+  def matchConstant_Boolean(x: Constant): Option[Boolean] =
     if (x.tag == Constants.BooleanTag) Some(x.booleanValue) else None
-  def isConstant_Byte(x: Constant): Option[Byte] =
+  def matchConstant_Byte(x: Constant): Option[Byte] =
     if (x.tag == Constants.ByteTag) Some(x.byteValue) else None
-  def isConstant_Short(x: Constant): Option[Short] =
+  def matchConstant_Short(x: Constant): Option[Short] =
     if (x.tag == Constants.ShortTag) Some(x.shortValue) else None
-  def isConstant_Char(x: Constant): Option[Char] =
+  def matchConstant_Char(x: Constant): Option[Char] =
     if (x.tag == Constants.CharTag) Some(x.charValue) else None
-  def isConstant_Int(x: Constant): Option[Int] =
+  def matchConstant_Int(x: Constant): Option[Int] =
     if (x.tag == Constants.IntTag) Some(x.intValue) else None
-  def isConstant_Long(x: Constant): Option[Long] =
+  def matchConstant_Long(x: Constant): Option[Long] =
     if (x.tag == Constants.LongTag) Some(x.longValue) else None
-  def isConstant_Float(x: Constant): Option[Float] =
+  def matchConstant_Float(x: Constant): Option[Float] =
     if (x.tag == Constants.FloatTag) Some(x.floatValue) else None
-  def isConstant_Double(x: Constant): Option[Double] =
+  def matchConstant_Double(x: Constant): Option[Double] =
     if (x.tag == Constants.DoubleTag) Some(x.doubleValue) else None
-  def isConstant_String(x: Constant): Option[String] =
+  def matchConstant_String(x: Constant): Option[String] =
     if (x.tag == Constants.StringTag) Some(x.stringValue) else None
-  def isConstant_ClassTag(x: Constant): Option[Type] =
+  def matchConstant_ClassTag(x: Constant): Option[Type] =
     if (x.tag == Constants.ClazzTag) Some(x.typeValue) else None
-  def isConstant_Symbol(x: Constant): Option[scala.Symbol] =
+  def matchConstant_Symbol(x: Constant): Option[scala.Symbol] =
     if (x.tag == Constants.ScalaSymbolTag) Some(x.scalaSymbolValue) else None
 
   def Constant_Unit_apply(): Constant = Constants.Constant(())
@@ -1422,7 +1422,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type PackageSymbol = core.Symbols.Symbol
 
-  def isPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
+  def matchPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
     if (symbol.is(core.Flags.Package)) Some(symbol) else None
 
   def PackageSymbol_tree(self: PackageSymbol)(implicit ctx: Context): PackageDef =
@@ -1430,7 +1430,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ClassSymbol = core.Symbols.ClassSymbol
 
-  def isClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
+  def matchClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
     if (symbol.isClass) Some(symbol.asClass) else None
 
   def ClassSymbol_tree(self: ClassSymbol)(implicit ctx: Context): ClassDef =
@@ -1499,7 +1499,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type TypeSymbol = core.Symbols.TypeSymbol
 
-  def isTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+  def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
     if (symbol.isType) Some(symbol.asType) else None
 
   def TypeSymbol_tree(self: TypeSymbol)(implicit ctx: Context): TypeDef =
@@ -1509,7 +1509,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type DefSymbol = core.Symbols.TermSymbol
 
-  def isDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
+  def matchDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Method)) Some(symbol.asTerm) else None
 
   def DefSymbol_tree(self: DefSymbol)(implicit ctx: Context): DefDef =
@@ -1520,7 +1520,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ValSymbol = core.Symbols.TermSymbol
 
-  def isValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
+  def matchValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
     if (symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
 
   def ValSymbol_tree(self: ValSymbol)(implicit ctx: Context): ValDef =
@@ -1538,7 +1538,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type BindSymbol = core.Symbols.TermSymbol
 
-  def isBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
+  def matchBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
 
   def BindSymbol_tree(self: BindSymbol)(implicit ctx: Context): Bind =
@@ -1546,7 +1546,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type NoSymbol = core.Symbols.NoSymbol.type
 
-  def isNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean = symbol ne core.Symbols.NoSymbol
+  def matchNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean = symbol ne core.Symbols.NoSymbol
 
   //
   // FLAGS

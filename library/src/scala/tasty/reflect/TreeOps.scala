@@ -18,7 +18,7 @@ trait TreeOps extends Core {
 
   object IsPackageClause {
     def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause] =
-      kernel.isPackageClause(tree)
+      kernel.matchPackageClause(tree)
   }
 
   object PackageClause {
@@ -27,7 +27,7 @@ trait TreeOps extends Core {
     def copy(original: PackageClause)(pid: Term.Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
       kernel.PackageClause_copy(original)(pid, stats)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term.Ref, List[Tree])] =
-      kernel.isPackageClause(tree).map(x => (x.pid, x.stats))
+      kernel.matchPackageClause(tree).map(x => (x.pid, x.stats))
   }
 
   implicit class PackageClauseAPI(self: PackageClause) {
@@ -37,7 +37,7 @@ trait TreeOps extends Core {
 
   object IsImport {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Import] =
-      kernel.isImport(tree)
+      kernel.matchImport(tree)
   }
 
   object Import {
@@ -46,7 +46,7 @@ trait TreeOps extends Core {
     def copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
       kernel.Import_copy(original)(impliedOnly, expr, selectors)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])] =
-      kernel.isImport(tree).map(x => (x.impliedOnly, x.expr, x.selectors))
+      kernel.matchImport(tree).map(x => (x.impliedOnly, x.expr, x.selectors))
   }
 
   implicit class ImportAPI(self: Import)  {
@@ -58,13 +58,13 @@ trait TreeOps extends Core {
 
   object IsStatement {
     /** Matches any Statement and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Statement] = kernel.isStatement(tree)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Statement] = kernel.matchStatement(tree)
   }
 
   // ----- Definitions ----------------------------------------------
 
   object IsDefinition {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = kernel.isDefinition(tree)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = kernel.matchDefinition(tree)
   }
 
   implicit class DefinitionAPI(self: Definition) {
@@ -74,7 +74,7 @@ trait TreeOps extends Core {
   // ClassDef
 
   object IsClassDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = kernel.isClassDef(tree)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = kernel.matchClassDef(tree)
   }
 
   object ClassDef {
@@ -82,7 +82,7 @@ trait TreeOps extends Core {
     def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef =
       kernel.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] =
-      kernel.isClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
+      kernel.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
   }
 
   implicit class ClassDefAPI(self: ClassDef) {
@@ -97,7 +97,7 @@ trait TreeOps extends Core {
   // DefDef
 
   object IsDefDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = kernel.isDefDef(tree)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = kernel.matchDefDef(tree)
   }
 
   object DefDef {
@@ -106,7 +106,7 @@ trait TreeOps extends Core {
     def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef =
       kernel.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-      kernel.isDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
+      kernel.matchDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
   }
 
   implicit class DefDefAPI(self: DefDef) {
@@ -120,7 +120,7 @@ trait TreeOps extends Core {
   // ValDef
 
   object IsValDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = kernel.isValDef(tree)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = kernel.matchValDef(tree)
   }
 
   object ValDef {
@@ -129,7 +129,7 @@ trait TreeOps extends Core {
     def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef =
       kernel.ValDef_copy(original)(name, tpt, rhs)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] =
-      kernel.isValDef(tree).map(x => (x.name, x.tpt, x.rhs))
+      kernel.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
   }
 
   implicit class ValDefAPI(self: ValDef) {
@@ -141,7 +141,7 @@ trait TreeOps extends Core {
   // TypeDef
 
   object IsTypeDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = kernel.isTypeDef(tree)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = kernel.matchTypeDef(tree)
   }
 
   object TypeDef {
@@ -150,7 +150,7 @@ trait TreeOps extends Core {
     def copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef =
       kernel.TypeDef_copy(original)(name, rhs)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] =
-      kernel.isTypeDef(tree).map(x => (x.name, x.rhs))
+      kernel.matchTypeDef(tree).map(x => (x.name, x.rhs))
   }
 
   implicit class TypeDefAPI(self: TypeDef) {
@@ -162,7 +162,7 @@ trait TreeOps extends Core {
 
   object IsPackageDef {
     def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef] =
-      kernel.isPackageDef(tree)
+      kernel.matchPackageDef(tree)
   }
 
   implicit class PackageDefAPI(self: PackageDef) {
@@ -173,7 +173,7 @@ trait TreeOps extends Core {
 
   object PackageDef {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)] =
-      kernel.isPackageDef(tree).map(x => (x.name, x.owner))
+      kernel.matchPackageDef(tree).map(x => (x.name, x.owner))
   }
 
   // ----- Terms ----------------------------------------------------
@@ -188,11 +188,11 @@ trait TreeOps extends Core {
   object IsTerm {
     /** Matches any term */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
-      kernel.isTerm(tree)
+      kernel.matchTerm(tree)
 
     /** Matches any term */
     def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
-      kernel.isTermNotTypeTree(parent)
+      kernel.matchTermNotTypeTree(parent)
   }
 
   /** Scala term. Any tree that can go in expression position. */
@@ -200,7 +200,7 @@ trait TreeOps extends Core {
 
     object IsIdent {
       /** Matches any Ident and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] = kernel.isTerm_Ident(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] = kernel.matchTerm_Ident(tree)
     }
 
     object Ref {
@@ -223,12 +223,12 @@ trait TreeOps extends Core {
 
       /** Matches a term identifier and returns its name */
       def unapply(tree: Tree)(implicit ctx: Context): Option[String] =
-        kernel.isTerm_Ident(tree).map(_.name)
+        kernel.matchTerm_Ident(tree).map(_.name)
     }
 
     object IsSelect {
       /** Matches any Select and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Select] = kernel.isTerm_Select(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Select] = kernel.matchTerm_Select(tree)
     }
 
     /** Scala term selection */
@@ -252,12 +252,12 @@ trait TreeOps extends Core {
 
       /** Matches `<qualifier: Term>.<name: String>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)] =
-        kernel.isTerm_Select(tree).map(x => (x.qualifier, x.name))
+        kernel.matchTerm_Select(tree).map(x => (x.qualifier, x.name))
     }
 
     object IsLiteral {
       /** Matches any Literal and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Literal] = kernel.isTerm_Literal(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Literal] = kernel.matchTerm_Literal(tree)
     }
 
     /** Scala literal constant */
@@ -272,12 +272,12 @@ trait TreeOps extends Core {
 
       /** Matches a literal constant */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Constant] =
-        kernel.isTerm_Literal(tree).map(_.constant)
+        kernel.matchTerm_Literal(tree).map(_.constant)
     }
 
     object IsThis {
       /** Matches any This and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[This] = kernel.isTerm_This(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[This] = kernel.matchTerm_This(tree)
     }
 
     /** Scala `this` or `this[id]` */
@@ -292,13 +292,13 @@ trait TreeOps extends Core {
 
       /** Matches `this[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]] =
-        kernel.isTerm_This(tree).map(_.id)
+        kernel.matchTerm_This(tree).map(_.id)
 
     }
 
     object IsNew {
       /** Matches any New and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[New] = kernel.isTerm_New(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[New] = kernel.matchTerm_New(tree)
     }
 
     /** Scala `new` */
@@ -313,12 +313,12 @@ trait TreeOps extends Core {
 
       /** Matches a `new <tpt: TypeTree>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
-        kernel.isTerm_New(tree).map(_.tpt)
+        kernel.matchTerm_New(tree).map(_.tpt)
     }
 
     object IsNamedArg {
       /** Matches any NamedArg and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[NamedArg] = kernel.isTerm_NamedArg(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[NamedArg] = kernel.matchTerm_NamedArg(tree)
     }
 
     /** Scala named argument `x = y` in argument position */
@@ -333,13 +333,13 @@ trait TreeOps extends Core {
 
       /** Matches a named argument `<name: String> = <value: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Term)] =
-        kernel.isTerm_NamedArg(tree).map(x => (x.name, x.value))
+        kernel.matchTerm_NamedArg(tree).map(x => (x.name, x.value))
 
     }
 
     object IsApply {
       /** Matches any Apply and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Apply] = kernel.isTerm_Apply(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Apply] = kernel.matchTerm_Apply(tree)
     }
 
     /** Scala parameter application */
@@ -354,13 +354,13 @@ trait TreeOps extends Core {
 
       /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Term])] =
-        kernel.isTerm_Apply(tree).map(x => (x.fun, x.args))
+        kernel.matchTerm_Apply(tree).map(x => (x.fun, x.args))
     }
 
     object IsTypeApply {
       /** Matches any TypeApply and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[TypeApply] =
-        kernel.isTerm_TypeApply(tree)
+        kernel.matchTerm_TypeApply(tree)
     }
 
     /** Scala type parameter application */
@@ -375,13 +375,13 @@ trait TreeOps extends Core {
 
       /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[TypeTree])] =
-        kernel.isTerm_TypeApply(tree).map(x => (x.fun, x.args))
+        kernel.matchTerm_TypeApply(tree).map(x => (x.fun, x.args))
 
     }
 
     object IsSuper {
       /** Matches any Super and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Super] = kernel.isTerm_Super(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Super] = kernel.matchTerm_Super(tree)
     }
 
     /** Scala `x.super` or `x.super[id]` */
@@ -396,12 +396,12 @@ trait TreeOps extends Core {
 
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])] =
-        kernel.isTerm_Super(tree).map(x => (x.qualifier, x.id))
+        kernel.matchTerm_Super(tree).map(x => (x.qualifier, x.id))
     }
 
     object IsTyped {
       /** Matches any Typed and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Typed] = kernel.isTerm_Typed(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Typed] = kernel.matchTerm_Typed(tree)
     }
 
     /** Scala ascription `x: T` */
@@ -416,13 +416,13 @@ trait TreeOps extends Core {
 
       /** Matches `<expr: Term>: <tpt: TypeTree>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, TypeTree)] =
-        kernel.isTerm_Typed(tree).map(x => (x.expr, x.tpt))
+        kernel.matchTerm_Typed(tree).map(x => (x.expr, x.tpt))
 
     }
 
     object IsAssign {
       /** Matches any Assign and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Assign] = kernel.isTerm_Assign(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Assign] = kernel.matchTerm_Assign(tree)
     }
 
     /** Scala assign `x = y` */
@@ -437,12 +437,12 @@ trait TreeOps extends Core {
 
       /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
-        kernel.isTerm_Assign(tree).map(x => (x.lhs, x.rhs))
+        kernel.matchTerm_Assign(tree).map(x => (x.lhs, x.rhs))
     }
 
     object IsBlock {
       /** Matches any Block and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Block] = kernel.isTerm_Block(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Block] = kernel.matchTerm_Block(tree)
     }
 
     /** Scala code block `{ stat0; ...; statN; expr }` term */
@@ -457,12 +457,12 @@ trait TreeOps extends Core {
 
       /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Statement], Term)] =
-        kernel.isTerm_Block(tree).map(x => (x.statements, x.expr))
+        kernel.matchTerm_Block(tree).map(x => (x.statements, x.expr))
     }
 
     object IsLambda {
       /** Matches any Lambda and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda] = kernel.isTerm_Lambda(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda] = kernel.matchTerm_Lambda(tree)
     }
 
     object Lambda {
@@ -474,12 +474,12 @@ trait TreeOps extends Core {
         kernel.Term_Lambda_copy(original)(meth, tpt)
 
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])] =
-        kernel.isTerm_Lambda(tree).map(x => (x.meth, x.tptOpt))
+        kernel.matchTerm_Lambda(tree).map(x => (x.meth, x.tptOpt))
     }
 
     object IsIf {
       /** Matches any If and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[If] = kernel.isTerm_If(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[If] = kernel.matchTerm_If(tree)
     }
 
     /** Scala `if`/`else` term */
@@ -494,13 +494,13 @@ trait TreeOps extends Core {
 
       /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term, Term)] =
-        kernel.isTerm_If(tree).map(x => (x.cond, x.thenp, x.elsep))
+        kernel.matchTerm_If(tree).map(x => (x.cond, x.thenp, x.elsep))
 
     }
 
     object IsMatch {
       /** Matches any Match and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Match] = kernel.isTerm_Match(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Match] = kernel.matchTerm_Match(tree)
     }
 
     /** Scala `match` term */
@@ -515,13 +515,13 @@ trait TreeOps extends Core {
 
       /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef])] =
-        kernel.isTerm_Match(tree).map(x => (x.scrutinee, x.cases))
+        kernel.matchTerm_Match(tree).map(x => (x.scrutinee, x.cases))
 
     }
 
     object IsTry {
       /** Matches any Try and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Try] = kernel.isTerm_Try(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Try] = kernel.matchTerm_Try(tree)
     }
 
     /** Scala `try`/`catch`/`finally` term */
@@ -536,13 +536,13 @@ trait TreeOps extends Core {
 
       /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
-        kernel.isTerm_Try(tree).map(x => (x.body, x.cases, x.finalizer))
+        kernel.matchTerm_Try(tree).map(x => (x.body, x.cases, x.finalizer))
 
     }
 
     object IsReturn {
       /** Matches any Return and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Return] = kernel.isTerm_Return(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Return] = kernel.matchTerm_Return(tree)
     }
 
     /** Scala local `return` */
@@ -557,13 +557,13 @@ trait TreeOps extends Core {
 
       /** Matches `return <expr: Term>` */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
-        kernel.isTerm_Return(tree).map(_.expr)
+        kernel.matchTerm_Return(tree).map(_.expr)
 
     }
 
     object IsRepeated {
       /** Matches any Repeated and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated] = kernel.isTerm_Repeated(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated] = kernel.matchTerm_Repeated(tree)
     }
 
     object Repeated {
@@ -575,13 +575,13 @@ trait TreeOps extends Core {
         kernel.Term_Repeated_copy(original)(elems, tpt)
 
       def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Term], TypeTree)] =
-        kernel.isTerm_Repeated(tree).map(x => (x.elems, x.elemtpt))
+        kernel.matchTerm_Repeated(tree).map(x => (x.elems, x.elemtpt))
 
     }
 
     object IsInlined {
       /** Matches any Inlined and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Inlined] = kernel.isTerm_Inlined(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Inlined] = kernel.matchTerm_Inlined(tree)
     }
 
     object Inlined {
@@ -593,13 +593,13 @@ trait TreeOps extends Core {
         kernel.Term_Inlined_copy(original)(call, bindings, expansion)
 
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)] =
-        kernel.isTerm_Inlined(tree).map(x => (x.call, x.bindings, x.body))
+        kernel.matchTerm_Inlined(tree).map(x => (x.call, x.bindings, x.body))
 
     }
 
     object IsSelectOuter {
       /** Matches any SelectOuter and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter] = kernel.isTerm_SelectOuter(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter] = kernel.matchTerm_SelectOuter(tree)
     }
 
     object SelectOuter {
@@ -611,13 +611,13 @@ trait TreeOps extends Core {
         kernel.Term_SelectOuter_copy(original)(qualifier, name, levels)
 
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
-        kernel.isTerm_SelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
+        kernel.matchTerm_SelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
 
     }
 
     object IsWhile {
       /** Matches any While and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[While] = kernel.isTerm_While(tree)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[While] = kernel.matchTerm_While(tree)
     }
 
     object While {
@@ -631,7 +631,7 @@ trait TreeOps extends Core {
 
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
-        kernel.isTerm_While(tree).map(x => (x.cond, x.body))
+        kernel.matchTerm_While(tree).map(x => (x.cond, x.body))
 
     }
   }

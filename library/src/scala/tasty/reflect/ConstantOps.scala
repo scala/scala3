@@ -18,7 +18,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Unit literals */
       def unapply(constant: Constant): Boolean =
-        kernel.isConstant_Unit(constant)
+        kernel.matchConstant_Unit(constant)
     }
 
     /** Module of Null literals */
@@ -29,7 +29,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Null literals */
       def unapply(constant: Constant): Boolean =
-        kernel.isConstant_Null(constant)
+        kernel.matchConstant_Null(constant)
     }
 
     /** Module of Boolean literals */
@@ -40,7 +40,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Boolean literals */
       def unapply(constant: Constant): Option[Boolean] =
-        kernel.isConstant_Boolean(constant)
+        kernel.matchConstant_Boolean(constant)
     }
 
     /** Module of Byte literals */
@@ -51,7 +51,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Byte literals */
       def unapply(constant: Constant): Option[Byte] =
-        kernel.isConstant_Byte(constant)
+        kernel.matchConstant_Byte(constant)
     }
 
     /** Module of Short literals */
@@ -62,7 +62,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Short literals */
       def unapply(constant: Constant): Option[Short] =
-        kernel.isConstant_Short(constant)
+        kernel.matchConstant_Short(constant)
     }
 
     /** Module of Char literals */
@@ -73,7 +73,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Char literals */
       def unapply(constant: Constant): Option[Char] =
-        kernel.isConstant_Char(constant)
+        kernel.matchConstant_Char(constant)
     }
 
     /** Module of Int literals */
@@ -84,7 +84,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Int literals */
       def unapply(constant: Constant): Option[Int] =
-        kernel.isConstant_Int(constant)
+        kernel.matchConstant_Int(constant)
     }
 
     /** Module of Long literals */
@@ -95,7 +95,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Long literals */
       def unapply(constant: Constant): Option[Long] =
-        kernel.isConstant_Long(constant)
+        kernel.matchConstant_Long(constant)
     }
 
     /** Module of Float literals */
@@ -106,7 +106,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Float literals */
       def unapply(constant: Constant): Option[Float] =
-        kernel.isConstant_Float(constant)
+        kernel.matchConstant_Float(constant)
     }
 
     /** Module of Double literals */
@@ -117,7 +117,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for Double literals */
       def unapply(constant: Constant): Option[Double] =
-        kernel.isConstant_Double(constant)
+        kernel.matchConstant_Double(constant)
     }
 
     /** Module of String literals */
@@ -128,7 +128,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for String literals */
       def unapply(constant: Constant): Option[String] =
-        kernel.isConstant_String(constant)
+        kernel.matchConstant_String(constant)
     }
 
     /** Module of ClassTag literals */
@@ -139,7 +139,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for ClassTag literals */
       def unapply(constant: Constant): Option[Type] =
-        kernel.isConstant_ClassTag(constant)
+        kernel.matchConstant_ClassTag(constant)
     }
 
     /** Module of scala.Symbol literals */
@@ -150,7 +150,7 @@ trait ConstantOps extends Core {
 
       /** Extractor for scala.Symbol literals */
       def unapply(constant: Constant): Option[scala.Symbol] =
-        kernel.isConstant_Symbol(constant)
+        kernel.matchConstant_Symbol(constant)
     }
   }
 }

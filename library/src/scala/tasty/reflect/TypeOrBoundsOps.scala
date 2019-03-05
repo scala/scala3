@@ -19,7 +19,7 @@ trait TypeOrBoundsOps extends Core {
 
   object IsType {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
-      kernel.isType(typeOrBounds)
+      kernel.matchType(typeOrBounds)
   }
 
   object Type {
@@ -27,29 +27,29 @@ trait TypeOrBoundsOps extends Core {
     object IsConstantType {
       /** Matches any ConstantType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] =
-        kernel.isConstantType(tpe)
+        kernel.matchConstantType(tpe)
     }
 
     object ConstantType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Constant] =
-        kernel.isConstantType(typeOrBounds).map(_.constant)
+        kernel.matchConstantType(typeOrBounds).map(_.constant)
     }
 
     object IsSymRef {
       /** Matches any SymRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] =
-        kernel.isSymRef(tpe)
+        kernel.matchSymRef(tpe)
     }
 
     object SymRef {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
-        kernel.isSymRef_unapply(typeOrBounds)
+        kernel.matchSymRef_unapply(typeOrBounds)
     }
 
     object IsTermRef {
       /** Matches any TermRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] =
-        kernel.isTermRef(tpe)
+        kernel.matchTermRef(tpe)
     }
 
     object TermRef {
@@ -57,183 +57,183 @@ trait TypeOrBoundsOps extends Core {
       def apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef =
         kernel.TermRef_apply(qual, name)
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        kernel.isTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
+        kernel.matchTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
     object IsTypeRef {
       /** Matches any TypeRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef] =
-        kernel.isTypeRef(tpe)
+        kernel.matchTypeRef(tpe)
     }
 
     object TypeRef {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        kernel.isTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
+        kernel.matchTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
     object IsSuperType {
       /** Matches any SuperType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType] =
-        kernel.isSuperType(tpe)
+        kernel.matchSuperType(tpe)
     }
 
     object SuperType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
-        kernel.isSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
+        kernel.matchSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
     }
 
     object IsRefinement {
       /** Matches any Refinement and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement] =
-        kernel.isRefinement(tpe)
+        kernel.matchRefinement(tpe)
     }
 
     object Refinement {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
-        kernel.isRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
+        kernel.matchRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
     }
 
     object IsAppliedType {
       /** Matches any AppliedType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType] =
-        kernel.isAppliedType(tpe)
+        kernel.matchAppliedType(tpe)
     }
 
     object AppliedType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
-        kernel.isAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
+        kernel.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
     }
 
     object IsAnnotatedType {
       /** Matches any AnnotatedType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType] =
-        kernel.isAnnotatedType(tpe)
+        kernel.matchAnnotatedType(tpe)
     }
 
     object AnnotatedType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)] =
-        kernel.isAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
+        kernel.matchAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
     }
 
     object IsAndType {
       /** Matches any AndType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType] =
-        kernel.isAndType(tpe)
+        kernel.matchAndType(tpe)
     }
 
     object AndType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
-        kernel.isAndType(typeOrBounds).map(x => (x.left, x.right))
+        kernel.matchAndType(typeOrBounds).map(x => (x.left, x.right))
     }
 
     object IsOrType {
       /** Matches any OrType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType] =
-        kernel.isOrType(tpe)
+        kernel.matchOrType(tpe)
     }
 
     object OrType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
-        kernel.isOrType(typeOrBounds).map(x => (x.left, x.right))
+        kernel.matchOrType(typeOrBounds).map(x => (x.left, x.right))
     }
 
     object IsMatchType {
       /** Matches any MatchType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType] =
-        kernel.isMatchType(tpe)
+        kernel.matchMatchType(tpe)
     }
 
     object MatchType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])] =
-        kernel.isMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
+        kernel.matchMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
     }
 
     object IsByNameType {
       /** Matches any ByNameType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType] =
-        kernel.isByNameType(tpe)
+        kernel.matchByNameType(tpe)
     }
 
     object ByNameType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
-        kernel.isByNameType(typeOrBounds).map(_.underlying)
+        kernel.matchByNameType(typeOrBounds).map(_.underlying)
     }
 
     object IsParamRef {
       /** Matches any ParamRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef] =
-        kernel.isParamRef(tpe)
+        kernel.matchParamRef(tpe)
     }
 
     object ParamRef {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
-        kernel.isParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
+        kernel.matchParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
     }
 
     object IsThisType {
       /** Matches any ThisType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType] =
-        kernel.isThisType(tpe)
+        kernel.matchThisType(tpe)
     }
 
     object ThisType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
-        kernel.isThisType(typeOrBounds).map(_.tref)
+        kernel.matchThisType(typeOrBounds).map(_.tref)
     }
 
     object IsRecursiveThis {
       /** Matches any RecursiveThis and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis] =
-        kernel.isRecursiveThis(tpe)
+        kernel.matchRecursiveThis(tpe)
     }
 
     object RecursiveThis {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] =
-        kernel.isRecursiveThis(typeOrBounds).map(_.binder)
+        kernel.matchRecursiveThis(typeOrBounds).map(_.binder)
     }
 
     object IsRecursiveType {
       /** Matches any RecursiveType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] =
-        kernel.isRecursiveType(tpe)
+        kernel.matchRecursiveType(tpe)
     }
 
     object RecursiveType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
-        kernel.isRecursiveType(typeOrBounds).map(_.underlying)
+        kernel.matchRecursiveType(typeOrBounds).map(_.underlying)
     }
 
     object IsMethodType {
       /** Matches any MethodType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType] =
-        kernel.isMethodType(tpe)
+        kernel.matchMethodType(tpe)
     }
 
     object MethodType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[Type], Type)] =
-        kernel.isMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
+        kernel.matchMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
     }
 
     object IsPolyType {
       /** Matches any PolyType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType] =
-        kernel.isPolyType(tpe)
+        kernel.matchPolyType(tpe)
     }
 
     object PolyType {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
-        kernel.isPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
+        kernel.matchPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
     }
 
     object IsTypeLambda {
       /** Matches any TypeLambda and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda] =
-        kernel.isTypeLambda(tpe)
+        kernel.matchTypeLambda(tpe)
     }
 
     object TypeLambda {
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
-        kernel.isTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
+        kernel.matchTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
     }
 
   }
@@ -338,12 +338,12 @@ trait TypeOrBoundsOps extends Core {
 
   object IsTypeBounds {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] =
-      kernel.isTypeBounds(typeOrBounds)
+      kernel.matchTypeBounds(typeOrBounds)
   }
 
   object TypeBounds {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
-      kernel.isTypeBounds(typeOrBounds).map(x => (x.low, x.hi))
+      kernel.matchTypeBounds(typeOrBounds).map(x => (x.low, x.hi))
   }
 
   implicit class TypeBoundsAPI(self: TypeBounds) {
@@ -355,7 +355,7 @@ trait TypeOrBoundsOps extends Core {
 
   object NoPrefix {
     def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Boolean =
-      kernel.isNoPrefix(typeOrBounds).isDefined
+      kernel.matchNoPrefix(typeOrBounds).isDefined
   }
 
 }

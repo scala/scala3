@@ -39,7 +39,7 @@ trait PatternOps extends Core {
 
     object IsValue {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Value] =
-        kernel.isPattern_Value(pattern)
+        kernel.matchPattern_Value(pattern)
     }
 
     object Value {
@@ -48,12 +48,12 @@ trait PatternOps extends Core {
       def copy(original: Value)(tpt: Term)(implicit ctx: Context): Value =
         kernel.Pattern_Value_module_copy(original)(tpt)
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Term] =
-        kernel.isPattern_Value(pattern).map(_.value)
+        kernel.matchPattern_Value(pattern).map(_.value)
     }
 
     object IsBind {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Bind] =
-        kernel.isPattern_Bind(pattern)
+        kernel.matchPattern_Bind(pattern)
     }
 
     object Bind {
@@ -61,12 +61,12 @@ trait PatternOps extends Core {
       def copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind =
         kernel.Pattern_Bind_module_copy(original)(name, pattern)
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(String, Pattern)] =
-        kernel.isPattern_Bind(pattern).map(x => (x.name, x.pattern))
+        kernel.matchPattern_Bind(pattern).map(x => (x.name, x.pattern))
     }
 
     object IsUnapply {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply] =
-        kernel.isPattern_Unapply(pattern)
+        kernel.matchPattern_Unapply(pattern)
     }
 
     object Unapply {
@@ -74,12 +74,12 @@ trait PatternOps extends Core {
       def copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply =
         kernel.Pattern_Unapply_module_copy(original)(fun, implicits, patterns)
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] =
-        kernel.isPattern_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
+        kernel.matchPattern_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
     }
 
     object IsAlternatives {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[Alternatives] =
-        kernel.isPattern_Alternatives(pattern)
+        kernel.matchPattern_Alternatives(pattern)
     }
 
     object Alternatives {
@@ -88,12 +88,12 @@ trait PatternOps extends Core {
       def copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
         kernel.Pattern_Alternatives_module_copy(original)(patterns)
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[List[Pattern]] =
-        kernel.isPattern_Alternatives(pattern).map(_.patterns)
+        kernel.matchPattern_Alternatives(pattern).map(_.patterns)
     }
 
     object IsTypeTest {
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTest] =
-        kernel.isPattern_TypeTest(pattern)
+        kernel.matchPattern_TypeTest(pattern)
     }
 
     object TypeTest {
@@ -102,7 +102,7 @@ trait PatternOps extends Core {
       def copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
         kernel.Pattern_TypeTest_module_copy(original)(tpt)
       def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTree] =
-        kernel.isPattern_TypeTest(pattern).map(_.tpt)
+        kernel.matchPattern_TypeTest(pattern).map(_.tpt)
     }
 
   }
