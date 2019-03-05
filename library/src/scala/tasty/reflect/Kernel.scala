@@ -775,14 +775,20 @@ trait Kernel {
   /** NoPrefix for a type selection */
   type NoPrefix <: TypeOrBounds
 
+  def isNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix]
+
   /** Type bounds */
   type TypeBounds <: TypeOrBounds
+
+  def isTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds]
 
   def TypeBounds_low(self: TypeBounds)(implicit ctx: Context): Type
   def TypeBounds_hi(self: TypeBounds)(implicit ctx: Context): Type
 
   /** A type */
   type Type <: TypeOrBounds
+
+  def isType(x: TypeOrBounds)(implicit ctx: Context): Option[Type]
 
   def `Type_=:=`(self: Type)(that: Type)(implicit ctx: Context): Boolean
   def `Type_<:<`(self: Type)(that: Type)(implicit ctx: Context): Boolean
@@ -809,20 +815,34 @@ trait Kernel {
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
 
-  def ConstantType_value(self: ConstantType)(implicit ctx: Context): Any
+  def isConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType]
+
+  def ConstantType_constant(self: ConstantType)(implicit ctx: Context): Constant
 
   /** Type of a reference to a symbol */
   type SymRef <: Type
+
+  def isSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]
+
+  // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
+  def isSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
 
   def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds
 
   /** Type of a reference to a term */
   type TermRef <: Type
 
+  def isTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]
+
+  def TermRef_name(self: TermRef)(implicit ctx: Context): String
   def TermRef_qualifier(self: TermRef)(implicit ctx: Context): TypeOrBounds
+
+  def TermRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef
 
   /** Type of a reference to a type */
   type TypeRef <: Type
+
+  def isTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]
 
   def TypeRef_name(self: TypeRef)(implicit ctx: Context): String
   def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds
@@ -830,11 +850,15 @@ trait Kernel {
   /** Type of a `super` refernce */
   type SuperType <: Type
 
+  def isSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType]
+
   def SuperType_thistpe(self: SuperType)(implicit ctx: Context): Type
   def SuperType_supertpe(self: SuperType)(implicit ctx: Context): Type
 
   /** A type with a type refinement `T { type U }` */
   type Refinement <: Type
+
+  def isRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement]
 
   def Refinement_parent(self: Refinement)(implicit ctx: Context): Type
   def Refinement_name(self: Refinement)(implicit ctx: Context): String
@@ -843,11 +867,15 @@ trait Kernel {
   /** A higher kinded type applied to some types `T[U]` */
   type AppliedType <: Type
 
+  def isAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType]
+
   def AppliedType_tycon(self: AppliedType)(implicit ctx: Context): Type
   def AppliedType_args(self: AppliedType)(implicit ctx: Context): List[TypeOrBounds]
 
   /** A type with an anottation `T @foo` */
   type AnnotatedType <: Type
+
+  def isAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType]
 
   def AnnotatedType_underlying(self: AnnotatedType)(implicit ctx: Context): Type
   def AnnotatedType_annot(self: AnnotatedType)(implicit ctx: Context): Term
@@ -855,17 +883,23 @@ trait Kernel {
   /** Intersection type `T & U` */
   type AndType <: Type
 
+  def isAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType]
+
   def AndType_left(self: AndType)(implicit ctx: Context): Type
   def AndType_right(self: AndType)(implicit ctx: Context): Type
 
   /** Union type `T | U` */
   type OrType <: Type
 
+  def isOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType]
+
   def OrType_left(self: OrType)(implicit ctx: Context): Type
   def OrType_right(self: OrType)(implicit ctx: Context): Type
 
   /** Type match `T match { case U => ... }` */
   type MatchType <: Type
+
+  def isMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType]
 
   def MatchType_bound(self: MatchType)(implicit ctx: Context): Type
   def MatchType_scrutinee(self: MatchType)(implicit ctx: Context): Type
@@ -874,10 +908,14 @@ trait Kernel {
   /** Type of a by by name parameter */
   type ByNameType <: Type
 
+  def isByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType]
+
   def ByNameType_underlying(self: ByNameType)(implicit ctx: Context): Type
 
   /** Type of a parameter reference */
   type ParamRef <: Type
+
+  def isParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef]
 
   def ParamRef_binder(self: ParamRef)(implicit ctx: Context): LambdaType[TypeOrBounds]
   def ParamRef_paramNum(self: ParamRef)(implicit ctx: Context): Int
@@ -885,15 +923,21 @@ trait Kernel {
   /** Type of `this` */
   type ThisType <: Type
 
-  def ThisType_underlying(self: ThisType)(implicit ctx: Context): Type
+  def isThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType]
+
+  def ThisType_tref(self: ThisType)(implicit ctx: Context): Type
 
   /** A type that is recursively defined `this` */
   type RecursiveThis <: Type
+
+  def isRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis]
 
   def RecursiveThis_binder(self: RecursiveThis)(implicit ctx: Context): RecursiveType
 
   /** A type that is recursively defined */
   type RecursiveType <: Type
+
+  def isRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
 
   def RecursiveType_underlying(self: RecursiveType)(implicit ctx: Context): Type
 
@@ -905,6 +949,8 @@ trait Kernel {
   /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
   type MethodType <: LambdaType[Type]
 
+  def isMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]
+
   def MethodType_isErased(self: MethodType): Boolean
   def MethodType_isImplicit(self: MethodType): Boolean
   def MethodType_paramNames(self: MethodType)(implicit ctx: Context): List[String]
@@ -914,12 +960,16 @@ trait Kernel {
   /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
   type PolyType <: LambdaType[TypeBounds]
 
+  def isPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType]
+
   def PolyType_paramNames(self: PolyType)(implicit ctx: Context): List[String]
   def PolyType_paramBounds(self: PolyType)(implicit ctx: Context): List[TypeBounds]
   def PolyType_resType(self: PolyType)(implicit ctx: Context): Type
 
   /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
   type TypeLambda <: LambdaType[TypeBounds]
+
+  def isTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda]
 
   def TypeLambda_paramNames(self: TypeLambda)(implicit ctx: Context): List[String]
   def TypeLambda_paramBounds(self: TypeLambda)(implicit ctx: Context): List[TypeBounds]

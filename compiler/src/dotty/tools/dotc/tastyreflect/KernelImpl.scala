@@ -3,7 +3,7 @@ package tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.core.{Constants, NameKinds, Types}
+import dotty.tools.dotc.core.{Constants, NameKinds, Names, Types}
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.quoted.PickledQuotes
@@ -957,12 +957,26 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type NoPrefix = Types.NoPrefix.type
 
+  def isNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix] =
+    if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
+
   type TypeBounds = Types.TypeBounds
+
+  def isTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] = x match {
+    case x: Types.TypeBounds => Some(x)
+    case _ => None
+  }
 
   def TypeBounds_low(self: TypeBounds)(implicit ctx: Context): Type = self.lo
   def TypeBounds_hi(self: TypeBounds)(implicit ctx: Context): Type = self.hi
 
   type Type = Types.Type
+
+  def isType(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
+    case x: TypeBounds => None
+    case x if x == Types.NoPrefix => None
+    case _ => Some(x)
+  }
 
   def `Type_=:=`(self: Type)(that: Type)(implicit ctx: Context): Boolean = self =:= that
 
@@ -991,27 +1005,83 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ConstantType = Types.ConstantType
 
-  def ConstantType_value(self: ConstantType)(implicit ctx: Context): Any = self.value
+  def isConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] = tpe match {
+    case tpe: Types.ConstantType => Some(tpe)
+    case _ => None
+  }
+
+  def ConstantType_constant(self: ConstantType)(implicit ctx: Context): Constant = self.value
 
   type SymRef = Types.NamedType
 
+  def isSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Symbol => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
   def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds = self.prefix
+
+  // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
+  def isSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] = tpe match {
+    case tpe: Types.NamedType =>
+      tpe.designator match {
+        case sym: Symbol => Some((sym, tpe.prefix))
+        case _ => None
+      }
+    case _ => None
+  }
 
   type TermRef = Types.NamedType
 
+  def isTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] = tpe match {
+    case tpe: Types.NamedType =>
+      tpe.designator match {
+        case name: Names.TermName => Some(tpe)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TermRef_name(self: TermRef)(implicit ctx: Context): String = self.name.toString
   def TermRef_qualifier(self: TermRef)(implicit ctx: Context): TypeOrBounds = self.prefix
 
+  def TermRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef =
+    Types.TermRef(qual, name.toTermName)
+
   type TypeRef = Types.NamedType
+
+  def isTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef] = tpe match {
+    case tpe: Types.NamedType =>
+      tpe.designator match {
+        case name: Names.TypeName => Some(tpe)
+        case _ => None
+      }
+    case _ => None
+  }
 
   def TypeRef_name(self: TypeRef)(implicit ctx: Context): String = self.name.toString
   def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds = self.prefix
 
   type SuperType = Types.SuperType
 
+  def isSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType] = tpe match {
+    case tpe: Types.SuperType => Some(tpe)
+    case _ => None
+  }
+
   def SuperType_thistpe(self: SuperType)(implicit ctx: Context): Type = self.thistpe
   def SuperType_supertpe(self: SuperType)(implicit ctx: Context): Type = self.supertpe
 
   type Refinement = Types.RefinedType
+
+  def isRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement] = tpe match {
+    case tpe: Types.RefinedType => Some(tpe)
+    case _ => None
+  }
 
   def Refinement_parent(self: Refinement)(implicit ctx: Context): Type = self.parent
   def Refinement_name(self: Refinement)(implicit ctx: Context): String = self.refinedName.toString
@@ -1019,25 +1089,50 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type AppliedType = Types.AppliedType
 
+  def isAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType] = tpe match {
+    case tpe: Types.AppliedType => Some(tpe)
+    case _ => None
+  }
+
   def AppliedType_tycon(self: AppliedType)(implicit ctx: Context): Type = self.tycon
   def AppliedType_args(self: AppliedType)(implicit ctx: Context): List[TypeOrBounds] = self.args
 
   type AnnotatedType = Types.AnnotatedType
+
+  def isAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType] = tpe match {
+    case tpe: Types.AnnotatedType => Some(tpe)
+    case _ => None
+  }
 
   def AnnotatedType_underlying(self: AnnotatedType)(implicit ctx: Context): Type = self.underlying.stripTypeVar
   def AnnotatedType_annot(self: AnnotatedType)(implicit ctx: Context): Term = self.annot.tree
 
   type AndType = Types.AndType
 
+  def isAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType] = tpe match {
+    case tpe: Types.AndType => Some(tpe)
+    case _ => None
+  }
+
   def AndType_left(self: AndType)(implicit ctx: Context): Type = self.tp1.stripTypeVar
   def AndType_right(self: AndType)(implicit ctx: Context): Type = self.tp2.stripTypeVar
 
   type OrType = Types.OrType
 
+  def isOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType] = tpe match {
+    case tpe: Types.OrType => Some(tpe)
+    case _ => None
+  }
+
   def OrType_left(self: OrType)(implicit ctx: Context): Type = self.tp1.stripTypeVar
   def OrType_right(self: OrType)(implicit ctx: Context): Type = self.tp2.stripTypeVar
 
   type MatchType = Types.MatchType
+
+  def isMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType] = tpe match {
+    case tpe: Types.MatchType => Some(tpe)
+    case _ => None
+  }
 
   def MatchType_bound(self: MatchType)(implicit ctx: Context): Type = self.bound
   def MatchType_scrutinee(self: MatchType)(implicit ctx: Context): Type = self.scrutinee
@@ -1045,9 +1140,20 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ByNameType = Types.ExprType
 
+  def isByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType] = tpe match {
+    case tpe: Types.ExprType => Some(tpe)
+    case _ => None
+  }
+
   def ByNameType_underlying(self: ByNameType)(implicit ctx: Context): Type = self.resType.stripTypeVar
 
   type ParamRef = Types.ParamRef
+
+  def isParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef] = tpe match {
+    case tpe: Types.TypeParamRef => Some(tpe)
+    case tpe: Types.TermParamRef => Some(tpe)
+    case _ => None
+  }
 
   def ParamRef_binder(self: ParamRef)(implicit ctx: Context): LambdaType[TypeOrBounds] =
     self.binder.asInstanceOf[LambdaType[TypeOrBounds]] // Cast to tpd
@@ -1055,19 +1161,39 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type ThisType = Types.ThisType
 
-  def ThisType_underlying(self: ThisType)(implicit ctx: Context): Type = self.underlying
+  def isThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType] = tpe match {
+    case tpe: Types.ThisType => Some(tpe)
+    case _ => None
+  }
+
+  def ThisType_tref(self: ThisType)(implicit ctx: Context): Type = self.tref
 
   type RecursiveThis = Types.RecThis
+
+  def isRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis] = tpe match {
+    case tpe: Types.RecThis => Some(tpe)
+    case _ => None
+  }
 
   def RecursiveThis_binder(self: RecursiveThis)(implicit ctx: Context): RecursiveType = self.binder
 
   type RecursiveType = Types.RecType
+
+  def isRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] = tpe match {
+    case tpe: Types.RecType => Some(tpe)
+    case _ => None
+  }
 
   def RecursiveType_underlying(self: RecursiveType)(implicit ctx: Context): Type = self.underlying.stripTypeVar
 
   type LambdaType[ParamInfo] = Types.LambdaType { type PInfo = ParamInfo }
 
   type MethodType = Types.MethodType
+
+  def isMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType] = tpe match {
+    case tpe: Types.MethodType => Some(tpe)
+    case _ => None
+  }
 
   def MethodType_isErased(self: MethodType): Boolean = self.isErasedMethod
   def MethodType_isImplicit(self: MethodType): Boolean = self.isImplicitMethod
@@ -1077,11 +1203,21 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type PolyType = Types.PolyType
 
+  def isPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType] = tpe match {
+    case tpe: Types.PolyType => Some(tpe)
+    case _ => None
+  }
+
   def PolyType_paramNames(self: PolyType)(implicit ctx: Context): List[String] = self.paramNames.map(_.toString)
   def PolyType_paramBounds(self: PolyType)(implicit ctx: Context): List[TypeBounds] = self.paramInfos
   def PolyType_resType(self: PolyType)(implicit ctx: Context): Type = self.resType
 
   type TypeLambda = Types.TypeLambda
+
+  def isTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda] = tpe match {
+    case tpe: Types.TypeLambda => Some(tpe)
+    case _ => None
+  }
 
   def TypeLambda_paramNames(self: TypeLambda)(implicit ctx: Context): List[String] = self.paramNames.map(_.toString)
   def TypeLambda_paramBounds(self: TypeLambda)(implicit ctx: Context): List[TypeBounds] = self.paramInfos

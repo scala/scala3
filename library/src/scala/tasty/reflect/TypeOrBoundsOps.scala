@@ -17,228 +17,229 @@ trait TypeOrBoundsOps extends Core {
     def memberType(member: Symbol)(implicit ctx: Context): Type = kernel.Type_memberType(self)(member)
   }
 
-  val IsType: IsTypeModule
-  abstract class IsTypeModule {
-    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
+  object IsType {
+    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
+      kernel.isType(typeOrBounds)
   }
 
-  val Type: TypeModule
-  abstract class TypeModule {
+  object Type {
 
-    val IsConstantType: IsConstantTypeModule
-    abstract class IsConstantTypeModule {
+    object IsConstantType {
       /** Matches any ConstantType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] =
+        kernel.isConstantType(tpe)
     }
 
-    val ConstantType: ConstantTypeModule
-    abstract class ConstantTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Constant]
+    object ConstantType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Constant] =
+        kernel.isConstantType(typeOrBounds).map(_.constant)
     }
 
-    val IsSymRef: IsSymRefModule
-    abstract class IsSymRefModule {
+    object IsSymRef {
       /** Matches any SymRef and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] =
+        kernel.isSymRef(tpe)
     }
 
-    val SymRef: SymRefModule
-    abstract class SymRefModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
+    object SymRef {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
+        kernel.isSymRef_unapply(typeOrBounds)
     }
 
-    val IsTermRef: IsTermRefModule
-    abstract class IsTermRefModule {
+    object IsTermRef {
       /** Matches any TermRef and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] =
+        kernel.isTermRef(tpe)
     }
 
-    val TermRef: TermRefModule
-    abstract class TermRefModule {
-      def apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
+    object TermRef {
+      // TODO should qual be a Type?
+      def apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef =
+        kernel.TermRef_apply(qual, name)
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
+        kernel.isTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
-    val IsTypeRef: IsTypeRefModule
-    abstract class IsTypeRefModule {
+    object IsTypeRef {
       /** Matches any TypeRef and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef] =
+        kernel.isTypeRef(tpe)
     }
 
-    val TypeRef: TypeRefModule
-    abstract class TypeRefModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
+    object TypeRef {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
+        kernel.isTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
-    val IsSuperType: IsSuperTypeModule
-    abstract class IsSuperTypeModule {
+    object IsSuperType {
       /** Matches any SuperType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType] =
+        kernel.isSuperType(tpe)
     }
 
-    val SuperType: SuperTypeModule
-    abstract class SuperTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
+    object SuperType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
+        kernel.isSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
     }
 
-    val IsRefinement: IsRefinementModule
-    abstract class IsRefinementModule {
+    object IsRefinement {
       /** Matches any Refinement and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement] =
+        kernel.isRefinement(tpe)
     }
 
-    val Refinement: RefinementModule
-    abstract class RefinementModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)]
+    object Refinement {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
+        kernel.isRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
     }
 
-    val IsAppliedType: IsAppliedTypeModule
-    abstract class IsAppliedTypeModule {
+    object IsAppliedType {
       /** Matches any AppliedType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType] =
+        kernel.isAppliedType(tpe)
     }
 
-    val AppliedType: AppliedTypeModule
-    abstract class AppliedTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])]
+    object AppliedType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
+        kernel.isAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
     }
 
-    val IsAnnotatedType: IsAnnotatedTypeModule
-    abstract class IsAnnotatedTypeModule {
+    object IsAnnotatedType {
       /** Matches any AnnotatedType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType] =
+        kernel.isAnnotatedType(tpe)
     }
 
-    val AnnotatedType: AnnotatedTypeModule
-    abstract class AnnotatedTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)]
+    object AnnotatedType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)] =
+        kernel.isAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
     }
 
-    val IsAndType: IsAndTypeModule
-    abstract class IsAndTypeModule {
+    object IsAndType {
       /** Matches any AndType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType] =
+        kernel.isAndType(tpe)
     }
 
-    val AndType: AndTypeModule
-    abstract class AndTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
+    object AndType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
+        kernel.isAndType(typeOrBounds).map(x => (x.left, x.right))
     }
 
-    val IsOrType: IsOrTypeModule
-    abstract class IsOrTypeModule {
+    object IsOrType {
       /** Matches any OrType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType] =
+        kernel.isOrType(tpe)
     }
 
-    val OrType: OrTypeModule
-    abstract class OrTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
+    object OrType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
+        kernel.isOrType(typeOrBounds).map(x => (x.left, x.right))
     }
 
-    val IsMatchType: IsMatchTypeModule
-    abstract class IsMatchTypeModule {
+    object IsMatchType {
       /** Matches any MatchType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType] =
+        kernel.isMatchType(tpe)
     }
 
-    val MatchType: MatchTypeModule
-    abstract class MatchTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])]
+    object MatchType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type, List[Type])] =
+        kernel.isMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
     }
 
-    val IsByNameType: IsByNameTypeModule
-    abstract class IsByNameTypeModule {
+    object IsByNameType {
       /** Matches any ByNameType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType] =
+        kernel.isByNameType(tpe)
     }
 
-    val ByNameType: ByNameTypeModule
-    abstract class ByNameTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
+    object ByNameType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
+        kernel.isByNameType(typeOrBounds).map(_.underlying)
     }
 
-    val IsParamRef: IsParamRefModule
-    abstract class IsParamRefModule {
+    object IsParamRef {
       /** Matches any ParamRef and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef] =
+        kernel.isParamRef(tpe)
     }
 
-    val ParamRef: ParamRefModule
-    abstract class ParamRefModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)]
+    object ParamRef {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
+        kernel.isParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
     }
 
-    val IsThisType: IsThisTypeModule
-    abstract class IsThisTypeModule {
+    object IsThisType {
       /** Matches any ThisType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType] =
+        kernel.isThisType(tpe)
     }
 
-    val ThisType: ThisTypeModule
-    abstract class ThisTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
+    object ThisType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
+        kernel.isThisType(typeOrBounds).map(_.tref)
     }
 
-    val IsRecursiveThis: IsRecursiveThisModule
-    abstract class IsRecursiveThisModule {
+    object IsRecursiveThis {
       /** Matches any RecursiveThis and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis] =
+        kernel.isRecursiveThis(tpe)
     }
 
-    val RecursiveThis: RecursiveThisModule
-    abstract class RecursiveThisModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
+    object RecursiveThis {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] =
+        kernel.isRecursiveThis(typeOrBounds).map(_.binder)
     }
 
-    val IsRecursiveType: IsRecursiveTypeModule
-    abstract class IsRecursiveTypeModule {
+    object IsRecursiveType {
       /** Matches any RecursiveType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] =
+        kernel.isRecursiveType(tpe)
     }
 
-    val RecursiveType: RecursiveTypeModule
-    abstract class RecursiveTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type]
+    object RecursiveType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[Type] =
+        kernel.isRecursiveType(typeOrBounds).map(_.underlying)
     }
 
-    val IsMethodType: IsMethodTypeModule
-    abstract class IsMethodTypeModule {
+    object IsMethodType {
       /** Matches any MethodType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType] =
+        kernel.isMethodType(tpe)
     }
 
-    val MethodType: MethodTypeModule
-    abstract class MethodTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[Type], Type)]
+    object MethodType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[Type], Type)] =
+        kernel.isMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
     }
 
-    val IsPolyType: IsPolyTypeModule
-    abstract class IsPolyTypeModule {
+    object IsPolyType {
       /** Matches any PolyType and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType] =
+        kernel.isPolyType(tpe)
     }
 
-    val PolyType: PolyTypeModule
-    abstract class PolyTypeModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
+    object PolyType {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+        kernel.isPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
     }
 
-    val IsTypeLambda: IsTypeLambdaModule
-    abstract class IsTypeLambdaModule {
+    object IsTypeLambda {
       /** Matches any TypeLambda and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda]
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda] =
+        kernel.isTypeLambda(tpe)
     }
 
-    val TypeLambda: TypeLambdaModule
-    abstract class TypeLambdaModule {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
+    object TypeLambda {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+        kernel.isTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
     }
 
   }
 
   implicit class Type_ConstantTypeAPI(self: ConstantType) {
-    def value(implicit ctx: Context): Any = kernel.ConstantType_value(self)
+    def constant(implicit ctx: Context): Constant = kernel.ConstantType_constant(self)
   }
 
   implicit class Type_SymRefAPI(self: SymRef) {
@@ -246,6 +247,7 @@ trait TypeOrBoundsOps extends Core {
   }
 
   implicit class Type_TermRefAPI(self: TermRef) {
+    def name(implicit ctx: Context): String = kernel.TermRef_name(self)
     def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.TermRef_qualifier(self)
   }
 
@@ -301,7 +303,7 @@ trait TypeOrBoundsOps extends Core {
   }
 
   implicit class Type_ThisTypeAPI(self: ThisType) {
-    def underlying(implicit ctx: Context): Type = kernel.ThisType_underlying(self)
+    def tref(implicit ctx: Context): Type = kernel.ThisType_tref(self)
   }
 
   implicit class Type_RecursiveThisAPI(self: RecursiveThis) {
@@ -334,14 +336,14 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- TypeBounds -----------------------------------------------
 
-  val IsTypeBounds: IsTypeBoundsModule
-  abstract class IsTypeBoundsModule {
-    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds]
+  object IsTypeBounds {
+    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] =
+      kernel.isTypeBounds(typeOrBounds)
   }
 
-  val TypeBounds: TypeBoundsModule
-  abstract class TypeBoundsModule {
-    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)]
+  object TypeBounds {
+    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] =
+      kernel.isTypeBounds(typeOrBounds).map(x => (x.low, x.hi))
   }
 
   implicit class TypeBoundsAPI(self: TypeBounds) {
@@ -351,9 +353,9 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- NoPrefix -------------------------------------------------
 
-  val NoPrefix: NoPrefixModule
-  abstract class NoPrefixModule {
-    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Boolean
+  object NoPrefix {
+    def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Boolean =
+      kernel.isNoPrefix(typeOrBounds).isDefined
   }
 
 }
