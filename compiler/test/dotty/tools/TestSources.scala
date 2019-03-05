@@ -10,7 +10,6 @@ object TestSources {
   // Std Lib
   def stdLibSources: List[String] = {
     val blacklisted = List(
-      "StructuralCallSite.java", // see #4739
       "volatile.scala",          // see #5610
     )
     sources(Paths.get("tests/scala2-library/src/library/"), excludedFiles = blacklisted)
@@ -46,7 +45,7 @@ object TestSources {
     val list = Files.readAllLines(Paths.get(path))
       .iterator()
       .asScala
-      .map(_.trim)                     // allow identation
+      .map(_.trim)                     // allow indentation
       .filterNot(_.startsWith("#"))    // allow comment lines prefixed by #
       .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
       .filter(_.nonEmpty)
