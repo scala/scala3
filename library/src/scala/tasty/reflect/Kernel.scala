@@ -12,43 +12,43 @@ package scala.tasty.reflect
  *                         |               +- DefDef
  *                         |               +- ValDef
  *                         |
- *                         +- Term --------+- Ref -+- Ident
- *                                         |       +- Select
+ *                         +- Term --------+- Term_Ref -+- Term_Ident
+ *                                         |            +- Term_Select
  *                                         |
- *                                         +- Literal
- *                                         +- This
- *                                         +- New
- *                                         +- NamedArg
- *                                         +- Apply
- *                                         +- TypeApply
- *                                         +- Super
- *                                         +- Typed
- *                                         +- Assign
- *                                         +- Block
- *                                         +- Lambda
- *                                         +- If
- *                                         +- Match
- *                                         +- Try
- *                                         +- Return
- *                                         +- Repeated
- *                                         +- Inlined
- *                                         +- SelectOuter
- *                                         +- While
+ *                                         +- Term_Literal
+ *                                         +- Term_This
+ *                                         +- Term_New
+ *                                         +- Term_NamedArg
+ *                                         +- Term_Apply
+ *                                         +- Term_TypeApply
+ *                                         +- Term_Super
+ *                                         +- Term_Typed
+ *                                         +- Term_Assign
+ *                                         +- Term_Block
+ *                                         +- Term_Lambda
+ *                                         +- Term_If
+ *                                         +- Term_Match
+ *                                         +- Term_Try
+ *                                         +- Term_Return
+ *                                         +- Term_Repeated
+ *                                         +- Term_Inlined
+ *                                         +- Term_SelectOuter
+ *                                         +- Term_While
  *
  *
- *                         +- TypeTree ----+- Inferred
- *                         |               +- Ident
- *                         |               +- Select
- *                         |               +- Project
- *                         |               +- Singleton
- *  +- TypeOrBoundsTree ---+               +- Refined
- *                         |               +- Applied
- *                         |               +- Annotated
- *                         |               +- MatchType
- *                         |               +- ByName
- *                         |               +- LambdaTypeTree
- *                         |               +- TypeBind
- *                         |               +- TypeBlock
+ *                         +- TypeTree ----+- TypeTree_Inferred
+ *                         |               +- TypeTree_Ident
+ *                         |               +- TypeTree_Select
+ *                         |               +- TypeTree_Project
+ *                         |               +- TypeTree_Singleton
+ *  +- TypeOrBoundsTree ---+               +- TypeTree_Refined
+ *                         |               +- TypeTree_Applied
+ *                         |               +- TypeTree_Annotated
+ *                         |               +- TypeTree_MatchType
+ *                         |               +- TypeTree_ByName
+ *                         |               +- TypeTree_LambdaTypeTree
+ *                         |               +- TypeTree_TypeBind
+ *                         |               +- TypeTree_TypeBlock
  *                         |
  *                         +- TypeBoundsTree
  *                         +- WildcardTypeTree
