@@ -139,6 +139,16 @@ trait Kernel {
   def Context_source(self: Context): java.nio.file.Path
 
   //
+  // REPORTING
+  //
+
+  /** Report a compilation error with the given message at the given position */
+  def error(msg: => String, pos: Position)(implicit ctx: Context): Unit
+
+  /** Report a compilation warning with the given message at the given position */
+  def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit
+
+  //
   // Settings
   //
 
