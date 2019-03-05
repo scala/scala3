@@ -42,10 +42,17 @@ class Tests {
   //     new dotty.tastydoc.TastydocConsumer
   //   )
   // }
-  @Test def testMethods(): Unit = {
+  // @Test def testMethods(): Unit = {
+  //   ConsumeTasty(
+  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
+  //     List("example.Methods"),
+  //     new dotty.tastydoc.TastydocConsumer
+  //   )
+  // }
+  @Test def testDocumentation(): Unit = {
     ConsumeTasty(
       "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-      List("example.Methods"),
+      List("example.Documentation"),
       new dotty.tastydoc.TastydocConsumer
     )
   }
