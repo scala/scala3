@@ -2,7 +2,7 @@
 class Fail cannot be defined due to a conflict between its parents when
 implementing a super-accessor for foo in trait C:
 
-1. One of its parent (trait C) contains a call super.foo in its body,
+1. One of its parent (C) contains a call super.foo in its body,
    and when a super-call in a trait is written without an explicit parent
    listed in brackets, it is implemented by a generated super-accessor in
    the class that extends this trait based on the linearization order of

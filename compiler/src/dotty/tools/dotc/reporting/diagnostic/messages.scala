@@ -2265,4 +2265,60 @@ object messages {
       hl"""Stable identifier required, but ${tree.show} found"""
     override def explanation: String = ""
   }
+
+  case class IllegalSuperAccessor(base: Symbol, memberName: Name,
+      acc: Symbol, accTp: Type,
+      other: Symbol, otherTp: Type)(implicit val ctx: Context) extends Message(IllegalSuperAccessorID) {
+    val kind: String = "Reference"
+    val msg: String = {
+      // The mixin containing a super-call that requires a super-accessor
+      val accMixin = acc.owner
+      // The class or trait that the super-accessor should resolve too in `base`
+      val otherMixin = other.owner
+      // The super-call in `accMixin`
+      val superCall = i"super.$memberName"
+      // The super-call that the super-accesors in `base` forwards to
+      val resolvedSuperCall = i"super[${otherMixin.name}].$memberName"
+      // The super-call that we would have called if `super` in traits behaved like it
+      // does in classes, i.e. followed the linearization of the trait itself.
+      val staticSuperCall = {
+        val staticSuper = accMixin.asClass.info.parents.reverse
+          .find(_.nonPrivateMember(memberName).matchingDenotation(accMixin.thisType, acc.info).exists)
+        val staticSuperName = staticSuper match {
+          case Some(parent) =>
+            parent.classSymbol.name.show
+          case None => // Might be reachable under separate compilation
+            "SomeParent"
+        }
+        i"super[$staticSuperName].$memberName"
+      }
+      hl"""$base cannot be defined due to a conflict between its parents when
+          |implementing a super-accessor for $memberName in $accMixin:
+          |
+          |1. One of its parent (${accMixin.name}) contains a call $superCall in its body,
+          |   and when a super-call in a trait is written without an explicit parent
+          |   listed in brackets, it is implemented by a generated super-accessor in
+          |   the class that extends this trait based on the linearization order of
+          |   the class.
+          |2. Because ${otherMixin.name} comes before ${accMixin.name} in the linearization
+          |   order of ${base.name}, and because ${otherMixin.name} overrides $memberName,
+          |   the super-accessor in ${base.name} is implemented as a call to
+          |   $resolvedSuperCall.
+          |3. However,
+          |   ${otherTp.widenExpr} (the type of $resolvedSuperCall in ${base.name})
+          |   is not a subtype of
+          |   ${accTp.widenExpr} (the type of $memberName in $accMixin).
+          |   Hence, the super-accessor that needs to be generated in ${base.name}
+          |   is illegal.
+          |
+          |Here are two possible ways to resolve this:
+          |
+          |1. Change the linearization order of ${base.name} such that
+          |   ${accMixin.name} comes before ${otherMixin.name}.
+          |2. Alternatively, replace $superCall in the body of $accMixin by a
+          |   super-call to a specific parent, e.g. $staticSuperCall
+          |""".stripMargin
+    }
+    val explanation: String = ""
+  }
 }

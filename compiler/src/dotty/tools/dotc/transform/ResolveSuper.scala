@@ -12,6 +12,7 @@ import DenotTransformers._
 import NameOps._
 import NameKinds._
 import ResolveSuper._
+import reporting.diagnostic.messages.IllegalSuperAccessor
 
 /** This phase adds super accessors and method overrides where
  *  linearization differs from Java's rule for default methods in interfaces.
@@ -100,65 +101,17 @@ object ResolveSuper {
     val SuperAccessorName(memberName) = acc.name.unexpandedName
     ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
     while (bcs.nonEmpty && sym == NoSymbol) {
-      val cur = bcs.head
-      val other = cur.info.nonPrivateDecl(memberName)
-      if (ctx.settings.Ydebug.value)
-        ctx.log(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
-      val otherMember = other.matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
-      if (otherMember.exists) {
-        sym = otherMember.symbol
+      val other = bcs.head.info.nonPrivateDecl(memberName)
+        .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
+      ctx.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
+      if (other.exists) {
+        sym = other.symbol
         // Having a matching denotation is not enough: it should also be a subtype
         // of the superaccessor's type, see i5433.scala for an example where this matters
-        val otherTp = otherMember.asSeenFrom(base.typeRef).info
+        val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
-        if (!(otherTp <:< accTp)) {
-          // The mixin containing a super-call that requires a super-accessor
-          val mixin = acc.owner
-          // The super-call in `mixin`
-          val superCall = i"super.$memberName"
-          // The super-call that we end up trying to call
-          val resolvedSuperCall = i"super[${cur.name}].$memberName"
-          // The super-call that we would have called if `super` in traits behaved like it
-          // does in classes, i.e. followed the linearization of the trait itself.
-          val staticSuperCall = {
-            val staticSuper = mixin.asClass.info.parents.reverse
-              .find(_.nonPrivateMember(memberName).matchingDenotation(mixin.thisType, acc.info).exists)
-            val staticSuperName = staticSuper match {
-              case Some(parent) =>
-                parent.classSymbol.name.show
-              case None => // Might be reachable under separate compilation
-                "SomeParent"
-            }
-            i"super[$staticSuperName].$memberName"
-          }
-          ctx.error(
-            hl"""$base cannot be defined due to a conflict between its parents when
-                |implementing a super-accessor for $memberName in $mixin:
-                |
-                |1. One of its parent ($mixin) contains a call $superCall in its body,
-                |   and when a super-call in a trait is written without an explicit parent
-                |   listed in brackets, it is implemented by a generated super-accessor in
-                |   the class that extends this trait based on the linearization order of
-                |   the class.
-                |2. Because ${cur.name} comes before ${mixin.name} in the linearization
-                |   order of ${base.name}, and because ${cur.name} overrides $memberName,
-                |   the super-accessor in ${base.name} is implemented as a call to
-                |   $resolvedSuperCall.
-                |3. However,
-                |   ${otherTp.widenExpr} (the type of $resolvedSuperCall in ${base.name})
-                |   is not a subtype of
-                |   ${accTp.widenExpr} (the type of $memberName in $mixin).
-                |   Hence, the super-accessor that needs to be generated in ${base.name}
-                |   is illegal.
-                |
-                |Here are two possible ways to resolve this:
-                |
-                |1. Change the linearization order of ${base.name} such that
-                |   ${mixin.name} comes before ${cur.name}.
-                |2. Alternatively, replace $superCall in the body of $mixin by a
-                |   super-call to a specific parent, e.g. $staticSuperCall
-                |""".stripMargin, base.sourcePos)
-        }
+        if (!(otherTp <:< accTp))
+          ctx.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
       }
 
       bcs = bcs.tail
