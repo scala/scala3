@@ -205,7 +205,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos)
+          ctx.error(ex.toMessage, tree.sourcePos, sticky = true)
           tree
       }
     if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
