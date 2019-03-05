@@ -3,7 +3,7 @@ package tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.core.{Constants, NameKinds, Names, Types}
+import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.quoted.PickledQuotes
@@ -1425,30 +1425,124 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def isPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
     if (symbol.is(core.Flags.Package)) Some(symbol) else None
 
+  def PackageSymbol_tree(self: PackageSymbol)(implicit ctx: Context): PackageDef =
+    FromSymbol.packageDefFromSym(self)
+
   type ClassSymbol = core.Symbols.ClassSymbol
 
   def isClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
     if (symbol.isClass) Some(symbol.asClass) else None
+
+  def ClassSymbol_tree(self: ClassSymbol)(implicit ctx: Context): ClassDef =
+    FromSymbol.classDef(self)
+
+  def ClassSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol] =
+    self.unforcedDecls.filter(isField)
+
+  def ClassSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol] = {
+    val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
+    if (sym.exists && isField(sym)) Some(sym) else None
+  }
+
+  def ClassSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol] = {
+    self.typeRef.decls.iterator.collect {
+      case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
+    }.toList
+  }
+
+  def ClassSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefSymbol] = {
+    self.typeRef.decls.iterator.collect {
+      case sym if isMethod(sym) => sym.asTerm
+    }.toList
+  }
+
+  def ClassSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol] = {
+    self.typeRef.allMembers.iterator.map(_.symbol).collect {
+      case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
+    }.toList
+  }
+
+  def ClassSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefSymbol] = {
+    self.typeRef.allMembers.iterator.map(_.symbol).collect {
+      case sym if isMethod(sym) => sym.asTerm
+    }.toList
+  }
+
+  private def isMethod(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
+
+  def ClassSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValSymbol] = {
+    if (!self.isClass) Nil
+    else self.asClass.paramAccessors.collect {
+      case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
+    }
+  }
+
+  def ClassSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassSymbol] = {
+    val sym = self.companionModule.companionClass
+    if (sym.exists) Some(sym.asClass) else None
+  }
+
+  def ClassSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValSymbol] = {
+    val sym = self.companionModule
+    if (sym.exists) Some(sym.asTerm) else None
+  }
+
+  def ClassSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol] = {
+    val sym = self.moduleClass
+    if (sym.exists) Some(sym.asTerm) else None
+  }
+
+  private def isField(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
+
+  def ClassSymbol_of(fullName: String)(implicit ctx: Context): ClassSymbol = ctx.requiredClass(fullName)
 
   type TypeSymbol = core.Symbols.TypeSymbol
 
   def isTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
     if (symbol.isType) Some(symbol.asType) else None
 
+  def TypeSymbol_tree(self: TypeSymbol)(implicit ctx: Context): TypeDef =
+    FromSymbol.typeDefFromSym(self)
+  def TypeSymbol_isTypeParam(self: TypeSymbol)(implicit ctx: Context): Boolean =
+    self.isTypeParam
+
   type DefSymbol = core.Symbols.TermSymbol
 
   def isDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Method)) Some(symbol.asTerm) else None
+
+  def DefSymbol_tree(self: DefSymbol)(implicit ctx: Context): DefDef =
+    FromSymbol.defDefFromSym(self)
+
+  def DefSymbol_signature(self: DefSymbol)(implicit ctx: Context): Signature =
+    self.signature
+
+  type ValSymbol = core.Symbols.TermSymbol
+
+  def isValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
+    if (symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
+
+  def ValSymbol_tree(self: ValSymbol)(implicit ctx: Context): ValDef =
+    FromSymbol.valDefFromSym(self)
+
+  def ValSymbol_moduleClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol] = {
+    val sym = self.moduleClass
+    if (sym.exists) Some(sym.asClass) else None
+  }
+
+  def ValSymbol_companionClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol] = {
+    val sym = self.companionClass
+    if (sym.exists) Some(sym.asClass) else None
+  }
 
   type BindSymbol = core.Symbols.TermSymbol
 
   def isBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
 
-  type ValSymbol = core.Symbols.TermSymbol
-
-  def isValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
-    if (symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
+  def BindSymbol_tree(self: BindSymbol)(implicit ctx: Context): Bind =
+    FromSymbol.bindFromSym(self)
 
   type NoSymbol = core.Symbols.NoSymbol.type
 

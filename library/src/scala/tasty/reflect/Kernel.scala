@@ -1168,30 +1168,89 @@ trait Kernel {
 
   def isPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
 
+  def PackageSymbol_tree(self: PackageSymbol)(implicit ctx: Context): PackageDef
+
   /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
   type ClassSymbol <: Symbol
 
   def isClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
+
+  /** ClassDef tree of this defintion */
+  def ClassSymbol_tree(self: ClassSymbol)(implicit ctx: Context): ClassDef
+
+  /** Fields directly declared in the class */
+  def ClassSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol]
+
+  /** Field with the given name directly declared in the class */
+  def ClassSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol]
+
+  /** Get non-private named methods defined directly inside the class */
+  def ClassSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol]
+
+  /** Get all non-private methods defined directly inside the class, exluding constructors */
+  def ClassSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefSymbol]
+
+  /** Get named non-private methods declared or inherited */
+  def ClassSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol]
+
+  /** Get all non-private methods declared or inherited */
+  def ClassSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefSymbol]
+
+  /** Fields of a case class type -- only the ones declared in primary constructor */
+  def ClassSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValSymbol]
+
+  /** The class symbol of the companion module class */
+  def ClassSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassSymbol]
+
+  /** The symbol of the companion module */
+  def ClassSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValSymbol]
+
+  /** The symbol of the class of the companion module */
+  def ClassSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol]
+
+  def ClassSymbol_of(fullName: String)(implicit ctx: Context): ClassSymbol
 
   /** Symbol of a type (parameter or member) definition. */
   type TypeSymbol <: Symbol
 
   def isTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
 
+  def TypeSymbol_isTypeParam(self: TypeSymbol)(implicit ctx: Context): Boolean
+
+  /** TypeDef tree of this definition */
+  def TypeSymbol_tree(self: TypeSymbol)(implicit ctx: Context): TypeDef
+
   /** Symbol representing a method definition. */
   type DefSymbol <: Symbol
 
   def isDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
+
+  /** DefDef tree of this defintion */
+  def DefSymbol_tree(self: DefSymbol)(implicit ctx: Context): DefDef
+
+  /** Signature of this defintion */
+  def DefSymbol_signature(self: DefSymbol)(implicit ctx: Context): Signature
 
   /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
   type ValSymbol <: Symbol
 
   def isValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
 
+  /** ValDef tree of this defintion */
+  def ValSymbol_tree(self: ValSymbol)(implicit ctx: Context): ValDef
+
+  /** The class symbol of the companion module class */
+  def ValSymbol_moduleClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol]
+
+  def ValSymbol_companionClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol]
+
   /** Symbol representing a bind definition. */
   type BindSymbol <: Symbol
 
   def isBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]
+
+  /** Bind pattern of this definition */
+  def BindSymbol_tree(self: BindSymbol)(implicit ctx: Context): Bind
 
   /** No symbol available. */
   type NoSymbol <: Symbol
