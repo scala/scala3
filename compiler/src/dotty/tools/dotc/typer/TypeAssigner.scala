@@ -199,7 +199,7 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(NamedType(pre, name, d2), false)
-          else if (pre.derivesFrom(defn.DynamicClass)) {
+          else if (pre.derivesFrom(defn.DynamicClass) && name.isTermName) {
             TryDynamicCallType
           } else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
@@ -238,7 +238,7 @@ trait TypeAssigner {
     val mbr = qualType.member(name)
     if (reallyExists(mbr))
       qualType.select(name, mbr)
-    else if (qualType.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name))
+    else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !Dynamic.isDynamicMethod(name))
       TryDynamicCallType
     else if (qualType.isErroneous || name.toTermName == nme.ERROR)
       UnspecifiedErrorType
