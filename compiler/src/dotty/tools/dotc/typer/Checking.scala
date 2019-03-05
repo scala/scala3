@@ -755,7 +755,7 @@ trait Checking {
         if (decl.matches(other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
-              ctx.error(DoubleDefinition(decl, other), decl.sourcePos)
+              ctx.error(DoubleDefinition(decl, other, cls), decl.sourcePos)
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }

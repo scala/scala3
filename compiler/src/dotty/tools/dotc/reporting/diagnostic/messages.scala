@@ -2137,7 +2137,7 @@ object messages {
     val explanation: String = ""
   }
 
-  case class DoubleDefinition(decl: Symbol, previousDecl: Symbol)(implicit ctx: Context) extends Message(DoubleDefinitionID) {
+  case class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(implicit ctx: Context) extends Message(DoubleDefinitionID) {
     val kind: String = "Duplicate Symbol"
     val msg: String = {
       val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
@@ -2157,9 +2157,17 @@ object messages {
             s" at line ${sym.sourcePos.line + 1}" else ""
         i"in ${sym.owner}${lineDesc}"
       }
-      em"""Double definition:
-          |${previousDecl.initial.showDcl} ${symLocation(previousDecl)} and
-          |${decl.initial.showDcl} ${symLocation(decl)}
+      val clashDescription =
+        if (decl.owner eq previousDecl.owner)
+          "Double definition"
+        else if ((decl.owner eq base) || (previousDecl eq base))
+          "Name clash between defined and inherited member"
+        else
+          "Name clash between inherited members"
+
+      em"""$clashDescription:
+          |${previousDecl.showDcl} ${symLocation(previousDecl)} and
+          |${decl.showDcl} ${symLocation(decl)}
           |""" + details
     }
     val explanation: String = ""

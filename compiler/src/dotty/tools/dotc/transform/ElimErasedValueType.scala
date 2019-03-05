@@ -104,7 +104,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
         //
         // The problem is that `map` was forwarded twice, with different instantiated types.
         // Maybe we should move mixin forwarding after erasure to avoid redundant forwarders like these.
-        ctx.error(DoubleDefinition(sym1, sym2), root.sourcePos)
+        ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
     val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
     while (opc.hasNext) {
