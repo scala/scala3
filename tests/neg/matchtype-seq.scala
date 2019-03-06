@@ -169,3 +169,23 @@ object Test3 {
     ()
   }
 }
+
+object Test4 {
+  trait Inv[T]
+
+  type M[A] = A match {
+    case Inv[Int] => String
+    case _ => Int
+  }
+
+  class Foo {
+    type A
+
+    def test: Unit = {
+      // We need to be careful here, we cannot trust the output of type
+      // comparer on `isSameType(A, Int)` since `A` is an abstract type.
+      val a: M[Inv[A]] = 1 // error
+      ()
+    }
+  }
+}

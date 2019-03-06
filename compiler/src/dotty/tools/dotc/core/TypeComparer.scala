@@ -1891,10 +1891,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   def intersecting(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
     // println(s"intersecting(${tp1.show}, ${tp2.show})")
     /** Can we enumerate all instantiations of this type? */
-    def isClosed(tp: Symbol): Boolean =
+    def isClosedSum(tp: Symbol): Boolean =
       tp.is(Sealed) && tp.is(AbstractOrTrait) && !tp.hasAnonymousChild
 
-    /** Splits a close type into a disjunction of smaller types.
+    /** Splits a closed type into a disjunction of smaller types.
      *  It should hold that `tp` and `decompose(tp).reduce(_ or _)`
      *  denote the same set of values.
      */
@@ -1919,19 +1919,19 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             // subtype, so they must be unrelated by single inheritance
             // of classes.
             false
-          else if (isClosed(cls1))
+          else if (isClosedSum(cls1))
             decompose(cls1, tp1).exists(x => intersecting(x, tp2))
-          else if (isClosed(cls2))
+          else if (isClosedSum(cls2))
             decompose(cls2, tp2).exists(x => intersecting(x, tp1))
           else
             true
         }
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
-        // Unboxed x.zip(y).zip(z).forall { case ((a, b), c) => f(a, b, c) }
-        def zip_zip_forall[A, B, C](x: List[A], y: List[B], z: List[C])(f: (A, B, C) => Boolean): Boolean =
-          x match {
-            case x :: xs => y match {
-              case y :: ys => z match {
+        // Unboxed xs.zip(ys).zip(zs).forall { case ((a, b), c) => f(a, b, c) }
+        def zip_zip_forall[A, B, C](xs: List[A], ys: List[B], zs: List[C])(f: (A, B, C) => Boolean): Boolean =
+          xs match {
+            case x :: xs => ys match {
+              case y :: ys => zs match {
                 case z :: zs => f(x, y, z) && zip_zip_forall(xs, ys, zs)(f)
                 case _ => true
               }
@@ -1943,9 +1943,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           zip_zip_forall(args1, args2, tycon1.typeParams) {
             (arg1, arg2, tparam) =>
               val v = tparam.paramVariance
-              // Note that the logic below is conservative in that is
-              // assumes that Covariant type parameters are Contravariant
-              // type
               if (v > 0)
                 intersecting(arg1, arg2) || {
                   // We still need to proof that `Nothing` is not a valid
@@ -1979,7 +1976,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                     override def apply(x: Boolean, t: Type) =
                       x && {
                         t match {
-                          case tp: TypeRef if tp.symbol.is(TypeParam) => false
+                          case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
                           case _: SkolemType | _: TypeVar | _: TypeParamRef => false
                           case _ => foldOver(x, t)
                         }
