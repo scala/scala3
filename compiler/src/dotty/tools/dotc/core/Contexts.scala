@@ -68,21 +68,20 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class Context extends Periods
-                            with Substituters
-                            with TypeOps
-                            with Phases
-                            with Printers
-                            with Symbols
-                            with SymDenotations
-                            with Reporting
-                            with NamerContextOps
-                            with Plugins
-                            with Cloneable { thiscontext =>
-    implicit def ctx: Context = this
+  abstract class Context(val base: ContextBase)
+    extends Periods
+       with Substituters
+       with TypeOps
+       with Phases
+       with Printers
+       with Symbols
+       with SymDenotations
+       with Reporting
+       with NamerContextOps
+       with Plugins
+       with Cloneable { thiscontext =>
 
-    /** The context base at the root */
-    val base: ContextBase
+    implicit def ctx: Context = this
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator: Iterator[Context] = new Iterator[Context] {
@@ -94,7 +93,7 @@ object Contexts {
     /** The outer context */
     private[this] var _outer: Context = _
     protected def outer_=(outer: Context): Unit = _outer = outer
-    def outer: Context = _outer
+    final def outer: Context = _outer
 
     /** The current context */
     private[this] var _period: Period = _
@@ -102,75 +101,77 @@ object Contexts {
       assert(period.firstPhaseId == period.lastPhaseId, period)
       _period = period
     }
-    def period: Period = _period
+    final def period: Period = _period
 
     /** The scope nesting level */
     private[this] var _mode: Mode = _
     protected def mode_=(mode: Mode): Unit = _mode = mode
-    def mode: Mode = _mode
+    final def mode: Mode = _mode
 
     /** The current owner symbol */
     private[this] var _owner: Symbol = _
     protected def owner_=(owner: Symbol): Unit = _owner = owner
-    def owner: Symbol = _owner
+    final def owner: Symbol = _owner
 
     /** The current tree */
     private[this] var _tree: Tree[_ >: Untyped]= _
     protected def tree_=(tree: Tree[_ >: Untyped]): Unit = _tree = tree
-    def tree: Tree[_ >: Untyped] = _tree
+    final def tree: Tree[_ >: Untyped] = _tree
 
     /** The current scope */
     private[this] var _scope: Scope = _
     protected def scope_=(scope: Scope): Unit = _scope = scope
-    def scope: Scope = _scope
+    final def scope: Scope = _scope
 
     /** The current type comparer */
     private[this] var _typerState: TyperState = _
     protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
-    def typerState: TyperState = _typerState
+    final def typerState: TyperState = _typerState
 
     /** The current type assigner or typer */
     private[this] var _typeAssigner: TypeAssigner = _
     protected def typeAssigner_=(typeAssigner: TypeAssigner): Unit = _typeAssigner = typeAssigner
-    def typeAssigner: TypeAssigner = _typeAssigner
+    final def typeAssigner: TypeAssigner = _typeAssigner
 
     /** The currently active import info */
     private[this] var _importInfo: ImportInfo = _
     protected def importInfo_=(importInfo: ImportInfo): Unit = _importInfo = importInfo
-    def importInfo: ImportInfo = _importInfo
+    final def importInfo: ImportInfo = _importInfo
 
     /** The current bounds in force for type parameters appearing in a GADT */
     private[this] var _gadt: GADTMap = _
     protected def gadt_=(gadt: GADTMap): Unit = _gadt = gadt
-    def gadt: GADTMap = _gadt
+    final def gadt: GADTMap = _gadt
 
     /** The history of implicit searches that are currently active */
     private[this] var _searchHistory: SearchHistory = null
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
-    def searchHistory: SearchHistory = _searchHistory
+    final def searchHistory: SearchHistory = _searchHistory
 
     /** The current type comparer. This ones updates itself automatically for
      *  each new context.
      */
-    private[this] var _typeComparer: TypeComparer = _
-    protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
-    def typeComparer: TypeComparer = {
-      if (_typeComparer.ctx ne this)
-        _typeComparer = _typeComparer.copyIn(this)
+    private[this] var _typeComparer: TypeComparer = null
+    protected def typeComparer_=(typeComparer: TypeComparer): Unit = {
+      assert(typeComparer.ctx eq this)
+      _typeComparer = typeComparer
+    }
+    final def typeComparer: TypeComparer = {
+      if (_typeComparer == null) _typeComparer = outer.typeComparer.copyIn(this)
       _typeComparer
     }
 
     /** The current source file */
     private[this] var _source: SourceFile = _
     protected def source_=(source: SourceFile): Unit = _source = source
-    def source: SourceFile = _source
+    final def source: SourceFile = _source
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
      */
     private[this] var _moreProperties: Map[Key[Any], Any] = _
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
-    def moreProperties: Map[Key[Any], Any] = _moreProperties
+    final def moreProperties: Map[Key[Any], Any] = _moreProperties
 
     def property[T](key: Key[T]): Option[T] =
       moreProperties.get(key).asInstanceOf[Option[T]]
@@ -182,7 +183,7 @@ object Contexts {
      */
     private var _store: Store = _
     protected def store_=(store: Store): Unit = _store = store
-    def store: Store = _store
+    final def store: Store = _store
 
     /** The compiler callback implementation, or null if no callback will be called. */
     def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
@@ -258,7 +259,7 @@ object Contexts {
       * phasedCtxs is array that uses phaseId's as indexes,
       * contexts are created only on request and cached in this array
       */
-    private[this] var phasedCtx: Context = _
+    private[this] var phasedCtx: Context = this
     private[this] var phasedCtxs: Array[Context] = _
 
     /** This context at given phase.
@@ -422,20 +423,27 @@ object Contexts {
       base.settings.color.value == "always"
 
     protected def init(outer: Context): this.type = {
-      this.outer = outer
-      this.implicitsCache = null
-      this.phasedCtx = this
-      this.phasedCtxs = null
-      this.sourceCtx = null
-      // See comment related to `creationTrace` in this file
-      // setCreationTrace()
+      _outer = outer
+      _period = outer.period
+      _mode = outer.mode
+      _owner = outer.owner
+      _tree = outer.tree
+      _scope = outer.scope
+      _typerState = outer.typerState
+      _typeAssigner = outer.typeAssigner
+      _importInfo = outer.importInfo
+      _gadt = outer.gadt
+      _searchHistory = outer.searchHistory
+      _source = outer.source
+      _moreProperties = outer.moreProperties
+      _store = outer.store
       this
     }
 
     /** A fresh clone of this context. */
     def fresh: FreshContext = {
       util.Stats.record("Context.fresh")
-      clone.asInstanceOf[FreshContext].init(this)
+      new FreshContext(base).init(this)
     }
 
     final def withOwner(owner: Symbol): Context =
@@ -511,7 +519,7 @@ object Contexts {
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  abstract class FreshContext extends Context {
+  class FreshContext(base: ContextBase) extends Context(base) {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
@@ -595,7 +603,7 @@ object Contexts {
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
-  private class InitialContext(val base: ContextBase, settingsGroup: SettingGroup) extends FreshContext {
+  private class InitialContext(base: ContextBase, settingsGroup: SettingGroup) extends FreshContext(base) {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
@@ -611,9 +619,8 @@ object Contexts {
     gadt = EmptyGADTMap
   }
 
-  @sharable object NoContext extends Context {
-    override def source = NoSource
-    val base: ContextBase = null
+  @sharable object NoContext extends Context(null) {
+    source = NoSource
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
 
