@@ -28,7 +28,7 @@ import scala.annotation.constructorOnly
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into `implicitly[Type[T]].unary_~`.
+ *  Type healing consists in transforming a phase inconsistent type `T` into a splice of `implicitly[Type[T]]`.
  */
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
   import tpd._
@@ -65,7 +65,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       }
       else { // level 0 inside an inline definition
         ctx.error(
-          "Malformed macro call. The contents of the $ must call a static method and arguments must be quoted or inline.",
+          "Malformed macro call. The contents of the splice ${...} must call a static method and arguments must be quoted or inline.",
           splice.sourcePos)
         splice
       }
@@ -73,8 +73,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   }
 
 
-  /** Add cast to force boundaries where T and ~t (an alias of T) are used to ensure PCP.
-   *  '{   ~(...: T)  }  -->  '{   ~(...: T).asInstanceOf[T]  } --> '{   ~(...: T).asInstanceOf[~t]  }
+  /** Add cast to force boundaries where T and $t (an alias of T) are used to ensure PCP.
+   *  '{   ${...: T}  }  -->  '{   ${...: T}.asInstanceOf[T]  } --> '{   ${...: T}.asInstanceOf[$t]  }
    */
   protected def addSpliceCast(tree: Tree)(implicit ctx: Context): Tree = {
     val tp = checkType(tree.sourcePos).apply(tree.tpe.widenTermRefExpr)
@@ -86,7 +86,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  that are phase-incorrect can still be healed as follows:
    *
    *  If `T` is a reference to a type at the wrong level, try to heal it by replacing it with
-   *  `~implicitly[quoted.Type[T]]`.
+   *  `${implicitly[quoted.Type[T]]}`.
    */
   protected def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
     def checkTp(tp: Type): Type = checkType(tree.sourcePos).apply(tp)
@@ -144,7 +144,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  by which we refer to `sym`. If it is an inconsistent type try construct a healed type for it.
    *
    *  @return `None` if the phase is correct or cannot be healed
-   *          `Some(tree)` with the `tree` of the healed type tree for `~implicitly[quoted.Type[T]]`
+   *          `Some(tree)` with the `tree` of the healed type tree for `${implicitly[quoted.Type[T]]}`
    */
   private def checkSymLevel(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
     val isThis = tp.isInstanceOf[ThisType]
