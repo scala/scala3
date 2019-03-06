@@ -785,10 +785,9 @@ trait Checking {
                    |its constructor cannot be called again""", call.sourcePos)
 
       if (caller.is(Module)) {
-        val objRef = caller.sourceModule.termRef
         val traverser = new TreeTraverser {
           def traverse(tree: Tree)(implicit ctx: Context) = tree match {
-            case tree: RefTree if tree.isTerm && tree.tpe <:< objRef =>
+            case tree: RefTree if tree.isTerm && (tree.tpe.widen.classSymbol eq caller) =>
               ctx.error("super constructor cannot be passed a self reference", tree.sourcePos)
             case _ =>
               traverseChildren(tree)
