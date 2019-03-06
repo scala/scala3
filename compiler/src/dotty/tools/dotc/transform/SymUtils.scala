@@ -145,11 +145,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
     }.reverse
   }
 
-  def hasAnonymousChild(implicit ctx: Context): Boolean = {
-    if (self.isType)
-      self.setFlag(ChildrenQueried)
+  def hasAnonymousChild(implicit ctx: Context): Boolean =
     children.exists(_ `eq` self)
-  }
 
   /** Is symbol directly or indirectly owned by a term symbol? */
   @tailrec final def isLocal(implicit ctx: Context): Boolean = {
