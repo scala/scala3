@@ -47,9 +47,7 @@ abstract class Lifter {
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
-      val ddef = liftedDef(lifted, expr).withSpan(expr.span)
-      lifted.defTree = ddef
-      defs += ddef
+      defs += liftedDef(lifted, expr).withSpan(expr.span).setDefTree
       ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
