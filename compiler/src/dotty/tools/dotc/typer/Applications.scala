@@ -199,8 +199,11 @@ object Applications {
       else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
       else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
     val sym = tree.symbol
-    if (sym.isSplice || sym.isQuote) {
-      markAsMacro(ctx)
+    if (sym.isSplice) {
+      if (StagingContext.level == 0)
+        markAsMacro(ctx)
+      ctx.compilationUnit.needsStaging = true
+    } else if (sym.isQuote) {
       ctx.compilationUnit.needsStaging = true
     }
 
