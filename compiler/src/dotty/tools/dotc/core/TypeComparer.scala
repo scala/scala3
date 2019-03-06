@@ -1899,7 +1899,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
      *  denote the same set of values.
      */
     def decompose(sym: Symbol, tp: Type): List[Type] =
-      sym.children.map(x => ctx.typer.refineUsingParent(tp, x)).filter(_.exists)
+      sym.children.map(x => ctx.refineUsingParent(tp, x)).filter(_.exists)
 
     (tp1.dealias, tp2.dealias) match {
       case (tp1: ConstantType, tp2: ConstantType) =>

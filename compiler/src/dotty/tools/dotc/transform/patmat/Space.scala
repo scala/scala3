@@ -467,7 +467,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp =>
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          val refined = ctx.typer.refineUsingParent(tp, sym1)
+          val refined = ctx.refineUsingParent(tp, sym1)
           val inhabited = new TypeAccumulator[Boolean] {
             override def apply(x: Boolean, tp: Type) = x && {
               tp match {
