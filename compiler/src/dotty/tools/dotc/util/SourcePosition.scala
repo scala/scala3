@@ -70,7 +70,7 @@ extends interfaces.SourcePosition with Showable {
 }
 
 /** A sentinel for a non-existing source position */
-@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan) {
+@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan, null) {
   override def toString: String = "?"
   override def withOuter(outer: SourcePosition): SourcePosition = outer
 }

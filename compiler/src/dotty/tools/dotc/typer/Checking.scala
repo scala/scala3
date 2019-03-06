@@ -783,6 +783,18 @@ trait Checking {
       else if (called.is(Trait) && !caller.mixins.contains(called))
         ctx.error(i"""$called is already implemented by super${caller.superClass},
                    |its constructor cannot be called again""", call.sourcePos)
+
+      if (caller.is(Module)) {
+        val traverser = new TreeTraverser {
+          def traverse(tree: Tree)(implicit ctx: Context) = tree match {
+            case tree: RefTree if tree.isTerm && (tree.tpe.widen.classSymbol eq caller) =>
+              ctx.error("super constructor cannot be passed a self reference", tree.sourcePos)
+            case _ =>
+              traverseChildren(tree)
+          }
+        }
+        traverser.traverse(call)
+      }
     }
 
   /** Check that `tpt` does not define a higher-kinded type */
