@@ -1072,6 +1072,10 @@ trait Kernel {
   /** Comment */
   type Comment <: AnyRef
 
+  def Comment_raw(self: Comment): String
+  def Comment_expanded(self: Comment): Option[String]
+  def Comment_usecases(self: Comment): List[(String, Option[DefDef])]
+
   //
   // CONSTANTS
   //

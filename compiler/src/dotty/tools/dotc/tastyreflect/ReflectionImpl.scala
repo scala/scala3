@@ -9,7 +9,7 @@ object ReflectionImpl {
     apply(rootContext, SourcePosition(rootContext.source, Spans.NoSpan))
 
   def apply(rootContext: Contexts.Context, rootPosition: SourcePosition): scala.tasty.Reflection { val kernel: KernelImpl } = {
-    class ReflectionImpl(val kernel: KernelImpl) extends scala.tasty.Reflection with CoreImpl with CommentOpsImpl
+    class ReflectionImpl(val kernel: KernelImpl) extends scala.tasty.Reflection
     new ReflectionImpl(new KernelImpl(rootContext, rootPosition))
   }
 

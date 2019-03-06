@@ -1313,6 +1313,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Comment = core.Comments.Comment
 
+  def Comment_raw(self: Comment): String = self.raw
+  def Comment_expanded(self: Comment): Option[String] = self.expanded
+  def Comment_usecases(self: Comment): List[(String, Option[DefDef])] = self.usecases.map { uc => (uc.code, uc.tpdCode) }
+
   //
   // CONSTANTS
   //
