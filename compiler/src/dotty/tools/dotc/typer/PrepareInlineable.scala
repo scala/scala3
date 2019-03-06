@@ -253,7 +253,7 @@ object PrepareInlineable {
   }
 
   def checkInlineMacro(sym: Symbol, rhs: Tree, pos: SourcePosition)(implicit ctx: Context) = {
-    if (ctx.phase.isTyper) {
+    if (!ctx.isAfterTyper) {
 
       /** InlineSplice is used to detect cases where the expansion
        *  consists of a (possibly multiple & nested) block or a sole expression.
