@@ -1139,7 +1139,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** Let bind `tree` unless `tree` is at least idempotent */
-  def letBind(tree: Tree)(within: Tree => Tree)(implicit ctx: Context): Tree =
+  def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context): Tree =
     letBindUnless(TreeInfo.Idempotent, tree)(within)
 
   def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = {

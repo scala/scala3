@@ -221,7 +221,7 @@ object Erasure {
               val nullTree = Literal(Constant(null))
               val unboxedNull = adaptToType(nullTree, underlying)
 
-              letBind(tree) { t =>
+              evalOnce(tree) { t =>
                 If(t.select(defn.Object_eq).appliedTo(nullTree),
                   unboxedNull,
                   unboxedTree(t))

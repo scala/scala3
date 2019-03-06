@@ -68,7 +68,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
         val extensionMeth = extensionMethod(origMeth)
 
         if (!ctParams.isEmpty) {
-          letBind(qual) { ev =>
+          evalOnce(qual) { ev =>
             val ctArgs = ctParams.map(tparam =>
               TypeTree(tparam.typeRef.asSeenFrom(ev.tpe, origCls)))
             ref(extensionMeth)

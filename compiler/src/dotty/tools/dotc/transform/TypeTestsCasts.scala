@@ -265,12 +265,12 @@ object TypeTestsCasts {
           case _: SingletonType =>
             expr.isInstance(testType).withSpan(tree.span)
           case OrType(tp1, tp2) =>
-            letBind(expr) { e =>
+            evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated = false)
                 .or(transformTypeTest(e, tp2, flagUnrelated = false))
             }
           case AndType(tp1, tp2) =>
-            letBind(expr) { e =>
+            evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated)
                 .and(transformTypeTest(e, tp2, flagUnrelated))
             }
@@ -278,7 +278,7 @@ object TypeTestsCasts {
             def isArrayTest(arg: Tree) =
               ref(defn.runtimeMethodRef(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
             if (ndims == 1) isArrayTest(expr)
-            else letBind(expr) { e =>
+            else evalOnce(expr) { e =>
               derivedTree(e, defn.Any_isInstanceOf, e.tpe)
                 .and(isArrayTest(e))
             }
