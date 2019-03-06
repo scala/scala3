@@ -1928,7 +1928,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
         // Unboxed xs.zip(ys).zip(zs).forall { case ((a, b), c) => f(a, b, c) }
-        def zip_zip_forall[A, B, C](xs: List[A], ys: List[B], zs: List[C])(f: (A, B, C) => Boolean): Boolean =
+        def zip_zip_forall[A, B, C](xs: List[A], ys: List[B], zs: List[C])(f: (A, B, C) => Boolean): Boolean = {
           xs match {
             case x :: xs => ys match {
               case y :: ys => zs match {
@@ -1939,52 +1939,56 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             }
             case _ => true
           }
+        }
+        def covariantIntersecting(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean = {
+          intersecting(tp1, tp2) || {
+            // We still need to proof that `Nothing` is not a valid
+            // instantiation of this type parameter. We have two ways
+            // to get to that conclusion:
+            // 1. `Nothing` does not conform to the type parameter's lb
+            // 2. `tycon1` has a field typed with this type parameter.
+            //
+            // Because of separate compilation, the use of 2. is
+            // limited to case classes.
+            import dotty.tools.dotc.typer.Applications.productSelectorTypes
+            val lowerBoundedByNothing = tparam.paramInfo.bounds.lo eq NothingType
+            val typeUsedAsField =
+              productSelectorTypes(tycon1, null).exists {
+                case tp: TypeRef =>
+                  (tp.designator: Any) == tparam // Bingo!
+                case _ =>
+                  false
+              }
+            lowerBoundedByNothing && !typeUsedAsField
+          }
+        }
 
-          zip_zip_forall(args1, args2, tycon1.typeParams) {
-            (arg1, arg2, tparam) =>
-              val v = tparam.paramVariance
-              if (v > 0)
-                intersecting(arg1, arg2) || {
-                  // We still need to proof that `Nothing` is not a valid
-                  // instantiation of this type parameter. We have two ways
-                  // to get to that conclusion:
-                  // 1. `Nothing` does not conform to the type parameter's lb
-                  // 2. `tycon1` has a field typed with this type parameter.
-                  //
-                  // Because of separate compilation, the use of 2. is
-                  // limited to case classes.
-                  import dotty.tools.dotc.typer.Applications.productSelectorTypes
-                  val lowerBoundedByNothing = tparam.paramInfo.bounds.lo eq NothingType
-                  val typeUsedAsField =
-                    productSelectorTypes(tycon1, null).exists {
-                      case tp: TypeRef =>
-                        (tp.designator: Any) == tparam // Bingo!
-                      case _ =>
-                        false
-                    }
-                  lowerBoundedByNothing && !typeUsedAsField
-                }
-              else if (v < 0)
-                // Contravariant case: a value where this type parameter is
-                // instantiated to `Any` belongs to both types.
-                true
-              else
-                isSameType(arg1, arg2) || {
-                  // We can only trust a "no" from `isSameType` when both
-                  // `arg1` and `arg2` are fully instantiated.
-                  val fullyInstantiated = new TypeAccumulator[Boolean] {
-                    override def apply(x: Boolean, t: Type) =
-                      x && {
-                        t match {
-                          case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
-                          case _: SkolemType | _: TypeVar | _: TypeParamRef => false
-                          case _ => foldOver(x, t)
-                        }
+        zip_zip_forall(args1, args2, tycon1.typeParams) {
+          (arg1, arg2, tparam) =>
+            val v = tparam.paramVariance
+            if (v > 0)
+              covariantIntersecting(arg1, arg2, tparam)
+            else if (v < 0)
+              // Contravariant case: a value where this type parameter is
+              // instantiated to `Any` belongs to both types.
+              true
+            else
+              covariantIntersecting(arg1, arg2, tparam) && (isSameType(arg1, arg2) || {
+                // We can only trust a "no" from `isSameType` when both
+                // `arg1` and `arg2` are fully instantiated.
+                val fullyInstantiated = new TypeAccumulator[Boolean] {
+                  override def apply(x: Boolean, t: Type) =
+                    x && {
+                      t match {
+                        case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+                        case _: SkolemType | _: TypeVar | _: TypeParamRef => false
+                        case _ => foldOver(x, t)
                       }
-                  }
-                  !(fullyInstantiated.apply(true, arg1) &&
-                    fullyInstantiated.apply(true, arg2))
+                    }
                 }
+                !(fullyInstantiated.apply(true, arg1) &&
+                  fullyInstantiated.apply(true, arg2))
+              })
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
         intersecting(tp1.resType, tp2.resType)
