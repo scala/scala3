@@ -128,7 +128,7 @@ public enum ErrorMessageID {
     PolymorphicMethodMissingTypeInParentID,
     ParamsNoInlineID,
     JavaSymbolIsNotAValueID,
-    DoubleDeclarationID,
+    DoubleDefinitionID,
     MatchCaseOnlyNullWarningID,
     ImportRenamedTwiceID,
     TypeTestAlwaysSucceedsID,

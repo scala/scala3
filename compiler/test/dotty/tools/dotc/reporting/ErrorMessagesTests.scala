@@ -1514,7 +1514,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val DoubleDeclaration(symbol, previousSymbol) :: Nil = messages
+      val DoubleDefinition(symbol, previousSymbol, _) :: Nil = messages
       assertEquals(symbol.name.mangledString, "a")
   }
 
