@@ -455,7 +455,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           frozenConstraint && (tp1 match {
             case tp1: TypeParamRef => 
               val res = constraint.isLess(tp1, tp2)
-              if (res) println("!!! result affected !!!")
+              if (res) throw new RuntimeException("!!! result affected !!!")
               res
             case _ => false
           }) || {
