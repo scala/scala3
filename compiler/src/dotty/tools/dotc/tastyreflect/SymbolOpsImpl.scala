@@ -28,6 +28,16 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
 
     def pos(implicit ctx: Context): Position = symbol.sourcePos
 
+    def comment(implicit ctx: Context): Option[Comment] = {
+      import dotty.tools.dotc.core.Comments.CommentsContext
+      val docCtx = ctx.docCtx.getOrElse {
+        throw new RuntimeException(
+          "DocCtx could not be found and comments are unavailable. This is a compiler-internal error."
+        )
+      }
+      docCtx.docstring(symbol)
+    }
+
     def owner(implicit ctx: Context): Symbol = symbol.owner
 
     def isLocalDummy(implicit ctx: Context): Boolean = symbol.isLocalDummy
