@@ -410,6 +410,9 @@ trait Core {
   /** Source position */
   type Position <: AnyRef
 
+  /** Comment */
+  type Comment <: AnyRef
+
   /** Constant value represented as the constant itself */
   type Constant <: AnyRef
 

@@ -7,6 +7,7 @@ abstract class Reflection
     with CaseDefOps
     with ConstantOps
     with ContextOps
+    with CommentOps
     with FlagsOps
     with IdOps
     with ImportSelectorOps

@@ -37,6 +37,9 @@ trait SymbolOps extends Core {
     /** The position of this symbol */
     def pos(implicit ctx: Context): Position
 
+    /** The comment for this symbol, if any */
+    def comment(implicit ctx: Context): Option[Comment]
+
     def localContext(implicit ctx: Context): Context
 
     /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safly check and cast to PackageSymbol */

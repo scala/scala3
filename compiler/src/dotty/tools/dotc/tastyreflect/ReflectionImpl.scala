@@ -8,6 +8,7 @@ class ReflectionImpl(val rootContext: Contexts.Context)
     with CaseDefOpsImpl
     with ConstantOpsImpl
     with ContextOpsImpl
+    with CommentOpsImpl
     with FlagsOpsImpl
     with IdOpsImpl
     with ImportSelectorOpsImpl
