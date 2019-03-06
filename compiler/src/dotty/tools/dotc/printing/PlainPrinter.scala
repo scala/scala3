@@ -67,8 +67,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try ctx.typeComparer.isSameTypeWhenFrozen(lo, hi)
-    catch { case NonFatal(ex) => false }
+    try lo frozen_=:= hi catch { case NonFatal(ex) => false }
 
   private def homogenizeArg(tp: Type) = tp match {
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)

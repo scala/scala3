@@ -851,6 +851,9 @@ object Types {
       ctx.typeComparer.isSameType(this, that)
     }
 
+    final def frozen_=:=(that: Type)(implicit ctx: Context): Boolean =
+      ctx.typeComparer.isSameTypeWhenFrozen(this, that)
+
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
     def isValueSubType(that: Type)(implicit ctx: Context): Boolean = widen match {
       case self: TypeRef if self.symbol.isPrimitiveValueClass =>

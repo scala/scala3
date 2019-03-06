@@ -1370,11 +1370,14 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val strippedType2 = stripImplicit(fullType2, +1)
 
     val result = compareWithTypes(strippedType1, strippedType2)
-    if (result != 0) result
-    else if (implicitBalance != 0) -implicitBalance.signum
+    if (result != 0 || !ctx.typerState.test(implicit ctx => strippedType1 =:= strippedType2))
+      result
+    else if (implicitBalance != 0)
+      -implicitBalance.signum
     else if ((strippedType1 `ne` fullType1) || (strippedType2 `ne` fullType2))
       compareWithTypes(fullType1, fullType2)
-    else 0
+    else
+      0
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
@@ -1637,7 +1640,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
               // If all p_i_k's are the same, assume the type as formal parameter
               // type of the i'th parameter of the closure.
-              if (isUniform(ps)(ctx.typeComparer.isSameTypeWhenFrozen(_, _))) ps.head
+              if (isUniform(ps)(_ frozen_=:= _)) ps.head
               else WildcardType)
             def isPartial = // we should generate a partial function for the arg
               fn.get.isInstanceOf[untpd.Match] &&
