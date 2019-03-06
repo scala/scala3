@@ -288,8 +288,8 @@ object PrepareInlineable {
               ctx.error(
                 """Malformed macro.
                   |
-                  |Expected the ~ to be at the top of the RHS:
-                  |  inline def foo(inline x: X, ..., y: Y): Int = ~impl(x, ... '(y))
+                  |Expected the splice ${...} to be at the top of the RHS:
+                  |  inline def foo(inline x: X, ..., y: Y): Int = ${impl(x, ... '{y}})
                   |
                   | * The contents of the splice must call a static method
                   | * All arguments must be quoted or inline

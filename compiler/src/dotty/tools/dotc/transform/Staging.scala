@@ -28,7 +28,7 @@ import scala.annotation.constructorOnly
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into `implicitly[Type[T]].unary_~`.
+ *  Type healing consists in transforming a phase inconsistent type `T` into `${ implicitly[Type[T]] }`.
  */
 class Staging extends MacroTransform {
   import tpd._
