@@ -453,7 +453,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             else isSubTypeWhenFrozen(tp1, tp2)
           alwaysTrue ||
           frozenConstraint && (tp1 match {
-            case tp1: TypeParamRef => constraint.isLess(tp1, tp2)
+            case tp1: TypeParamRef => 
+              val res = constraint.isLess(tp1, tp2)
+              if (res) println("!!! result affected !!!")
+              res
             case _ => false
           }) || {
             if (canConstrain(tp2) && !approx.low)
