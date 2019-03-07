@@ -1001,6 +1001,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       foreachSubTree { tree => if (f(tree)) buf += tree }
       buf.toList
     }
+
+    /** Set this tree as the `defTree` of its symbol and return this tree */
+    def setDefTree(implicit ctx: Context): ThisTree = {
+      val sym = tree.symbol
+      if (sym.exists) sym.defTree = tree
+      tree
+    }
   }
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.

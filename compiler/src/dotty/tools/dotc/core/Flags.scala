@@ -608,6 +608,9 @@ object Flags {
   /** An inline method */
   final val InlineMethod: FlagConjunction = allOf(Inline, Method)
 
+  /** An inline by-name parameter proxy */
+  final val InlineByNameProxy: FlagConjunction = allOf(InlineProxy, Method)
+
   /** An inline parameter */
   final val InlineParam: FlagConjunction = allOf(Inline, Param)
 

@@ -19,9 +19,6 @@ class Foo {
     'that // error
   }) }
 
-  inline def k(): Unit = ${ Foo.impl[Any](this) } // error
-  inline def l(that: Foo): Unit = ${ Foo.impl[Any](that) } // error
-
 }
 
 object Foo {

@@ -36,7 +36,7 @@ import scala.annotation.constructorOnly
  *      val x1 = ???
  *      val x2 = ???
  *      ...
- *      ~{ ... '{ ... x1 ... x2 ...} ... }
+ *      ${ ... '{ ... x1 ... x2 ...} ... }
  *      ...
  *    }
  *    ```
@@ -56,12 +56,12 @@ import scala.annotation.constructorOnly
  *           val x1$1 = args(0).asInstanceOf[Expr[T]]
  *           val x2$1 = args(1).asInstanceOf[Expr[T]] // can be asInstanceOf[Type[T]]
  *           ...
- *           { ... '{ ... x1$1.unary_~ ... x2$1.unary_~ ...} ... }
+ *           { ... '{ ... ${x1$1} ... ${x2$1} ...} ... }
  *         }
  *       )
  *     )
  *    ```
- *  and then performs the same transformation on `'{ ... x1$1.unary_~ ... x2$1.unary_~ ...}`.
+ *  and then performs the same transformation on `'{ ... ${x1$1} ... ${x2$1} ...}`.
  *
  */
 class ReifyQuotes extends MacroTransform {
@@ -95,9 +95,9 @@ class ReifyQuotes extends MacroTransform {
    *                     Returns a version of the reference that needs to be used in its place.
    *                     '{
    *                       val x = ???
-   *                       { ... '{ ... x ... } ... }.unary_~
+   *                       ${ ... '{ ... x ... } ... }
    *                     }
-   *                     Eta expanding the `x` in `{ ... '{ ... x ... } ... }.unary_~` will return a `x$1.unary_~` for which the `x$1`
+   *                     Eta expanding the `x` in `${ ... '{ ... x ... } ... }` will return a `${x$1}` for which the `x$1`
    *                     be created by some outer reifier.
    *                     This transformation is only applied to definitions at staging level 1.
    *                     See `isCaptured`.
@@ -105,7 +105,7 @@ class ReifyQuotes extends MacroTransform {
   private class QuoteReifier(outer: QuoteReifier, capturers: mutable.HashMap[Symbol, Tree => Tree],
                              val embedded: Embedded, val owner: Symbol)(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) { self =>
 
-    import TreeMapWithStages._
+    import StagingContext._
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean)(implicit ctx: Context): QuoteReifier = {
@@ -113,11 +113,11 @@ class ReifyQuotes extends MacroTransform {
       new QuoteReifier(this, capturers, nestedEmbedded, ctx.owner)(ctx)
     }
 
-    /** Assuming <expr> contains types `<tag1>.unary_~, ..., <tagN>.unary_~`, the expression
+    /** Assuming <expr> contains types `${<tag1>}, ..., ${<tagN>}`, the expression
      *
-     *      { type <Type1> = <tag1>.unary_~
+     *      { type <Type1> = ${<tag1>}
      *        ...
-     *        type <TypeN> = <tagN>.unary_~
+     *        type <TypeN> = ${<tagN>}
      *        <expr>
      *      }
      *
@@ -133,7 +133,7 @@ class ReifyQuotes extends MacroTransform {
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
         val local = ctx.newSymbol(
           owner = ctx.owner,
-          name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_~").toTermName).toTypeName,
+          name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
           flags = Synthetic,
           info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
           coord = spliced.termSymbol.coord).asType
@@ -178,7 +178,7 @@ class ReifyQuotes extends MacroTransform {
       else body match {
         case body: RefTree if isCaptured(body.symbol, level + 1) =>
           // Optimization: avoid the full conversion when capturing `x`
-          // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
+          // in '{ x } to '{ ${x$1} } and go directly to `x$1`
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
@@ -246,7 +246,7 @@ class ReifyQuotes extends MacroTransform {
      *     '{
      *        val x = ???
      *        val y = ???
-     *        { ... '{ ... x .. y ... } ... }.unary_~
+     *        ${ ... '{ ... x .. y ... } ... }
      *      }
      *  then the spliced subexpression
      *     { ... '{ ... x ... y ... } ... }
@@ -254,7 +254,7 @@ class ReifyQuotes extends MacroTransform {
      *     (args: Seq[Any]) => {
      *       val x$1 = args(0).asInstanceOf[Expr[Any]] // or .asInstanceOf[Type[Any]]
      *       val y$1 = args(1).asInstanceOf[Expr[Any]] // or .asInstanceOf[Type[Any]]
-     *       { ... '{ ... x$1.unary_~ ... y$1.unary_~ ... } ... }
+     *       { ... '{ ... ${x$1} ... ${y$1} ... } ... }
      *     }
      *
      *  See: `capture`
@@ -347,7 +347,7 @@ class ReifyQuotes extends MacroTransform {
       reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
           case TypeApply(Select(spliceTree @ Spliced(_), _), tp) if tree.symbol.isTypeCast =>
-            // Splice term which should be in the form `x.unary_~.asInstanceOf[T]` where T is an artefact of
+            // Splice term which should be in the form `${x}.asInstanceOf[T]` where T is an artifact of
             // typer to allow pickling/unpickling phase consistent types
             transformSplice(spliceTree)
 
