@@ -441,6 +441,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
+              // FIXME wrong span, this is the span inside the inline method
               singleton(t.dealias).withSpan(tree.span)
             case Some(t) if tree.isType =>
               TypeTree(t).withSpan(tree.span)

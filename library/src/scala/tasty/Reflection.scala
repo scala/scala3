@@ -15,6 +15,7 @@ abstract class Reflection
     with PatternOps
     with PositionOps
     with Printers
+    with ReportingOps
     with RootPosition
     with SettingsOps
     with SignatureOps

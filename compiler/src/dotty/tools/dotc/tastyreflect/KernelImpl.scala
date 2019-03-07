@@ -30,6 +30,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Context_source(self: Context): java.nio.file.Path = self.compilationUnit.source.file.jpath
 
   //
+  // REPORTING
+  //
+
+  def error(msg: => String, pos: Position)(implicit ctx: Context): Unit =
+    ctx.error(msg, pos)
+
+  def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit =
+    ctx.warning(msg, pos)
+
+  //
   // Settings
   //
 

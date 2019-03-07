@@ -1,0 +1,16 @@
+[486..500] in quoted_2.scala
+here is the the argument is _root_.scala.StringContext.apply(("abc", "": scala.<repeated>[scala#Predef.String])).s(("def": scala.<repeated>[scala.Any]))
+[453..466] in quoted_2.scala
+here is the the argument is ("abc": scala.Predef.String)
+[407..408] in quoted_2.scala
+here is the the argument is d
+[386..387] in quoted_2.scala
+here is the the argument is c
+[309..323] in quoted_2.scala
+here is the the argument is _root_.scala.StringContext.apply(("abc", "": scala.<repeated>[scala#Predef.String])).s(("def": scala.<repeated>[scala.Any]))
+[277..290] in quoted_2.scala
+here is the the argument is ("abc": scala.Predef.String)
+[233..234] in quoted_2.scala
+here is the the argument is d
+[213..214] in quoted_2.scala
+here is the the argument is c
