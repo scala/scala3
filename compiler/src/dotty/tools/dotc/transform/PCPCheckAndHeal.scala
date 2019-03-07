@@ -147,14 +147,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *          `Some(tree)` with the `tree` of the healed type tree for `${implicitly[quoted.Type[T]]}`
    */
   private def checkSymLevel(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
-    val isThis = tp.isInstanceOf[ThisType]
-    val shouldTryHealable = {
-      // TODO move logic to levelOK
-      tp.isInstanceOf[ThisType] ||
-      sym.is(Param) ||
-      !sym.maybeOwner.isType
-    }
-    if (sym.exists && !sym.isStaticOwner && !levelOK(sym) && shouldTryHealable)
+    /** Is a reference to a class but not `this.type` */
+    def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
+
+    if (sym.exists && !sym.isStaticOwner && !isClassRef && !levelOK(sym))
       tryHeal(sym, tp, pos)
     else
       None
