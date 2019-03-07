@@ -1,7 +1,7 @@
 object Test {
   class Foo(val name: String, val children: Int *)
   object Foo {
-    def unapply(f: Foo) = Some((f.name, f.children))
+    def unapplySeq(f: Foo) = Some((f.name, f.children))
   }
 
   def foo(f: Foo) = f match {

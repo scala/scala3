@@ -432,6 +432,12 @@ object desugar {
       appliedTypeTree(tycon, targs)
     }
 
+    def isRepeated(tree: Tree): Boolean = tree match {
+      case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
+      case ByNameTypeTree(tree1) => isRepeated(tree1)
+      case _ => false
+    }
+
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
 
@@ -482,11 +488,6 @@ object desugar {
       }
       def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
       def copyMeths = {
-        def isRepeated(tree: Tree): Boolean = tree match {
-          case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
-          case ByNameTypeTree(tree1) => isRepeated(tree1)
-          case _ => false
-        }
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
         })
@@ -560,7 +561,8 @@ object desugar {
     // companion definitions include:
     // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
     //     def apply[Ts](p1: T1, ..., pN: TN)(moreParams) = new C[Ts](p1, ..., pN)(moreParams)  (unless C is abstract)
-    //     def unapply[Ts]($1: C[Ts]) = $1
+    //     def unapply[Ts]($1: C[Ts]) = $1        // if not repeated
+    //     def unapplySeq[Ts]($1: C[Ts]) = $1     // if repeated
     // 2. The default getters of the constructor
     // The parent of the companion object of a non-parameterized case class
     //     (T11, ..., T1N) => ... => (TM1, ..., TMN) => C
@@ -609,9 +611,13 @@ object desugar {
             app :: widenDefs
           }
         val unapplyMeth = {
+          val hasRepeatedParam = constrVparamss.head.exists {
+            case ValDef(_, tpt, _) => isRepeated(tpt)
+          }
+          val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
-          DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
+          DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
             .withMods(synthetic)
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
