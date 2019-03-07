@@ -1070,7 +1070,7 @@ trait Implicits { self: Typer =>
       }
       else {
         val returned =
-          if (cand.isExtension) Applications.ExtMethodApply(adapted).withType(adapted.tpe)
+          if (cand.isExtension) new Applications.ExtMethodApply(adapted).withType(adapted.tpe)
           else adapted
         SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
       }
