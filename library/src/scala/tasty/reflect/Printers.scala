@@ -24,36 +24,67 @@ trait Printers
   with TypeOrBoundsOps {
 
   /** Adds `show` as an extension method of a `Tree` */
-  implicit def TreeShowDeco(tree: Tree): ShowAPI
+  implicit class TreeShowDeco(tree: Tree) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showTree(tree)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTree(tree)
+  }
 
   /** Adds `show` as an extension method of a `TypeOrBoundsTree` */
-  implicit def TypeOrBoundsTreeShowDeco(tpt: TypeOrBoundsTree): ShowAPI
+  implicit class TypeOrBoundsTreeShowDeco(tpt: TypeOrBoundsTree) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showTypeOrBoundsTree(tpt)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBoundsTree(tpt)
+  }
 
   /** Adds `show` as an extension method of a `TypeOrBounds` */
-  implicit def TypeOrBoundsShowDeco(tpt: TypeOrBounds): ShowAPI
+  implicit class TypeOrBoundsShowDeco(tpe: TypeOrBounds) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showTypeOrBounds(tpe)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBounds(tpe)
+  }
 
   /** Adds `show` as an extension method of a `CaseDef` */
-  implicit def CaseDefShowDeco(caseDef: CaseDef): ShowAPI
+  implicit class CaseDefShowDeco(caseDef: CaseDef) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showCaseDef(caseDef)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showCaseDef(caseDef)
+  }
 
   /** Adds `show` as an extension method of a `Pattern` */
-  implicit def PatternShowDeco(pattern: Pattern): ShowAPI
+  implicit class PatternShowDeco(pattern: Pattern) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showPattern(pattern)
+  }
 
   /** Adds `show` as an extension method of a `Constant` */
-  implicit def ConstantShowDeco(const: Constant): ShowAPI
+  implicit class ConstantShowDeco(const: Constant) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showConstant(const)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showConstant(const)
+  }
 
   /** Adds `show` as an extension method of a `Symbol` */
-  implicit def SymbolShowDeco(symbol: Symbol): ShowAPI
+  implicit class SymbolShowDeco(symbol: Symbol) {
+    /** Shows the tree as extractors */
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
+    /** Shows the tree as source code */
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showSymbol(symbol)
+  }
 
   /** Adds `show` as an extension method of a `Flags` */
-  implicit def FlagsShowDeco(flags: Flags): ShowAPI
-
-  /** Define `show` as method */
-  trait ShowAPI {
+  implicit class FlagsShowDeco(flags: Flags) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String
-
+    def show(implicit ctx: Context): String = new ExtractorsPrinter().showFlags(flags)
     /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String
+    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showFlags(flags)
   }
 
   abstract class Printer {

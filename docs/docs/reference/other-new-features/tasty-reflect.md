@@ -175,6 +175,8 @@ TASTy Reflect provides the following types:
 
 +- Position
 
++- Comment
+
 +- Constant
 
 +- Symbol --+- PackageSymbol

@@ -3,19 +3,37 @@ package reflect
 
 trait ImportSelectorOps extends Core {
 
-  val SimpleSelector: SimpleSelectorModule
-  abstract class SimpleSelectorModule {
-    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id]
+  implicit class SimpleSelectorAPI(self: SimpleSelector) {
+    def selection(implicit ctx: Context): Id =
+      kernel.SimpleSelector_selection(self)
   }
 
-  val RenameSelector: RenameSelectorModule
-  abstract class RenameSelectorModule {
-    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[(Id, Id)]
+  object SimpleSelector {
+    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id] =
+      kernel.matchSimpleSelector(importSelector).map(_.selection)
   }
 
-  val OmitSelector: OmitSelectorModule
-  abstract class OmitSelectorModule {
-    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id]
+  implicit class RenameSelectorAPI(self: RenameSelector) {
+    def from(implicit ctx: Context): Id =
+      kernel.RenameSelector_from(self)
+
+    def to(implicit ctx: Context): Id =
+      kernel.RenameSelector_to(self)
+  }
+
+  object RenameSelector {
+    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[(Id, Id)] =
+      kernel.matchRenameSelector(importSelector).map(x => (x.from, x.to))
+  }
+
+  implicit class OmitSelectorAPI(self: OmitSelector) {
+    def omitted(implicit ctx: Context): Id =
+      kernel.SimpleSelector_omited(self)
+  }
+
+  object OmitSelector {
+    def unapply(importSelector: ImportSelector)(implicit ctx: Context): Option[Id] =
+      kernel.matchOmitSelector(importSelector).map(_.omitted)
   }
 
 }

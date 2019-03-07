@@ -106,11 +106,7 @@ object Splicer {
     protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
       args.toSeq
 
-    protected def interpretTastyContext()(implicit env: Env): Object = {
-      new ReflectionImpl(ctx) {
-        override def rootPosition: SourcePosition = pos
-      }
-    }
+    protected def interpretTastyContext()(implicit env: Env): Object = ReflectionImpl(ctx, pos)
 
     protected def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val (inst, clazz) =

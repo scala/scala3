@@ -3,14 +3,15 @@ package reflect
 
 trait ContextOps extends Core {
 
-  trait ContextAPI {
-    def owner: Symbol
+  implicit class ContextAPI(self: Context) {
+    /** Returns the owner of the context */
+    def owner: Symbol = kernel.Context_owner(self)
 
     /** Returns the source file being compiled. The path is relative to the current working directory. */
-    def source: java.nio.file.Path
+    def source: java.nio.file.Path = kernel.Context_source(self)
   }
-  implicit def ContextDeco(ctx: Context): ContextAPI
 
-  implicit def rootContext: Context
+  /** Context of the macro expansion */
+  implicit def rootContext: Context = kernel.rootContext
 
 }
