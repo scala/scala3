@@ -3,6 +3,8 @@ package scala.tasty.util
 import scala.quoted.Expr
 import scala.tasty.Reflection
 
+import scala.deprecated
+
 /**
  *  Usage:
  *
@@ -15,6 +17,7 @@ import scala.tasty.Reflection
  *  }
  *  ```
  */
+@deprecated("Use scala.quoted.matching.Literal", "0.14.0")
 class ConstantExtractor[R <: Reflection with Singleton](val reflect: Reflection) {
   import reflect._
 

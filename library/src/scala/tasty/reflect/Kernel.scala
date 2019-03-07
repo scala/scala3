@@ -1387,7 +1387,6 @@ trait Kernel {
   /** Convert `Term` to an `quoted.Expr[Any]` */
   def QuotedExpr_seal(self: Term)(implicit ctx: Context): scala.quoted.Expr[Any]
 
-
   /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type)(implicit ctx: Context): scala.quoted.Type[_]
 

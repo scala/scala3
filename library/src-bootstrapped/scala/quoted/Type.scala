@@ -13,7 +13,6 @@ sealed abstract class Type[T <: AnyKind] {
 
 /** Some basic type tags, currently incomplete */
 object Type {
-
   implicit def UnitTag: Type[Unit] = new TaggedType[Unit]
   implicit def BooleanTag: Type[Boolean] = new TaggedType[Boolean]
   implicit def ByteTag: Type[Byte] = new TaggedType[Byte]
