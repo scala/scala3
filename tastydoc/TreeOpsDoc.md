@@ -23,10 +23,13 @@ Represent a class (or an object?)
 * `name: String` Name of the class
 * `constr: DefDef` Constructor
 * `parents: List[TermOrTypeTree]`
-* `derived: List[TypeTree]`
-* `selfOpt: Option[ValDef]`
+* `derived: List[TypeTree]` //Classes dervied from this one
+* `selfOpt: Option[ValDef]` //Self paramaters
 * `body: List[Statement]` Body of the class
 ##### TypeDef
+Represent a type definition or a generic type
+* `name: String` Identifier
+* `rhs: TypeOrBoundsTree`
 ##### DefDef
 Represent a function
 * `name: String` Name of the function
