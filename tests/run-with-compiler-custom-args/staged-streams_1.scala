@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 /**
   * Port of the strymonas library as described in O. Kiselyov et al., Stream fusion, to completeness (POPL 2017)
@@ -598,7 +599,7 @@ object Test {
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
           Var('{($arr).length}) { n =>
-            Var(0.toExpr){ i =>
+            Var(0){ i =>
               k((i, n, arr))
             }
           }

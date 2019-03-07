@@ -1,5 +1,6 @@
 import scala.quoted._
 import scala.tasty.Reflection
+import scala.quoted.autolift._
 
 object Macro {
   class StringContextOps(sc: => StringContext) {
@@ -8,6 +9,6 @@ object Macro {
   implicit inline def XmlQuote(sc: => StringContext): StringContextOps = new StringContextOps(sc)
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    (sc.unseal.underlyingArgument.show + "\n" + args.unseal.underlyingArgument.show).toExpr
+    (sc.unseal.underlyingArgument.show + "\n" + args.unseal.underlyingArgument.show)
   }
 }

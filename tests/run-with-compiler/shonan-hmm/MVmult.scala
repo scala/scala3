@@ -1,6 +1,7 @@
 
 import scala.quoted.Toolbox.Default._
 import scala.quoted._
+import scala.quoted.autolift._
 
 class MVmult[Idx, T, Unt](tring: Ring[T], vec: VecROp[Idx, T, Unt]) {
   private[this] val blas2 = new Blas2(tring, vec)
@@ -41,12 +42,12 @@ object MVmult {
     val MV = new MVmult[Int, Expr[Int], Expr[Unit]](RingIntExpr, new VecRStaDim(RingIntExpr))
     '{
       (vout, a, v) => {
-        if (${n.toExpr} != vout.length) throw new IndexOutOfBoundsException(${n.toString.toExpr})
-        if (${m.toExpr} != v.length) throw new IndexOutOfBoundsException(${m.toString.toExpr})
+        if (${n} != vout.length) throw new IndexOutOfBoundsException(${n.toString})
+        if (${m} != v.length) throw new IndexOutOfBoundsException(${m.toString})
         ${
-          val vout_ = OVec(n, (i, x: Expr[Int]) => '{vout(${i.toExpr}) = $x})
-          val a_ = Vec(n, i => Vec(m, j => '{ a(${i.toExpr})(${j.toExpr}) } ))
-          val v_ = Vec(m, i => '{v(${i.toExpr})})
+          val vout_ = OVec(n, (i, x: Expr[Int]) => '{vout(${i}) = $x})
+          val a_ = Vec(n, i => Vec(m, j => '{ a(${i})(${j}) } ))
+          val v_ = Vec(m, i => '{v(${i})})
 
           MV.mvmult(vout_, a_, v_)
         }
@@ -57,7 +58,7 @@ object MVmult {
   def mvmult_ac(a: Array[Array[Int]]): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
-      val arr = ${a.toExpr}
+      val arr = ${a}
       ${
         val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntPExpr, new VecRStaDyn(new RingIntPExpr))(n, m, a2)
@@ -68,7 +69,7 @@ object MVmult {
   def mvmult_opt(a: Array[Array[Int]]): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
-      val arr = ${a.toExpr}
+      val arr = ${a}
       ${
         val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntOPExpr, new VecRStaDyn(new RingIntPExpr))(n, m, a2)
@@ -79,7 +80,7 @@ object MVmult {
   def mvmult_roll(a: Array[Array[Int]]): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
-      val arr = ${a.toExpr}
+      val arr = ${a}
       ${
         val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntOPExpr, new VecRStaOptDynInt(new RingIntPExpr))(n, m, a2)
@@ -107,7 +108,7 @@ object MVmult {
         val default: Expr[Array[Int]] = '{null.asInstanceOf[Array[Int]]} // never accessed
         loop(i + 1, default :: acc)
       } else '{
-        val row = ${a(i).toExpr}
+        val row = ${a(i)}
         ${ loop(i + 1, 'row :: acc) }
       }
     }
@@ -119,7 +120,7 @@ object MVmult {
     val m = a(0).length
     val vec: Vec[PV[Int], Vec[PV[Int], PV[Int]]] = Vec(Sta(n), i => Vec(Sta(m), j => (i, j) match {
       case (Sta(i), Sta(j)) => Sta(a(i)(j))
-      case (Sta(i), Dyn(j)) => Dyn('{$aa(${i.toExpr})($j)})
+      case (Sta(i), Dyn(j)) => Dyn('{$aa(${i})($j)})
       case (i, j) => Dyn('{ $aa(${Dyns.dyni(i)})(${Dyns.dyni(j)}) })
     }))
     (n, m, vec)
@@ -150,21 +151,21 @@ object MVmult {
 
   def copy_row1: Array[Int] => (Expr[Int] => Expr[Int]) = v => {
     import Lifters._
-    val arr = v.toExpr
+    val arr = v
     i => '{ ($arr).apply($i) }
   }
 
   def copy_row_let: Array[Int] => (Expr[Int] => Expr[Int]) = v => {
     import Lifters._
-    val arr: Expr[Array[Int]] = ??? // FIXME used genlet v.toExpr
+    val arr: Expr[Array[Int]] = ??? // FIXME used genlet v
     i => '{ ($arr).apply($i) }
   }
 
   private def mvmult_abs0(ring: Ring[PV[Int]], vecOp: VecROp[PV[Int], PV[Int], Expr[Unit]])(n: Int, m: Int, a: Vec[PV[Int], Vec[PV[Int], PV[Int]]]): Expr[(Array[Int], Array[Int]) => Unit] = {
     '{
       (vout, v) => {
-        if (${n.toExpr} != vout.length) throw new IndexOutOfBoundsException(${n.toString.toExpr})
-        if (${m.toExpr} != v.length) throw new IndexOutOfBoundsException(${m.toString.toExpr})
+        if (${n} != vout.length) throw new IndexOutOfBoundsException(${n.toString})
+        if (${m} != v.length) throw new IndexOutOfBoundsException(${m.toString})
         ${
           val vout_ : OVec[PV[Int], PV[Int], Expr[Unit]] = OVec(Sta(n), (i, x) => '{vout(${Dyns.dyni(i)}) = ${Dyns.dyn(x)}})
           val v_ : Vec[PV[Int], PV[Int]] = Vec(Sta(m), i => Dyn('{v(${Dyns.dyni(i)})}))

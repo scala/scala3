@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.quoted.Toolbox.Default._
 
@@ -20,6 +21,6 @@ object Macros {
         i += 1
       } while (i < j)
     }
-    res.show.toExpr
+    res.show
   }
 }

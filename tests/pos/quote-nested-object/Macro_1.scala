@@ -1,5 +1,6 @@
 
 import scala.quoted._
+import scala.quoted.autolift._
 
 object Macro {
 
@@ -10,7 +11,7 @@ object Macro {
 
     def plus(n: Int, m: Expr[Int]): Expr[Int] =
       if (n == 0) m
-      else '{ ${n.toExpr} + $m }
+      else '{ ${n} + $m }
 
     object Implementation2 {
 
@@ -18,7 +19,7 @@ object Macro {
 
       def plus(n: Int, m: Expr[Int]): Expr[Int] =
         if (n == 0) m
-        else '{ ${n.toExpr} + $m }
+        else '{ ${n} + $m }
     }
   }
 

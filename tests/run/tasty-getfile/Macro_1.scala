@@ -1,4 +1,6 @@
 import scala.quoted._
+import scala.quoted.autolift._
+
 import scala.tasty.Reflection
 
 object SourceFiles {
@@ -8,7 +10,7 @@ object SourceFiles {
 
   private def getThisFileImpl(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    rootContext.source.getFileName.toString.toExpr
+    rootContext.source.getFileName.toString
   }
 
 }

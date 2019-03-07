@@ -1,5 +1,6 @@
 
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -43,6 +44,6 @@ object Index {
 
     val index = keys.indexOf(key)
 
-    '{new Index(${index.toExpr})}
+    '{new Index(${index})}
   }
 }

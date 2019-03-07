@@ -1,5 +1,6 @@
 
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty.Reflection
 
@@ -63,6 +64,6 @@ object XmlQuote {
     }
 
     val string = parts.mkString("??")
-    '{new Xml(${string.toExpr}, $args2)}
+    '{new Xml(${string}, $args2)}
   }
 }

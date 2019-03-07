@@ -1,5 +1,6 @@
 import scala.quoted._
 import scala.tasty.Reflection
+import scala.quoted.autolift._
 
 import scala.language.implicitConversions
 
@@ -47,12 +48,12 @@ object FQuote {
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {
-        return '{s"`${${arg.showCode.toExpr}}` is not of type Int"}
+        return '{s"`${${arg.showCode}}` is not of type Int"}
       }
 
     }
 
     val string = parts.mkString("")
-    '{ new collection.immutable.StringOps(${string.toExpr}).format($args: _*) }
+    '{ new collection.immutable.StringOps(${string}).format($args: _*) }
   }
 }

@@ -1,4 +1,6 @@
 import scala.quoted._
+import scala.quoted.autolift._
+
 import scala.tasty._
 
 object Macros {
@@ -7,7 +9,7 @@ object Macros {
 
   private def impl(arg: Expr[Any])(implicit reflect: Reflection): Expr[(String, Any)] = {
     import reflect._
-    val source = arg.unseal.underlyingArgument.pos.sourceCode.toString.toExpr
+    val source = arg.unseal.underlyingArgument.pos.sourceCode.toString
     '{Tuple2($source, $arg)}
   }
 

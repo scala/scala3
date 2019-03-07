@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -12,7 +13,7 @@ object Macros {
 
     val tree = x.unseal
     tree.symbol.comment.map(_.raw) match {
-      case Some(str) => '{ println(${str.toExpr}) }
+      case Some(str) => '{ println(${str}) }
       case None => '{ println() }
     }
   }

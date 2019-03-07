@@ -1,4 +1,6 @@
 import scala.quoted._
+import scala.quoted.autolift._
+
 import scala.tasty._
 
 object Macros {
@@ -10,8 +12,8 @@ object Macros {
     val tree = x.unseal
     '{
       println()
-      println("tree: " + ${tree.show.toExpr})
-      println("tree deref. vals: " + ${tree.underlying.show.toExpr})
+      println("tree: " + ${tree.show})
+      println("tree deref. vals: " + ${tree.underlying.show})
     }
   }
 }

@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty.Reflection
 
@@ -35,7 +36,7 @@ object Macros {
 
     val tree = x.unseal
     output.traverseTree(tree)
-    '{print(${buff.result().toExpr})}
+    '{print(${buff.result()})}
   }
 
   def dummyShow(implicit reflect: Reflection): reflect.Printer = {

@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 trait Ring[T] {
   val zero: T
@@ -36,7 +37,7 @@ sealed trait PV[T] {
   def expr(implicit l: Liftable[T]): Expr[T]
 }
 case class Sta[T](x: T) extends PV[T] {
-  def expr(implicit l: Liftable[T]): Expr[T] = x.toExpr
+  def expr(implicit l: Liftable[T]): Expr[T] = x
 }
 case class Dyn[T](x: Expr[T]) extends PV[T] {
   def expr(implicit l: Liftable[T]): Expr[T] = x
@@ -71,7 +72,7 @@ case class Complex[T](re: T, im: T)
 
 object Complex {
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
-    def toExpr(comp: Complex[T]): Expr[Complex[T]] = '{Complex(${comp.re.toExpr}, ${comp.im.toExpr})}
+    def toExpr(comp: Complex[T]): Expr[Complex[T]] = '{Complex(${comp.re}, ${comp.im})}
   }
 }
 
@@ -167,7 +168,7 @@ object Test {
 
     val blasStaticIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
     val resCode3 = blasStaticIntPVExpr.dot(
-      vec1.map(i => Dyn(i.toExpr)),
+      vec1.map(i => Dyn(i)),
       vec2.map(i => Sta(i))
     ).expr
     println(resCode3.show)
@@ -177,10 +178,10 @@ object Test {
     val blasExprIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
     val resCode4: Expr[Array[Int] => Int] = '{
       arr =>
-        if (arr.length != ${vec2.size.toExpr}) throw new Exception("...")
+        if (arr.length != ${vec2.size}) throw new Exception("...")
         ${
           blasExprIntPVExpr.dot(
-            new Vec(vec2.size, i => Dyn('{arr(${i.toExpr})})),
+            new Vec(vec2.size, i => Dyn('{arr(${i})})),
             vec2.map(i => Sta(i))
           ).expr
         }
@@ -194,10 +195,10 @@ object Test {
     val blasExprComplexPVInt = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
     val resCode5: Expr[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>
-        if (arr.length != ${cmpxVec2.size.toExpr}) throw new Exception("...")
+        if (arr.length != ${cmpxVec2.size}) throw new Exception("...")
         ${
           val cpx = blasExprComplexPVInt.dot(
-            new Vec(cmpxVec2.size, i => Complex(Dyn('{arr(${i.toExpr}).re}), Dyn('{arr(${i.toExpr}).im}))),
+            new Vec(cmpxVec2.size, i => Complex(Dyn('{arr(${i}).re}), Dyn('{arr(${i}).im}))),
             new Vec(cmpxVec2.size, i => Complex(Sta(cmpxVec2.get(i).re), Sta(cmpxVec2.get(i).im)))
           )
           '{Complex(${cpx.re.expr}, ${cpx.im.expr})}
@@ -212,7 +213,7 @@ object Test {
     val dotIntOptExpr = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
     val staticVec = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
-    val code = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i.toExpr})})), staticVec).expr} }
+    val code = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
     println(code.show)
     println()
   }

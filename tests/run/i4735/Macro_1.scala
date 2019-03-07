@@ -1,4 +1,6 @@
 import scala.annotation.tailrec
+import scala.quoted.autolift._
+
 import scala.quoted._
 
 object Macro {
@@ -8,17 +10,17 @@ object Macro {
 
   private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
     val size = ($seq).length
-    assert(size % (${unrollSize.toExpr}) == 0) // for simplicity of the implementation
+    assert(size % (${unrollSize}) == 0) // for simplicity of the implementation
     var i = 0
     while (i < size) {
       println("<log> start loop")
       ${
         for (j <- new UnrolledRange(0, unrollSize)) '{
-          val element = ($seq)(i + ${j.toExpr})
+          val element = ($seq)(i + ${j})
           ${f('element)} // or `($f)(element)` if `f` should not be inlined
         }
       }
-      i += ${unrollSize.toExpr}
+      i += ${unrollSize}
     }
 
   }

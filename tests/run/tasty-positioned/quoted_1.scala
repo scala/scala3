@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -15,13 +16,13 @@ object Positioned {
     import reflect.{Position => _, _}
     val pos = rootPosition
 
-    val path = pos.sourceFile.jpath.toString.toExpr
-    val start = pos.start.toExpr
-    val end = pos.end.toExpr
-    val startLine = pos.startLine.toExpr
-    val endLine = pos.endLine.toExpr
-    val startColumn = pos.startColumn.toExpr
-    val endColumn = pos.endColumn.toExpr
+    val path = pos.sourceFile.jpath.toString
+    val start = pos.start
+    val end = pos.end
+    val startLine = pos.startLine
+    val endLine = pos.endLine
+    val startColumn = pos.startColumn
+    val endColumn = pos.endColumn
 
     val liftedPosition = '{new Position($path, $start, $end, $startLine, $startColumn, $endLine, $endColumn)}
     '{Positioned[T]($x, $liftedPosition)}

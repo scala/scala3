@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 import scala.tasty.Reflection
 
 import scala.language.implicitConversions
@@ -14,6 +15,6 @@ object XmlQuote {
 
   def impl(receiver: StringContext, args: Expr[Seq[Any]]): Expr[Xml] = {
     val string = receiver.parts.mkString("??")
-    '{new Xml(${string.toExpr}, $args.toList)}
+    '{new Xml(${string}, $args.toList)}
   }
 }
