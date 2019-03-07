@@ -335,25 +335,26 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Bind(_, pat) => project(pat)
     case SeqLiteral(pats, _) => projectSeq(pats)
     case UnApply(fun, _, pats) =>
-      if (fun.symbol.owner == scalaSeqFactoryClass && fun.symbol.name == nme.unapplySeq)
-        projectSeq(pats)
-      else {
-        var tp = fun.tpe.widen.finalResultType
-        var arity = productArity(tp, fun.sourcePos)
-        if (arity <= 0) {
-          tp = fun.tpe.widen.finalResultType.select(nme.get).finalResultType.widen
-          if (pats.length == 1)
-            return Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
-          arity = productSelectorTypes(tp, fun.sourcePos).size
-        }
+      if (fun.symbol.name == nme.unapplySeq)
+        if (fun.symbol.owner == scalaSeqFactoryClass)
+          projectSeq(pats)
+        else {
+          val resultTp = fun.tpe.widen.finalResultType
+          var elemTp = unapplySeqTypeElemTp(resultTp)
+          var arity = productArity(resultTp, fun.sourcePos)
+          if (!elemTp.exists && arity <= 0) {
+            val resultTp = fun.tpe.widen.finalResultType.select(nme.get).finalResultType
+            elemTp = unapplySeqTypeElemTp(resultTp.widen)
+            arity = productSelectorTypes(resultTp, fun.sourcePos).size
+          }
 
-        if (arity > 0 && arity != pats.length)
-          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), irrefutable(fun))
-        else if (arity <= 0 && unapplySeqTypeElemTp(tp).exists)
-          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
-        else
-          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
-      }
+          if (elemTp.exists)
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+          else
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), irrefutable(fun))
+        }
+      else
+        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
@@ -436,27 +437,34 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
-        val arity = productArity(mt.finalResultType, unappSym.sourcePos)
-        if (arity > 0 && !isUnapplySeq) {
-          if (arity != argLen) {
-            val sels = productSeqSelectors(mt.finalResultType, arity, unappSym.sourcePos)
+
+        if (isUnapplySeq) {
+          var resultTp = mt.finalResultType
+          var elemTp = unapplySeqTypeElemTp(resultTp)
+          var arity = productArity(resultTp, unappSym.sourcePos)
+          if (!elemTp.exists && arity <= 0) {
+            resultTp = mt.finalResultType.select(nme.get).finalResultType
+            elemTp = unapplySeqTypeElemTp(resultTp.widen)
+            arity = productSelectorTypes(resultTp, unappSym.sourcePos).size
+          }
+
+          if (elemTp.exists) scalaListType.appliedTo(elemTp) :: Nil
+          else {
+            val sels = productSeqSelectors(resultTp, arity, unappSym.sourcePos)
             sels.init :+ scalaListType.appliedTo(sels.last)
           }
-          else
-            productSelectors(mt.finalResultType)
-              .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
         }
         else {
-          val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
-          val arity = productArity(resTp, unappSym.sourcePos)
-          if (isUnapplySeq && arity < 0) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
-          else if (argLen == 1) resTp :: Nil
-          else if (arity > 0 && arity != argLen) {
-            val sels = productSeqSelectors(resTp, arity, unappSym.sourcePos)
-            sels.init :+ scalaListType.appliedTo(sels.last)
+          val arity = productArity(mt.finalResultType, unappSym.sourcePos)
+          if (arity > 0)
+            productSelectors(mt.finalResultType)
+              .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
+          else {
+            val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
+            val arity = productArity(resTp, unappSym.sourcePos)
+            if (argLen == 1) resTp :: Nil
+            else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
           }
-          else
-            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
         }
       }
 

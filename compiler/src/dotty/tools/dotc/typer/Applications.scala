@@ -155,21 +155,23 @@ object Applications {
       Nil
     }
 
-    if (unapplyName == nme.unapplySeq) { //  && ctx.scala2Mode
-      if (isGetMatch(unapplyResult, pos)) {
-        val elemTp = unapplySeqTypeElemTp(getTp)
-        if (elemTp.exists) args.map(Function.const(elemTp))
-        else if (isProductSeqMatch(getTp, args.length, pos)) productSeqSelectors(getTp, args.length, pos)
+    def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] = {
+      val elemTp = unapplySeqTypeElemTp(tp)
+      if (elemTp.exists) args.map(Function.const(elemTp))
+      else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
+      else fallback
+    }
+
+    if (unapplyName == nme.unapplySeq) {
+      unapplySeq(unapplyResult) {
+        if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
         else fail
       }
-      else fail
     }
     else {
       assert(unapplyName == nme.unapply)
       if (isProductMatch(unapplyResult, args.length, pos))
         productSelectorTypes(unapplyResult, pos)
-      else if (isProductSeqMatch(unapplyResult, args.length, pos))
-        productSeqSelectors(unapplyResult, args.length, pos)
       else if (isGetMatch(unapplyResult, pos))
         getUnapplySelectors(getTp, args, pos)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)

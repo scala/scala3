@@ -286,8 +286,7 @@ object PatternMatcher {
           matchElemsPlan(getResult, args, exact = true, onSuccess)
       }
 
-      /** Plan for matching the sequence in `getResult` against sequence elements
-       *  and a possible last varargs argument `args`.
+      /** Plan for matching the sequence in `getResult`
        *
        *  `getResult` is a product, where the last element is a sequence of elements.
        */
@@ -322,7 +321,7 @@ object PatternMatcher {
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
-            else if (isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos) && !isUnapplySeq) {
+            else if (isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos) && isUnapplySeq) {
               val arity = productArity(unapp.tpe.widen, unapp.sourcePos)
               unapplyProductSeqPlan(unappResult, args, arity)
             }
@@ -338,18 +337,10 @@ object PatternMatcher {
                   }
                 else
                   letAbstract(get) { getResult =>
-                    if (args.tail.isEmpty) // Single pattern takes precedence
-                      matchArgsPlan(ref(getResult) :: Nil, args, onSuccess)
-                    else if (isProductMatch(get.tpe, args.length, unapp.sourcePos)) {
-                      val sels = productSelectors(get.tpe).map(ref(getResult).select(_))
-                      matchArgsPlan(sels, args, onSuccess)
-                    }
-                    else if (isProductSeqMatch(get.tpe, args.length, unapp.sourcePos))
-                      unapplyProductSeqPlan(getResult, args, arity)
-                    else { // name-based
-                      val sels = productSelectors(get.tpe).map(ref(getResult).select(_))
-                      matchArgsPlan(sels, args, onSuccess)
-                    }
+                    val selectors =
+                      if (args.tail.isEmpty) ref(getResult) :: Nil
+                      else productSelectors(get.tpe).map(ref(getResult).select(_))
+                    matchArgsPlan(selectors, args, onSuccess)
                   }
               }
               TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
