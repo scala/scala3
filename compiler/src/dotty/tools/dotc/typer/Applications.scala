@@ -186,9 +186,10 @@ object Applications {
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
-  /** A wrapper indicating that its argument is an application of an extension method.
+  /** A wrapper indicating that its `app` argument has already integrated the type arguments
+   *  of the expected type, provided that type is a (possibly ignored) PolyProto.
    */
-  class ExtMethodApply(val app: Tree)(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
+  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def span = app.span
 
     def canEqual(that: Any): Boolean = app.canEqual(that)
@@ -196,19 +197,24 @@ object Applications {
     def productElement(n: Int): Any = app.productElement(n)
   }
 
-  /** The unapply method of this extractor also recognizes ExtMethodApplys in closure blocks.
+  /** The unapply method of this extractor also recognizes IntegratedTypeArgs in closure blocks.
    *  This is necessary to deal with closures as left arguments of extension method applications.
    *  A test case is i5606.scala
    */
-  object ExtMethodApply {
-    def apply(app: Tree)(implicit ctx: Context) = new ExtMethodApply(app)
+  object IntegratedTypeArgs {
+    def apply(app: Tree)(implicit ctx: Context) = new IntegratedTypeArgs(app)
     def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-      case tree: ExtMethodApply => Some(tree.app)
-      case Block(stats, ExtMethodApply(app)) => Some(tpd.cpy.Block(tree)(stats, app))
+      case tree: IntegratedTypeArgs => Some(tree.app)
+      case Block(stats, IntegratedTypeArgs(app)) => Some(tpd.cpy.Block(tree)(stats, app))
       case _ => None
     }
   }
 
+  /** A wrapper indicating that its argument is an application of an extension method.
+   */
+  class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
+  extends IntegratedTypeArgs(app)
+  
   /** 1. If we are in an inline method but not in a nested quote, mark the inline method
    *  as a macro.
    *
@@ -942,7 +948,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
     handleMeta(typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
-      case ExtMethodApply(app) =>
+      case IntegratedTypeArgs(app) =>
         app
       case _: TypeApply if !ctx.isAfterTyper =>
         errorTree(tree, "illegal repeated type application")
