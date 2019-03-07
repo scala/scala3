@@ -13,6 +13,7 @@ Complex(4,3)
     sum = sum.+(arr1.apply(i).*(arr2.apply(i)))
     i = i.+(1)
   }
+
   (sum: scala.Int)
 })
 10

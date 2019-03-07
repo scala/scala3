@@ -1034,6 +1034,7 @@ trait Printers
             case Term.Select(qual, _) => rec(qual)
             case Term.Apply(fn, _) => rec(fn)
             case Term.TypeApply(fn, _) => rec(fn)
+            case Term.Typed(_, _) => this += doubleLineBreak()
             case _ => this += lineBreak()
           }
           next match {

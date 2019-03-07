@@ -17,6 +17,7 @@ object Test {
 
     {
       final class $anon() extends b.C
+
       (new $anon(): b.C)
     }.c()
     b.g()

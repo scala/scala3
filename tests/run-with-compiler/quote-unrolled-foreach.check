@@ -69,6 +69,7 @@
   array.update(1, 2)
   array.update(2, 3)
   array.update(3, 4)
+
   (array: scala.Array[scala.Int])
 }
 
@@ -79,6 +80,7 @@
     array.update(1, 3)
     array.update(2, 4)
     array.update(3, 5)
+
     (array: scala.Array[scala.Int])
   }
   val size: scala.Int = arr1.length
