@@ -112,7 +112,7 @@ abstract class TokensCommon {
   //final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   //final val HASH = 82;             enter(HASH, "#")
   final val AT = 83;               enter(AT, "@")
-  //final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
+  //final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%")
 
   val keywords: TokenSet
 
@@ -193,7 +193,7 @@ object Tokens extends TokensCommon {
   final val SUBTYPE = 80;          enter(SUBTYPE, "<:")
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
-  final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
+  final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%")
   final val QUOTE = 85;            enter(QUOTE, "'")
 
   /** XML mode */
