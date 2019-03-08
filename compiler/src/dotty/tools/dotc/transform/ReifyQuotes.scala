@@ -351,10 +351,6 @@ class ReifyQuotes extends MacroTransform {
             // typer to allow pickling/unpickling phase consistent types
             transformSplice(spliceTree)
 
-          case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
-            val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            transformSplice(ref(splicedType).select(tpnme.splice).withSpan(tree.span))
-
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val t = capturers(tree.symbol).apply(tree)
             transformSplice(t.select(if (tree.isTerm) nme.splice else tpnme.splice))
