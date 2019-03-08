@@ -3,7 +3,6 @@ object Foo {
   dependent case object Nil extends List
   dependent case class Cons(head: Int, tail: List) extends List
 
-
   dependent def cons1 =
     Cons(1, Cons(2, Nil)) match {
       case Cons(x, _) => x
@@ -39,7 +38,6 @@ object Foo {
   // cons3: 1  // doesn't work yet (need to reduce `Match`es)
   cons4: 2
   cons5: {Nil}
-
 
   case class Some(x: Some)
 

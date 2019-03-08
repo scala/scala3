@@ -46,10 +46,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.Apply(fn, args), fn, args)
   }
 
-  def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
+  def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
     ta.assignType(untpd.TypeApply(fn, args), fn, args)
-  }
 
   def Literal(const: Constant)(implicit ctx: Context): Literal =
     ta.assignType(untpd.Literal(const))
