@@ -76,4 +76,12 @@ object Md {
   def codeBlock(obj: Any, language : String = "") : String = {
     "```" + language + "\n" + obj.toString + "\n```\n"
   }
+  /** Transform something in bold
+   *
+   *  @param obj The content of the code block
+   *  @return The object string in bold
+   */
+  def bold(obj: Any) : String = {
+    "**" + obj.toString + "**"
+  }
 }

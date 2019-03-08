@@ -32,9 +32,37 @@ class TastydocConsumer extends TastyConsumer {
         selectors
       }
 
-      def convertToContainer(reflectType : reflect.Statement) : Container = reflectType match {
-        case reflect.DefDef(name, typeParams, paramss, tpt, rhs) =>
+      def extractUserDoc(comment: Option[reflect.Comment]) : String = comment match {
+        case Some(com) => com.raw
+        case None => ""
+      }
 
+      child match {
+        //case reflect.Term.Ident(name) => name
+        case reflect.PackageClause(pid, stats) =>
+          //"Package: "+ traverse(level, pid) + "\n" +
+          //stats.map(traverse(level+1, _)).foldLeft("")(_+_)
+          new PackageContainer("package " + pid, stats.map(traverse(_)), extractUserDoc(child.symbol.comment)) //TODO: Optional new?
+
+        case reflect.Import(impliedOnly, expr, selectors) =>
+          new ImportContainer("import " + beautifyImport(expr, selectors), extractUserDoc(child.symbol.comment))
+
+        case reflect.ClassDef(name, constr, parents, derived, self, body) =>
+          //TODO: Generic type
+          //TODO: TypeDef
+          //TODO: Classes inside class
+          val sign = "class: " + name
+          def iterBody(body: List[reflect.Statement], defdef: List[Container], valdef: List[Container], typedef: List[Container]) : (List[Container], List[Container], List[Container]) = body match {
+            case Nil => (defdef.reverse, valdef.reverse, typedef.reverse) //TODO: More efficient than reverse?
+            case (x @ reflect.DefDef(_, _, _, _, _)) :: xs => iterBody(xs, traverse(x)::defdef, valdef, typedef)
+            case (x @ reflect.ValDef(_, _, _)) :: xs => iterBody(xs, defdef, traverse(x)::valdef, typedef)
+            //case (x @ reflect.TypeDef())
+            case x :: xs => iterBody(xs, defdef, valdef, typedef)
+          }
+          val (defdef, valdef, typedef) = iterBody(body, Nil, Nil, Nil)
+          new ClassContainer(sign, defdef, valdef, typedef, extractUserDoc(child.symbol.comment))
+
+        case reflect.DefDef(name, typeParams, paramss, tpt, rhs) =>
           @tailrec def handleParams(ls: List[List[ValDef]], str: String) : String = ls match {
             case Nil => str
             case List()::xs => handleParams(xs, str + "()")
@@ -44,44 +72,23 @@ class TastydocConsumer extends TastyConsumer {
             name +
             handleParams(paramss, "") +
             " : " +
-            beautifyType(tpt)
+            beautifyType(tpt),
+            extractUserDoc(child.symbol.comment)
           )
 
         case reflect.ValDef(name, tpt, rhs) =>
           new ValContainer("val " +
             name +
             " : " +
-            beautifyType(tpt)
+            beautifyType(tpt),
+            extractUserDoc(child.symbol.comment)
           )
-      }
 
-      child match {
-        //case reflect.Term.Ident(name) => name
-        case reflect.PackageClause(pid, stats) =>
-          //"Package: "+ traverse(level, pid) + "\n" +
-          //stats.map(traverse(level+1, _)).foldLeft("")(_+_)
-          new PackageContainer("package " + pid, stats.map(traverse(_))) //TODO: Optional new?
-        case reflect.Import(impliedOnly, expr, selectors) =>
-          new ImportContainer("import " + beautifyImport(expr, selectors))
-        case reflect.ClassDef(name, constr, parents, derived, self, body) =>
-          //TODO: Generic type
-          //TODO: TypeDef
-          //TODO: Classes inside class
-          val sign = "class: " + name
-          def iterBody(body: List[reflect.Statement], defdef: List[Container], valdef: List[Container], typedef: List[Container]) : (List[Container], List[Container], List[Container]) = body match {
-            case Nil => (defdef.reverse, valdef.reverse, typedef.reverse) //TODO: More efficient than reverse?
-            case (x @ reflect.DefDef(_, _, _, _, _)) :: xs => iterBody(xs, convertToContainer(x)::defdef, valdef, typedef)
-            case (x @ reflect.ValDef(_, _, _)) :: xs => iterBody(xs, defdef, convertToContainer(x)::valdef, typedef)
-            //case (x @ reflect.TypeDef())
-            case x :: xs => iterBody(xs, defdef, valdef, typedef)
-          }
-          val (defdef, valdef, typedef) = iterBody(body, Nil, Nil, Nil)
-          new ClassContainer(sign, defdef, valdef, typedef)
         case _ => new MissingMatchContainer()
       }
     }
 
-    print(formatToMarkdown(traverse(root), 0))
+    //print(formatToMarkdown(traverse(root), 0))
     val pw = new PrintWriter(new File("./tastydoc/docOutputTest.md" ))
     pw.write(formatToMarkdown(traverse(root), 0))
     pw.close()

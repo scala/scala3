@@ -42,4 +42,18 @@ abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] {
   def iterator = ???
   def length = ???
 
+  /** An example documention with markdown formatting
+   *
+   *  **I'm bold**
+   *
+   *  *I'm italic*
+   *
+   *  `some code`
+   *  ```scala
+   *  def someScalaCode(x: String) = println("Hello " + x)
+   *  ```
+   *  1. I'm a list
+   */
+  def docWithMd = ???
+
 }
