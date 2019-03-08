@@ -168,7 +168,7 @@ object StagedTuple {
         case Some(s) if s > MaxSpecialized =>
           val t = tup.as[TupleXXL]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.elems(${ n.toExpr })}
+            case Some(n) if n >= 0 && n < s => '{$t.elems(${ Liftable.IntIsLiftable.toExpr(n) })}
             case _ => fallbackApply()
           }
         case _ => fallbackApply()
@@ -203,7 +203,7 @@ object StagedTuple {
     if (!specialize) '{dynamic_++[Self, That]($self, $that)}
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
-        fromArrayStaged[Tuple]('{${ toArrayStaged(xs, None) } ++ ${ toArrayStaged(ys, None) }}, None)
+        fromArrayStaged[Tuple]('{${ toArrayStaged(xs, None) } ++ (${ toArrayStaged(ys, None) }: Array[Object])}, None)
 
       val res = selfSize match {
         case Some(0) =>

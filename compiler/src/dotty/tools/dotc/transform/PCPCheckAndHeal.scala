@@ -49,18 +49,22 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(splice: Select)(implicit ctx: Context): Tree = {
+  protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
     if (level >= 1) {
-      val body1 = transform(splice.qualifier)(spliceContext)
-      val splice1 = cpy.Select(splice)(body1, splice.name)
+      val body1 = transform(body)(spliceContext)
+      val splice1 = splice match {
+        case splice: Apply => cpy.Apply(splice)(splice.fun, body1 :: Nil)
+        case splice: Select => cpy.Select(splice)(body1, splice.name)
+      }
+
       if (splice1.isType) splice1
       else addSpliceCast(splice1)
     }
     else {
       assert(!enclosingInlineds.nonEmpty, "unexpanded macro")
       assert(ctx.owner.isInlineMethod)
-      if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside an inline definition
-        transform(splice.qualifier)(spliceContext) // Just check PCP
+      if (Splicer.canBeSpliced(body)) { // level 0 inside an inline definition
+        transform(body)(spliceContext) // Just check PCP
         splice
       }
       else { // level 0 inside an inline definition
