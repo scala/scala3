@@ -377,13 +377,14 @@ trait TypeAssigner {
     }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+    val inTypeOf = !ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping) {
           val tpe =
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
-          if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent))
+          if (inTypeOf)
             ctx.normalizedType(TypeOf(tpe, tree))
           else tpe
         } else
@@ -391,7 +392,10 @@ trait TypeAssigner {
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.sourcePos)
     }
-    ConstFold(tree.withType(ownType))
+    if (inTypeOf)
+      tree.withType(ownType)
+    else
+      ConstFold(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
