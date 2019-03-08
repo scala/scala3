@@ -151,13 +151,11 @@ object Contexts {
     /** The current type comparer. This ones updates itself automatically for
      *  each new context.
      */
-    private[this] var _typeComparer: TypeComparer = null
-    protected def typeComparer_=(typeComparer: TypeComparer): Unit = {
-      assert(typeComparer.ctx eq this)
-      _typeComparer = typeComparer
-    }
-    final def typeComparer: TypeComparer = {
-      if (_typeComparer == null) _typeComparer = outer.typeComparer.copyIn(this)
+    private[this] var _typeComparer: TypeComparer = _
+    protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
+    def typeComparer: TypeComparer = {
+      if (_typeComparer.ctx ne this)
+        _typeComparer = _typeComparer.copyIn(this)
       _typeComparer
     }
 
@@ -422,29 +420,31 @@ object Contexts {
     def useColors: Boolean =
       base.settings.color.value == "always"
 
-    protected def init(outer: Context): this.type = {
+    protected def init(outer: Context, origin: Context): this.type = {
+      util.Stats.record("Context.fresh")
       _outer = outer
-      _period = outer.period
-      _mode = outer.mode
-      _owner = outer.owner
-      _tree = outer.tree
-      _scope = outer.scope
-      _typerState = outer.typerState
-      _typeAssigner = outer.typeAssigner
-      _importInfo = outer.importInfo
-      _gadt = outer.gadt
-      _searchHistory = outer.searchHistory
-      _source = outer.source
-      _moreProperties = outer.moreProperties
-      _store = outer.store
+      _period = origin.period
+      _mode = origin.mode
+      _owner = origin.owner
+      _tree = origin.tree
+      _scope = origin.scope
+      _typerState = origin.typerState
+      _typeAssigner = origin.typeAssigner
+      _importInfo = origin.importInfo
+      _gadt = origin.gadt
+      _searchHistory = origin.searchHistory
+      _typeComparer = origin.typeComparer
+      _source = origin.source
+      _moreProperties = origin.moreProperties
+      _store = origin.store
       this
     }
 
-    /** A fresh clone of this context. */
-    def fresh: FreshContext = {
-      util.Stats.record("Context.fresh")
-      new FreshContext(base).init(this)
-    }
+    /** A fresh clone of this context embedded in this context. */
+    def fresh: FreshContext = freshOver(this)
+
+    /** A fresh clone of this context embedded in the specified `outer` context. */
+    def freshOver(outer: Context): FreshContext = new FreshContext(base).init(outer, this)
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
