@@ -911,7 +911,7 @@ trait Implicits { self: Typer =>
               if (ctx == NoContext) ctx
               else ctx.freshOver(FindHiddenImplicitsCtx(ctx.outer)).addMode(Mode.FindHiddenImplicits)
 
-            inferImplicit(fail.expectedType, fail.argument, fail.argument.span)(
+            inferImplicit(fail.expectedType, fail.argument, arg.span)(
               FindHiddenImplicitsCtx(ctx)) match {
               case s: SearchSuccess => hiddenImplicitNote(s)
               case f: SearchFailure =>
