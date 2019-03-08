@@ -364,7 +364,7 @@ object Implicits {
 
   abstract class SearchFailureType extends ErrorType {
     def expectedType: Type
-    protected def argument: Tree
+    def argument: Tree
 
     /** A "massaging" function for displayed types to give better info in error diagnostics */
     def clarify(tp: Type)(implicit ctx: Context): Type = tp
@@ -822,6 +822,7 @@ trait Implicits { self: Typer =>
   }
 
   def missingArgMsg(arg: Tree, pt: Type, where: String)(implicit ctx: Context): String = {
+
     def msg(shortForm: String)(headline: String = shortForm) = arg match {
       case arg: Trees.SearchFailureIdent[_] =>
         shortForm
@@ -836,6 +837,7 @@ trait Implicits { self: Typer =>
               |But ${tpe.explanation}."""
         }
     }
+
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
     /** Extract a user defined error message from a symbol `sym`
@@ -898,7 +900,30 @@ trait Implicits { self: Typer =>
             raw,
             pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
             pt.argInfos))
-        msg(userDefined.getOrElse(em"no implicit argument of type $pt was found${location("for")}"))()
+
+        def hiddenImplicitsAddendum: String = arg.tpe match {
+          case fail: SearchFailureType =>
+
+            def hiddenImplicitNote(s: SearchSuccess) =
+              em"\n\nNote: implied instance ${s.ref.symbol.showLocated} was not considered because it was not imported with an `import implied`."
+
+            def FindHiddenImplicitsCtx(ctx: Context): Context =
+              if (ctx == NoContext) ctx
+              else ctx.freshOver(FindHiddenImplicitsCtx(ctx.outer)).addMode(Mode.FindHiddenImplicits)
+
+            inferImplicit(fail.expectedType, fail.argument, fail.argument.span)(
+              FindHiddenImplicitsCtx(ctx)) match {
+              case s: SearchSuccess => hiddenImplicitNote(s)
+              case f: SearchFailure =>
+                f.reason match {
+                  case ambi: AmbiguousImplicits => hiddenImplicitNote(ambi.alt1)
+                  case r => ""
+                }
+            }
+        }
+        msg(userDefined.getOrElse(
+          em"no implicit argument of type $pt was found${location("for")}"))() ++
+        hiddenImplicitsAddendum
     }
   }
 
