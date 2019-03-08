@@ -5,6 +5,7 @@ SBT="./project/scripts/sbt" # if run on CI
 
 SOURCE="tests/pos/HelloWorld.scala"
 MAIN="HelloWorld"
+TASTY="HelloWorld.tasty"
 EXPECTED_OUTPUT="hello world"
 
 OUT=$(mktemp -d)

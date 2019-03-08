@@ -4,7 +4,9 @@ package transform
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import scala.collection.mutable
 import core._
-import typer.Checking
+import dotty.tools.dotc.typer.Checking
+import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.typer.VarianceChecker
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
@@ -55,6 +57,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   /** the following two members override abstract members in Transform */
   override def phaseName: String = PostTyper.name
+
+  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+    case tree: ValOrDefDef =>
+      assert(!tree.symbol.signature.isUnderDefined)
+    case _ =>
+  }
 
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic methods
 
@@ -108,7 +116,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
 
       val sym = tree.symbol
-      sym.registerIfChild()
       sym.transformAnnotations(transformAnnotWithAdaptedCtx)
       sym.defTree = tree
       tree
@@ -117,14 +124,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
-        case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
-          transformSelect(cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name), targs)
+        case pkg: PackageClassDenotation =>
+          val pobj = pkg.packageObjFor(tree.symbol)
+          if (pobj.exists)
+            return transformSelect(cpy.Select(tree)(qual.select(pobj), tree.name), targs)
         case _ =>
-          val tree1 = super.transform(tree)
-          constToLiteral(tree1) match {
-            case _: Literal => tree1
-            case _ => superAcc.transformSelect(tree1, targs)
-          }
+      }
+      val tree1 = super.transform(tree)
+      constToLiteral(tree1) match {
+        case _: Literal => tree1
+        case _ => superAcc.transformSelect(tree1, targs)
       }
     }
 
@@ -157,7 +166,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
             val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
-            TypeApply(tycon, args1).withPos(tree.pos).withType(tree.tpe)
+            TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
         }
@@ -179,7 +188,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       if (sym.isSplice || sym.isQuote) {
         markAsMacro(ctx)
-        ctx.compilationUnit.containsQuotesOrSplices = true
+        ctx.compilationUnit.needsStaging = true
       }
     }
 
@@ -196,13 +205,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: Ident if !tree.isType =>
           handleMeta(tree.symbol)
           tree.tpe match {
-            case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
+            case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
           handleMeta(tree.symbol)
           if (name.isTypeName) {
-            Checking.checkRealizable(qual.tpe, qual.pos.focus)
+            Checking.checkRealizable(qual.tpe, qual.posd)
             super.transform(tree)(ctx.addMode(Mode.Type))
           }
           else
@@ -213,8 +222,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if (methType.isErasedMethod)
               tpd.cpy.Apply(tree)(
                 tree.fun,
-                tree.args.map(arg =>
-                  if (methType.isImplicitMethod && arg.pos.isSynthetic) ref(defn.Predef_undefined)
+                tree.args.mapConserve(arg =>
+                  if (methType.isImplicitMethod && arg.span.isSynthetic) ref(defn.Predef_undefined)
                   else dropInlines.transform(arg)))
             else
               tree
@@ -222,7 +231,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
-              Checking.checkInstantiable(tree.tpe, nu.pos)
+              Checking.checkInstantiable(tree.tpe, nu.posd)
               withNoCheckNews(nu :: Nil)(super.transform(app))
             case _ =>
               super.transform(app)
@@ -242,17 +251,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          // Leave only a call trace consisting of
-          //  - a reference to the top-level class from which the call was inlined,
-          //  - the call's position
-          // in the call field of an Inlined node.
-          // The trace has enough info to completely reconstruct positions.
-          // The minimization is done for two reasons:
-          //  1. To save space (calls might contain large inline arguments, which would otherwise
-          //     be duplicated
-          //  2. To enable correct pickling (calls can share symbols with the inlined code, which
-          //     would trigger an assertion when pickling).
-          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          val callTrace = Inliner.inlineCallTrace(call.symbol, call.sourcePos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
@@ -275,19 +274,28 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-            tree
           }
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
-          Checking.checkInstantiable(tree.tpe, tree.pos)
+          Checking.checkInstantiable(tree.tpe, tree.posd)
+          super.transform(tree)
+        case tree: Closure if !tree.tpt.isEmpty =>
+          Checking.checkRealizable(tree.tpt.tpe, tree.posd, "SAM type")
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
-          Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
+          if (tree.tpt.symbol == defn.andType)
+            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.posd)
+              // Ideally, this should be done by Typer, but we run into cyclic references
+              // when trying to typecheck self types which are intersections.
+          else if (tree.tpt.symbol == defn.orType)
+            () // nothing to do
+          else
+            Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-         // Checking.checkRealizable(ref.tpe, ref.pos.focus) // TODO
+         // Checking.checkRealizable(ref.tpe, ref.posd) // TODO
           super.transform(tree)
         case tree: TypeTree =>
           tree.withType(
@@ -296,20 +304,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
-        case tree: AndTypeTree =>
-          // Ideally, this should be done by Typer, but we run into cyclic references
-          // when trying to typecheck self types which are intersections.
-          Checking.checkNonCyclicInherited(tree.tpe, tree.left.tpe :: tree.right.tpe :: Nil, EmptyScope, tree.pos)
+        case tree: LambdaTypeTree =>
+          VarianceChecker.checkLambda(tree)
           super.transform(tree)
-        case Import(expr, selectors) =>
+        case Import(_, expr, selectors) =>
           val exprTpe = expr.tpe
           val seen = mutable.Set.empty[Name]
           def checkIdent(ident: untpd.Ident): Unit = {
             val name = ident.name.asTermName
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
-              ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
+              ctx.error(NotAMember(exprTpe, name, "value"), ident.sourcePos)
             if (seen(ident.name))
-              ctx.error(ImportRenamedTwice(ident), ident.pos)
+              ctx.error(ImportRenamedTwice(ident), ident.sourcePos)
             seen += ident.name
           }
           selectors.foreach {

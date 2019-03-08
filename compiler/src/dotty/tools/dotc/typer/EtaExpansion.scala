@@ -11,7 +11,7 @@ import Symbols._
 import Names._
 import StdNames._
 import NameKinds.UniqueName
-import util.Positions._
+import util.Spans._
 import collection.mutable
 import Trees._
 
@@ -46,9 +46,9 @@ abstract class Lifter {
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = positionCoord(expr.pos))
-      defs += liftedDef(lifted, expr).withPos(expr.pos)
-      ref(lifted.termRef).withPos(expr.pos.focus)
+      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
+      defs += liftedDef(lifted, expr).withSpan(expr.span)
+      ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
@@ -85,7 +85,7 @@ abstract class Lifter {
           lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
-        args.map(liftArg(defs, _))
+        args.mapConserve(liftArg(defs, _))
     }
 
   /** Lift out function prefix and all arguments from application
@@ -178,6 +178,10 @@ object EtaExpansion extends LiftImpure {
    *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
    *
    *  where `T1, ..., Tn` are the paremeter types of the expanded method.
+   *  If `expr` has implicit function type, the arguments are passed with `given`.
+   *  E.g. for (1):
+   *
+   *      { val xs = es; (x1, ..., xn) => expr given (x1, ..., xn) }
    *
    *  Case (3) applies if the method is curried, i.e. its result type is again a method
    *  type. Case (2) applies if the expected arity of the function type `xarity` differs
@@ -206,16 +210,19 @@ object EtaExpansion extends LiftImpure {
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     var paramFlag = Synthetic | Param
+    if (mt.isContextual) paramFlag |= Given
     if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withPos(tree.pos.startPos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos.startPos))
+      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
+    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
+    if (mt.isContextual) body.pushAttachment(ApplyGiven, ())
     if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
     val fn =
-      if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
+      if (mt.isContextual) new untpd.FunctionWithMods(params, body, Modifiers(Implicit | Given))
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

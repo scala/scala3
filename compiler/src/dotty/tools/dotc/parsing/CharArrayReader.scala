@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import util.Chars._
+import scala.tasty.util.Chars._
 
 abstract class CharArrayReader { self =>
 
@@ -121,6 +121,8 @@ abstract class CharArrayReader { self =>
 
   /** A new reader that takes off at the current character position */
   def lookaheadReader(): CharArrayLookaheadReader = new CharArrayLookaheadReader
+
+  def lookaheadChar(): Char = lookaheadReader().getc()
 
   class CharArrayLookaheadReader extends CharArrayReader {
     val buf: Array[Char] = self.buf

@@ -1,0 +1,8 @@
+foo(A) called
+foo(B) called
+foo(C) called
+foo(D) called
+bar(A) called
+bar(B) called
+fooz(A) called
+fooz(B) called

@@ -19,10 +19,10 @@ class StaticVecR[T](r: Ring[T]) extends VecSta with VecROp[Int, T, Unit] {
 class VecRDyn[T: Type] extends VecDyn with VecROp[Expr[Int], Expr[T], Expr[Unit]] {
   def reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = {
     (plus, zero, vec) => '{
-      var sum = ~zero
+      var sum = $zero
       var i = 0
-      while (i < ~vec.size) {
-        sum = ~{ plus('(sum), vec('(i))) }
+      while (i < ${vec.size}) {
+        sum = ${ plus('sum, vec('i)) }
         i += 1
       }
       sum
@@ -34,13 +34,13 @@ class VecRDyn[T: Type] extends VecDyn with VecROp[Expr[Int], Expr[T], Expr[Unit]
 class VecRStaDim[T: Type](r: Ring[T]) extends VecROp[Int, T, Expr[Unit]]  {
   val M = new StaticVecR[T](r)
   def reduce: ((T, T) => T, T, Vec[Int, T]) => T = M.reduce
-  val seq: (Expr[Unit], Expr[Unit]) => Expr[Unit] = (e1, e2) => '{ ~e1; ~e2 }
+  val seq: (Expr[Unit], Expr[Unit]) => Expr[Unit] = (e1, e2) => '{ $e1; $e2 }
   // val iter:  (arr: Vec[]) = reduce seq .<()>. arr
   def iter: Vec[Int, Expr[Unit]] => Expr[Unit] = arr => {
     def loop(i: Int, acc: Expr[Unit]): Expr[Unit] =
-      if (i < arr.size) loop(i + 1, '{ ~acc; ~arr.get(i) })
+      if (i < arr.size) loop(i + 1, '{ $acc; ${arr.get(i)} })
       else acc
-    loop(0, '())
+    loop(0, '{})
   }
   override def toString(): String = s"VecRStaDim($r)"
 }
@@ -58,9 +58,9 @@ class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]]) extends VecROp[PV[Int], PV
     arr.size match {
       case Sta(n) =>
         def loop(i: Int, acc: Expr[Unit]): Expr[Unit] =
-          if (i < n) loop(i + 1, '{ ~acc; ~arr.get(Sta(i)) })
+          if (i < n) loop(i + 1, '{ $acc; ${arr.get(Sta(i))} })
           else acc
-        loop(0, '())
+        loop(0, '{})
       case Dyn(n) =>
           '{ "TODO"; () }
 

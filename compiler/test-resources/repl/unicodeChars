@@ -1,0 +1,9 @@
+scala> type →
+
+scala> def bar: → = ???
+def bar: →
+
+scala> type `🤪`
+
+scala> def baz: `🤪` = ???
+def baz: 🤪

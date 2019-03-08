@@ -3,7 +3,7 @@ import collection._
 object Test {
   def check(obj: AnyRef): Unit = {
     val bos = new ByteArrayOutputStream()
-    val out = new ObjectOutputStream(println) // error
+    val out = new ObjectOutputStream(println)
     val arr = bos toByteArray ()
     val in = (())
     val deser = ()

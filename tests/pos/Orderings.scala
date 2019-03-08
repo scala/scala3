@@ -15,6 +15,6 @@ object Orderings {
       else ev.less(xs.head, ys.head)
   }
 
-  def isLess[T]: T => T => implicit Ord[T] => Boolean =
+  def isLess[T]: T => T => given Ord[T] => Boolean =
     x => y => implicitly[Ord[T]].less(x, y)
 }

@@ -1,8 +1,7 @@
-/** Decompiled from out/posTestFromTasty/pos/t116/C.class */
 class C() {
   def this(x: scala.Int) = {
     this()
-    class D() extends C()
+    class D() extends C
     ()
   }
 }

@@ -14,8 +14,8 @@ class HoverTest {
       else
         s"""```scala
            |$typeInfo
-           |$comment
-           |```""").stripMargin)
+           |```
+           |$comment""").stripMargin)
 
   @Test def hoverOnWhiteSpace0: Unit =
     code"$m1 $m2".withSource.hover(m1 to m2, None)
@@ -23,7 +23,7 @@ class HoverTest {
   @Test def hoverOnClassShowsDoc: Unit = {
     code"""$m1 /** foo */ ${m2}class Foo $m3 $m4""".withSource
       .hover(m1 to m2, None)
-      .hover(m2 to m3, hoverContent("Foo", "/** foo */"))
+      .hover(m2 to m3, hoverContent("Foo", "foo"))
       .hover(m3 to m4, None)
   }
 
@@ -71,7 +71,7 @@ class HoverTest {
     code"""class Foo {
           |  ${m1}x$m2
           |}""".withSource
-      .hover(m1 to m2, hoverContent("<error not found: x>" ))
+      .hover(m1 to m2, None)
   }
 
   @Test def hoverFun0: Unit = {
@@ -97,8 +97,107 @@ class HoverTest {
           |/** $$Variable */
           |class ${m3}Bar${m4} extends Foo
         """.withSource
-      .hover(m1 to m2, hoverContent("Foo", "/** A class: Test\n *  */"))
-      .hover(m3 to m4, hoverContent("Bar", "/** Test */"))
+      .hover(m1 to m2, hoverContent("Foo", "A class: Test"))
+      .hover(m3 to m4, hoverContent("Bar", "Test"))
   }
 
+  @Test def documentationIsFormatted: Unit = {
+    code"""class Foo(val x: Int, val y: Int) {
+          |  /**
+          |   * Does something
+          |   *
+          |   * @tparam T A first type param
+          |   * @tparam U Another type param
+          |   * @param fizz Again another number
+          |   * @param buzz A String
+          |   * @param ev   An implicit boolean
+          |   * @return Something
+          |   * @throws java.lang.NullPointerException if you're unlucky
+          |   * @throws java.lang.InvalidArgumentException if the argument is invalid
+          |   * @see java.nio.file.Paths#get()
+          |   * @note A note
+          |   * @example myFoo.bar[Int, String](0, "hello, world")
+          |   * @author John Doe
+          |   * @version 1.0
+          |   * @since 0.1
+          |   * @usecase def bar(fizz: Int, buzz: String): Any
+          |   */
+          |  def ${m1}bar${m2}[T, U](fizz: Int, buzz: String)(implicit ev: Boolean): Any = ???
+          |}""".withSource
+      .hover(
+        m1 to m2,
+        hoverContent("[T, U](fizz: Int, buzz: String)(implicit ev: Boolean): Any",
+                     """Does something
+                       |
+                       |**Type Parameters**
+                       | - **T** A first type param
+                       | - **U** Another type param
+                       |
+                       |**Parameters**
+                       | - **fizz** Again another number
+                       | - **buzz** A String
+                       | - **ev** An implicit boolean
+                       |
+                       |**Returns**
+                       | - Something
+                       |
+                       |**Throws**
+                       | - **java.lang.NullPointerException** if you're unlucky
+                       | - **java.lang.InvalidArgumentException** if the argument is invalid
+                       |
+                       |**See Also**
+                       | - java.nio.file.Paths#get()
+                       |
+                       |**Examples**
+                       | - ```scala
+                       |   myFoo.bar[Int, String](0, "hello, world")
+                       |   ```
+                       |
+                       |**Note**
+                       | - A note
+                       |
+                       |**Authors**
+                       | - John Doe
+                       |
+                       |**Since**
+                       | - 0.1
+                       |
+                       |**Version**
+                       | - 1.0""".stripMargin))
+  }
+
+  @Test def i5482: Unit = {
+    code"""object Test {
+          |  def bar: Int = 2 / 1
+          |  /** hello */
+          |  def ${m1}baz${m2}: Int = ???
+          |}""".withSource
+      .hover(m1 to m2, hoverContent("Int", "hello"))
+  }
+
+  @Test def i4678: Unit = {
+    code"""class Foo {
+          |  val x: Int = (${m1}1:${m2} ${m3}@annot1 @annot2 @annot3 @annot4 @annot5${m4})
+          |}
+          |class annot1 extends scala.annotation.Annotation
+          |class annot2 extends scala.annotation.Annotation
+          |class annot3 extends scala.annotation.Annotation
+          |class annot4 extends scala.annotation.Annotation
+          |class annot5 extends scala.annotation.Annotation
+          |""".withSource
+      .hover(m1 to m2, hoverContent("Int(1)"))
+      .hover(m3 to m4, hoverContent("Int(1) @annot1 @annot2 @annot3 @annot4 @annot5"))
+  }
+
+  @Test def unicodeChar: Unit = {
+    code"""object Test {
+          |  type →
+          |  type `🤪`
+          |  def ${m1}bar${m2}: → = ???
+          |  def ${m3}baz${m4}: `🤪` = ???
+          |}""".withSource
+      .hover(m1 to m2, hoverContent("Test.→"))
+      .hover(m3 to m4, hoverContent("Test.🤪"))
+
+  }
 }

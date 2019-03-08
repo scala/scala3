@@ -6,7 +6,8 @@ import Contexts._
 import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
-import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
+import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
+import dotty.tools.backend.sjs
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -39,10 +40,12 @@ class Compiler {
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
+    List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
+    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new Pickler) ::            // Generate TASTY info
     List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil
@@ -60,17 +63,16 @@ class Compiler {
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ShortcutImplicits,      // Allow implicit functions without creating closures
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
-         new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new TryCatchPatterns,       // Compile cases in try/catch
+    List(new ElimOpaque,             // Turn opaque into normal aliases
+         new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
-         new CrossCastAnd,           // Normalize selections involving intersection types.
-         new Splitter) ::            // Expand selections involving union types into conditionals
+         new CrossCastAnd) ::        // Normalize selections involving intersection types.
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
@@ -81,7 +83,6 @@ class Compiler {
          new ElimOuterSelect,        // Expand outer selections
          new AugmentScala2Traits,    // Expand traits defined in Scala 2.x to simulate old-style rewritings
          new ResolveSuper,           // Implement super accessors and add forwarders to trait methods
-         new PrimitiveForwarders,    // Add forwarders to trait methods that have a mismatch between generic and primitives
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
@@ -96,8 +97,10 @@ class Compiler {
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
-         new GetClass) ::            // Rewrites getClass calls on primitive types.
-    List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
+         new Instrumentation,        // Count closure allocations under -Yinstrument-closures
+         new GetClass,               // Rewrites getClass calls on primitive types.
+         new LiftTry) ::             // Put try expressions that might execute on non-empty stacks into their own methods their implementations
+    List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
          new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis) ::      // Replace `this` references to static objects by global identifiers
@@ -109,12 +112,12 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new CollectEntryPoints,     // Find classes with main methods
-         new CollectSuperCalls,      // Find classes that are called with super
-         new LabelDefs) ::           // Converts calls to labels to jumps
+         new CollectSuperCalls) ::   // Find classes that are called with super
     Nil
 
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
+    List(new sjs.GenSJSIR) ::        // Generate .sjsir files for Scala.js (not enabled by default)
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 

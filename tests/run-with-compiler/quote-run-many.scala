@@ -5,7 +5,7 @@ object Test {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
     def expr(i: Int) = '{
-      val a = 3 + ~i.toExpr
+      val a = 3 + ${i.toExpr}
       2 + a
     }
     for (i <- 0 to 200)

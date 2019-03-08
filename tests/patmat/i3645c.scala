@@ -13,9 +13,9 @@ object App {
     type Bar = Foo
 
     sealed abstract class K[+A]
-    final case object K1 extends K[Int]
-    final case object K2 extends K[Foo]
-    final case object K3 extends K[Bar]
+    case object K1 extends K[Int]
+    case object K2 extends K[Foo]
+    case object K3 extends K[Bar]
 
     val foo: K[Int] = Foo.subst[K](K2)
     def get(k: K[Int]): Unit = k match {

@@ -3,8 +3,6 @@ Dotty
 [![Build Status](http://dotty-ci.epfl.ch/api/badges/lampepfl/dotty/status.svg)](http://dotty-ci.epfl.ch/lampepfl/dotty)
 [![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Community build: [![Community Build Status](https://travis-ci.org/lampepfl/dotty-community-build.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-community-build)
-
 * [Homepage](http://dotty.epfl.ch)
 * [Documentation](http://dotty.epfl.ch/docs)
 

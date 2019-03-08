@@ -10,6 +10,7 @@ import printing.Texts._
 import config.Config
 import reflect.ClassTag
 import annotation.tailrec
+import annotation.internal.sharable
 
 object OrderingConstraint {
 
@@ -102,6 +103,9 @@ object OrderingConstraint {
       newConstraint(c.boundsMap, c.lowerMap, c.upperMap.updated(poly, entries))
     def initial = Nil
   }
+
+  @sharable
+  val empty = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
 }
 
 import OrderingConstraint._
@@ -162,8 +166,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) eq tvar)
   }
 
-  private def isBounds(tp: Type) = tp.isInstanceOf[TypeBounds]
-
 // ---------- Dependency handling ----------------------------------------------
 
   def lower(param: TypeParamRef): List[TypeParamRef] = lowerLens(this, param.binder, param.paramNum)
@@ -221,7 +223,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match {
     case param: TypeParamRef if contains(param) =>
       param :: (if (isUpper) upper(param) else lower(param))
-    case tp: AndType => dependentParams(tp.tp1, isUpper).union    (dependentParams(tp.tp2, isUpper))
+    case tp: AndType => dependentParams(tp.tp1, isUpper) | (dependentParams(tp.tp2, isUpper))
     case tp: OrType  => dependentParams(tp.tp1, isUpper).intersect(dependentParams(tp.tp2, isUpper))
     case _ =>
       Nil
@@ -325,8 +327,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def order(current: This, param1: TypeParamRef, param2: TypeParamRef)(implicit ctx: Context): This =
     if (param1 == param2 || current.isLess(param1, param2)) this
     else {
-      assert(contains(param1))
-      assert(contains(param2))
+      assert(contains(param1), i"$param1")
+      assert(contains(param2), i"$param2")
       val newUpper = param2 :: exclusiveUpper(param2, param1)
       val newLower = param1 :: exclusiveLower(param1, param2)
       val current1 = (current /: newLower)(upperLens.map(this, _, _, newUpper ::: _))

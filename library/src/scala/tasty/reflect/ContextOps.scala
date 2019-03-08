@@ -1,7 +1,7 @@
 package scala.tasty
 package reflect
 
-trait ContextOps extends TastyCore {
+trait ContextOps extends Core {
 
   trait ContextAPI {
     def owner: Symbol
@@ -12,8 +12,5 @@ trait ContextOps extends TastyCore {
   implicit def ContextDeco(ctx: Context): ContextAPI
 
   implicit def rootContext: Context
-
-  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
-  def rootPosition: Position
 
 }

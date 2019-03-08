@@ -1,8 +1,8 @@
-import * as vscode from 'vscode';
+import * as vscode from 'vscode'
 
-import { HoverRequest } from 'vscode-languageclient';
+import { HoverRequest } from 'vscode-languageclient'
 import { MarkedString, LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
-         ServerOptions } from 'vscode-languageclient';
+         ServerOptions } from 'vscode-languageclient'
 
 // Fix hover functionality when using this version of vscode-dotty with Dotty
 // Language Server 0.9 or earlier.

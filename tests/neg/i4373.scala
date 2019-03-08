@@ -41,8 +41,8 @@ object Test {
 
   type T19 = (_ with Int) @ annotation.tailrec // error
   type T20 = (Int with _) @ annotation.tailrec // error
-  type T21 = Int @ (_ with annotation.tailrec) // error // error
-  type T22 = Int @ (annotation.tailrec with _) // error // error
+  type T21 = Int @ (_ with annotation.tailrec) // error
+  type T22 = Int @ (annotation.tailrec with _) // error
 
   type T23 = (_ & Int) @ annotation.tailrec // error
   type T24 = (Int & _) @ annotation.tailrec // error

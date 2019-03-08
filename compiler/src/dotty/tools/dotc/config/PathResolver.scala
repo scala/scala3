@@ -3,17 +3,14 @@ package dotc
 package config
 
 import WrappedProperties.AccessControl
-import io.{ ClassPath, Directory, Path }
-import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath }
+import io.{ClassPath, Directory, Path}
+import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
 import ClassPath.split
 import PartialFunction.condOpt
 import scala.language.postfixOps
 import core.Contexts._
 import Settings._
 import dotty.tools.io.File
-
-// Loosely based on the draft specification at:
-// https://wiki.scala-lang.org/display/SW/Classpath
 
 object PathResolver {
 
@@ -24,10 +21,11 @@ object PathResolver {
   def firstNonEmpty(xs: String*): String = xs find (_ != "") getOrElse ""
 
   /** Map all classpath elements to absolute paths and reconstruct the classpath.
-    */
+   */
   def makeAbsolute(cp: String): String = ClassPath.map(cp, x => Path(x).toAbsolute.path)
 
-  /** pretty print class path */
+  /** pretty print class path 
+   */
   def ppcp(s: String): String = split(s) match {
     case Nil      => ""
     case Seq(x)   => x
@@ -53,7 +51,8 @@ object PathResolver {
     def scalaHome: String           = propOrEmpty("scala.home")
     def scalaExtDirs: String        = propOrEmpty("scala.ext.dirs")
 
-    /** The java classpath and whether to use it. */
+    /** The java classpath and whether to use it. 
+     */
     def javaUserClassPath: String   = propOrElse("java.class.path", "")
     def useJavaClassPath: Boolean    = propOrFalse("scala.usejavacp")
 
@@ -77,14 +76,14 @@ object PathResolver {
     def javaExtDirs: String        = Environment.javaExtDirs
     def useJavaClassPath: Boolean  = Environment.useJavaClassPath
 
-    def scalaHome: String            = Environment.scalaHome
-    def scalaHomeDir: Directory      = Directory(scalaHome)
-    def scalaHomeExists: Boolean     = scalaHomeDir.isDirectory
-    def scalaLibDir: Directory       = (scalaHomeDir / "lib").toDirectory
-    def scalaClassesDir: Directory   = (scalaHomeDir / "classes").toDirectory
+    def scalaHome: String          = Environment.scalaHome
+    def scalaHomeDir: Directory    = Directory(scalaHome)
+    def scalaHomeExists: Boolean   = scalaHomeDir.isDirectory
+    def scalaLibDir: Directory     = (scalaHomeDir / "lib").toDirectory
+    def scalaClassesDir: Directory = (scalaHomeDir / "classes").toDirectory
 
-    def scalaLibAsJar: File           = (scalaLibDir / "scala-library.jar").toFile
-    def scalaLibAsDir: Directory     = (scalaClassesDir / "library").toDirectory
+    def scalaLibAsJar: File        = (scalaLibDir / "scala-library.jar").toFile
+    def scalaLibAsDir: Directory   = (scalaClassesDir / "library").toDirectory
 
     def scalaLibDirFound: Option[Directory] =
       if (scalaLibAsJar.isFile) Some(scalaLibDir)
@@ -134,9 +133,9 @@ object PathResolver {
     new PathResolver()(ctx.fresh.setSettings(settings)).result
   }
 
-  /** With no arguments, show the interesting values in Environment and Defaults.
-   *  If there are arguments, show those in Calculated as if those options had been
-   *  given to a scala runner.
+  /** Show values in Environment and Defaults when no argument is provided.
+   *  Otherwise, show values in Calculated as if those options had been given 
+   *  to a scala runner.
    */
   def main(args: Array[String]): Unit = {
     if (args.isEmpty) {
@@ -159,19 +158,19 @@ object PathResolver {
     }
   }
 }
-import PathResolver.{ Defaults, ppcp }
+
+import PathResolver.{Defaults, ppcp}
 
 class PathResolver(implicit ctx: Context) {
   import ctx.base.settings
 
   private val classPathFactory = new ClassPathFactory
 
-  private def cmdLineOrElse(name: String, alt: String) = {
-    (commandLineFor(name) match {
-      case Some("") => None
-      case x        => x
-    }) getOrElse alt
-  }
+  private def cmdLineOrElse(name: String, alt: String) = 
+    commandLineFor(name) match {
+      case Some("") | None => alt
+      case Some(x)         => x
+    }
 
   private def commandLineFor(s: String): Option[String] = condOpt(s) {
     case "javabootclasspath"  => settings.javabootclasspath.value
@@ -199,23 +198,13 @@ class PathResolver(implicit ctx: Context) {
      * [scaladoc] ../scala-trunk/src/reflect/scala/reflect/macros/Reifiers.scala:89: error: object api is not a member of package reflect
      * [scaladoc] case class ReificationException(val pos: reflect.api.PositionApi, val msg: String) extends Throwable(msg)
      * [scaladoc]                                              ^
-     * because the bootstrapping will look at the sourcepath and create package "reflect" in "<root>"
-     * and then when typing relative names, instead of picking <root>.scala.relect, typedIdentifier will pick up the
-     * <root>.reflect package created by the bootstrapping. Thus, no bootstrapping for scaladoc!
-     * TODO: we should refactor this as a separate -bootstrap option to have a clean implementation, no? */
+     * Because bootstrapping looks at the sourcepath and creates the package "reflect" in "<root>" it will cause the
+     * typedIdentifier to pick <root>.reflect instead of the <root>.scala.reflect package.  Thus, no bootstrapping for scaladoc!
+     */
     def sourcePath: String          = cmdLineOrElse("sourcepath", Defaults.scalaSourcePath)
 
-    /** Against my better judgment, giving in to martin here and allowing
-     *  CLASSPATH to be used automatically.  So for the user-specified part
-     *  of the classpath:
-     *
-     *  - If -classpath or -cp is given, it is that
-     *  - Otherwise, if CLASSPATH is set, it is that
-     *  - If neither of those, then "." is used.
-     */
     def userClassPath: String = {
-      if (!settings.classpath.isDefault)
-        settings.classpath.value
+      if (!settings.classpath.isDefault) settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
     }
 

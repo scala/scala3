@@ -28,7 +28,7 @@ class ByNameClosures extends TransformByNameApply with IdentityDenotTransformer 
   override def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = {
     val meth = ctx.newSymbol(
       ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))
-    Closure(meth, _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase))
+    Closure(meth, _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase)).withSpan(arg.span)
   }
 }
 

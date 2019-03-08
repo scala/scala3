@@ -11,6 +11,7 @@ object comptest extends ParallelTesting {
   def safeMode = false
   def isInteractive = true
   def testFilter = None
+  def updateCheckFiles: Boolean = false
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"

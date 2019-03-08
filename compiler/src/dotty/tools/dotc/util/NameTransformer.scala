@@ -4,7 +4,7 @@ package util
 
 import core.Names._
 import collection.mutable
-import util.Chars.isValidJVMMethodChar
+import scala.tasty.util.Chars
 
 import scala.annotation.internal.sharable
 
@@ -47,11 +47,35 @@ object NameTransformer {
    */
   def avoidIllegalChars(name: SimpleName): SimpleName = {
     var i = name.length - 1
-    while (i >= 0 && isValidJVMMethodChar(name(i))) i -= 1
+    while (i >= 0 && Chars.isValidJVMMethodChar(name(i))) i -= 1
     if (i >= 0)
       termName(
         name.toString.flatMap(ch =>
-          if (isValidJVMMethodChar(ch)) ch.toString else "$u%04X".format(ch.toInt)))
+          if (Chars.isValidJVMMethodChar(ch)) ch.toString else "$u%04X".format(ch.toInt)))
+    else name
+  }
+
+  /** Decode expanded characters starting with `$u`, followed by the character's unicode expansion. */
+  def decodeIllegalChars(name: String): String = {
+    if (name.contains("$u")) {
+      val sb = new mutable.StringBuilder()
+      var i = 0
+      while (i < name.length) {
+        if (i < name.length - 5 && name(i) == '$' && name(i + 1) == 'u') {
+          val numbers = name.substring(i + 2, i + 6)
+          try sb.append(Integer.valueOf(name.substring(i + 2, i + 6), 16).toChar)
+          catch {
+            case _: java.lang.NumberFormatException =>
+              sb.append("$u").append(numbers)
+          }
+          i += 6
+        } else {
+          sb.append(name(i))
+          i += 1
+        }
+      }
+      sb.result()
+    }
     else name
   }
 

@@ -8,7 +8,7 @@ trait C2 extends B2 { type L[X, Y] <: String } // error: illegal override
 trait D { type I }
 trait E extends D { type I <: String }
 trait F extends D { type I >: String }
-trait G extends E with F // ok
+trait G extends E, F // ok
 
 trait H extends D { type I >: Int }
-trait H2 extends E with H // error: illegal override
+trait H2 extends E, H // error: illegal override

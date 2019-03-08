@@ -7,6 +7,11 @@ class Observable1[+T](val asJava: JObservable[_ <: T]) extends AnyVal {
   // to the typer parameter of the extension method into which the RHS is
   // transplanted.
   def synchronize: Observable1[T] = new Observable1(foo(asJava))
+
+  // Was generating a Ycheck error after ExtensionMethods.
+  // Fixed by having TypeMap go over info of SkolemTypes
+  private[this] def id(x: JObservable[_ <: T]) = x
+  def synchronize2: Observable1[T] = new Observable1(foo(id(asJava)))
 }
 
 class JObservable[T]

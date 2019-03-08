@@ -1,1 +1,1 @@
-16: Pattern Match Exhaustivity: D, _: C, B(), _: A
+16: Pattern Match Exhaustivity: _: A, B(), _: C, D

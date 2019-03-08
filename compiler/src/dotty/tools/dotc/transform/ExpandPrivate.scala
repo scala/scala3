@@ -72,6 +72,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       // Paths `p1` and `p2` are similar if they have a common suffix that follows
       // possibly different directory paths. That is, their common suffix extends
       // in both cases either to the start of the path or to a file separator character.
+      // TODO: should we test absolute paths instead?
       def isSimilar(p1: String, p2: String): Boolean = {
         var i = p1.length - 1
         var j = p2.length - 1
@@ -83,10 +84,10 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
         (j < 0 || p1(j) == separatorChar)
       }
 
-      assert(d.symbol.sourceFile != null &&
-             ctx.owner.sourceFile != null &&
-             isSimilar(d.symbol.sourceFile.path, ctx.owner.sourceFile.path),
-          s"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.owner.sourceFile}")
+      assert(d.symbol.source.exists &&
+             ctx.owner.source.exists &&
+             isSimilar(d.symbol.source.path, ctx.owner.source.path),
+          s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 

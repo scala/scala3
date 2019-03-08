@@ -10,7 +10,7 @@ class ConfManagement(papers: List[Paper], realScore: Map[Paper, Int]) extends Ap
   private def hasConflict(ps1: Set[Person], ps2: Iterable[Person]) =
     ps2.exists(ps1 contains _)
 
-  type Viewable[T] = implicit Viewers => T
+  type Viewable[T] = given Viewers => T
 
   def vs: Viewable[Viewers] = implicitly
 
@@ -52,7 +52,7 @@ object Orderings extends App {
       x => y => x < y
   }
 
-  implicit def __2[T]: implicit Ord[T] => Ord[List[T]] = new Ord[List[T]] {
+  implicit def __2[T]: given Ord[T] => Ord[List[T]] = new Ord[List[T]] {
     def less: List[T] => List[T] => Boolean =
       xs => ys =>
         if ys.isEmpty then false
@@ -61,7 +61,7 @@ object Orderings extends App {
         else isLess(xs.head)(ys.head)
   }
 
-  def isLess[T]: T => T => implicit Ord[T] => Boolean =
+  def isLess[T]: T => T => given Ord[T] => Boolean =
     x => y => implicitly[Ord[T]].less(x)(y)
 
   println(isLess(Nil)(List(1, 2, 3)))

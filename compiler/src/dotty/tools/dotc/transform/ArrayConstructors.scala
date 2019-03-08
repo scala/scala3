@@ -26,7 +26,7 @@ class ArrayConstructors extends MiniPhase {
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
     def expand(elemType: Type, dims: List[Tree]) =
-      tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
+      tpd.newArray(elemType, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
       val TypeApply(tycon, targ :: Nil) = tree.fun

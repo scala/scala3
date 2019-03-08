@@ -9,12 +9,12 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames._
-
+import dotty.tools.dotc.core.Annotations.Annotation
 
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
-  override protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] =
-    annots.filter(_.tpe != defn.SourceFileAnnotType)
+  override protected def dropAnnotForModText(sym: Symbol): Boolean =
+    super.dropAnnotForModText(sym) || sym == defn.SourceFileAnnot
 
   override protected def blockToText[T >: Untyped](block: Block[T]): Text =
     block match {
@@ -48,8 +48,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def templateText(tree: TypeDef, impl: Template): Text = {
     val decl =
-      if (!tree.mods.is(Module)) modText(tree.mods, tree.symbol, keywordStr(if ((tree).mods is Trait) "trait" else "class"))
-      else modText(tree.mods, tree.symbol, keywordStr("object"), suppress = Final | Module)
+      if (!tree.mods.is(Module)) modText(tree.mods, tree.symbol, keywordStr(if ((tree).mods is Trait) "trait" else "class"), isType = true)
+      else modText(tree.mods, tree.symbol, keywordStr("object"), isType = false)
     decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~ ""
   }
 
@@ -57,7 +57,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     def isSynthetic(parent: Tree): Boolean = {
       val sym = parent.symbol
       sym.maybeOwner == defn.ObjectClass ||
-      (sym == defn.ProductClass && impl.symbol.owner.is(Case))
+      (sym == defn.ProductClass && impl.symbol.owner.is(Case)) ||
+      (sym == defn.SerializableClass && impl.symbol.owner.is(Case))
     }
     val parents = impl.parents.filterNot(isSynthetic)
     val body = impl.body.filterNot(_.symbol.is(ParamAccessor))
@@ -69,7 +70,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       val bodyText = " {" ~~ toTextGlobal(impl.body, "\n") ~ "}"
       parentsText.provided(parents.nonEmpty) ~ bodyText
     }
-    else super.toTextTemplate(impl.copy(parents = parents, preBody = body), ofNew)
+    else super.toTextTemplate(untpd.cpy.Template(impl)(parents = parents, body = body), ofNew)
   }
 
   override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {

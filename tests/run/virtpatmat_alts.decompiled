@@ -1,5 +1,4 @@
-/** Decompiled from out/runTestFromTasty/run/virtpatmat_alts/Test.class */
-object Test extends dotty.runtime.LegacyApp() {
+object Test extends dotty.runtime.LegacyApp {
   scala.Tuple2.apply[scala.Boolean, scala.Boolean](true, true) match {
     case (scala.Tuple2(true, true) | scala.Tuple2(false, false)) =>
       1

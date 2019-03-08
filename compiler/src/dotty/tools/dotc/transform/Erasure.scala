@@ -34,7 +34,7 @@ class Erasure extends Phase with DenotTransformer {
   override def phaseName: String = Erasure.name
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[String] = Set(InterceptedMethods.name, Splitter.name, ElimRepeated.name)
+  override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name)
 
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
@@ -180,8 +180,7 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context): Tree =
-      (if (isPureExpr(tree)) const else Block(tree :: Nil, const))
-        .withPos(tree.pos)
+      (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
@@ -320,9 +319,15 @@ object Erasure {
   class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
     import Boxing._
 
+    def isErased(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+      case TypeApply(Select(qual, _), _) if tree.symbol == defn.Any_typeCast =>
+        isErased(qual)
+      case _ => tree.symbol.isEffectivelyErased
+    }
+
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
-      if (tree.symbol.isEffectivelyErased && !ctx.mode.is(Mode.Type))
-        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.pos)
+      if (isErased(tree) && !ctx.mode.is(Mode.Type))
+        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
       tree
     }
 
@@ -398,9 +403,9 @@ object Erasure {
 
       def mapOwner(sym: Symbol): Symbol = {
         def recur(owner: Symbol): Symbol =
-          if (defn.erasedToObject.contains(owner)) {
+          if (defn.specialErasure.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.ObjectClass
+            defn.specialErasure(owner)
           } else if (defn.isSyntheticFunctionClass(owner))
             defn.erasedFunctionClass(owner)
           else
@@ -502,7 +507,7 @@ object Erasure {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else typedExpr(fun, FunProto(args, pt)(this)) match {
+      else typedExpr(fun, FunProto(args, pt)(this, isContextual = false)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>
@@ -559,7 +564,7 @@ object Erasure {
       if (sym.isEffectivelyErased) erasedDef(sym)
       else
         super.typedValDef(untpd.cpy.ValDef(vdef)(
-          tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
+          tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
@@ -592,7 +597,7 @@ object Erasure {
         val ddef1 = untpd.cpy.DefDef(ddef)(
           tparams = Nil,
           vparamss = vparamss1,
-          tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+          tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)
       }

@@ -1,4 +1,4 @@
-
+// This test requires retyping from untyped trees after inlining, which is not supported anymore
 object typelevel {
   case class Typed[T](value: T) { type Type = T }
 }
@@ -21,7 +21,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  inline def ToNat(inline n: Int): Typed[Nat] =
+  inline def ToNat(inline n: Int) <: Typed[Nat] =
     if n == 0 then Typed(Z)
     else Typed(S(ToNat(n - 1).value))
 
@@ -35,7 +35,7 @@ object Test extends App {
   println(x1)
   println(x2)
 
-  inline def toInt(n: Nat): Int = inline n match {
+  inline def toInt(n: Nat) <: Int = inline n match {
     case Z => 0
     case S(n1) => toInt(n1) + 1
   }
@@ -45,7 +45,7 @@ object Test extends App {
   inline val i2 = toInt(y2)
   val j2: 2 = i2
 
-  inline def concat(xs: HList, ys: HList): HList = inline xs match {
+  inline def concat(xs: HList, ys: HList) <: HList = inline xs match {
     case HNil => ys
     case HCons(x, xs1) => HCons(x, concat(xs1, ys))
   }
@@ -68,7 +68,7 @@ object Test extends App {
   val r6 = concat(HCons(1, HCons("a", HNil)), HCons(true, HCons(1.0, HNil)))
   val c6: HCons[Int, HCons[String, HCons[Boolean, HCons[Double, HNil]]]] = r6
 
-  inline def nth(xs: HList, n: Int): Any = inline xs match {
+  inline def nth(xs: HList, n: Int) <: Any = inline xs match {
     case HCons(x, _)   if n == 0 => x
     case HCons(_, xs1) if n > 0  => nth(xs1, n - 1)
   }
@@ -78,12 +78,12 @@ object Test extends App {
   val e1 = nth(r2, 1)
   val ce1: String = e1
 
-  inline def concatTyped(xs: HList, ys: HList): Typed[_ <: HList] = inline xs match {
+  inline def concatTyped(xs: HList, ys: HList) <: Typed[_ <: HList] = inline xs match {
     case HNil => Typed(ys)
     case HCons(x, xs1) => Typed(HCons(x, concatTyped(xs1, ys).value))
   }
 
-  def concatImpl(xs: HList, ys: HList): HList = xs match {
+  def concatImpl(xs: HList, ys: HList) <: HList = xs match {
     case HNil => ys
     case HCons(x, xs1) => HCons(x, concatImpl(xs1, ys))
   }

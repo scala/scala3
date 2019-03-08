@@ -14,10 +14,14 @@ import TastyBuffer._
 import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
+import util.SourceFile
+import annotation.constructorOnly
 
 object TreePickler {
 
-  case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.Tree {
+  val sectionName = "ASTs"
+
+  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
@@ -25,7 +29,7 @@ object TreePickler {
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
-  pickler.newSection("ASTs", buf)
+  pickler.newSection(TreePickler.sectionName, buf)
   import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
@@ -61,7 +65,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+  def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
   private def pickleNameAndSig(name: Name, sig: Signature): Unit =
     pickleName(
@@ -76,7 +80,7 @@ class TreePickler(pickler: TastyPickler) {
       // I believe it's a bug in typer: the type of an implicit argument refers
       // to a closure parameter outside the closure itself. TODO: track this down, so that we
       // can eliminate this case.
-      ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.pos)
+      ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.sourcePos)
       pickleForwardSymRef(sym)
   }
 
@@ -213,16 +217,16 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
         pickleSymRef(sym)
       }
-      else if (isLocallyDefined(sym)) {
-        writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-        pickleSymRef(sym); pickleType(tpe.prefix)
-      }
       else tpe.designator match {
         case name: Name =>
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleName(name); pickleType(tpe.prefix)
         case sym: Symbol =>
-          pickleExternalRef(sym)
+          if (isLocallyDefined(sym)) {
+            writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
+            pickleSymRef(sym); pickleType(tpe.prefix)
+          }
+          else pickleExternalRef(sym)
       }
     case tpe: ThisType =>
       if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
@@ -283,7 +287,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      pickleMethodic(methodType(isImplicit = tpe.isImplicitMethod, isErased = tpe.isErasedMethod), tpe)
+      pickleMethodic(methodType(tpe.isContextual, tpe.isImplicitMethod, tpe.isErasedMethod), tpe)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
@@ -442,9 +446,14 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(BLOCK)
           stats.foreach(preRegister)
           withLength { pickleTree(expr); stats.foreach(pickleTree) }
-        case If(cond, thenp, elsep) =>
+        case tree @ If(cond, thenp, elsep) =>
           writeByte(IF)
-          withLength { pickleTree(cond); pickleTree(thenp); pickleTree(elsep) }
+          withLength {
+            if (tree.isInline) writeByte(INLINE)
+            pickleTree(cond)
+            pickleTree(thenp)
+            pickleTree(elsep)
+          }
         case Closure(env, meth, tpt) =>
           writeByte(LAMBDA)
           assert(env.isEmpty)
@@ -452,9 +461,16 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(meth)
             if (tpt.tpe.exists) pickleTpt(tpt)
           }
-        case Match(selector, cases) =>
+        case tree @ Match(selector, cases) =>
           writeByte(MATCH)
-          withLength { pickleTree(selector); cases.foreach(pickleTree) }
+          withLength {
+            if (tree.isInline) {
+              if (selector.isEmpty) writeByte(IMPLICIT)
+              else { writeByte(INLINE); pickleTree(selector) }
+            }
+            else pickleTree(selector)
+            tree.cases.foreach(pickleTree)
+          }
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
@@ -544,9 +560,13 @@ class TreePickler(pickler: TastyPickler) {
             }
             pickleStats(tree.constr :: rest)
           }
-        case Import(expr, selectors) =>
+        case Import(impliedOnly, expr, selectors) =>
           writeByte(IMPORT)
-          withLength { pickleTree(expr); pickleSelectors(selectors) }
+          withLength {
+            if (impliedOnly) writeByte(IMPLIED)
+            pickleTree(expr)
+            pickleSelectors(selectors)
+          }
         case PackageDef(pid, stats) =>
           writeByte(PACKAGE)
           withLength { pickleType(pid.tpe); pickleStats(stats) }
@@ -567,12 +587,6 @@ class TreePickler(pickler: TastyPickler) {
         case AppliedTypeTree(tycon, args) =>
           writeByte(APPLIEDtpt)
           withLength { pickleTree(tycon); args.foreach(pickleTree) }
-        case AndTypeTree(tp1, tp2) =>
-          writeByte(ANDtpt)
-          withLength { pickleTree(tp1); pickleTree(tp2) }
-        case OrTypeTree(tp1, tp2) =>
-          writeByte(ORtpt)
-          withLength { pickleTree(tp1); pickleTree(tp2) }
         case MatchTypeTree(bound, selector, cases) =>
           writeByte(MATCHtpt)
           withLength {
@@ -659,6 +673,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Scala2x) writeByte(SCALA2X)
     if (isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
+      if (flags is Implied) writeByte(IMPLIED)
       if (flags is Erased) writeByte(ERASED)
       if (flags.is(Lazy, butNot = Module)) writeByte(LAZY)
       if (flags is AbsOverride) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
@@ -666,15 +681,18 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Accessor) writeByte(FIELDaccessor)
       if (flags is CaseAccessor) writeByte(CASEaccessor)
       if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
-      if (flags is Stable) writeByte(STABLE)
+      if (flags is StableRealizable) writeByte(STABLE)
+      if (flags is Extension) writeByte(EXTENSION)
+      if (flags is Given) writeByte(GIVEN)
       if (flags is ParamAccessor) writeByte(PARAMsetter)
-      if (flags is Label) writeByte(LABEL)
+      assert(!(flags is Label))
     } else {
       if (flags is Sealed) writeByte(SEALED)
       if (flags is Abstract) writeByte(ABSTRACT)
       if (flags is Trait) writeByte(TRAIT)
       if (flags is Covariant) writeByte(COVARIANT)
       if (flags is Contravariant) writeByte(CONTRAVARIANT)
+      if (flags is Opaque) writeByte(OPAQUE)
     }
   }
 

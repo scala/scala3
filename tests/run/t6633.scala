@@ -1,12 +1,12 @@
 object Test extends dotty.runtime.LegacyApp {
   import collection.mutable.ListBuffer
 
-  def newLB = ListBuffer('a, 'b, 'c, 'd, 'e)
+  def newLB = ListBuffer(Symbol("a"), Symbol("b"), Symbol("c"), Symbol("d"), Symbol("e"))
 
   val lb0 = newLB
 
   try {
-    lb0.insert(9, 'x)
+    lb0.insert(9, Symbol("x"))
   } catch {
     case ex: IndexOutOfBoundsException => println(ex)
   }
@@ -14,7 +14,7 @@ object Test extends dotty.runtime.LegacyApp {
   val lb1 = newLB
 
   try {
-    lb1.insert(9, 'x)
+    lb1.insert(9, Symbol("x"))
   } catch {
     case ex: IndexOutOfBoundsException =>
   }

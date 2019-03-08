@@ -1,4 +1,3 @@
-/** Decompiled from out/runTestFromTasty/run/t8100/Test.class */
 object Test {
   import scala.util.{Try}
   def main(args: scala.Array[scala.Predef.String]): scala.Unit = {

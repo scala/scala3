@@ -1,14 +1,18 @@
 package scala.tasty.reflect
 
-trait SignatureOps extends TastyCore {
+trait SignatureOps extends Core {
 
-  val Signature: SignatureExtractor
-  abstract class SignatureExtractor {
+  /** Erased (JVM) signatures. */
+  val Signature: SignatureModule
+  abstract class SignatureModule {
+    /** Matches the erased (JVM) signature and returns its parameters and result type. */
     def unapply(sig: Signature)(implicit ctx: Context): Option[(List[String], String)]
   }
 
   trait SignatureAPI {
+    /** The (JVM) erased signatures of the parameters. */
     def paramSigs: List[String]
+    /** The (JVM) erased result type. */
     def resultSig: String
   }
   implicit def SignatureDeco(sig: Signature): SignatureAPI

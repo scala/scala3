@@ -1,2 +1,2 @@
-4: Pattern Match Exhaustivity: SATURDAY, FRIDAY, THURSDAY, SUNDAY
-15: Pattern Match Exhaustivity: SATURDAY, FRIDAY, THURSDAY
+4: Pattern Match Exhaustivity: SUNDAY, THURSDAY, FRIDAY, SATURDAY
+15: Pattern Match Exhaustivity: THURSDAY, FRIDAY, SATURDAY

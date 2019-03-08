@@ -5,6 +5,7 @@ package reporting
 import java.io.{ PrintStream, PrintWriter, File => JFile, FileOutputStream }
 import java.text.SimpleDateFormat
 import java.util.Date
+import core.Decorators._
 
 import scala.collection.mutable
 
@@ -28,10 +29,10 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   private[this] var _didCrash = false
   final def compilerCrashed: Boolean = _didCrash
 
-  protected final def inlineInfo(pos: SourcePosition): String =
+  protected final def inlineInfo(pos: SourcePosition)(implicit ctx: Context): String =
     if (pos.exists) {
       if (pos.outer.exists)
-        s"\ninlined at ${pos.outer}:\n" + inlineInfo(pos.outer)
+        i"\ninlined at ${pos.outer}:\n" + inlineInfo(pos.outer)
       else ""
     }
     else ""

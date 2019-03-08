@@ -22,17 +22,11 @@ import scala.reflect.ClassTag
 object PickledQuotes {
   import tpd._
 
-  /** Pickle the tree of the quoted.Expr */
-  def pickleExpr(tree: Tree)(implicit ctx: Context): scala.quoted.Expr[Any] = {
-    val pickled = pickleQuote(tree)
-    scala.runtime.quoted.Unpickler.unpickleExpr(pickled, Nil)
-  }
-
   /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
     if (ctx.reporter.hasErrors) Nil
     else {
-      assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'(~x)` which should be optimized to `x`
+      assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
       TastyString.pickle(pickled)
     }
@@ -52,16 +46,16 @@ object PickledQuotes {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
         case value => Literal(Constant(value))
       }
-    case expr: TastyTreeExpr[Tree] @unchecked => expr.tree
-    case expr: FunctionAppliedTo[_, _] =>
-      functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
+    case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
+    case expr: FunctionAppliedTo[_] =>
+      functionAppliedTo(quotedExprToTree(expr.f), expr.args.map(arg => quotedExprToTree(arg)).toList)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
     case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
-    case expr: TreeType[Tree] @unchecked => expr.typeTree
+    case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
@@ -86,25 +80,25 @@ object PickledQuotes {
     treePkl.compactify()
     pickler.addrOfTree = treePkl.buf.addrOfTree
     pickler.addrOfSym = treePkl.addrOfSym
-    if (tree.pos.exists)
+    if (tree.span.exists)
       new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-    if (pickling ne noPrinter)
+    if (quotePickling ne noPrinter)
       println(i"**** pickling quote of \n${tree.show}")
 
     val pickled = pickler.assembleParts()
 
-    if (pickling ne noPrinter)
-      new TastyPrinter(pickled).printContents()
+    if (quotePickling ne noPrinter)
+      println(new TastyPrinter(pickled).printContents())
 
     pickled
   }
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
-    if (pickling ne noPrinter) {
+    if (quotePickling ne noPrinter) {
       println(i"**** unpickling quote from TASTY")
-      new TastyPrinter(bytes).printContents()
+      println(new TastyPrinter(bytes).printContents())
     }
 
     val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
@@ -112,7 +106,7 @@ object PickledQuotes {
     unpickler.enter(Set.empty)
     val tree = unpickler.tree
 
-    if (pickling ne noPrinter)
+    if (quotePickling ne noPrinter)
       println(i"**** unpickle quote ${tree.show}")
 
     tree
@@ -133,25 +127,27 @@ object PickledQuotes {
     TypeTree(tpe)
   }
 
-  private def functionAppliedTo(f: Tree, x: Tree)(implicit ctx: Context): Tree = {
-    val x1 = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), x)
-    def x1Ref() = ref(x1.symbol)
-    def rec(f: Tree): Tree = f match {
+  private def functionAppliedTo(fn: Tree, args: List[Tree])(implicit ctx: Context): Tree = {
+    val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span))
+    def argRefs() = argVals.map(argVal => ref(argVal.symbol))
+    def rec(fn: Tree): Tree = fn match {
+      case Inlined(call, bindings, expansion) =>
+        // this case must go before closureDef to avoid dropping the inline node
+        cpy.Inlined(fn)(call, bindings, rec(expansion))
       case closureDef(ddef) =>
-        val paramSym = ddef.vparamss.head.head.symbol
+        val paramSyms = ddef.vparamss.head.map(param => param.symbol)
+        val paramToVals = paramSyms.zip(argRefs()).toMap
         new TreeTypeMap(
           oldOwners = ddef.symbol :: Nil,
           newOwners = ctx.owner :: Nil,
-          treeMap = tree => if (tree.symbol == paramSym) x1Ref().withPos(tree.pos) else tree
+          treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
         ).transform(ddef.rhs)
       case Block(stats, expr) =>
-        seq(stats, rec(expr))
-      case Inlined(call, bindings, expansion) =>
-        Inlined(call, bindings, rec(expansion))
+        seq(stats, rec(expr)).withSpan(fn.span)
       case _ =>
-        f.select(nme.apply).appliedTo(x1Ref())
+        fn.select(nme.apply).appliedToArgs(argRefs())
     }
-    Block(x1 :: Nil, rec(f))
+    Block(argVals, rec(fn))
   }
 
   private def classToType(clazz: Class[_])(implicit ctx: Context): Type = {
@@ -175,5 +171,22 @@ object PickledQuotes {
         enclosing.classSymbol.companionModule.termRef.select(name)
       }
     } else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
+  }
+
+  /** Make sure that the owner of this tree is `ctx.owner` */
+  private def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
+    val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
+      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] = {
+        if (x.isDefined) x
+        else tree match {
+          case tree: DefTree => Some(tree.symbol.owner)
+          case _ => foldOver(x, tree)
+        }
+      }
+    }
+    getCurrentOwner(None, tree) match {
+      case Some(owner) if owner != ctx.owner => tree.changeOwner(owner, ctx.owner)
+      case _ => tree
+    }
   }
 }

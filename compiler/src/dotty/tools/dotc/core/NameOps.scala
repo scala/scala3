@@ -4,14 +4,16 @@ package core
 import java.security.MessageDigest
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
-import util.Chars
+import scala.tasty.util.Chars
 import Chars.isOperatorPart
 import Definitions._
 
 object NameOps {
 
-  final object compactify {
+  object compactify {
     lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
+
+    final val CLASSFILE_NAME_CHAR_LIMIT = 240
 
     /** COMPACTIFY
      *
@@ -25,10 +27,11 @@ object NameOps {
      *
      *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
      */
-    def apply(s: String)(implicit ctx: Context): String = {
+    def apply(s: String): String = {
       val marker = "$$$$"
-      val limit: Int = ctx.settings.XmaxClassfileName.value
-      val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
+
+      val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6) min
+        2 * (CLASSFILE_NAME_CHAR_LIMIT - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
         val prefix = s take edge
@@ -85,6 +88,16 @@ object NameOps {
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
       case _ =>
         false
+    }
+
+    /** is this the name of an object enclosing packagel-level definitions? */
+    def isPackageObjectName: Boolean = name match {
+      case name: TermName => name == nme.PACKAGE || name.endsWith(str.TOPLEVEL_SUFFIX)
+      case name: TypeName =>
+        name.toTermName match {
+          case ModuleClassName(original) => original.isPackageObjectName
+          case _ => false
+        }
     }
 
     /** Convert this module name to corresponding module class name */
@@ -173,9 +186,9 @@ object NameOps {
         if (n == 0) -1 else n
       }
 
-    /** Is a function name, i.e one of FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
+    /** Is a function name, i.e one of FunctionXXL, FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
      */
-    def isFunction: Boolean = functionArity >= 0
+    def isFunction: Boolean = (name eq tpnme.FunctionXXL) || functionArity >= 0
 
     /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */

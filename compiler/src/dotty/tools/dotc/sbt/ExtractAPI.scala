@@ -41,6 +41,14 @@ import scala.collection.mutable
 class ExtractAPI extends Phase {
   override def phaseName: String = "sbt-api"
 
+  override def isRunnable(implicit ctx: Context): Boolean = {
+    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
+    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+  }
+
+  // Check no needed. Does not transform trees
+  override def isCheckable: Boolean = false
+
   // SuperAccessors need to be part of the API (see the scripted test
   // `trait-super` for an example where this matters), this is only the case
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
@@ -50,30 +58,26 @@ class ExtractAPI extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    val dumpInc = ctx.settings.YdumpSbtInc.value
-    val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
-    if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
-      val sourceFile = unit.source.file
-      if (ctx.sbtCallback != null)
-        ctx.sbtCallback.startSource(sourceFile.file)
+    val sourceFile = unit.source.file
+    if (ctx.sbtCallback != null)
+      ctx.sbtCallback.startSource(sourceFile.file)
 
-      val apiTraverser = new ExtractAPICollector
-      val classes = apiTraverser.apiSource(unit.tpdTree)
-      val mainClasses = apiTraverser.mainClasses
+    val apiTraverser = new ExtractAPICollector
+    val classes = apiTraverser.apiSource(unit.tpdTree)
+    val mainClasses = apiTraverser.mainClasses
 
-      if (dumpInc) {
-        // Append to existing file that should have been created by ExtractDependencies
-        val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
-          .bufferedWriter(append = true), true)
-        try {
-          classes.foreach(source => pw.println(DefaultShowAPI(source)))
-        } finally pw.close()
-      }
+    if (ctx.settings.YdumpSbtInc.value) {
+      // Append to existing file that should have been created by ExtractDependencies
+      val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
+        .bufferedWriter(append = true), true)
+      try {
+        classes.foreach(source => pw.println(DefaultShowAPI(source)))
+      } finally pw.close()
+    }
 
-      if (ctx.sbtCallback != null) {
-        classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
-        mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
-      }
+    if (ctx.sbtCallback != null) {
+      classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
+      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
     }
   }
 }
@@ -250,7 +254,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
           case ex: TypeError =>
             // See neg/i1750a for an example where a cyclic error can arise.
             // The root cause in this example is an illegal "override" of an inner trait
-            ctx.error(ex.toMessage, csym.pos)
+            ctx.error(ex.toMessage, csym.sourcePos)
             defn.ObjectType :: Nil
         }
       if (ValueClasses.isDerivedValueClass(csym)) {
@@ -267,8 +271,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     // Synthetic methods that are always present do not affect the API
     // and can therefore be ignored.
-    def alwaysPresent(s: Symbol) =
-      s.isCompanionMethod || (csym.is(ModuleClass) && s.isConstructor)
+    def alwaysPresent(s: Symbol) = csym.is(ModuleClass) && s.isConstructor
     val decls = cinfo.decls.filter(!alwaysPresent(_))
     val apiDecls = apiDefinitions(decls)
 
@@ -333,7 +336,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     } else if (sym.is(Mutable, butNot = Accessor)) {
       api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
-    } else if (sym.isStable && !sym.isRealMethod) {
+    } else if (sym.isStableMember && !sym.isRealMethod) {
       api.Val.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
     } else {
@@ -601,7 +604,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val abs = sym.is(Abstract) || sym.is(Deferred) || absOver
     val over = sym.is(Override) || absOver
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
-      sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
+      sym.is(ImplicitOrImplied), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
   }
 
   def apiAnnotations(s: Symbol): List[api.Annotation] = {

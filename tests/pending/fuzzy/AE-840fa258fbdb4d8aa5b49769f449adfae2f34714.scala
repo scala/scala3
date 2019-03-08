@@ -1,0 +1,1 @@
+object + extends this . type ( ) ( { } . + = )

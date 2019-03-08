@@ -9,13 +9,6 @@
     "**/*.class": true,
     "**/*.hasTasty": true,
     "**/target/": true,
-    "scala2-library/{doc,docs,lib,META-INF,scripts,spec,test,tools}/": true, // only allow scala-backend/src
-    "scala2-library/src/[abcefimprs]*": true,  // only allow scala-backend/src/library
-    "scala-backend/{doc,docs,lib,META-INF,scripts,spec,test,tools}/": true, // only allow scala-backend/src
-    "scala-backend/src/[abefilmprs]*": true, // only allow scala-backend/src/compiler
-    "scala-backend/src/scala/reflect/": true,
-    "scala-backend/src/scala/tools/{ant,cmd,reflect,util}*": true,
-    "scala-backend/src/scala/tools/nsc/*.scala": true,
-    "scala-backend/src/scala/tools/nsc/[aijrstu]*": true // only allow scala-backend/src/scala/tools/nsc/backend
+    "community-build/community-projects": true
   }
 }

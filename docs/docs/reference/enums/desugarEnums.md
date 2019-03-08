@@ -134,15 +134,6 @@ map into case classes or vals.
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.
 
-### Equality
-
-An `enum` type contains a `scala.Eq` instance that restricts values of the `enum` type to
-be compared only to other values of the same enum type. Furtermore, generic
-`enum` types are comparable only if their type arguments are. For instance the
-`Option` enum type will get the following definition in its companion object:
-
-    implicit def eqOption[T, U](implicit ev1: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
-
 ### Translation of Enumerations
 
 Non-generic enums `E` that define one or more singleton cases

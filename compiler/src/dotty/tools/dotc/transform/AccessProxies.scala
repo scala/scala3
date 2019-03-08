@@ -12,7 +12,7 @@ import TypeUtils._
 import Types._
 import NameKinds.ClassifiedNameKind
 import ast.Trees._
-import util.Positions.Position
+import util.Spans.Span
 import config.Printers.transforms
 
 /** A utility class for generating access proxies. Currently used for
@@ -53,7 +53,7 @@ abstract class AccessProxies {
             accessRef.becomes(forwardedArgss.head.head)
           else
             accessRef.appliedToTypes(forwardedTypes).appliedToArgss(forwardedArgss)
-        rhs.withPos(accessed.pos)
+        rhs.withSpan(accessed.span)
       })
 
   /** Add all needed accessors to the `body` of class `cls` */
@@ -75,8 +75,8 @@ abstract class AccessProxies {
     }
 
     /** A fresh accessor symbol */
-    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Position)(implicit ctx: Context): TermSymbol = {
-      val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = pos).entered
+    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, span: Span)(implicit ctx: Context): TermSymbol = {
+      val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = span).entered
       if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
       sym
     }
@@ -85,7 +85,7 @@ abstract class AccessProxies {
     protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context): Symbol = {
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
-        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.pos)
+        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.span)
         accessedBy(acc) = accessed
         acc
       }
@@ -97,7 +97,7 @@ abstract class AccessProxies {
         case Select(qual, _) if qual.tpe.derivesFrom(accessor.owner) => qual.select(accessor)
         case _ => ref(accessor)
       }
-    }.withPos(reference.pos)
+    }.withSpan(reference.span)
 
     /** Given a reference to a getter accessor, the corresponding setter reference */
     def useSetter(getterRef: Tree)(implicit ctx: Context): Tree = getterRef match {
@@ -143,7 +143,7 @@ abstract class AccessProxies {
     def accessorIfNeeded(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: RefTree if needsAccessor(tree.symbol) =>
         if (tree.symbol.isConstructor) {
-          ctx.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.pos)
+          ctx.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.sourcePos)
           tree // TODO: create a proper accessor for the private constructor
         }
         else useAccessor(tree)

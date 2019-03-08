@@ -8,9 +8,9 @@ object UnrolledExpr {
   }
 
   // TODO support blocks in the compiler to avoid creating trees of blocks?
-  def block[T](stats: Iterable[Expr[_]], expr: Expr[T]): Expr[T] = {
+  def block[T: Type](stats: Iterable[Expr[_]], expr: Expr[T]): Expr[T] = {
     def rec(stats: List[Expr[_]]): Expr[T] = stats match {
-      case x :: xs => '{ ~x; ~rec(xs) }
+      case x :: xs => '{ $x; ${rec(xs)} }
       case Nil => expr
     }
     rec(stats.toList)
@@ -21,7 +21,7 @@ object UnrolledExpr {
 class UnrolledExpr[T: Liftable, It <: Iterable[T]](xs: It) {
   import UnrolledExpr._
 
-  def foreach[U](f: T => Expr[U]): Expr[Unit] = block(xs.map(f), '())
+  def foreach[U](f: T => Expr[U]): Expr[Unit] = block(xs.map(f), '{})
 
   def withFilter(f: T => Boolean): UnrolledExpr[T, Iterable[T]] = new UnrolledExpr(xs.filter(f))
 

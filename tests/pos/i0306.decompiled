@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/i0306/bar.class */
 object bar {
   class C[T <: scala.Seq[_ >: scala.Nothing <: scala.Any]]()
   val x: scala.AnyRef = new bar.C[scala.collection.Seq[_ >: scala.Nothing <: scala.Any]]()

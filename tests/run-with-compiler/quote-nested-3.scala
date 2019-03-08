@@ -7,9 +7,9 @@ object Test {
     val q = '{
       type T = String
       val x = "foo"
-      ~{
-        val y = '(x)
-        '{ val z: T = ~y }
+      ${
+        val y = 'x
+        '{ val z: T = $y }
       }
       x
     }

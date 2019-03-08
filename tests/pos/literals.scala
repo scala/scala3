@@ -5,5 +5,4 @@ object Test {
   val d: 1.0 = 1.0
   val e: true = true
   val f: '*' = '*'
-  val g: 'a = 'a
 }

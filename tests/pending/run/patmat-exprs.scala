@@ -430,8 +430,8 @@ trait Pattern {
   case class Div[T](left: Expr[T], right: Expr[T])
                                  (implicit num: NumericOps[T]) extends TwoArg[T] {
 
-    // [f(x) / g(x)]' = [f(x) * 1 / g(x)]' = f'(x) * 1 / g(x) + f(x) * [1 / g(x)]' =
-    //    f'(x) / g(x) + f(x) * [-1 / g(x) ^ 2] * g'(x) = (f'(x) * g(x) - f(x) * g'(x)) / g(x)^2
+    // [f(x) / g(x)]' = [f(x) * 1 / g(x)]' = f'{x} * 1 / g(x) + f(x) * [1 / g(x)]' =
+    //    f'{x} / g(x) + f(x) * [-1 / g(x) ^ 2] * g'{x} = (f'{x} * g(x) - f(x) * g'{x}) / g(x)^2
     def derivative(v: Var[T]) =
       Div(
         Sub(
@@ -449,7 +449,7 @@ trait Pattern {
 
   case class Inv[T](expr: Expr[T])(implicit num: NumericOps[T]) extends OneArg[T] {
 
-    // [1 / f(x)]' = - f'(x) / f(x) ^ 2
+    // [1 / f(x)]' = - f'{x} / f(x) ^ 2
     def derivative(v: Var[T]) = Neg(Div(expr.derivative(v), Sqr(expr)))
     def eval(f: Any => Any) = num.div(num.one, expr.eval(f))
     def mapArgs(f: EndoFunction[Expr[_]]) = Inv(f(expr))
@@ -458,7 +458,7 @@ trait Pattern {
   }
 
   case class Sqr[T](expr: Expr[T])(implicit num: NumericOps[T]) extends OneArg[T] {
-    // [f(x) ^ 2]' = 2 * f(x) * f'(x)
+    // [f(x) ^ 2]' = 2 * f(x) * f'{x}
     def derivative(v: Var[T]) = Mul(Mul(Const(num.two), expr), expr.derivative(v))
     def eval(f: Any => Any) = num.sqr(expr.eval(f))
     def mapArgs(f: EndoFunction[Expr[_]]) = Sqr(f(expr))

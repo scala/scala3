@@ -1,0 +1,5 @@
+Test
+Foo companion
+foo: Foo(23)
+FooAssoc
+assoc: 23

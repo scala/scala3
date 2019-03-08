@@ -24,6 +24,7 @@ class IdempotencyTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
@@ -32,9 +33,6 @@ class IdempotencyTests extends ParallelTesting {
 
     def sourcesFrom(dir: Path) = CompilationTests.sources(Files.walk(dir))
 
-    val strawmanSources = sourcesFrom(Paths.get("collection-strawman/collections/src/main"))
-    val strawmanSourcesSorted = strawmanSources.sorted
-    val strawmanSourcesRevSorted = strawmanSourcesSorted.reverse
 
     val posIdempotency = {
       compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency1")) +
@@ -51,13 +49,6 @@ class IdempotencyTests extends ParallelTesting {
       }).reduce(_ + _)
     }
 
-    val strawmanIdempotency = {
-      compileList("strawman0", strawmanSources, opt) +
-      compileList("strawman1", strawmanSources, opt) +
-      compileList("strawman2", strawmanSourcesSorted, opt) +
-      compileList("strawman3", strawmanSourcesRevSorted, opt)
-    }
-
     def check(name: String) = {
       val files = List(s"tests/idempotency/$name.scala", "tests/idempotency/IdempotencyCheck.scala")
       compileList(name, files, defaultOptions)(TestGroup("idempotency/check"))
@@ -70,8 +61,6 @@ class IdempotencyTests extends ParallelTesting {
     }
 
     val allTests = {
-      // Disabled until strawman is fixed
-      // strawmanIdempotency +
       orderIdempotency +
       posIdempotency
     }

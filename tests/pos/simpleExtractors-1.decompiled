@@ -1,20 +1,15 @@
-/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-1/Bar.class */
 object Bar {
   def unapply(arg: scala.Any): scala.Option[scala.Any] = scala.Some.apply[scala.Any](arg)
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-1/BarSeq.class */
 object BarSeq {
   def unapplySeq(arg: scala.Any): scala.Option[scala.Seq[scala.Any]] = scala.Some.apply[collection.immutable.List[scala.Any]](scala.List.apply[scala.Any](arg))
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-1/Baz.class */
 object Baz {
   def unapply[T](arg: T): scala.Option[T] = scala.Some.apply[T](arg)
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-1/BazSeq.class */
 object BazSeq {
   def unapplySeq[T](arg: T): scala.Option[scala.Seq[T]] = scala.Some.apply[collection.immutable.List[T]](scala.List.apply[T](arg))
 }
-/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-1/Foo.class */
 class Foo() {
   def bar(x: scala.Any): scala.Unit = x match {
     case Bar(a) =>

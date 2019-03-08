@@ -1,15 +1,12 @@
-/** Decompiled from out/runTestFromTasty/run/simpleClass/Test.class */
 object Test {
   def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
     scala.Predef.println(new foo.A().getClass().getName())
     scala.Predef.println(new foo.B().getClass().getName())
   }
 }
-/** Decompiled from out/runTestFromTasty/run/simpleClass/foo/A.class */
 package foo {
   class A()
 }
-/** Decompiled from out/runTestFromTasty/run/simpleClass/foo/B.class */
 package foo {
-  class B() extends foo.A()
+  class B() extends foo.A
 }

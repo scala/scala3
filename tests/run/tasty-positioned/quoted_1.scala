@@ -9,10 +9,10 @@ case class Positioned[T](value: T, position: Position)
 
 object Positioned {
 
-  implicit inline def apply[T](x: => T): Positioned[T] = ~impl('(x))
+  implicit inline def apply[T](x: => T): Positioned[T] = ${impl('x)}
 
-  def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
-    import tasty.{Position => _, _}
+  def impl[T](x: Expr[T])(implicit ev: Type[T], reflect: Reflection): Expr[Positioned[T]] = {
+    import reflect.{Position => _, _}
     val pos = rootPosition
 
     val path = pos.sourceFile.toString.toExpr
@@ -23,7 +23,7 @@ object Positioned {
     val startColumn = pos.startColumn.toExpr
     val endColumn = pos.endColumn.toExpr
 
-    val liftedPosition = '(new Position(~path, ~start, ~end, ~startLine, ~startColumn, ~endLine, ~endColumn))
-    '(Positioned[T](~x, ~liftedPosition))
+    val liftedPosition = '{new Position($path, $start, $end, $startLine, $startColumn, $endLine, $endColumn)}
+    '{Positioned[T]($x, $liftedPosition)}
   }
 }

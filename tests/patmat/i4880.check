@@ -1,1 +1,1 @@
-10: Pattern Match Exhaustivity: _: ZipArchive, _: VirtualFile, _: PlainFile
+10: Pattern Match Exhaustivity: _: PlainFile, _: VirtualFile, _: ZipArchive

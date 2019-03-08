@@ -1,7 +1,7 @@
 package scala.tasty.file
 
-import scala.tasty.Tasty
+import scala.tasty.Reflection
 
 trait TastyConsumer {
-  def apply(tasty: Tasty)(root: tasty.Tree): Unit
+  def apply(reflect: Reflection)(root: reflect.Tree): Unit
 }

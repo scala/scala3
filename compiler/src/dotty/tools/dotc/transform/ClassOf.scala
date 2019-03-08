@@ -21,7 +21,7 @@ class ClassOf extends MiniPhase {
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     if (tree.symbol eq defn.Predef_classOf) {
       val targ = tree.args.head.tpe
-      clsOf(targ).ensureConforms(tree.tpe).withPos(tree.pos)
+      clsOf(targ).ensureConforms(tree.tpe).withSpan(tree.span)
     }
     else tree
 }

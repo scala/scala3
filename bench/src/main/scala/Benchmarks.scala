@@ -30,8 +30,11 @@ object Bench {
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
+
+    import File.{ separator => sep }
+
     val args2 = args1.map { arg =>
-      if ((arg.endsWith(".scala") || arg.endsWith(".java")) && arg.head != '/') "../" + arg
+      if ((arg.endsWith(".scala") || arg.endsWith(".java")) && !(new File(arg)).isAbsolute) ".." + sep + arg
       else arg
     }
     storeCompileOptions(args2)
@@ -61,9 +64,10 @@ object Bench {
     val libs = if (args.contains("-with-compiler")) compiler_libs else standard_libs
     var argsNorm = args.filter(_ != "-with-compiler")
 
+    import File.{ pathSeparator => sep }
     var cpIndex = argsNorm.indexOf("-classpath")
     if (cpIndex == -1) cpIndex = argsNorm.indexOf("-cp")
-    if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + java.io.File.pathSeparator + libs
+    if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + sep + libs
     else argsNorm = argsNorm :+ "-classpath" :+ libs
 
     val file = new File(COMPILE_OPTS_FILE)

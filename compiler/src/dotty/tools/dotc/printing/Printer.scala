@@ -7,6 +7,7 @@ import Texts._, ast.Trees._
 import Types.Type, Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
 import typer.Implicits.SearchResult
+import util.SourcePosition
 import typer.ImportInfo
 
 import scala.annotation.internal.sharable
@@ -133,6 +134,9 @@ abstract class Printer {
 
   /** Textual representation of tree */
   def toText[T >: Untyped](tree: Tree[T]): Text
+
+  /** Textual representation of source position */
+  def toText(pos: SourcePosition): Text
 
   /** Textual representation of implicit search result */
   def toText(result: SearchResult): Text

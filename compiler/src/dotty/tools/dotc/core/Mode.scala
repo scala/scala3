@@ -12,6 +12,9 @@ case class Mode(val bits: Int) extends AnyVal {
 
   override def toString: String =
     (0 until 31).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
+
+  def ==(that: Mode): Boolean = this.bits == that.bits
+  def !=(that: Mode): Boolean = this.bits != that.bits
 }
 
 object Mode {
@@ -49,15 +52,13 @@ object Mode {
   /** Allow GADTFlexType labelled types to have their bounds adjusted */
   val GADTflexible: Mode = newMode(8, "GADTflexible")
 
+  /** Assume -language:strictEquality */
+  val StrictEquality: Mode = newMode(9, "StrictEquality")
+
   /** We are currently printing something: avoid to produce more logs about
    *  the printing
    */
   val Printing: Mode = newMode(10, "Printing")
-
-  /** We are currently typechecking an ident to determine whether some implicit
-   *  is shadowed - don't do any other shadowing tests.
-   */
-  val ImplicitShadowing: Mode = newMode(11, "ImplicitShadowing")
 
   /** We are currently in a `viewExists` check. In that case, ambiguous
    *  implicits checks are disabled and we succeed with the first implicit
@@ -103,4 +104,7 @@ object Mode {
 
   /** We are in TypeOf, e.g. to type a SingletonTypeTree or to compute a derived TypeOf */
   val InTypeOf: Mode = newMode(23, "InTypeOf")
+
+  /** We are synthesizing the receiver of an extension method */
+  val SynthesizeExtMethodReceiver: Mode = newMode(23, "SynthesizeExtMethodReceiver")
 }

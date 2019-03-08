@@ -1,49 +1,58 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.core.Contexts.FreshContext
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.reporting.diagnostic.MessageContainer
+import dotty.tools.dotc.core.Types
 
-trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
+trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
 
   def QuotedExprDeco[T](x: scala.quoted.Expr[T]): QuotedExprAPI = new QuotedExprAPI {
-    def toTasty(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
+    def unseal(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
   }
 
   def QuotedTypeDeco[T](x: scala.quoted.Type[T]): QuotedTypeAPI = new QuotedTypeAPI {
-    def toTasty(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
+    def unseal(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
   }
 
   def TermToQuoteDeco(term: Term): TermToQuotedAPI = new TermToQuotedAPI {
 
-    def toExpr[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
-      typecheck(ctx)
-      new scala.quoted.Exprs.TastyTreeExpr(term).asInstanceOf[scala.quoted.Expr[T]]
-    }
+    def seal[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
 
-    private def typecheck[T: scala.quoted.Type](ctx: Context): Unit = {
-      implicit val ctx0: FreshContext = ctx.fresh
-      ctx0.setTyperState(ctx0.typerState.fresh())
-      ctx0.typerState.setReporter(new Reporter {
-        def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
-      })
-      val tp = QuotedTypeDeco(implicitly[scala.quoted.Type[T]]).toTasty
-      ctx0.typer.typed(term, tp.tpe)
-      if (ctx0.reporter.hasErrors) {
-        val stack = new Exception().getStackTrace
-        def filter(elem: StackTraceElement) =
-          elem.getClassName.startsWith("dotty.tools.dotc.tasty.TastyImpl") ||
-            !elem.getClassName.startsWith("dotty.tools.dotc")
+      val expectedType = QuotedTypeDeco(implicitly[scala.quoted.Type[T]]).unseal.tpe
+
+      def etaExpand(term: Term): Term = term.tpe.widen match {
+        case mtpe: Types.MethodType if !mtpe.isParamDependent =>
+          val closureResType = mtpe.resType match {
+            case t: Types.MethodType => t.toFunctionType()
+            case t => t
+          }
+          val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
+          val closureMethod = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
+          tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
+        case _ => term
+      }
+
+      val expanded = etaExpand(term)
+      if (expanded.tpe <:< expectedType) {
+        new scala.quoted.Exprs.TastyTreeExpr(expanded).asInstanceOf[scala.quoted.Expr[T]]
+      } else {
         throw new scala.tasty.TastyTypecheckError(
-          s"""Error during tasty reflection while typing term
-             |term: ${term.show}
-             |with expected type: ${tp.tpe.show}
-             |
-               |  ${stack.takeWhile(filter).mkString("\n  ")}
-             """.stripMargin
+          s"""Term: ${term.show}
+             |did not conform to type: ${expectedType.show}
+             |""".stripMargin
         )
       }
+    }
+  }
+
+  def TypeToQuoteDeco(tpe: Types.Type): TypeToQuotedAPI = new TypeToQuotedAPI {
+    def seal(implicit ctx: Context): quoted.Type[_] = {
+      val dummySpan = ctx.owner.span // FIXME
+      new scala.quoted.Types.TreeType(tpd.TypeTree(tpe).withSpan(dummySpan))
     }
   }
 }

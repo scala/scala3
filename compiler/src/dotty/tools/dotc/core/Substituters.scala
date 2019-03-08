@@ -195,4 +195,28 @@ trait Substituters { this: Context =>
   final class SubstParamsMap(from: BindingType, to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)
   }
+
+  /** An approximating substitution that can handle wildcards in the `to` list */
+  final class SubstApproxMap(from: List[Symbol], to: List[Type])(implicit ctx: Context) extends ApproximatingTypeMap {
+    def apply(tp: Type): Type = tp match {
+      case tp: NamedType =>
+        val sym = tp.symbol
+        var fs = from
+        var ts = to
+        while (fs.nonEmpty) {
+          if (fs.head eq sym)
+            return ts.head match {
+              case TypeBounds(lo, hi) => range(lo, hi)
+              case tp1 => tp1
+            }
+          fs = fs.tail
+          ts = ts.tail
+        }
+        if (tp.prefix `eq` NoPrefix) tp else derivedSelect(tp, apply(tp.prefix))
+      case _: ThisType | _: BoundType =>
+        tp
+      case _ =>
+        mapOver(tp)
+    }
+  }
 }

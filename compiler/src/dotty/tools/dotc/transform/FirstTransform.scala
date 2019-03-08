@@ -22,10 +22,9 @@ object FirstTransform {
   val name: String = "firstTransform"
 }
 
-
 /** The first tree transform
  *   - eliminates some kinds of trees: Imports, NamedArgs
- *   - stubs out native and typelevel methods
+ *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
@@ -108,7 +107,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
       polyDefDef(meth,
-        _ => _ => ref(defn.Sys_errorR).withPos(ddef.pos)
+        _ => _ => ref(defn.Sys_errorR).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
 
     }
@@ -134,7 +133,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
    */
   private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
     val binders = collectBinders.apply(Nil, tree)
-    val result: Tree = TypeTree(tree.tpe).withPos(tree.pos)
+    val result: Tree = TypeTree(tree.tpe).withSpan(tree.span)
     (result /: binders)(Annotated(_, _))
   }
 

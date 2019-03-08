@@ -8,6 +8,7 @@ import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import config.Config
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
 import NameOps._
+import StdNames.str
 import Decorators.{PreNamedString, StringInterpolators}
 import classfile.ClassfileParser
 import util.Stats
@@ -70,19 +71,19 @@ object SymbolLoaders {
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.YtermConflict.isDefault)
-        throw new TypeError(
-          i"""$owner contains object and package with same name: $pname
-             |one of them needs to be removed from classpath""")
-      else if (ctx.settings.YtermConflict.value == "package") {
+      if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
-      } else {
+      } else if (ctx.settings.YtermConflict.value == "object") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
+      else
+        throw new TypeError(
+          i"""$owner contains object and package with same name: $pname
+             |one of them needs to be removed from classpath""")
     }
     ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered
@@ -134,7 +135,7 @@ object SymbolLoaders {
               ctx.warning(i"""$what ${tree.name} is in the wrong directory.
                               |It was declared to be in package ${path.reverse.mkString(".")}
                               |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
-                          tree.pos)
+                          tree.sourcePos)
             ok
           }
 
@@ -159,7 +160,7 @@ object SymbolLoaders {
             Nil)
         }
 
-        val unit = new CompilationUnit(ctx.run.getSource(src.path))
+        val unit = CompilationUnit(ctx.getSource(src.path))
         enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
       }
     }
@@ -236,11 +237,18 @@ object SymbolLoaders {
 
     private[core] val currentDecls: MutableScope = new PackageScope()
 
-    def isFlatName(name: SimpleName): Boolean = name.lastIndexOf('$', name.length - 2) >= 0
+    private def isFlatName(name: SimpleName): Boolean = {
+      val idx = name.lastIndexOf('$', name.length - 2)
+      idx >= 0 &&
+      (idx + str.TOPLEVEL_SUFFIX.length + 1 != name.length || !name.endsWith(str.TOPLEVEL_SUFFIX))
+    }
 
-    def isFlatName(classRep: ClassRepresentation): Boolean = {
-      val idx = classRep.name.indexOf('$')
-      idx >= 0 && idx < classRep.name.length - 1
+    /** Name of class contains `$`, excepted names ending in `$package` */
+    def hasFlatName(classRep: ClassRepresentation): Boolean = {
+      val name = classRep.name
+      val idx = name.lastIndexOf('$', name.length - 2)
+      idx >= 0 &&
+      (idx + str.TOPLEVEL_SUFFIX.length + 1 != name.length || !name.endsWith(str.TOPLEVEL_SUFFIX))
     }
 
     def maybeModuleClass(classRep: ClassRepresentation): Boolean = classRep.name.last == '$'
@@ -253,11 +261,11 @@ object SymbolLoaders {
         val classReps = classPath.list(packageName).classesAndSources
 
         for (classRep <- classReps)
-          if (!maybeModuleClass(classRep) && isFlatName(classRep) == flat &&
+          if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
             (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classReps)
-          if (maybeModuleClass(classRep) && isFlatName(classRep) == flat &&
+          if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
               isAbsent(classRep))
             initializeFromClassPath(root.symbol, classRep)
       }
@@ -326,6 +334,9 @@ abstract class SymbolLoader extends LazyType {
     } catch {
       case ex: IOException =>
         signalError(ex)
+      case NonFatal(ex: TypeError) =>
+        println(s"exception caught when loading $root: ${ex.toMessage}")
+        throw ex
       case NonFatal(ex) =>
         println(s"exception caught when loading $root: $ex")
         throw ex

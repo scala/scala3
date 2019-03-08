@@ -26,7 +26,7 @@ import collection.mutable
   def record(fn: => String, n: => Int = 1): Unit =
     if (enabled) doRecord(fn, n)
 
-  private def doRecord(fn: String, n: Int) =
+  def doRecord(fn: String, n: Int) =
     if (monitored) {
       val name = if (fn.startsWith("member-")) "member" else fn
       hits(name) += n
@@ -75,6 +75,17 @@ import collection.mutable
     }
   }
 
+  final val GroupChar = '/'
+
+  /** Aggregate all counts of all keys with a common prefix, followed by `:` */
+  private def aggregate(): Unit = {
+    val groups = hits.keys
+      .filter(_.contains(GroupChar))
+      .groupBy(_.takeWhile(_ != GroupChar))
+    for ((prefix, names) <- groups; name <- names)
+      hits(s"Total $prefix") += hits(name)
+  }
+
   def maybeMonitored[T](op: => T)(implicit ctx: Context): T = {
     if (ctx.settings.YdetailedStats.value) {
       val hb = new HeartBeat()
@@ -83,6 +94,7 @@ import collection.mutable
       try op
       finally {
         hb.continue = false
+        aggregate()
         println()
         println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
         println(s"uniqueInfo (size, accesses, collisions): ${ctx.base.uniquesSizes}")

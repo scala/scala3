@@ -44,7 +44,7 @@ class DocASTPhase extends Phase {
 
     def membersFromSymbol(sym: Symbol): List[Entity] = {
       if (sym.info.exists) {
-        val defs = sym.info.bounds.hi.finalResultType.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
+        val defs = sym.info.bounds.hi.finalResultType.membersBasedOnFlags(Flags.allOf(Flags.Method), Flags.Synthetic | Flags.Private)
           .filterNot(_.symbol.owner.name.show == "Any")
           .map { meth =>
             DefImpl(
@@ -129,7 +129,7 @@ class DocASTPhase extends Phase {
         ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe), kind) :: Nil
 
       case x => {
-        ctx.docbase.debug(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
+        ctx.docbase.debug(s"Found unwanted entity: $x (${x.span},\n${x.show}")
         Nil
       }
     }

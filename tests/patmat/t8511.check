@@ -1,1 +1,1 @@
-18: Pattern Match Exhaustivity: EatsExhaustiveWarning(_), Baz(), Bar(_)
+18: Pattern Match Exhaustivity: Bar(_), Baz(), EatsExhaustiveWarning(_)

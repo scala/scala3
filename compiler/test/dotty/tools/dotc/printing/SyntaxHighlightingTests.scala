@@ -28,7 +28,6 @@ class SyntaxHighlightingTests extends DottyTest {
   }
 
   @Test
-  @Ignore("Comments are currently not supported")
   def comments = {
     test("// a", "<C|// a>")
     test("/** a */", "<C|/** a */>")
@@ -40,8 +39,8 @@ class SyntaxHighlightingTests extends DottyTest {
     test("type Foo", "<K|type> <T|Foo>")
     test("type Foo =", "<K|type> <T|Foo> =")
     test("type Foo = Int", "<K|type> <T|Foo> = <T|Int>")
-    test("type A = String | Int", "<K|type> <T|A> = <T|String | Int>")
-    test("type B = String & Int", "<K|type> <T|B> = <T|String & Int>")
+    test("type A = String | Int", "<K|type> <T|A> = <T|String> <T||> <T|Int>")
+    test("type B = String & Int", "<K|type> <T|B> = <T|String> <T|&> <T|Int>")
   }
 
   @Test
@@ -126,5 +125,8 @@ class SyntaxHighlightingTests extends DottyTest {
     test("inline def foo = 1", "<K|inline> <K|def> <V|foo> = <L|1>")
     test("@inline def foo = 1", "<T|@inline> <K|def> <V|foo> = <L|1>")
     test("class inline", "<K|class> <T|inline>")
+    test("val inline = 2", "<K|val> <V|inline> = <L|2>")
+    test("def inline = 2", "<K|def> <V|inline> = <L|2>")
+    test("def foo(inline: Int) = 2", "<K|def> <V|foo>(<V|inline>: <T|Int>) = <L|2>")
   }
 }

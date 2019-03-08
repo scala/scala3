@@ -1,7 +1,7 @@
 class A
 
 trait Foo {
-  def foo: implicit A => Int
+  def foo: given A => Int
 }
 
 class Test {
@@ -9,5 +9,5 @@ class Test {
 }
 
 class FooI extends Foo {
-  def foo: implicit A => Int = 3
+  def foo: given A => Int = 3
 }

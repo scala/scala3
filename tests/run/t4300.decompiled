@@ -1,8 +1,6 @@
-/** Decompiled from out/runTestFromTasty/run/t4300/A.class */
 trait A() extends java.lang.Object {
   def f(): scala.Unit = scala.Predef.println("A")
 }
-/** Decompiled from out/runTestFromTasty/run/t4300/B.class */
 class B() extends A {
   def b(): scala.Unit = super[A].f()
   trait C() extends java.lang.Object {
@@ -12,14 +10,13 @@ class B() extends A {
   def h(): scala.Unit = scala.Predef.intWrapper(0).until(1).foreach[scala.Unit](((i: scala.Int) => B.super[A].f()))
   override def f(): scala.Unit = scala.Predef.println("B")
 }
-/** Decompiled from out/runTestFromTasty/run/t4300/Test.class */
 object Test {
   def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
     val b: B = new B()
     b.b()
 
     {
-      final class $anon() extends b.C()
+      final class $anon() extends b.C
       (new $anon(): b.C)
     }.c()
     b.g()

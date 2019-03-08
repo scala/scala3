@@ -5,14 +5,14 @@ import Macros._
 object Test {
 
   inline def assert(expr: => Boolean): Unit =
-    ~ assertImpl('(expr))
+    ${ assertImpl('expr) }
 
 
   val program = '{
     val x = 1
     assert(x != 0)
 
-    ~assertImpl('(x != 0))
+    ${ assertImpl('{x != 0}) }
   }
 
   program.run

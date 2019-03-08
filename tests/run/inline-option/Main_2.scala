@@ -15,14 +15,14 @@ object Test {
     println(size5(Some(Some(6))))
   }
 
-  inline def size(inline opt: Option[Int]): Int = ~Macros.impl(opt)
+  inline def size(inline opt: Option[Int]): Int = ${ Macros.impl(opt) }
 
-  inline def size2(inline i: Int): Int = ~Macros.impl(None)
+  inline def size2(inline i: Int): Int = ${ Macros.impl(None) }
 
-  inline def size3(inline i: Int): Int = ~Macros.impl(Some(i))
+  inline def size3(inline i: Int): Int = ${ Macros.impl(Some(i)) }
 
-  inline def size4(inline i: Int): Int = ~Macros.impl2(Some(Some(i)))
+  inline def size4(inline i: Int): Int = ${ Macros.impl2(Some(Some(i))) }
 
-  inline def size5(inline opt: Option[Option[Int]]): Int = ~Macros.impl2(opt)
+  inline def size5(inline opt: Option[Option[Int]]): Int = ${ Macros.impl2(opt) }
 
 }

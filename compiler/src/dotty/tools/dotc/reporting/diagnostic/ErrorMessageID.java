@@ -88,7 +88,7 @@ public enum ErrorMessageID {
     ValueClassParameterMayNotBeAVarID,
     ValueClassNeedsExactlyOneValParamID,
     OnlyCaseClassOrCaseObjectAllowedID,
-    ExpectedClassOrObjectDefID,
+    ExpectedTopLevelDefID,
     AnonymousFunctionMissingParamTypeID,
     SuperCallsNotAllowedInlineableID,
     ModifiersNotAllowedID,
@@ -116,6 +116,7 @@ public enum ErrorMessageID {
     TraitRedefinedFinalMethodFromAnyRefID,
     PackageNameAlreadyDefinedID,
     UnapplyInvalidNumberOfArgumentsID,
+    UnapplyInvalidReturnTypeID,
     StaticFieldsOnlyAllowedInObjectsID,
     CyclicInheritanceID,
     BadSymbolicReferenceID,
@@ -132,10 +133,19 @@ public enum ErrorMessageID {
     ImportRenamedTwiceID,
     TypeTestAlwaysSucceedsID,
     TermMemberNeedsNeedsResultTypeForImplicitSearchID,
-    CaseClassCannotExtendEnumID,
+    ClassCannotExtendEnumID,
     ValueClassParameterMayNotBeCallByNameID,
     NotAnExtractorID,
-    MemberWithSameNameAsStaticID
+    MemberWithSameNameAsStaticID,
+    PureExpressionInStatementPositionID,
+    TraitCompanionWithMutableStaticID,
+    LazyStaticFieldID,
+    StaticOverridingNonStaticMembersID,
+    OverloadInRefinementID,
+    NoMatchingOverloadID,
+    StableIdentPatternID,
+    StaticFieldsShouldPrecedeNonStaticID,
+    IllegalSuperAccessorID
     ;
 
     public int errorNumber() {

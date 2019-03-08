@@ -3,44 +3,44 @@ object Test {
 
     implicit val world: String = "world!"
 
-    val i1 = (implicit (s: String) => s.length > 2)
-    val i2 = {implicit (s: String) => s.length > 2}
+    val i1 = (given (s: String) => s.length > 2)
+    val i2 = {given (s: String) => s.length > 2}
 
     assert(i1)
     assert(i2)
 
-    val x: implicit String => Boolean = { implicit (s: String) => s.length > 2 }
+    val x: given String => Boolean = { given (s: String) => s.length > 2 }
 
-    val xx: implicit (String, Int) => Int = implicit (x: String, y: Int) => x.length + y
+    val xx: given (String, Int) => Int = given (x: String, y: Int) => x.length + y
 
-    val y: String => Boolean = x
+    val y: String => Boolean = x given _
 
     object nested {
       implicit val empty: String = ""
       assert(!x)
     }
 
-    val yy: (String, Int) => Any = xx
+    val yy: (String, Int) => Any = xx given (_, _)
 
-    val z1: implicit String => Boolean = implicitly[String].length >= 2
+    val z1: given String => Boolean = implicitly[String].length >= 2
     assert(z1)
 
-    type StringlyBool = implicit String => Boolean
+    type StringlyBool = given String => Boolean
 
     val z2: StringlyBool = implicitly[String].length >= 2
     assert(z2)
 
-    type Stringly[T] = implicit String => T
+    type Stringly[T] = given String => T
 
     val z3: Stringly[Boolean] = implicitly[String].length >= 2
     assert(z3)
 
-    type GenericImplicit[X] = implicit X => Boolean
+    type GenericImplicit[X] = given X => Boolean
 
     val z4: GenericImplicit[String] = implicitly[String].length >= 2
     assert(z4)
 
-    val b = x("hello")
+    val b = x given "hello"
 
     val b1: Boolean = b
 
@@ -48,7 +48,7 @@ object Test {
 
     val bi1: Boolean = bi
 
-    val c = xx("hh", 22)
+    val c = xx given ("hh", 22)
 
     val c1: Int = c
 
@@ -56,7 +56,7 @@ object Test {
 
     def foo(s: String): Stringly[Int] = 42
 
-    (if ("".isEmpty) foo("") else foo("")).apply("")
+    (if ("".isEmpty) foo("") else foo("")).apply given ""
   }
 }
 
@@ -76,16 +76,16 @@ object Contextual {
   val Source = new Key[String]
   val Options = new Key[List[String]]
 
-  type Ctx[T] = implicit Context => T
+  type Ctx[T] = given Context => T
 
   def ctx: Ctx[Context] = implicitly[Context]
 
   def compile(s: String): Ctx[Boolean] =
-    runOn(new java.io.File(s))(ctx.withBinding(Source, s)) >= 0
+    (runOn(new java.io.File(s)) given ctx.withBinding(Source, s)) >= 0
 
   def runOn(f: java.io.File): Ctx[Int] = {
     val options = List("-verbose", "-explaintypes")
-    process(f).apply(ctx.withBinding(Options, options))
+    process(f).apply given ctx.withBinding(Options, options)
   }
 
   def process(f: java.io.File): Ctx[Int] =
@@ -151,7 +151,7 @@ object TransactionalExplicit {
 }
 
 object Transactional {
-  type Transactional[T] = implicit Transaction => T
+  type Transactional[T] = given Transaction => T
 
   def transaction[T](op: Transactional[T]) = {
     implicit val trans: Transaction = new Transaction
@@ -216,7 +216,7 @@ object TransactionalExpansion {
 }
 
 object TransactionalAbstracted {
-  type Transactional[T] = implicit Transaction => T
+  type Transactional[T] = given Transaction => T
 
   trait TransOps {
     def thisTransaction: Transactional[Transaction]

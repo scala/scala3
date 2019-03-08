@@ -89,6 +89,9 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns the path of this abstract file. */
   def path: String
 
+  /** Returns the absolute path of this abstract file. */
+  def absolutePath: String = path
+
   /** Returns the path of this abstract file in a canonical form. */
   def canonicalPath: String = if (jpath == null) path else jpath.normalize.toString
 

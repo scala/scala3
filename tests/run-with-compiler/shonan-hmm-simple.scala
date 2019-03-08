@@ -17,11 +17,11 @@ class RingInt extends Ring[Int] {
 }
 
 class RingIntExpr extends Ring[Expr[Int]] {
-  val zero = '(0)
-  val one  = '(1)
-  val add  = (x, y) => '(~x + ~y)
-  val sub  = (x, y) => '(~x - ~y)
-  val mul  = (x, y) => '(~x * ~y)
+  val zero = '{0}
+  val one  = '{1}
+  val add  = (x, y) => '{$x + $y}
+  val sub  = (x, y) => '{$x - $y}
+  val mul  = (x, y) => '{$x * $y}
 }
 
 class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
@@ -71,7 +71,7 @@ case class Complex[T](re: T, im: T)
 
 object Complex {
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
-    def toExpr(comp: Complex[T]): Expr[Complex[T]] = '(Complex(~comp.re.toExpr, ~comp.im.toExpr))
+    def toExpr(comp: Complex[T]): Expr[Complex[T]] = '{Complex(${comp.re.toExpr}, ${comp.im.toExpr})}
   }
 }
 
@@ -99,10 +99,10 @@ class StaticVecOps[T] extends VecOps[Int, T] {
 
 class ExprVecOps[T: Type] extends VecOps[Expr[Int], Expr[T]] {
   val reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = (plus, zero, vec) => '{
-    var sum = ~zero
+    var sum = $zero
     var i = 0
-    while (i < ~vec.size) {
-      sum = ~{ plus('(sum), vec.get('(i))) }
+    while (i < ${vec.size}) {
+      sum = ${ plus('sum, vec.get('i)) }
       i += 1
     }
     sum
@@ -154,10 +154,10 @@ object Test {
     val resCode2: Expr[(Array[Int], Array[Int]) => Int] = '{
       (arr1, arr2) =>
         if (arr1.length != arr2.length) throw new Exception("...")
-        ~{
+        ${
           blasExprIntExpr.dot(
-            new Vec('(arr1.size), i => '(arr1(~i))),
-            new Vec('(arr2.size), i => '(arr2(~i)))
+            new Vec('{arr1.size}, i => '{arr1($i)}),
+            new Vec('{arr2.size}, i => '{arr2($i)})
           )
         }
     }
@@ -177,10 +177,10 @@ object Test {
     val blasExprIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
     val resCode4: Expr[Array[Int] => Int] = '{
       arr =>
-        if (arr.length != ~vec2.size.toExpr) throw new Exception("...")
-        ~{
+        if (arr.length != ${vec2.size.toExpr}) throw new Exception("...")
+        ${
           blasExprIntPVExpr.dot(
-            new Vec(vec2.size, i => Dyn('(arr(~i.toExpr)))),
+            new Vec(vec2.size, i => Dyn('{arr(${i.toExpr})})),
             vec2.map(i => Sta(i))
           ).expr
         }
@@ -194,13 +194,13 @@ object Test {
     val blasExprComplexPVInt = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
     val resCode5: Expr[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>
-        if (arr.length != ~cmpxVec2.size.toExpr) throw new Exception("...")
-        ~{
+        if (arr.length != ${cmpxVec2.size.toExpr}) throw new Exception("...")
+        ${
           val cpx = blasExprComplexPVInt.dot(
-            new Vec(cmpxVec2.size, i => Complex(Dyn('(arr(~i.toExpr).re)), Dyn('(arr(~i.toExpr).im)))),
+            new Vec(cmpxVec2.size, i => Complex(Dyn('{arr(${i.toExpr}).re}), Dyn('{arr(${i.toExpr}).im}))),
             new Vec(cmpxVec2.size, i => Complex(Sta(cmpxVec2.get(i).re), Sta(cmpxVec2.get(i).im)))
           )
-          '(Complex(~cpx.re.expr, ~cpx.im.expr))
+          '{Complex(${cpx.re.expr}, ${cpx.im.expr})}
         }
     }
     println(resCode5.show)
@@ -212,7 +212,7 @@ object Test {
     val dotIntOptExpr = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
     val staticVec = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
-    val code = '{(arr: Array[Int]) => ~dotIntOptExpr(Vec(5, i => Dyn('(arr(~i.toExpr)))), staticVec).expr }
+    val code = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i.toExpr})})), staticVec).expr} }
     println(code.show)
     println()
   }

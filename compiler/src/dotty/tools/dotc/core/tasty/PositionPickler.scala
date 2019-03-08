@@ -6,13 +6,15 @@ package tasty
 import ast._
 import ast.Trees._
 import ast.Trees.WithLazyField
+import util.{SourceFile, NoSource}
 import core._
-import Contexts._, Symbols._, Annotations._
+import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import TastyBuffer._
-import util.Positions._
+import util.Spans._
+import TastyFormat.SOURCE
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Addr]) {
+class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
   import ast.tpd._
@@ -26,64 +28,83 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Ad
 
   def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
     var lastIndex = 0
-    var lastPos = Position(0, 0)
-    def pickleDeltas(index: Int, pos: Position) = {
+    var lastSpan = Span(0, 0)
+    def pickleDeltas(index: Int, span: Span) = {
       val addrDelta = index - lastIndex
-      val startDelta = pos.start - lastPos.start
-      val endDelta = pos.end - lastPos.end
-      buf.writeInt(header(addrDelta, startDelta != 0, endDelta != 0, !pos.isSynthetic))
+      val startDelta = span.start - lastSpan.start
+      val endDelta = span.end - lastSpan.end
+      buf.writeInt(header(addrDelta, startDelta != 0, endDelta != 0, !span.isSynthetic))
       if (startDelta != 0) buf.writeInt(startDelta)
       if (endDelta != 0) buf.writeInt(endDelta)
-      if (!pos.isSynthetic) buf.writeInt(pos.pointDelta)
+      if (!span.isSynthetic) buf.writeInt(span.pointDelta)
       lastIndex = index
-      lastPos = pos
+      lastSpan = span
 
       pickledIndices += index
     }
 
-    /** True if x's position shouldn't be reconstructed automatically from its initialPos
+    def pickleSource(source: SourceFile): Unit = {
+      buf.writeInt(SOURCE)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathName).index)
+    }
+
+    /** True if x's position shouldn't be reconstructed automatically from its initial span
      */
     def alwaysNeedsPos(x: Positioned) = x match {
       case
-          // initialPos is inaccurate for trees with lazy field
+          // initialSpan is inaccurate for trees with lazy field
           _: WithLazyField[_]
 
           // A symbol is created before the corresponding tree is unpickled,
           // and its position cannot be changed afterwards.
-          // so we cannot use the tree initialPos to set the symbol position.
+          // so we cannot use the tree initialSpan to set the symbol position.
           // Instead, we always pickle the position of definitions.
           | _: Trees.DefTree[_]
 
           // package defs might be split into several Tasty files
-          | _: Trees.PackageDef[_] => true
+          | _: Trees.PackageDef[_]
+          // holes can change source files when filled, which means
+          // they might lose their position
+          | _: TreePickler.Hole => true
       case _ => false
     }
 
-    def traverse(x: Any): Unit = x match {
+    def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
-        val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
-        if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
-          addrOfTree(x) match {
-            case Some(addr) if !pickledIndices.contains(addr.index) =>
-              //println(i"pickling $x with $pos at $addr")
-              pickleDeltas(addr.index, pos)
-            case _ =>
-              //println(i"no address for $x")
+        if (x.span.exists) {
+          val addr = addrOfTree(x)
+          if (addr != NoAddr) {
+            if (x.source != current) {
+              // we currently do not share trees when unpickling, so if one path to a tree contains
+              // a source change while another does not, we have to record the position of the tree twice
+              // in order not to miss the source change. Test case is t3232a.scala.
+              pickleDeltas(addr.index, x.span)
+              pickleSource(x.source)
+            }
+            else if (!pickledIndices.contains(addr.index) &&
+                     (x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)))
+              pickleDeltas(addr.index, x.span)
           }
         }
-        //else if (x.pos.exists) println(i"skipping $x")
         x match {
-          case x: untpd.MemberDef @unchecked =>
-            for (ann <- x.symbol.annotations) traverse(ann.tree)
+          case x: untpd.MemberDef @unchecked => traverse(x.symbol.annotations, x.source)
           case _ =>
         }
-        traverse(x.productIterator)
-      case xs: TraversableOnce[_] =>
-        xs.foreach(traverse)
+        val limit = x.productArity
+        var n = 0
+        while (n < limit) {
+          traverse(x.productElement(n), x.source)
+          n += 1
+        }
+      case y :: ys =>
+        traverse(y, current)
+        traverse(ys, current)
       case x: Annotation =>
-        traverse(x.tree)
+        traverse(x.tree, current)
       case _ =>
     }
-    traverse(roots)
+    for (root <- roots) {
+      traverse(root, NoSource)
+    }
   }
 }

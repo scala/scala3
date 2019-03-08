@@ -7,7 +7,7 @@ import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
-import util.Chars.isIdentifierStart
+import scala.tasty.util.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
 import java.util.HashMap
@@ -25,7 +25,7 @@ object Names {
     def toTermName: TermName
   }
 
-  implicit def eqName: Eq[Name, Name] = Eq
+  implicit def eqName: Eql[Name, Name] = Eql.derived
 
   /** A common superclass of Name and Symbol. After bootstrap, this should be
    *  just the type alias Name | Symbol
@@ -376,7 +376,7 @@ object Names {
 
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
-      Array.copy(chrs, start, cs, 0, length)
+      System.arraycopy(chrs, start, cs, 0, length)
       for (i <- 0 until length) {
         if (cs(i) == from) cs(i) = to
       }
@@ -570,7 +570,7 @@ object Names {
    */
   def termName(cs: Array[Char], offset: Int, len: Int): SimpleName = synchronized {
     util.Stats.record("termName")
-    val h = hashValue(cs, offset, len) & (table.size - 1)
+    val h = hashValue(cs, offset, len) & (table.length - 1)
 
     /** Make sure the capacity of the character array is at least `n` */
     def ensureCapacity(n: Int) =

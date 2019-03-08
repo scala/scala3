@@ -43,8 +43,8 @@ abstract class Periods { self: Context =>
     val period = this.period
     period == p ||
     period.runId == p.runId &&
-      this.phases(period.phaseId).sameParentsStartId ==
-      this.phases(p.phaseId).sameParentsStartId
+      this.phases(period.phaseId).sameBaseTypesStartId ==
+      this.phases(p.phaseId).sameBaseTypesStartId
   }
 }
 
@@ -123,6 +123,9 @@ object Periods {
           this.lastPhaseId max that.lastPhaseId)
 
     override def toString: String = s"Period($firstPhaseId..$lastPhaseId, run = $runId)"
+
+    def ==(that: Period): Boolean = this.code == that.code
+    def !=(that: Period): Boolean = this.code != that.code
   }
 
   object Period {

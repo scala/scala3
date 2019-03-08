@@ -4,7 +4,8 @@ package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
-import util.Positions._
+import util.Spans._
+import util.SourcePosition
 import NameKinds.DepParamName
 import Decorators._
 import StdNames._
@@ -53,7 +54,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
-            if (sym.isStatic || (tp.prefix `eq` NoPrefix)) tp
+            if (sym.isStatic && !sym.maybeOwner.isOpaqueCompanion || (tp.prefix `eq` NoPrefix)) tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
@@ -230,9 +231,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def makePackageObjPrefixExplicit(tpe: NamedType): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
-      case pkgCls: PackageClassDenotation
-      if !tpe.symbol.maybeOwner.is(Package) && pkgCls.packageObj.exists =>
-        tpe.derivedSelect(pkgCls.packageObj.termRef)
+      case pkg: PackageClassDenotation =>
+        val pobj = pkg.packageObjFor(tpe.symbol)
+        if (pobj.exists) tpe.derivedSelect(pobj.termRef)
+        else tpe
       case _ =>
         tpe
     }
@@ -328,13 +330,18 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled: Boolean =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: => Message, pos: Position, replace: => Unit = ()): Boolean = {
+  def testScala2Mode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
     if (scala2Mode) {
       migrationWarning(msg, pos)
       replace
     }
     scala2Mode
   }
+
+  /** Is option -language:Scala2 set?
+   *  This test is used when we are too early in the pipeline to consider imports.
+   */
+  def scala2Setting = ctx.settings.language.value.contains(nme.Scala2.toString)
 }
 
 object TypeOps {

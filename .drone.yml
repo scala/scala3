@@ -6,7 +6,6 @@ clone:
 
 pipeline:
   # We add a custom clone step to workaround a bug with GitHub (see #3415)
-  # and speed up cloning submodules
   clone:
     image: plugins/git
     commands:
@@ -16,14 +15,12 @@ pipeline:
           git config user.name "Dotty CI";
           git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
         fi
-      # clone submodules in parallelRiRem
-      - git submodule update --init --recursive --jobs 3
 
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test:
     group: test
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
       - ./project/scripts/sbt ";compile ;test"
@@ -31,15 +28,24 @@ pipeline:
 
   test_bootstrapped:
     group: test
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
+      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test; dotty-semanticdb/compile; dotty-semanticdb/test:compile;sjsSandbox/run"
       - ./project/scripts/bootstrapCmdTests
+
+  community_build:
+    group: test
+    image: lampepfl/dotty:2019-02-06
+    commands:
+      - cp -R . /tmp/3/ && cd /tmp/3/
+      - git submodule update --init --recursive --jobs 7
+      - export PATH=/tmp/4/project/scripts:$PATH
+      - sbt community-build/test
 
   test_sbt:
     group: test
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
@@ -49,10 +55,10 @@ pipeline:
 
   # DOCUMENTATION:
   documentation:
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     commands:
       - ./project/scripts/genDocs
-    secrets: [ bot_pass ]
+    secrets: [ bot_token ]
     when:
       event: push
       # We only generate the documentation for the master branch
@@ -61,7 +67,7 @@ pipeline:
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
   publish_nightly:
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     environment:
       - NIGHTLYBUILD=yes
     commands:
@@ -72,7 +78,7 @@ pipeline:
       environment: nightly
 
   publish_release:
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -96,7 +102,7 @@ pipeline:
       event: tag
 
   publish_sbt_release:
-    image: lampepfl/dotty:2018-10-01
+    image: lampepfl/dotty:2019-02-06
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -114,7 +120,3 @@ pipeline:
     when:
       status: [ failure ]
       event: [ push, tag, deployment ]
-
-branches:
-  # The gh-pages branch holds the documentation and don't need to be built
-  exclude: gh-pages

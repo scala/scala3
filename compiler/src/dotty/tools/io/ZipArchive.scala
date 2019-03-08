@@ -157,8 +157,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
       while (entries.hasMoreElements) {
         val zipEntry = entries.nextElement
         val dir = getDir(dirs, zipEntry)
-        if (zipEntry.isDirectory) dir
-        else {
+        if (!zipEntry.isDirectory) {
           val f =
             if (ZipArchive.closeZipFile)
               new LazyEntry(

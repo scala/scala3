@@ -54,7 +54,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read the next `n` bytes of `data`. */
   def readBytes(n: Int): Array[Byte] = {
     val result = new Array[Byte](n)
-    Array.copy(bytes, bp, result, 0, n)
+    System.arraycopy(bytes, bp, result, 0, n)
     bp += n
     result
   }

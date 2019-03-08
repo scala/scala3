@@ -5,7 +5,7 @@ object Test extends App {
   // Type X => Y
   abstract class Fun[-X, +Y] {
     type Eff <: Effect
-    def apply(x: X): implicit Eff => Y
+    def apply(x: X): given Eff => Y
   }
 
   class CanThrow extends Effect
@@ -18,18 +18,18 @@ object Test extends App {
   implicit val ci: CanIO = new CanIO
 
   // def map(f: A => B)(xs: List[A]): List[B]
-  def map[A, B](f: Fun[A, B])(xs: List[A]): implicit f.Eff => List[B] =
+  def map[A, B](f: Fun[A, B])(xs: List[A]): given f.Eff => List[B] =
     xs.map(f.apply)
 
   // def mapFn[A, B]: (A => B) -> List[A] -> List[B]
-  def mapFn[A, B]: (f: Fun[A, B]) => List[A] => implicit f.Eff => List[B] =
+  def mapFn[A, B]: (f: Fun[A, B]) => List[A] => given f.Eff => List[B] =
     f => xs => map(f)(xs)
 
   // def compose(f: A => B)(g: B => C)(x: A): C
-  def compose[A, B, C](f: Fun[A, B])(g: Fun[B, C])(x: A): implicit f.Eff => implicit g.Eff => C = g(f(x))
+  def compose[A, B, C](f: Fun[A, B])(g: Fun[B, C])(x: A): given f.Eff => given g.Eff => C = g(f(x))
 
   // def composeFn: (A => B) -> (B => C) -> A -> C
-  def composeFn[A, B, C]: (f: Fun[A, B]) => (g: Fun[B, C]) => A => implicit f.Eff => implicit g.Eff => C =
+  def composeFn[A, B, C]: (f: Fun[A, B]) => (g: Fun[B, C]) => A => given f.Eff => given g.Eff => C =
     f => g => x => compose(f)(g)(x)
 
   assert(mapFn(i2s)(List(1, 2, 3)).mkString == "123")

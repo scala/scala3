@@ -8,7 +8,7 @@ object TestSources {
 
   // Std Lib
 
-  private final val stdLibPath = "scala2-library/src/library/"
+  private final val stdLibPath = "tests/scala2-library/src/library/"
 
   private def blacklistFile: String = "compiler/test/dotc/scala-collections.blacklist"
 
@@ -21,7 +21,7 @@ object TestSources {
       val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
       files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
     }
-    collectAllFilesInDir(new File(stdLibPath), Nil)
+    collectAllFilesInDir(new File(stdLibPath), Nil).sorted
   }
 
   // pos tests lists

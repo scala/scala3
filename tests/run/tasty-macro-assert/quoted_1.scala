@@ -12,12 +12,12 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: => Boolean): Unit =
-    ~impl('(cond))
+    ${impl('cond)}
 
-  def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
-    import tasty._
+  def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
+    import reflect._
 
-    val tree = cond.toTasty
+    val tree = cond.unseal
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
       case Type.SymRef(IsDefSymbol(sym), _) => sym.name == "Ops"// TODO check that the parent is Asserts
@@ -33,13 +33,13 @@ object Asserts {
     }
 
     tree match {
-      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op), right :: Nil)) =>
         op match {
-          case "===" => '(assertEquals(~left.toExpr[Any], ~right.toExpr[Any]))
-          case "!==" => '(assertNotEquals(~left.toExpr[Any], ~right.toExpr[Any]))
+          case "===" => '{assertEquals(${left.seal[Any]}, ${right.seal[Any]})}
+          case "!==" => '{assertNotEquals(${left.seal[Any]}, ${right.seal[Any]})}
         }
       case _ =>
-        '(assertTrue(~cond))
+        '{assertTrue($cond)}
     }
 
   }

@@ -3,6 +3,6 @@ package implicitShortcut
 class C
 abstract class Base[T] {
 
-  def foo(x: T): implicit C => T = x
+  def foo(x: T): given C => T = x
 
 }

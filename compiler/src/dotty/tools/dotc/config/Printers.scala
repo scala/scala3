@@ -17,9 +17,12 @@ object Printers {
   val checks: Printer = noPrinter
   val config: Printer = noPrinter
   val cyclicErrors: Printer = noPrinter
+  val debug = noPrinter             // no type annotion here to force inlining
+  val derive: Printer = noPrinter
   val dottydoc: Printer = noPrinter
   val exhaustivity: Printer = noPrinter
   val gadts: Printer = noPrinter
+  val gadtsConstr: Printer = noPrinter
   val hk: Printer = noPrinter
   val implicits: Printer = noPrinter
   val implicitsDetailed: Printer = noPrinter
@@ -28,9 +31,11 @@ object Printers {
   val overload: Printer = noPrinter
   val patmatch: Printer = noPrinter
   val pickling: Printer = noPrinter
+  val quotePickling: Printer = noPrinter
   val plugins: Printer = noPrinter
   val simplify: Printer = noPrinter
   val subtyping: Printer = noPrinter
+  val tailrec: Printer = noPrinter
   val transforms: Printer = noPrinter
   val typr: Printer = noPrinter
   val unapp: Printer = noPrinter

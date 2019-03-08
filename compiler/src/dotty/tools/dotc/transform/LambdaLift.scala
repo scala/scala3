@@ -201,10 +201,7 @@ object LambdaLift {
         tree match {
           case tree: Ident =>
             if (isLocal(sym)) {
-              if (sym is Label)
-                assert(enclosure == sym.enclosure,
-                  i"attempt to refer to label $sym from nested $enclosure")
-              else if (sym is Method) markCalled(sym, enclosure)
+              if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
             }
             def captureImplicitThis(x: Type): Unit = {
@@ -220,7 +217,7 @@ object LambdaLift {
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
-            if (sym.owner.isTerm && !sym.is(Label))
+            if (sym.owner.isTerm)
               liftedOwner(sym) = sym.enclosingPackageClass
                 // this will make methods in supercall constructors of top-level classes owned
                 // by the enclosing package, which means they will be static.
@@ -288,7 +285,7 @@ object LambdaLift {
       } while (changedLiftedOwner)
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
-      if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
+      if (sym.isAnonymousFunction && sym.owner.is(Method))
         sym.name.replace {
           case name: SimpleName => ExpandPrefixName(sym.owner.name.asTermName, name)
         }.freshened
@@ -427,7 +424,7 @@ object LambdaLift {
       case proxies =>
         val sym = tree.symbol
         val freeParamDefs = proxies.map(proxy =>
-          thisPhase.transformFollowingDeep(ValDef(proxy.asTerm).withPos(tree.pos)).asInstanceOf[ValDef])
+          thisPhase.transformFollowingDeep(ValDef(proxy.asTerm).withSpan(tree.span)).asInstanceOf[ValDef])
         def proxyInit(field: Symbol, param: Symbol) =
           thisPhase.transformFollowingDeep(memberRef(field).becomes(ref(param)))
 
@@ -526,9 +523,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         val lft = lifter
         if (prefix eq NoPrefix)
           if (sym.enclosure != lft.currentEnclosure && !sym.isStatic)
-            (if (sym is Method) lft.memberRef(sym) else lft.proxyRef(sym)).withPos(tree.pos)
+            (if (sym is Method) lft.memberRef(sym) else lft.proxyRef(sym)).withSpan(tree.span)
           else if (sym.owner.isClass) // sym was lifted out
-            ref(sym).withPos(tree.pos)
+            ref(sym).withSpan(tree.span)
           else
             tree
         else if (!prefixIsElidable(tpe)) ref(tpe)
@@ -539,7 +536,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   }
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Apply =
-    cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withPos(tree.pos)
+    cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withSpan(tree.span)
 
   override def transformClosure(tree: Closure)(implicit ctx: Context): Closure =
     cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
@@ -556,7 +553,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree.expr match {
     case Block(stats, value) =>
-      Block(stats, Return(value, tree.from)).withPos(tree.pos)
+      Block(stats, Return(value, tree.from)).withSpan(tree.span)
     case _ =>
       tree
   }

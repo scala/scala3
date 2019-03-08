@@ -1,10 +1,10 @@
 object Foo {
   def foo(): Int = {
-    val f: implicit Int => Int = implicit (x: Int) => 2 * x
-    f(2)
+    val f: given Int => Int = given (x: Int) => 2 * x
+    f given 2
   }
 
   val f = implicit (x: Int) => x
 
-  (implicit (x: Int) => x): (implicit Int => Int) // error: no implicit argument found
+  (given (x: Int) => x): (given Int => Int) // error: no implicit argument found
 }

@@ -32,11 +32,11 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
       comment <- getComment(ent.symbol)
       text <- comment.expandedBody
     } yield {
-      val parsed = parse(ent, ctx.docbase.packages, clean(text), text, comment.pos)
+      val parsed = parse(ent, ctx.docbase.packages, clean(text), text, comment.span)
       if (ctx.settings.wikiSyntax.value)
-        WikiComment(ent, parsed, comment.pos).comment
+        WikiComment(ent, parsed, comment.span).comment
       else
-        MarkdownComment(ent, parsed, comment.pos).comment
+        MarkdownComment(ent, parsed, comment.span).comment
     }
   }
 

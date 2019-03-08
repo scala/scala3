@@ -1,7 +1,7 @@
 object Test {
-  def a = 'a
-  def b = 'B
-  def c = '+
+  def a = Symbol("a")
+  def b = Symbol("B")
+  def c = Symbol("+")
   //def d = '`\n` //error: unclosed character literal
-  def e = '\u0041
+  def e = Symbol("\u0041")
 }

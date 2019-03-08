@@ -58,16 +58,16 @@ object Iter2 {
     def fromIterator[B](it: Iterator[B]): C[B]
   }
 
-  trait Iterable[+IA] extends IterableOnce[IA] with FromIterator[Iterable] {
+  trait Iterable[+IA] extends IterableOnce[IA], FromIterator[Iterable] {
     def view: View[IA] = new View(iterator)
   }
 
-  trait Seq[+AA] extends Iterable[AA] with FromIterator[Seq] {
+  trait Seq[+AA] extends Iterable[AA], FromIterator[Seq] {
     def apply(i: Int): AA
     def length: Int
   }
 
-  sealed trait List[+A] extends Seq[A] with FromIterator[List] {
+  sealed trait List[+A] extends Seq[A], FromIterator[List] {
     def isEmpty: Boolean
     def head: A
     def tail: List[A]
@@ -84,7 +84,7 @@ object Iter2 {
       if (isEmpty) 0 else 1 + tail.length
   }
 
-  class View[+A](it: Iterator[A]) extends Iterable[A] with FromIterator[View] {
+  class View[+A](it: Iterator[A]) extends Iterable[A], FromIterator[View] {
     def iterator: Iterator[A] = it.copy
     def fromIterator[B](it: Iterator[B]): View[B] = new View(it)
   }
@@ -101,7 +101,7 @@ object Iter2 {
     def tail = ???
   }
 
-  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLen: Int) extends Seq[A] with FromIterator[ArrayBuffer] {
+  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLen: Int) extends Seq[A], FromIterator[ArrayBuffer] {
     def this() = this(new Array[AnyRef](16), 0)
     def this(it: ArrayIterator[A]) = this(it.elems, it.len)
     private var elems: Array[AnyRef] = initElems
@@ -116,7 +116,7 @@ object Iter2 {
     def length = len
   }
 /*
-  class SeqView[A](itf: () => Iterator) extends Seq[A] with FromIterator[SeqView] {
+  class SeqView[A](itf: () => Iterator) extends Seq[A], FromIterator[SeqView] {
     def iterator = it
     def buildIterator = it
     def fromIterator[B](it: Iterator[B]) = it match {

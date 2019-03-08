@@ -113,7 +113,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |class C {
         |  @annotation.implicitAmbiguous("msg A=${A}")
         |  implicit def f[A](implicit x: String): Int = 1
-        |  implicit def g: Int = 2
+        |  implicit def g(implicit x: String): Int = 2
         |  def test: Unit = {
         |    implicit val s: String = "Hello"
         |    implicitly[Int]

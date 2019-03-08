@@ -15,9 +15,9 @@ object WithNormalState {
   }
 
   def run() = {
-    val instance = Instance.newInstance()
-    instance.getOnInstance // inferred phantom evidence parameter =::= is erased
-    instance.getOnInstance.getOffInstance.getOnInstance.getOffInstance // all inferred phantom evidence parameters =::= are erased
+    val inst = Instance.newInstance()
+    inst.getOnInstance // inferred phantom evidence parameter =::= is erased
+    inst.getOnInstance.getOffInstance.getOnInstance.getOffInstance // all inferred phantom evidence parameters =::= are erased
   }
 
 }

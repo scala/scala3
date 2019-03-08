@@ -4,7 +4,7 @@ object Fluent {
   }
   trait CC[T]
 
-  type Context[Alg[x[_]] <: Foo[x], E] = implicit Alg[CC] => CC[E]
+  type Context[Alg[x[_]] <: Foo[x], E] = given Alg[CC] => CC[E]
 
   def meth1[T]() : Context[Foo, T] = {
     implicitly[Foo[CC]].meth1()

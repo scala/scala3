@@ -4,7 +4,7 @@
 // along with the real fix: an extractor pattern with 1 sub-pattern should type check for all extractors
 // that return Option[T], whatever T (even if it's a tuple)
 object Foo {
-  def unapply[S, T](scrutinee: S)(implicit witness: FooHasType[S, T]): Option[T] = scrutinee match {
+  def unapply[S, T](scrutinee: S)(implicit evidence: FooHasType[S, T]): Option[T] = scrutinee match {
     case i: Int => Some((i, i).asInstanceOf[T])
   }
 }
@@ -23,6 +23,6 @@ object Test extends dotty.runtime.LegacyApp {
     case Foo(p) => p // p should be a pair of Int
   })
 
-  // Prints '(x, x)'
+  // Prints '{x, x}'
   "x" match { case Foo997(a) => println(a) }
 }

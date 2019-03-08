@@ -3,7 +3,7 @@ import scala.quoted.Toolbox.Default._
 
 class Foo {
   def foo: Unit = {
-    val q = '{ ~( '{ ~( '{ 5 } ) } ) }
+    val q = '{ ${ '{ ${ '{ 5 } } } } }
     println(q.show)
   }
 }

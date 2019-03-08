@@ -24,5 +24,5 @@ class PositionContext(positionMap: Map[CodeMarker, (TestFile, Int, Int)]) {
 }
 
 object PositionContext {
-  type PosCtx[T] = implicit PositionContext => T
+  type PosCtx[T] = given PositionContext => T
 }

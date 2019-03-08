@@ -1,5 +1,4 @@
-/** Decompiled from out/runTestFromTasty/run/t889/Test.class */
-object Test extends dotty.runtime.LegacyApp() {
+object Test extends dotty.runtime.LegacyApp {
   val a: collection.immutable.List[java.lang.String] = scala.List.apply[java.lang.String]("a")
   Test.a match {
     case scala.Seq("a", "b", rest: _*) =>

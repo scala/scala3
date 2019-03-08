@@ -70,7 +70,7 @@ object desugar {
   }
 
   object misc {
-    'hello
+    Symbol("hello")
     s"this is a $x + ${x + y} string"
     type ~[X, Y] = Tuple2[X, Y]
     val pair: Int ~ String = 1 -> "abc"

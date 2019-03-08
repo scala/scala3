@@ -79,3 +79,6 @@ bench/compile.txt
 
 # The vscode app for testing
 vscode-dotty/.vscode-test
+
+community-build/dotty-bootstrapped.version
+community-build/sbt-dotty-sbt

@@ -18,7 +18,7 @@ trait S2[x <: Term, y <: Term] extends Term {
 }
 trait S3[x <: Term, y <: Term, z <: Term] extends Term {
   type ap[v <: Term] = eval#ap[v] // error: not a legal path
-  type eval = x#ap[z]#ap[y#ap[z]]#eval // error: not a legal path // error: not a legal path
+  type eval = x#ap[z]#ap[y#ap[z]]#eval // error: not a legal path
 }
 
 // The K combinator

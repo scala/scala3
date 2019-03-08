@@ -1,6 +1,4 @@
-'use strict';
-
-import * as net from 'net';
+import * as net from 'net'
 
 let argv: string[] = process.argv.slice(2)
 const firstArg: string | undefined = argv.shift()
@@ -22,7 +20,7 @@ client.on('data', (data) => {
   process.stdout.write(data.toString())
 })
 process.stdin.on('readable', () => {
-  let chunk = process.stdin.read();
+  let chunk = process.stdin.read()
   if (chunk !== null) {
     if (isConnected) {
       client.write(chunk)

@@ -37,27 +37,27 @@ class Winners {
     case x :: xs  => succ3(xs, x :: acc)
   }
 
-  @tailrec final def fail3[T](x: Int): Int = fail3(x - 1)
+  @tailrec final def succ4[T](x: Int): Int = succ4(x - 1)
 
-  class Tom[T](x: Int) {
-    @tailrec final def fail4[U](other: Tom[U], x: Int): Int = other.fail4[U](other, x - 1)
+  class Tom[T] {
+    @tailrec final def succ5[U](other: Tom[U], x: Int): Int = other.succ5[U](other, x - 1)
+    @tailrec final def succ6(x: Int): Int = (new Tom[Int]).succ6(x - 1)
   }
 }
 
 object Failures {
   @tailrec
-  def facfail(n: Int): Int =                          // error
+  def facfail(n: Int): Int =
     if (n == 0) 1
-    else n * facfail(n - 1)                           // error
+    else n * facfail(n - 1) // error: not in tail pos
 }
 
 class Failures {
-  // not private, not final
-  @tailrec def fail1(x: Int): Int = fail1(x)          // error
+  @tailrec def fail1(x: Int): Int = fail1(x) // error: not private, not final
 
   // a typical between-chair-and-keyboard error
-  @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {   // error
+  @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {
     case Nil      => Nil
-    case x :: xs  => x :: fail2[T](xs)                // error
+    case x :: xs  => x :: fail2[T](xs) // error: not in tail pos
   }
 }

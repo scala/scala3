@@ -8,6 +8,7 @@ import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
 import typer.ImportInfo
+import util.SourcePosition
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.util.control.NonFatal
@@ -48,6 +49,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
+  protected def debugPos: Boolean = ctx.settings.YdebugPos.value
 
   def homogenize(tp: Type): Type =
     if (homogenizedView)
@@ -191,8 +193,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<noprefix>"
       case tp: MethodType =>
         changePrec(GlobalPrec) {
+          (if (tp.isContextual) " given " else "") ~
           ("(" + (if (tp.isErasedMethod)   "erased "   else "")
-               + (if (tp.isImplicitMethod) "implicit " else "")
+               + (if (tp.isImplicitMethod && !tp.isContextual) "implicit " else "")
           ) ~ paramsText(tp) ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
@@ -299,7 +302,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info) else toText(tp.repr)
+        if (homogenizedView) toText(tp.info)
+        else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
+        else toText(tp.repr)
     }
   }
 
@@ -390,16 +395,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else ""
   }
 
-  /** String representation of symbol's definition key word */
+  /** String representation of symbol's definition keyword */
   protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
     if (flags is JavaTrait) "interface"
     else if (flags is Trait) "trait"
+    else if (flags is Module) "object"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
     else if (flags is Mutable) "var"
     else if (flags is Package) "package"
-    else if (flags is Module) "object"
     else if (sym is Method) "def"
     else if (sym.isTerm && (!(flags is Param))) "val"
     else ""
@@ -481,7 +486,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(const: Constant): Text = const.tag match {
     case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
-    case ClazzTag => "classOf[" ~ toText(const.typeValue.classSymbol) ~ "]"
+    case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
     case LongTag => literalText(const.longValue.toString + "L")
     case EnumTag => literalText(const.symbolValue.name.toString)
@@ -516,8 +521,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
       else
         Text()
 
-    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.pos.toString) provided ctx.settings.YprintPos.value)
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided ctx.settings.YprintPos.value)
   }.close // todo: override in refined printer
+
+  def toText(pos: SourcePosition): Text = {
+    if (!pos.exists) "<no position>"
+    else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
+    else s"(no source file, offset = ${pos.span.point})"
+  }
 
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>
@@ -526,11 +537,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       result.reason match {
         case _: NoMatchingImplicits => "No Matching Implicit"
         case _: DivergingImplicit => "Diverging Implicit"
-        case _: ShadowedImplicit => "Shadowed Implicit"
         case result: AmbiguousImplicits =>
           "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>
-          "?Unknown Implicit Result?" + result.getClass
+          "Search Failure: " ~ toText(result.tree)
     }
   }
 

@@ -14,7 +14,7 @@ object Test {
       case Bar(producer, nestedf) => {
         new Producer[Expr[A]] {
           def step(k: Expr[A] => Expr[Unit]): Expr[Unit] = '{
-            val adv: Unit => Unit = { _ => ~producer.step((el) => nestedf(el))}
+            val adv: Unit => Unit = { _ => ${producer.step((el) => nestedf(el))} }
           }
         }
       }

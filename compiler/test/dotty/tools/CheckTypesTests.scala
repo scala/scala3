@@ -1,0 +1,69 @@
+package dotty.tools
+
+import org.junit.Test
+import org.junit.Assert.{ assertFalse, assertTrue, fail }
+
+import dotc.ast.Trees._
+import dotc.core.Decorators._
+
+class CheckTypeTest extends DottyTest {
+  @Test
+  def checkTypesTest: Unit = {
+    val source = """
+      |class A
+      |class B extends A
+    """.stripMargin
+
+    val types = List(
+      "A",
+      "B",
+      "List[_]",
+      "List[Int]",
+      "List[AnyRef]",
+      "List[String]",
+      "List[A]",
+      "List[B]"
+    )
+
+    checkTypes(source, types: _*) {
+      case (List(a, b, lu, li, lr, ls, la, lb), context) =>
+        implicit val ctx = context
+
+        assertTrue  ( b <:<  a)
+        assertTrue  (li <:< lu)
+        assertFalse (li <:< lr)
+        assertTrue  (ls <:< lr)
+        assertTrue  (lb <:< la)
+        assertFalse (la <:< lb)
+
+      case _ => fail
+    }
+  }
+
+  @Test
+  def checkTypessTest: Unit = {
+    val source = """
+      |class A
+      |class B extends A
+    """.stripMargin
+
+    val typesA = List(
+      "A",
+      "List[A]"
+    )
+
+    val typesB = List(
+      "B",
+      "List[B]"
+    )
+
+    checkTypes(source, List(typesA, typesB)) {
+      case (List(sups, subs), context) =>
+        implicit val ctx = context
+
+        (sups, subs).zipped.foreach { (sup, sub) => assertTrue(sub <:< sup) }
+
+      case _ => fail
+    }
+  }
+}

@@ -10,5 +10,5 @@ object Test {
     println(power2(x3))
   }
 
-  inline def power2(x: Double) = ~PowerMacro.power2('(x))
+  inline def power2(x: Double) = ${PowerMacro.power2('x)}
 }

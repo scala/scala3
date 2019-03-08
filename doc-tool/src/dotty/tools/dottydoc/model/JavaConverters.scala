@@ -74,10 +74,11 @@ object JavaConverters {
         "scala" -> ref
       ).asJava
 
-      case FunctionReference(args, returnValue) => Map(
+      case FunctionReference(args, returnValue, isImplicit) => Map(
         "kind" -> "FunctionReference",
         "args" -> args.map(_.asJava).asJava,
         "returnValue" -> returnValue.asJava,
+        "isImplicit" -> isImplicit,
         "scala" -> ref
       ).asJava
 
@@ -273,7 +274,7 @@ object JavaConverters {
           e.paramLists.map { paramList =>
             Map(
               "isImplicit" -> paramList.isImplicit,
-              "list" -> paramList.list.map(_.showReference).asJava
+              "list" -> paramList.list.map(_.asJava).asJava
             ).asJava
           }
           .asJava
@@ -281,7 +282,7 @@ object JavaConverters {
       )
 
       def returnValue(e: ReturnValue) =
-        Map("returnValue" -> e.returnValue.showReference)
+        Map("returnValue" -> e.returnValue.asJava)
 
       entity(e) ++ (e match {
         case e: Package   => members(e)

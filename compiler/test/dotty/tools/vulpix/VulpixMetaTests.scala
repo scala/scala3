@@ -4,7 +4,6 @@ package vulpix
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import scala.concurrent.duration._
-import dotty.Properties
 import TestConfiguration._
 
 /** Meta tests for the Vulpix test suite. This test follows the structure of
@@ -19,6 +18,7 @@ class VulpixMetaTests extends ParallelTesting {
   def safeMode = false // Don't fork a new VM after each run test
   def isInteractive = false // Don't beautify output for interactive use.
   def testFilter = None // Run all the tests.
+  def updateCheckFiles: Boolean = false
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   implicit def testGroup: TestGroup = TestGroup("VulpixMetaTests")

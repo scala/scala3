@@ -92,8 +92,10 @@ object language {
    */
   @volatile implicit lazy val reflectiveCalls: reflectiveCalls = languageFeature.reflectiveCalls
 
-  /** Only where enabled, definitions of implicit conversions are allowed. An
-   *  implicit conversion is an implicit value of unary function type `A => B`,
+  /** Only where enabled, definitions of legacy implicit conversions and certain uses
+   *  of implicit conversions are allowed.
+   *
+   *  A legacy implicit conversion is an implicit value of unary function type `A => B`,
    *  or an implicit method that has in its first parameter section a single,
    *  non-implicit parameter. Examples:
    *
@@ -103,17 +105,36 @@ object language {
    *     implicit def listToX(xs: List[T])(implicit f: T => X): X = ...
    *  }}}
    *
-   *  implicit values of other types are not affected, and neither are implicit
-   *  classes.
+   *  Implicit values of other types are not affected, and neither are implicit
+   *  classes. In particular, implied instances of the scala.Conversion class can be
+   *  defined without having to import the language feature.
+   *
+   *  The language import is also required to enable _uses_ of implicit conversions
+   *  unless the conversion in question is co-defined with the type to which it maps.
+   *  Co-defined means: defined in the companion object of the class of the result type.
+   *  Examples:
+   *
+   *  {{{
+   *      class A
+   *      class B
+   *      object B {
+   *        implied a2b for Conversion[A, B] { ... }
+   *      }
+   *      object C {
+   *        implied b2a for Conversion[B, A] { ... }
+   *      }
+   *      import implied B._
+   *      import implied C._
+   *      val x: A = new B     // language import required
+   *      val x: B = new A     // no import necessary since a2b is co-defined with B
+   *  }}}
    *
    *  '''Why keep the feature?''' Implicit conversions are central to many aspects
    *  of Scala’s core libraries.
    *
    *  '''Why control it?''' Implicit conversions are known to cause many pitfalls
-   *  if over-used. And there is a tendency to over-use them because they look
-   *  very powerful and their effects seem to be easy to understand. Also, in
-   *  most situations using implicit parameters leads to a better design than
-   *  implicit conversions.
+   *  if over-used. This holds in particular for implicit conversions defined after
+   *  the fact between unrelated types.
    *
    *  @group production
    */

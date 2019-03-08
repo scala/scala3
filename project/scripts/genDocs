@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 # Usage:
-# BOT_PASS=<dotty-bot password> ./genDocs
+# BOT_TOKEN=<dotty-bot password> ./genDocs
 
 set -e
 
 # set extended glob, needed for rm everything but x
 shopt -s extglob
 
-# make sure that BOT_PASS is set
-if [ -z "$BOT_PASS" ]; then
-    echo "Error: BOT_PASS env unset, unable to push without password" 1>&2
+# make sure that BOT_TOKEN is set
+if [ -z "$BOT_TOKEN" ]; then
+    echo "Error: BOT_TOKEN env unset, unable to push without password" 1>&2
     exit 1
 fi
 
@@ -29,8 +29,14 @@ fi
 # save current head for commit message in gh-pages
 GIT_HEAD=$(git rev-parse HEAD)
 
+
+# set up remote and github credentials
+git remote add doc-remote "https://dotty-bot:$BOT_TOKEN@github.com/lampepfl/dotty-website.git"
+git config user.name "dotty-bot"
+git config user.email "dotty-bot@d-d.me"
+
 # check out correct branch
-git fetch origin gh-pages:gh-pages
+git fetch doc-remote gh-pages
 git checkout gh-pages
 
 # move newly generated _site dir to $PWD
@@ -45,13 +51,9 @@ mv _site/* .
 # remove now empty _site dir
 rm -rf _site
 
-# set github credentials
-git config user.name "dotty-bot"
-git config user.email "felix.mulder@epfl.ch"
-
 # add all contents of $PWD to commit
 git add -A
 git commit -m "Update gh-pages site for $GIT_HEAD" || echo "nothing new to commit"
 
-# push using dotty-bot to origin
-git push https://dotty-bot:$BOT_PASS@github.com/lampepfl/dotty.git || echo "couldn't push, since nothing was added"
+# push to doc-remote
+git push doc-remote || echo "couldn't push, since nothing was added"

@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.PrintStream
+import java.io.{File => JFile, PrintStream}
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -13,11 +13,11 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
-import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.io._
@@ -25,7 +25,6 @@ import org.jline.reader._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -103,7 +102,7 @@ class ReplDriver(settings: Array[String],
    *  `protected final` to facilitate testing.
    */
   final def runUntilQuit(initialState: State = initialState): State = {
-    val terminal = new JLineTerminal()
+    val terminal = new JLineTerminal
 
     /** Blockingly read a line, getting back a parse result */
     def readLine(state: State): ParseResult = {
@@ -114,10 +113,10 @@ class ReplDriver(settings: Array[String],
       implicit val ctx = state.context
       try {
         val line = terminal.readLine(completer)
-        ParseResult(line)
-      }
-      catch {
-        case _: EndOfFileException => // Ctrl+D
+        ParseResult(line)(state)
+      } catch {
+        case _: EndOfFileException |
+            _: UserInterruptException => // Ctrl+D or Ctrl+C
           Quit
       }
     }
@@ -133,7 +132,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
-    val parsed = ParseResult(input)(state.context)
+    val parsed = ParseResult(input)(state)
     interpret(parsed)
   }
 
@@ -150,8 +149,8 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Symbol)(implicit ctx: Context) = {
-      val displ = completion.name.toString
+    def makeCandidate(completion: Completion) = {
+      val displ = completion.label
       new Candidate(
         /* value    = */ displ,
         /* displ    = */ displ, // displayed value
@@ -166,12 +165,12 @@ class ReplDriver(settings: Array[String],
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
-        val file = new SourceFile("<completions>", expr)
-        val unit = new CompilationUnit(file)
+        val file = SourceFile.virtual("<completions>", expr)
+        val unit = CompilationUnit(file)(state.context)
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
-        val srcPos = SourcePosition(file, Position(cursor))
-        val (_, completions) = Interactive.completions(srcPos)
+        val srcPos = SourcePosition(file, Span(cursor))
+        val (_, completions) = Completion.completions(srcPos)
         completions.map(makeCandidate)
       }
       .getOrElse(Nil)
@@ -209,7 +208,10 @@ class ReplDriver(settings: Array[String],
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
       ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
-    implicit val state = newRun(istate)
+    implicit val state = {
+      val state0 = newRun(istate)
+      state0.copy(context = state0.context.withSource(parsed.source))
+    }
     compiler
       .compile(parsed)
       .fold(
@@ -249,20 +251,22 @@ class ReplDriver(settings: Array[String],
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
-          .membersBasedOnFlags(Method, Accessor | ParamAccessor | Synthetic | Private)
+          .membersBasedOnFlags(required = allOf(Method), excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             denot.symbol.owner == defn.AnyClass ||
             denot.symbol.owner == defn.ObjectClass ||
             denot.symbol.isConstructor
           }
+          .sortBy(_.name)
 
       val vals =
         info.fields
           .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
+          .sortBy(_.name)
 
       val typeAliases =
-        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
+        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias).sortBy(_.name)
 
       (
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
@@ -283,9 +287,7 @@ class ReplDriver(settings: Array[String],
           x.symbol
       }
       .foreach { sym =>
-        // FIXME syntax highlighting on comment is currently not working
-        // out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
-        out.println(SyntaxHighlighting.CommentColor + "// defined " + sym.showUser + SyntaxHighlighting.NoColor)
+        out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
       }
 
 
@@ -327,9 +329,9 @@ class ReplDriver(settings: Array[String],
       state
 
     case Load(path) =>
-      val file = new java.io.File(path)
+      val file = new JFile(path)
       if (file.exists) {
-        val contents = scala.io.Source.fromFile(file).mkString
+        val contents = scala.io.Source.fromFile(file, "UTF-8").mkString
         run(contents)
       }
       else {
@@ -347,7 +349,7 @@ class ReplDriver(settings: Array[String],
     case DocOf(expr) =>
       compiler.docOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
+        res => out.println(res)
       )
       state
 

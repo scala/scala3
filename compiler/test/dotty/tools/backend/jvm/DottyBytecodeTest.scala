@@ -73,6 +73,10 @@ trait DottyBytecodeTest {
     classNode.methods.asScala.find(_.name == name) getOrElse
       sys.error(s"Didn't find method '$name' in class '${classNode.name}'")
 
+  protected def getField(classNode: ClassNode, name: String): FieldNode =
+    classNode.fields.asScala.find(_.name == name) getOrElse
+      sys.error(s"Didn't find field '$name' in class '${classNode.name}'")
+
   def diffInstructions(isa: List[Instruction], isb: List[Instruction]): String = {
     val len = Math.max(isa.length, isb.length)
     val sb = new StringBuilder

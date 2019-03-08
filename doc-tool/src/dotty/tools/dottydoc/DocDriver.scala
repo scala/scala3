@@ -27,7 +27,7 @@ class DocDriver extends Driver {
     ctx.setProperty(ContextDoc, new ContextDottydoc)
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
-    (fileNames, ctx)
+    fromTastySetup(fileNames, ctx)
   }
 
   override def newCompiler(implicit ctx: Context): Compiler = new DocCompiler

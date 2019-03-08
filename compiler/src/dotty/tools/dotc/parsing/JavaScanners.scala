@@ -3,18 +3,21 @@ package dotc
 package parsing
 
 import core.Contexts._
+import core.Names.SimpleName
 import Scanners._
 import util.SourceFile
 import JavaTokens._
 import scala.annotation.{ switch, tailrec }
-import util.Chars._
+import scala.tasty.util.Chars._
 
 object JavaScanners {
 
   class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
 
-    def toToken(idx: Int): Token =
+    def toToken(name: SimpleName): Token = {
+      val idx = name.start
       if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER
+    }
 
     private class JavaTokenData0 extends TokenData
 

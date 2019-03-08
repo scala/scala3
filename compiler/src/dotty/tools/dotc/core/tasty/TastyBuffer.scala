@@ -20,6 +20,9 @@ object TastyBuffer {
     def + (delta: Int): Addr = Addr(this.index + delta)
 
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
+
+    def ==(that: Addr): Boolean = this.index == that.index
+    def !=(that: Addr): Boolean = this.index != that.index
   }
 
   val NoAddr: Addr = Addr(-1)
@@ -59,7 +62,7 @@ class TastyBuffer(initialSize: Int) {
   /** Write the first `n` bytes of `data`. */
   def writeBytes(data: Array[Byte], n: Int): Unit = {
     while (bytes.length < length + n) bytes = dble(bytes)
-    Array.copy(data, 0, bytes, length, n)
+    System.arraycopy(data, 0, bytes, length, n)
     length += n
   }
 

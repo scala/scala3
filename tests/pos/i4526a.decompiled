@@ -1,4 +1,3 @@
-/** Decompiled from out/posTestFromTasty/pos/i4526a/bar/Foo.class */
 package bar {
   class Foo() {
     protected[bar] def foo(): scala.Int = 0

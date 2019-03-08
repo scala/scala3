@@ -2,8 +2,13 @@ package dotty.tools.languageserver.util.actions
 
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
+import dotty.tools.languageserver.DottyLanguageServer.{RENAME_OVERRIDDEN, RENAME_NO_OVERRIDDEN}
 
-import org.junit.Assert.{assertEquals, assertNull}
+import org.junit.Assert.{assertEquals, assertNull, fail}
+
+import org.eclipse.lsp4j.{MessageActionItem, ShowMessageRequestParams}
+
+import java.util.concurrent.CompletableFuture
 
 import scala.collection.JavaConverters._
 
@@ -17,10 +22,31 @@ import scala.collection.JavaConverters._
  */
 class CodeRename(override val marker: CodeMarker,
                  newName: String,
-                 expected: Set[CodeRange]) extends ActionOnMarker {
+                 expected: Set[CodeRange],
+                 withOverridden: Option[Boolean]) extends ActionOnMarker {
+
+  private final val TIMEOUT_MS = 10000
 
   override def execute(): Exec[Unit] = {
-    val results = server.rename(marker.toRenameParams(newName)).get()
+    val query = server.rename(marker.toRenameParams(newName))
+
+    withOverridden.foreach { includeOverridden =>
+      var question: (ShowMessageRequestParams, CompletableFuture[MessageActionItem]) = null
+      val startTime = System.currentTimeMillis()
+      do {
+        Thread.sleep(50)
+        question = client.requests.get.headOption.orNull
+      } while (question == null && System.currentTimeMillis() - startTime < TIMEOUT_MS)
+
+      if (question == null) fail("The server didn't ask about overridden symbols.")
+
+      val answerStr = if (includeOverridden) RENAME_OVERRIDDEN else RENAME_NO_OVERRIDDEN
+      val action = question._1.getActions.asScala.find(_.getTitle == answerStr).get
+      question._2.complete(action)
+    }
+
+    val results = query.get()
+
     val changes = results.getChanges.asScala.mapValues(_.asScala.toSet.map(ch => (ch.getNewText, ch.getRange)))
     val expectedChanges = expected.groupBy(_.file.uri).mapValues(_.map(range => (newName, range.toRange)))
 

@@ -20,7 +20,7 @@ object factories {
   type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
 
   def flags(t: Tree)(implicit ctx: Context): List[String] =
-    (t.symbol.flags & SourceModifierFlags)
+    (t.symbol.flags & (if (t.symbol.isType) TypeSourceModifierFlags else TermSourceModifierFlags))
       .flagStrings.toList
       .filter(_ != "<trait>")
       .filter(_ != "interface")
@@ -64,7 +64,7 @@ object factories {
         val cls = tycon.typeSymbol
 
         if (defn.isFunctionClass(cls))
-          FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
+          FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last), defn.isImplicitFunctionClass(cls))
         else if (defn.isTupleClass(cls))
           TupleReference(args.map(expandTpe(_, Nil)))
         else {

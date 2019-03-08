@@ -1,12 +1,39 @@
-[submodule "scala-backend"]
-	path = scala-backend
-	url = https://github.com/lampepfl/scala.git
-	branch = sharing-backend
-[submodule "scala2-library"]
-	path = scala2-library
-	url = https://github.com/lampepfl/scala.git
-	branch = dotty-library2.12
-[submodule "collection-strawman"]
-	path = collection-strawman
-	url = https://github.com/dotty-staging/collection-strawman.git
-	branch = dotty
+[submodule "community-build/community-projects/algebra"]
+	path = community-build/community-projects/algebra
+	url = https://github.com/dotty-staging/algebra
+[submodule "community-build/community-projects/betterfiles"]
+	path = community-build/community-projects/betterfiles
+	url = https://github.com/dotty-staging/better-files
+[submodule "community-build/community-projects/scalacheck"]
+	path = community-build/community-projects/scalacheck
+	url = https://github.com/dotty-staging/scalacheck
+[submodule "community-build/community-projects/ScalaPB"]
+	path = community-build/community-projects/ScalaPB
+	url = https://github.com/dotty-staging/ScalaPB
+[submodule "community-build/community-projects/scalatest"]
+	path = community-build/community-projects/scalatest
+	url = https://github.com/dotty-staging/scalatest
+[submodule "community-build/community-projects/scopt"]
+	path = community-build/community-projects/scopt
+	url = https://github.com/dotty-staging/scopt
+[submodule "community-build/community-projects/squants"]
+	path = community-build/community-projects/squants
+	url = https://github.com/dotty-staging/squants
+[submodule "community-build/community-projects/scalap"]
+	path = community-build/community-projects/scalap
+	url = https://github.com/dotty-staging/scala
+[submodule "community-build/community-projects/minitest"]
+	path = community-build/community-projects/minitest
+	url = https://github.com/dotty-staging/minitest
+[submodule "community-build/community-projects/fastparse"]
+	path = community-build/community-projects/fastparse
+	url = https://github.com/dotty-staging/fastparse
+[submodule "community-build/community-projects/stdLib213"]
+	path = community-build/community-projects/stdLib213
+	url = https://github.com/dotty-staging/scala
+[submodule "community-build/community-projects/pdbp"]
+	path = community-build/community-projects/pdbp
+	url = https://github.com/dotty-staging/pdbp
+[submodule "community-build/community-projects/sourcecode"]
+	path = community-build/community-projects/sourcecode
+	url = https://github.com/dotty-staging/sourcecode

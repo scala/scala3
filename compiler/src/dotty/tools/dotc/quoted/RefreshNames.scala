@@ -26,7 +26,7 @@ class RefreshNames extends MiniPhase with SymTransformer {
   }
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (ref.is(Package) || ref.isClass || ref.owner != ctx.owner || ref.is(Label) || ref.is(Param)) ref
+    if (ref.is(Package) || ref.isClass || ref.owner != ctx.owner || ref.is(Param)) ref
     else {
       val newName = UniqueName.fresh(ref.symbol.name.toTermName)
       newName.info match {

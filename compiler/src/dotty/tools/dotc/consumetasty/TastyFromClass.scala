@@ -8,7 +8,7 @@ import scala.tasty.file.TastyConsumer
 class TastyFromClass(consumer: TastyConsumer) extends TASTYCompiler {
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(new ReadTastyTreesFromClasses) :: // Load classes from tasty
+    List(new ReadTasty) :: // Load classes from tasty
     Nil
 
   override protected def picklerPhases: List[List[Phase]] = Nil

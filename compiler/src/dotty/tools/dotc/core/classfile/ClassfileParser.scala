@@ -4,7 +4,7 @@ package core
 package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
-import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
+import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
 import NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
 import ast.tpd._
@@ -168,13 +168,11 @@ class ClassfileParser(
       classInfo = parseAttributes(classRoot.symbol, classInfo)
       if (isAnnotation) addAnnotationConstructor(classInfo)
 
-      val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
-      if (companionClassMethod.exists) companionClassMethod.entered
-      val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, moduleRoot, classRoot)
-      if (companionModuleMethod.exists) companionModuleMethod.entered
+      classRoot.registerCompanion(moduleRoot.symbol)
+      moduleRoot.registerCompanion(classRoot.symbol)
 
-      setClassInfo(classRoot, classInfo)
-      setClassInfo(moduleRoot, staticInfo)
+      setClassInfo(classRoot, classInfo, fromScala2 = false)
+      setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
     } else if (result == Some(NoEmbedded)) {
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
@@ -365,7 +363,7 @@ class ClassfileParser(
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
             val clazz = tpe.member(name).symbol
-            tpe = processClassType(processInner(clazz.typeRef))
+            tpe = processClassType(processInner(TypeRef(tpe, clazz)))
           }
           accept(';')
           tpe
@@ -663,7 +661,7 @@ class ClassfileParser(
           val constr = ctx.newSymbol(
             owner = classRoot.symbol,
             name = nme.CONSTRUCTOR,
-            flags = Flags.Synthetic | Flags.JavaDefined,
+            flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
             info = constrType
           ).entered
           for ((attr, i) <- attrs.zipWithIndex)

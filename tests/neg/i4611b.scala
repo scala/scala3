@@ -3,7 +3,7 @@ import scala.concurrent.Future
 class Response
 class Request
 object Request {
-  type To[T] = implicit Request => T
+  type To[T] = given Request => T
 }
 
 // Don't qualify as SAM type because result type is an implicit function type

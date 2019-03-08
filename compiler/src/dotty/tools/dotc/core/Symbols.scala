@@ -13,7 +13,7 @@ import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import Types._
-import util.Positions._
+import util.Spans._
 import DenotTransformers._
 import StdNames._
 import NameOps._
@@ -26,7 +26,7 @@ import reporting.diagnostic.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, Property}
+import util.{SourceFile, NoSource, Property, SourcePosition}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -43,11 +43,11 @@ trait Symbols { this: Context =>
    *  it's debug-friendlier not to create an anonymous class here.
    */
   def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(implicit ctx: Context): Symbol { type ThisName = N } =
-    new Symbol(coord, ctx.nextId).asInstanceOf[Symbol { type ThisName = N }]
+    new Symbol(coord, ctx.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol without a denotation. */
   def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(implicit ctx: Context): ClassSymbol =
-    new ClassSymbol(coord, assocFile, ctx.nextId)
+    new ClassSymbol(coord, assocFile, ctx.nextSymId)
 
 // ---- Symbol creation methods ----------------------------------
 
@@ -186,15 +186,6 @@ trait Symbols { this: Context =>
 
   val companionMethodFlags: FlagSet = Flags.Synthetic | Flags.Private | Flags.Method
 
-  def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context): Symbol =
-    if (owner.exists && target.exists && !owner.unforcedIsAbsent && !target.unforcedIsAbsent) {
-      val existing = owner.unforcedDecls.lookup(name)
-
-      existing.orElse{
-        ctx.newSymbol(owner.symbol, name, companionMethodFlags , ExprType(target.typeRef))
-      }
-    } else NoSymbol
-
   /** Create a package symbol with associated package class
    *  from its non-info fields and a lazy type for loading the package's members.
    */
@@ -221,9 +212,13 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Position): Symbol = {
-    val sym = newSymbol(owner, name, Case, info, coord = pos)
-    if (name.isTypeName) gadt.setBounds(sym, info.bounds)
+  def newPatternBoundSymbol(name: Name, info: Type, span: Span): Symbol = {
+    val sym = newSymbol(owner, name, Case, info, coord = span)
+    if (name.isTypeName) {
+      val bounds = info.bounds
+      gadt.addBound(sym, bounds.lo, isUpper = false)
+      gadt.addBound(sym, bounds.hi, isUpper = true)
+    }
     sym
   }
 
@@ -273,9 +268,8 @@ trait Symbols { this: Context =>
   def newDefaultConstructor(cls: ClassSymbol): TermSymbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
-  /** Create a synthetic lazy implicit value */
-  def newLazyImplicit(info: Type): TermSymbol =
-    newSymbol(owner, LazyImplicitName.fresh(), Lazy, info)
+  def newLazyImplicit(info: Type, coord: Coord = NoCoord): TermSymbol =
+    newSymbol(owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
   def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
@@ -369,39 +363,50 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName, isPackage = true).requiredSymbol(_ is Package).asTerm
+  def requiredPackage(path: PreName): TermSymbol = {
+    val name = path.toTermName
+    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_ is Package).asTerm
+  }
 
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
 
-  def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass) match {
+  def requiredClass(path: PreName): ClassSymbol = {
+    val name = path.toTypeName
+    base.staticRef(name).requiredSymbol("class", name)(_.isClass) match {
       case cls: ClassSymbol => cls
       case sym => defn.AnyClass
     }
+  }
 
   def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
    *  or present on classpath.
    *  Returns NoSymbol otherwise. */
-  def getClassIfDefined(path: PreName): Symbol =
-    base.staticRef(path.toTypeName, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
+  def getClassIfDefined(path: PreName): Symbol = {
+    val name = path.toTypeName
+    base.staticRef(name, generateStubs = false)
+      .requiredSymbol("class", name, generateStubs = false)(_.isClass)
+  }
 
-  def requiredModule(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
+  def requiredModule(path: PreName): TermSymbol = {
+    val name = path.toTermName
+    base.staticRef(name).requiredSymbol("object", name)(_ is Module).asTerm
+  }
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
 
-  def requiredMethod(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredMethod(path: PreName): TermSymbol = {
+    val name = path.toTermName
+    base.staticRef(name).requiredSymbol("method", name)(_ is Method).asTerm
+  }
 
   def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
 }
 
 object Symbols {
 
-  implicit def eqSymbol: Eq[Symbol, Symbol] = Eq
+  implicit def eqSymbol: Eql[Symbol, Symbol] = Eql.derived
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
   val Ids: Property.Key[Array[String]] = new Property.Key
@@ -410,7 +415,8 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
+  class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int)
+    extends Designator with ParamInfo with printing.Showable {
 
     type ThisName <: Name
 
@@ -492,7 +498,7 @@ object Symbols {
 
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(implicit ctx: Context): Boolean =
-      pos.exists && defRunId == ctx.runId && {
+      span.exists && defRunId == ctx.runId && {
         val file = associatedFile
         file != null && ctx.run.files.contains(file)
       }
@@ -617,30 +623,45 @@ object Symbols {
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
     type DontUseSymbolOnSymbol
 
-    /** The source file from which this class was generated, null if not applicable. */
-    final def sourceFile(implicit ctx: Context): AbstractFile = {
-      val file = associatedFile
-      if (file != null && file.extension != "class") file
-      else {
-        val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
-        topLevelCls.getAnnotation(defn.SourceFileAnnot) match {
-          case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
-            case Some(Constant(path: String)) => AbstractFile.getFile(path)
-            case none => null
-          }
-          case none => null
-        }
+    final def source(implicit ctx: Context): SourceFile =
+      if (!defTree.isEmpty && !ctx.erasedTypes) defTree.source
+      else this match {
+        case cls: ClassSymbol => cls.sourceOfClass
+        case _ =>
+          if (denot.is(Module)) denot.moduleClass.source
+          else if (denot.exists) denot.owner.source
+          else NoSource
       }
-    }
 
-    /** The position of this symbol, or NoPosition if the symbol was not loaded
-     *  from source or from TASTY. This is always a zero-extent position.
+    /** A symbol related to `sym` that is defined in source code.
      *
-     *  NOTE: If the symbol was not loaded from the current compilation unit,
-     *  the implicit conversion `sourcePos` will return the wrong result, careful!
-     *  TODO: Consider changing this method return type to `SourcePosition`.
+     *  @see enclosingSourceSymbols
      */
-    final def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+    @annotation.tailrec final def sourceSymbol(implicit ctx: Context): Symbol =
+      if (!denot.exists)
+        this
+      else if (denot.is(ModuleVal))
+        this.moduleClass.sourceSymbol // The module val always has a zero-extent position
+      else if (denot.is(Synthetic)) {
+        val linked = denot.linkedClass
+        if (linked.exists && !linked.is(Synthetic))
+          linked
+        else
+          denot.owner.sourceSymbol
+      }
+      else if (denot.isPrimaryConstructor)
+        denot.owner.sourceSymbol
+      else this
+
+    /** The position of this symbol, or NoSpan if the symbol was not loaded
+     *  from source or from TASTY. This is always a zero-extent position.
+     */
+    final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
+
+    final def sourcePos(implicit ctx: Context): SourcePosition = {
+      val src = source
+      (if (src.exists) src else ctx.source).atSpan(span)
+    }
 
     // ParamInfo types and methods
     def isTypeParam(implicit ctx: Context): Boolean = denot.is(TypeParam)
@@ -738,6 +759,29 @@ object Symbols {
     override def associatedFile(implicit ctx: Context): AbstractFile =
       if (assocFile != null || (this.owner is PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
+
+    private[this] var mySource: SourceFile = NoSource
+
+    final def sourceOfClass(implicit ctx: Context): SourceFile = {
+      if (!mySource.exists && !denot.is(Package))
+        // this allows sources to be added in annotations after `sourceOfClass` is first called
+        mySource = {
+          val file = associatedFile
+          if (file != null && file.extension != "class") ctx.getSource(file)
+          else {
+            def sourceFromTopLevel(implicit ctx: Context) =
+              denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match {
+                case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
+                  case Some(Constant(path: String)) => ctx.getSource(path)
+                  case none => NoSource
+                }
+                case none => NoSource
+              }
+            sourceFromTopLevel(ctx.withPhaseNoLater(ctx.flattenPhase))
+          }
+        }//.reporting(res => i"source of $this # $id in ${denot.owner} = $res")
+      mySource
+    }
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]

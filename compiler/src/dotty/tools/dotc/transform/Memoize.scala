@@ -80,9 +80,9 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       ctx.newSymbol(
         owner = ctx.owner,
         name  = sym.name.asTermName.fieldName,
-        flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
+        flags = Private | (if (sym is StableRealizable) EmptyFlags else Mutable),
         info  = fieldType,
-        coord = tree.pos
+        coord = tree.span
       ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
        .enteredAfter(thisPhase)
     }
@@ -139,13 +139,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
         field.setFlag(Mutable) // Necessary for vals mixed in from Scala2 traits
-        if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) tree
-        else {
-          val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
-          val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym)))
-          removeAnnotations(sym)
-          setterDef
-        }
+        val initializer =
+          if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
+          else Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
+        val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym)))
+        removeAnnotations(sym)
+        setterDef
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
                 // neither getters nor setters

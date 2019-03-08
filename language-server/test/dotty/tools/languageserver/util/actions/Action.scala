@@ -2,7 +2,7 @@ package dotty.tools.languageserver.util.actions
 
 import dotty.tools.languageserver.DottyLanguageServer
 import dotty.tools.languageserver.util.PositionContext
-import dotty.tools.languageserver.util.server.TestServer
+import dotty.tools.languageserver.util.server.{TestClient, TestServer}
 
 import PositionContext._
 
@@ -11,7 +11,7 @@ import PositionContext._
  * definition, etc.)
  */
 trait Action {
-  type Exec[T] = implicit (TestServer, PositionContext) => T
+  type Exec[T] = given (TestServer, TestClient, PositionContext) => T
 
   /** Execute the action. */
   def execute(): Exec[Unit]
@@ -21,5 +21,16 @@ trait Action {
 
   /** The server that this action targets. */
   def server: Exec[DottyLanguageServer] = implicitly[TestServer].server
+
+  /** The client that executes this action. */
+  def client: Exec[TestClient] = implicitly[TestClient]
+
+  /** An ordering for `Location` that compares string representations. */
+  implicit def locationOrdering: Ordering[org.eclipse.lsp4j.Location] =
+    Ordering.by(_.toString)
+
+  /** An ordering for `Range` that compares string representations. */
+  implicit def rangeOrdering: Ordering[org.eclipse.lsp4j.Range] =
+    Ordering.by(_.toString)
 
 }

@@ -1,0 +1,7 @@
+scala> def foo = { lazy val bar: Unit = { println("Hello") }; bar }
+def foo: Unit
+scala> foo
+Hello
+scala> { lazy val bar: Unit = { println("Hello") }; bar }
+Hello
+lazy val bar: Unit

@@ -30,8 +30,10 @@ import util.Store
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  /** the following two members override abstract members in Transform */
   val phaseName: String = "liftTry"
+
+  // See tests/run/t2333.scala for an example where running after the group of LazyVals matters
+  override def runsAfterGroupsOf: Set[String] = Set(LazyVals.name)
 
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(implicit ctx: Context): Boolean = ctx.store(NeedLift)
@@ -43,8 +45,7 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if (needLift == p) ctx else ctx.fresh.updateStore(NeedLift, p)
 
   override def prepareForApply(tree: Apply)(implicit ctx: Context): Context =
-    if (tree.fun.symbol.is(Label)) ctx
-    else liftingCtx(true)
+    liftingCtx(true)
 
   override def prepareForValDef(tree: ValDef)(implicit ctx: Context): Context =
     if (!tree.symbol.exists  ||
@@ -65,10 +66,10 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def transformTry(tree: Try)(implicit ctx: Context): Tree =
     if (needLift && tree.cases.nonEmpty) {
-      ctx.debuglog(i"lifting tree at ${tree.pos}, current owner = ${ctx.owner}")
+      ctx.debuglog(i"lifting tree at ${tree.span}, current owner = ${ctx.owner}")
       val fn = ctx.newSymbol(
         ctx.owner, LiftedTreeName.fresh(), Synthetic | Method,
-        MethodType(Nil, tree.tpe.widenIfUnstable), coord = tree.pos)
+        MethodType(Nil, tree.tpe.widenIfUnstable), coord = tree.span)
       tree.changeOwnerAfter(ctx.owner, fn, thisPhase)
       Block(DefDef(fn, tree) :: Nil, ref(fn).appliedToNone)
     }

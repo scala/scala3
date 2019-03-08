@@ -5,20 +5,20 @@ import scala.tasty._
 object Macros {
 
   inline def isTypeEqual[T, U]: Boolean =
-    ~isTypeEqualImpl('[T], '[U])
+    ${isTypeEqualImpl('[T], '[U])}
 
   inline def isSubTypeOf[T, U]: Boolean =
-    ~isSubTypeOfImpl('[T], '[U])
+    ${isSubTypeOfImpl('[T], '[U])}
 
-  def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit tasty: Tasty): Expr[Boolean] = {
-    import tasty._
-    val isTypeEqual = t.toTasty.tpe =:= u.toTasty.tpe
+  def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit reflect: Reflection): Expr[Boolean] = {
+    import reflect._
+    val isTypeEqual = t.unseal.tpe =:= u.unseal.tpe
     isTypeEqual.toExpr
   }
 
-  def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(implicit tasty: Tasty): Expr[Boolean] = {
-    import tasty._
-    val isTypeEqual = t.toTasty.tpe <:< u.toTasty.tpe
+  def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(implicit reflect: Reflection): Expr[Boolean] = {
+    import reflect._
+    val isTypeEqual = t.unseal.tpe <:< u.unseal.tpe
     isTypeEqual.toExpr
   }
 }

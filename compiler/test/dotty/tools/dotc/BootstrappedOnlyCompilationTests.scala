@@ -7,13 +7,8 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.experimental.categories.Category
 
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.collection.JavaConverters._
-import scala.util.matching.Regex
 import scala.concurrent.duration._
 import vulpix._
-import dotty.tools.io.JFile
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BootstrappedOnlyCompilationTests extends ParallelTesting {
@@ -28,6 +23,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -81,6 +77,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     compileFilesInDir("tests/run-with-compiler", withCompilerOptions) +
+    compileDir("tests/run-with-compiler-custom-args/tasty-interpreter", withCompilerOptions) +
     compileFile("tests/run-with-compiler-custom-args/staged-streams_1.scala", withCompilerOptions without "-Yno-deep-subtypes")
   }.checkRuns()
 
@@ -90,11 +87,12 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   // lower level of concurrency as to not kill their running VMs
 
   @Test def picklingWithCompiler: Unit = {
+    val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false) +
     compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false) +
     compileDir("library/src/dotty/runtime", picklingWithCompilerOptions) +
-    compileDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions) +
+    compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions, jvmBackendFilter) +
     compileDir("compiler/src/dotty/tools/dotc/ast", picklingWithCompilerOptions) +
     compileDir("compiler/src/dotty/tools/dotc/core", picklingWithCompilerOptions, recursive = false) +
     compileDir("compiler/src/dotty/tools/dotc/config", picklingWithCompilerOptions) +

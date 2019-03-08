@@ -11,12 +11,12 @@ object Test {
     println(get4(Tuple1(Tuple1(6))))
   }
 
-  inline def get1(inline tup: Tuple1[Int]): Int = ~Macros.impl(tup)
+  inline def get1(inline tup: Tuple1[Int]): Int = ${ Macros.impl(tup) }
 
-  inline def get2(inline i: Int): Int = ~Macros.impl(Tuple1(i))
+  inline def get2(inline i: Int): Int = ${ Macros.impl(Tuple1(i)) }
 
-  inline def get3(inline i: Int): Int = ~Macros.impl2(Tuple1(Tuple1(i)))
+  inline def get3(inline i: Int): Int = ${ Macros.impl2(Tuple1(Tuple1(i))) }
 
-  inline def get4(inline tup: Tuple1[Tuple1[Int]]): Int = ~Macros.impl2(tup)
+  inline def get4(inline tup: Tuple1[Tuple1[Int]]): Int = ${ Macros.impl2(tup) }
 
 }

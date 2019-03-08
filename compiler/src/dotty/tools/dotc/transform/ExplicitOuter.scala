@@ -105,7 +105,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
             parent
           }
           else parent match { // ensure class parent is a constructor
-            case parent: TypeTree => New(parent.tpe, Nil).withPos(impl.pos)
+            case parent: TypeTree => New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent
           }
         }
@@ -118,7 +118,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
-        ctx.error("Not a single abstract method type, requires an outer pointer", tree.pos)
+        ctx.error("Not a single abstract method type, requires an outer pointer", tree.sourcePos)
     }
     tree
   }
@@ -140,6 +140,20 @@ object ExplicitOuter {
   private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
     newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
 
+  /** Scala 2.x and Dotty don't always agree on what should be the type of the outer parameter,
+   *  so we replicate the old behavior when passing arguments to methods coming from Scala 2.x.
+   */
+  private def outerClass(cls: ClassSymbol)(implicit ctx: Context): Symbol = {
+    val encl = cls.owner.enclosingClass
+    if (cls.is(Scala2x))
+      encl.asClass.classInfo.selfInfo match {
+        case tp: TypeRef => tp.classSymbol
+        case self: Symbol => self
+        case _ => encl
+      }
+    else encl
+  }
+
   /** A new outer accessor or param accessor.
    *  @param  owner  The class where the outer accessor is located
    *  @param  cls    The class relative to which the outer is computed (can be a base class of owner)
@@ -155,7 +169,7 @@ object ExplicitOuter {
    */
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
     val outerThis = owner.owner.enclosingClass.thisType
-    val outerCls = cls.owner.enclosingClass
+    val outerCls = outerClass(cls)
     val target =
       if (owner == cls)
         outerCls.appliedRef
@@ -176,7 +190,7 @@ object ExplicitOuter {
     val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
-      Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
+      Final | Method | StableRealizable | outerAccIfOwn | deferredIfTrait)
   }
 
   private def outerAccName(cls: ClassSymbol)(implicit ctx: Context): TermName =
@@ -340,7 +354,7 @@ object ExplicitOuter {
       if (hasOuterParam(cls)) {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp
         mt.derivedLambdaType(
-          nme.OUTER :: pnames, cls.owner.enclosingClass.typeRef :: ptypes, restpe)
+          nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
       } else tp
 
     /** If function in an apply node is a constructor that needs to be passed an
@@ -359,7 +373,7 @@ object ExplicitOuter {
         }
         if (hasOuterParam(cls))
           methPart(fun) match {
-            case Select(receiver, _) => outerArg(receiver).withPos(fun.pos) :: Nil
+            case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
           }
         else Nil
       } else Nil

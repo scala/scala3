@@ -1,6 +1,6 @@
 trait Tuple
 case class TCons[+H, +T <: Tuple](h: H, t: T) extends Tuple
-final case object TNil extends Tuple
+case object TNil extends Tuple
 
 // Type level natural numbers -------------------------------------------------
 

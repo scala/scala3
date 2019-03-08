@@ -1,0 +1,2 @@
+scala>  def x[A, B]: Conversion[A, B] = _ => ???
+def x[A, B] => Conversion[A, B]

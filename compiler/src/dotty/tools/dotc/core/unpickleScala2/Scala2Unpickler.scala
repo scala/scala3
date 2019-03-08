@@ -10,7 +10,7 @@ import java.lang.Double.longBitsToDouble
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
-import util.Positions._
+import util.Spans._
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
 import printing.Texts._
@@ -91,7 +91,7 @@ object Scala2Unpickler {
       cls.enter(constr, scope)
     }
 
-  def setClassInfo(denot: ClassDenotation, info: Type, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
+  def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
@@ -106,9 +106,11 @@ object Scala2Unpickler {
       else selfInfo
     val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
+    val parents1 = if (parents.isEmpty) defn.ObjectType :: Nil else parents.map(_.dealias)
+    // Add extra parents to the tuple classes from the standard library
     val normalizedParents =
-      defn.adjustForTuple(cls, tparams,
-      	if (parents.isEmpty) defn.ObjectType :: Nil else parents.map(_.dealias))
+      if (fromScala2) defn.adjustForTuple(cls, tparams, parents1)
+      else parents1 // We are setting the info of a Java class, so it cannot be one of the tuple classes
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
@@ -119,20 +121,16 @@ object Scala2Unpickler {
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
     def registerCompanionPair(module: Symbol, claz: Symbol) = {
-      import transform.SymUtils._
-      module.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, claz)
-      if (claz.isClass) {
-        claz.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, module)
-      }
+      module.registerCompanion(claz)
+      claz.registerCompanion(module)
     }
 
-    if (denot.flagsUNSAFE is Module) {
+    if (denot.flagsUNSAFE is Module)
       registerCompanionPair(denot.classSymbol, scalacCompanion)
-    } else {
+    else
       registerCompanionPair(scalacCompanion, denot.classSymbol)
-    }
 
-    tempInfo.finalize(denot, normalizedParents) // install final info, except possibly for typeparams ordering
+    tempInfo.finalize(denot, normalizedParents, ost) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
   }
 }
@@ -557,7 +555,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         denot match {
           case denot: ClassDenotation =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
-            setClassInfo(denot, tp, selfInfo)
+            setClassInfo(denot, tp, fromScala2 = true, selfInfo)
           case denot =>
             val tp1 = translateTempPoly(tp)
             denot.info =
@@ -988,7 +986,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       symbol = readSymbolRef()
     }
 
-    implicit val pos: Position = NoPosition
+    implicit val span: Span = NoSpan
 
     tag match {
       case EMPTYtree =>
@@ -1034,6 +1032,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TypeDef(symbol.asType)
 
       case LABELtree =>
+        ???
         setSymName()
         val rhs = readTreeRef()
         val params = until(end, () => readIdentRef())
@@ -1052,15 +1051,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val to = untpd.Ident(toName)
           if (toName.isEmpty) from else untpd.Thicket(from, untpd.Ident(toName))
         })
-
-        Import(expr, selectors)
+        Import(impliedOnly = false, expr, selectors)
 
       case TEMPLATEtree =>
         setSym()
         val parents = times(readNat(), () => readTreeRef())
         val self = readValDefRef()
         val body = until(end, () => readTreeRef())
-        untpd.Template(???, parents, self, body) // !!! TODO: pull out primary constructor
+        untpd.Template(???, parents, Nil, self, body) // !!! TODO: pull out primary constructor
           .withType(symbol.namedType)
 
       case BLOCKtree =>

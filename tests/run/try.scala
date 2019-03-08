@@ -38,11 +38,11 @@ object Test extends AnyRef with App {
     Console.println(x + n);
   }
 
-  var instance: AnyRef = null;
+  var inst: AnyRef = null;
 
   def try4 = {
-    if (instance == null) {
-      instance = try {
+    if (inst == null) {
+      inst = try {
         "" //new String();
       } catch {
         case _: Throwable =>

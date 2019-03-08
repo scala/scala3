@@ -107,7 +107,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
         ref(vble.info.classSymbol.companionModule.info.member(name).symbol)
       cpy.ValDef(vdef)(
         rhs = boxMethod(nme.create).appliedTo(vdef.rhs),
-        tpt = TypeTree(vble.info).withPos(vdef.tpt.pos))
+        tpt = TypeTree(vble.info).withSpan(vdef.tpt.span))
     } else vdef
   }
 

@@ -30,7 +30,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val errorMsg = messages.head
-        val CaseClassCannotExtendEnum(cls, parent) :: Nil = messages
+        val ClassCannotExtendEnum(cls, parent) :: Nil = messages
         assertEquals("Bar", cls.name.show)
         assertEquals("Foo", parent.name.show)
         assertEquals("<empty>", cls.owner.name.show)
@@ -705,20 +705,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("final", flags.toString)
     }
 
-  @Test def topLevelCantBeImplicit =
-    checkMessagesAfter(FrontEnd.name) {
-      """package Foo {
-        |  implicit object S
-        |}
-        |""".stripMargin
-    }
-    .expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-      assertMessageCount(1, messages)
-      val TopLevelCantBeImplicit(symbol) :: Nil = messages
-      assertEquals("object S", symbol.show)
-    }
-
   @Test def typesAndTraitsCantBeImplicit =
     checkMessagesAfter(FrontEnd.name) {
       """class Foo {
@@ -729,8 +715,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val TypesAndTraitsCantBeImplicit(symbol) :: Nil = messages
-      assertEquals("trait S", symbol.show)
+      val TypesAndTraitsCantBeImplicit() :: Nil = messages
     }
 
   @Test def onlyClassesCanBeAbstract =
@@ -966,7 +951,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
       val err :: Nil = messages
-      assertEquals(err, ExpectedClassOrObjectDef())
+      assertEquals(err, ExpectedToplevelDef())
     }
 
   @Test def implicitClassPrimaryConstructorArity =
@@ -1380,6 +1365,46 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
       }
 
+  @Test def unapplyInvalidReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class A(val i: Int)
+        |
+        |object A {
+        |  def unapply(a: A): Int = a.i
+        |  def test(a: A) = a match {
+        |    case A() => 1
+        |  }
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val UnapplyInvalidReturnType(unapplyResult, unapplyName) :: Nil = messages
+      assertEquals("Int", unapplyResult.show)
+      assertEquals("unapply", unapplyName.show)
+    }
+
+  @Test def unapplySeqInvalidReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class A(val i: Int)
+        |
+        |object A {
+        |  def unapplySeq(a: A): Int = a.i
+        |  def test(a: A) = a match {
+        |    case A() => 1
+        |  }
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val UnapplyInvalidReturnType(unapplyResult, unapplyName) :: Nil = messages
+      assertEquals("Int", unapplyResult.show)
+      assertEquals("unapplySeq", unapplyName.show)
+    }
+
   @Test def staticOnlyAllowedInsideObjects =
     checkMessagesAfter(CheckStatic.name) {
       """
@@ -1391,6 +1416,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       val StaticFieldsOnlyAllowedInObjects(field) = messages.head
       assertEquals(field.show, "method bar")
+    }
+
+  @Test def staticShouldPrecedeNonStatic =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        |class Foo
+        |object Foo {
+        |  val foo = 1
+        |  @annotation.static val bar = 2
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val StaticFieldsShouldPrecedeNonStatic(field, _) = messages.head
+      assertEquals(field.show, "value bar")
     }
 
   @Test def cyclicInheritance =
@@ -1507,8 +1547,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(4, messages)
 
-      val tailRegMessages = messages.map({ case m: TailrecNotApplicable => m.symbolKind }).toSet
-      assertEquals(tailRegMessages, Set("variable", "value", "object", "class"))
+      val tailRecMessages = messages.map({ case TailrecNotApplicable(sym) => sym.showKind }).toSet
+      assertEquals(tailRecMessages, Set("variable", "value", "object", "class"))
     }
 
   @Test def notAnExtractor() =
@@ -1545,4 +1585,84 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertTrue(message.isInstanceOf[MemberWithSameNameAsStatic])
       assertEquals(message.msg, "Companion classes cannot define members with same name as a @static member")
     }
+
+  @Test def companionOfTraitWithMutableStatic() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        | import scala.annotation.static
+        | trait Test
+        | object Test {
+        |   @static var myStatic = ""
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[TraitCompanionWithMutableStatic])
+      assertEquals(
+        "Companion of traits cannot define mutable @static fields",
+        message.msg
+      )
+    }
+
+  @Test def lazyStaticField() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        | import scala.annotation.static
+        | class Test
+        | object Test {
+        |   @static lazy val myStatic = ""
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[LazyStaticField])
+      assertEquals(
+        "Lazy @static fields are not supported",
+        message.msg
+      )
+    }
+
+  @Test def staticOverridingNonStatic() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        | import scala.annotation.static
+        | trait Foo {
+        |   val foo = ""
+        | }
+        | class Test
+        | object Test extends Foo {
+        |   @static val foo = ""
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[StaticOverridingNonStaticMembers])
+      assertEquals(
+        "@static members cannot override or implement non-static ones",
+        message.msg
+      )
+    }
+
+    @Test def StableIdentifiers() =
+      checkMessagesAfter(FrontEnd.name) {
+        """
+          | object Test {
+          |   var x = 2
+          |   def test = 2 match {
+          |     case `x` => x + 1
+          |   }
+          | }
+        """.stripMargin
+      }.expect { (_, messages) =>
+        assertMessageCount(1, messages)
+        val message = messages.head
+        assertTrue(message.isInstanceOf[StableIdentPattern])
+        assertEquals(
+          "Stable identifier required, but `x` found",
+          message.msg
+        )
+      }
 }

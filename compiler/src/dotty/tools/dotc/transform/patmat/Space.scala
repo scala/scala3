@@ -243,7 +243,7 @@ trait SpaceLogic {
         else a
       case (Typ(tp1, _), Prod(tp2, fun, sym, ss, true)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if (isSubType(tp1, tp2)) minus(Prod(tp2, fun, sym, signature(fun, sym, ss.length).map(Typ(_, false)), true), b)
+        if (isSubType(tp1, tp2)) minus(Prod(tp1, fun, sym, signature(fun, sym, ss.length).map(Typ(_, false)), true), b)
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else a
       case (_, Or(ss)) =>
@@ -627,7 +627,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (maximize) lo else hi
 
     def apply(tp: Type): Type = tp match {
-      case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+      case tp: TypeRef if isBounds(tp.underlying) =>
         val lo = this(tp.info.loBound)
         val hi = this(tp.info.hiBound)
         // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
@@ -635,7 +635,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         debug.println(s"$tp exposed to =====> $exposed")
         exposed
 
-      case AppliedType(tycon: TypeRef, args) if tycon.underlying.isInstanceOf[TypeBounds] =>
+      case AppliedType(tycon: TypeRef, args) if isBounds(tycon.underlying) =>
         val args2 = args.map(this)
         val lo = this(tycon.info.loBound).applyIfParameterized(args2)
         val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
@@ -733,6 +733,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val res =
       (tp.classSymbol.is(Sealed) &&
         tp.classSymbol.is(AbstractOrTrait) &&
+        !tp.classSymbol.hasAnonymousChild &&
         tp.classSymbol.children.nonEmpty ) ||
       dealiasedTp.isInstanceOf[OrType] ||
       (dealiasedTp.isInstanceOf[AndType] && {
@@ -835,8 +836,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {
       val companion = sym.companionModule
-      companion.findMember(nme.unapply, NoPrefix, excluded = Synthetic).exists ||
-        companion.findMember(nme.unapplySeq, NoPrefix, excluded = Synthetic).exists
+      companion.findMember(nme.unapply, NoPrefix, required = EmptyFlagConjunction, excluded = Synthetic).exists ||
+        companion.findMember(nme.unapplySeq, NoPrefix, required = EmptyFlagConjunction, excluded = Synthetic).exists
     }
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
@@ -852,6 +853,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (mergeList) "_: _*" else "_: List"
         else if (scalaConsType.isRef(sym))
           if (mergeList) "_, _: _*"  else "List(_, _: _*)"
+        else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
+          "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class
           showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")
@@ -924,7 +927,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
 
     if (uncovered.nonEmpty)
-      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.pos)
+      ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.sourcePos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
@@ -973,14 +976,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (covered == Empty) covered = curr
 
         if (isSubspace(covered, prevs)) {
-          ctx.warning(MatchCaseUnreachable(), pat.pos)
+          ctx.warning(MatchCaseUnreachable(), pat.sourcePos)
         }
 
         // if last case is `_` and only matches `null`, produce a warning
         if (i == cases.length - 1 && !isNull(pat) ) {
           simplify(minus(covered, prevs)) match {
             case Typ(`nullType`, _) =>
-              ctx.warning(MatchCaseOnlyNullWarning(), pat.pos)
+              ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
           }
 

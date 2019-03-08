@@ -1,5 +1,5 @@
 package implicitShortcut
 
 class Derived extends Base[Int] {
-  override def foo(x: Int): implicit C => Int = 42
+  override def foo(x: Int): given C => Int = 42
 }

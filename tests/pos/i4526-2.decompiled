@@ -1,2 +1,1 @@
-/** Decompiled from out/posTestFromTasty/pos/i4526-2/Foo.class */
 class Foo(x: scala.Int, y: scala.Int)

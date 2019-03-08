@@ -139,6 +139,7 @@ object SimpleIdentityMap {
     private def value(i: Int): V = bindings(i + 1).asInstanceOf[V]
 
     def size: Int = bindings.length / 2
+    Stats.record(s"SimpleIdentityMap/$size")
 
     def apply(k: K): V = {
       var i = 0
@@ -160,8 +161,8 @@ object SimpleIdentityMap {
             m
           } else {
             val bindings1 = new Array[AnyRef](bindings.length - 2)
-            Array.copy(bindings, 0, bindings1, 0, i)
-            Array.copy(bindings, i + 2, bindings1, i, bindings1.length - i)
+            System.arraycopy(bindings, 0, bindings1, 0, i)
+            System.arraycopy(bindings, i + 2, bindings1, i, bindings1.length - i)
             new MapMore(bindings1)
           }
         }
@@ -185,7 +186,7 @@ object SimpleIdentityMap {
         i += 2
       }
       val bindings2 = new Array[AnyRef](bindings.length + 2)
-      Array.copy(bindings, 0, bindings2, 0, bindings.length)
+      System.arraycopy(bindings, 0, bindings2, 0, bindings.length)
       bindings2(bindings.length) = k
       bindings2(bindings.length + 1) = v
       new MapMore(bindings2)

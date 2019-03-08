@@ -245,7 +245,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     }
 
     val sym = tp.symbol
-    if (sym.is(ParamAccessor) && sym.isStable)
+    if (sym.is(ParamAccessor) && sym.isStableMember)
       revealNewAndSelect(tp.prefix)
     else
       NotApplicable
@@ -298,7 +298,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
   def apply(tp: Type): Type = trace.conditionally(Normalize.track, i"normalize($tp)", show = true) {
     if (ctx.base.typeNormalizationFuel == 0)
-      errorType(i"Diverged while normalizing $tp (${ctx.settings.YtypeNormalizationFuel.value} steps)", ctx.tree.pos)
+      errorType(i"Diverged while normalizing $tp (${ctx.settings.YtypeNormalizationFuel.value} steps)", ctx.tree.sourcePos)
     else if (canReduce) {
       if (ctx.base.typeNormalizationFuel > 0)
         ctx.base.typeNormalizationFuel -= 1

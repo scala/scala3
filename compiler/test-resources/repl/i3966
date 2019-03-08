@@ -1,0 +1,2 @@
+scala> val List(x: _*) = List(1, 2)
+val x: Seq[Int] = List(1, 2)

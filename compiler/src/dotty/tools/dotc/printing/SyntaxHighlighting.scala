@@ -7,7 +7,7 @@ import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 
 import java.util.Arrays
@@ -32,19 +32,19 @@ object SyntaxHighlighting {
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
       implicit val ctx = freshCtx
-      val source = new SourceFile("<highlighting>", in)
+      val source = SourceFile.virtual("<highlighting>", in)
       val colorAt = Array.fill(in.length)(NoColor)
 
       def highlightRange(from: Int, to: Int, color: String) =
         Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
 
-      def highlightPosition(pos: Position, color: String) = if (pos.exists) {
-        if (pos.start < 0 || pos.end > in.length) {
+      def highlightPosition(span: Span, color: String) = if (span.exists) {
+        if (span.start < 0 || span.end > in.length) {
           if (debug)
-            println(s"Trying to highlight erroneous position $pos. Input size: ${in.length}")
+            println(s"Trying to highlight erroneous position $span. Input size: ${in.length}")
         }
         else
-          highlightRange(pos.start, pos.end, color)
+          highlightRange(span.start, span.end, color)
       }
 
       val scanner = new Scanner(source)
@@ -52,6 +52,7 @@ object SyntaxHighlighting {
         val start = scanner.offset
         val token = scanner.token
         val name = scanner.name
+        val isSoftModifier = scanner.isSoftModifierInModifierPosition
         scanner.nextToken()
         val end = scanner.lastOffset
 
@@ -66,11 +67,7 @@ object SyntaxHighlighting {
             // we don't highlight it, hence the `-1`
             highlightRange(start, end - 1, LiteralColor)
 
-          case _ if alphaKeywords.contains(token) =>
-            highlightRange(start, end, KeywordColor)
-
-          case IDENTIFIER if name == nme.INLINEkw =>
-            // `inline` is a "soft" keyword
+          case _ if alphaKeywords.contains(token) || isSoftModifier =>
             highlightRange(start, end, KeywordColor)
 
           case IDENTIFIER if name == nme.??? =>
@@ -79,6 +76,9 @@ object SyntaxHighlighting {
           case _ =>
         }
       }
+
+      for (span <- scanner.commentSpans)
+        highlightPosition(span, CommentColor)
 
       object TreeHighlighter extends untpd.UntypedTreeTraverser {
         import untpd._
@@ -91,7 +91,7 @@ object SyntaxHighlighting {
 
         def highlightAnnotations(tree: MemberDef): Unit =
           for (annotation <- tree.rawMods.annotations)
-            highlightPosition(annotation.pos, AnnotationColor)
+            highlightPosition(annotation.span, AnnotationColor)
 
         def highlight(trees: List[Tree])(implicit ctx: Context): Unit =
           trees.foreach(traverse)
@@ -102,14 +102,14 @@ object SyntaxHighlighting {
               ()
             case tree: ValOrDefDef =>
               highlightAnnotations(tree)
-              highlightPosition(tree.namePos, ValDefColor)
+              highlightPosition(tree.nameSpan, ValDefColor)
             case tree: MemberDef /* ModuleDef | TypeDef */ =>
               highlightAnnotations(tree)
-              highlightPosition(tree.namePos, TypeColor)
+              highlightPosition(tree.nameSpan, TypeColor)
             case tree: Ident if tree.isType =>
-              highlightPosition(tree.pos, TypeColor)
+              highlightPosition(tree.span, TypeColor)
             case _: TypTree =>
-              highlightPosition(tree.pos, TypeColor)
+              highlightPosition(tree.span, TypeColor)
             case _ =>
           }
           traverseChildren(tree)

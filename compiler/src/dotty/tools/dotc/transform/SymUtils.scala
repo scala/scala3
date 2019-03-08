@@ -8,6 +8,7 @@ import Symbols._
 import SymDenotations._
 import Names._
 import NameOps._
+import StdNames._
 import NameKinds._
 import Flags._
 import Annotations._
@@ -45,8 +46,11 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isTypeTest(implicit ctx: Context): Boolean =
     self == defn.Any_isInstanceOf || self == defn.Any_typeTest
 
+  def isTypeCast(implicit ctx: Context): Boolean =
+    self == defn.Any_asInstanceOf || self == defn.Any_typeCast
+
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
-    self == defn.Any_asInstanceOf || isTypeTest
+    isTypeCast || isTypeTest
 
   def isVolatile(implicit ctx: Context): Boolean = self.hasAnnotation(defn.VolatileAnnot)
 
@@ -70,7 +74,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** The closest enclosing method or class of this symbol */
   @tailrec final def enclosingMethodOrClass(implicit ctx: Context): Symbol =
-    if (self.is(Method, butNot = Label) || self.isClass) self
+    if (self.is(Method) || self.isClass) self
     else if (self.exists) self.owner.enclosingMethodOrClass
     else NoSymbol
 
@@ -121,34 +125,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self
   }
 
-  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: Context): Any = {
-    if (!self.unforcedDecls.lookup(name).exists) {
-      val companionMethod = ctx.synthesizeCompanionMethod(name, target, self)
-      if (companionMethod.exists) {
-        companionMethod.entered
-      }
-    }
-  }
-
-  /** If this symbol is an enum value or a named class, register it as a child
-   *  in all direct parent classes which are sealed.
-   *   @param  @late  If true, register only inaccessible children (all others are already
-   *                  entered at this point).
-   */
-  def registerIfChild(late: Boolean = false)(implicit ctx: Context): Unit = {
-    def register(child: Symbol, parent: Type) = {
-      val cls = parent.classSymbol
-      if (cls.is(Sealed) && (!late || child.isInaccessibleChildOf(cls)))
-        cls.addAnnotation(Annotation.Child(child))
-    }
-    if (self.isClass && !self.isAnonymousClass)
-      self.asClass.classParents.foreach { parent =>
-        val child = if (self.is(Module)) self.sourceModule else self
-        register(child, parent)
-      }
-    else if (self.is(CaseVal, butNot = Method | Module))
-      register(self, self.info)
-  }
+  /** Does this symbol refer to anonymous classes synthesized by enum desugaring? */
+  def isEnumAnonymClass(implicit ctx: Context): Boolean =
+    self.isAnonymousClass && (self.owner.name.eq(nme.DOLLAR_NEW) || self.owner.is(CaseVal))
 
   /** Is this symbol defined locally (i.e. at some level owned by a term) and
    *  defined in a different toplevel class than its supposed parent class `cls`?
@@ -157,16 +136,23 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context): Boolean =
     self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
 
-  /** If this is a sealed class, its known children */
-  def children(implicit ctx: Context): List[Symbol] =
+  /** If this is a sealed class, its known children in the order of textual occurrence */
+  def children(implicit ctx: Context): List[Symbol] = {
+    if (self.isType)
+      self.setFlag(ChildrenQueried)
     self.annotations.collect {
       case Annotation.Child(child) => child
-    }
+    }.reverse
+  }
+
+  def hasAnonymousChild(implicit ctx: Context): Boolean =
+    children.exists(_ `eq` self)
 
   /** Is symbol directly or indirectly owned by a term symbol? */
   @tailrec final def isLocal(implicit ctx: Context): Boolean = {
-    val owner = self.owner
-    if (owner.isTerm) true
+    val owner = self.maybeOwner
+    if (!owner.exists) false
+    else if (owner.isTerm) true
     else if (owner.is(Package)) false
     else owner.isLocal
   }
@@ -177,5 +163,5 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** Is symbol a splice operation? */
   def isSplice(implicit ctx: Context): Boolean =
-    self == defn.QuotedExpr_~ || self == defn.QuotedType_~
+    self == defn.QuotedExpr_splice || self == defn.QuotedType_splice
 }

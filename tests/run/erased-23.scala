@@ -1,22 +1,22 @@
 object Test {
 
   def main(args: Array[String]): Unit = {
-    fun { implicit erased (x: Int) =>
+    fun { given erased (x: Int) =>
       println("lambda1")
       "abc"
     }
 
-    fun2 { erased implicit (x: Int) =>
+    fun2 { erased given (x: Int) =>
       println("lambda2")
       "abc"
     }
   }
 
-  def fun(f: implicit erased Int => String): String = {
-    f(35)
+  def fun(f: given erased Int => String): String = {
+    f given 35
   }
 
-  def fun2(f: erased implicit Int => String): String = {
-    f(36)
+  def fun2(f: erased given Int => String): String = {
+    f given 35
   }
 }
