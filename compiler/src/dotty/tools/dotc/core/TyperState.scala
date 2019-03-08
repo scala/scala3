@@ -9,6 +9,7 @@ import reporting._
 import config.Config
 import collection.mutable
 import java.lang.ref.WeakReference
+import util.Stats
 
 import scala.annotation.internal.sharable
 
@@ -17,6 +18,8 @@ object TyperState {
 }
 
 class TyperState(previous: TyperState /* | Null */) {
+
+  Stats.record("typerState")
 
   val id: Int = TyperState.nextId
   TyperState.nextId += 1
@@ -138,6 +141,7 @@ class TyperState(previous: TyperState /* | Null */) {
    * many parts of dotty itself.
    */
   def commit()(implicit ctx: Context): Unit = {
+    Stats.record("typerState.commit")
     val targetState = ctx.typerState
     assert(isCommittable)
     targetState.constraint =

@@ -5,7 +5,7 @@ package typer
 import core._
 import ast.{Trees, tpd, untpd}
 import util.Spans._
-import util.Stats.track
+import util.Stats.{track, record}
 import util.{SourcePosition, NoSourcePosition, SourceFile}
 import Trees.Untyped
 import Contexts._
@@ -782,6 +782,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isContextual)(argCtx(tree))
+      record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
@@ -916,6 +917,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
+    record("typedTypeApply")
     handleMeta(typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case ExtMethodApply(app) =>
         app
