@@ -203,7 +203,8 @@ object StagedTuple {
     if (!specialize) '{dynamic_++[Self, That]($self, $that)}
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
-        fromArrayStaged[Tuple]('{${ toArrayStaged(xs, None) } ++ ${ toArrayStaged(ys, None) }}, None)
+        // TODO remove ascriptions when #6126 is fixed
+        fromArrayStaged[Tuple]('{${ toArrayStaged(xs, None) } ++ (${ toArrayStaged(ys, None) }: Array[Object])}, None)
 
       val res = selfSize match {
         case Some(0) =>

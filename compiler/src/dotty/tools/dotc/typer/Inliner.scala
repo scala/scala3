@@ -968,19 +968,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
-      val res =
-        if (tree.symbol == defn.QuotedExpr_splice && level == 0) expandMacro(qual1, tree.span)
-        else untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
       res
-    }
-
-    private def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
-      assert(level == 0)
-      val inlinedFrom = enclosingInlineds.last
-      val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx.withSource(inlinedFrom.source))
-      if (ctx.reporter.hasErrors) EmptyTree
-      else evaluatedSplice.withSpan(span)
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree =
@@ -1001,8 +991,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
       }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
-      constToLiteral(betaReduce(super.typedApply(tree, pt)))
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+      constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
+        case res: Apply if res.symbol == defn.InternalQuoted_exprSplice && level == 0 =>
+          expandMacro(res.args.head, tree.span)
+        case res => res
+      }
+    }
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
@@ -1159,4 +1154,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       inlineTermBindings(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
     }
   }
+
+  private def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
+    assert(level == 0)
+    val inlinedFrom = enclosingInlineds.last
+    val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx.withSource(inlinedFrom.source))
+    if (ctx.reporter.hasErrors) EmptyTree
+    else evaluatedSplice.withSpan(span)
+  }
+
 }
