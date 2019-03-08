@@ -1611,7 +1611,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Flags_ModuleClass: Flags = core.Flags.ModuleClass
   def Flags_PrivateLocal: Flags = core.Flags.PrivateLocal
   def Flags_Package: Flags = core.Flags.Package
-  def Flags_ImplClass: Flags = core.Flags.ImplClass
 
   //
   // QUOTED SEAL/UNSEAL

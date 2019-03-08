@@ -115,9 +115,6 @@ trait FlagsOps extends Core {
 
     /** Is this symbol a package */
     def Package: Flags = kernel.Flags_Package
-
-    /** Is this symbol an implementation class of a Scala2 trait */
-    def ImplClass: Flags = kernel.Flags_ImplClass
   }
 
 }

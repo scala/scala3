@@ -1321,7 +1321,6 @@ trait Kernel {
   def Flags_ModuleClass: Flags
   def Flags_PrivateLocal: Flags
   def Flags_Package: Flags
-  def Flags_ImplClass: Flags
 
   //
   // QUOTED SEAL/UNSEAL

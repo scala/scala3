@@ -321,7 +321,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
         def isStaticMember(implicit ctx: Context): Boolean =
           symbol.exists &&
-            (symbol.flags.is(Flags.Static)  || symbol.owner.flags.is(Flags.ImplClass)  ||
+            (symbol.flags.is(Flags.Static)  ||
               /*symbol.annots.find(_ == ctx.definitions.ScalaStaticAnnot)*/ false)
 
         def isStaticConstructor(implicit ctx: Context): Boolean = {

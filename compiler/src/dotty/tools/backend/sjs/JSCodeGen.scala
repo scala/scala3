@@ -1575,8 +1575,6 @@ class JSCodeGen()(implicit ctx: Context) {
         genApplyJSMethodGeneric(tree, sym, genExpr(receiver), genActualJSArgs(sym, args), isStat)
       /*else
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))*/
-    } else if (foreignIsImplClass(sym.owner)) {
-      genTraitImplApply(sym, args.map(genExpr))
     } else if (sym.isClassConstructor) {
       // Calls to constructors are always statically linked
       genApplyMethodStatically(genExpr(receiver), sym, genActualArgs(sym, args))
@@ -2020,12 +2018,6 @@ class JSCodeGen()(implicit ctx: Context) {
     val methodIdent = encodeMethodSym(method)
     js.ApplyStatic(cls, methodIdent, arguments)(
         toIRType(patchedResultType(method)))
-  }
-
-  /** Gen a call to a Scala2 impl class method. */
-  private def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(
-      implicit pos: Position): js.Tree = {
-    genApplyStatic(method, arguments)
   }
 
   /** Gen a call to a non-exposed method of a non-native JS class. */

@@ -230,7 +230,6 @@ object PickleBuffer {
       LAZY -> Lazy,
       MIXEDIN -> (MixedIn, Scala2Existential),
       EXPANDEDNAME -> Scala2ExpandedName,
-      IMPLCLASS -> (Scala2PreSuper, ImplClass),
       SPECIALIZED -> Specialized,
       VBRIDGE -> EmptyFlags,
       VARARGS -> JavaVarargs,

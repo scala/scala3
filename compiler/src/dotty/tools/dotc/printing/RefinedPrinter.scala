@@ -833,7 +833,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (flags is Package) "package"
     else if (sym.isPackageObject) "package object"
     else if (flags is Module) "object"
-    else if (flags is ImplClass) "class"
     else if (sym.isClassConstructor) "constructor"
     else super.kindString(sym)
   }
