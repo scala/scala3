@@ -2222,9 +2222,9 @@ object Parsers {
      */
     def importClause(): List[Tree] = {
       val offset = accept(IMPORT)
-      val impliedOnly = in.token == IMPLIED
-      if (impliedOnly) in.nextToken()
-      commaSeparated(importExpr(impliedOnly)) match {
+      val importImplied = in.token == IMPLIED
+      if (importImplied) in.nextToken()
+      commaSeparated(importExpr(importImplied)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -2237,11 +2237,11 @@ object Parsers {
 
     /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
      */
-    def importExpr(impliedOnly: Boolean): () => Import = {
+    def importExpr(importImplied: Boolean): () => Import = {
 
       val handleImport: Tree => Tree = { tree: Tree =>
-        if (in.token == USCORE) Import(impliedOnly, tree, importSelector() :: Nil)
-        else if (in.token == LBRACE) Import(impliedOnly, tree, inBraces(importSelectors()))
+        if (in.token == USCORE) Import(importImplied, tree, importSelector() :: Nil)
+        else if (in.token == LBRACE) Import(importImplied, tree, inBraces(importSelectors()))
         else tree
       }
 
@@ -2250,10 +2250,10 @@ object Parsers {
           imp
         case sel @ Select(qual, name) =>
           val selector = atSpan(pointOffset(sel)) { Ident(name) }
-          cpy.Import(sel)(impliedOnly, qual, selector :: Nil)
+          cpy.Import(sel)(importImplied, qual, selector :: Nil)
         case t =>
           accept(DOT)
-          Import(impliedOnly, t, Ident(nme.WILDCARD) :: Nil)
+          Import(importImplied, t, Ident(nme.WILDCARD) :: Nil)
       }
     }
 

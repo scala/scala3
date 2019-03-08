@@ -600,7 +600,7 @@ object JavaParsers {
       }
 
     def importCompanionObject(cdef: TypeDef): Tree =
-      Import(impliedOnly = false, Ident(cdef.name.toTermName).withSpan(NoSpan), Ident(nme.WILDCARD) :: Nil)
+      Import(importImplied = false, Ident(cdef.name.toTermName).withSpan(NoSpan), Ident(nme.WILDCARD) :: Nil)
 
     // Importing the companion object members cannot be done uncritically: see
     // ticket #2377 wherein a class contains two static inner classes, each of which
@@ -662,7 +662,7 @@ object JavaParsers {
 //          case nme.WILDCARD => Pair(ident, Ident(null) withPos Span(-1))
 //          case _            => Pair(ident, ident)
 //        }
-        val imp = atSpan(start) { Import(impliedOnly = false, qual, List(ident)) }
+        val imp = atSpan(start) { Import(importImplied = false, qual, List(ident)) }
         imp :: Nil
       }
     }

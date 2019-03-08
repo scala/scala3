@@ -126,7 +126,7 @@ trait TreeUtils
         case IsPackageClause(tree) =>
           PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Term.Ref], transformTrees(tree.stats)(tree.symbol.localContext))
         case IsImport(tree) =>
-          Import.copy(tree)(tree.impliedOnly, transformTerm(tree.expr), tree.selectors)
+          Import.copy(tree)(tree.importImplied, transformTerm(tree.expr), tree.selectors)
         case IsStatement(tree) =>
           transformStatement(tree)
         case IsTypeTree(tree) => transformTypeTree(tree)
@@ -158,7 +158,7 @@ trait TreeUtils
         case IsClassDef(tree) =>
           ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
         case IsImport(tree) =>
-          Import.copy(tree)(tree.impliedOnly, transformTerm(tree.expr), tree.selectors)
+          Import.copy(tree)(tree.importImplied, transformTerm(tree.expr), tree.selectors)
       }
     }
 

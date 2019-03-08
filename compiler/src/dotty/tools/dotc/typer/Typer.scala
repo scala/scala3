@@ -187,7 +187,7 @@ class Typer extends Namer
           val pre = imp.site
           var reqd = required
           var excl = EmptyFlags
-          if (imp.impliedOnly) reqd |= Implied else excl |= Implied
+          if (imp.importImplied) reqd |= Implied else excl |= Implied
           val denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
@@ -1785,7 +1785,7 @@ class Typer extends Namer
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     checkStable(expr1.tpe, imp.expr.sourcePos)
     if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.posd)
-    assignType(cpy.Import(imp)(imp.impliedOnly, expr1, imp.selectors), sym)
+    assignType(cpy.Import(imp)(imp.importImplied, expr1, imp.selectors), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {

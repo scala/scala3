@@ -86,15 +86,15 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Import_impliedOnly(self: Import): Boolean = self.impliedOnly
+  def Import_implied(self: Import): Boolean = self.importImplied
   def Import_expr(self: Import)(implicit ctx: Context): Tree = self.expr
   def Import_selectors(self: Import)(implicit ctx: Context): List[ImportSelector] = self.selectors
 
-  def Import_apply(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
-    withDefaultPos(ctx => tpd.Import(impliedOnly, expr, selectors)(ctx))
+  def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
+    withDefaultPos(ctx => tpd.Import(importImplied, expr, selectors)(ctx))
 
-  def Import_copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
-    tpd.cpy.Import(original)(impliedOnly, expr, selectors)
+  def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
+    tpd.cpy.Import(original)(importImplied, expr, selectors)
 
   type Definition = tpd.Tree
 

@@ -203,8 +203,8 @@ trait Printers
           this += ", " += self += ", " ++= body += ")"
         case PackageDef(name, owner) =>
           this += "PackageDef(\"" += name += "\", " += owner += ")"
-        case Import(impliedOnly, expr, selectors) =>
-          this += "Import(" += impliedOnly += ", " += expr += ", " ++= selectors += ")"
+        case Import(importImplied, expr, selectors) =>
+          this += "Import(" += importImplied += ", " += expr += ", " ++= selectors += ")"
         case PackageClause(pid, stats) =>
           this += "PackageClause(" += pid += ", " ++= stats += ")"
         case TypeTree.Inferred() =>
@@ -539,9 +539,9 @@ trait Printers
               inBlock(printTrees(stats1, lineBreak()))
           }
 
-        case Import(impliedOnly, expr, selectors) =>
+        case Import(importImplied, expr, selectors) =>
           this += "import "
-          if (impliedOnly) this += "implied "
+          if (importImplied) this += "implied "
           printTree(expr)
           this += "."
           printImportSelectors(selectors)

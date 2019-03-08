@@ -185,13 +185,13 @@ trait Kernel {
 
   def matchImport(tree: Tree)(implicit ctx: Context): Option[Import]
 
-  def Import_impliedOnly(self: Import): Boolean
+  def Import_implied(self: Import): Boolean
   def Import_expr(self: Import)(implicit ctx: Context): Term
   def Import_selectors(self: Import)(implicit ctx: Context): List[ImportSelector]
 
-  def Import_apply(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
+  def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
 
-  def Import_copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
+  def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
 
   /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement

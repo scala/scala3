@@ -406,7 +406,7 @@ object Contexts {
         case _               => None
       }
       ctx.fresh.setImportInfo(
-        new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt, imp.impliedOnly))
+        new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt, imp.importImplied))
     }
 
     /** Does current phase use an erased types interpretation? */
