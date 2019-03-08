@@ -10,10 +10,6 @@ sealed abstract class Type[T] {
 
 /** Some basic type tags, currently incomplete */
 object Type {
-  /** A term quote is desugared by the compiler into a call to this method */
-  def apply[T]: Type[T] =
-    throw new Error("Internal error: this method call should have been replaced by the compiler")
-
   implicit def UnitTag: Type[Unit] = new TaggedType[Unit]
   implicit def BooleanTag: Type[Boolean] = new TaggedType[Boolean]
   implicit def ByteTag: Type[Byte] = new TaggedType[Byte]

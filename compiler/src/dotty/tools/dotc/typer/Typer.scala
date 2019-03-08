@@ -1935,9 +1935,9 @@ class Typer extends Namer
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
     val tree1 =
       if (tree.t.isType)
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedType_applyR), List(tree.t)), pt)(quoteContext)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), List(tree.t)), pt)(quoteContext)
       else
-        typedApply(untpd.Apply(untpd.ref(defn.QuotedExpr_applyR), tree.t), pt)(quoteContext)
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), tree.t), pt)(quoteContext)
     tree1.withSpan(tree.span)
   }
 
