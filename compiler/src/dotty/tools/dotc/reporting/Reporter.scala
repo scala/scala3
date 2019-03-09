@@ -13,6 +13,7 @@ import core.Mode
 import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
 import diagnostic.messages._
 import diagnostic._
+import ast.{tpd, Trees}
 import Message._
 
 object Reporter {
@@ -89,21 +90,25 @@ trait Reporting { this: Context =>
   }
 
   def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new Warning(msg, pos))
+    reportWarning(new Warning(msg, addInlineds(pos)))
 
-  def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.strict.value) error(msg, pos)
-    else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos))
+  def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
+    val fullPos = addInlineds(pos)
+    if (this.settings.strict.value) error(msg, fullPos)
+    else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(fullPos))
+  }
 
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Error(msg, pos))
+    reporter.report(new Error(msg, addInlineds(pos)))
 
-  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
+  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
+    val fullPos = addInlineds(pos)
+    if (ctx.scala2Mode) migrationWarning(msg, fullPos) else error(msg, fullPos)
+  }
 
   def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report {
-      new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(pos)
+      new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(addInlineds(pos))
     }
 
   def incompleteInputError(msg: => Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
@@ -135,6 +140,14 @@ trait Reporting { this: Context =>
 
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.Ydebug.value) warning(msg, pos)
+
+  private def addInlineds(pos: SourcePosition)(implicit ctx: Context) = {
+    def recur(pos: SourcePosition, inlineds: List[Trees.Tree[_]]): SourcePosition = inlineds match {
+      case inlined :: inlineds1 => pos.withOuter(recur(inlined.sourcePos, inlineds1))
+      case Nil => pos
+    }
+    recur(pos, tpd.enclosingInlineds)
+  }
 }
 
 /**
