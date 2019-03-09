@@ -943,6 +943,12 @@ class Definitions {
       case _ =>
         None
     }
+    def isInstance(tp: Type)(implicit ctx: Context): Boolean = tp match {
+      case AppliedType(tycon: TypeRef, _) =>
+        tycon.name == tpnme.MatchCase && // necessary pre-filter to avoid forcing symbols
+        tycon.isRef(MatchCaseClass)
+      case _ => false
+    }
   }
 
   /** An extractor for multi-dimensional arrays.

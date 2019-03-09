@@ -337,6 +337,7 @@ object StdNames {
     val Literal: N              = "Literal"
     val LiteralAnnotArg: N      = "LiteralAnnotArg"
     val longHash: N             = "longHash"
+    val MatchCase: N            = "MatchCase"
     val Modifiers: N            = "Modifiers"
     val NestedAnnotArg: N       = "NestedAnnotArg"
     val NoFlags: N              = "NoFlags"
