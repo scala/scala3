@@ -41,11 +41,16 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
     object ChildTraverser extends TreeTraverser {
       var children: List[Tree] = Nil
       var childrenType: List[TypeOrBoundsTree] = Nil
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit =
-        children = tree :: children
+      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
+        case IsTypeTree(tree) =>
+          traverseTypeTree(tree)
+        case IsTypeBoundsTree(tree) =>
+          traverseTypeTree(tree)
+        case _ => children = tree :: children
+      }
       override def traversePattern(pattern: Pattern)(
           implicit ctx: Context): Unit = ()
-      override def traverseTypeTree(tree: TypeOrBoundsTree)(
+      def traverseTypeTree(tree: TypeOrBoundsTree)(
           implicit ctx: Context): Unit =
           childrenType = tree :: childrenType
       override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit =
@@ -61,7 +66,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       }
       def getChildrenType(tree: TypeOrBoundsTree)(implicit ctx: Context): List[TypeOrBoundsTree] = {
         childrenType = Nil
-        traverseTypeTreeChildren(tree)(ctx)
+        traverseTreeChildren(tree)(ctx)
         return childrenType
       }
     }
@@ -643,7 +648,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         })
       }
 
-      override def traverseTypeTree(tree: TypeOrBoundsTree)(
+      def traverseTypeTree(tree: TypeOrBoundsTree)(
           implicit ctx: Context): Unit = {
         tree match {
           case TypeTree.Ident(_) => {
@@ -658,7 +663,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
                                  range)
-            super.traverseTypeTree(typetree)
+            super.traverseTree(typetree)
           }
 
           case TypeTree.Projection(qualifier, x) => {
@@ -667,7 +672,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
               addOccurenceTypeTree(typetree,
                                   s.SymbolOccurrence.Role.REFERENCE,
                                   range)
-              super.traverseTypeTree(typetree)
+              super.traverseTree(typetree)
           }
 
           case TypeTree.Inferred() => {
@@ -703,7 +708,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           }
 
           case _ => {
-            super.traverseTypeTree(tree)
+            super.traverseTree(tree)
           }
         }
       }
@@ -805,7 +810,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
             // we add the parents to the symbol list
             parents.foreach(_ match {
-              case IsTypeTree(t) => traverseTypeTree(t)
+              case IsTypeTree(t) => traverseTree(t)
               case IsTerm(t) => traverseTree(t)
             })
 
