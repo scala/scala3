@@ -181,7 +181,7 @@ trait Printers
         case Term.This(qual) =>
           this += "Term.This(" += qual += ")"
         case Term.Super(qual, mix) =>
-          this += "Term.TypeApply(" += qual += ", " += mix += ")"
+          this += "Term.Super(" += qual += ", " += mix += ")"
         case Term.Apply(fun, args) =>
           this += "Term.Apply(" += fun += ", " ++= args += ")"
         case Term.TypeApply(fun, args) =>
