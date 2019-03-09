@@ -2148,7 +2148,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case _ =>
           cas
       }
-      val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
+      val defn.MatchCase(pat, body) = cas1
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*
         Some {

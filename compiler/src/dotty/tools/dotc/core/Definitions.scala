@@ -759,6 +759,9 @@ class Definitions {
 
     lazy val TypeBox_CAP: TypeSymbol = TypeBoxType.symbol.requiredType(tpnme.CAP)
 
+  lazy val MatchCaseType: TypeRef = ctx.requiredClassRef("scala.internal.MatchCase")
+  def MatchCaseClass(implicit ctx: Context): ClassSymbol = MatchCaseType.symbol.asClass
+
   lazy val NotType: TypeRef = ctx.requiredClassRef("scala.implicits.Not")
   def NotClass(implicit ctx: Context): ClassSymbol = NotType.symbol.asClass
   def NotModule(implicit ctx: Context): Symbol = NotClass.companionModule
@@ -928,6 +931,17 @@ class Definitions {
     def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
       case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
       case _ => None
+    }
+  }
+
+  object MatchCase {
+    def apply(pat: Type, body: Type)(implicit ctx: Context): Type =
+      MatchCaseType.appliedTo(pat, body)
+    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Type)] = tp match {
+      case AppliedType(tycon, pat :: body :: Nil) if tycon.isRef(MatchCaseClass) =>
+        Some((pat, body))
+      case _ =>
+        None
     }
   }
 
