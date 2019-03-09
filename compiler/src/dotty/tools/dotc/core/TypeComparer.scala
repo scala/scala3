@@ -2134,45 +2134,46 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       }
     }
 
-    var result: Type = NoType
-    var remainingCases = cases
-    while (!remainingCases.isEmpty) {
-      val (cas :: cass) = remainingCases
-      remainingCases = cass
-      val saved = constraint
-      try {
-        inFrozenConstraint {
-          val cas1 = cas match {
-            case cas: HKTypeLambda =>
-              caseLambda = constrained(cas)
-              caseLambda.resultType
+    /** Match a single case.
+     *  @return  Some(tp)     if the match succeeds with type `tp`
+     *           Some(NoType) if the match fails, and there is an overlap between pattern and scrutinee
+     *           None         if the match fails and we should consider the following cases
+     *                        because scrutinee and pattern do not overlap
+     */
+    def matchCase(cas: Type): Option[Type] = {
+      val cas1 = cas match {
+        case cas: HKTypeLambda =>
+          caseLambda = constrained(cas)
+          caseLambda.resultType
+        case _ =>
+          cas
+      }
+      val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
+      if (isSubType(scrut, pat))
+        // `scrut` is a subtype of `pat`: *It's a Match!*
+        Some {
+          caseLambda match {
+            case caseLambda: HKTypeLambda =>
+              val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
+              instantiateParams(instances)(body)
             case _ =>
-              cas
-          }
-          val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
-          if (isSubType(scrut, pat)) {
-            // `scrut` is a subtype of `pat`: *It's a Match!*
-            result = caseLambda match {
-              case caseLambda: HKTypeLambda =>
-                val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
-                instantiateParams(instances)(body)
-              case _ =>
-                body
-            }
-            remainingCases = Nil
-          } else if (!intersecting(scrut, pat)) {
-            // We found a proof that `scrut` and  `pat` are incompatible.
-            // The search continues.
-          } else {
-            // We are stuck: this match type instanciation is irreducible.
-            result = NoType
-            remainingCases = Nil
+              body
           }
         }
-      }
-      finally constraint = saved
+      else if (intersecting(scrut, pat))
+        Some(NoType)
+      else
+        // We found a proof that `scrut` and  `pat` are incompatible.
+        // The search continues.
+        None
     }
-    result
+
+    def recur(cases: List[Type]): Type = cases match {
+      case cas :: cases1 => matchCase(cas).getOrElse(recur(cases1))
+      case Nil => NoType
+    }
+
+    inFrozenConstraint(recur(cases))
   }
 }
 
