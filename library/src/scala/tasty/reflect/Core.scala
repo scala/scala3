@@ -8,51 +8,51 @@ package scala.tasty.reflect
  *  +- Tree -+- PackageClause
  *           +- Import
  *           +- Statement -+- Definition --+- PackageDef
- *                         |               +- ClassDef
- *                         |               +- TypeDef
- *                         |               +- DefDef
- *                         |               +- ValDef
- *                         |
- *                         +- Term --------+- Ref -+- Ident
- *                                         |       +- Select
- *                                         |
- *                                         +- Literal
- *                                         +- This
- *                                         +- New
- *                                         +- NamedArg
- *                                         +- Apply
- *                                         +- TypeApply
- *                                         +- Super
- *                                         +- Typed
- *                                         +- Assign
- *                                         +- Block
- *                                         +- Lambda
- *                                         +- If
- *                                         +- Match
- *                                         +- Try
- *                                         +- Return
- *                                         +- Repeated
- *                                         +- Inlined
- *                                         +- SelectOuter
- *                                         +- While
- *
- *
- *                         +- TypeTree ----+- Inferred
- *                         |               +- Ident
- *                         |               +- Select
- *                         |               +- Project
- *                         |               +- Singleton
- *  +- TypeOrBoundsTree ---+               +- Refined
- *                         |               +- Applied
- *                         |               +- Annotated
- *                         |               +- MatchType
- *                         |               +- ByName
- *                         |               +- LambdaTypeTree
- *                         |               +- TypeBind
- *                         |               +- TypeBlock
- *                         |
- *                         +- TypeBoundsTree
- *                         +- WildcardTypeTree
+ *           |             |               +- ClassDef
+ *           |             |               +- TypeDef
+ *           |             |               +- DefDef
+ *           |             |               +- ValDef
+ *           |             |
+ *           |             +- Term --------+- Ref -+- Ident
+ *           |                             |       +- Select
+ *           |                             |
+ *           |                             +- Literal
+ *           |                             +- This
+ *           |                             +- New
+ *           |                             +- NamedArg
+ *           |                             +- Apply
+ *           |                             +- TypeApply
+ *           |                             +- Super
+ *           |                             +- Typed
+ *           |                             +- Assign
+ *           |                             +- Block
+ *           |                             +- Lambda
+ *           |                             +- If
+ *           |                             +- Match
+ *           |                             +- Try
+ *           |                             +- Return
+ *           |                             +- Repeated
+ *           |                             +- Inlined
+ *           |                             +- SelectOuter
+ *           |                             +- While
+ *           |
+ *           |
+ *           |                    +- TypeTree ----+- TypeTree_Inferred
+ *           |                    |               +- TypeTree_Ident
+ *           |                    |               +- TypeTree_Select
+ *           |                    |               +- TypeTree_Project
+ *           |                    |               +- TypeTree_Singleton
+ *           +- TypeOrBoundsTree -+               +- TypeTree_Refined
+ *                                |               +- TypeTree_Applied
+ *                                |               +- TypeTree_Annotated
+ *                                |               +- TypeTree_MatchType
+ *                                |               +- TypeTree_ByName
+ *                                |               +- TypeTree_LambdaTypeTree
+ *                                |               +- TypeTree_TypeBind
+ *                                |               +- TypeTree_TypeBlock
+ *                                |
+ *                                +- TypeBoundsTree
+ *                                +- WildcardTypeTree
  *
  *  +- CaseDef
  *  +- TypeCaseDef
@@ -237,6 +237,68 @@ trait Core {
 
       }
 
+    /** Type tree representing a type or a bounds written in the source */
+    type TypeOrBoundsTree = kernel.TypeOrBoundsTree
+
+      /** Type tree representing a type written in the source */
+      type TypeTree = kernel.TypeTree
+
+      /** Type trees representing a type written in the source */
+      val TypeTree: TypeTreeCoreModule
+
+      /** Type trees representing a type written in the source */
+      trait TypeTreeCoreModule {
+
+        /** Type tree representing an inferred type */
+        type Inferred = kernel.TypeTree_Inferred
+
+        /** Type tree representing a reference to definition with a given name */
+        type Ident = kernel.TypeTree_Ident
+
+        /** Type tree representing a selection of definition with a given name on a given term prefix */
+        type Select = kernel.TypeTree_Select
+
+        /** Type tree representing a selection of definition with a given name on a given type prefix */
+        type Projection = kernel.TypeTree_Projection
+
+        /** Type tree representing a singleton type */
+        type Singleton = kernel.TypeTree_Singleton
+
+        /** Type tree representing a type refinement */
+        type Refined = kernel.TypeTree_Refined
+
+        /** Type tree representing a type application */
+        type Applied = kernel.TypeTree_Applied
+
+        /** Type tree representing an annotated type */
+        type Annotated = kernel.TypeTree_Annotated
+
+        /** Type tree representing a type match */
+        type MatchType = kernel.TypeTree_MatchType
+
+        /** Type tree representing a by name parameter */
+        type ByName = kernel.TypeTree_ByName
+
+        /** Type tree representing a lambda abstraction type */
+        type LambdaTypeTree = kernel.TypeTree_LambdaTypeTree
+
+        /** Type tree representing a type binding */
+        type TypeBind = kernel.TypeTree_TypeBind
+
+        /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
+        type TypeBlock = kernel.TypeTree_TypeBlock
+
+      }
+
+      /** Type tree representing a type bound written in the source */
+      type TypeBoundsTree = kernel.TypeBoundsTree
+
+      /** Type tree representing wildcard type bounds written in the source.
+       *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
+       *  represents a type but has `TypeBound`a inside.
+       */
+      type WildcardTypeTree = kernel.WildcardTypeTree
+
   /** Branch of a pattern match or catch clause */
   type CaseDef = kernel.CaseDef
 
@@ -260,68 +322,6 @@ trait Core {
 
     /** Pattern representing a `x: Y` type test. */
     type TypeTest = kernel.TypeTest
-
-  /** Type tree representing a type or a bounds written in the source */
-  type TypeOrBoundsTree = kernel.TypeOrBoundsTree
-
-    /** Type tree representing a type written in the source */
-    type TypeTree = kernel.TypeTree
-
-    /** Type trees representing a type written in the source */
-    val TypeTree: TypeTreeCoreModule
-
-    /** Type trees representing a type written in the source */
-    trait TypeTreeCoreModule {
-
-      /** Type tree representing an inferred type */
-      type Inferred = kernel.TypeTree_Inferred
-
-      /** Type tree representing a reference to definition with a given name */
-      type Ident = kernel.TypeTree_Ident
-
-      /** Type tree representing a selection of definition with a given name on a given term prefix */
-      type Select = kernel.TypeTree_Select
-
-      /** Type tree representing a selection of definition with a given name on a given type prefix */
-      type Projection = kernel.TypeTree_Projection
-
-      /** Type tree representing a singleton type */
-      type Singleton = kernel.TypeTree_Singleton
-
-      /** Type tree representing a type refinement */
-      type Refined = kernel.TypeTree_Refined
-
-      /** Type tree representing a type application */
-      type Applied = kernel.TypeTree_Applied
-
-      /** Type tree representing an annotated type */
-      type Annotated = kernel.TypeTree_Annotated
-
-      /** Type tree representing a type match */
-      type MatchType = kernel.TypeTree_MatchType
-
-      /** Type tree representing a by name parameter */
-      type ByName = kernel.TypeTree_ByName
-
-      /** Type tree representing a lambda abstraction type */
-      type LambdaTypeTree = kernel.TypeTree_LambdaTypeTree
-
-      /** Type tree representing a type binding */
-      type TypeBind = kernel.TypeTree_TypeBind
-
-      /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
-      type TypeBlock = kernel.TypeTree_TypeBlock
-
-    }
-
-    /** Type tree representing a type bound written in the source */
-    type TypeBoundsTree = kernel.TypeBoundsTree
-
-    /** Type tree representing wildcard type bounds written in the source.
-     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
-     *  represents a type but has `TypeBound`a inside.
-     */
-    type WildcardTypeTree = kernel.WildcardTypeTree
 
   /** Type or bounds */
   type TypeOrBounds = kernel.TypeOrBounds

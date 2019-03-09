@@ -600,134 +600,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While =
     tpd.cpy.WhileDo(original)(cond, body)
 
-  //
-  // CASES
-  //
-
-  type CaseDef = tpd.CaseDef
-
-  def CaseDef_pattern(self: CaseDef)(implicit ctx: Context): Pattern = self.pat
-  def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term] = optional(self.guard)
-  def CaseDef_rhs(self: CaseDef)(implicit ctx: Context): Term = self.body
-
-  def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef =
-    tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), body)
-
-  def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef =
-    tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
-
-  type TypeCaseDef = tpd.CaseDef
-
-  def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.pat
-  def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.body
-
-  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef =
-    tpd.CaseDef(pattern, tpd.EmptyTree, body)
-
-  def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef =
-    tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, body)
-
-  //
-  // PATTERNS
-  //
-
-  type Pattern = tpd.Tree
-
-  def Pattern_pos(self: Pattern)(implicit ctx: Context): Position = self.sourcePos
-  def Pattern_tpe(self: Pattern)(implicit ctx: Context): Type = self.tpe.stripTypeVar
-  def Pattern_symbol(self: Pattern)(implicit ctx: Context): Symbol = self.symbol
-
-  type Value = tpd.Tree
-
-  def matchPattern_Value(pattern: Pattern): Option[Value] = pattern match {
-    case lit: tpd.Literal => Some(lit)
-    case ref: tpd.RefTree if ref.isTerm => Some(ref)
-    case ths: tpd.This => Some(ths)
-    case _ => None
-  }
-
-  def Pattern_Value_value(self: Value)(implicit ctx: Context): Term = self
-
-  def Pattern_Value_module_apply(term: Term)(implicit ctx: Context): Value = term match {
-    case lit: tpd.Literal => lit
-    case ref: tpd.RefTree if ref.isTerm => ref
-    case ths: tpd.This => ths
-  }
-  def Pattern_Value_module_copy(original: Value)(term: Term)(implicit ctx: Context): Value = term match {
-    case lit: tpd.Literal => tpd.cpy.Literal(original)(lit.const)
-    case ref: tpd.RefTree if ref.isTerm => tpd.cpy.Ref(original.asInstanceOf[tpd.RefTree])(ref.name)
-    case ths: tpd.This => tpd.cpy.This(original)(ths.qual)
-  }
-
-  type Bind = tpd.Bind
-
-  def matchPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind] = x match {
-    case x: tpd.Bind if x.name.isTermName => Some(x)
-    case _ => None
-  }
-
-  def Pattern_Bind_name(self: Bind)(implicit ctx: Context): String = self.name.toString
-
-  def Pattern_Bind_pattern(self: Bind)(implicit ctx: Context): Pattern = self.body
-
-  def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind =
-    withDefaultPos(ctx => tpd.cpy.Bind(original)(name.toTermName, pattern)(ctx))
-
-  type Unapply = tpd.UnApply
-
-  def matchPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply] = pattern match {
-    case pattern @ Trees.UnApply(_, _, _) => Some(pattern)
-    case Trees.Typed(pattern @ Trees.UnApply(_, _, _), _) => Some(pattern)
-    case _ => None
-  }
-
-  def Pattern_Unapply_fun(self: Unapply)(implicit ctx: Context): Term = self.fun
-  def Pattern_Unapply_implicits(self: Unapply)(implicit ctx: Context): List[Term] = self.implicits
-  def Pattern_Unapply_patterns(self: Unapply)(implicit ctx: Context): List[Pattern] = effectivePatterns(self.patterns)
-
-  def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply =
-    withDefaultPos(ctx => tpd.cpy.UnApply(original)(fun, implicits, patterns)(ctx))
-
-  private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
-    case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
-    case _ => patterns
-  }
-
-  type Alternatives = tpd.Alternative
-
-  def matchPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives] = pattern match {
-    case pattern: tpd.Alternative => Some(pattern)
-    case _ => None
-  }
-
-  def Pattern_Alternatives_patterns(self: Alternatives)(implicit ctx: Context): List[Pattern] = self.trees
-
-  def Pattern_Alternatives_module_apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
-    withDefaultPos(ctx => tpd.Alternative(patterns)(ctx))
-
-  def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
-    tpd.cpy.Alternative(original)(patterns)
-
-  type TypeTest = tpd.Typed
-
-  def matchPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest] = pattern match {
-    case Trees.Typed(_: tpd.UnApply, _) => None
-    case pattern: tpd.Typed => Some(pattern)
-    case _ => None
-  }
-
-  def Pattern_TypeTest_tpt(self: TypeTest)(implicit ctx: Context): TypeTree = self.tpt
-
-  def Pattern_TypeTest_module_apply(tpt: TypeTree)(implicit ctx: Context): TypeTest =
-    withDefaultPos(ctx => tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe)(ctx), tpt)(ctx))
-
-  def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
-    tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
-
-  //
-  // TYPE TREES
-  //
-
   type TypeOrBoundsTree = tpd.Tree
 
   def TypeOrBoundsTree_tpe(self: TypeOrBoundsTree)(implicit ctx: Context): Type = self.tpe.stripTypeVar
@@ -961,6 +833,130 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case x @ Trees.Ident(nme.WILDCARD) => Some(x)
     case _ => None
   }
+
+  //
+  // CASES
+  //
+
+  type CaseDef = tpd.CaseDef
+
+  def CaseDef_pattern(self: CaseDef)(implicit ctx: Context): Pattern = self.pat
+  def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term] = optional(self.guard)
+  def CaseDef_rhs(self: CaseDef)(implicit ctx: Context): Term = self.body
+
+  def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef =
+    tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), body)
+
+  def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef =
+    tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
+
+  type TypeCaseDef = tpd.CaseDef
+
+  def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.pat
+  def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.body
+
+  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef =
+    tpd.CaseDef(pattern, tpd.EmptyTree, body)
+
+  def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef =
+    tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, body)
+
+  //
+  // PATTERNS
+  //
+
+  type Pattern = tpd.Tree
+
+  def Pattern_pos(self: Pattern)(implicit ctx: Context): Position = self.sourcePos
+  def Pattern_tpe(self: Pattern)(implicit ctx: Context): Type = self.tpe.stripTypeVar
+  def Pattern_symbol(self: Pattern)(implicit ctx: Context): Symbol = self.symbol
+
+  type Value = tpd.Tree
+
+  def matchPattern_Value(pattern: Pattern): Option[Value] = pattern match {
+    case lit: tpd.Literal => Some(lit)
+    case ref: tpd.RefTree if ref.isTerm => Some(ref)
+    case ths: tpd.This => Some(ths)
+    case _ => None
+  }
+
+  def Pattern_Value_value(self: Value)(implicit ctx: Context): Term = self
+
+  def Pattern_Value_module_apply(term: Term)(implicit ctx: Context): Value = term match {
+    case lit: tpd.Literal => lit
+    case ref: tpd.RefTree if ref.isTerm => ref
+    case ths: tpd.This => ths
+  }
+  def Pattern_Value_module_copy(original: Value)(term: Term)(implicit ctx: Context): Value = term match {
+    case lit: tpd.Literal => tpd.cpy.Literal(original)(lit.const)
+    case ref: tpd.RefTree if ref.isTerm => tpd.cpy.Ref(original.asInstanceOf[tpd.RefTree])(ref.name)
+    case ths: tpd.This => tpd.cpy.This(original)(ths.qual)
+  }
+
+  type Bind = tpd.Bind
+
+  def matchPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind] = x match {
+    case x: tpd.Bind if x.name.isTermName => Some(x)
+    case _ => None
+  }
+
+  def Pattern_Bind_name(self: Bind)(implicit ctx: Context): String = self.name.toString
+
+  def Pattern_Bind_pattern(self: Bind)(implicit ctx: Context): Pattern = self.body
+
+  def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind =
+    withDefaultPos(ctx => tpd.cpy.Bind(original)(name.toTermName, pattern)(ctx))
+
+  type Unapply = tpd.UnApply
+
+  def matchPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply] = pattern match {
+    case pattern @ Trees.UnApply(_, _, _) => Some(pattern)
+    case Trees.Typed(pattern @ Trees.UnApply(_, _, _), _) => Some(pattern)
+    case _ => None
+  }
+
+  def Pattern_Unapply_fun(self: Unapply)(implicit ctx: Context): Term = self.fun
+  def Pattern_Unapply_implicits(self: Unapply)(implicit ctx: Context): List[Term] = self.implicits
+  def Pattern_Unapply_patterns(self: Unapply)(implicit ctx: Context): List[Pattern] = effectivePatterns(self.patterns)
+
+  def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply =
+    withDefaultPos(ctx => tpd.cpy.UnApply(original)(fun, implicits, patterns)(ctx))
+
+  private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
+    case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+    case _ => patterns
+  }
+
+  type Alternatives = tpd.Alternative
+
+  def matchPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives] = pattern match {
+    case pattern: tpd.Alternative => Some(pattern)
+    case _ => None
+  }
+
+  def Pattern_Alternatives_patterns(self: Alternatives)(implicit ctx: Context): List[Pattern] = self.trees
+
+  def Pattern_Alternatives_module_apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
+    withDefaultPos(ctx => tpd.Alternative(patterns)(ctx))
+
+  def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives =
+    tpd.cpy.Alternative(original)(patterns)
+
+  type TypeTest = tpd.Typed
+
+  def matchPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest] = pattern match {
+    case Trees.Typed(_: tpd.UnApply, _) => None
+    case pattern: tpd.Typed => Some(pattern)
+    case _ => None
+  }
+
+  def Pattern_TypeTest_tpt(self: TypeTest)(implicit ctx: Context): TypeTree = self.tpt
+
+  def Pattern_TypeTest_module_apply(tpt: TypeTree)(implicit ctx: Context): TypeTest =
+    withDefaultPos(ctx => tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe)(ctx), tpt)(ctx))
+
+  def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
+    tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
 
   //
   // TYPES

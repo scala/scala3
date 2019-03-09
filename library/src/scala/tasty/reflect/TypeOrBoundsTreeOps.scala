@@ -23,7 +23,7 @@ trait TypeOrBoundsTreeOps extends Core {
   }
 
   object IsTypeTree {
-    def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
+    def unapply(tpt: Tree)(implicit ctx: Context): Option[TypeTree] =
       kernel.matchTypeTree(tpt)
     def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
       kernel.matchTypeTreeNotTerm(termOrTypeTree)
@@ -33,8 +33,8 @@ trait TypeOrBoundsTreeOps extends Core {
 
     object IsInferred {
       /** Matches any Inferred and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Inferred] =
-        kernel.matchTypeTree_Inferred(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Inferred] =
+        kernel.matchTypeTree_Inferred(tree)
     }
 
     /** TypeTree containing an inferred type */
@@ -42,28 +42,28 @@ trait TypeOrBoundsTreeOps extends Core {
       def apply(tpe: Type)(implicit ctx: Context): Inferred =
         kernel.TypeTree_Inferred_apply(tpe)
       /** Matches a TypeTree containing an inferred type */
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean =
-        kernel.matchTypeTree_Inferred(typeOrBoundsTree).isDefined
+      def unapply(tree: Tree)(implicit ctx: Context): Boolean =
+        kernel.matchTypeTree_Inferred(tree).isDefined
     }
 
     object IsIdent {
       /** Matches any Ident and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Ident] =
-        kernel.matchTypeTree_Ident(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] =
+        kernel.matchTypeTree_Ident(tree)
     }
 
     object Ident {
       // TODO def apply(name: String)(implicit ctx: Context): Ident
       def copy(original: Ident)(name: String)(implicit ctx: Context): Ident =
         kernel.TypeTree_Ident_copy(original)(name)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String] =
-        kernel.matchTypeTree_Ident(typeOrBoundsTree).map(_.name)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[String] =
+        kernel.matchTypeTree_Ident(tree).map(_.name)
     }
 
     object IsSelect {
       /** Matches any Select and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Select] =
-        kernel.matchTypeTree_Select(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Select] =
+        kernel.matchTypeTree_Select(tree)
     }
 
     object Select {
@@ -71,28 +71,28 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_Select_apply(qualifier, name)
       def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select =
         kernel.TypeTree_Select_copy(original)(qualifier, name)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)] =
-        kernel.matchTypeTree_Select(typeOrBoundsTree).map(x => (x.qualifier, x.name))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)] =
+        kernel.matchTypeTree_Select(tree).map(x => (x.qualifier, x.name))
     }
 
     object IsProjection {
       /** Matches any Projection and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Projection] =
-        kernel.matchTypeTree_Projection(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Projection] =
+        kernel.matchTypeTree_Projection(tree)
     }
 
     object Projection {
       // TODO def apply(qualifier: TypeTree, name: String)(implicit ctx: Context): Project
       def copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection =
         kernel.TypeTree_Projection_copy(original)(qualifier, name)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)] =
-        kernel.matchTypeTree_Projection(typeOrBoundsTree).map(x => (x.qualifier, x.name))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, String)] =
+        kernel.matchTypeTree_Projection(tree).map(x => (x.qualifier, x.name))
     }
 
     object IsSingleton {
       /** Matches any Singleton and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Singleton] =
-        kernel.matchTypeTree_Singleton(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Singleton] =
+        kernel.matchTypeTree_Singleton(tree)
     }
 
     object Singleton {
@@ -100,28 +100,28 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_Singleton_apply(ref)
       def copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton =
         kernel.TypeTree_Singleton_copy(original)(ref)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[Term] =
-        kernel.matchTypeTree_Singleton(typeOrBoundsTree).map(_.ref)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
+        kernel.matchTypeTree_Singleton(tree).map(_.ref)
     }
 
     object IsRefined {
       /** Matches any Refined and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Refined] =
-        kernel.matchTypeTree_Refined(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Refined] =
+        kernel.matchTypeTree_Refined(tree)
     }
 
     object Refined {
       // TODO def apply(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined
       def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined =
         kernel.TypeTree_Refined_copy(original)(tpt, refinements)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] =
-        kernel.matchTypeTree_Refined(typeOrBoundsTree).map(x => (x.tpt, x.refinements))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] =
+        kernel.matchTypeTree_Refined(tree).map(x => (x.tpt, x.refinements))
     }
 
     object IsApplied {
       /** Matches any Applied and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Applied] =
-        kernel.matchTypeTree_Applied(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Applied] =
+        kernel.matchTypeTree_Applied(tree)
     }
 
     object Applied {
@@ -129,14 +129,14 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_Applied_apply(tpt, args)
       def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
         kernel.TypeTree_Applied_copy(original)(tpt, args)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])] =
-        kernel.matchTypeTree_Applied(typeOrBoundsTree).map(x => (x.tpt, x.args))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])] =
+        kernel.matchTypeTree_Applied(tree).map(x => (x.tpt, x.args))
     }
 
     object IsAnnotated {
       /** Matches any Annotated and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[Annotated] =
-        kernel.matchTypeTree_Annotated(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Annotated] =
+        kernel.matchTypeTree_Annotated(tree)
     }
 
     object Annotated {
@@ -144,14 +144,14 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_Annotated_apply(arg, annotation)
       def copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated =
         kernel.TypeTree_Annotated_copy(original)(arg, annotation)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, Term)] =
-        kernel.matchTypeTree_Annotated(typeOrBoundsTree).map(x => (x.arg, x.annotation))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, Term)] =
+        kernel.matchTypeTree_Annotated(tree).map(x => (x.arg, x.annotation))
     }
 
     object IsMatchType {
       /** Matches any MatchType and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[MatchType] =
-        kernel.matchTypeTree_MatchType(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[MatchType] =
+        kernel.matchTypeTree_MatchType(tree)
     }
 
     object MatchType {
@@ -159,14 +159,14 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_MatchType_apply(bound, selector, cases)
       def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
         kernel.TypeTree_MatchType_copy(original)(bound, selector, cases)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        kernel.matchTypeTree_MatchType(typeOrBoundsTree).map(x => (x.bound, x.selector, x.cases))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
+        kernel.matchTypeTree_MatchType(tree).map(x => (x.bound, x.selector, x.cases))
     }
 
     object IsByName {
       /** Matches any ByName and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[ByName] =
-        kernel.matchTypeTree_ByName(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[ByName] =
+        kernel.matchTypeTree_ByName(tree)
     }
 
     object ByName {
@@ -174,14 +174,14 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_ByName_apply(result)
       def copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName =
         kernel.TypeTree_ByName_copy(original)(result)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
-        kernel.matchTypeTree_ByName(typeOrBoundsTree).map(_.result)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
+        kernel.matchTypeTree_ByName(tree).map(_.result)
     }
 
     object IsLambdaTypeTree {
       /** Matches any LambdaTypeTree and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[LambdaTypeTree] =
-        kernel.matchTypeTree_LambdaTypeTree(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[LambdaTypeTree] =
+        kernel.matchTypeTree_LambdaTypeTree(tree)
     }
 
     object LambdaTypeTree {
@@ -189,28 +189,28 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_LambdaTypeTree_apply(tparams, body)
       def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
         kernel.TypeTree_LambdaTypeTree_copy(original)(tparams, body)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)] =
-        kernel.matchTypeTree_LambdaTypeTree(typeOrBoundsTree).map(x => (x.tparams, x.body))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)] =
+        kernel.matchTypeTree_LambdaTypeTree(tree).map(x => (x.tparams, x.body))
     }
 
     object IsTypeBind {
       /** Matches any TypeBind and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBind] =
-        kernel.matchTypeTree_TypeBind(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBind] =
+        kernel.matchTypeTree_TypeBind(tree)
     }
 
     object TypeBind {
-      // TODO def apply(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind
+      // TODO def apply(name: String, tree: Tree)(implicit ctx: Context): TypeBind
       def copy(original: TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind =
         kernel.TypeTree_TypeBind_copy(original)(name, tpt)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)] =
-        kernel.matchTypeTree_TypeBind(typeOrBoundsTree).map(x => (x.name, x.body))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)] =
+        kernel.matchTypeTree_TypeBind(tree).map(x => (x.name, x.body))
     }
 
     object IsTypeBlock {
       /** Matches any TypeBlock and returns it */
-      def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBlock] =
-        kernel.matchTypeTree_TypeBlock(tpt)
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBlock] =
+        kernel.matchTypeTree_TypeBlock(tree)
     }
 
     object TypeBlock {
@@ -218,8 +218,8 @@ trait TypeOrBoundsTreeOps extends Core {
         kernel.TypeTree_TypeBlock_apply(aliases, tpt)
       def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock =
         kernel.TypeTree_TypeBlock_copy(original)(aliases, tpt)
-      def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] =
-        kernel.matchTypeTree_TypeBlock(typeOrBoundsTree).map(x => (x.aliases, x.tpt))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] =
+        kernel.matchTypeTree_TypeBlock(tree).map(x => (x.aliases, x.tpt))
     }
   }
 
@@ -290,25 +290,25 @@ trait TypeOrBoundsTreeOps extends Core {
   }
 
   object IsTypeBoundsTree {
-    def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] =
-      kernel.matchTypeBoundsTree(tpt)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBoundsTree] =
+      kernel.matchTypeBoundsTree(tree)
   }
 
   object TypeBoundsTree {
-    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
-      kernel.matchTypeBoundsTree(typeOrBoundsTree).map(x => (x.low, x.hi))
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
+      kernel.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
   }
 
   object IsWildcardTypeTree {
-    def unapply(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree] =
-      kernel.matchWildcardTypeTree(tpt)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[WildcardTypeTree] =
+      kernel.matchWildcardTypeTree(tree)
   }
 
   /** TypeBoundsTree containing wildcard type bounds */
   object WildcardTypeTree {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
-    def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean =
-      kernel.matchWildcardTypeTree(typeOrBoundsTree).isDefined
+    def unapply(tree: Tree)(implicit ctx: Context): Boolean =
+      kernel.matchWildcardTypeTree(tree).isDefined
   }
 
 }
