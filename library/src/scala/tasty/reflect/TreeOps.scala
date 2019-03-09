@@ -3,11 +3,6 @@ package reflect
 
 trait TreeOps extends Core {
 
-  // Decorators
-
-  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree = term.asInstanceOf[TermOrTypeTree]
-  implicit def typeTreeAsTermOrTypeTree(term: TypeTree): TermOrTypeTree = term.asInstanceOf[TermOrTypeTree]
-
   // ----- Tree -----------------------------------------------------
 
   implicit class TreeAPI(self: Tree) {
@@ -80,15 +75,15 @@ trait TreeOps extends Core {
 
   object ClassDef {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef =
+    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef =
       kernel.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] =
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
       kernel.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
   }
 
   implicit class ClassDefAPI(self: ClassDef) {
     def constructor(implicit ctx: Context): DefDef = kernel.ClassDef_constructor(self)
-    def parents(implicit ctx: Context): List[TermOrTypeTree] = kernel.ClassDef_parents(self)
+    def parents(implicit ctx: Context): List[Tree /* Term | TypeTree */] = kernel.ClassDef_parents(self)
     def derived(implicit ctx: Context): List[TypeTree] = kernel.ClassDef_derived(self)
     def self(implicit ctx: Context): Option[ValDef] = kernel.ClassDef_self(self)
     def body(implicit ctx: Context): List[Statement] = kernel.ClassDef_body(self)
@@ -190,10 +185,6 @@ trait TreeOps extends Core {
     /** Matches any term */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
       kernel.matchTerm(tree)
-
-    /** Matches any term */
-    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
-      kernel.matchTermNotTypeTree(parent)
   }
 
   /** Scala term. Any tree that can go in expression position. */
@@ -587,13 +578,13 @@ trait TreeOps extends Core {
 
     object Inlined {
 
-      def apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
+      def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
         kernel.Inlined_apply(call, bindings, expansion)
 
-      def copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
+      def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
         kernel.Inlined_copy(original)(call, bindings, expansion)
 
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)] =
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
         kernel.matchInlined(tree).map(x => (x.call, x.bindings, x.body))
 
     }
@@ -726,7 +717,7 @@ trait TreeOps extends Core {
   }
 
   implicit class InlinedAPI(self: Term.Inlined) {
-    def call(implicit ctx: Context): Option[TermOrTypeTree] = kernel.Inlined_call(self)
+    def call(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = kernel.Inlined_call(self)
     def bindings(implicit ctx: Context): List[Definition] = kernel.Inlined_bindings(self)
     def body(implicit ctx: Context): Term = kernel.Inlined_body(self)
   }
@@ -764,8 +755,6 @@ trait TreeOps extends Core {
   object IsTypeTree {
     def unapply(tpt: Tree)(implicit ctx: Context): Option[TypeTree] =
       kernel.matchTypeTree(tpt)
-    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
-      kernel.matchTypeTreeNotTerm(termOrTypeTree)
   }
 
   object TypeTree extends TypeTreeCoreModule {

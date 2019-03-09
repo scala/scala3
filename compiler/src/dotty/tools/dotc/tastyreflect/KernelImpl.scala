@@ -51,8 +51,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   // TREES
   //
 
-  type TermOrTypeTree = tpd.Tree
-
   type Tree = tpd.Tree
 
   def Tree_pos(self: Tree)(implicit ctx: Context): Position = self.sourcePos
@@ -135,14 +133,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   }
 
   def ClassDef_constructor(self: ClassDef)(implicit ctx: Context): DefDef = ClassDef_rhs(self).constr
-  def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[TermOrTypeTree] = ClassDef_rhs(self).parents
+  def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[Tree /* Term | TypeTree */] = ClassDef_rhs(self).parents
   def ClassDef_derived(self: ClassDef)(implicit ctx: Context): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
   def ClassDef_self(self: ClassDef)(implicit ctx: Context): Option[ValDef] = optional(ClassDef_rhs(self).self)
   def ClassDef_body(self: ClassDef)(implicit ctx: Context): List[Statement] = ClassDef_rhs(self).body
   def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassSymbol = self.symbol.asClass
   private def ClassDef_rhs(self: ClassDef) = self.rhs.asInstanceOf[tpd.Template]
 
-  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
+  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
     val Trees.TypeDef(_, originalImpl: tpd.Template) = original
     tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
   }
@@ -204,10 +202,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ if tree.isTerm => Some(tree)
     case _ => None
   }
-
-  // TODO move to Kernel and use isTerm directly with a cast
-  def matchTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term] =
-    if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
 
   def Term_pos(self: Term)(implicit ctx: Context): Position = self.sourcePos
   def Term_tpe(self: Term)(implicit ctx: Context): Type = self.tpe
@@ -453,14 +447,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[TermOrTypeTree] = optional(self.call)
+  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = optional(self.call)
   def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition] = self.bindings
   def Inlined_body(self: Inlined)(implicit ctx: Context): Term = self.expansion
 
-  def Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
+  def Inlined_apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     withDefaultPos(ctx => tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion)(ctx))
 
-  def Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
+  def Inlined_copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
 
   type Lambda = tpd.Closure
@@ -609,12 +603,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def matchTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] = x match {
     case x: tpd.TypeBoundsTree => None
     case _ => if (x.isType) Some(x) else None
-  }
-
-  // TODO move to Kernel and use isTypeTree directly with a cast
-  def matchTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree] = termOrTypeTree match {
-    case _: tpd.TypeBoundsTree => None
-    case _ => if (termOrTypeTree.isType) Some(termOrTypeTree) else None
   }
 
   def TypeTree_pos(self: TypeTree)(implicit ctx: Context): Position = self.sourcePos

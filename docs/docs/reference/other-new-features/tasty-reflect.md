@@ -186,8 +186,6 @@ TASTy Reflect provides the following types:
             +- BindSymbol
             +- NoSymbol
 
-Aliases:
- # TermOrTypeTree = Term | TypeTree
 ```
 
 ## More Examples

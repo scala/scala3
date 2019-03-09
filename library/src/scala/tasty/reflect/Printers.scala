@@ -201,7 +201,7 @@ trait Printers
           this += "Term.Repeated(" ++= elems += ", " += elemtpt += ")"
         case Term.Inlined(call, bindings, expansion) =>
           this += "Term.Inlined("
-          visitOption(call, visitTermOrTypeTree)
+          visitOption(call, visitTree)
           this += ", " ++= bindings += ", " += expansion += ")"
         case ValDef(name, tpt, rhs) =>
           this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
@@ -211,7 +211,7 @@ trait Printers
           this += "TypeDef(\"" += name += "\", " += rhs += ")"
         case ClassDef(name, constr, parents, derived, self, body) =>
           this += "ClassDef(\"" += name += "\", " += constr += ", "
-          visitList[TermOrTypeTree](parents, visitTermOrTypeTree)
+          visitList[Tree](parents, visitTree)
           this += ", "
           visitList[TypeTree](derived, visitTree)
           this += ", " += self += ", " ++= body += ")"
@@ -274,11 +274,6 @@ trait Printers
           this += "Pattern.Alternative(" ++= patterns += ")"
         case Pattern.TypeTest(tpt) =>
           this += "Pattern.TypeTest(" += tpt += ")"
-      }
-
-      def visitTermOrTypeTree(x: TermOrTypeTree): Buffer = x match {
-        case IsTerm(termOrTypeTree) => this += termOrTypeTree
-        case IsTypeTree(termOrTypeTree) => this += termOrTypeTree
       }
 
       def visitConstant(x: Constant): Buffer = x match {
@@ -618,7 +613,7 @@ trait Printers
           if (parents1.nonEmpty)
             this += highlightKeyword(" extends ", color)
 
-          def printParent(parent: TermOrTypeTree, needEmptyParens: Boolean = false): Unit = parent match {
+          def printParent(parent: Tree /* Term | TypeTree */, needEmptyParens: Boolean = false): Unit = parent match {
             case IsTypeTree(parent) =>
               printTypeTree(parent)
             case IsTerm(Term.TypeApply(fun, targs)) =>
@@ -637,7 +632,7 @@ trait Printers
               throw new MatchError(parent.show)
           }
 
-          def printSeparated(list: List[TermOrTypeTree]): Unit = list match {
+          def printSeparated(list: List[Tree /* Term | TypeTree */]): Unit = list match {
             case Nil =>
             case x :: Nil => printParent(x)
             case x :: xs =>

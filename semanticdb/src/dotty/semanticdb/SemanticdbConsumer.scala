@@ -99,18 +99,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
       }
 
-      implicit class TermOrTypeTreeExtender(tree: TermOrTypeTree) {
-        def pos: Position = tree match {
-          case IsTerm(t) => t.pos
-          case IsTypeTree(t) => t.pos
-        }
-
-        def symbol: Symbol = tree match {
-          case IsTerm(t) => t.symbol
-          case IsTypeTree(t) => t.symbol
-        }
-      }
-
       implicit class TypeOrBoundsTreeExtender(tree: TypeOrBoundsTree) {
         def typetree: TypeTree = tree match {
           case IsTypeTree(t) => t
@@ -809,10 +797,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             fittedInitClassRange = None
 
             // we add the parents to the symbol list
-            parents.foreach(_ match {
-              case IsTypeTree(t) => traverseTree(t)
-              case IsTerm(t) => traverseTree(t)
-            })
+            parents.foreach(traverseTree)
 
             selfopt match {
               case Some(vdef @ ValDef(name, type_, _)) => {
@@ -827,7 +812,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
                   // 2) Find the first '{'
                   // 3) Iterate until the character we are seeing is a letter
                   val startPosSearch: Int = parents.foldLeft(tree.pos.end)(
-                    (old: Int, ct: TermOrTypeTree) =>
+                    (old: Int, ct: Tree) =>
                       ct match {
                         case IsTerm(t) if t.pos.end < old => t.pos.end
                         case _                                  => old

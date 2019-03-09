@@ -111,9 +111,6 @@ package scala.tasty.reflect
  *
  *  +- Flags
  *
- *  Aliases:
- *   # TermOrTypeTree = Term | TypeTree
- *
  *  ```
  */
 trait Core {
@@ -125,10 +122,6 @@ trait Core {
 
   /** Settings */
   type Settings = kernel.Settings
-
-  // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly in other files
-  /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
-  type TermOrTypeTree /* Term | TypeTree */ = kernel.TermOrTypeTree
 
   /** Tree representing code written in the source */
   type Tree = kernel.Tree

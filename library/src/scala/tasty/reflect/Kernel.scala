@@ -110,9 +110,6 @@ package scala.tasty.reflect
  *
  *  +- Flags
  *
- *  Aliases:
- *   # TermOrTypeTree = Term | TypeTree
- *
  *  ```
  */
 trait Kernel {
@@ -160,10 +157,6 @@ trait Kernel {
   //
   // TREES
   //
-
-  // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly in other files
-  /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
-  type TermOrTypeTree /* Term | TypeTree */ <: AnyRef
 
   /** Tree representing code written in the source */
   type Tree <: AnyRef
@@ -223,13 +216,13 @@ trait Kernel {
   def matchClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef]
 
   def ClassDef_constructor(self: ClassDef)(implicit ctx: Context): DefDef
-  def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[TermOrTypeTree]
+  def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[Tree/* Term | TypeTree */]
   def ClassDef_derived(self: ClassDef)(implicit ctx: Context): List[TypeTree]
   def ClassDef_self(self: ClassDef)(implicit ctx: Context): Option[ValDef]
   def ClassDef_body(self: ClassDef)(implicit ctx: Context): List[Statement]
   def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassSymbol
 
-  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
+  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
 
   /** Tree representing a type (paramter or member) definition in the source code */
   type TypeDef <: Definition
@@ -272,8 +265,6 @@ trait Kernel {
   type Term <: Statement
 
   def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term]
-
-  def matchTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term]
 
   def Term_pos(self: Term)(implicit ctx: Context): Position
   def Term_tpe(self: Term)(implicit ctx: Context): Type
@@ -488,12 +479,12 @@ trait Kernel {
 
   def matchInlined(tree: Tree)(implicit ctx: Context): Option[Inlined]
 
-  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[TermOrTypeTree]
+  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[Tree/* Term | TypeTree */]
   def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition]
   def Inlined_body(self: Inlined)(implicit ctx: Context): Term
 
-  def Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
-  def Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
+  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
+  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
 
   /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
   type SelectOuter <: Term
@@ -527,7 +518,6 @@ trait Kernel {
   type TypeTree <: TypeOrBoundsTree
 
   def matchTypeTree(tree: Tree)(implicit ctx: Context): Option[TypeTree]
-  def matchTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree]
 
   def TypeTree_pos(self: TypeTree)(implicit ctx: Context): Position
   def TypeTree_symbol(self: TypeTree)(implicit ctx: Context): Symbol
