@@ -20,7 +20,6 @@ trait Printers
   with StandardDefinitions
   with SymbolOps
   with TreeOps
-  with TypeOrBoundsTreeOps
   with TypeOrBoundsOps {
 
   /** Adds `show` as an extension method of a `Tree` */

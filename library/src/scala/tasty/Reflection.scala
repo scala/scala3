@@ -23,7 +23,6 @@ abstract class Reflection
     with SymbolOps
     with TreeOps
     with TreeUtils
-    with TypeOrBoundsTreeOps
     with TypeOrBoundsOps { self =>
 
   def typeOf[T: scala.quoted.Type]: Type =

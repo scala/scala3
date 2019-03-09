@@ -7,8 +7,7 @@ trait TreeUtils
     with CaseDefOps
     with PatternOps
     with SymbolOps
-    with TreeOps
-    with TypeOrBoundsTreeOps {
+    with TreeOps {
 
   abstract class TreeAccumulator[X] {
 
