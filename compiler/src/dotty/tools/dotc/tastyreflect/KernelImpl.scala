@@ -199,8 +199,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term = tpd.Tree
 
-  def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term] =
-    if (tree.isTerm) Some(tree) else None
+  def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term] = tree match {
+    case x: tpd.SeqLiteral => Some(tree)
+    case _ if tree.isTerm => Some(tree)
+    case _ => None
+  }
 
   // TODO move to Kernel and use isTerm directly with a cast
   def matchTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term] =
