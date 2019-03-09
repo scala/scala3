@@ -298,16 +298,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       // Since projections of types don't include null, intersection with null is empty.
       return Empty
     }
-    val and = AndType(tp1, tp2)
-    // Then, no leaf of the and-type tree `and` is a subtype of `and`.
-    val res = inhabited(and)
+    val res = ctx.typeComparer.intersecting(tp1, tp2)
 
-    debug.println(s"atomic intersection: ${and.show} = ${res}")
+    debug.println(s"atomic intersection: ${AndType(tp1, tp2).show} = ${res}")
 
     if (!res) Empty
     else if (tp1.isSingleton) Typ(tp1, true)
     else if (tp2.isSingleton) Typ(tp2, true)
-    else Typ(and, true)
+    else Typ(AndType(tp1, tp2), true)
   }
 
   /** Whether the extractor is irrefutable */
@@ -468,259 +466,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
         val parts = children.map { sym =>
-          if (sym.is(ModuleClass))
-            refine(tp, sym.sourceModule)
-          else
-            refine(tp, sym)
+          val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
+          val refined = ctx.refineUsingParent(tp, sym1)
+
+          def inhabited(tp: Type): Boolean =
+            tp.dealias match {
+              case AndType(tp1, tp2) => ctx.typeComparer.intersecting(tp1, tp2)
+              case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
+              case tp: RefinedType => inhabited(tp.parent)
+              case tp: TypeRef => inhabited(tp.prefix)
+              case _ => true
+            }
+
+          if (inhabited(refined)) refined
+          else NoType
         } filter(_.exists)
 
         debug.println(s"${tp.show} decomposes to [${parts.map(_.show).mkString(", ")}]")
 
         parts.map(Typ(_, true))
-    }
-  }
-
-  /** Refine child based on parent
-   *
-   *  In child class definition, we have:
-   *
-   *      class Child[Ts] extends path.Parent[Us] with Es
-   *      object Child extends path.Parent[Us] with Es
-   *      val child = new path.Parent[Us] with Es           // enum values
-   *
-   *  Given a parent type `parent` and a child symbol `child`, we infer the prefix
-   *  and type parameters for the child:
-   *
-   *      prefix.child[Vs] <:< parent
-   *
-   *  where `Vs` are fresh type variables and `prefix` is the symbol prefix with all
-   *  non-module and non-package `ThisType` replaced by fresh type variables.
-   *
-   *  If the subtyping is true, the instantiated type `p.child[Vs]` is
-   *  returned. Otherwise, `NoType` is returned.
-   *
-   */
-  def refine(parent: Type, child: Symbol): Type = {
-    if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
-
-    // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
-    //
-    // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
-    //
-    //     ...When a sealed class/trait has local subclasses, a single
-    //     <local child> class symbol is added as pickled child
-    //     (instead of a reference to the anonymous class; that was done
-    //     initially, but seems not to work, ...).
-    //
-    if (child.name == tpnme.LOCAL_CHILD) return child.typeRef
-
-    val childTp = if (child.isTerm) child.termRef else child.typeRef
-
-    val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
-
-    if (!resTp.exists || !inhabited(resTp)) {
-      debug.println(s"[refine] unqualified child ousted: ${childTp.show} !< ${parent.show}")
-      NoType
-    }
-    else {
-      debug.println(s"$child instantiated ------> $resTp")
-      resTp.dealias
-    }
-  }
-
-  /** Can this type be inhabited by a value?
-   *
-   *  Check is based on the following facts:
-   *
-   *  - single inheritance of classes
-   *  - final class cannot be extended
-   *  - intersection of a singleton type with another irrelevant type  (patmat/i3574.scala)
-   *
-   */
-  def inhabited(tp: Type)(implicit ctx: Context): Boolean = {
-    // convert top-level type shape into "conjunctive normal form"
-    def cnf(tp: Type): Type = tp match {
-      case AndType(OrType(l, r), tp)      =>
-        OrType(cnf(AndType(l, tp)), cnf(AndType(r, tp)))
-      case AndType(tp, o: OrType)         =>
-        cnf(AndType(o, tp))
-      case AndType(l, r)                  =>
-        val l1 = cnf(l)
-        val r1 = cnf(r)
-        if (l1.ne(l) || r1.ne(r)) cnf(AndType(l1, r1))
-        else AndType(l1, r1)
-      case OrType(l, r)                   =>
-        OrType(cnf(l), cnf(r))
-      case tp @ RefinedType(OrType(tp1, tp2), _, _)  =>
-        OrType(
-          cnf(tp.derivedRefinedType(tp1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)),
-          cnf(tp.derivedRefinedType(tp2, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo))
-        )
-      case tp: RefinedType                =>
-        val parent1 = cnf(tp.parent)
-        val tp1 = tp.derivedRefinedType(parent1, refinedName = tp.refinedName, refinedInfo = tp.refinedInfo)
-
-        if (parent1.ne(tp.parent)) cnf(tp1) else tp1
-      case tp: TypeAlias                  =>
-        cnf(tp.alias)
-      case _                              =>
-        tp
-    }
-
-    def isSingleton(tp: Type): Boolean = tp.dealias match {
-      case AndType(l, r)  => isSingleton(l) || isSingleton(r)
-      case OrType(l, r)   => isSingleton(l) && isSingleton(r)
-      case tp             => tp.isSingleton
-    }
-
-    def recur(tp: Type): Boolean = tp.dealias match {
-      case AndType(tp1, tp2) =>
-        recur(tp1) && recur(tp2) && {
-          val bases1 = tp1.widenDealias.classSymbols
-          val bases2 = tp2.widenDealias.classSymbols
-
-          debug.println(s"bases of ${tp1.show}: " + bases1)
-          debug.println(s"bases of ${tp2.show}: " + bases2)
-          debug.println(s"${tp1.show} <:< ${tp2.show} : " +  (tp1 <:< tp2))
-          debug.println(s"${tp2.show} <:< ${tp1.show} : " +  (tp2 <:< tp1))
-
-          val noClassConflict =
-            bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym1.isSubClass(sym2))) ||
-            bases1.forall(sym1 => sym1.is(Trait) || bases2.forall(sym2 => sym2.is(Trait) || sym2.isSubClass(sym1)))
-
-          debug.println(s"class conflict for ${tp.show}? " + !noClassConflict)
-
-          noClassConflict &&
-            (!isSingleton(tp1) || tp1 <:< tp2) &&
-            (!isSingleton(tp2) || tp2 <:< tp1) &&
-            (!bases1.exists(_ is Final) || tp1 <:< maxTypeMap.apply(tp2)) &&
-            (!bases2.exists(_ is Final) || tp2 <:< maxTypeMap.apply(tp1))
-        }
-      case OrType(tp1, tp2) =>
-        recur(tp1) || recur(tp2)
-      case tp: RefinedType =>
-        recur(tp.parent)
-      case tp: TypeRef =>
-        recur(tp.prefix) && !(tp.classSymbol.is(AbstractFinal))
-      case _ =>
-        true
-    }
-
-    val res = recur(cnf(tp))
-
-    debug.println(s"${tp.show} inhabited?  " + res)
-
-    res
-  }
-
-  /** expose abstract type references to their bounds or tvars according to variance */
-  private class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
-    def expose(lo: Type, hi: Type): Type =
-      if (variance == 0)
-        newTypeVar(TypeBounds(lo, hi))
-      else if (variance == 1)
-        if (maximize) hi else lo
-      else
-        if (maximize) lo else hi
-
-    def apply(tp: Type): Type = tp match {
-      case tp: TypeRef if isBounds(tp.underlying) =>
-        val lo = this(tp.info.loBound)
-        val hi = this(tp.info.hiBound)
-        // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-        val exposed = expose(lo, hi)
-        debug.println(s"$tp exposed to =====> $exposed")
-        exposed
-
-      case AppliedType(tycon: TypeRef, args) if isBounds(tycon.underlying) =>
-        val args2 = args.map(this)
-        val lo = this(tycon.info.loBound).applyIfParameterized(args2)
-        val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
-        val exposed = expose(lo, hi)
-        debug.println(s"$tp exposed to =====> $exposed")
-        exposed
-
-      case _ =>
-        mapOver(tp)
-    }
-  }
-
-  private def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
-  private def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
-
-  /** Instantiate type `tp1` to be a subtype of `tp2`
-   *
-   *  Return the instantiated type if type parameters and this type
-   *  in `tp1` can be instantiated such that `tp1 <:< tp2`.
-   *
-   *  Otherwise, return NoType.
-   *
-   */
-  def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
-    // Fix subtype checking for child instantiation,
-    // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
-    // See tests/patmat/i3938.scala
-    class RemoveThisMap extends TypeMap {
-      var prefixTVar: Type = null
-      def apply(tp: Type): Type = tp match {
-        case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
-          if (tref.symbol.is(Module))
-            TermRef(this(tref.prefix), tref.symbol.sourceModule)
-          else if (prefixTVar != null)
-            this(tref)
-          else {
-            prefixTVar = WildcardType  // prevent recursive call from assigning it
-            prefixTVar = newTypeVar(TypeBounds.upper(this(tref)))
-            prefixTVar
-          }
-        case tp => mapOver(tp)
-      }
-    }
-
-    // replace uninstantiated type vars with WildcardType, check tests/patmat/3333.scala
-    def instUndetMap(implicit ctx: Context) = new TypeMap {
-      def apply(t: Type): Type = t match {
-        case tvar: TypeVar if !tvar.isInstantiated => WildcardType(tvar.origin.underlying.bounds)
-        case _ => mapOver(t)
-      }
-    }
-
-    val removeThisType = new RemoveThisMap
-    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = removeThisType.apply(tp1).appliedTo(tvars)
-
-    val force = new ForceDegree.Value(
-      tvar =>
-        !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
-        (tvar `eq` removeThisType.prefixTVar),
-      minimizeAll = false,
-      allowBottom = false
-    )
-
-    // If parent contains a reference to an abstract type, then we should
-    // refine subtype checking to eliminate abstract types according to
-    // variance. As this logic is only needed in exhaustivity check,
-    // we manually patch subtyping check instead of changing TypeComparer.
-    // See tests/patmat/i3645b.scala
-    def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
-      implicit val ictx = ctx.fresh.setNewTyperState()
-      parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
-    }
-
-    if (protoTp1 <:< tp2) {
-      if (isFullyDefined(protoTp1, force)) protoTp1
-      else instUndetMap.apply(protoTp1)
-    }
-    else {
-      val protoTp2 = maxTypeMap.apply(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify) {
-        if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else instUndetMap.apply(protoTp1)
-      }
-      else {
-        debug.println(s"$protoTp1 <:< $protoTp2 = false")
-        NoType
-      }
     }
   }
 
@@ -983,7 +747,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
               ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
           }
-
         }
       }
     }
