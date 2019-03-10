@@ -450,7 +450,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             else paramSpan(tree.name)
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              singleton(t.dealias).withSpan(span)
+              t.dealias match {
+                case tp: ConstantType => Inlined(EmptyTree, Nil, singleton(tp).withSpan(span)).withSpan(tree.span)
+                case tp => singleton(tp).withSpan(span)
+              }
             case Some(t) if tree.isType =>
               TypeTree(t).withSpan(span)
             case _ => tree
@@ -885,6 +888,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               case _ =>
                 false
             }
+          case Inlined(EmptyTree, Nil, ipat) =>
+            reducePattern(bindingsBuf, fromBuf, toBuf, scrut, ipat)
           case _ => false
         }
       }
