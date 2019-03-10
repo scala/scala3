@@ -40,7 +40,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
     object ChildTraverser extends TreeTraverser {
       var children: List[Tree] = Nil
-      var childrenType: List[TypeOrBoundsTree] = Nil
+      var childrenType: List[Tree /*TypeTree | TypeBoundsTree*/] = Nil
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case IsTypeTree(tree) =>
           traverseTypeTree(tree)
@@ -50,7 +50,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       }
       override def traversePattern(pattern: Pattern)(
           implicit ctx: Context): Unit = ()
-      def traverseTypeTree(tree: TypeOrBoundsTree)(
+      def traverseTypeTree(tree: Tree /*TypeTree | TypeBoundsTree*/)(
           implicit ctx: Context): Unit =
           childrenType = tree :: childrenType
       override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit =
@@ -64,7 +64,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         traverseTreeChildren(tree)(ctx)
         return children
       }
-      def getChildrenType(tree: TypeOrBoundsTree)(implicit ctx: Context): List[TypeOrBoundsTree] = {
+      def getChildrenType(tree: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = {
         childrenType = Nil
         traverseTreeChildren(tree)(ctx)
         return childrenType
@@ -99,7 +99,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
       }
 
-      implicit class TypeOrBoundsTreeExtender(tree: TypeOrBoundsTree) {
+      implicit class TypeOrBoundsTreeExtender(tree: Tree /*TypeTree | TypeBoundsTree*/) {
         def typetree: TypeTree = tree match {
           case IsTypeTree(t) => t
         }
@@ -636,7 +636,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         })
       }
 
-      def traverseTypeTree(tree: TypeOrBoundsTree)(
+      def traverseTypeTree(tree: Tree /*TypeTree | TypeBoundsTree*/)(
           implicit ctx: Context): Unit = {
         tree match {
           case TypeTree.Ident(_) => {

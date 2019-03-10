@@ -37,22 +37,22 @@ package scala.tasty.reflect
  *           |                             +- While
  *           |
  *           |
- *           |                    +- TypeTree ----+- TypeTree_Inferred
- *           |                    |               +- TypeTree_Ident
- *           |                    |               +- TypeTree_Select
- *           |                    |               +- TypeTree_Project
- *           |                    |               +- TypeTree_Singleton
- *           +- TypeOrBoundsTree -+               +- TypeTree_Refined
- *                                |               +- TypeTree_Applied
- *                                |               +- TypeTree_Annotated
- *                                |               +- TypeTree_MatchType
- *                                |               +- TypeTree_ByName
- *                                |               +- TypeTree_LambdaTypeTree
- *                                |               +- TypeTree_TypeBind
- *                                |               +- TypeTree_TypeBlock
- *                                |
- *                                +- TypeBoundsTree
- *                                +- WildcardTypeTree
+ *           +- TypeTree ----+- Inferred
+ *           |               +- Ident
+ *           |               +- Select
+ *           |               +- Project
+ *           |               +- Singleton
+ *           |               +- Refined
+ *           |               +- Applied
+ *           |               +- Annotated
+ *           |               +- MatchType
+ *           |               +- ByName
+ *           |               +- LambdaTypeTree
+ *           |               +- TypeBind
+ *           |               +- TypeBlock
+ *           |
+ *           +- TypeBoundsTree
+ *           +- WildcardTypeTree
  *
  *  +- CaseDef
  *  +- TypeCaseDef
@@ -229,9 +229,6 @@ trait Core {
         type While = kernel.While
 
       }
-
-    /** Type tree representing a type or a bounds written in the source */
-    type TypeOrBoundsTree = kernel.TypeOrBoundsTree
 
       /** Type tree representing a type written in the source */
       type TypeTree = kernel.TypeTree

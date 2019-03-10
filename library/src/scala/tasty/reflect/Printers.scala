@@ -1166,10 +1166,10 @@ trait Printers
         this += argCons.name
         argCons.rhs match {
           case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
-          case rhs @ WildcardTypeTree() =>
+          case IsWildcardTypeTree(rhs) =>
             printTypeOrBound(rhs.tpe)
           case rhs @ TypeTree.LambdaTypeTree(tparams, body) =>
-            def printParam(t: TypeOrBoundsTree): Unit = t match {
+            def printParam(t: Tree /*TypeTree | TypeBoundsTree*/): Unit = t match {
               case IsTypeBoundsTree(t) => printBoundsTree(t)
               case IsTypeTree(t) => printTypeTree(t)
             }
@@ -1347,13 +1347,13 @@ trait Printers
           this += highlightLiteral("'" + v.name, color)
       }
 
-      def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
+      def printTypeOrBoundsTree(tpt: Tree /*TypeTree | TypeBoundsTree*/): Buffer = tpt match {
         case TypeBoundsTree(lo, hi) =>
           this += "_ >: "
           printTypeTree(lo)
           this += " <: "
           printTypeTree(hi)
-        case tpt @ WildcardTypeTree() =>
+        case IsWildcardTypeTree(tpt) =>
           printTypeOrBound(tpt.tpe)
         case IsTypeTree(tpt) =>
           printTypeTree(tpt)

@@ -143,14 +143,14 @@ trait TreeOps extends Core {
   object TypeDef {
     def apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef =
       kernel.TypeDef_apply(symbol)
-    def copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef =
+    def copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef =
       kernel.TypeDef_copy(original)(name, rhs)
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] =
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
       kernel.matchTypeDef(tree).map(x => (x.name, x.rhs))
   }
 
   implicit class TypeDefAPI(self: TypeDef) {
-    def rhs(implicit ctx: Context): TypeOrBoundsTree = kernel.TypeDef_rhs(self)
+    def rhs(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeDef_rhs(self)
     def symbol(implicit ctx: Context): TypeSymbol = kernel.TypeDef_symbol(self)
   }
 
@@ -733,12 +733,6 @@ trait TreeOps extends Core {
     def body(implicit ctx: Context): Term = kernel.While_body(self)
   }
 
-  // ----- TypeOrBoundsTree ------------------------------------------------
-
-  implicit class TypeOrBoundsTreeAPI(self: TypeOrBoundsTree) {
-    def tpe(implicit ctx: Context): TypeOrBounds = kernel.TypeOrBoundsTree_tpe(self)
-  }
-
   // ----- TypeTrees ------------------------------------------------
 
   implicit class TypeTreeAPI(self: TypeTree) {
@@ -853,11 +847,11 @@ trait TreeOps extends Core {
     }
 
     object Applied {
-      def apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
+      def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): Applied =
         kernel.TypeTree_Applied_apply(tpt, args)
-      def copy(original: Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): Applied =
+      def copy(original: Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): Applied =
         kernel.TypeTree_Applied_copy(original)(tpt, args)
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])] =
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
         kernel.matchTypeTree_Applied(tree).map(x => (x.tpt, x.args))
     }
 
@@ -913,11 +907,11 @@ trait TreeOps extends Core {
     }
 
     object LambdaTypeTree {
-      def apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
+      def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): LambdaTypeTree =
         kernel.TypeTree_LambdaTypeTree_apply(tparams, body)
-      def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): LambdaTypeTree =
+      def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): LambdaTypeTree =
         kernel.TypeTree_LambdaTypeTree_copy(original)(tparams, body)
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)] =
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
         kernel.matchTypeTree_LambdaTypeTree(tree).map(x => (x.tparams, x.body))
     }
 
@@ -929,9 +923,9 @@ trait TreeOps extends Core {
 
     object TypeBind {
       // TODO def apply(name: String, tree: Tree)(implicit ctx: Context): TypeBind
-      def copy(original: TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeBind =
+      def copy(original: TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeBind =
         kernel.TypeTree_TypeBind_copy(original)(name, tpt)
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree)] =
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
         kernel.matchTypeTree_TypeBind(tree).map(x => (x.name, x.body))
     }
 
@@ -976,7 +970,7 @@ trait TreeOps extends Core {
 
   implicit class TypeTree_AppliedAPI(self: TypeTree.Applied) {
     def tpt(implicit ctx: Context): TypeTree = kernel.TypeTree_Applied_tpt(self)
-    def args(implicit ctx: Context): List[TypeOrBoundsTree] = kernel.TypeTree_Applied_args(self)
+    def args(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = kernel.TypeTree_Applied_args(self)
   }
 
   implicit class TypeTree_AnnotatedAPI(self: TypeTree.Annotated) {
@@ -996,12 +990,12 @@ trait TreeOps extends Core {
 
   implicit class TypeTree_LambdaTypeTreeAPI(self: TypeTree.LambdaTypeTree) {
     def tparams(implicit ctx: Context): List[TypeDef] = kernel.TypeTree_LambdaTypeTree_tparams(self)
-    def body(implicit ctx: Context): TypeOrBoundsTree = kernel.TypeTree_LambdaTypeTree_body(self)
+    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeTree_LambdaTypeTree_body(self)
   }
 
   implicit class TypeTree_TypeBindAPI(self: TypeTree.TypeBind) {
     def name(implicit ctx: Context): String = kernel.TypeTree_TypeBind_name(self)
-    def body(implicit ctx: Context): TypeOrBoundsTree = kernel.TypeTree_TypeBind_body(self)
+    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeTree_TypeBind_body(self)
   }
 
   implicit class TypeTree_TypeBlockAPI(self: TypeTree.TypeBlock) {
@@ -1025,6 +1019,10 @@ trait TreeOps extends Core {
   object TypeBoundsTree {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] =
       kernel.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
+  }
+
+  implicit class WildcardTypeTreeAPI(self: WildcardTypeTree) {
+    def tpe(implicit ctx: Context): TypeOrBounds = kernel.WildcardTypeTree_tpe(self)
   }
 
   object IsWildcardTypeTree {

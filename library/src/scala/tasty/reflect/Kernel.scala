@@ -36,22 +36,22 @@ package scala.tasty.reflect
  *           |                             +- While
  *           |
  *           |
- *           |                    +- TypeTree ----+- TypeTree_Inferred
- *           |                    |               +- TypeTree_Ident
- *           |                    |               +- TypeTree_Select
- *           |                    |               +- TypeTree_Project
- *           |                    |               +- TypeTree_Singleton
- *           +- TypeOrBoundsTree -+               +- TypeTree_Refined
- *                                |               +- TypeTree_Applied
- *                                |               +- TypeTree_Annotated
- *                                |               +- TypeTree_MatchType
- *                                |               +- TypeTree_ByName
- *                                |               +- TypeTree_LambdaTypeTree
- *                                |               +- TypeTree_TypeBind
- *                                |               +- TypeTree_TypeBlock
- *                                |
- *                                +- TypeBoundsTree
- *                                +- WildcardTypeTree
+ *           +- TypeTree ----+- TypeTree_Inferred
+ *           |               +- TypeTree_Ident
+ *           |               +- TypeTree_Select
+ *           |               +- TypeTree_Project
+ *           |               +- TypeTree_Singleton
+ *           |               +- TypeTree_Refined
+ *           |               +- TypeTree_Applied
+ *           |               +- TypeTree_Annotated
+ *           |               +- TypeTree_MatchType
+ *           |               +- TypeTree_ByName
+ *           |               +- TypeTree_LambdaTypeTree
+ *           |               +- TypeTree_TypeBind
+ *           |               +- TypeTree_TypeBlock
+ *           |
+ *           +- TypeBoundsTree
+ *           +- WildcardTypeTree
  *
  *  +- CaseDef
  *  +- TypeCaseDef
@@ -229,11 +229,11 @@ trait Kernel {
 
   def matchTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef]
 
-  def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): TypeOrBoundsTree
+  def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
   def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeSymbol
 
   def TypeDef_apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef
-  def TypeDef_copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef
+  def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef
 
   /** Tree representing a method definition in the source code */
   type DefDef <: Definition
@@ -509,13 +509,8 @@ trait Kernel {
   def While_apply(cond: Term, body: Term)(implicit ctx: Context): While
   def While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While
 
-  /** Type tree representing a type or a bounds written in the source */
-  type TypeOrBoundsTree <: Tree
-
-  def TypeOrBoundsTree_tpe(self: TypeOrBoundsTree)(implicit ctx: Context): Type
-
   /** Type tree representing a type written in the source */
-  type TypeTree <: TypeOrBoundsTree
+  type TypeTree <: Tree
 
   def matchTypeTree(tree: Tree)(implicit ctx: Context): Option[TypeTree]
 
@@ -586,10 +581,10 @@ trait Kernel {
   def matchTypeTree_Applied(tree: Tree)(implicit ctx: Context): Option[TypeTree_Applied]
 
   def TypeTree_Applied_tpt(self: TypeTree_Applied)(implicit ctx: Context): TypeTree
-  def TypeTree_Applied_args(self: TypeTree_Applied)(implicit ctx: Context): List[TypeOrBoundsTree]
+  def TypeTree_Applied_args(self: TypeTree_Applied)(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/]
 
-  def TypeTree_Applied_apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): TypeTree_Applied
-  def TypeTree_Applied_copy(original: TypeTree_Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): TypeTree_Applied
+  def TypeTree_Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): TypeTree_Applied
+  def TypeTree_Applied_copy(original: TypeTree_Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): TypeTree_Applied
 
   /** Type tree representing an annotated type */
   type TypeTree_Annotated <: TypeTree
@@ -630,10 +625,10 @@ trait Kernel {
   def matchTypeTree_LambdaTypeTree(tree: Tree)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree]
 
   def TypeTree_LambdaTypeTree_tparams(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): List[TypeDef]
-  def TypeTree_LambdaTypeTree_body(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): TypeOrBoundsTree
+  def TypeTree_LambdaTypeTree_body(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeTree_LambdaTypeTree_apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): TypeTree_LambdaTypeTree
-  def TypeTree_LambdaTypeTree_copy(original: TypeTree_LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): TypeTree_LambdaTypeTree
+  def TypeTree_LambdaTypeTree_apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeTree_LambdaTypeTree
+  def TypeTree_LambdaTypeTree_copy(original: TypeTree_LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeTree_LambdaTypeTree
 
   /** Type tree representing a type binding */
   type TypeTree_TypeBind <: TypeTree
@@ -641,9 +636,9 @@ trait Kernel {
   def matchTypeTree_TypeBind(tree: Tree)(implicit ctx: Context): Option[TypeTree_TypeBind]
 
   def TypeTree_TypeBind_name(self: TypeTree_TypeBind)(implicit ctx: Context): String
-  def TypeTree_TypeBind_body(self: TypeTree_TypeBind)(implicit ctx: Context): TypeOrBoundsTree
+  def TypeTree_TypeBind_body(self: TypeTree_TypeBind)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeTree_TypeBind_copy(original: TypeTree_TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeTree_TypeBind
+  def TypeTree_TypeBind_copy(original: TypeTree_TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeTree_TypeBind
 
   /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
   type TypeTree_TypeBlock <: TypeTree
@@ -657,7 +652,7 @@ trait Kernel {
   def TypeTree_TypeBlock_copy(original: TypeTree_TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeTree_TypeBlock
 
   /** Type tree representing a type bound written in the source */
-  type TypeBoundsTree <: TypeOrBoundsTree
+  type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
 
   def matchTypeBoundsTree(tree: Tree)(implicit ctx: Context): Option[TypeBoundsTree]
 
@@ -669,9 +664,11 @@ trait Kernel {
     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
     *  represents a type but has `TypeBound`a inside.
     */
-  type WildcardTypeTree <: TypeOrBoundsTree
+  type WildcardTypeTree <: Tree
 
   def matchWildcardTypeTree(tree: Tree)(implicit ctx: Context): Option[WildcardTypeTree]
+
+  def WildcardTypeTree_tpe(self: WildcardTypeTree)(implicit ctx: Context): TypeOrBounds
 
   //
   // CASES

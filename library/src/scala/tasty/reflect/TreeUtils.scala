@@ -167,7 +167,7 @@ trait TreeUtils
           DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
         case IsTypeDef(tree) =>
           implicit val ctx = localCtx(tree)
-          TypeDef.copy(tree)(tree.name, transformTypeOrBoundsTree(tree.rhs))
+          TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
         case IsClassDef(tree) =>
           ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
         case IsImport(tree) =>
@@ -220,12 +220,6 @@ trait TreeUtils
       }
     }
 
-    def transformTypeOrBoundsTree(tree: TypeOrBoundsTree)(implicit ctx: Context): TypeOrBoundsTree = tree match {
-      case IsTypeTree(tree) => transformTypeTree(tree)
-      case IsTypeBoundsTree(tree) => tree // TODO traverse tree
-      case IsWildcardTypeTree(tree) => tree // TODO traverse tree
-    }
-
     def transformTypeTree(tree: TypeTree)(implicit ctx: Context): TypeTree = tree match {
       case TypeTree.Inferred() => tree
       case TypeTree.IsIdent(tree) => tree
@@ -240,13 +234,13 @@ trait TreeUtils
       case TypeTree.IsRefined(tree) =>
         TypeTree.Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
       case TypeTree.IsApplied(tree) =>
-        TypeTree.Applied.copy(tree)(transformTypeTree(tree.tpt), transformTypeOrBoundsTrees(tree.args))
+        TypeTree.Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
       case TypeTree.IsMatchType(tree) =>
         TypeTree.MatchType.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
       case TypeTree.IsByName(tree) =>
         TypeTree.ByName.copy(tree)(transformTypeTree(tree.result))
       case TypeTree.IsLambdaTypeTree(tree) =>
-        TypeTree.LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTypeOrBoundsTree(tree.body))(tree.symbol.localContext)
+        TypeTree.LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(tree.symbol.localContext)
       case TypeTree.IsTypeBind(tree) =>
         TypeTree.TypeBind.copy(tree)(tree.name, tree.body)
       case TypeTree.IsTypeBlock(tree) =>
@@ -285,9 +279,6 @@ trait TreeUtils
 
     def transformTypeTrees(trees: List[TypeTree])(implicit ctx: Context): List[TypeTree] =
       trees mapConserve (transformTypeTree(_))
-
-    def transformTypeOrBoundsTrees(trees: List[TypeOrBoundsTree])(implicit ctx: Context): List[TypeOrBoundsTree] =
-      trees mapConserve (transformTypeOrBoundsTree(_))
 
     def transformCaseDefs(trees: List[CaseDef])(implicit ctx: Context): List[CaseDef] =
       trees mapConserve (transformCaseDef(_))
