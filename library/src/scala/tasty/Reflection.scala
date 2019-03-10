@@ -4,7 +4,6 @@ import scala.tasty.reflect._
 
 abstract class Reflection
     extends Core
-    with CaseDefOps
     with ConstantOps
     with ContextOps
     with CommentOps

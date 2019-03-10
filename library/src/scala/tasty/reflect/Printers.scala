@@ -8,7 +8,6 @@ import scala.tasty.util.Chars
 
 trait Printers
   extends Core
-  with CaseDefOps
   with ConstantOps
   with FlagsOps
   with IdOps

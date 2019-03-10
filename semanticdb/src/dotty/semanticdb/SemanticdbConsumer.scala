@@ -53,11 +53,6 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       def traverseTypeTree(tree: Tree /*TypeTree | TypeBoundsTree*/)(
           implicit ctx: Context): Unit =
           childrenType = tree :: childrenType
-      override def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit =
-        ()
-      override def traverseTypeCaseDef(tree: TypeCaseDef)(
-          implicit ctx: Context): Unit =
-        ()
 
       def getChildren(tree: Tree)(implicit ctx: Context): List[Tree] = {
         children = Nil

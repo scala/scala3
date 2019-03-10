@@ -4,7 +4,6 @@ package reflect
 /** Tasty reflect case definition */
 trait TreeUtils
     extends Core
-    with CaseDefOps
     with PatternOps
     with SymbolOps
     with TreeOps {
