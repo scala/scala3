@@ -444,11 +444,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case _ => tree
           }
         case tree: Ident =>
+          def span =
+            if (tree.name == nme.WILDCARD) tree.span // From type match
+            else paramSpan(tree.name)
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              singleton(t.dealias).withSpan(paramSpan(tree.name))
+              singleton(t.dealias).withSpan(span)
             case Some(t) if tree.isType =>
-              TypeTree(t).withSpan(paramSpan(tree.name))
+              TypeTree(t).withSpan(span)
             case _ => tree
           }
         case tree => tree
