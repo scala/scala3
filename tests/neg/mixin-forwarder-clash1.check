@@ -1,0 +1,5 @@
+<527..527> in mixin-forwarder-clash1.scala
+Name clash between inherited members:
+override def concat(suffix: Int): X in trait OneB at line 10 and
+override def concat: [Dummy](suffix: Int): Y in trait TwoB at line 18
+have the same type after erasure.

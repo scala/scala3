@@ -82,7 +82,7 @@ class Compiler {
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
          new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
-         new ResolveSuper,           // Implement super accessors and add forwarders to trait methods
+         new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.

@@ -86,6 +86,14 @@ object Mixin {
  *
  *                <mods> def x_=(y: T) = ()
  *
+ *          3.5 (done in `mixinForwarders`) For every method
+ *          `<mods> def f[Ts](ps1)...(psN): U` imn M` that needs to be disambiguated:
+ *
+ *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
+ *
+ *          A method in M needs to be disambiguated if it is concrete, not overridden in C,
+ *          and if it overrides another concrete method.
+ *
  *   4. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
  *      constructors.
  *
@@ -239,7 +247,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             else
               initial
           // transformFollowing call is needed to make memoize & lazy vals run
-          transformFollowing(DefDef(implementation(getter.asTerm), rhs))
+          transformFollowing(DefDef(mkForwarder(getter.asTerm), rhs))
         }
         else if (isScala2x || was(getter, ParamAccessor | Lazy)) EmptyTree
         else initial
@@ -248,7 +256,15 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !was(setr, Deferred)))
-        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withSpan(cls.span)))
+        yield transformFollowing(DefDef(mkForwarder(setter.asTerm), unitLiteral.withSpan(cls.span)))
+
+    def mixinForwarders(mixin: ClassSymbol): List[Tree] =
+      for (meth <- mixin.info.decls.toList if needsForwarder(meth))
+      yield {
+        util.Stats.record("mixin forwarders")
+        transformFollowing(polyDefDef(mkForwarder(meth.asTerm), forwarder(meth)))
+      }
+
 
     cpy.Template(impl)(
       constr =
@@ -259,7 +275,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         if (cls is Trait) traitDefs(impl.body)
         else {
           val mixInits = mixins.flatMap { mixin =>
-            flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin)
+            flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin) ::: mixinForwarders(mixin)
           }
           superCallOpt(superCls) ::: mixInits ::: impl.body
         })
