@@ -341,6 +341,8 @@ object desugar {
       case _ => false
     }
 
+    def namePos = cdef.sourcePos.withSpan(cdef.nameSpan)
+
     val isObject = mods.is(Module)
     val isCaseClass  = mods.is(Case) && !isObject
     val isCaseObject = mods.is(Case) && isObject
@@ -361,10 +363,10 @@ object desugar {
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
-          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withSpan(cdef.nameSpan))
+          ctx.error(CaseClassMissingParamList(cdef), namePos)
         ListOfNil
       } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withSpan(cdef.nameSpan))
+          ctx.error("Case classes should have a non-implicit parameter list", namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
@@ -391,6 +393,8 @@ object desugar {
       val stats = impl.body.map(expandConstructor)
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
+        if (enumCases.isEmpty)
+          ctx.error("Enumerations must constain at least one case", namePos)
         val enumCompanionRef = new TermRefTree()
         val enumImport = Import(impliedOnly = false, enumCompanionRef, enumCases.flatMap(caseIds))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
