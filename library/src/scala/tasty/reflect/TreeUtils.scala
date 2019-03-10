@@ -13,13 +13,9 @@ trait TreeUtils
 
     // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
     def foldTree(x: X, tree: Tree)(implicit ctx: Context): X
-    def foldCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X
-    def foldTypeCaseDef(x: X, tree: TypeCaseDef)(implicit ctx: Context): X
     def foldPattern(x: X, tree: Pattern)(implicit ctx: Context): X
 
     def foldTrees(x: X, trees: Iterable[Tree])(implicit ctx: Context): X = (x /: trees)(foldTree)
-    def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
-    def foldTypeCaseDefs(x: X, trees: Iterable[TypeCaseDef])(implicit ctx: Context): X = (x /: trees)(foldTypeCaseDef)
     def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
 
     def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
@@ -55,11 +51,11 @@ trait TreeUtils
           val a = foldTree(x, meth)
           tpt.fold(a)(b => foldTree(a, b))
         case Term.Match(selector, cases) =>
-          foldCaseDefs(foldTree(x, selector), cases)
+          foldTrees(foldTree(x, selector), cases)
         case Term.Return(expr) =>
           foldTree(x, expr)
         case Term.Try(block, handler, finalizer) =>
-          foldTrees(foldCaseDefs(foldTree(x, block), handler), finalizer)
+          foldTrees(foldTrees(foldTree(x, block), handler), finalizer)
         case Term.Repeated(elems, elemtpt) =>
           foldTrees(foldTree(x, elemtpt), elems)
         case Term.Inlined(call, bindings, expansion) =>
@@ -93,18 +89,12 @@ trait TreeUtils
         case TypeTree.TypeBind(_, tbt) => foldTree(x, tbt)
         case TypeTree.TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
         case TypeTree.MatchType(boundopt, selector, cases) =>
-          foldTypeCaseDefs(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
+          foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
         case WildcardTypeTree() => x
         case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
+        case CaseDef(pat, guard, body) => foldTree(foldTrees(foldPattern(x, pat), guard), body)
+        case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat), body)
       }
-    }
-
-    def foldOverCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X = tree match {
-      case CaseDef(pat, guard, body) => foldTree(foldTrees(foldPattern(x, pat), guard), body)
-    }
-
-    def foldOverTypeCaseDef(x: X, tree: TypeCaseDef)(implicit ctx: Context): X = tree match {
-      case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat), body)
     }
 
     def foldOverPattern(x: X, tree: Pattern)(implicit ctx: Context): X = tree match {
@@ -120,18 +110,12 @@ trait TreeUtils
   abstract class TreeTraverser extends TreeAccumulator[Unit] {
 
     def traverseTree(tree: Tree)(implicit ctx: Context): Unit = traverseTreeChildren(tree)
-    def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit = traverseCaseDefChildren(tree)
-    def traverseTypeCaseDef(tree: TypeCaseDef)(implicit ctx: Context): Unit = traverseTypeCaseDefChildren(tree)
     def traversePattern(tree: Pattern)(implicit ctx: Context): Unit = traversePatternChildren(tree)
 
     def foldTree(x: Unit, tree: Tree)(implicit ctx: Context): Unit = traverseTree(tree)
-    def foldCaseDef(x: Unit, tree: CaseDef)(implicit ctx: Context) = traverseCaseDef(tree)
-    def foldTypeCaseDef(x: Unit, tree: TypeCaseDef)(implicit ctx: Context) = traverseTypeCaseDef(tree)
     def foldPattern(x: Unit, tree: Pattern)(implicit ctx: Context) = traversePattern(tree)
 
     protected def traverseTreeChildren(tree: Tree)(implicit ctx: Context): Unit = foldOverTree((), tree)
-    protected def traverseCaseDefChildren(tree: CaseDef)(implicit ctx: Context): Unit = foldOverCaseDef((), tree)
-    protected def traverseTypeCaseDefChildren(tree: TypeCaseDef)(implicit ctx: Context): Unit = foldOverTypeCaseDef((), tree)
     protected def traversePatternChildren(tree: Pattern)(implicit ctx: Context): Unit = foldOverPattern((), tree)
 
   }
@@ -149,6 +133,10 @@ trait TreeUtils
         case IsTypeTree(tree) => transformTypeTree(tree)
         case IsTypeBoundsTree(tree) => tree // TODO traverse tree
         case IsWildcardTypeTree(tree) => tree // TODO traverse tree
+        case IsCaseDef(tree) =>
+          transformCaseDef(tree)
+        case IsTypeCaseDef(tree) =>
+          transformTypeCaseDef(tree)
       }
     }
 
