@@ -180,7 +180,7 @@ class VarianceChecker()(implicit ctx: Context) {
         sym.is(PrivateLocal) ||
         sym.name.is(InlineAccessorName) || // TODO: should we exclude all synthetic members?
         sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
-      tree match {
+      try tree match {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
@@ -196,6 +196,9 @@ class VarianceChecker()(implicit ctx: Context) {
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case _ =>
+      }
+      catch {
+        case ex: TypeError => ctx.error(ex.toMessage, tree.sourcePos.focus)
       }
     }
   }
