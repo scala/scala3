@@ -130,9 +130,8 @@ TASTy Reflect provides the following types:
          |
          +- TypeBoundsTree
          +- SyntheticBounds
-
-+- CaseDef
-+- TypeCaseDef
+         +- CaseDef
+         +- TypeCaseDef
 
 +- Pattern --+- Value
              +- Bind

@@ -820,11 +820,12 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def WildcardTypeTree_tpe(self: WildcardTypeTree)(implicit ctx: Context): TypeOrBounds = self.tpe.stripTypeVar
 
-  //
-  // CASES
-  //
-
   type CaseDef = tpd.CaseDef
+
+  def matchCaseDef(tree: Tree)(implicit ctx: Context): Option[CaseDef] = tree match {
+    case tree: tpd.CaseDef if tree.body.isTerm => Some(tree)
+    case _ => None
+  }
 
   def CaseDef_pattern(self: CaseDef)(implicit ctx: Context): Pattern = self.pat
   def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term] = optional(self.guard)
@@ -837,6 +838,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
   type TypeCaseDef = tpd.CaseDef
+
+  def matchTypeCaseDef(tree: Tree)(implicit ctx: Context): Option[TypeCaseDef] = tree match {
+    case tree: tpd.CaseDef if tree.body.isType => Some(tree)
+    case _ => None
+  }
 
   def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.pat
   def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.body

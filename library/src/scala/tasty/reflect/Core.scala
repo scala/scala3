@@ -53,9 +53,8 @@ package scala.tasty.reflect
  *           |
  *           +- TypeBoundsTree
  *           +- WildcardTypeTree
- *
- *  +- CaseDef
- *  +- TypeCaseDef
+ *           +- CaseDef
+ *           +- TypeCaseDef
  *
  *  +- Pattern --+- Value
  *               +- Bind

@@ -38,14 +38,6 @@ trait Printers
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBounds(tpe)
   }
 
-  /** Adds `show` as an extension method of a `CaseDef` */
-  implicit class CaseDefShowDeco(caseDef: CaseDef) {
-    /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showCaseDef(caseDef)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showCaseDef(caseDef)
-  }
-
   /** Adds `show` as an extension method of a `Pattern` */
   implicit class PatternShowDeco(pattern: Pattern) {
     /** Shows the tree as extractors */
@@ -82,8 +74,6 @@ trait Printers
 
     def showTree(tree: Tree)(implicit ctx: Context): String
 
-    def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String
-
     def showPattern(pattern: Pattern)(implicit ctx: Context): String
 
     def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String
@@ -100,9 +90,6 @@ trait Printers
 
     def showTree(tree: Tree)(implicit ctx: Context): String =
       new Buffer().visitTree(tree).result()
-
-    def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
-      new Buffer().visitCaseDef(caseDef).result()
 
     def showPattern(pattern: Pattern)(implicit ctx: Context): String =
       new Buffer().visitPattern(pattern).result()
@@ -251,16 +238,10 @@ trait Printers
           this += s"WildcardTypeTree()"
         case TypeTree.MatchType(bound, selector, cases) =>
           this += "TypeTree.MatchType(" += bound += ", " += selector += ", " ++= cases += ")"
-      }
-
-      def visitCaseDef(x: CaseDef): Buffer = {
-        val CaseDef(pat, guard, body) = x
-        this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
-      }
-
-      def visitTypeCaseDef(x: TypeCaseDef): Buffer = {
-        val TypeCaseDef(pat, body) = x
-        this += "TypeCaseDef(" += pat += ", " += body += ")"
+        case CaseDef(pat, guard, body) =>
+          this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
+        case TypeCaseDef(pat, body) =>
+          this += "TypeCaseDef(" += pat += ", " += body += ")"
       }
 
       def visitPattern(x: Pattern): Buffer = x match {
@@ -382,16 +363,6 @@ trait Printers
         def +++=(x: List[List[Tree]]): Buffer = { visitList(x, ++=); buff }
       }
 
-      private implicit class CaseDefOps(buff: Buffer) {
-        def +=(x: CaseDef): Buffer = { visitCaseDef(x); buff }
-        def ++=(x: List[CaseDef]): Buffer = { visitList(x, visitCaseDef); buff }
-      }
-
-      private implicit class TypeCaseDefOps(buff: Buffer) {
-        def +=(x: TypeCaseDef): Buffer = { visitTypeCaseDef(x); buff }
-        def ++=(x: List[TypeCaseDef]): Buffer = { visitList(x, visitTypeCaseDef); buff }
-      }
-
       private implicit class PatternOps(buff: Buffer) {
         def +=(x: Pattern): Buffer = { visitPattern(x); buff }
         def ++=(x: List[Pattern]): Buffer = { visitList(x, visitPattern); buff }
@@ -458,9 +429,6 @@ trait Printers
 
     def showTree(tree: Tree)(implicit ctx: Context): String =
       (new Buffer).printTree(tree).result()
-
-    def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
-      (new Buffer).printCaseDef(caseDef).result()
 
     def showPattern(pattern: Pattern)(implicit ctx: Context): String =
       (new Buffer).printPattern(pattern).result()

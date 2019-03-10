@@ -42,7 +42,6 @@ object Macros {
     import reflect._
     new Printer {
       def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-      def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
       def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
       def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"

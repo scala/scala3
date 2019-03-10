@@ -52,9 +52,8 @@ package scala.tasty.reflect
  *           |
  *           +- TypeBoundsTree
  *           +- WildcardTypeTree
- *
- *  +- CaseDef
- *  +- TypeCaseDef
+ *           +- CaseDef
+ *           +- TypeCaseDef
  *
  *  +- Pattern --+- Value
  *               +- Bind
@@ -670,12 +669,10 @@ trait Kernel {
 
   def WildcardTypeTree_tpe(self: WildcardTypeTree)(implicit ctx: Context): TypeOrBounds
 
-  //
-  // CASES
-  //
-  
   /** Branch of a pattern match or catch clause */
-  type CaseDef <: AnyRef
+  type CaseDef <: Tree
+
+  def matchCaseDef(tree: Tree)(implicit ctx: Context): Option[CaseDef]
 
   def CaseDef_pattern(self: CaseDef)(implicit ctx: Context): Pattern
   def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term]
@@ -685,7 +682,9 @@ trait Kernel {
   def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef
 
   /** Branch of a type pattern match */
-  type TypeCaseDef <: AnyRef
+  type TypeCaseDef <: Tree
+
+  def matchTypeCaseDef(tree: Tree)(implicit ctx: Context): Option[TypeCaseDef]
 
   def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree
   def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree
