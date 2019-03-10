@@ -368,9 +368,9 @@ object Parsers {
     }
 
     private[this] var inEnum = false
-    private def withinEnum[T](isEnum: Boolean)(body: => T): T = {
+    private def withinEnum[T](body: => T): T = {
       val saved = inEnum
-      inEnum = isEnum
+      inEnum = true
       try body
       finally inEnum = saved
     }
@@ -1586,7 +1586,7 @@ object Parsers {
         case parent :: Nil if in.token != LBRACE =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
         case _ =>
-          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil, isEnum = false)))
+          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
       }
     }
 
@@ -2555,12 +2555,7 @@ object Parsers {
       val modName = ident()
       val clsName = modName.toTypeName
       val constr = classConstr()
-      val templ = templateOpt(constr, isEnum = true)
-      templ match {
-        case Template(_, _, _, List(EmptyTree)) =>
-          syntaxError("enum body should not be empty.", start)
-        case _ =>
-      }
+      val templ = template(constr, isEnum = true)
       finalizeDef(TypeDef(clsName, templ), addMod(mods, enumMod), start)
     }
 
@@ -2633,7 +2628,7 @@ object Parsers {
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
-          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil, isEnum = false)
+          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
           if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
         }
@@ -2696,26 +2691,28 @@ object Parsers {
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
       val (parents, derived) = inheritClauses()
       newLineOptWhenFollowedBy(LBRACE)
-      if (isEnum && in.token != LBRACE)
-        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
-      templateBodyOpt(constr, parents, derived, isEnum)
+      if (isEnum) {
+        val (self, stats) = withinEnum(templateBody())
+        Template(constr, parents, derived, self, stats)
+      }
+      else templateBodyOpt(constr, parents, derived)
     }
 
     /** TemplateOpt = [Template]
      */
-    def templateOpt(constr: DefDef, isEnum: Boolean = false): Template = {
+    def templateOpt(constr: DefDef): Template = {
       newLineOptWhenFollowedBy(LBRACE)
       if (in.token == EXTENDS || isIdent(nme.derives) || in.token == LBRACE)
-        template(constr, isEnum)
+        template(constr)
       else
         Template(constr, Nil, Nil, EmptyValDef, Nil)
     }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */
-    def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree], isEnum: Boolean): Template = {
+    def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template = {
       val (self, stats) =
-        if (in.token == LBRACE) withinEnum(isEnum)(templateBody()) else (EmptyValDef, Nil)
+        if (in.token == LBRACE) templateBody() else (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
     }
 
