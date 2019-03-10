@@ -27,12 +27,10 @@ object Test {
     type T
     type U = "abc"
 
-    fun3[T] // ERROR
-    fun3[String] // ERROR
-    fun3["abc"] // ERROR
-    fun3[U] // ERROR
+    fun3[T]
+    fun3[String]
+    fun3["abc"]
+    fun3[U]
   }
-  // FIXME all the lines marked as ERROR have the wrong position on the three of the argument.
-  // they all have as source file this file but the span of `'[T]` in `fun3`.
-  // see #6027
+
 }

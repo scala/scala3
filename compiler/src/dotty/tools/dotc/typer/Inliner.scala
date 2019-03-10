@@ -211,6 +211,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private val paramBinding = new mutable.HashMap[Name, Type]
 
+  /** A map from parameter names of the inlineable method to spans of the actual arguments */
   private val paramSpan = new mutable.HashMap[Name, Span]
 
   /** A map from references to (type and value) parameters of the inlineable method
@@ -273,6 +274,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
     case tp: PolyType =>
       (tp.paramNames, targs).zipped.foreach { (name, arg) =>
+        paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
       computeParamBindings(tp.resultType, Nil, argss)
@@ -446,7 +448,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case Some(t) if tree.isTerm && t.isSingleton =>
               singleton(t.dealias).withSpan(paramSpan(tree.name))
             case Some(t) if tree.isType =>
-              TypeTree(t).withSpan(tree.span)
+              TypeTree(t).withSpan(paramSpan(tree.name))
             case _ => tree
           }
         case tree => tree
