@@ -51,8 +51,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   // TREES
   //
 
-  type TermOrTypeTree = tpd.Tree
-
   type Tree = tpd.Tree
 
   def Tree_pos(self: Tree)(implicit ctx: Context): Position = self.sourcePos
@@ -135,14 +133,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   }
 
   def ClassDef_constructor(self: ClassDef)(implicit ctx: Context): DefDef = ClassDef_rhs(self).constr
-  def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[TermOrTypeTree] = ClassDef_rhs(self).parents
+  def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[Tree /* Term | TypeTree */] = ClassDef_rhs(self).parents
   def ClassDef_derived(self: ClassDef)(implicit ctx: Context): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
   def ClassDef_self(self: ClassDef)(implicit ctx: Context): Option[ValDef] = optional(ClassDef_rhs(self).self)
   def ClassDef_body(self: ClassDef)(implicit ctx: Context): List[Statement] = ClassDef_rhs(self).body
   def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassSymbol = self.symbol.asClass
   private def ClassDef_rhs(self: ClassDef) = self.rhs.asInstanceOf[tpd.Template]
 
-  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
+  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
     val Trees.TypeDef(_, originalImpl: tpd.Template) = original
     tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
   }
@@ -154,11 +152,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): TypeOrBoundsTree = self.rhs
+  def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = self.rhs
   def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeSymbol = self.symbol.asType
 
   def TypeDef_apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef = withDefaultPos(ctx => tpd.TypeDef(symbol)(ctx))
-  def TypeDef_copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef =
+  def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef =
     tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
 
   type DefDef = tpd.DefDef
@@ -199,12 +197,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Term = tpd.Tree
 
-  def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term] =
-    if (tree.isTerm) Some(tree) else None
-
-  // TODO move to Kernel and use isTerm directly with a cast
-  def matchTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term] =
-    if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
+  def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term] = tree match {
+    case x: tpd.SeqLiteral => Some(tree)
+    case _ if tree.isTerm => Some(tree)
+    case _ => None
+  }
 
   def Term_pos(self: Term)(implicit ctx: Context): Position = self.sourcePos
   def Term_tpe(self: Term)(implicit ctx: Context): Type = self.tpe
@@ -450,14 +447,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[TermOrTypeTree] = optional(self.call)
+  def Inlined_call(self: Inlined)(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = optional(self.call)
   def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition] = self.bindings
   def Inlined_body(self: Inlined)(implicit ctx: Context): Term = self.expansion
 
-  def Inlined_apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
+  def Inlined_apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     withDefaultPos(ctx => tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion)(ctx))
 
-  def Inlined_copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
+  def Inlined_copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
 
   type Lambda = tpd.Closure
@@ -597,11 +594,238 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While =
     tpd.cpy.WhileDo(original)(cond, body)
 
-  //
-  // CASES
-  //
+  type TypeTree = tpd.Tree
+
+  def matchTypeTree(x: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree] = x match {
+    case x: tpd.TypeBoundsTree => None
+    case _ => if (x.isType) Some(x) else None
+  }
+
+  def TypeTree_pos(self: TypeTree)(implicit ctx: Context): Position = self.sourcePos
+  def TypeTree_symbol(self: TypeTree)(implicit ctx: Context): Symbol = self.symbol
+  def TypeTree_tpe(self: TypeTree)(implicit ctx: Context): Type = self.tpe.stripTypeVar
+
+  type TypeTree_Inferred = tpd.TypeTree
+
+  def matchTypeTree_Inferred(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Inferred] = tpt match {
+    case tpt: tpd.TypeTree if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Inferred_apply(tpe: Type)(implicit ctx: Context): TypeTree_Inferred = withDefaultPos(ctx => tpd.TypeTree(tpe)(ctx))
+
+  type TypeTree_Ident = tpd.Ident
+
+  def matchTypeTree_Ident(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Ident] = tpt match {
+    case tpt: tpd.Ident if tpt.isType => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Ident_name(self: TypeTree_Ident)(implicit ctx: Context): String = self.name.toString
+
+  def TypeTree_Ident_copy(original: TypeTree_Ident)(name: String)(implicit ctx: Context): TypeTree_Ident =
+    tpd.cpy.Ident(original)(name.toTypeName)
+
+  type TypeTree_Select = tpd.Select
+
+  def matchTypeTree_Select(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Select] = tpt match {
+    case tpt: tpd.Select if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Select_qualifier(self: TypeTree_Select)(implicit ctx: Context): Term = self.qualifier
+  def TypeTree_Select_name(self: TypeTree_Select)(implicit ctx: Context): String = self.name.toString
+
+  def TypeTree_Select_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select =
+    withDefaultPos(ctx => tpd.Select(qualifier, name.toTypeName)(ctx))
+
+  def TypeTree_Select_copy(original: TypeTree_Select)(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select =
+    tpd.cpy.Select(original)(qualifier, name.toTypeName)
+
+
+  type TypeTree_Projection = tpd.Select
+
+  def matchTypeTree_Projection(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Projection] = tpt match {
+    case tpt: tpd.Select if tpt.isType && tpt.qualifier.isType => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Projection_qualifier(self: TypeTree_Projection)(implicit ctx: Context): TypeTree = self.qualifier
+  def TypeTree_Projection_name(self: TypeTree_Projection)(implicit ctx: Context): String = self.name.toString
+
+  def TypeTree_Projection_copy(original: TypeTree_Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): TypeTree_Projection =
+    tpd.cpy.Select(original)(qualifier, name.toTypeName)
+
+  type TypeTree_Singleton = tpd.SingletonTypeTree
+
+  def matchTypeTree_Singleton(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Singleton] = tpt match {
+    case tpt: tpd.SingletonTypeTree => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Singleton_ref(self: TypeTree_Singleton)(implicit ctx: Context): Term = self.ref
+
+  def TypeTree_Singleton_apply(ref: Term)(implicit ctx: Context): TypeTree_Singleton =
+    withDefaultPos(ctx => tpd.SingletonTypeTree(ref)(ctx))
+
+  def TypeTree_Singleton_copy(original: TypeTree_Singleton)(ref: Term)(implicit ctx: Context): TypeTree_Singleton =
+    tpd.cpy.SingletonTypeTree(original)(ref)
+
+  type TypeTree_Refined = tpd.RefinedTypeTree
+
+  def matchTypeTree_Refined(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Refined] = tpt match {
+    case tpt: tpd.RefinedTypeTree => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Refined_tpt(self: TypeTree_Refined)(implicit ctx: Context): TypeTree = self.tpt
+  def TypeTree_Refined_refinements(self: TypeTree_Refined)(implicit ctx: Context): List[Definition] = self.refinements
+
+  def TypeTree_Refined_copy(original: TypeTree_Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): TypeTree_Refined =
+    tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
+
+  type TypeTree_Applied = tpd.AppliedTypeTree
+
+  def matchTypeTree_Applied(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Applied] = tpt match {
+    case tpt: tpd.AppliedTypeTree => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Applied_tpt(self: TypeTree_Applied)(implicit ctx: Context): TypeTree = self.tpt
+  def TypeTree_Applied_args(self: TypeTree_Applied)(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = self.args
+
+  def TypeTree_Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): TypeTree_Applied =
+    withDefaultPos(ctx => tpd.AppliedTypeTree(tpt, args)(ctx))
+
+  def TypeTree_Applied_copy(original: TypeTree_Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(implicit ctx: Context): TypeTree_Applied =
+    tpd.cpy.AppliedTypeTree(original)(tpt, args)
+
+  type TypeTree_Annotated = tpd.Annotated
+
+  def matchTypeTree_Annotated(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Annotated] = tpt match {
+    case tpt: tpd.Annotated => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_Annotated_arg(self: TypeTree_Annotated)(implicit ctx: Context): TypeTree = self.arg
+  def TypeTree_Annotated_annotation(self: TypeTree_Annotated)(implicit ctx: Context): Term = self.annot
+
+  def TypeTree_Annotated_apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): TypeTree_Annotated =
+    withDefaultPos(ctx => tpd.Annotated(arg, annotation)(ctx))
+
+  def TypeTree_Annotated_copy(original: TypeTree_Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): TypeTree_Annotated =
+    tpd.cpy.Annotated(original)(arg, annotation)
+
+  type TypeTree_MatchType = tpd.MatchTypeTree
+
+  def matchTypeTree_MatchType(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_MatchType] = tpt match {
+    case tpt: tpd.MatchTypeTree => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_MatchType_bound(self: TypeTree_MatchType)(implicit ctx: Context): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
+  def TypeTree_MatchType_selector(self: TypeTree_MatchType)(implicit ctx: Context): TypeTree = self.selector
+  def TypeTree_MatchType_cases(self: TypeTree_MatchType)(implicit ctx: Context): List[CaseDef] = self.cases
+
+  def TypeTree_MatchType_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType =
+    withDefaultPos(ctx => tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)(ctx))
+
+  def TypeTree_MatchType_copy(original: TypeTree_MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType =
+    tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
+
+  type TypeTree_ByName = tpd.ByNameTypeTree
+
+  def matchTypeTree_ByName(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_ByName] = tpt match {
+    case tpt: tpd.ByNameTypeTree => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_ByName_result(self: TypeTree_ByName)(implicit ctx: Context): TypeTree = self.result
+
+  def TypeTree_ByName_apply(result: TypeTree)(implicit ctx: Context): TypeTree_ByName =
+    withDefaultPos(ctx => tpd.ByNameTypeTree(result)(ctx))
+
+  def TypeTree_ByName_copy(original: TypeTree_ByName)(result: TypeTree)(implicit ctx: Context): TypeTree_ByName =
+    tpd.cpy.ByNameTypeTree(original)(result)
+
+  type TypeTree_LambdaTypeTree = tpd.LambdaTypeTree
+
+  def matchTypeTree_LambdaTypeTree(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree] = tpt match {
+    case tpt: tpd.LambdaTypeTree => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_LambdaTypeTree_tparams(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): List[TypeDef] = self.tparams
+  def TypeTree_LambdaTypeTree_body(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = self.body
+
+  def TypeTree_LambdaTypeTree_apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeTree_LambdaTypeTree =
+    withDefaultPos(ctx => tpd.LambdaTypeTree(tparams, body)(ctx))
+
+  def TypeTree_LambdaTypeTree_copy(original: TypeTree_LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeTree_LambdaTypeTree =
+    tpd.cpy.LambdaTypeTree(original)(tparams, body)
+
+  type TypeTree_TypeBind = tpd.Bind
+
+  def matchTypeTree_TypeBind(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_TypeBind] = tpt match {
+    case tpt: tpd.Bind if tpt.name.isTypeName => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_TypeBind_name(self: TypeTree_TypeBind)(implicit ctx: Context): String = self.name.toString
+  def TypeTree_TypeBind_body(self: TypeTree_TypeBind)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = self.body
+
+  def TypeTree_TypeBind_copy(original: TypeTree_TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeTree_TypeBind =
+    tpd.cpy.Bind(original)(name.toTypeName, tpt)
+
+  type TypeTree_TypeBlock = tpd.Block
+
+  def matchTypeTree_TypeBlock(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_TypeBlock] = tpt match {
+    case tpt: tpd.Block => Some(tpt)
+    case _ => None
+  }
+
+  def TypeTree_TypeBlock_aliases(self: TypeTree_TypeBlock)(implicit ctx: Context): List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
+  def TypeTree_TypeBlock_tpt(self: TypeTree_TypeBlock)(implicit ctx: Context): TypeTree = self.expr
+
+  def TypeTree_TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeTree_TypeBlock =
+    withDefaultPos(ctx => tpd.Block(aliases, tpt)(ctx))
+
+  def TypeTree_TypeBlock_copy(original: TypeTree_TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeTree_TypeBlock =
+    tpd.cpy.Block(original)(aliases, tpt)
+
+  type TypeBoundsTree = tpd.TypeBoundsTree
+
+  def matchTypeBoundsTree(x: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeBoundsTree] = x match {
+    case x: tpd.TypeBoundsTree => Some(x)
+    case x @ Trees.TypeTree() =>
+      // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
+      x.tpe match {
+        case tpe: Types.TypeBounds =>
+          Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withSpan(x.span), tpd.TypeTree(tpe.hi).withSpan(x.span)))
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TypeBoundsTree_tpe(self: TypeBoundsTree)(implicit ctx: Context): TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
+  def TypeBoundsTree_low(self: TypeBoundsTree)(implicit ctx: Context): TypeTree = self.lo
+  def TypeBoundsTree_hi(self: TypeBoundsTree)(implicit ctx: Context): TypeTree = self.hi
+
+  type WildcardTypeTree = tpd.Ident
+
+  def matchWildcardTypeTree(x: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[WildcardTypeTree] = x match {
+    case x @ Trees.Ident(nme.WILDCARD) => Some(x)
+    case _ => None
+  }
+
+  def WildcardTypeTree_tpe(self: WildcardTypeTree)(implicit ctx: Context): TypeOrBounds = self.tpe.stripTypeVar
 
   type CaseDef = tpd.CaseDef
+
+  def matchCaseDef(tree: Tree)(implicit ctx: Context): Option[CaseDef] = tree match {
+    case tree: tpd.CaseDef if tree.body.isTerm => Some(tree)
+    case _ => None
+  }
 
   def CaseDef_pattern(self: CaseDef)(implicit ctx: Context): Pattern = self.pat
   def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term] = optional(self.guard)
@@ -614,6 +838,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
   type TypeCaseDef = tpd.CaseDef
+
+  def matchTypeCaseDef(tree: Tree)(implicit ctx: Context): Option[TypeCaseDef] = tree match {
+    case tree: tpd.CaseDef if tree.body.isType => Some(tree)
+    case _ => None
+  }
 
   def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.pat
   def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree = self.body
@@ -720,244 +949,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
     tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
-
-  //
-  // TYPE TREES
-  //
-
-  type TypeOrBoundsTree = tpd.Tree
-
-  def TypeOrBoundsTree_tpe(self: TypeOrBoundsTree)(implicit ctx: Context): Type = self.tpe.stripTypeVar
-
-  type TypeTree = tpd.Tree
-
-  def matchTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] = x match {
-    case x: tpd.TypeBoundsTree => None
-    case _ => if (x.isType) Some(x) else None
-  }
-
-  // TODO move to Kernel and use isTypeTree directly with a cast
-  def matchTypeTreeNotTerm(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[TypeTree] = termOrTypeTree match {
-    case _: tpd.TypeBoundsTree => None
-    case _ => if (termOrTypeTree.isType) Some(termOrTypeTree) else None
-  }
-
-  def TypeTree_pos(self: TypeTree)(implicit ctx: Context): Position = self.sourcePos
-  def TypeTree_symbol(self: TypeTree)(implicit ctx: Context): Symbol = self.symbol
-  def TypeTree_tpe(self: TypeTree)(implicit ctx: Context): Type = self.tpe.stripTypeVar
-
-  type TypeTree_Inferred = tpd.TypeTree
-
-  def matchTypeTree_Inferred(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Inferred] = tpt match {
-    case tpt: tpd.TypeTree if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Inferred_apply(tpe: Type)(implicit ctx: Context): TypeTree_Inferred = withDefaultPos(ctx => tpd.TypeTree(tpe)(ctx))
-
-  type TypeTree_Ident = tpd.Ident
-
-  def matchTypeTree_Ident(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Ident] = tpt match {
-    case tpt: tpd.Ident if tpt.isType => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Ident_name(self: TypeTree_Ident)(implicit ctx: Context): String = self.name.toString
-
-  def TypeTree_Ident_copy(original: TypeTree_Ident)(name: String)(implicit ctx: Context): TypeTree_Ident =
-    tpd.cpy.Ident(original)(name.toTypeName)
-
-  type TypeTree_Select = tpd.Select
-
-  def matchTypeTree_Select(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Select] = tpt match {
-    case tpt: tpd.Select if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Select_qualifier(self: TypeTree_Select)(implicit ctx: Context): Term = self.qualifier
-  def TypeTree_Select_name(self: TypeTree_Select)(implicit ctx: Context): String = self.name.toString
-
-  def TypeTree_Select_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select =
-    withDefaultPos(ctx => tpd.Select(qualifier, name.toTypeName)(ctx))
-
-  def TypeTree_Select_copy(original: TypeTree_Select)(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select =
-    tpd.cpy.Select(original)(qualifier, name.toTypeName)
-
-
-  type TypeTree_Projection = tpd.Select
-
-  def matchTypeTree_Projection(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Projection] = tpt match {
-    case tpt: tpd.Select if tpt.isType && tpt.qualifier.isType => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Projection_qualifier(self: TypeTree_Projection)(implicit ctx: Context): TypeTree = self.qualifier
-  def TypeTree_Projection_name(self: TypeTree_Projection)(implicit ctx: Context): String = self.name.toString
-
-  def TypeTree_Projection_copy(original: TypeTree_Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): TypeTree_Projection =
-    tpd.cpy.Select(original)(qualifier, name.toTypeName)
-
-  type TypeTree_Singleton = tpd.SingletonTypeTree
-
-  def matchTypeTree_Singleton(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Singleton] = tpt match {
-    case tpt: tpd.SingletonTypeTree => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Singleton_ref(self: TypeTree_Singleton)(implicit ctx: Context): Term = self.ref
-
-  def TypeTree_Singleton_apply(ref: Term)(implicit ctx: Context): TypeTree_Singleton =
-    withDefaultPos(ctx => tpd.SingletonTypeTree(ref)(ctx))
-
-  def TypeTree_Singleton_copy(original: TypeTree_Singleton)(ref: Term)(implicit ctx: Context): TypeTree_Singleton =
-    tpd.cpy.SingletonTypeTree(original)(ref)
-
-  type TypeTree_Refined = tpd.RefinedTypeTree
-
-  def matchTypeTree_Refined(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Refined] = tpt match {
-    case tpt: tpd.RefinedTypeTree => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Refined_tpt(self: TypeTree_Refined)(implicit ctx: Context): TypeTree = self.tpt
-  def TypeTree_Refined_refinements(self: TypeTree_Refined)(implicit ctx: Context): List[Definition] = self.refinements
-
-  def TypeTree_Refined_copy(original: TypeTree_Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): TypeTree_Refined =
-    tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
-
-  type TypeTree_Applied = tpd.AppliedTypeTree
-
-  def matchTypeTree_Applied(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Applied] = tpt match {
-    case tpt: tpd.AppliedTypeTree => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Applied_tpt(self: TypeTree_Applied)(implicit ctx: Context): TypeTree = self.tpt
-  def TypeTree_Applied_args(self: TypeTree_Applied)(implicit ctx: Context): List[TypeOrBoundsTree] = self.args
-
-  def TypeTree_Applied_apply(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): TypeTree_Applied =
-    withDefaultPos(ctx => tpd.AppliedTypeTree(tpt, args)(ctx))
-
-  def TypeTree_Applied_copy(original: TypeTree_Applied)(tpt: TypeTree, args: List[TypeOrBoundsTree])(implicit ctx: Context): TypeTree_Applied =
-    tpd.cpy.AppliedTypeTree(original)(tpt, args)
-
-  type TypeTree_Annotated = tpd.Annotated
-
-  def matchTypeTree_Annotated(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_Annotated] = tpt match {
-    case tpt: tpd.Annotated => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_Annotated_arg(self: TypeTree_Annotated)(implicit ctx: Context): TypeTree = self.arg
-  def TypeTree_Annotated_annotation(self: TypeTree_Annotated)(implicit ctx: Context): Term = self.annot
-
-  def TypeTree_Annotated_apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): TypeTree_Annotated =
-    withDefaultPos(ctx => tpd.Annotated(arg, annotation)(ctx))
-
-  def TypeTree_Annotated_copy(original: TypeTree_Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): TypeTree_Annotated =
-    tpd.cpy.Annotated(original)(arg, annotation)
-
-  type TypeTree_MatchType = tpd.MatchTypeTree
-
-  def matchTypeTree_MatchType(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_MatchType] = tpt match {
-    case tpt: tpd.MatchTypeTree => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_MatchType_bound(self: TypeTree_MatchType)(implicit ctx: Context): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
-  def TypeTree_MatchType_selector(self: TypeTree_MatchType)(implicit ctx: Context): TypeTree = self.selector
-  def TypeTree_MatchType_cases(self: TypeTree_MatchType)(implicit ctx: Context): List[CaseDef] = self.cases
-
-  def TypeTree_MatchType_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType =
-    withDefaultPos(ctx => tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)(ctx))
-
-  def TypeTree_MatchType_copy(original: TypeTree_MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType =
-    tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
-
-  type TypeTree_ByName = tpd.ByNameTypeTree
-
-  def matchTypeTree_ByName(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_ByName] = tpt match {
-    case tpt: tpd.ByNameTypeTree => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_ByName_result(self: TypeTree_ByName)(implicit ctx: Context): TypeTree = self.result
-
-  def TypeTree_ByName_apply(result: TypeTree)(implicit ctx: Context): TypeTree_ByName =
-    withDefaultPos(ctx => tpd.ByNameTypeTree(result)(ctx))
-
-  def TypeTree_ByName_copy(original: TypeTree_ByName)(result: TypeTree)(implicit ctx: Context): TypeTree_ByName =
-    tpd.cpy.ByNameTypeTree(original)(result)
-
-  type TypeTree_LambdaTypeTree = tpd.LambdaTypeTree
-
-  def matchTypeTree_LambdaTypeTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_LambdaTypeTree] = tpt match {
-    case tpt: tpd.LambdaTypeTree => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_LambdaTypeTree_tparams(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): List[TypeDef] = self.tparams
-  def TypeTree_LambdaTypeTree_body(self: TypeTree_LambdaTypeTree)(implicit ctx: Context): TypeOrBoundsTree = self.body
-
-  def TypeTree_LambdaTypeTree_apply(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): TypeTree_LambdaTypeTree =
-    withDefaultPos(ctx => tpd.LambdaTypeTree(tparams, body)(ctx))
-
-  def TypeTree_LambdaTypeTree_copy(original: TypeTree_LambdaTypeTree)(tparams: List[TypeDef], body: TypeOrBoundsTree)(implicit ctx: Context): TypeTree_LambdaTypeTree =
-    tpd.cpy.LambdaTypeTree(original)(tparams, body)
-
-  type TypeTree_TypeBind = tpd.Bind
-
-  def matchTypeTree_TypeBind(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBind] = tpt match {
-    case tpt: tpd.Bind if tpt.name.isTypeName => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_TypeBind_name(self: TypeTree_TypeBind)(implicit ctx: Context): String = self.name.toString
-  def TypeTree_TypeBind_body(self: TypeTree_TypeBind)(implicit ctx: Context): TypeOrBoundsTree = self.body
-
-  def TypeTree_TypeBind_copy(original: TypeTree_TypeBind)(name: String, tpt: TypeOrBoundsTree)(implicit ctx: Context): TypeTree_TypeBind =
-    tpd.cpy.Bind(original)(name.toTypeName, tpt)
-
-  type TypeTree_TypeBlock = tpd.Block
-
-  def matchTypeTree_TypeBlock(tpt: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree_TypeBlock] = tpt match {
-    case tpt: tpd.Block => Some(tpt)
-    case _ => None
-  }
-
-  def TypeTree_TypeBlock_aliases(self: TypeTree_TypeBlock)(implicit ctx: Context): List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
-  def TypeTree_TypeBlock_tpt(self: TypeTree_TypeBlock)(implicit ctx: Context): TypeTree = self.expr
-
-  def TypeTree_TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeTree_TypeBlock =
-    withDefaultPos(ctx => tpd.Block(aliases, tpt)(ctx))
-
-  def TypeTree_TypeBlock_copy(original: TypeTree_TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeTree_TypeBlock =
-    tpd.cpy.Block(original)(aliases, tpt)
-
-  type TypeBoundsTree = tpd.TypeBoundsTree
-
-  def matchTypeBoundsTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] = x match {
-    case x: tpd.TypeBoundsTree => Some(x)
-    case x @ Trees.TypeTree() =>
-      // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
-      x.tpe match {
-        case tpe: Types.TypeBounds =>
-          Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withSpan(x.span), tpd.TypeTree(tpe.hi).withSpan(x.span)))
-        case _ => None
-      }
-    case _ => None
-  }
-
-  def TypeBoundsTree_tpe(self: TypeBoundsTree)(implicit ctx: Context): TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
-  def TypeBoundsTree_low(self: TypeBoundsTree)(implicit ctx: Context): TypeTree = self.lo
-  def TypeBoundsTree_hi(self: TypeBoundsTree)(implicit ctx: Context): TypeTree = self.hi
-
-  type WildcardTypeTree = tpd.Ident
-
-  def matchWildcardTypeTree(x: TypeOrBoundsTree)(implicit ctx: Context): Option[WildcardTypeTree] = x match {
-    case x @ Trees.Ident(nme.WILDCARD) => Some(x)
-    case _ => None
-  }
 
   //
   // TYPES
