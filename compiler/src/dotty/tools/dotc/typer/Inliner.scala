@@ -211,6 +211,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private val paramBinding = new mutable.HashMap[Name, Type]
 
+  private val paramSpan = new mutable.HashMap[Name, Span]
+
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
@@ -277,6 +279,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     case tp: MethodType =>
       assert(argss.nonEmpty, i"missing bindings: $tp in $call")
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
+        paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.dealias match {
           case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
           case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
@@ -441,8 +444,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              // FIXME wrong span, this is the span inside the inline method
-              singleton(t.dealias).withSpan(tree.span)
+              singleton(t.dealias).withSpan(paramSpan(tree.name))
             case Some(t) if tree.isType =>
               TypeTree(t).withSpan(tree.span)
             case _ => tree
