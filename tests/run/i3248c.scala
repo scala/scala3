@@ -1,11 +1,8 @@
 object Test {
-  class Foo(val name: String, val children: Int *)
-  object Foo {
-    def unapplySeq(f: Foo) = Some((f.name, f.children))
-  }
+  case class Foo(name: String, children: Int *)
 
   def foo(f: Foo) = f match {
-    case Foo(name, ns : _*) =>
+    case Foo(name, ns: _*) =>
       assert(name == "hello")
       assert(ns(0) == 3)
       assert(ns(1) == 5)

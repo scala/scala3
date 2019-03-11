@@ -7,9 +7,79 @@ Dotty implementation of pattern matching was greatly simplified compared to scal
 
 Dotty supports a superset of scalac's [extractors](https://www.scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#extractor-patterns).
 
-## Boolean Pattern
+## Extractors
 
-- Extractor defines `def unapply(x: T): Boolean`
+Extractors are objects that expose a method `unapply` or `unapplySeq`:
+
+```Scala
+def unapply[A](x: T)(implicit x: B): U
+def unapplySeq[A](x: T)(implicit x: B): U
+```
+
+Extractors expose the method `unapply` are called fixed-arity extractors, which
+work with patterns of fixed arity. Extractors expose the method `unapplySeq` are
+called variadic extractors, which enables variadic patterns.
+
+### Fixed-Arity Extractors
+
+Fixed-arity extractors expose the following signature:
+
+```Scala
+def unapply[A](x: T)(implicit x: B): U
+```
+
+The type `U` conforms to one of the following matches:
+
+- Boolean match
+- Product match
+
+Or `U` conforms to the type `R`:
+
+```Scala
+type R = {
+  def isEmpty: Boolean
+  def get: S
+}
+```
+
+and `S` conforms to one of the following matches:
+
+- single match
+- name-based match
+
+The former form of `unapply` has higher precedence, and _single match_ has higher
+precedence over _name-based match_.
+
+### Variadic Extractors
+
+Variadic extractors expose the following signature:
+
+```Scala
+def unapplySeq[A](x: T)(implicit x: B): U
+```
+
+The type `U` conforms to one of the following matches:
+
+- sequence match
+- product-sequence match
+
+Or `U` conforms to the type `R`:
+
+```Scala
+type R = {
+  def isEmpty: Boolean
+  def get: S
+}
+```
+
+and `S` conforms to one of the two matches above.
+
+The former form of `unapplySeq` has higher priority, and _sequence match_ has higher
+precedence over _product-sequence match_.
+
+## Boolean Match
+
+- `U =:= Boolean`
 - Pattern-matching on exactly `0` patterns
 
 For example:
@@ -28,10 +98,8 @@ object Even {
 // even has an even number of characters
 ```
 
+## Product Match
 
-## Product Pattern
-
-- Extractor defines `def unapply(x: T): U`
 - `U <: Product`
 - `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
@@ -62,12 +130,53 @@ object FirstChars {
 // First: H; Second: i
 ```
 
+## Single Match
 
-## Name-based Seq Pattern
+- If there is exactly `1` pattern, pattern-matching on `1` pattern with type `U`
 
-- Extractor defines `def unapplySeq(x: T): U`
-- `U` has (parameterless `def` or `val`) members `isEmpty: Boolean` and `get: S`
-- `S` conforms to `X`, `T2` and `T3` conform to `T1`
+<!-- To be kept in sync with tests/new/patmat-spec.scala -->
+
+```scala
+class Nat(val x: Int) {
+  def get: Int = x
+  def isEmpty = x < 0
+}
+
+object Nat {
+  def unapply(x: Int): Nat = new Nat(x)
+}
+
+5 match {
+  case Nat(n) => println(s"$n is a natural number")
+  case _      => ()
+}
+// 5 is a natural number
+```
+
+## Name-based Match
+
+- `N > 1` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1 ... _N: PN` members in `U`
+- Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
+
+```Scala
+object ProdEmpty {
+  def _1: Int = ???
+  def _2: String = ???
+  def isEmpty = true
+  def unapply(s: String): this.type = this
+  def get = this
+}
+
+"" match {
+  case ProdEmpty(_, _) => ???
+  case _ => ()
+}
+```
+
+
+## Sequence Match
+
+- `U <: X`, `T2` and `T3` conform to `T1`
 
 ```Scala
 type X = {
@@ -97,32 +206,25 @@ object CharList {
 // e,x,a,m
 ```
 
+## Product-Sequence Match
 
-## Name-based Pattern
+- `U <: Product`
+- `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
+- `PN` conforms to the signature `X` defined in Seq Pattern
+- Pattern-matching on exactly `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
+  the type of the remaining patterns are determined as in Seq Pattern.
 
-- Extractor defines `def unapply(x: T): U`
-- `U` has (parameterless `def` or `val`) members `isEmpty: Boolean` and `get: S`
-- If there is exactly `1` pattern, pattern-matching on `1` pattern with type `S`
-- Otherwise `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
-- Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
-
-<!-- To be kept in sync with tests/new/patmat-spec.scala -->
-
-```scala
-class Nat(val x: Int) {
-  def get: Int = x
-  def isEmpty = x < 0
+```Scala
+class Foo(val name: String, val children: Int *)
+object Foo {
+  def unapplySeq(f: Foo): Option[(String, Seq[Int])] = Some((f.name, f.children))
 }
 
-object Nat {
-  def unapply(x: Int): Nat = new Nat(x)
+def foo(f: Foo) = f match {
+  case Foo(name, ns : _*) =>
+  case Foo(name, x, y, ns : _*) =>
 }
-
-5 match {
-  case Nat(n) => println(s"$n is a natural number")
-  case _      => ()
-}
-// 5 is a natural number
 ```
 
-In case of ambiguities, *Product Pattern* is preferred over *Name Based Pattern*. This document reflects the state of pattern matching as currently implemented in Dotty. There are plans for further simplification, in particular to factor out *Product Pattern* and *Name Based Pattern* into a single type of extractor.
+There are plans for further simplification, in particular to factor out *product
+match* and *name-based match* into a single type of extractor.

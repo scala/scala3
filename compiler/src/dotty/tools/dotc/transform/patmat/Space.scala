@@ -20,6 +20,7 @@ import ProtoTypes._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 import config.Printers.{exhaustivity => debug}
+import util.SourcePosition
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -336,8 +337,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       if (fun.symbol.name == nme.unapplySeq)
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
-        else
-          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+        else {
+          val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
+          if (elemTp.exists)
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+          else
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), irrefutable(fun))
+        }
       else
         Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
@@ -350,6 +356,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case _ =>
       debug.println(s"unknown pattern: $pat")
       Empty
+  }
+
+  private def unapplySeqInfo(resTp: Type, pos: SourcePosition)(implicit ctx: Context): (Int, Type, Type) = {
+    var resultTp = resTp
+    var elemTp = unapplySeqTypeElemTp(resultTp)
+    var arity = productArity(resultTp, pos)
+    if (!elemTp.exists && arity <= 0) {
+      resultTp = resTp.select(nme.get).finalResultType
+      elemTp = unapplySeqTypeElemTp(resultTp.widen)
+      arity = productSelectorTypes(resultTp, pos).size
+    }
+    (arity, elemTp, resultTp)
   }
 
   /* Erase pattern bound types with WildcardType */
@@ -422,17 +440,26 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
-        if (isProductMatch(mt.finalResultType, argLen) && !isUnapplySeq) {
-          productSelectors(mt.finalResultType).take(argLen)
-            .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
+
+        if (isUnapplySeq) {
+          val (arity, elemTp, resultTp) = unapplySeqInfo(mt.finalResultType, unappSym.sourcePos)
+          if (elemTp.exists) scalaListType.appliedTo(elemTp) :: Nil
+          else {
+            val sels = productSeqSelectors(resultTp, arity, unappSym.sourcePos)
+            sels.init :+ scalaListType.appliedTo(sels.last)
+          }
         }
         else {
-          val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
-          if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
-          else if (argLen == 0) Nil
-          else if (isProductMatch(resTp, argLen))
-            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
-          else resTp :: Nil
+          val arity = productArity(mt.finalResultType, unappSym.sourcePos)
+          if (arity > 0)
+            productSelectors(mt.finalResultType)
+              .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
+          else {
+            val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
+            val arity = productArity(resTp, unappSym.sourcePos)
+            if (argLen == 1) resTp :: Nil
+            else productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
+          }
         }
       }
 
