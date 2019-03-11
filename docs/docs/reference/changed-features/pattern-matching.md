@@ -220,3 +220,6 @@ def foo(f: Foo) = f match {
   case Foo(name, x, y, ns : _*) =>
 }
 ```
+
+There are plans for further simplification, in particular to factor out *Product
+Pattern* and *Name Based Pattern* into a single type of extractor.

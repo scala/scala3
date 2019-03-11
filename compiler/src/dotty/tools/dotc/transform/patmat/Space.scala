@@ -20,6 +20,7 @@ import ProtoTypes._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 import config.Printers.{exhaustivity => debug}
+import util.SourcePosition
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -339,15 +340,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
         else {
-          val resultTp = fun.tpe.widen.finalResultType
-          var elemTp = unapplySeqTypeElemTp(resultTp)
-          var arity = productArity(resultTp, fun.sourcePos)
-          if (!elemTp.exists && arity <= 0) {
-            val resultTp = fun.tpe.widen.finalResultType.select(nme.get).finalResultType
-            elemTp = unapplySeqTypeElemTp(resultTp.widen)
-            arity = productSelectorTypes(resultTp, fun.sourcePos).size
-          }
-
+          val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
           if (elemTp.exists)
             Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
           else
@@ -365,6 +358,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case _ =>
       debug.println(s"unknown pattern: $pat")
       Empty
+  }
+
+  private def unapplySeqInfo(resTp: Type, pos: SourcePosition)(implicit ctx: Context): (Int, Type, Type) = {
+    var resultTp = resTp
+    var elemTp = unapplySeqTypeElemTp(resultTp)
+    var arity = productArity(resultTp, pos)
+    if (!elemTp.exists && arity <= 0) {
+      resultTp = resTp.select(nme.get).finalResultType
+      elemTp = unapplySeqTypeElemTp(resultTp.widen)
+      arity = productSelectorTypes(resultTp, pos).size
+    }
+    (arity, elemTp, resultTp)
   }
 
   /* Erase pattern bound types with WildcardType */
@@ -439,15 +444,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
         if (isUnapplySeq) {
-          var resultTp = mt.finalResultType
-          var elemTp = unapplySeqTypeElemTp(resultTp)
-          var arity = productArity(resultTp, unappSym.sourcePos)
-          if (!elemTp.exists && arity <= 0) {
-            resultTp = mt.finalResultType.select(nme.get).finalResultType
-            elemTp = unapplySeqTypeElemTp(resultTp.widen)
-            arity = productSelectorTypes(resultTp, unappSym.sourcePos).size
-          }
-
+          val (arity, elemTp, resultTp) = unapplySeqInfo(mt.finalResultType, unappSym.sourcePos)
           if (elemTp.exists) scalaListType.appliedTo(elemTp) :: Nil
           else {
             val sels = productSeqSelectors(resultTp, arity, unappSym.sourcePos)
