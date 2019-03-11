@@ -830,10 +830,11 @@ class Namer { typer: Typer =>
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
           else owner.is(CaseClass)
         }
-      val isClashingSynthetic =
+      val isRetractable =
         denot.is(Synthetic) &&
-        desugar.isRetractableCaseClassMethodName(denot.name) &&
-        isCaseClass(denot.owner) &&
+        desugar.isRetractableCaseClassMethodName(denot.name) && isCaseClass(denot.owner)
+      val isClashingSynthetic =
+        isRetractable &&
         denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
       if (isClashingSynthetic) {

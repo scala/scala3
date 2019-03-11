@@ -48,6 +48,9 @@ object desugar {
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
     isRetractableCaseClassMethodName(name) || name.isSelectorName
 
+  def hasSynthesizedApply(mods: Modifiers, name: Name)(implicit ctx: Context): Boolean =
+    !(mods.is(AbstractOrTrait) || mods.is(Module) || name.isAnonymousClassName)
+
 // ----- DerivedTypeTrees -----------------------------------
 
   class SetterParamTree(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
@@ -558,7 +561,43 @@ object desugar {
       mdefs
     }
 
-    val companionMembers = defaultGetters ::: enumCases
+    // true if access to the apply method has to be restricted
+    // i.e. if the case class constructor is either private or qualified private
+    def restrictedAccess = {
+      val mods = constr1.mods
+      mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
+    }
+
+    // The return type of the `apply` method, and an (empty or singleton) list
+    // of widening coercions
+    lazy val (applyResultTpt, widenDefs) =
+      if (!isEnumCase)
+        (TypeTree(), Nil)
+      else if (parents.isEmpty || enumClass.typeParams.isEmpty)
+        (enumClassTypeRef, Nil)
+      else
+        enumApplyResult(cdef, parents, derivedEnumParams, appliedRef(enumClassRef, derivedEnumParams))
+
+    val applyMeths =
+      if (isCaseClass) {
+        def widenedCreatorExpr =
+          (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
+        if (mods is Abstract) Nil
+        else {
+          val copiedFlagsMask = DefaultParameterized | (copiedAccessFlags & Private)
+          val appMods = {
+            val mods = Modifiers(Synthetic | constr1.mods.flags & copiedFlagsMask)
+            if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
+            else mods
+          }
+          val app = DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
+            .withMods(appMods)
+          app :: widenDefs
+        }
+      }
+      else Nil
+
+    val companionMembers = applyMeths ::: defaultGetters ::: enumCases
 
     // The companion object definitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
@@ -571,23 +610,6 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-        // The return type of the `apply` method, and an (empty or singleton) list
-        // of widening coercions
-        val (applyResultTpt, widenDefs) =
-          if (!isEnumCase)
-            (TypeTree(), Nil)
-          else if (parents.isEmpty || enumClass.typeParams.isEmpty)
-            (enumClassTypeRef, Nil)
-          else
-            enumApplyResult(cdef, parents, derivedEnumParams, appliedRef(enumClassRef, derivedEnumParams))
-
-        // true if access to the apply method has to be restricted
-        // i.e. if the case class constructor is either private or qualified private
-        def restrictedAccess = {
-          val mods = constr1.mods
-          mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
-        }
-
         val companionParent =
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
@@ -597,28 +619,13 @@ object desugar {
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
             (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
               (vparams, restpe) => Function(vparams map (_.tpt), restpe))
-        def widenedCreatorExpr =
-          (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
-        val applyMeths =
-          if (mods is Abstract) Nil
-          else {
-            val copiedFlagsMask = DefaultParameterized | (copiedAccessFlags & Private)
-            val appMods = {
-              val mods = Modifiers(Synthetic | constr1.mods.flags & copiedFlagsMask)
-              if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
-              else mods
-            }
-            val app = DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
-              .withMods(appMods)
-            app :: widenDefs
-          }
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
           DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
             .withMods(synthetic)
         }
-        companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
+        companionDefs(companionParent, unapplyMeth :: companionMembers)
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
