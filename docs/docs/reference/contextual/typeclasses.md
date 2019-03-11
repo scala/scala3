@@ -27,7 +27,7 @@ implied for Monoid[String] {
 
 implied for Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
-  def unit: String = 0
+  def unit: Int = 0
 }
 
 def sum[T: Monoid](xs: List[T]): T =
