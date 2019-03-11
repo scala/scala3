@@ -36,6 +36,16 @@ object TypeErasure {
   private def erasureDependsOnArgs(sym: Symbol)(implicit ctx: Context) =
     sym == defn.ArrayClass || sym == defn.PairClass
 
+  def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
+    if (cls.owner == defn.ScalaPackageClass) {
+      if (defn.specialErasure.contains(cls))
+        return defn.specialErasure(cls)
+      if (cls == defn.UnitClass)
+        return defn.BoxedUnitClass
+    }
+    cls
+  }
+
   /** A predicate that tests whether a type is a legal erased type. Only asInstanceOf and
    *  isInstanceOf may have types that do not satisfy the predicate.
    *  ErasedValueType is considered an erased type because it is valid after Erasure (it is
@@ -528,16 +538,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else this(tp)
     case _ =>
       this(tp)
-  }
-
-  private def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
-    if (cls.owner == defn.ScalaPackageClass) {
-      if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls)
-      if (cls == defn.UnitClass)
-        return defn.BoxedUnitClass
-    }
-    cls
   }
 
   /** The name of the type as it is used in `Signature`s.
