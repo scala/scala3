@@ -69,6 +69,8 @@ object NameOps {
     def isSetterName: Boolean = name endsWith str.SETTER_SUFFIX
     def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
+    def isAnonymousClassName: Boolean = name.startsWith(str.ANON_CLASS)
+    def isAnonymousFunctionName: Boolean = name.startsWith(str.ANON_FUN)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = testSimple { n =>

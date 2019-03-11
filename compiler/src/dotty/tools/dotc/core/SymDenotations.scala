@@ -484,13 +484,13 @@ object SymDenotations {
 
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(implicit ctx: Context): Boolean =
-      isClass && (initial.name startsWith str.ANON_CLASS)
+      isClass && initial.name.isAnonymousClassName
 
     final def isAnonymousFunction(implicit ctx: Context): Boolean =
-      this.symbol.is(Method) && (initial.name startsWith str.ANON_FUN)
+      this.symbol.is(Method) && initial.name.isAnonymousFunctionName
 
     final def isAnonymousModuleVal(implicit ctx: Context): Boolean =
-      this.symbol.is(ModuleVal) && (initial.name startsWith str.ANON_CLASS)
+      this.symbol.is(ModuleVal) && initial.name.isAnonymousClassName
 
     /** Is this a synthetic method that represents conversions between representations of a value class
       *  These methods are generated in ExtensionMethods
