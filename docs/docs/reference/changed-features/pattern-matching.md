@@ -16,7 +16,7 @@ def unapply[A](x: T)(implicit x: B): U
 def unapplySeq[A](x: T)(implicit x: B): U
 ```
 
-Extractors expose the method `unapply` are called fix-arity extractors, which
+Extractors expose the method `unapply` are called fixed-arity extractors, which
 work with patterns of fixed arity. Extractors expose the method `unapplySeq` are
 called variadic extractors, which enables variadic patterns.
 
@@ -44,9 +44,11 @@ type R = {
 
 and `S` conforms to one of the following matches:
 
-- Single match
-- Name-based match
+- single match
+- name-based match
 
+The former form of `unapply` has higher precedence, and _single match_ has higher
+precedence over _name-based match_.
 
 ### Variadic Extractors
 
@@ -58,8 +60,8 @@ def unapplySeq[A](x: T)(implicit x: B): U
 
 The type `U` conforms to one of the following matches:
 
-- Sequence match
-- Product-sequence match
+- sequence match
+- product-sequence match
 
 Or `U` conforms to the type `R`:
 
@@ -71,6 +73,9 @@ type R = {
 ```
 
 and `S` conforms to one of the two matches above.
+
+The former form of `unapplySeq` has higher priority, and _sequence match_ has higher
+precedence over _product-sequence match_.
 
 ## Boolean Match
 
@@ -169,7 +174,7 @@ object ProdEmpty {
 ```
 
 
-## Seq Match
+## Sequence Match
 
 - `U <: X`, `T2` and `T3` conform to `T1`
 
@@ -201,7 +206,7 @@ object CharList {
 // e,x,a,m
 ```
 
-## Product-Seq Match
+## Product-Sequence Match
 
 - `U <: Product`
 - `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
@@ -221,5 +226,5 @@ def foo(f: Foo) = f match {
 }
 ```
 
-There are plans for further simplification, in particular to factor out *Product
-Pattern* and *Name Based Pattern* into a single type of extractor.
+There are plans for further simplification, in particular to factor out *product
+match* and *name-based match* into a single type of extractor.
