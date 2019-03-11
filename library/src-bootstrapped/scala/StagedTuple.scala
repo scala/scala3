@@ -122,11 +122,11 @@ object StagedTuple {
   }
 
   def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int]): Expr[Elem[Tup, N]] = {
-    if (!specialize) '{dynamicApply($tup, $n)}.asInstanceOf // TODO: check that variance is OK here
+    if (!specialize) '{dynamicApply($tup, $n)}
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
         case Some(n) => quoted.QuoteError("index out of bounds: " + n)
-        case None => '{dynamicApply($tup, $n)}.asInstanceOf // TODO: check that variance is OK here
+        case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
         case Some(1) =>

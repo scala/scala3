@@ -374,7 +374,7 @@ sealed trait NonEmptyTuple extends Tuple {
   inline def fallbackApply(n: Int) =
     inline constValueOpt[n.type] match {
       case Some(n: Int) => error("index out of bounds: ", n)
-      case None => dynamicApply[this.type](this, n)
+      case None => dynamicApply[this.type, n.type](this, n)
     }
 
   inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
@@ -462,8 +462,8 @@ object NonEmptyTuple {
     res.asInstanceOf[Result]
   }
 
-  def dynamicApply[This <: NonEmptyTuple] (self: This, n: Int): Elem[This, n.type] = {
-    type Result = Elem[This, n.type]
+  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: N): Elem[This, N] = {
+    type Result = Elem[This, N]
     val res = (self: Any) match {
       case self: TupleXXL => self.elems(n)
       case self: Product => self.productElement(n)
