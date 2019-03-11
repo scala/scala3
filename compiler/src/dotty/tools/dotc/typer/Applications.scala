@@ -1371,16 +1371,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         tp
     }
 
-    val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
-    val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
-    val ownerScore = compareOwner(owner1, owner2)
-
     def compareWithTypes(tp1: Type, tp2: Type) = {
+      def isSyntheticApply(sym: Symbol) = sym.is(Synthetic) && sym.name == nme.apply
+
+      // synthetic applys have lowest priority
+      val syntheticScore = isSyntheticApply(alt2.symbol).compare(isSyntheticApply(alt1.symbol))
+
+      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
+
       def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
       overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
-      if (ownerScore == 1)
+      if (syntheticScore != 0)
+        syntheticScore
+      else if (ownerScore == 1)
 	      if (winsType1 || !winsType2) 1 else 0
 	    else if (ownerScore == -1)
 	      if (winsType2 || !winsType1) -1 else 0
