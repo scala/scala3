@@ -1,1 +1,1 @@
-scala.internal.Quoted.exprQuote[scala.Int](3)
+'{3}
