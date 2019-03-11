@@ -114,10 +114,8 @@ affect implicits on the language level.
     An alternative A is _more specific_ than an alternative B if
 
      - the relative weight of A over B is greater than the relative weight of B over A, or
-     - the relative weights are the same, and the returned types of A and B are
-       unifiable, and A takes more inferable parameters than B, or
+     - the relative weights are the same, and A takes fewer inferable parameters than B, or
      - the relative weights and the number of inferable parameters are the same, and
-       the returned types of A and B are unifiable, and
        A is more specific than B if all inferable parameters in either alternative are
        replaced by regular parameters.
 

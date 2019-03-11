@@ -1,5 +1,5 @@
 // Shows that now implicit parameters act as a tie-breaker.
-// The alternative with more implicit parameters wins.
+// The alternative with fewer implicit parameters wins.
 case class Show[T](val i: Int)
 
 class Generic
@@ -21,7 +21,7 @@ object Test extends App {
     def foo[T]: Show[T] = new Show[T](2)
   }
 
-  assert(a.foo[Int].i == 2)
-  assert(b.foo[Int].i == 1)
+  assert(a.foo[Int].i == 1)
+  assert(b.foo[Int].i == 2)
 
 }

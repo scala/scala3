@@ -1416,10 +1416,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val strippedType2 = stripImplicit(fullType2, +1)
 
     val result = compareWithTypes(strippedType1, strippedType2)
-    if (result != 0 || !ctx.typerState.test(implicit ctx => strippedType1 =:= strippedType2))
+    if (result != 0)
       result
     else if (implicitBalance != 0)
-      -implicitBalance.signum
+      implicitBalance.signum
     else if ((strippedType1 `ne` fullType1) || (strippedType2 `ne` fullType2))
       compareWithTypes(fullType1, fullType2)
     else
