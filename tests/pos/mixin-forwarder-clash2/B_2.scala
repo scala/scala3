@@ -3,8 +3,8 @@
 // it's not supposed to fail anymore since the forwarders generated after erasure do not clash,
 // the comments are preserved for posterity.
 
-class Bar2 extends Bar1 with TwoA[Foo] with TwoB[Foo] // error
-  // We get a mixin forwarder for TwoB:
+class Bar2 extends Bar1 with Two[Foo] // error
+  // We get a mixin forwarder for Two:
   //   override def concat[Dummy](suffix: Int): Foo
   // which gets erased to:
   //   override def concat(suffix: Int): Foo
