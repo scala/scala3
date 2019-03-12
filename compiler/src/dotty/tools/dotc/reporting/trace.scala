@@ -7,6 +7,21 @@ import config.Config
 import config.Printers
 import core.Mode
 
+/** Exposes the {{{ trace("question") { op } }}} syntax.
+  *
+  * Traced operations will print indented messages if enabled.
+  * Tracing depends on [[Config.tracingEnabled]] and [[dotty.tools.dotc.config.ScalaSettings.Ylog]].
+  * Tracing can be forced by replacing [[trace]] with [[trace.force]] (see below).
+  */
+object trace extends TraceSyntax {
+  final val isForced = false
+
+  /** Forces a particular trace to be printed out regardless of tracing being enabled. */
+  object force extends TraceSyntax {
+    final val isForced = true
+  }
+}
+
 abstract class TraceSyntax {
   val isForced: Boolean
 
@@ -99,12 +114,5 @@ abstract class TraceSyntax {
         finalize("<missing>", s" (with exception $ex)")
         throw ex
     }
-  }
-}
-
-object trace extends TraceSyntax {
-  final val isForced = false
-  object force extends TraceSyntax {
-    final val isForced = true
   }
 }
