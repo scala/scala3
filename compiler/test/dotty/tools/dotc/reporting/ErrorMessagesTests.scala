@@ -1487,7 +1487,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = itcx
 
       assertMessageCount(1, messages)
-      val JavaSymbolIsNotAValue(symbol) = messages.head
+      val SymbolIsNotAValue(symbol) = messages.head
       assertEquals(symbol.show, "package p")
     }
 

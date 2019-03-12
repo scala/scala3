@@ -2134,14 +2134,14 @@ object messages {
     val explanation: String = ""
   }
 
-  case class JavaSymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(JavaSymbolIsNotAValueID) {
+  case class SymbolIsNotAValue(symbol: Symbol)(implicit ctx: Context) extends Message(SymbolIsNotAValueID) {
     val kind: String = "Type Mismatch"
     val msg: String = {
       val kind =
-        if (symbol is Package) hl"$symbol"
-        else hl"Java defined ${"class " + symbol.name}"
-
-      s"$kind is not a value"
+        if (symbol.is(Package)) ""
+        else if (symbol.is(JavaDefined)) "Java defined "
+        else "Synthetized empty companion "
+      hl"$kind$symbol is not a value"
     }
     val explanation: String = ""
   }

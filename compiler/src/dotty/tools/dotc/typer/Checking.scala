@@ -577,7 +577,8 @@ trait Checking {
       val sym = tree.tpe.termSymbol
       // The check is avoided inside Java compilation units because it always fails
       // on the singleton type Module.type.
-      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
+      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava))
+        ctx.error(SymbolIsNotAValue(sym), tree.sourcePos)
     }
     tree
   }

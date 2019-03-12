@@ -12,6 +12,7 @@ import StdNames._
 import NameKinds._
 import Flags._
 import Annotations._
+import Decorators._
 
 import language.implicitConversions
 import scala.annotation.tailrec
@@ -158,4 +159,24 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** Is symbol a splice operation? */
   def isSplice(implicit ctx: Context): Boolean =
     self == defn.QuotedExpr_splice || self == defn.QuotedType_splice
+
+  /** Is symbol a synthetic companion that does not count as a value? */
+  def isNonValueCompanion(implicit ctx: Context): Boolean = {
+    self.is(SyntheticModule) && {
+      if (self.isTerm) self.moduleClass.isNonValueCompanion
+      else self.isClass && {
+        self.info.parents match {
+          case p :: Nil =>
+            p.isRef(defn.ObjectClass) && {
+              self.info.decls.toList match {
+                case Nil => true
+                case constr :: Nil => constr.isConstructor
+                case _ => false
+              }
+            }
+          case _ => false
+        }
+      }
+    }
+  }//.reporting(res => i"is non value companion? $self, ${self.isClass}, ${self.is(SyntheticModule)}, ${self.info.parents}%, %, ${self.info.decls}%, % = $res")
 }
