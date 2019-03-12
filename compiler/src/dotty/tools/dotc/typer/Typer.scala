@@ -1926,7 +1926,7 @@ class Typer extends Namer
     }
   }
 
-  /** Translate '{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
+  /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
@@ -1941,7 +1941,7 @@ class Typer extends Namer
     }
   }
 
-  /** Translate `${ t: Expr[T] }` into expresiion `t.splice` while tracking the quotation level in the context */
+  /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
     checkSpliceOutsideQuote(tree)
     tree.expr match {

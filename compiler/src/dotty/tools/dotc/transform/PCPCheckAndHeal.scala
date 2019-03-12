@@ -52,13 +52,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
     if (level >= 1) {
       val body1 = transform(body)(spliceContext)
-      val splice1 = splice match {
-        case splice: Apply => cpy.Apply(splice)(splice.fun, body1 :: Nil)
+      splice match {
+        case Apply(fun: TypeApply, _) if splice.isTerm =>
+          // Type of the splice itsel must also be healed
+          // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
+          val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
+          cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
         case splice: Select => cpy.Select(splice)(body1, splice.name)
       }
-
-      if (splice1.isType) splice1
-      else addSpliceCast(splice1)
     }
     else {
       assert(!enclosingInlineds.nonEmpty, "unexpanded macro")
@@ -74,15 +75,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         splice
       }
     }
-  }
-
-
-  /** Add cast to force boundaries where T and $t (an alias of T) are used to ensure PCP.
-   *  '{   ${...: T}  }  -->  '{   ${...: T}.asInstanceOf[T]  } --> '{   ${...: T}.asInstanceOf[$t]  }
-   */
-  protected def addSpliceCast(tree: Tree)(implicit ctx: Context): Tree = {
-    val tp = checkType(tree.sourcePos).apply(tree.tpe.widenTermRefExpr)
-    tree.cast(tp).withSpan(tree.span)
   }
 
   /** If `tree` refers to a locally defined symbol (either directly, or in a pickled type),
