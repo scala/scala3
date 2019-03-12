@@ -784,6 +784,26 @@ trait Printers
           this += "throw "
           printTree(expr)
 
+        case Term.Apply(fn, args) if fn.symbol.fullName == "scala.internal.Quoted$.exprQuote" =>
+          args.head match {
+            case Term.Block(stats, expr) =>
+              this += "'{"
+              indented {
+                this += lineBreak()
+                printFlatBlock(stats, expr)
+              }
+              this += lineBreak() += "}"
+            case _ =>
+              this += "'{"
+              printTree(args.head)
+              this += "}"
+          }
+
+        case Term.TypeApply(fn, args) if fn.symbol.fullName == "scala.internal.Quoted$.typeQuote" =>
+          this += "'["
+          printTypeTree(args.head)
+          this += "]"
+
         case Term.Apply(fn, args) =>
           fn match {
             case Term.Select(Term.This(_), "<init>") => this += "this" // call to constructor inside a constructor

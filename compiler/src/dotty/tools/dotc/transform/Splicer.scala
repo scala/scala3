@@ -307,7 +307,7 @@ object Splicer {
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
-      case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.QuotedExpr_apply =>
+      case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.is(InlineByNameProxy) =>
             // inline proxy for by-name parameter
@@ -317,7 +317,7 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedType_apply =>
+      case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.InternalQuoted_typeQuote =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>
