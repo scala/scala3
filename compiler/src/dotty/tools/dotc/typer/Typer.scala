@@ -603,7 +603,7 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+        if (!ctx.isAfterTyper && pt.widenUnapplyPath != defn.ImplicitScrutineeTypeRef)
           constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
@@ -1458,7 +1458,7 @@ class Typer extends Namer
             if (ctx.isDependent) TypeOf.TypeApply(pt1.stripUnapplyPath.select(defn.Any_asInstanceOf), bindTp)
             else                 bindTp
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.span)
-          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
+          if (pt.widenUnapplyPath == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.sourcePos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1926,8 +1926,9 @@ class Typer extends Namer
     if (arity <= Definitions.MaxTupleArity)
       typed(desugar.smallTuple(tree).withSpan(tree.span), pt)
     else {
+      val ptwiden = pt.widenUnapplyPath
       val pts =
-        if (arity == pt.tupleArity) pt.tupleElementTypes
+        if (arity == ptwiden.tupleArity) ptwiden.tupleElementTypes
         else List.fill(arity)(defn.AnyType)
       val elems = (tree.trees, pts).zipped.map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
