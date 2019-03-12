@@ -4675,7 +4675,7 @@ object Types {
 
   // ----- UnapplyPath ----------------------------
 
-  final case class UnapplyPath private (path: Type) extends UncachedGroundType with typer.ProtoTypes.MatchAlways {
+  final case class UnapplyPath(path: Type) extends UncachedGroundType with typer.ProtoTypes.MatchAlways {
     override def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta(x, path)
     override def map(tm: TypeMap)(implicit ctx: Context): ProtoType = this
   }
