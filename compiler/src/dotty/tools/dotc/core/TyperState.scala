@@ -17,7 +17,7 @@ object TyperState {
   @sharable private var nextId: Int = 0
 }
 
-class TyperState(previous: TyperState /* | Null */) {
+class TyperState(private val previous: TyperState /* | Null */) {
 
   Stats.record("typerState")
 
@@ -178,7 +178,12 @@ class TyperState(previous: TyperState /* | Null */) {
       constraint = constraint.remove(poly)
   }
 
-  override def toString: String = s"TS[$id]"
+  override def toString: String = {
+    def ids(state: TyperState): List[String] =
+      s"${state.id}${if (state.isCommittable) "" else "X"}" ::
+        (if (state.previous == null) Nil else ids(state.previous))
+    s"TS[${ids(this).mkString(", ")}]"
+  }
 
   def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
 }
