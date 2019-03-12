@@ -98,6 +98,29 @@ object Even {
 // even has an even number of characters
 ```
 
+## Single Match
+
+- If there is exactly `1` pattern, pattern-matching on `1` pattern with type `U`
+
+<!-- To be kept in sync with tests/new/patmat-spec.scala -->
+
+```scala
+class Nat(val x: Int) {
+  def get: Int = x
+  def isEmpty = x < 0
+}
+
+object Nat {
+  def unapply(x: Int): Nat = new Nat(x)
+}
+
+5 match {
+  case Nat(n) => println(s"$n is a natural number")
+  case _      => ()
+}
+// 5 is a natural number
+```
+
 ## Product Match
 
 - `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
@@ -123,30 +146,6 @@ object FirstChars {
 }
 // First: H; Second: i
 ```
-
-## Single Match
-
-- If there is exactly `1` pattern, pattern-matching on `1` pattern with type `U`
-
-<!-- To be kept in sync with tests/new/patmat-spec.scala -->
-
-```scala
-class Nat(val x: Int) {
-  def get: Int = x
-  def isEmpty = x < 0
-}
-
-object Nat {
-  def unapply(x: Int): Nat = new Nat(x)
-}
-
-5 match {
-  case Nat(n) => println(s"$n is a natural number")
-  case _      => ()
-}
-// 5 is a natural number
-```
-
 
 ## Sequence Match
 
@@ -183,9 +182,9 @@ object CharList {
 ## Product-Sequence Match
 
 - `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
-- `PN` conforms to the signature `X` defined in Seq Pattern
-- Pattern-matching on exactly `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
-  the type of the remaining patterns are determined as in Seq Pattern.
+- `PN` conforms to the signature `X` defined in _sequence match_.
+- Pattern-matching on `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
+  the type of the remaining patterns are determined as in _sequence match_.
 
 ```Scala
 class Foo(val name: String, val children: Int *)
