@@ -144,9 +144,8 @@ class TyperState(previous: TyperState /* | Null */) {
     Stats.record("typerState.commit")
     val targetState = ctx.typerState
     assert(isCommittable)
-    targetState.constraint =
-      if (targetState.constraint eq previousConstraint) constraint
-      else targetState.constraint & (constraint, otherHasErrors = reporter.errorsReported)
+    if (targetState.constraint eq previousConstraint) targetState.constraint = constraint
+    else targetState.mergeConstraintWith(this)
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
     }
@@ -155,6 +154,9 @@ class TyperState(previous: TyperState /* | Null */) {
     reporter.flush()
     isCommitted = true
   }
+
+  def mergeConstraintWith(that: TyperState)(implicit ctx: Context): Unit =
+    constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
