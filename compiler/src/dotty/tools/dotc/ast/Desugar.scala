@@ -305,7 +305,7 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
-    val impl @ Template(constr0, _, self, _) = cdef.rhs
+    val impl @ Template(_, _, self, _) = cdef.rhs
     val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
     val mods = cdef.mods
@@ -535,7 +535,7 @@ object desugar {
       parents1 = enumClassTypeRef :: Nil
     if (isCaseClass | isCaseObject)
       parents1 = parents1 :+ scalaDot(str.Product.toTypeName) :+ scalaDot(nme.Serializable.toTypeName)
-    else if (isObject)
+    else if (isObject && !mods.is(Synthetic))
       parents1 = parents1 :+ scalaDot(nme.Serializable.toTypeName)
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumType)
