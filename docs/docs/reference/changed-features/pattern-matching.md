@@ -47,7 +47,7 @@ and `S` conforms to one of the following matches:
 - single match
 - product match
 
-The former form of `unapply` has higher precedence, and _single match_ has higher
+The latter form of `unapply` has higher precedence, and _single match_ has higher
 precedence over _name-based match_.
 
 ### Variadic Extractors
@@ -74,7 +74,7 @@ type R = {
 
 and `S` conforms to one of the two matches above.
 
-The former form of `unapplySeq` has higher priority, and _sequence match_ has higher
+The latter form of `unapplySeq` has higher priority, and _sequence match_ has higher
 precedence over _product-sequence match_.
 
 ## Boolean Match

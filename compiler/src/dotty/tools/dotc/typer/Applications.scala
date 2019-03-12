@@ -167,17 +167,17 @@ object Applications {
     }
 
     if (unapplyName == nme.unapplySeq) {
-      unapplySeq(unapplyResult) {
-        if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
-        else fail
-      }
+      if (isGetMatch(unapplyResult, pos))
+        unapplySeq(getTp) { unapplySeq(unapplyResult)(fail) }
+      else
+        unapplySeq(unapplyResult)(fail)
     }
     else {
       assert(unapplyName == nme.unapply)
-      if (isProductMatch(unapplyResult, args.length, pos))
-        productSelectorTypes(unapplyResult, pos)
-      else if (isGetMatch(unapplyResult, pos))
+      if (isGetMatch(unapplyResult, pos))
         getUnapplySelectors(getTp, args, pos)
+      else if (isProductMatch(unapplyResult, args.length, pos))
+        productSelectorTypes(unapplyResult, pos)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         Nil
       else if (defn.isProductSubType(unapplyResult))

@@ -316,20 +316,21 @@ object PatternMatcher {
         else {
           letAbstract(unapp) { unappResult =>
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
-            if (!isUnapplySeq && isProductMatch(unapp.tpe.widen, args.length)) {
+            val isGet        = isGetMatch(unapp.tpe)
+            if (!isUnapplySeq && !isGet && isProductMatch(unapp.tpe.widen, args.length)) {
               val selectors = productSelectors(unapp.tpe).take(args.length)
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
-            else if (isUnapplySeq && isSeqMatch(unapp.tpe.widen)) {
+            else if (isUnapplySeq && !isGet && isSeqMatch(unapp.tpe.widen)) {
               unapplySeqPlan(unappResult, args)
             }
-            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos)) {
+            else if (isUnapplySeq && !isGet && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos)) {
               val arity = productArity(unapp.tpe.widen, unapp.sourcePos)
               unapplyProductSeqPlan(unappResult, args, arity)
             }
             else {
-              assert(isGetMatch(unapp.tpe))
+              assert(isGet)
               val argsPlan = {
                 val get = ref(unappResult).select(nme.get, _.info.isParameterless)
                 val arity = productArity(get.tpe, unapp.sourcePos)
