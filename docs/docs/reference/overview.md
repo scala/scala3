@@ -130,9 +130,9 @@ The primary goal of the language constructs in this section is to make common pr
 
 The primary goal of the language constructs in this section is to enable high-level, safe code without having to pay a performance penalty.
 
- - Opaque Type Aliases `opaque type A = T`
+ - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) `opaque type A = T`
 
-   ([Pending](https://github.com/lampepfl/dotty/pull/4028)) An opaque alias defines a new type `A` in terms of an existing type `T`.  Unlike the previous modeling using value classes, opaque types never box. Opaque types are described in detail in [SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
+   An opaque alias defines a new type `A` in terms of an existing type `T`.  Unlike the previous modeling using value classes, opaque types never box. Opaque types are described in detail in [SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
 
  - [Erased parameters](http://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html)
 
