@@ -82,7 +82,7 @@ class ScalaSettings extends Settings.SettingGroup {
     helpArg = "mode",
     descr   = "Generate forwarder methods in classes inhering concrete methods from traits.",
     choices = List("true", "junit", "false"),
-    default = "junit")
+    default = "true")
 
   object mixinForwarderChoices {
     def isTruthy(implicit ctx: Context) = XmixinForceForwarders.value == "true"
