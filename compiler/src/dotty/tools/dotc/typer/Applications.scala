@@ -1397,11 +1397,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         tp
     }
 
-    val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
-    val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
-    val ownerScore = compareOwner(owner1, owner2)
-
     def compareWithTypes(tp1: Type, tp2: Type) = {
+      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
       def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
