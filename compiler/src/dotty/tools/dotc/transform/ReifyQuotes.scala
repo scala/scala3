@@ -170,7 +170,7 @@ class ReifyQuotes extends MacroTransform {
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.InternalQuoted_typeQuote
-      assert(!body.symbol.isSplice)
+      assert(!(body.symbol.isSplice && (body.isInstanceOf[GenericApply[_]] || body.isInstanceOf[Select])))
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
         super.transformQuotation(body1, quote)
@@ -349,12 +349,6 @@ class ReifyQuotes extends MacroTransform {
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case TypeApply(Select(spliceTree @ Spliced(spliced), _), tp) if tree.symbol.isTypeCast =>
-            // TODO this branch should be removable with the new splice
-            // Splice term which should be in the form `${x}.asInstanceOf[T]` where T is an artifact of
-            // typer to allow pickling/unpickling phase consistent types
-            transformSplice(spliced, spliceTree)
-
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val body = capturers(tree.symbol).apply(tree)
             val splice: Tree =
