@@ -111,11 +111,6 @@ For example:
 class FirstChars(s: String) {
   def _1 = s.charAt(0)
   def _2 = s.charAt(1)
-
-  // Not used by pattern matching: Product is only used as a marker trait.
-  def canEqual(that: Any): Boolean = ???
-  def productArity: Int = ???
-  def productElement(n: Int): Any = ???
 }
 
 object FirstChars {
@@ -203,6 +198,3 @@ def foo(f: Foo) = f match {
   case Foo(name, x, y, ns : _*) =>
 }
 ```
-
-There are plans for further simplification, in particular to factor out *product
-match* and *name-based match* into a single type of extractor.
