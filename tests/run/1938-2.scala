@@ -10,11 +10,9 @@ object ProdNonEmpty {
 }
 
 object ProdEmpty {
-  def _1: Int = ???
-  def _2: String = ???
   def isEmpty = true
   def unapply(s: String): this.type = this
-  def get = this
+  def get = (???, ???)
 }
 
 object Test {

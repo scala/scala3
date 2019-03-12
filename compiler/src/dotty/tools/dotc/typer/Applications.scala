@@ -52,16 +52,22 @@ object Applications {
   def isProductMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean =
     numArgs > 0 && productArity(tp, errorPos) == numArgs
 
-  /** Does `tp` fit the "product-seq match" conditions as an unapply result type
+  /** Does `tp` fit the "product-sequence match" conditions as an unapplySeq result type
    *  for a pattern with `numArgs` subpatterns?
    *  This is the case if (1) `tp` has members `_1` to `_N` where `N <= numArgs + 1`.
-   *                      (2) `tp._N` conforms to Seq match
+   *                      (2) `tp._N` conforms to sequence match
    */
   def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean = {
     val arity = productArity(tp, errorPos)
     arity > 0 && arity <= numArgs + 1 &&
       unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
   }
+
+  /** Does `tp` fit the "sequence match" conditions as an unapplySeq result type?
+   *  This is the case if `tp` conforms to the interface specified in `unapplySeqTypeElemTp`.
+   */
+  def isSeqMatch(tp: Type)(implicit ctx: Context): Boolean =
+    unapplySeqTypeElemTp(tp).exists
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
@@ -121,7 +127,7 @@ object Applications {
   }
 
   def productArity(tp: Type, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Int =
-    if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
+    productSelectorTypes(tp, errorPos).size
 
   def productSelectors(tp: Type)(implicit ctx: Context): List[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield

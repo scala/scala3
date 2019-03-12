@@ -8,7 +8,7 @@ import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import ast.Trees._
 import util.Spans._
-import typer.Applications.{isProductMatch, isGetMatch, isProductSeqMatch, productSelectors, productArity}
+import typer.Applications.{isProductMatch, isGetMatch, isSeqMatch, isProductSeqMatch, productSelectors, productArity}
 import SymUtils._
 import Flags._, Constants._
 import Decorators._
@@ -316,12 +316,15 @@ object PatternMatcher {
         else {
           letAbstract(unapp) { unappResult =>
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
-            if (isProductMatch(unapp.tpe.widen, args.length) && !isUnapplySeq) {
+            if (!isUnapplySeq && isProductMatch(unapp.tpe.widen, args.length)) {
               val selectors = productSelectors(unapp.tpe).take(args.length)
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
-            else if (isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos) && isUnapplySeq) {
+            else if (isUnapplySeq && isSeqMatch(unapp.tpe.widen)) {
+              unapplySeqPlan(unappResult, args)
+            }
+            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos)) {
               val arity = productArity(unapp.tpe.widen, unapp.sourcePos)
               unapplyProductSeqPlan(unappResult, args, arity)
             }

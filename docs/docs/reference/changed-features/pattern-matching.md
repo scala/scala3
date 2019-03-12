@@ -30,8 +30,8 @@ def unapply[A](x: T)(implicit x: B): U
 
 The type `U` conforms to one of the following matches:
 
-- Boolean match
-- Product match
+- boolean match
+- product match
 
 Or `U` conforms to the type `R`:
 
@@ -45,7 +45,7 @@ type R = {
 and `S` conforms to one of the following matches:
 
 - single match
-- name-based match
+- product match
 
 The former form of `unapply` has higher precedence, and _single match_ has higher
 precedence over _name-based match_.
@@ -100,7 +100,6 @@ object Even {
 
 ## Product Match
 
-- `U <: Product`
 - `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
@@ -109,7 +108,7 @@ For example:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class FirstChars(s: String) extends Product {
+class FirstChars(s: String) {
   def _1 = s.charAt(0)
   def _2 = s.charAt(1)
 
@@ -153,26 +152,6 @@ object Nat {
 // 5 is a natural number
 ```
 
-## Name-based Match
-
-- `N > 1` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1 ... _N: PN` members in `U`
-- Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
-
-```Scala
-object ProdEmpty {
-  def _1: Int = ???
-  def _2: String = ???
-  def isEmpty = true
-  def unapply(s: String): this.type = this
-  def get = this
-}
-
-"" match {
-  case ProdEmpty(_, _) => ???
-  case _ => ()
-}
-```
-
 
 ## Sequence Match
 
@@ -208,7 +187,6 @@ object CharList {
 
 ## Product-Sequence Match
 
-- `U <: Product`
 - `N > 0` is the maximum number of consecutive (parameterless `def` or `val`) `_1: P1` ... `_N: PN` members in `U`
 - `PN` conforms to the signature `X` defined in Seq Pattern
 - Pattern-matching on exactly `>= N` patterns, the first `N - 1` patterns have types `P1, P2, ... P(N-1)`,
