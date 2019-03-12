@@ -8,7 +8,7 @@ object Test {
   }
 
   f('{2})('[Int])
-   f('{ true })('[Boolean])
+  f('{ true })('[Boolean])
 
   def g(es: Expr[String], t: Type[String]) =
     f('{ ($es + "!") :: Nil })('[List[$t]])

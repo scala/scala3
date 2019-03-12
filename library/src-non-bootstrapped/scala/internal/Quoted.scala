@@ -16,4 +16,11 @@ object Quoted {
   def typeQuote[T/* <: AnyKind */]: Type[T] =
     throw new Error("Internal error: this method call should have been replaced by the compiler")
 
+  /** A type splice is desugared by the compiler into a call to this type alias */
+  type TypeSplice[T/* <: AnyKind */, Typ <: Type[T] with Singleton] = T
+
+  /** Temporary splice used durring typing to infere T and Typ */
+  def typeSplice[T/* <: AnyKind */, Typ <: Type[T] with Singleton](t: Typ): Type[T] =
+    throw new Error("Internal error: this method call should have been replaced by the compiler")
+
 }

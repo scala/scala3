@@ -1944,14 +1944,19 @@ class Typer extends Namer
   /** Translate `${ t: Expr[T] }` into expresiion `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
     checkSpliceOutsideQuote(tree)
-    if (tree.isType) typedSelect(untpd.Select(tree.expr, nme.splice), pt)(spliceContext).withSpan(tree.span)
-    else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext)
+    typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext)
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
   def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
     checkSpliceOutsideQuote(tree)
-    typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+    assert(pt.isInstanceOf[WildcardType])
+    // TODO desugar to defn.InternalQuoted_TypeSpliceR
+    // dotc -Ycheck:all -Xprint:front,stag tests/pos/quote-1.scala
+
+    val Apply(TypeApply(_, args), _) =
+      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_typeSpliceR), tree.expr), pt)(spliceContext)
+    tpd.AppliedTypeTree(ref(defn.InternalQuoted_TypeSplice), args).withSpan(tree.span)
   }
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {

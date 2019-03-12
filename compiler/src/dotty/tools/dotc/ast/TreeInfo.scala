@@ -827,6 +827,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: tpd.Tree)(implicit ctx: Context): Option[tpd.Tree] = tree match {
       case tree: tpd.Apply if tree.symbol.isSplice => Some(tree.args.head)
       case tree: tpd.Select if tree.symbol.isSplice => Some(tree.qualifier)
+      case tree: tpd.AppliedTypeTree if tree.symbol.isSplice => Some(tree.args.last)
       case _ => None
     }
   }

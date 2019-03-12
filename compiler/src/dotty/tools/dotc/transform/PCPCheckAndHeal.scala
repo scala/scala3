@@ -58,7 +58,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
           val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
           cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-        case splice: Select => cpy.Select(splice)(body1, splice.name)
+        case splice: Select => cpy.Select(splice)(body1, splice.name) // TODO remove
+        case splice: AppliedTypeTree =>
+          cpy.AppliedTypeTree(splice)(splice.tpt, splice.args.head :: body1 :: Nil)
       }
     }
     else {
@@ -204,6 +206,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
                             | The access would be accepted with the right type tag, but
                             | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
             case _ =>
+              // Some(tpd.AppliedTypeTree(ref(defn.InternalQuoted_TypeSplice), TypeTree(tp) :: TypeTree(tag.tpe) :: Nil))
               Some(tag.select(tpnme.splice))
           }
         }

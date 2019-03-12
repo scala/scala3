@@ -713,6 +713,10 @@ class Definitions {
     def InternalQuoted_exprSplice(implicit ctx: Context): Symbol = InternalQuoted_exprSpliceR.symbol
     lazy val InternalQuoted_typeQuoteR: TermRef = InternalQuotedModuleClass.requiredMethodRef("typeQuote".toTermName)
     def InternalQuoted_typeQuote(implicit ctx: Context): Symbol = InternalQuoted_typeQuoteR.symbol
+    lazy val InternalQuoted_TypeSpliceR: TypeRef = InternalQuotedModuleClass.requiredType("TypeSplice".toTypeName).typeRef
+    def InternalQuoted_TypeSplice(implicit ctx: Context): Symbol = InternalQuoted_TypeSpliceR.symbol
+    lazy val InternalQuoted_typeSpliceR: TermRef = InternalQuotedModuleClass.requiredMethodRef("typeSplice".toTermName)
+    def InternalQuoted_typeSplice(implicit ctx: Context): Symbol = InternalQuoted_typeSpliceR.symbol
 
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
   def QuotedExprsClass(implicit ctx: Context): ClassSymbol = QuotedExprsModule.asClass
