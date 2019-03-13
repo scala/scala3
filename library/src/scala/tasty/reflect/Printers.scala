@@ -323,6 +323,8 @@ trait Printers
         case Type.TypeLambda(argNames, argBounds, resType) =>
           // resType is not printed to avoid cycles
           this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", _)"
+        case Type.TypeOf(underlyingTp, tree) =>
+          this += "Type.TypeOf(" += underlyingTp += ", " += tree += ")"
         case TypeBounds(lo, hi) =>
           this += "TypeBounds(" += lo += ", " += hi += ")"
         case NoPrefix() =>
@@ -1566,6 +1568,9 @@ trait Printers
 
         case Type.RecursiveThis(_) =>
           this += highlightTypeDef("this", color)
+
+        case Type.TypeOf(_, _) =>
+          this += "Any" // TODO
 
         case _ =>
           throw new MatchError(tpe.show)
