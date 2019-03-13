@@ -603,6 +603,7 @@ object Trees {
    */
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
+    assert(bindings.isEmpty)
     type ThisTree[-T >: Untyped] = Inlined[T]
   }
 

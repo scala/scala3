@@ -520,9 +520,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       if (inlinedMethod == defn.Compiletime_error) issueError()
 
-      // Take care that only argument bindings go into `bindings`, since positions are
-      // different for bindings from arguments and bindings from body.
-      tpd.Inlined(call, finalBindings, finalExpansion)
+      // Widen TermRefs to bindings
+      val finalExpansion2 = finalExpansion.tpe match {
+        case tpe: TermRef if finalBindings.exists(x => x.symbol == tpe.symbol) =>
+          // If the return type of an inline function is a singleton type of a parameter (like in `DottyPredef.the`)
+          // the expansion will be `{ val x = y; (x: x.type) }`. We ascribe the type to itself widening the
+          // local TermRef of the binding `{ val x = y; (x: y.type) }`.
+          tpd.Typed(finalExpansion, TypeTree(ctx.typer.avoidingType(finalExpansion, finalBindings))).withSpan(finalExpansion.span)
+        case _ =>
+          finalExpansion
+      }
+
+      tpd.Inlined(call, Nil, tpd.seq(finalBindings, finalExpansion2))
     }
   }
 
