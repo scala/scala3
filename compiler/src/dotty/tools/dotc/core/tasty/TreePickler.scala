@@ -458,16 +458,11 @@ class TreePickler(pickler: TastyPickler) {
         case SeqLiteral(elems, elemtpt) =>
           writeByte(REPEATED)
           withLength { pickleTree(elemtpt); elems.foreach(pickleTree) }
-        case Inlined(call, bindings, expansion) =>
+        case Inlined(call, expansion) =>
           writeByte(INLINED)
-          bindings.foreach(preRegister)
           withLength {
             pickleTree(expansion)
             if (!call.isEmpty) pickleTree(call)
-            bindings.foreach { b =>
-              assert(b.isInstanceOf[DefDef] || b.isInstanceOf[ValDef])
-              pickleTree(b)
-            }
           }
         case Bind(name, body) =>
           registerDef(tree.symbol)

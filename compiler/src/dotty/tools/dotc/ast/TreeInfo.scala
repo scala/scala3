@@ -401,8 +401,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       exprPurity(expr)
     case Block(stats, expr) =>
       minOf(exprPurity(expr), stats.map(statPurity))
-    case Inlined(_, bindings, expr) =>
-      minOf(exprPurity(expr), bindings.map(statPurity))
+    case Inlined(_, expr) =>
+      exprPurity(expr)
     case NamedArg(_, expr) =>
       exprPurity(expr)
     case _ =>
@@ -599,7 +599,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         Some(meth)
       case Block(Nil, expr) =>
         unapply(expr)
-      case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
+      case Inlined(_, expr) =>
         unapply(expr)
       case _ =>
         None
@@ -728,7 +728,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def tupleArgs(tree: Tree)(implicit ctx: Context): List[Tree] = tree match {
     case Block(Nil, expr) => tupleArgs(expr)
-    case Inlined(_, Nil, expr) => tupleArgs(expr)
+    case Inlined(_, expr) => tupleArgs(expr)
     case Apply(fn, args)
     if fn.symbol.name == nme.apply &&
         fn.symbol.owner.is(Module) &&

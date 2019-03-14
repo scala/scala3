@@ -590,20 +590,10 @@ object Trees {
    *  @param  call      Info about the original call that was inlined
    *                    Until PostTyper, this is the full call, afterwards only
    *                    a reference to the toplevel class from which the call was inlined.
-   *  @param  bindings  Bindings for proxies to be used in the inlined code
-   *  @param  expansion The inlined tree, minus bindings.
-   *
-   *  The full inlined code is equivalent to
-   *
-   *      { bindings; expansion }
-   *
-   *  The reason to keep `bindings` separate is because they are typed in a
-   *  different context: `bindings` represent the arguments to the inlined
-   *  call, whereas `expansion` represents the body of the inlined function.
+   *  @param  expansion The inlined tree, including bindings.
    */
-  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
-    assert(bindings.isEmpty)
     type ThisTree[-T >: Untyped] = Inlined[T]
   }
 
@@ -1081,9 +1071,9 @@ object Trees {
         case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt)(sourceFile(tree)))
       }
-      def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = tree match {
-        case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
-        case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
+      def Inlined(tree: Tree)(call: tpd.Tree, expansion: Tree)(implicit ctx: Context): Inlined = tree match {
+        case tree: Inlined if (call eq tree.call) && (expansion eq tree.expansion) => tree
+        case _ => finalize(tree, untpd.Inlined(call, expansion)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(implicit ctx: Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1244,8 +1234,8 @@ object Trees {
               cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
             case SeqLiteral(elems, elemtpt) =>
               cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
-            case Inlined(call, bindings, expansion) =>
-              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(inlineContext(call)))
+            case Inlined(call, expansion) =>
+              cpy.Inlined(tree)(call, transform(expansion)(inlineContext(call)))
             case TypeTree() =>
               tree
             case SingletonTypeTree(ref) =>
@@ -1368,8 +1358,8 @@ object Trees {
               this(this(this(x, block), handler), finalizer)
             case SeqLiteral(elems, elemtpt) =>
               this(this(x, elems), elemtpt)
-            case Inlined(call, bindings, expansion) =>
-              this(this(x, bindings), expansion)(inlineContext(call))
+            case Inlined(call, expansion) =>
+              this(x, expansion)(inlineContext(call))
             case TypeTree() =>
               x
             case SingletonTypeTree(ref) =>

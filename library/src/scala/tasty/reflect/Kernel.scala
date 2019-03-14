@@ -511,11 +511,10 @@ trait Kernel {
   def matchInlined(tree: Tree)(implicit ctx: Context): Option[Inlined]
 
   def Inlined_call(self: Inlined)(implicit ctx: Context): Option[Tree/* Term | TypeTree */]
-  def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition]
   def Inlined_body(self: Inlined)(implicit ctx: Context): Term
 
-  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
-  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
+  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], expansion: Term)(implicit ctx: Context): Inlined
+  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], expansion: Term)(implicit ctx: Context): Inlined
 
   /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
   type SelectOuter <: Term

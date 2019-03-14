@@ -71,7 +71,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
    *  of all children to the right.
    */
   def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = this match {
-    case Trees.Inlined(call, _, _) =>
+    case Trees.Inlined(call, _) =>
       call.span
     case _ =>
       def include(span: Span, x: Any): Span = x match {

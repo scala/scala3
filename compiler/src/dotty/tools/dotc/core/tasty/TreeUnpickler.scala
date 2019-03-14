@@ -1106,9 +1106,8 @@ class TreeUnpickler(reader: TastyReader,
                 case _ => readTerm()
               }
               val call = ifBefore(end)(maybeCall, EmptyTree)
-              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
-              val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
-              Inlined(call, bindings, expansion)
+              val expansion = exprReader.readTerm()
+              Inlined(call, expansion)
             case IF =>
               if (nextByte == INLINE) {
                 readByte()

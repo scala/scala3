@@ -70,7 +70,7 @@ object Inliner {
     def liftFromInlined(call: Tree) = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = {
         t match {
-          case Inlined(t, Nil, expr) if t.isEmpty => expr
+          case Inlined(t, expr) if t.isEmpty => expr
           case _ => super.transform(t.withSpan(call.span))
         }
       }
@@ -86,10 +86,8 @@ object Inliner {
       case Block(stats, expr) =>
         bindings ++= stats.map(liftPos)
         liftBindings(expr, liftPos)
-      case Inlined(call, stats, expr) =>
-        bindings ++= stats.map(liftPos)
-        val lifter = liftFromInlined(call)
-        cpy.Inlined(tree)(call, Nil, liftBindings(expr, liftFromInlined(call).transform(_)))
+      case Inlined(call, expr) =>
+        cpy.Inlined(tree)(call, liftBindings(expr, liftFromInlined(call).transform(_)))
       case Apply(fn, args) =>
         cpy.Apply(tree)(liftBindings(fn, liftPos), args)
       case TypeApply(fn, args) =>
@@ -156,7 +154,7 @@ object Inliner {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
           val transformed = reposition(tree match {
             case tree: Inlined =>
-              tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource)) : Tree
+              transform(tree.expansion)(inlineContext(tree.call))
             case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
             case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
             case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
@@ -415,7 +413,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
-      Inlined(EmptyTree, Nil, tree)(ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
+      Inlined(EmptyTree, tree)(ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
@@ -531,7 +529,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           finalExpansion
       }
 
-      tpd.Inlined(call, Nil, tpd.seq(finalBindings, finalExpansion2))
+      tpd.Inlined(call, tpd.seq(finalBindings, finalExpansion2))
     }
   }
 
@@ -572,8 +570,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val binding = tree.symbol.defTree
             for ((cls, reduced, prefix, precomputed) <- unapply(binding))
             yield (cls, reduced, prefix, precomputed || binding.isInstanceOf[ValDef])
-          case Inlined(_, bindings, expansion) =>
-            unapplyLet(bindings, expansion)
+          case Inlined(_, expansion) =>
+            unapply(expansion)
           case Block(stats, expr) if isPureExpr(tree) =>
             unapplyLet(stats, expr)
           case _ =>
@@ -898,7 +896,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               case _ =>
                 false
             }
-          case Inlined(EmptyTree, Nil, ipat) =>
+          case Inlined(EmptyTree, ipat) =>
             reducePattern(bindingsBuf, fromBuf, toBuf, scrut, ipat)
           case _ => false
         }
@@ -1171,7 +1169,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     val inlinedNormailizer = new TreeMap {
       override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
+        case Inlined(EmptyTree, expr) if enclosingInlineds.isEmpty => transform(expr)
         case _ => super.transform(tree)
       }
     }

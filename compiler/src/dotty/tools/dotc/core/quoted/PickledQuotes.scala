@@ -131,9 +131,9 @@ object PickledQuotes {
     val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span))
     def argRefs() = argVals.map(argVal => ref(argVal.symbol))
     def rec(fn: Tree): Tree = fn match {
-      case Inlined(call, bindings, expansion) =>
+      case Inlined(call, expansion) =>
         // this case must go before closureDef to avoid dropping the inline node
-        cpy.Inlined(fn)(call, bindings, rec(expansion))
+        cpy.Inlined(fn)(call, rec(expansion))
       case closureDef(ddef) =>
         val paramSyms = ddef.vparamss.head.map(param => param.symbol)
         val paramToVals = paramSyms.zip(argRefs()).toMap

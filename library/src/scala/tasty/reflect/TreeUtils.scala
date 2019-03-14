@@ -57,8 +57,8 @@ trait TreeUtils
           foldTrees(foldTrees(foldTree(x, block), handler), finalizer)
         case Term.Repeated(elems, elemtpt) =>
           foldTrees(foldTree(x, elemtpt), elems)
-        case Term.Inlined(call, bindings, expansion) =>
-          foldTree(foldTrees(x, bindings), expansion)
+        case Term.Inlined(call, expansion) =>
+          foldTree(x, expansion)
         case IsDefinition(vdef @ ValDef(_, tpt, rhs)) =>
           implicit val ctx = localCtx(vdef)
           foldTrees(foldTree(x, tpt), rhs)
@@ -202,8 +202,8 @@ trait TreeUtils
           Term.Try.copy(tree)(transformTerm(block), transformCaseDefs(cases), finalizer.map(x => transformTerm(x)))
         case Term.Repeated(elems, elemtpt) =>
           Term.Repeated.copy(tree)(transformTerms(elems), transformTypeTree(elemtpt))
-        case Term.Inlined(call, bindings, expansion) =>
-          Term.Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion)/*()call.symbol.localContext)*/)
+        case Term.Inlined(call, expansion) =>
+          Term.Inlined.copy(tree)(call, transformTerm(expansion)/*(call.symbol.localContext)*/)
       }
     }
 

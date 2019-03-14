@@ -993,7 +993,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             super.traverseTree(tree)
           }
 
-          case Term.Inlined(Some(c), b, d) => {
+          case Term.Inlined(Some(c), d) => {
             /* In theory files should be compiled with -Yno-inline before running semanticdb.
             If this is not the case, here is a fallback to heuristically determine which predefFunction
             corresponds to an inlined term.

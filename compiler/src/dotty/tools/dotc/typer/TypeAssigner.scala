@@ -473,8 +473,8 @@ trait TypeAssigner {
   def assignType(tree: untpd.Block, stats: List[Tree], expr: Tree)(implicit ctx: Context): Block =
     tree.withType(avoidingType(expr, stats))
 
-  def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(implicit ctx: Context): Inlined =
-    tree.withType(avoidingType(expansion, bindings))
+  def assignType(tree: untpd.Inlined, expansion: Tree)(implicit ctx: Context): Inlined =
+    tree.withType(expansion.tpe)
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     tree.withType(thenp.tpe | elsep.tpe)

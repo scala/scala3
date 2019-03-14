@@ -477,14 +477,13 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   }
 
   def Inlined_call(self: Inlined)(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = optional(self.call)
-  def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition] = self.bindings
   def Inlined_body(self: Inlined)(implicit ctx: Context): Term = self.expansion
 
-  def Inlined_apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
-    withDefaultPos(ctx => tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion)(ctx))
+  def Inlined_apply(call: Option[Tree /* Term | TypeTree */], expansion: Term)(implicit ctx: Context): Inlined =
+    withDefaultPos(ctx => tpd.Inlined(call.getOrElse(tpd.EmptyTree), expansion)(ctx))
 
-  def Inlined_copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
-    tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
+  def Inlined_copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], expansion: Term)(implicit ctx: Context): Inlined =
+    tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), expansion)
 
   type Lambda = tpd.Closure
 

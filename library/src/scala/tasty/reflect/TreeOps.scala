@@ -599,14 +599,14 @@ trait TreeOps extends Core {
 
     object Inlined {
 
-      def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
-        kernel.Inlined_apply(call, bindings, expansion)
+      def apply(call: Option[Tree /* Term | TypeTree */], expansion: Term)(implicit ctx: Context): Inlined =
+        kernel.Inlined_apply(call, expansion)
 
-      def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
-        kernel.Inlined_copy(original)(call, bindings, expansion)
+      def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], expansion: Term)(implicit ctx: Context): Inlined =
+        kernel.Inlined_copy(original)(call, expansion)
 
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-        kernel.matchInlined(tree).map(x => (x.call, x.bindings, x.body))
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Tree /* Term | TypeTree */], Term)] =
+        kernel.matchInlined(tree).map(x => (x.call, x.body))
 
     }
 
@@ -743,7 +743,6 @@ trait TreeOps extends Core {
 
   implicit class InlinedAPI(self: Term.Inlined) {
     def call(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = kernel.Inlined_call(self)
-    def bindings(implicit ctx: Context): List[Definition] = kernel.Inlined_bindings(self)
     def body(implicit ctx: Context): Term = kernel.Inlined_body(self)
   }
 

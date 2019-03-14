@@ -95,7 +95,7 @@ object Splicer {
     }
 
     protected def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span))
+      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, tree).withSpan(tree.span))
 
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.quoted.Types.TreeType(tree)
@@ -312,7 +312,7 @@ object Splicer {
           case quoted: Ident if quoted.symbol.is(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             quoted.symbol.defTree.asInstanceOf[DefDef].rhs
-          case Inlined(EmptyTree, _, quoted) => quoted
+          case Inlined(EmptyTree, quoted) => quoted
           case _ => quoted
         }
         interpretQuote(quoted1)
@@ -356,7 +356,7 @@ object Splicer {
         interpretTree(expr)(newEnv)
       case NamedArg(_, arg) => interpretTree(arg)
 
-      case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
+      case Inlined(EmptyTree, expansion) => interpretTree(expansion)
 
       case Typed(expr, _) =>
         interpretTree(expr)

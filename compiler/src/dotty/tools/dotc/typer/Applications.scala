@@ -1123,7 +1123,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         def unapplyImplicits(unapp: Tree): List[Tree] = unapp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
-          case Inlined(u, _, _) => unapplyImplicits(u)
+          case Inlined(u, _) => unapplyImplicits(u)
           case _ => Nil.assertingErrorsReported
         }
 
@@ -1826,7 +1826,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         ctx.addMode(Mode.SynthesizeExtMethodReceiver))
     val appSym =
       app match {
-        case Inlined(call, _, _) => call.symbol
+        case Inlined(call, _) => call.symbol
         case _ => app.symbol
       }
     if (!appSym.is(Extension))

@@ -44,7 +44,7 @@ object Lens {
     object Function {
       def unapply(t: Term): Option[(List[ValDef], Term)] = t match {
         case Term.Inlined(
-          None, Nil,
+          None,
           Term.Block(
             (ddef @ DefDef(_, Nil, params :: Nil, _, Some(body))) :: Nil,
             Term.Lambda(meth, _)

@@ -24,7 +24,7 @@ object Lens {
     // exception: getter.unseal.underlyingArgument
     getter.unseal match {
       case Term.Inlined(
-        None, Nil,
+        None,
         Term.Block(
           DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Term.Select(o, field))) :: Nil,
           Term.Lambda(meth, _)

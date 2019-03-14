@@ -86,7 +86,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPED          Length expr_Term ascriptionType_Tern
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
-                  INLINED        Length expr_Term call_Term? ValOrDefDef*
+                  INLINED        Length expr_Term call_Term?
                   LAMBDA         Length meth_Term target_Type?
                   IF             Length [INLINE] cond_Term then_Term else_Term
                   MATCH          Length (IMPLICIT | [INLINE] sel_Term) CaseDef*
@@ -244,7 +244,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 13
+  val MajorVersion: Int = 14
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */

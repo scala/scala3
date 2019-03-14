@@ -34,16 +34,14 @@ class YCheckPositions extends Phases.Phase {
               }
             }
 
-            // Recursivlely check children while keeping track of current source
+            // Recursively check children while keeping track of current source
             tree match {
-              case Inlined(EmptyTree, bindings, expansion) =>
-                assert(bindings.isEmpty)
+              case Inlined(EmptyTree, expansion) =>
                 val old = sources
                 sources = old.tail
                 traverse(expansion)(inlineContext(EmptyTree))
                 sources = old
-              case Inlined(call, bindings, expansion) =>
-                bindings.foreach(traverse(_))
+              case Inlined(call, expansion) =>
                 sources = call.symbol.topLevelClass.source :: sources
                 if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
                   traverse(expansion)(inlineContext(call))

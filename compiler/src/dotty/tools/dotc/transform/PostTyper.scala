@@ -169,8 +169,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-        case Inlined(call, _, _) =>
-          cpy.Inlined(tree)(call, Nil, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)))
+        case Inlined(call, _) =>
+          cpy.Inlined(tree)(call, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)))
         case _ => super.transform(tree)
       }
     }
@@ -223,9 +223,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               super.transform(tree1)
           }
-        case Inlined(call, bindings, expansion) if !call.isEmpty =>
+        case Inlined(call, expansion) if !call.isEmpty =>
           val callTrace = Inliner.inlineCallTrace(call.symbol, call.sourcePos)
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
+          cpy.Inlined(tree)(callTrace, transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)

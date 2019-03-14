@@ -1239,10 +1239,8 @@ class Typer extends Namer
   }
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Tree = {
-    val (exprCtx, bindings1) = typedBlockStats(tree.bindings)
-    val expansion1 = typed(tree.expansion, pt)(inlineContext(tree.call)(exprCtx))
-    assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
-        bindings1, expansion1)
+    val expansion1 = typed(tree.expansion, pt)(inlineContext(tree.call))
+    assignType(cpy.Inlined(tree)(tree.call, expansion1), expansion1)
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedTypeTree") {

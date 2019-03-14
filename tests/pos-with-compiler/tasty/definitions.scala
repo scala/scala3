@@ -78,7 +78,7 @@ object definitions {
     case Typed(expr: Term, tpt: TypeTree)
     case Assign(lhs: Term, rhs: Term)
     case Block(stats: List[Statement], expr: Term)
-    case Inlined(call: Option[Term], bindings: List[Definition], expr: Term)
+    case Inlined(call: Option[Term], expr: Term)
     case Lambda(method: Term, tpt: Option[TypeTree])
     case If(cond: Term, thenPart: Term, elsePart: Term)
     case Match(scrutinee: Term, cases: List[CaseDef])

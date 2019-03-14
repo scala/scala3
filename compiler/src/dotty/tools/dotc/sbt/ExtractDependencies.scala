@@ -370,7 +370,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
 
     tree match {
-      case Inlined(call, _, _) if !call.isEmpty =>
+      case Inlined(call, _) if !call.isEmpty =>
         // The inlined call is normally ignored by TreeTraverser but we need to
         // record it as a dependency
         traverse(call)

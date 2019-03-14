@@ -22,7 +22,7 @@ class ConstantExtractor[R <: Reflection with Singleton](val reflect: Reflection)
     def const(tree: Term): Option[T] = tree match {
       case Term.Literal(c) => Some(c.value.asInstanceOf[T])
       case Term.Block(Nil, e) => const(e)
-      case Term.Inlined(_, Nil, e) => const(e)
+      case Term.Inlined(_, e) => const(e)
       case _  => None
     }
     const(expr.unseal)

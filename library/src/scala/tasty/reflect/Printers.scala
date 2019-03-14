@@ -187,10 +187,10 @@ trait Printers
           this += "Term.Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
         case Term.Repeated(elems, elemtpt) =>
           this += "Term.Repeated(" ++= elems += ", " += elemtpt += ")"
-        case Term.Inlined(call, bindings, expansion) =>
+        case Term.Inlined(call, expansion) =>
           this += "Term.Inlined("
           visitOption(call, visitTree)
-          this += ", " ++= bindings += ", " += expansion += ")"
+          this += ", " += expansion += ")"
         case ValDef(name, tpt, rhs) =>
           this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
         case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
@@ -878,8 +878,8 @@ trait Printers
           }
           printFlatBlock(stats, expr)
 
-        case Term.Inlined(_, bindings, expansion) =>
-          printFlatBlock(bindings, expansion)
+        case Term.Inlined(_, expansion) =>
+          printTree(expansion)
 
         case Term.Lambda(meth, tpt) =>
           // Printed in by it's DefDef
@@ -949,10 +949,7 @@ trait Printers
             while (it.hasNext)
               extractFlatStats(it.next())
             extractFlatStats(expr1)
-          case Term.Inlined(_, bindings, expansion) =>
-            val it = bindings.iterator
-            while (it.hasNext)
-              extractFlatStats(it.next())
+          case Term.Inlined(_, expansion) =>
             extractFlatStats(expansion)
           case Term.Literal(Constant.Unit()) => // ignore
           case stat => flatStats += stat
@@ -963,10 +960,7 @@ trait Printers
             while (it.hasNext)
               extractFlatStats(it.next())
             extractFlatExpr(expr1)
-          case Term.Inlined(_, bindings, expansion) =>
-            val it = bindings.iterator
-            while (it.hasNext)
-              extractFlatStats(it.next())
+          case Term.Inlined(_, expansion) =>
             extractFlatExpr(expansion)
           case term => term
         }
@@ -1003,7 +997,6 @@ trait Printers
           // Avoid accidental application of opening `{` on next line with a double break
           def rec(next: Tree): Unit = next match {
             case Term.Block(stats, _) if stats.nonEmpty => this += doubleLineBreak()
-            case Term.Inlined(_, bindings, _) if bindings.nonEmpty => this += doubleLineBreak()
             case Term.Select(qual, _) => rec(qual)
             case Term.Apply(fn, _) => rec(fn)
             case Term.TypeApply(fn, _) => rec(fn)

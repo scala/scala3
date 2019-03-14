@@ -152,8 +152,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral =
     ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
-  def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined =
-    ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
+  def Inlined(call: Tree, expansion: Tree)(implicit ctx: Context): Inlined =
+    ta.assignType(untpd.Inlined(call, expansion), expansion)
 
   def TypeTree(tp: Type)(implicit ctx: Context): TypeTree =
     untpd.TypeTree().withType(tp)
@@ -643,12 +643,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Inlined(tree: Tree)(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = {
-      val tree1 = untpdCpy.Inlined(tree)(call, bindings, expansion)
+    override def Inlined(tree: Tree)(call: Tree, expansion: Tree)(implicit ctx: Context): Inlined = {
+      val tree1 = untpdCpy.Inlined(tree)(call, expansion)
       tree match {
-        case tree: Inlined if sameTypes(bindings, tree.bindings) && (expansion.tpe eq tree.expansion.tpe) =>
+        case tree: Inlined if expansion.tpe eq tree.expansion.tpe =>
           tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, bindings, expansion)
+        case _ => ta.assignType(tree1, expansion)
       }
     }
 
@@ -1023,7 +1023,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case defTree: ValOrDefDef => transform(defTree.rhs)
           case _ => tree
         }
-      case Inlined(_, _, arg) => transform(arg)
+      case Inlined(_, arg) => transform(arg)
       case Block(Nil, arg) => transform(arg)
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
