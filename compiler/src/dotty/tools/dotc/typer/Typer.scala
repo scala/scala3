@@ -1933,18 +1933,27 @@ class Typer extends Namer
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
-    val tree1 =
-      if (tree.t.isType)
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), List(tree.t)), pt)(quoteContext)
-      else
-        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), tree.t), pt)(quoteContext)
-    tree1.withSpan(tree.span)
+    tree.t match {
+      case untpd.Splice(innerExpr) =>
+        ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
+        typed(innerExpr, pt)
+      case t if t.isType =>
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), List(tree.t)), pt)(quoteContext).withSpan(tree.span)
+      case t=>
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), tree.t), pt)(quoteContext).withSpan(tree.span)
+    }
   }
 
   /** Translate `${ t: Expr[T] }` into expresiion `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
     checkSpliceOutsideQuote(tree)
-    typedSelect(untpd.Select(tree.expr, nme.splice), pt)(spliceContext).withSpan(tree.span)
+    tree.expr match {
+      case untpd.Quote(innerExpr) =>
+        ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
+        typed(innerExpr, pt)
+      case expr =>
+        typedSelect(untpd.Select(expr, nme.splice), pt)(spliceContext).withSpan(tree.span)
+    }
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
