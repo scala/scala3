@@ -43,8 +43,7 @@ class DecompilationPrinter extends Phase {
     } else {
       val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
       out.println(s"/** Decompiled from $unitFile */")
-      val refl = ReflectionImpl(ctx)
-      out.println(new refl.SourceCodePrinter().showTree(unit.tpdTree)(ctx))
+      out.println(ReflectionImpl.showTree(unit.tpdTree))
     }
   }
 }
