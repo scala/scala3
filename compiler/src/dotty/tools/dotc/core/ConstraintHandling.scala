@@ -331,10 +331,13 @@ trait ConstraintHandling[AbstractContext] {
     else {
       val saved = constraint
       try
-        c2.forallParams(p =>
+        pre.forallParams { p =>
+          !c1.contains(p) && !c2.contains(p) &&
+            isSameTypeWhenFrozen(c1.entry(p), c2.entry(p)) ||
           c1.contains(p) &&
-          c2.upper(p).forall(c1.isLess(p, _)) &&
-          isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p)))
+            c2.upper(p).forall(c1.isLess(p, _)) &&
+            isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p))
+        }
       finally constraint = saved
     }
 
