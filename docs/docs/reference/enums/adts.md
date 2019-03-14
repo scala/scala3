@@ -26,8 +26,8 @@ be given explicitly:
 
 ```scala
 enum Option[+T] {
-  case Some(x: T) extends Option[T]
-  case None       extends Option[Nothing]
+  case Some[T](x: T) extends Option[T]
+  case None          extends Option[Nothing]
 }
 ```
 
