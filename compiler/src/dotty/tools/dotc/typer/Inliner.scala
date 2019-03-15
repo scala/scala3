@@ -444,18 +444,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case _ => tree
           }
         case tree: Ident =>
-          def span =
+          /* Span of the argument. Used when the argument is inlined directly without a binding */
+          def argSpan =
             if (tree.name == nme.WILDCARD) tree.span // From type match
             else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
             else paramSpan(tree.name)
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
               t.dealias match {
-                case tp: ConstantType => Inlined(EmptyTree, Nil, singleton(tp).withSpan(span)).withSpan(tree.span)
-                case tp => singleton(tp).withSpan(span)
+                case tp: ConstantType => Inlined(EmptyTree, Nil, singleton(tp).withSpan(argSpan)).withSpan(tree.span)
+                case tp => singleton(tp).withSpan(argSpan)
               }
             case Some(t) if tree.isType =>
-              TypeTree(t).withSpan(span)
+              TypeTree(t).withSpan(argSpan)
             case _ => tree
           }
         case tree => tree
