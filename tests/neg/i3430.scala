@@ -1,5 +1,5 @@
 object Test extends App {
 
-  println(Nil.min) // error: no implicit found
+  println(Nil.min) // error: ambiguous
 
 }

@@ -881,8 +881,6 @@ class TreeUnpickler(reader: TastyReader,
         sym.info = ta.avoidPrivateLeaks(sym, tree.sourcePos)
       }
 
-      sym.defTree = tree
-
       if (ctx.mode.is(Mode.ReadComments)) {
         assert(ctx.docCtx.isDefined, "Mode is `ReadComments`, but no `docCtx` is set.")
         commentUnpicklerOpt.foreach { commentUnpickler =>
@@ -892,7 +890,7 @@ class TreeUnpickler(reader: TastyReader,
         }
       }
 
-      tree
+      tree.setDefTree
     }
 
     private def readTemplate(implicit ctx: Context): Template = {

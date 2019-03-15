@@ -306,7 +306,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
     val owner = fns.head.owner
     val parents1 =
-      if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
+      if (parents.head.classSymbol.is(Trait)) {
+        val head = parents.head.parents.head
+        if (head.isRef(defn.AnyClass)) defn.AnyRefType :: parents else head :: parents
+      }
       else parents
     val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
         coord = fns.map(_.span).reduceLeft(_ union _))
@@ -430,7 +433,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** new C(args), calling the primary constructor of C */
   def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply =
-    New(tp, tp.typeSymbol.primaryConstructor.asTerm, args)
+    New(tp, tp.dealias.typeSymbol.primaryConstructor.asTerm, args)
 
   /** new C(args), calling given constructor `constr` of C */
   def New(tp: Type, constr: TermSymbol, args: List[Tree])(implicit ctx: Context): Apply = {
@@ -1010,6 +1013,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val buf = new mutable.ListBuffer[Tree]
       foreachSubTree { tree => if (f(tree)) buf += tree }
       buf.toList
+    }
+
+    /** Set this tree as the `defTree` of its symbol and return this tree */
+    def setDefTree(implicit ctx: Context): ThisTree = {
+      val sym = tree.symbol
+      if (sym.exists) sym.defTree = tree
+      tree
     }
   }
 

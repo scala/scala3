@@ -138,7 +138,7 @@ class ScalaSettings extends Settings.SettingGroup {
       //.withPostSetHook( _ => YprofileEnabled.value = true )
 
   // Extremely experimental language features
-  val YkindPolymorphism: Setting[Boolean] = BooleanSetting("-Ykind-polymorphism", "Enable kind polymorphism (see http://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
+  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Enable kind polymorphism (see http://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

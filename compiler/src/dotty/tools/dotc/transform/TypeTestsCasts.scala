@@ -164,19 +164,20 @@ object TypeTestsCasts {
           else tp.classSymbol
 
         def foundCls = effectiveClass(expr.tpe.widen)
-        // println(i"ta $tree, found = $foundCls")
 
         def inMatch =
           fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-        def transformIsInstanceOf(expr:Tree, testType: Type, flagUnrelated: Boolean): Tree = {
+        def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = effectiveClass(testType.widen)
 
-          def unreachable(why: => String) =
+          def unreachable(why: => String): Boolean = {
             if (flagUnrelated)
               if (inMatch) ctx.error(em"this case is unreachable since $why", expr.sourcePos)
               else ctx.warning(em"this will always yield false since $why", expr.sourcePos)
+            false
+          }
 
           /** Are `foundCls` and `testCls` classes that allow checks
            *  whether a test would be always false?
@@ -191,25 +192,22 @@ object TypeTestsCasts {
                // we don't have the logic to handle derived value classes
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
-           *  can be true in some cases. Issure a warning or an error if that's not the case.
+           *  can be true in some cases. Issues a warning or an error otherwise.
            */
           def checkSensical: Boolean =
             if (!isCheckable) true
             else if (foundCls.isPrimitiveValueClass && !testCls.isPrimitiveValueClass) {
-                ctx.error("cannot test if value types are references", tree.sourcePos)
-                false
-              }
+              ctx.error("cannot test if value types are references", tree.sourcePos)
+              false
+            }
             else if (!foundCls.derivesFrom(testCls)) {
-              if (foundCls.is(Final)) {
+              val unrelated = !testCls.derivesFrom(foundCls) && (
+                testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
+              )
+              if (foundCls.is(Final))
                 unreachable(i"$foundCls is not a subclass of $testCls")
-                false
-              }
-              else if (!testCls.derivesFrom(foundCls) &&
-                       (testCls.is(Final) ||
-                        !testCls.is(Trait) && !foundCls.is(Trait))) {
+              else if (unrelated)
                 unreachable(i"$foundCls and $testCls are unrelated")
-                false
-              }
               else true
             }
             else true

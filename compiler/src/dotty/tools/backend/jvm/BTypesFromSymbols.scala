@@ -61,7 +61,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
   }
 
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
-    val superClassSym = if (classSym.isImplClass) ObjectClass else classSym.superClass
+    val superClassSym = classSym.superClass
     assert(
       if (classSym == ObjectClass)
         superClassSym == NoSymbol

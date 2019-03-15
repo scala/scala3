@@ -27,7 +27,7 @@ import EtaExpansion.etaExpand
 import util.Spans._
 import util.common._
 import util.Property
-import Applications.{ExtMethodApply, wrapDefs, productSelectorTypes}
+import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs}
 
 import collection.mutable
 import annotation.tailrec
@@ -36,6 +36,8 @@ import util.Stats.{record, track}
 import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
+import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
+import dotty.tools.dotc.core.StagingContext._
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
@@ -440,7 +442,7 @@ class Typer extends Namer
   }
 
   private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
-    checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
+    Applications.handleMeta(checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
@@ -515,7 +517,7 @@ class Typer extends Namer
       case templ: untpd.Template =>
         import untpd._
         var templ1 = templ
-        def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final)
+        def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final) && !tp.isRef(defn.AnyClass)
         if (templ1.parents.isEmpty &&
             isFullyDefined(pt, ForceDegree.noBottom) &&
             isEligible(pt.underlyingClassRef(refinementOK = false)))
@@ -1515,7 +1517,7 @@ class Typer extends Namer
       checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
-    vdef1
+    vdef1.setDefTree
   }
 
   /** Add a @volitile to lazy vals when rewriting from Scala2 */
@@ -1577,13 +1579,16 @@ class Typer extends Namer
     if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
-    if (sym.requiresInlineInfo) PrepareInlineable.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.requiresInlineInfo) {
+      PrepareInlineable.checkInlineMacro(sym, rhs1, ddef.sourcePos)
+      PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
+    }
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
-    assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+    assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym).setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
@@ -1951,6 +1956,35 @@ class Typer extends Namer
     }
   }
 
+  /** Translate '{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
+   *  while tracking the quotation level in the context.
+   */
+  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+    val tree1 =
+      if (tree.t.isType)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), List(tree.t)), pt)(quoteContext)
+      else
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), tree.t), pt)(quoteContext)
+    tree1.withSpan(tree.span)
+  }
+
+  /** Translate `${ t: Expr[T] }` into expresiion `t.splice` while tracking the quotation level in the context */
+  def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
+    checkSpliceOutsideQuote(tree)
+    typedSelect(untpd.Select(tree.expr, nme.splice), pt)(spliceContext).withSpan(tree.span)
+  }
+
+  /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
+  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
+    checkSpliceOutsideQuote(tree)
+    typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+  }
+
+  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+    if (level == 0 && !ctx.owner.isInlineMethod)
+      ctx.error("splice outside quotes or inline method", tree.sourcePos)
+  }
+
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.removeAttachment(SymOfTree) match {
     case Some(sym) =>
@@ -2041,6 +2075,9 @@ class Typer extends Namer
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
+          case tree: untpd.Quote => typedQuote(tree, pt)
+          case tree: untpd.Splice => typedSplice(tree, pt)
+          case tree: untpd.TypSplice => typedTypSplice(tree, pt)
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
@@ -2180,9 +2217,12 @@ class Typer extends Namer
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(nestedCtx)
-    if (nestedCtx.reporter.hasErrors)
+    if (nestedCtx.reporter.hasErrors) {
+      record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
+    }
     else {
+      record("tryEither.commit")
       nestedCtx.typerState.commit()
       result
     }

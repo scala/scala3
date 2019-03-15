@@ -341,6 +341,8 @@ object desugar {
       case _ => false
     }
 
+    def namePos = cdef.sourcePos.withSpan(cdef.nameSpan)
+
     val isObject = mods.is(Module)
     val isCaseClass  = mods.is(Case) && !isObject
     val isCaseObject = mods.is(Case) && isObject
@@ -362,10 +364,10 @@ object desugar {
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
-          ctx.error(CaseClassMissingParamList(cdef), cdef.sourcePos.withSpan(cdef.nameSpan))
+          ctx.error(CaseClassMissingParamList(cdef), namePos)
         ListOfNil
       } else if (isCaseClass && originalVparamss.head.exists(_.mods.is(Implicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", cdef.sourcePos.withSpan(cdef.nameSpan))
+          ctx.error("Case classes should have a non-implicit parameter list", namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
@@ -392,6 +394,8 @@ object desugar {
       val stats = impl.body.map(expandConstructor)
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
+        if (enumCases.isEmpty)
+          ctx.error("Enumerations must constain at least one case", namePos)
         val enumCompanionRef = new TermRefTree()
         val enumImport = Import(impliedOnly = false, enumCompanionRef, enumCases.flatMap(caseIds))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
@@ -431,6 +435,12 @@ object desugar {
         if (widenHK) fullyApplied(tparam) else targ
       }
       appliedTypeTree(tycon, targs)
+    }
+
+    def isRepeated(tree: Tree): Boolean = tree match {
+      case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
+      case ByNameTypeTree(tree1) => isRepeated(tree1)
+      case _ => false
     }
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
@@ -483,11 +493,6 @@ object desugar {
       }
       def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
       def copyMeths = {
-        def isRepeated(tree: Tree): Boolean = tree match {
-          case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
-          case ByNameTypeTree(tree1) => isRepeated(tree1)
-          case _ => false
-        }
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
         })
@@ -561,7 +566,8 @@ object desugar {
     // companion definitions include:
     // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
     //     def apply[Ts](p1: T1, ..., pN: TN)(moreParams) = new C[Ts](p1, ..., pN)(moreParams)  (unless C is abstract)
-    //     def unapply[Ts]($1: C[Ts]) = $1
+    //     def unapply[Ts]($1: C[Ts]) = $1        // if not repeated
+    //     def unapplySeq[Ts]($1: C[Ts]) = $1     // if repeated
     // 2. The default getters of the constructor
     // The parent of the companion object of a non-parameterized case class
     //     (T11, ..., T1N) => ... => (TM1, ..., TMN) => C
@@ -610,9 +616,13 @@ object desugar {
             app :: widenDefs
           }
         val unapplyMeth = {
+          val hasRepeatedParam = constrVparamss.head.exists {
+            case ValDef(_, tpt, _) => isRepeated(tpt)
+          }
+          val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
-          DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
+          DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
             .withMods(synthetic | dependentFlag)
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
@@ -1326,15 +1336,6 @@ object desugar {
     val desugared = tree match {
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
-      case Quote(t) =>
-        if (t.isType)
-          TypeApply(ref(defn.QuotedType_applyR), List(t))
-        else
-          Apply(ref(defn.QuotedExpr_applyR), t)
-      case Splice(expr) =>
-        Select(expr, nme.splice)
-      case TypSplice(expr) =>
-        Select(expr, tpnme.splice)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

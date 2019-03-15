@@ -185,9 +185,6 @@ object JSEncoding {
     js.Ident(localNames.localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
-  def foreignIsImplClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name.endsWith(nme.IMPL_CLASS_SUFFIX.toString)
-
   def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
     else if (isJSType(sym)) jstpe.AnyType

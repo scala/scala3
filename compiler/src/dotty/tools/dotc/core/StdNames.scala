@@ -128,7 +128,6 @@ object StdNames {
     val EMPTY_PACKAGE: N              = "<empty>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
-    val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
     val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"

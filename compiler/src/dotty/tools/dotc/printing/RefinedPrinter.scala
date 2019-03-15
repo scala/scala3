@@ -278,7 +278,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
-    val isQuote = tree.fun.hasType && tree.fun.symbol == defn.QuotedType_apply
+    val isQuote = tree.fun.hasType && tree.fun.symbol == defn.InternalQuoted_typeQuote
     if (isQuote)
       keywordStr("'[") ~ toTextGlobal(tree.args, ", ") ~ keywordStr("]")
     else
@@ -405,7 +405,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if (fun.hasType && fun.symbol == defn.QuotedExpr_apply)
+        else if (fun.hasType && fun.symbol == defn.InternalQuoted_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           applyText(fun, args)
@@ -888,7 +888,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (flags is Package) "package"
     else if (sym.isPackageObject) "package object"
     else if (flags is Module) "object"
-    else if (flags is ImplClass) "class"
     else if (sym.isClassConstructor) "constructor"
     else super.kindString(sym)
   }

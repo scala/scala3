@@ -184,8 +184,8 @@ class Definitions {
     arr
   }
 
-  private def completeClass(cls: ClassSymbol): ClassSymbol = {
-    ensureConstructor(cls, EmptyScope)
+  private def completeClass(cls: ClassSymbol, ensureCtor: Boolean = true): ClassSymbol = {
+    if (ensureCtor) ensureConstructor(cls, EmptyScope)
     if (cls.linkedClass.exists) cls.linkedClass.info = NoType
     cls
   }
@@ -262,7 +262,7 @@ class Definitions {
    *       def getClass: java.lang.Class[T] = ???
    *     }
    */
-  lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
+  lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
   lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
   def AnyValType: TypeRef = AnyValClass.typeRef
@@ -320,7 +320,7 @@ class Definitions {
 
   lazy val AnyKindClass: ClassSymbol = {
     val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
-    if (ctx.settings.YkindPolymorphism.value) {
+    if (!ctx.settings.YnoKindPolymorphism.value) {
       // Enable kind-polymorphism by exposing scala.AnyKind
       cls.entered
     }
@@ -704,10 +704,14 @@ class Definitions {
 
   lazy val QuotedExprType: TypeRef = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context): ClassSymbol = QuotedExprType.symbol.asClass
-  def QuotedExprModule(implicit ctx: Context): Symbol = QuotedExprClass.companionModule
-    lazy val QuotedExpr_applyR: TermRef = QuotedExprModule.requiredMethodRef(nme.apply)
-    def QuotedExpr_apply(implicit ctx: Context): Symbol = QuotedExpr_applyR.symbol
     lazy val QuotedExpr_splice : TermSymbol = QuotedExprClass.requiredMethod(nme.splice)
+
+  lazy val InternalQuotedModule: TermRef = ctx.requiredModuleRef("scala.internal.Quoted")
+  def InternalQuotedModuleClass: Symbol = InternalQuotedModule.symbol
+    lazy val InternalQuoted_exprQuoteR: TermRef = InternalQuotedModuleClass.requiredMethodRef("exprQuote".toTermName)
+    def InternalQuoted_exprQuote(implicit ctx: Context): Symbol = InternalQuoted_exprQuoteR.symbol
+    lazy val InternalQuoted_typeQuoteR: TermRef = InternalQuotedModuleClass.requiredMethodRef("typeQuote".toTermName)
+    def InternalQuoted_typeQuote(implicit ctx: Context): Symbol = InternalQuoted_typeQuoteR.symbol
 
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
   def QuotedExprsClass(implicit ctx: Context): ClassSymbol = QuotedExprsModule.asClass
@@ -720,8 +724,6 @@ class Definitions {
 
   lazy val QuotedTypeModuleType: TermRef = ctx.requiredModuleRef("scala.quoted.Type")
   def QuotedTypeModule(implicit ctx: Context): Symbol = QuotedTypeModuleType.symbol
-    lazy val QuotedType_applyR: TermRef = QuotedTypeModule.requiredMethodRef(nme.apply)
-    def QuotedType_apply(implicit ctx: Context): Symbol = QuotedType_applyR.symbol
 
   lazy val QuotedLiftableModule: TermSymbol = ctx.requiredModule("scala.quoted.Liftable")
   def QuotedLiftableModuleClass(implicit ctx: Context): ClassSymbol = QuotedLiftableModule.asClass

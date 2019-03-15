@@ -7,6 +7,7 @@ import MegaPhase._
 import Types._, Contexts._, Flags._, DenotTransformers._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
+import reporting.diagnostic.messages.DoubleDefinition
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
@@ -103,12 +104,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
         //
         // The problem is that `map` was forwarded twice, with different instantiated types.
         // Maybe we should move mixin forwarding after erasure to avoid redundant forwarders like these.
-        ctx.error(
-            em"""double definition:
-                |$sym1: $info1 in ${sym1.owner} and
-                |$sym2: $info2 in ${sym2.owner}
-                |have same type after erasure: $info""",
-            root.sourcePos)
+        ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
     val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
     while (opc.hasNext) {

@@ -1,1 +1,1 @@
-8: Pattern Match Exhaustivity: (_, true), (_, false)
+8: Pattern Match Exhaustivity: (true, true), (true, false), (false, true), (false, false), (_, true), (_, false)

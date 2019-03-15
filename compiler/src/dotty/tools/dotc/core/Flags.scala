@@ -340,6 +340,8 @@ object Flags {
   /** An unpickled Scala 2.x class */
   final val Scala2x: FlagSet = typeFlag(26, "<scala-2.x>")
 
+  final val Scala2xTrait: FlagSet = Scala2x | Trait
+
   final val SuperAccessorOrScala2x: FlagSet = Scala2x.toCommonFlags
 
   /** A method that has default params */
@@ -416,11 +418,6 @@ object Flags {
   /** Symbol is a self name */
   final val SelfName: FlagSet = termFlag(54, "<selfname>")
 
-  /** Symbol is an implementation class of a Scala2 trait */
-  final val ImplClass: FlagSet = typeFlag(54, "<implclass>")
-
-  final val SelfNameOrImplClass: FlagSet = SelfName.toCommonFlags
-
   /** An existentially bound symbol (Scala 2.x only) */
   final val Scala2ExistentialCommon: FlagSet = commonFlag(55, "<existential>")
   final val Scala2Existential: FlagSet = Scala2ExistentialCommon.toTypeFlags
@@ -431,14 +428,11 @@ object Flags {
   /** A module variable (Scala 2.x only) */
   final val Scala2ModuleVar: FlagSet = termFlag(57, "<modulevar>")
 
-  /** A Scala 2.12 trait that has been augmented with static members */
-  final val Scala_2_12_Augmented: FlagSet = typeFlag(57, "<scala_2_12_augmented>")
-
-  /** A definition that's initialized before the super call (Scala 2.x only) */
-  final val Scala2PreSuper: FlagSet = termFlag(58, "<presuper>")
-
-  /** A Scala 2.12 or higher trait */
-  final val Scala_2_12_Trait: FlagSet = typeFlag(58, "<scala_2_12_trait>")
+  /** A Scala 2.x trait that has been partially augmented.
+   *  This is set in `AugmentScala2Trait` and reset in `LinkScala2Impls`
+   *  when the trait is fully augmented.
+   */
+  final val Scala2xPartiallyAugmented: FlagSet = typeFlag(57, "<scala-2.x-partially-augmented>")
 
   /** A macro */
   final val Macro: FlagSet = commonFlag(59, "<macro>")
@@ -500,7 +494,7 @@ object Flags {
    *  is completed)
    */
   final val AfterLoadFlags: FlagSet =
-    FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfNameOrImplClass
+    FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfName.toCommonFlags
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -552,7 +546,7 @@ object Flags {
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    ImplClass | Enum | Opaque
+    Enum | Opaque
 
   /** Flags that are copied from a synthetic companion to a user-defined one
    *  when the two are merged. See: Namer.mergeCompanionDefs
@@ -614,6 +608,10 @@ object Flags {
   /** A dependent method */
   final val DependentMethod = allOf(Dependent, Method)
 
+  /** An inline by-name parameter proxy */
+  final val InlineByNameProxy: FlagConjunction = allOf(InlineProxy, Method)
+
+  /** An inline parameter */
   final val InlineParam: FlagConjunction = allOf(Inline, Param)
 
   /** An extension method */

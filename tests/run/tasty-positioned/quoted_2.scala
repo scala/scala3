@@ -14,8 +14,8 @@ object Test {
     printPos("acbvasdfa")
     printPos(
       """a
-        |b""".stripMargin)
-   printPos(new Foo)
+        |b""".stripMargin: String)
+    printPos(new Foo)
   }
   class Foo {
     override def toString: String = "Foo"

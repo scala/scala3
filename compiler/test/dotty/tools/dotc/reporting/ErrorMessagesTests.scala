@@ -22,7 +22,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def caseClassExtendsEnum =
     checkMessagesAfter(RefChecks.name) {
       """
-        |enum Foo {}
+        |enum Foo { case A, B }
         |case class Bar() extends Foo
       """.stripMargin
     }
@@ -1362,7 +1362,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertMessageCount(1, messages)
         val UnapplyInvalidNumberOfArguments(qual, argTypes) :: Nil = messages
         assertEquals("Boo", qual.show)
-        assertEquals("(class Int, class String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
+        assertEquals("(class Int, type String)", argTypes.map(_.typeSymbol).mkString("(", ", ", ")"))
       }
 
   @Test def unapplyInvalidReturnType =
@@ -1514,7 +1514,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val DoubleDeclaration(symbol, previousSymbol) :: Nil = messages
+      val DoubleDefinition(symbol, previousSymbol, _) :: Nil = messages
       assertEquals(symbol.name.mangledString, "a")
   }
 
@@ -1554,7 +1554,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def notAnExtractor() =
     checkMessagesAfter(FrontEnd.name) {
       """
-        | class Foo
+        | trait Foo
+        | object Foo
         | object Test {
         |   def test(foo: Foo) = foo match {
         |       case Foo(name) => ???

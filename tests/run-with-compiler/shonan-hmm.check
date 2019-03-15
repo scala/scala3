@@ -25,6 +25,7 @@ List(25, 30, 20, 43, 44)
         sum = sum.+(v.apply(i$2).*(a.apply(i).apply(i$2)))
         i$2 = i$2.+(1)
       }
+
       (sum: scala.Int)
     })
     i = i.+(1)
@@ -232,6 +233,7 @@ List(25, 30, 20, 43, 44)
         sum = sum.+(v.apply(i).*(arr.apply(3).apply(i)))
         i = i.+(1)
       }
+
       (sum: scala.Int)
     })
     vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))
@@ -261,6 +263,7 @@ List(25, 30, 20, 43, 44)
       }.apply(i)))
       i = i.+(1)
     }
+
     (sum: scala.Int)
   })
   vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))
@@ -291,6 +294,7 @@ List(25, 30, 20, 43, 44)
         sum = sum.+(v.apply(i).*(row.apply(i)))
         i = i.+(1)
       }
+
       (sum: scala.Int)
     })
     vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))

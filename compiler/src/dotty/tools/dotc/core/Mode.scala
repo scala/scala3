@@ -69,9 +69,6 @@ object Mode {
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
 
-  /** We are currently unpickling from Java 8 or higher */
-  val Java8Unpickling: Mode = newMode(14, "Java8Unpickling")
-
   /** Use Scala2 scheme for overloading and implicit resolution */
   val OldOverloadingResolution: Mode = newMode(15, "OldOverloadingResolution")
 

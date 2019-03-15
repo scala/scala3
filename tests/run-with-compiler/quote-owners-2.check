@@ -4,9 +4,12 @@
     val a: immutable.List[scala.Int] = {
       type T = scala.List[scala.Int]
       val b: T = scala.Nil.::[scala.Int](3)
+
       (b: collection.immutable.List[scala.Int])
     }
+
     (a.head: scala.Int)
   }
+
   (ff: scala.Int)
 }

@@ -3,144 +3,154 @@ package reflect
 
 trait ConstantOps extends Core {
 
-  trait ConstantAPI {
-    def value: Any
+  implicit class ConstantAPI(const: Constant) {
+    def value: Any = kernel.Constant_value(const)
   }
-  implicit def ConstantDeco(const: Constant): ConstantAPI
 
   /** Module of Constant literals */
-  val Constant: ConstantModule
-  abstract class ConstantModule {
+  object Constant {
 
     /** Module of Null literals */
-    val Unit: UnitModule
-    abstract class UnitModule {
+    object Unit {
       /** Unit `()` literal */
-      def apply(): Constant
+      def apply(): Constant =
+        kernel.Constant_Unit_apply()
 
       /** Extractor for Unit literals */
-      def unapply(constant: Constant): Boolean
+      def unapply(constant: Constant): Boolean =
+        kernel.matchConstant_Unit(constant)
     }
 
     /** Module of Null literals */
-    val Null: NullModule
-    abstract class NullModule {
+    object Null {
       /** `null` literal */
-      def apply(): Constant
+      def apply(): Constant =
+        kernel.Constant_Null_apply()
 
       /** Extractor for Null literals */
-      def unapply(constant: Constant): Boolean
+      def unapply(constant: Constant): Boolean =
+        kernel.matchConstant_Null(constant)
     }
 
     /** Module of Boolean literals */
-    val Boolean: BooleanModule
-    abstract class BooleanModule {
+    object Boolean {
       /** Boolean literal */
-      def apply(x: Boolean): Constant
+      def apply(x: Boolean): Constant =
+        kernel.Constant_Boolean_apply(x)
 
       /** Extractor for Boolean literals */
-      def unapply(constant: Constant): Option[Boolean]
+      def unapply(constant: Constant): Option[Boolean] =
+        kernel.matchConstant_Boolean(constant)
     }
 
     /** Module of Byte literals */
-    val Byte: ByteModule
-    abstract class ByteModule {
+    object Byte {
       /** Byte literal */
-      def apply(x: Byte): Constant
+      def apply(x: Byte): Constant =
+        kernel.Constant_Byte_apply(x)
 
       /** Extractor for Byte literals */
-      def unapply(constant: Constant): Option[Byte]
+      def unapply(constant: Constant): Option[Byte] =
+        kernel.matchConstant_Byte(constant)
     }
 
     /** Module of Short literals */
-    val Short: ShortModule
-    abstract class ShortModule {
+    object Short {
       /** Short literal */
-      def apply(x: Short): Constant
+      def apply(x: Short): Constant =
+        kernel.Constant_Short_apply(x)
 
       /** Extractor for Short literals */
-      def unapply(constant: Constant): Option[Short]
+      def unapply(constant: Constant): Option[Short] =
+        kernel.matchConstant_Short(constant)
     }
 
     /** Module of Char literals */
-    val Char: CharModule
-    abstract class CharModule {
+    object Char {
       /** Char literal */
-      def apply(x: Char): Constant
+      def apply(x: Char): Constant =
+        kernel.Constant_Char_apply(x)
 
       /** Extractor for Char literals */
-      def unapply(constant: Constant): Option[Char]
+      def unapply(constant: Constant): Option[Char] =
+        kernel.matchConstant_Char(constant)
     }
 
     /** Module of Int literals */
-    val Int: IntModule
-    abstract class IntModule {
+    object Int {
       /** Int literal */
-      def apply(x: Int): Constant
+      def apply(x: Int): Constant =
+        kernel.Constant_Int_apply(x)
 
       /** Extractor for Int literals */
-      def unapply(constant: Constant): Option[Int]
+      def unapply(constant: Constant): Option[Int] =
+        kernel.matchConstant_Int(constant)
     }
 
     /** Module of Long literals */
-    val Long: LongModule
-    abstract class LongModule {
+    object Long {
       /** Long literal */
-      def apply(x: Long): Constant
+      def apply(x: Long): Constant =
+        kernel.Constant_Long_apply(x)
 
       /** Extractor for Long literals */
-      def unapply(constant: Constant): Option[Long]
+      def unapply(constant: Constant): Option[Long] =
+        kernel.matchConstant_Long(constant)
     }
 
     /** Module of Float literals */
-    val Float: FloatModule
-    abstract class FloatModule {
+    object Float {
       /** Float literal */
-      def apply(x: Float): Constant
+      def apply(x: Float): Constant =
+        kernel.Constant_Float_apply(x)
 
       /** Extractor for Float literals */
-      def unapply(constant: Constant): Option[Float]
+      def unapply(constant: Constant): Option[Float] =
+        kernel.matchConstant_Float(constant)
     }
 
     /** Module of Double literals */
-    val Double: DoubleModule
-    abstract class DoubleModule {
+    object Double {
       /** Double literal */
-      def apply(x: Double): Constant
+      def apply(x: Double): Constant =
+        kernel.Constant_Double_apply(x)
 
       /** Extractor for Double literals */
-      def unapply(constant: Constant): Option[Double]
+      def unapply(constant: Constant): Option[Double] =
+        kernel.matchConstant_Double(constant)
     }
 
     /** Module of String literals */
-    val String: StringModule
-    abstract class StringModule {
+    object String {
       /** String literal */
-      def apply(x: String): Constant
+      def apply(x: String): Constant =
+        kernel.Constant_String_apply(x)
 
       /** Extractor for String literals */
-      def unapply(constant: Constant): Option[String]
+      def unapply(constant: Constant): Option[String] =
+        kernel.matchConstant_String(constant)
     }
 
     /** Module of ClassTag literals */
-    val ClassTag: ClassTagModule
-    abstract class ClassTagModule {
+    object ClassTag {
       /** scala.reflect.ClassTag literal */
-      def apply[T](implicit x: scala.reflect.ClassTag[T]): Constant
+      def apply[T](implicit x: scala.reflect.ClassTag[T]): Constant =
+        kernel.Constant_ClassTag_apply(x)
 
       /** Extractor for ClassTag literals */
-      def unapply(constant: Constant): Option[Type]
+      def unapply(constant: Constant): Option[Type] =
+        kernel.matchConstant_ClassTag(constant)
     }
 
     /** Module of scala.Symbol literals */
-    val Symbol: SymbolModule
-    /** Extractor for scala.Symbol literals */
-    abstract class SymbolModule {
+    object Symbol {
       /** scala.Symbol literal */
-      def apply(x: scala.Symbol): Constant
+      def apply(x: scala.Symbol): Constant =
+        kernel.Constant_Symbol_apply(x)
 
       /** Extractor for scala.Symbol literals */
-      def unapply(constant: Constant): Option[scala.Symbol]
+      def unapply(constant: Constant): Option[scala.Symbol] =
+        kernel.matchConstant_Symbol(constant)
     }
   }
 }

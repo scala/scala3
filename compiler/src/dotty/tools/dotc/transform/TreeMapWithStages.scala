@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
@@ -128,21 +129,6 @@ object TreeMapWithStages {
 
   /** A key to be used in a context property that caches the `levelOf` mapping */
   private val LevelOfKey = new Property.Key[mutable.HashMap[Symbol, Int]]
-
-  /** A key to be used in a context property that tracks the quoteation level */
-  private val QuotationLevel = new Property.Key[Int]
-
-  /** All enclosing calls that are currently inlined, from innermost to outermost. */
-  def level(implicit ctx: Context): Int =
-    ctx.property(QuotationLevel).getOrElse(0)
-
-  /** Context with an incremented quotation level. */
-  def quoteContext(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(QuotationLevel, level + 1)
-
-  /** Context with a decremented quotation level. */
-  def spliceContext(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(QuotationLevel, level - 1)
 
   /** Initial context for a StagingTransformer transformation. */
   def freshStagingContext(implicit ctx: Context): Context =

@@ -678,10 +678,10 @@ trait Implicits { self: Typer =>
           }
         }
         val tag = bindFreeVars(arg)
-        if (bindFreeVars.ok) ref(defn.QuotedType_apply).appliedToType(tag)
+        if (bindFreeVars.ok) ref(defn.InternalQuoted_typeQuote).appliedToType(tag)
         else EmptyTree
       case arg :: Nil if ctx.inInlineMethod =>
-        ref(defn.QuotedType_apply).appliedToType(arg)
+        ref(defn.InternalQuoted_typeQuote).appliedToType(arg)
       case _ =>
         EmptyTree
     }

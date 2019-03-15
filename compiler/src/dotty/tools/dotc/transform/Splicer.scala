@@ -95,7 +95,7 @@ object Splicer {
     }
 
     protected def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Exprs.TastyTreeExpr(tree)
+      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span))
 
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.quoted.Types.TreeType(tree)
@@ -106,11 +106,7 @@ object Splicer {
     protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
       args.toSeq
 
-    protected def interpretTastyContext()(implicit env: Env): Object = {
-      new ReflectionImpl(ctx) {
-        override def rootPosition: SourcePosition = pos
-      }
-    }
+    protected def interpretTastyContext()(implicit env: Env): Object = ReflectionImpl(ctx, pos)
 
     protected def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val (inst, clazz) =
@@ -311,10 +307,17 @@ object Splicer {
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
-      case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.QuotedExpr_apply =>
-        interpretQuote(quoted)
+      case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        val quoted1 = quoted match {
+          case quoted: Ident if quoted.symbol.is(InlineByNameProxy) =>
+            // inline proxy for by-name parameter
+            quoted.symbol.defTree.asInstanceOf[DefDef].rhs
+          case Inlined(EmptyTree, _, quoted) => quoted
+          case _ => quoted
+        }
+        interpretQuote(quoted1)
 
-      case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedType_apply =>
+      case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.InternalQuoted_typeQuote =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>
@@ -336,6 +339,8 @@ object Splicer {
           interpretStaticMethodCall(module, fn.symbol, args.map(arg => interpretTree(arg)))
         } else if (env.contains(fn.name)) {
           env(fn.name)
+        } else if (tree.symbol.is(InlineProxy)) {
+          interpretTree(tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs)
         } else {
           unexpectedTree(tree)
         }

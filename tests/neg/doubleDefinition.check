@@ -1,0 +1,94 @@
+<2471..2471> in doubleDefinition.scala
+Double definition:
+def foo: [T <: Int](x: T): T in class Test20 at line 143 and
+def foo: [S <: Int, T <: Int](x: S): T in class Test20 at line 144
+have the same type after erasure.
+<2338..2338> in doubleDefinition.scala
+Double definition:
+def foo: [T <: Int](x: T): T in class Test19 at line 137 and
+def foo(x: Int): Int in class Test19 at line 138
+have the same type after erasure.
+<2016..2016> in doubleDefinition.scala
+Double definition:
+var foo: Int in class Test16 at line 115 and
+def foo: => Int in class Test16 at line 116
+<1949..1949> in doubleDefinition.scala
+Double definition:
+var foo: Int in class Test15 at line 111 and
+def foo: => String in class Test15 at line 112
+<1885..1885> in doubleDefinition.scala
+Double definition:
+var foo: Int in class Test14 at line 107 and
+def foo: => Int in class Test14 at line 108
+<1827..1827> in doubleDefinition.scala
+Double definition:
+var foo: Int in class Test13 at line 103 and
+def foo: => String in class Test13 at line 104
+<1772..1772> in doubleDefinition.scala
+Double definition:
+val foo: Int in class Test12 at line 99 and
+def foo: => Int in class Test12 at line 100
+<1705..1705> in doubleDefinition.scala
+Double definition:
+val foo: Int in class Test11 at line 95 and
+def foo: => String in class Test11 at line 96
+<1641..1641> in doubleDefinition.scala
+Double definition:
+val foo: Int in class Test10 at line 91 and
+def foo: => Int in class Test10 at line 92
+<1583..1583> in doubleDefinition.scala
+Double definition:
+val foo: Int in class Test9 at line 87 and
+def foo: => String in class Test9 at line 88
+<1481..1481> in doubleDefinition.scala
+Double definition:
+var foo: Int in class Test8d at line 81 and
+def foo: => Int in class Test8d at line 82
+<1428..1428> in doubleDefinition.scala
+Double definition:
+def foo: => Int in class Test8c at line 76 and
+var foo: Int in class Test8c at line 77
+<1375..1375> in doubleDefinition.scala
+Double definition:
+def foo: => Int in class Test8b at line 71 and
+val foo: Int in class Test8b at line 72
+<1322..1322> in doubleDefinition.scala
+Double definition:
+val foo: Int in class Test8 at line 66 and
+def foo: => Int in class Test8 at line 67
+<1236..1236> in doubleDefinition.scala
+Double definition:
+def foo(x: List[A]): A => A in trait Test7 at line 61 and
+def foo(x: List[A]): (B, B) => B in trait Test7 at line 62
+have matching parameter types.
+<984..984> in doubleDefinition.scala
+Double definition:
+def foo(x: List[A]): A => A in trait Test6 at line 54 and
+def foo(x: List[B]): B => B in trait Test6 at line 55
+have the same type after erasure.
+<739..739> in doubleDefinition.scala
+Double definition:
+var foo: Int in class Test4d at line 40 and
+def foo: => Int in class Test4d at line 41
+<686..686> in doubleDefinition.scala
+Double definition:
+def foo: => Int in class Test4c at line 35 and
+var foo: Int in class Test4c at line 36
+<633..633> in doubleDefinition.scala
+Double definition:
+def foo: => Int in class Test4b at line 30 and
+val foo: Int in class Test4b at line 31
+<580..580> in doubleDefinition.scala
+Double definition:
+val foo: Int in class Test4 at line 25 and
+def foo: => Int in class Test4 at line 26
+<494..494> in doubleDefinition.scala
+Double definition:
+def foo(x: List[A]): A => A in class Test3 at line 20 and
+def foo(x: List[A]): (B, B) => B in class Test3 at line 21
+have matching parameter types.
+<242..242> in doubleDefinition.scala
+Double definition:
+def foo(x: List[A]): A => A in class Test2 at line 13 and
+def foo(x: List[B]): B => B in class Test2 at line 14
+have the same type after erasure.
