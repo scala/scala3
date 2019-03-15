@@ -9,18 +9,18 @@ object Test {
     val c1 = C1("s", 0)
     c1 match {
       case C1(a, b) =>
-        assert(a == "s")
-        assert(b == 0)
+        assert(a == "EMPTY")
+        assert(b == -1)
     }
 
     // When the size differ, both are patterns become usable:
 
-    val c2 = C2("a", "b")
+    val c2 = C2("a", "b") /*
     c2 match {
       case C2(a, b) =>
         assert(a == "a")
         assert(b == "b")
-    }
+    } */
 
     c2 match {
       case C2(a, b, c) =>
