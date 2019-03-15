@@ -12,7 +12,7 @@ class TastyConsumerPhase(consumer: TastyConsumer) extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val reflect = ReflectionImpl(ctx)
-    consumer(reflect)(ctx.compilationUnit.tpdTree)
+    consumer(reflect)(ctx.compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
   }
 
 }

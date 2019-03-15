@@ -1,4 +1,5 @@
 {
   val a: scala.quoted.Expr[scala.Int] = '{4}
-  a
+
+  (a: scala.quoted.Expr[scala.Int])
 }
