@@ -211,6 +211,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private val paramBinding = new mutable.HashMap[Name, Type]
 
+  /** A map from parameter names of the inlineable method to spans of the actual arguments */
+  private val paramSpan = new mutable.HashMap[Name, Span]
+
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
@@ -271,12 +274,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
     case tp: PolyType =>
       (tp.paramNames, targs).zipped.foreach { (name, arg) =>
+        paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       assert(argss.nonEmpty, i"missing bindings: $tp in $call")
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
+        paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.dealias match {
           case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
           case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
@@ -439,12 +444,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case _ => tree
           }
         case tree: Ident =>
+          /* Span of the argument. Used when the argument is inlined directly without a binding */
+          def argSpan =
+            if (tree.name == nme.WILDCARD) tree.span // From type match
+            else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
+            else paramSpan(tree.name)
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              // FIXME wrong span, this is the span inside the inline method
-              singleton(t.dealias).withSpan(tree.span)
+              t.dealias match {
+                case tp: ConstantType => Inlined(EmptyTree, Nil, singleton(tp).withSpan(argSpan)).withSpan(tree.span)
+                case tp => singleton(tp).withSpan(argSpan)
+              }
             case Some(t) if tree.isType =>
-              TypeTree(t).withSpan(tree.span)
+              TypeTree(t).withSpan(argSpan)
             case _ => tree
           }
         case tree => tree
@@ -877,6 +889,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               case _ =>
                 false
             }
+          case Inlined(EmptyTree, Nil, ipat) =>
+            reducePattern(bindingsBuf, fromBuf, toBuf, scrut, ipat)
           case _ => false
         }
       }
