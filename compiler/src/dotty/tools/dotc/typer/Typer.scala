@@ -441,25 +441,25 @@ class Typer extends Namer
     tree
   }
 
-  private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
-    Applications.handleMeta(checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
+  def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Tree = qual match {
+    case qual @ IntegratedTypeArgs(app) =>
+      pt.revealIgnored match {
+        case _: PolyProto => qual // keep the IntegratedTypeArgs to strip at next typedTypeApply
+        case _ => app
+      }
+    case qual =>
+      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
+      val select = Applications.handleMeta(
+        checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
+      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
+      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
+      else typedDynamicSelect(tree, Nil, pt)
+  }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
     def typeSelectOnTerm(implicit ctx: Context): Tree =
-      typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
-        case qual1 @ IntegratedTypeArgs(app) =>
-          pt.revealIgnored match {
-            case _: PolyProto => qual1 // keep the IntegratedTypeArgs to strip at next typedTypeApply
-            case _ => app
-          }
-        case qual1 =>
-          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.sourcePos)
-          val select = typedSelect(tree, pt, qual1)
-          if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-          else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
-          else typedDynamicSelect(tree, Nil, pt)
-      }
+      typedSelect(tree, pt, typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)))
 
     def typeSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
       typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
@@ -2234,21 +2234,39 @@ class Typer extends Namer
 
   /** Try to rename `tpt` to a type `T` and typecheck `new T` with given expected type `pt`.
    */
-  def tryNewWithType(tpt: untpd.Tree, pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree =
-    tryEither { implicit ctx =>
-      val tycon = typed(tpt)
-      if (ctx.reporter.hasErrors)
-        EmptyTree // signal that we should return the error in fallBack
-      else
-        typed(untpd.Select(untpd.New(untpd.TypedSplice(tycon)), nme.CONSTRUCTOR), pt)
-    } { (nu, nuState) =>
-      if (nu.isEmpty) fallBack
-      else {
-        // we found a type constructor, signal the error in its application instead of the original one
-        nuState.commit()
-        nu
+
+  def tryNew[T >: Untyped <: Type]
+    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = {
+
+    def tryWithType(tpt: untpd.Tree): Tree =
+      tryEither { implicit ctx =>
+        val tycon = typed(tpt)
+        if (ctx.reporter.hasErrors)
+          EmptyTree // signal that we should return the error in fallBack
+        else
+          typed(untpd.Select(untpd.New(untpd.TypedSplice(tycon)), nme.CONSTRUCTOR), pt)
+      } { (nu, nuState) =>
+        if (nu.isEmpty) fallBack
+        else {
+          // we found a type constructor, signal the error in its application instead of the original one
+          nuState.commit()
+          nu
+        }
       }
+
+    tree match {
+      case Ident(name) =>
+        tryWithType(cpy.Ident(tree)(name.toTypeName))
+      case Select(qual, name) =>
+        val qual1 = treesInst match {
+          case `tpd` => untpd.TypedSplice(qual)
+          case `untpd` => qual
+        }
+        tryWithType(cpy.Select(tree)(qual1, name.toTypeName))
+      case _ =>
+        fallBack
     }
+  }
 
   /** Potentially add apply node or implicit conversions. Before trying either,
    *  if the function is applied to an empty parameter list (), we try
@@ -2290,20 +2308,9 @@ class Typer extends Namer
       else try adapt(simplify(sel, pt1, locked), pt1, locked) finally sel.removeAttachment(InsertedApply)
     }
 
-    def tryNew(fallBack: => Tree): Tree = {
-      tree match {
-        case Ident(name) =>
-          tryNewWithType(cpy.Ident(tree)(name.toTypeName), pt, fallBack)
-        case Select(qual, name) =>
-          tryNewWithType(cpy.Select(tree)(untpd.TypedSplice(qual), name.toTypeName), pt, fallBack)
-        case _ =>
-          fallBack
-      }
-    }
-
     def tryImplicit(fallBack: => Tree) =
       tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked)
-        .getOrElse(tryNew(fallBack))
+        .getOrElse(tryNew(tpd)(tree, pt, fallBack))
 
     if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
       // Suppress insertion of apply or implicit conversion on extension method receiver

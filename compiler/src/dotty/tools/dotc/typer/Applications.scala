@@ -814,16 +814,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         tstate.commit()
         result
       }
-      fn match {
-        case Ident(name) =>
-          tryNewWithType(cpy.Ident(fn)(name.toTypeName), pt, fallBack)
-        case Select(qual, name) =>
-          tryNewWithType(cpy.Select(fn)(qual, name.toTypeName), pt, fallBack)
-            // TODO: try to keep as much as possible from typed `qual` in order to avoid
-            // combinatorial explosion
-        case _ =>
-          fallBack
-      }
+      if (untpd.isPath(fn)) tryNew(untpd)(fn, pt, fallBack)
+      else fallBack
     }
 
   /** Typecheck application. Result could be an `Apply` node,
