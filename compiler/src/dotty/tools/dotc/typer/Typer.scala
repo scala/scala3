@@ -2232,6 +2232,24 @@ class Typer extends Namer
     case _                  => false
   }
 
+  /** Try to rename `tpt` to a type `T` and typecheck `new T` with given expected type `pt`.
+   */
+  def tryNewWithType(tpt: untpd.Tree, pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree =
+    tryEither { implicit ctx =>
+      val tycon = typed(tpt)
+      if (ctx.reporter.hasErrors)
+        EmptyTree // signal that we should return the error in fallBack
+      else
+        typed(untpd.Select(untpd.New(untpd.TypedSplice(tycon)), nme.CONSTRUCTOR), pt)
+    } { (nu, nuState) =>
+      if (nu.isEmpty) fallBack
+      else {
+        // we found a type constructor, signal the error in its application instead of the original one
+        nuState.commit()
+        nu
+      }
+    }
+
   /** Potentially add apply node or implicit conversions. Before trying either,
    *  if the function is applied to an empty parameter list (), we try
    *
@@ -2273,28 +2291,11 @@ class Typer extends Namer
     }
 
     def tryNew(fallBack: => Tree): Tree = {
-
-      def tryNewWithType(tpt: untpd.Tree): Tree =
-        tryEither { implicit ctx =>
-          val tycon = typed(tpt.withSpan(tree.span))
-          if (ctx.reporter.hasErrors)
-            EmptyTree // signal that we should return the error in fallBack
-          else
-            typed(untpd.Select(untpd.New(untpd.TypedSplice(tycon)), nme.CONSTRUCTOR), pt)
-        } { (nu, nuState) =>
-          if (nu.isEmpty) fallBack
-          else {
-            // we found a type constructor, signal the error in its application instead of the original one
-            nuState.commit()
-            nu
-          }
-        }
-
       tree match {
         case Ident(name) =>
-          tryNewWithType(untpd.Ident(name.toTypeName))
+          tryNewWithType(cpy.Ident(tree)(name.toTypeName), pt, fallBack)
         case Select(qual, name) =>
-          tryNewWithType(untpd.Select(untpd.TypedSplice(qual), name.toTypeName))
+          tryNewWithType(cpy.Select(tree)(untpd.TypedSplice(qual), name.toTypeName), pt, fallBack)
         case _ =>
           fallBack
       }

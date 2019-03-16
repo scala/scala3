@@ -37,7 +37,7 @@ object Test extends App {
   assert((x8: C[String, Int]).run == "C a 1")
 */
 }
-/*
+
 object Test2 {
   class A {
     def run = "A"
@@ -66,4 +66,4 @@ object Test2 {
 
   val x6 = C("a", 1)
   assert((x6: C[String, Int]).run == "C a 1")
-}*/
+}

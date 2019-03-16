@@ -7,9 +7,11 @@ import Contexts._
 import util.{SimpleIdentityMap, SimpleIdentitySet}
 import reporting._
 import config.Config
+import config.Printers.constr
 import collection.mutable
 import java.lang.ref.WeakReference
 import util.Stats
+import Decorators._
 
 import scala.annotation.internal.sharable
 
@@ -143,6 +145,8 @@ class TyperState(private val previous: TyperState /* | Null */) {
   def commit()(implicit ctx: Context): Unit = {
     Stats.record("typerState.commit")
     val targetState = ctx.typerState
+   	if (constraint ne targetState.constraint)
+      constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
     assert(isCommittable)
     if (targetState.constraint eq previousConstraint) targetState.constraint = constraint
     else targetState.mergeConstraintWith(this)

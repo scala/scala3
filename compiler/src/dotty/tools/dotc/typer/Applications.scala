@@ -214,7 +214,7 @@ object Applications {
    */
   class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
   extends IntegratedTypeArgs(app)
-  
+
   /** 1. If we are in an inline method but not in a nested quote, mark the inline method
    *  as a macro.
    *
@@ -803,6 +803,29 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     if (ctx.owner.isClassConstructor && untpd.isSelfConstrCall(app)) ctx.thisCallArgContext
     else ctx
 
+  /** Typecheck the function part of an application.
+   *  Fallback if this fails: try to convert `E` to `new E`.
+   */
+  def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
+    tryEither { implicit ctx =>
+      typedExpr(fn, pt)
+    } { (result, tstate) =>
+      def fallBack = {
+        tstate.commit()
+        result
+      }
+      fn match {
+        case Ident(name) =>
+          tryNewWithType(cpy.Ident(fn)(name.toTypeName), pt, fallBack)
+        case Select(qual, name) =>
+          tryNewWithType(cpy.Select(fn)(qual, name.toTypeName), pt, fallBack)
+            // TODO: try to keep as much as possible from typed `qual` in order to avoid
+            // combinatorial explosion
+        case _ =>
+          fallBack
+      }
+    }
+
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
@@ -812,7 +835,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def realApply(implicit ctx: Context): Tree = track("realApply") {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isContextual)(argCtx(tree))
       record("typedApply")
-      val fun1 = typedExpr(tree.fun, originalProto)
+      val fun1 = typedFunPart(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
       // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application,
@@ -947,7 +970,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
-    handleMeta(typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
+    handleMeta(typedFunPart(tree.fun, PolyProto(typedArgs, pt)) match {
       case IntegratedTypeArgs(app) =>
         app
       case _: TypeApply if !ctx.isAfterTyper =>
