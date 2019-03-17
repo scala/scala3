@@ -24,4 +24,9 @@ object Test extends App {
   assert(a.foo[Int].i == 1)
   assert(b.foo[Int].i == 2)
 
+  def f: Int = 1
+  def f(x: Int): Int = x
+
+  val x = f
+  val x1: Int = x
 }
