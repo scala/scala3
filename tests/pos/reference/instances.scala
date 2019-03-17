@@ -274,15 +274,9 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    implied fromString for Conversion[String, CompletionArg] {
-      def apply(s: String) = CompletionArg.Error(s)
-    }
-    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] {
-      def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
-    }
-    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] {
-      def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
-    }
+    implied fromString for Conversion[String, CompletionArg] = Error(_)
+    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
   }
   import CompletionArg._
 
