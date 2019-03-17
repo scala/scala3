@@ -2243,8 +2243,16 @@ class Typer extends Namer
         val tycon = typed(tpt)
         if (ctx.reporter.hasErrors)
           EmptyTree // signal that we should return the error in fallBack
-        else
-          typed(untpd.Select(untpd.New(untpd.TypedSplice(tycon)), nme.CONSTRUCTOR), pt)
+        else {
+          def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
+            case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
+              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
+            case _ =>
+              typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
+          }
+          recur(tycon, pt)
+            .reporting(res => i"try new $tree -> $res", typr)
+        }
       } { (nu, nuState) =>
         if (nu.isEmpty) fallBack
         else {
@@ -2969,7 +2977,7 @@ class Typer extends Namer
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tree match {
-                case _: ExtMethodApply => tree
+                case _: IntegratedTypeArgs => tree
                 case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
               }
             case _ =>
