@@ -34,7 +34,7 @@ object VarianceChecker {
           val paramVarianceStr = if (v == 0) "contra" else "co"
           val occursStr = variance match {
             case -1 => "contra"
-            case 0 => "non"
+            case 0 => "in"
             case 1 => "co"
           }
           val pos = tree.tparams
@@ -123,18 +123,19 @@ class VarianceChecker()(implicit ctx: Context) {
     def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
       try
         if (status.isDefined) status
-        else tp match {
+        else tp.normalized match {
           case tp: TypeRef =>
             val sym = tp.symbol
             if (sym.variance != 0 && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
-            else if (sym.isAliasType) this(status, sym.info.bounds.hi)
-            else foldOver(status, tp)
+            else sym.info match {
+              case MatchAlias(_) => foldOver(status, tp)
+              case TypeAlias(alias) => this(status, alias)
+              case _ => foldOver(status, tp)
+            }
           case tp: MethodOrPoly =>
             this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
-          case tp: MatchType =>
-            apply(status, tp.bound)
           case tp: ClassInfo =>
             foldOver(status, tp.classParents)
           case _ =>
@@ -179,7 +180,7 @@ class VarianceChecker()(implicit ctx: Context) {
         sym.is(PrivateLocal) ||
         sym.name.is(InlineAccessorName) || // TODO: should we exclude all synthetic members?
         sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
-      tree match {
+      try tree match {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
@@ -195,6 +196,9 @@ class VarianceChecker()(implicit ctx: Context) {
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case _ =>
+      }
+      catch {
+        case ex: TypeError => ctx.error(ex.toMessage, tree.sourcePos.focus)
       }
     }
   }

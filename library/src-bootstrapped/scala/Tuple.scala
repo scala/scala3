@@ -34,10 +34,10 @@ sealed trait Tuple extends Any {
   inline def stagedToArray: Array[Object] =
     ${ StagedTuple.toArrayStaged('this, constValueOpt[BoundedSize[this.type]]) }
 
-  inline def *: [H] (x: H): H *: this.type =
+  inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
     if (stageIt) stagedCons[H](x)
     else {
-      type Result = H *: this.type
+      type Result = H *: This
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(0) =>
           Tuple1(x).asInstanceOf[Result]
@@ -53,19 +53,19 @@ sealed trait Tuple extends Any {
           val t = asInstanceOf[Tuple4[_, _, _, _]]
           Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
         case Some(n) =>
-          fromArray[Result](cons$Array(x, toArray))
+          fromArray[H *: this.type](cons$Array(x, toArray))
         case _ =>
-          dynamic_*:[this.type, H](this, x)
+          dynamic_*:[This, H](this, x)
       }
     }
 
   inline def stagedCons[H] (x: H): H *: this.type =
     ${ StagedTuple.stagedCons('this, 'x, constValueOpt[BoundedSize[this.type]]) }
 
-  inline def ++(that: Tuple): Concat[this.type, that.type] =
-    if (stageIt) stagedConcat(that)
+  inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
+    if (stageIt) stagedConcat(that).asInstanceOf
     else {
-      type Result = Concat[this.type, that.type]
+      type Result = Concat[This, that.type]
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(0) =>
           that.asInstanceOf[Result]
@@ -99,7 +99,7 @@ sealed trait Tuple extends Any {
           if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
           else genericConcat[Result](this, that).asInstanceOf[Result]
         case None =>
-          dynamic_++[this.type, that.type](this, that)
+          dynamic_++[This, that.type](this, that)
       }
     }
 
@@ -110,10 +110,10 @@ sealed trait Tuple extends Any {
   inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
     fromArray[T](xs.toArray ++ ys.toArray)
 
-  inline def size: Size[this.type] =
-    if (stageIt) stagedSize
+  inline def size[This >: this.type <: Tuple]: Size[This] =
+    if (stageIt) stagedSize.asInstanceOf
     else {
-      type Result = Size[this.type]
+      type Result = Size[This]
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(n) => n.asInstanceOf[Result]
         case _ => dynamicSize(this)
@@ -130,20 +130,20 @@ object Tuple {
 
   final val stageIt = false
 
-  type Head[+X <: NonEmptyTuple] = X match {
+  type Head[X <: NonEmptyTuple] = X match {
     case x *: _ => x
   }
 
-  type Tail[+X <: NonEmptyTuple] <: Tuple = X match {
+  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
     case _ *: xs => xs
   }
 
-  type Concat[+X <: Tuple, +Y <: Tuple] <: Tuple = X match {
+  type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match {
     case Unit => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
-  type Elem[+X <: Tuple, +N] = X match {
+  type Elem[X <: Tuple, N] = X match {
     case x *: xs =>
       N match {
         case 0 => x
@@ -151,7 +151,7 @@ object Tuple {
       }
   }
 
-  type Size[+X] <: Int = X match {
+  type Size[X] <: Int = X match {
     case Unit => 0
     case x *: xs => S[Size[xs]]
   }
@@ -311,10 +311,10 @@ sealed trait NonEmptyTuple extends Tuple {
   import Tuple._
   import NonEmptyTuple._
 
-  inline def head: Head[this.type] =
-    if (stageIt) stagedHead
+  inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
+    if (stageIt) stagedHead.asInstanceOf
     else {
-      type Result = Head[this.type]
+      type Result = Head[This]
       val resVal = inline constValueOpt[BoundedSize[this.type]] match {
         case Some(1) =>
           val t = asInstanceOf[Tuple1[_]]
@@ -342,10 +342,10 @@ sealed trait NonEmptyTuple extends Tuple {
   inline def stagedHead: Head[this.type] =
     ${ StagedTuple.headStaged[this.type]('this, constValueOpt[BoundedSize[this.type]]) }
 
-  inline def tail: Tail[this.type] =
-    if (stageIt) stagedTail
+  inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
+    if (stageIt) stagedTail.asInstanceOf
     else {
-      type Result = Tail[this.type]
+      type Result = Tail[This]
       inline constValueOpt[BoundedSize[this.type]]  match {
         case Some(1) =>
           ().asInstanceOf[Result]
@@ -364,7 +364,7 @@ sealed trait NonEmptyTuple extends Tuple {
         case Some(n) if n > 5 =>
           fromArray[Result](toArray.tail)
         case None =>
-          dynamicTail[this.type](this)
+          dynamicTail[This](this)
       }
     }
 
@@ -374,13 +374,13 @@ sealed trait NonEmptyTuple extends Tuple {
   inline def fallbackApply(n: Int) =
     inline constValueOpt[n.type] match {
       case Some(n: Int) => error("index out of bounds: ", n)
-      case None => dynamicApply[this.type](this, n)
+      case None => dynamicApply[this.type, n.type](this, n)
     }
 
-  inline def apply(n: Int): Elem[this.type, n.type] =
-    if (stageIt) stagedApply(n)
+  inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
+    if (stageIt) stagedApply(n).asInstanceOf
     else {
-      type Result = Elem[this.type, n.type]
+      type Result = Elem[This, n.type]
       inline constValueOpt[Size[this.type]] match {
         case Some(1) =>
           val t = asInstanceOf[Tuple1[_]]
@@ -462,8 +462,8 @@ object NonEmptyTuple {
     res.asInstanceOf[Result]
   }
 
-  def dynamicApply[This <: NonEmptyTuple] (self: This, n: Int): Elem[This, n.type] = {
-    type Result = Elem[This, n.type]
+  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: N): Elem[This, N] = {
+    type Result = Elem[This, N]
     val res = (self: Any) match {
       case self: TupleXXL => self.elems(n)
       case self: Product => self.productElement(n)

@@ -28,6 +28,7 @@ object Formatting {
       case arg: Showable =>
         try arg.show
         catch {
+          case ex: CyclicReference => "... (caught cyclic reference) ..."
           case NonFatal(ex)
           if !ctx.mode.is(Mode.PrintShowExceptions) &&
              !ctx.settings.YshowPrintErrors.value =>

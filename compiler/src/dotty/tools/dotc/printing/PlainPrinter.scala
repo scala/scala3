@@ -166,7 +166,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(OrTypePrec) { toText(tp1) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(tp2) } }
       case MatchType(bound, scrutinee, cases) =>
         changePrec(GlobalPrec) {
-          def caseText(tp: Type): Text = "case " ~ toText(tp)
+          def caseText(tp: Type): Text = tp match {
+            case defn.MatchCase(pat, body) => "case " ~ toText(pat) ~ " => " ~ toText(body)
+            case _ => "case " ~ toText(tp)
+          }
           def casesText = Text(cases.map(caseText), "\n")
             atPrec(InfixPrec) { toText(scrutinee) } ~
             keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~

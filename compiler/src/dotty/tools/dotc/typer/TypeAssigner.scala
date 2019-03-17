@@ -487,7 +487,7 @@ trait TypeAssigner {
         }
         HKTypeLambda.fromParams(
           params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
-          defn.FunctionOf(pat.tpe :: Nil, body.tpe))
+          defn.MatchCase(pat.tpe, body.tpe))
       }
       else body.tpe
     tree.withType(ownType)
