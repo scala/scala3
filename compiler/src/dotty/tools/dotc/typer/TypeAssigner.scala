@@ -301,8 +301,16 @@ trait TypeAssigner {
     ConstFold(tree.withType(tp))
   }
 
+  /** Normalize type T appearing in a new T by following eta expansions to
+   *  avoid higher-kinded types.
+   */
+  def typeOfNew(tpt: Tree)(implicit ctx: Context): Type = tpt.tpe.dealias match {
+    case TypeApplications.EtaExpansion(tycon) => tycon
+    case t => tpt.tpe
+  }
+
   def assignType(tree: untpd.New, tpt: Tree)(implicit ctx: Context): New =
-    tree.withType(tpt.tpe)
+    tree.withType(typeOfNew(tpt))
 
   def assignType(tree: untpd.Literal)(implicit ctx: Context): Literal =
     tree.withType {
