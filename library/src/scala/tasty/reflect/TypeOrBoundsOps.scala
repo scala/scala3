@@ -11,6 +11,13 @@ trait TypeOrBoundsOps extends Core {
     def =:=(that: Type)(implicit ctx: Context): Boolean = kernel.`Type_=:=`(self)(that)
     def <:<(that: Type)(implicit ctx: Context): Boolean = kernel.`Type_<:<`(self)(that)
     def widen(implicit ctx: Context): Type = kernel.Type_widen(self)
+
+    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
+     *  or instantiated type variable.
+     */
+    def dealias(implicit ctx: Context): Type = kernel.Type_dealias(self)
+
     def classSymbol(implicit ctx: Context): Option[ClassSymbol] = kernel.Type_classSymbol(self)
     def typeSymbol(implicit ctx: Context): Symbol = kernel.Type_typeSymbol(self)
     def isSingleton(implicit ctx: Context): Boolean = kernel.Type_isSingleton(self)

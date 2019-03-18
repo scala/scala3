@@ -994,6 +994,8 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     */
   def Type_widen(self: Type)(implicit ctx: Context): Type = self.widen
 
+  def Type_dealias(self: Type)(implicit ctx: Context): Type = self.dealias
+
   def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassSymbol] =
     if (self.classSymbol.exists) Some(self.classSymbol.asClass) else None
 
