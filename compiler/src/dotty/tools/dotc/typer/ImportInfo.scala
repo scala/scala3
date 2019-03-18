@@ -47,9 +47,9 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   private[this] var mySym: Symbol = _
 
   /** The (TermRef) type of the qualifier of the import clause */
-  def site(implicit ctx: Context): Type = {
-    val ImportType(expr) = sym.info
-    expr.tpe
+  def site(implicit ctx: Context): Type = sym.info match {
+    case ImportType(expr) => expr.tpe
+    case _ => NoType
   }
 
   /** The names that are excluded from any wildcard import */
