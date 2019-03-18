@@ -13,25 +13,6 @@ public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R>, java.
     };
 
     @SuppressWarnings("unchecked")
-    default scala.Function1<T1, scala.Function1<T2, R>> curried() {
-      return x1 -> x2 -> apply(x1, x2);
-    }
-
-    @SuppressWarnings("unchecked")
-    default scala.Function1<scala.Tuple2<T1, T2>, R> tupled() {
-        return x0$1 -> {
-            if (x0$1 == null) {
-                throw new MatchError(x0$1);
-            }
-            T1 x1 = x0$1._1();
-            T2 x2 = x0$1._2();
-            R r = this.apply(x1, x2);
-            return r;
-        }
-        ;
-    }
-
-    @SuppressWarnings("unchecked")
     default void apply$mcVII$sp(int v1, int v2) {
         apply((T1) ((Integer) v1), (T2) ((Integer) v2));
     }
@@ -247,7 +228,7 @@ public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R>, java.
     default double apply$mcDDD$sp(double v1, double v2) {
         return scala.runtime.BoxesRunTime.unboxToDouble(apply((T1) ((Double) v1), (T2) ((Double) v2)));
     }
-    
+
     @SuppressWarnings("unchecked")
     default scala.Function1 curried$mcVII$sp() {
         return curried();
@@ -464,7 +445,7 @@ public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R>, java.
     default scala.Function1 curried$mcDDD$sp() {
         return curried();
     }
-    
+
     @SuppressWarnings("unchecked")
     default scala.Function1 tupled$mcVII$sp() {
         return tupled();
