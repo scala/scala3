@@ -774,7 +774,7 @@ object desugar {
    *  companion object, and the synthetic opaque type member will go into the self type.
    */
   def opaqueAlias(tdef: TypeDef)(implicit ctx: Context): Tree =
-    if (tdef.rhs.isInstanceOf[TypeBoundsTree]) {
+    if (lacksDefinition(tdef)) {
       ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.sourcePos)
       tdef.withFlags(tdef.mods.flags &~ Opaque)
     }
