@@ -2,13 +2,13 @@ object Bar {
   def unapply(arg: scala.Any): scala.Option[scala.Any] = scala.Some.apply[scala.Any](arg)
 }
 object BarSeq {
-  def unapplySeq(arg: scala.Any): scala.Option[scala.Seq[scala.Any]] = scala.Some.apply[collection.immutable.List[scala.Any]](scala.List.apply[scala.Any](arg))
+  def unapplySeq(arg: scala.Any): scala.Option[scala.Seq[scala.Any]] = scala.Some.apply[scala.collection.immutable.List[scala.Any]](scala.List.apply[scala.Any](arg))
 }
 object Baz {
   def unapply[T](arg: T): scala.Option[T] = scala.Some.apply[T](arg)
 }
 object BazSeq {
-  def unapplySeq[T](arg: T): scala.Option[scala.Seq[T]] = scala.Some.apply[collection.immutable.List[T]](scala.List.apply[T](arg))
+  def unapplySeq[T](arg: T): scala.Option[scala.Seq[T]] = scala.Some.apply[scala.collection.immutable.List[T]](scala.List.apply[T](arg))
 }
 class Foo() {
   def bar(x: scala.Any): scala.Unit = x match {

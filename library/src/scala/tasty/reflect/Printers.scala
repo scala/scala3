@@ -1445,6 +1445,11 @@ trait Printers
         case Type.SymRef(sym, prefix) =>
           prefix match {
             case Types.EmptyPrefix() =>
+              if (sym.owner.flags.is(Flags.Package)) {
+                val packagePath = sym.owner.fullName.stripPrefix("<root>").stripPrefix("<empty>").stripPrefix(".")
+                if (packagePath != "")
+                  this += packagePath += "."
+              }
             case IsType(prefix @ Type.SymRef(IsClassSymbol(_), _)) =>
               printType(prefix)
               this += "#"
