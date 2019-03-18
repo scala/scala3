@@ -9,9 +9,6 @@ import scala.MatchError;
 
 @FunctionalInterface
 public interface JFunction2<T1, T2, R> extends scala.Function2<T1, T2, R>, java.io.Serializable {
-    default void $init$() {
-    };
-
     @SuppressWarnings("unchecked")
     default void apply$mcVII$sp(int v1, int v2) {
         apply((T1) ((Integer) v1), (T2) ((Integer) v2));
