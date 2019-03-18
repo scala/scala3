@@ -39,8 +39,11 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
 
   override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
-    for (mixin <- cls.mixins if mixin.is(Scala2x) && !mixin.is(Scala2xPartiallyAugmented))
-      augmentScala2Trait(mixin)
+    for (mixin <- cls.mixins) {
+      val erasedMixin = TypeErasure.normalizeClass(mixin)
+      if (erasedMixin.is(Scala2x) && !erasedMixin.is(Scala2xPartiallyAugmented))
+        augmentScala2Trait(erasedMixin)
+    }
     impl
   }
 
