@@ -150,6 +150,9 @@ object Inferencing {
       tree
   }
 
+  def isSkolemFree(tp: Type)(implicit ctx: Context): Boolean =
+    !tp.existsPart(_.isInstanceOf[SkolemType])
+
   /** Derive information about a pattern type by comparing it with some variant of the
    *  static scrutinee type. We have the following situation in case of a (dynamic) pattern match:
    *
