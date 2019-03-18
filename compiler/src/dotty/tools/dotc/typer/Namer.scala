@@ -1039,7 +1039,7 @@ class Namer { typer: Typer =>
       val finalSelfInfo: TypeOrSymbol =
         if (cls.isOpaqueCompanion) {
           // The self type of an opaque companion is refined with the type-alias of the original opaque type
-          def refineOpaqueCompanionSelfType(mt: Type, stats: List[Tree]): RefinedType = (stats: @unchecked) match {
+          def refineOpaqueCompanionSelfType(mt: Type, stats: List[Tree]): Type = (stats: @unchecked) match {
             case (td @ TypeDef(localName, rhs)) :: _
             if td.mods.is(SyntheticOpaque) && localName == name.stripModuleClassSuffix =>
               // create a context owned by the current opaque helper symbol,
@@ -1053,6 +1053,8 @@ class Namer { typer: Typer =>
               RefinedType(mt, localName, bounds)
             case _ :: stats1 =>
               refineOpaqueCompanionSelfType(mt, stats1)
+            case _ =>
+              mt // can happen for malformed inputs.
           }
           selfInfo match {
             case self: Type =>
