@@ -735,6 +735,7 @@ trait Checking {
       case Ident(name: SimpleName)
       if !name.exists(isOperatorPart) &&
          !app.symbol.hasAnnotation(defn.InfixAnnot) &&
+         !defn.isInfix(app.symbol) &&
          !app.symbol.maybeOwner.is(Scala2x) &&
          !infixOKSinceFollowedBy(tree.right) &&
          ctx.settings.strict.value =>

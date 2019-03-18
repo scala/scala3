@@ -1287,6 +1287,10 @@ class Definitions {
     else parents
   }
 
+  /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
+  def isInfix(sym: Symbol)(implicit ctx: Context): Boolean =
+    (sym eq Object_eq) || (sym eq Object_ne)
+
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */
