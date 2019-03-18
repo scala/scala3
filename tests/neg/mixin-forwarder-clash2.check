@@ -1,5 +1,5 @@
 <6..6> in B_2.scala
 Name clash between inherited members:
-override def concat(suffix: Int): X in trait OneB and
-override def concat: [Dummy](suffix: Int): Y in trait TwoB
+def concat(suffix: Int): X in trait One and
+def concat: [Dummy](suffix: Int): Y in trait Two
 have the same type after erasure.

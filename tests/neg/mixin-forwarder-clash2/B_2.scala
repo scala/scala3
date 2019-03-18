@@ -1,5 +1,5 @@
-class Bar2 extends Bar1 with TwoA[Foo] with TwoB[Foo] // error
-  // We get a mixin forwarder for TwoB:
+class Bar2 extends Bar1 with Two[Foo] // error
+  // We get a mixin forwarder for Two:
   //   override def concat(suffix: Int): Object
   // This clashes with the forwarder generated in Bar1, and
   // we can detect that even with separate compilation,
@@ -11,6 +11,6 @@ class Bar2 extends Bar1 with TwoA[Foo] with TwoB[Foo] // error
   // |class Bar2 extends Bar1 with TwoA[Foo] with TwoB[Foo]
   // |      ^
   // |      Name clash between inherited members:
-  // |      override def concat(suffix: Int): X in trait OneB and
-  // |      override def concat: [Dummy](suffix: Int): Y in trait TwoB
+  // |      def concat(suffix: Int): X in trait One and
+  // |      def concat: [Dummy](suffix: Int): Y in trait Two
   // |      have the same type after erasure.
