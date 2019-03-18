@@ -796,6 +796,12 @@ trait Kernel {
     */
   def Type_widen(self: Type)(implicit ctx: Context): Type
 
+  /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+   *  TypeVars until type is no longer alias type, annotated type, LazyRef,
+   *  or instantiated type variable.
+   */
+  def Type_dealias(self: Type)(implicit ctx: Context): Type
+
   def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassSymbol]
 
   def Type_typeSymbol(self: Type)(implicit ctx: Context): Symbol
