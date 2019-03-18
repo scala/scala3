@@ -80,7 +80,7 @@ object Parsers {
      *  If `t` does not have a span yet, set its span to the given one.
      */
     def atSpan[T <: Positioned](span: Span)(t: T): T =
-      if (t.span.isSourceDerived) t else t.withSpan(span)
+      if (t.span.isSourceDerived) t else t.withSpan(span.union(t.span))
 
     def atSpan[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atSpan(Span(start, end, point))(t)
