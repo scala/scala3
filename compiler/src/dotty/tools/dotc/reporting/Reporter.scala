@@ -98,8 +98,9 @@ trait Reporting { this: Context =>
     else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(fullPos))
   }
 
-  def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+  def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
     reporter.report(new Error(msg, addInlineds(pos)))
+  }
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
     val fullPos = addInlineds(pos)
@@ -184,11 +185,22 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private[this] var _errorCount = 0
   private[this] var _warningCount = 0
+
+  /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
+
+  /** The number of warnings reported by this reporter (ignoring outer reporters) */
   def warningCount: Int = _warningCount
+
+  /** Have errors been reported by this reporter (ignoring outer reporters)? */
   def hasErrors: Boolean = errorCount > 0
+
+  /** Have warnings been reported by this reporter (ignoring outer reporters)? */
   def hasWarnings: Boolean = warningCount > 0
+
   private[this] var errors: List[Error] = Nil
+
+  /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
 
   /** Have errors been reported by this reporter, or in the
