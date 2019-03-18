@@ -2438,7 +2438,14 @@ object Types {
     private[this] var myRef: Type = null
     private[this] var computed = false
     def ref(implicit ctx: Context): Type = {
-      if (computed) assert(myRef != null)
+      if (computed) {
+        if (myRef == null) {
+          // if errors were reported previously handle this by throwing a CyclicReference
+          // instead of crashing immediately. A test case is neg/i6057.scala.
+          assert(ctx.reporter.errorsReported)
+          CyclicReference(NoDenotation)
+        }
+      }
       else {
         computed = true
         myRef = refFn(ctx)
