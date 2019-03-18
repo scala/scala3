@@ -8,7 +8,7 @@ package dotty.runtime.function;
 import scala.runtime.BoxedUnit;
 
 @FunctionalInterface
-public interface JProcedure4<T1, T2, T3, T4> extends JFunction4<T1, T2, T3, T4, BoxedUnit>, java.io.Serializable {
+public interface JProcedure4<T1, T2, T3, T4> extends scala.Function4<T1, T2, T3, T4, BoxedUnit>, java.io.Serializable {
     default void $init$() {
     }
 
