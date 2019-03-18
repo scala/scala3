@@ -593,8 +593,8 @@ trait Printers
               printParent(fun)
               if (!args.isEmpty || needEmptyParens)
                 inParens(printTrees(args, ", "))
-            case IsTerm(Term.Select(Term.New(tpt), _)) =>
-              printTypeTree(tpt)
+            case IsTerm(Term.Select(Term.IsNew(newTree), _)) =>
+              printType(newTree.tpe)
             case IsTerm(parent) =>
               throw new MatchError(parent.show)
           }
@@ -772,9 +772,9 @@ trait Printers
           }
           this += "this"
 
-        case Term.New(tpt) =>
+        case Term.IsNew(tree) =>
           this += "new "
-          printTypeTree(tpt)
+          printType(tree.tpe)
 
         case Term.NamedArg(name, arg) =>
           this += name += " = "
