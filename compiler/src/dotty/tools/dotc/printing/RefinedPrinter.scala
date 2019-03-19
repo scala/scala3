@@ -331,7 +331,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (tree.hasType && tree.symbol == defn.QuotedExpr_splice) keywordStr("${") ~ toTextLocal(qual) ~ keywordStr("}")
         else if (tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
-        else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR || ctx.settings.YprintDebug.value)
+        else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided (name != nme.CONSTRUCTOR || ctx.settings.YprintDebug.value))
       case tree: This =>
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
