@@ -738,7 +738,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             return recur(AndType(tp11, tp121), tp2) && recur(AndType(tp11, tp122), tp2)
           case _ =>
         }
-        either(recur(tp11, tp2), recur(tp12, tp2))
+        val tp1norm = simplifyAndTypeWithFallback(tp11, tp12, tp1)
+        if (tp1 ne tp1norm) recur(tp1norm, tp2)
+        else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
         def compareMatch = tp2 match {
           case tp2: MatchType =>
@@ -1641,6 +1643,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         NoType
     }
 
+  private[this] def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
+      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+    val t1 = distributeAnd(tp1, tp2)
+    if (t1.exists) t1
+    else {
+      val t2 = distributeAnd(tp2, tp1)
+      if (t2.exists) t2
+      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
+      else liftIfHK(tp1, tp2, op, original)
+    }
+  }
+
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `&` is distributed inside the type. This holds for
    *  all types which are not value types (e.g. TypeBounds, ClassInfo,
@@ -1659,16 +1673,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *
    *  In these cases, a MergeError is thrown.
    */
-  final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
-    val t1 = distributeAnd(tp1, tp2)
-    if (t1.exists) t1
-    else {
-      val t2 = distributeAnd(tp2, tp1)
-      if (t2.exists) t2
-      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
-      else liftIfHK(tp1, tp2, AndType(_, _), _ & _)
-    }
-  }
+  final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
+    andTypeGen(tp1, tp2, AndType(_, _), isErased = isErased)
+
+  final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
+    andTypeGen(tp1, tp2, (_, _) => fallback)
 
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `|` is distributed inside the type. This holds for
