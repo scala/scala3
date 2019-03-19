@@ -1176,9 +1176,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else {
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
-        if (returnsUnit)
-          ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
-        else ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
+        if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
+        else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
+        else ctx.requiredClass(("scala.Function" + arity))
       }
     }
   }
