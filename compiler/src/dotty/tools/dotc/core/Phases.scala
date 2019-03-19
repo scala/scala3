@@ -287,6 +287,10 @@ object Phases {
 
     def isRunnable(implicit ctx: Context): Boolean =
       !ctx.reporter.hasErrors
+        // TODO: This might test an unintended condition.
+        // To find out whether any errors have been reported during this
+        // run one calls `errorsReported`, not `hasErrors`.
+        // But maybe changing this would prevent useful phases from running?
 
     /** If set, allow missing or superfluous arguments in applications
      *  and type applications.
