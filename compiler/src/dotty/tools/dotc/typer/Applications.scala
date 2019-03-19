@@ -1632,16 +1632,50 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
         else compat
     }
+
+    /** For each candidate `C`, a proxy termref paired with `C`.
+     *  The proxy termref has as symbol a copy of the original candidate symbol,
+     *  with an info that strips the first value parameter list away.
+     *  @param  argTypes  The types of the arguments of the FunProto `pt`.
+     */
+    def advanceCandidates(argTypes: List[Type]): List[(TermRef, TermRef)] = {
+      def strippedType(tp: Type): Type = tp match {
+        case tp: PolyType =>
+          val rt = strippedType(tp.resultType)
+          if (rt.exists) tp.derivedLambdaType(resType = rt) else rt
+        case tp: MethodType =>
+          tp.instantiate(argTypes)
+        case _ =>
+          NoType
+      }
+      def cloneCandidate(cand: TermRef): List[(TermRef, TermRef)] = {
+        val strippedInfo = strippedType(cand.widen)
+        if (strippedInfo.exists) {
+          val sym = cand.symbol.asTerm.copy(info = strippedInfo)
+          (TermRef(cand.prefix, sym), cand) :: Nil
+        }
+        else Nil
+      }
+      overload.println(i"look at more params: ${candidates.head.symbol}: ${candidates.map(_.widen)}%, % with $pt, [$targs%, %]")
+      candidates.flatMap(cloneCandidate)
+    }
+
     val found = narrowMostSpecific(candidates)
     if (found.length <= 1) found
-    else {
-      val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
-      if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
-      else {
-        val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-        else alts
-      }
+    else pt match {
+      case pt @ FunProto(_, resType: FunProto) =>
+        // try to narrow further with snd argument list
+        val advanced = advanceCandidates(pt.typedArgs.tpes)
+        resolveOverloaded(advanced.map(_._1), resType, Nil) // resolve with candidates where first params are stripped
+          .map(advanced.toMap) // map surviving result(s) back to original candidates
+      case _ =>
+        val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
+        if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
+        else {
+          val deepPt = pt.deepenProto
+          if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+          else alts
+        }
     }
   }
 
