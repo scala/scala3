@@ -444,7 +444,7 @@ class Definitions {
     def Seq_head(implicit ctx: Context): Symbol = Seq_headR.symbol
     lazy val Seq_dropR: TermRef = SeqClass.requiredMethodRef(nme.drop)
     def Seq_drop(implicit ctx: Context): Symbol = Seq_dropR.symbol
-    lazy val Seq_lengthCompareR: TermRef = SeqClass.requiredMethodRef(nme.lengthCompare)
+    lazy val Seq_lengthCompareR: TermRef = SeqClass.requiredMethodRef(nme.lengthCompare, List(IntType))
     def Seq_lengthCompare(implicit ctx: Context): Symbol = Seq_lengthCompareR.symbol
     lazy val Seq_lengthR: TermRef = SeqClass.requiredMethodRef(nme.length)
     def Seq_length(implicit ctx: Context): Symbol = Seq_lengthR.symbol
