@@ -1444,7 +1444,14 @@ trait Printers
 
         case Type.SymRef(sym, prefix) =>
           prefix match {
-            case Types.EmptyPrefix() =>
+            case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
+            case NoPrefix() =>
+              if (sym.owner.flags.is(Flags.Package)) {
+                // TODO should these be in the prefix? These are at least `scala`, `java` and `scala.collection`.
+                val packagePath = sym.owner.fullName.stripPrefix("<root>").stripPrefix("<empty>").stripPrefix(".")
+                if (packagePath != "")
+                  this += packagePath += "."
+              }
             case IsType(prefix @ Type.SymRef(IsClassSymbol(_), _)) =>
               printType(prefix)
               this += "#"
@@ -1521,7 +1528,7 @@ trait Printers
               this += highlightTypeDef(".this", color)
             case Type.TypeRef(name, prefix) if name.endsWith("$") =>
               prefix match {
-                case Types.EmptyPrefix() =>
+                case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
                 case _ =>
                   printTypeOrBound(prefix)
                   this += "."
@@ -1818,12 +1825,6 @@ trait Printers
         }
       }
 
-      object EmptyPrefix {
-        def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-          case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) => true
-          case _ => false
-        }
-      }
     }
 
     object PackageObject {

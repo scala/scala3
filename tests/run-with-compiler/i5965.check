@@ -1,7 +1,7 @@
 {
-  val y: collection.immutable.List[scala.Int] = scala.List.apply[scala.Int](1, 2, 3)
+  val y: scala.collection.immutable.List[scala.Int] = scala.List.apply[scala.Int](1, 2, 3)
 
-  (y: collection.immutable.List[scala.Int])
+  (y: scala.collection.immutable.List[scala.Int])
 }
 List(1, 2, 3)
 {
@@ -11,8 +11,8 @@ List(1, 2, 3)
 }
 Some(4)
 {
-  val y: collection.immutable.Map[scala.Int, scala.Int] = scala.Predef.Map.apply[scala.Int, scala.Int](scala.Predef.ArrowAssoc[scala.Int](4).->[scala.Int](1))
+  val y: scala.collection.immutable.Map[scala.Int, scala.Int] = scala.Predef.Map.apply[scala.Int, scala.Int](scala.Predef.ArrowAssoc[scala.Int](4).->[scala.Int](1))
 
-  (y: collection.immutable.Map[scala.Int, scala.Int])
+  (y: scala.collection.immutable.Map[scala.Int, scala.Int])
 }
 Map(4 -> 1)
