@@ -1652,7 +1652,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val strippedInfo = strippedType(cand.widen)
         if (strippedInfo.exists) {
           val sym = cand.symbol.asTerm.copy(info = strippedInfo)
-          (TermRef(cand.prefix, sym), cand) :: Nil
+          (TermRef(NoPrefix, sym), cand) :: Nil
         }
         else Nil
       }
