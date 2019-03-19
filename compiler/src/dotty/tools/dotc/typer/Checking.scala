@@ -795,6 +795,19 @@ trait Checking {
         }
         traverser.traverse(call)
       }
+
+      // Check that constructor call is of the form _.<init>(args1)...(argsN).
+      // This guards against calls resulting from inserted implicits or applies.
+      def checkLegalConstructorCall(tree: Tree, encl: Tree, kind: String): Unit = tree match {
+        case Apply(fn, _) => checkLegalConstructorCall(fn, tree, "")
+        case TypeApply(fn, _) => checkLegalConstructorCall(fn, tree, "type ")
+        case Select(_, nme.CONSTRUCTOR) => // ok
+        case _ => ctx.error(s"too many ${kind}arguments in parent constructor", encl.sourcePos)
+      }
+      call match {
+        case Apply(fn, _) => checkLegalConstructorCall(fn, call, "")
+        case _ =>
+      }
     }
 
   /** Check that `tpt` does not define a higher-kinded type */
