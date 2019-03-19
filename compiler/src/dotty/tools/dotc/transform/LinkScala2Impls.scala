@@ -57,7 +57,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
       )
     }
     for (sym <- mixin.info.decls) {
-      if (needsForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy) || sym.is(Method, butNot = Deferred))
+      if (needsMixinForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy) || sym.is(Method, butNot = Deferred))
         newImpl(sym.asTerm).enteredAfter(thisPhase)
     }
     // The trait is now fully augmented so the flag isn't needed anymore.

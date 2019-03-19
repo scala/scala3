@@ -18,7 +18,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     map(n => ctx.getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
-  def mkForwarder(member: TermSymbol): TermSymbol = {
+  def mkForwarderSym(member: TermSymbol): TermSymbol = {
     val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
@@ -52,7 +52,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    *   - there's a class defining a method with same signature
    *   - there are multiple traits defining method with same signature
    */
-  def needsForwarder(meth: Symbol): Boolean = {
+  def needsMixinForwarder(meth: Symbol): Boolean = {
     lazy val competingMethods = competingMethodsIterator(meth).toList
 
     def needsDisambiguation = competingMethods.exists(x=> !(x is Deferred)) // multiple implementations are available
@@ -71,7 +71,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarder(target: Symbol): List[Type] => List[List[Tree]] => Tree =
+  def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree =
     targs => vrefss =>
       superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
 
