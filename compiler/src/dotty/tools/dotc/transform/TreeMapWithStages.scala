@@ -30,6 +30,7 @@ import scala.annotation.constructorOnly
  *  @param  levels     a stacked map from symbols to the levels in which they were defined
  */
 abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMapWithImplicits {
+
   import tpd._
   import TreeMapWithStages._
 
@@ -68,7 +69,9 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree
 
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-    reporting.trace(i"StagingTransformer.transform $tree at $level", show = true) {
+    if (tree.source != ctx.source && tree.source.exists)
+      transform(tree)(ctx.withSource(tree.source))
+    else reporting.trace(i"StagingTransformer.transform $tree at $level", show = true) {
       def mapOverTree(lastEntered: List[Symbol]) =
         try super.transform(tree)
         finally

@@ -372,12 +372,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  from its `originalOwner`, and, if it comes from outside the inlined method
    *  itself, it has to be marked as an inlined argument.
    */
-  def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context): Tree = {
-    val result = tree.changeOwner(originalOwner, ctx.owner)
-    if (!originalOwner.isContainedIn(inlinedMethod))
-      Inlined(EmptyTree, Nil, result).withSpan(tree.span)
-    else result
-  }
+  def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context): Tree =
+    tree.changeOwner(originalOwner, ctx.owner)
 
   def tryConstValue: Tree =
     ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
@@ -418,6 +414,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
+    def inlinedFromOutside(tree: Tree)(span: Span): Tree =
+      Inlined(EmptyTree, Nil, tree)(inlinedSourceCtx).withSpan(span)
+
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
@@ -438,7 +437,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           tree.tpe match {
             case thistpe: ThisType =>
               thisProxy.get(thistpe.cls) match {
-                case Some(t) => ref(t).withSpan(tree.span)
+                case Some(t) =>
+                  val thisRef = ref(t).withSpan(call.span)
+                  inlinedFromOutside(thisRef)(tree.span)
                 case None => tree
               }
             case _ => tree
@@ -449,12 +450,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             if (tree.name == nme.WILDCARD) tree.span // From type match
             else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
             else paramSpan(tree.name)
+          val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
-              t.dealias match {
-                case tp: ConstantType => Inlined(EmptyTree, Nil, singleton(tp).withSpan(argSpan)).withSpan(tree.span)
-                case tp => singleton(tp).withSpan(argSpan)
-              }
+              val inlinedSingleton = singleton(t).withSpan(argSpan)
+              inlinedFromOutside(inlinedSingleton)(tree.span)
             case Some(t) if tree.isType =>
               TypeTree(t).withSpan(argSpan)
             case _ => tree
@@ -467,7 +467,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion = inliner.transform(rhsToInline).withSpan(call.span)
+    val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
       case (msgArg :: rest) :: Nil =>
@@ -1159,8 +1159,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
     val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx.withSource(inlinedFrom.source))
+
+    val inlinedNormailizer = new TreeMap {
+      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
+        case _ => super.transform(tree)
+      }
+    }
+    val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
+
     if (ctx.reporter.hasErrors) EmptyTree
-    else evaluatedSplice.withSpan(span)
+    else normalizedSplice.withSpan(span)
   }
 
 }

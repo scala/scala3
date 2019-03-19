@@ -1587,7 +1587,7 @@ final class SearchRoot extends SearchHistory {
             // Substitute dictionary references into dictionary entry RHSs
             val rhsMap = new TreeTypeMap(treeMap = {
               case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))
+                tpd.ref(vsymMap(id.symbol)).withSpan(id.span)
               case tree => tree
             })
             val nrhss = rhss.map(rhsMap(_))
