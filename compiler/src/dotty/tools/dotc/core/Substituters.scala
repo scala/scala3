@@ -58,7 +58,7 @@ trait Substituters { this: Context =>
         val sym = tp.symbol
         var fs = from
         var ts = to
-        while (fs.nonEmpty) {
+        while (fs.nonEmpty && ts.nonEmpty) {
           if (fs.head eq sym) return ts.head
           fs = fs.tail
           ts = ts.tail
@@ -203,7 +203,7 @@ trait Substituters { this: Context =>
         val sym = tp.symbol
         var fs = from
         var ts = to
-        while (fs.nonEmpty) {
+        while (fs.nonEmpty && ts.nonEmpty) {
           if (fs.head eq sym)
             return ts.head match {
               case TypeBounds(lo, hi) => range(lo, hi)
