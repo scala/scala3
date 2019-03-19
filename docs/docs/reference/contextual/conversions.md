@@ -38,7 +38,7 @@ primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
 implied int2Integer for Conversion[Int, java.lang.Integer] =
- new java.lang.Integer(_)
+ java.lang.Integer.valueOf(_)
 ```
 
 2. The "magnet" pattern is sometimes used to express many variants of a method. Instead of defining overloaded versions of the method, one can also let the method take one or more arguments of specially defined "magnet" types, into which various argument types can be converted. E.g.
