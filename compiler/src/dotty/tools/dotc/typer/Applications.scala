@@ -11,6 +11,7 @@ import Trees.Untyped
 import Contexts._
 import Flags._
 import Symbols._
+import Denotations.Denotation
 import Types._
 import Decorators._
 import ErrorReporting._
@@ -1204,8 +1205,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  result matching `resultType`?
    */
   def hasExtensionMethod(tp: Type, name: TermName, argType: Type, resultType: Type)(implicit ctx: Context) = {
-    val mbr = tp.memberBasedOnFlags(name, required = ExtensionMethod)
-    mbr.exists && isApplicable(tp.select(name, mbr), argType :: Nil, resultType)
+    def qualifies(mbr: Denotation) =
+      mbr.exists && isApplicable(tp.select(name, mbr), argType :: Nil, resultType)
+    tp.memberBasedOnFlags(name, required = ExtensionMethod) match {
+      case mbr: SingleDenotation => qualifies(mbr)
+      case mbr => mbr.hasAltWith(qualifies(_))
+    }
   }
 
   /** Compare owner inheritance level.
