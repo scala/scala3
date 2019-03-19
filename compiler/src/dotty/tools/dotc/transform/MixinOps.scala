@@ -72,8 +72,17 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
   def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree =
-    targs => vrefss =>
-      superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
+    targs => vrefss => {
+      val tapp = superRef(target).appliedToTypes(targs)
+      vrefss match {
+        case Nil | List(Nil) =>
+          // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
+          // whichever makes sense for `target`
+          tapp.ensureApplied
+        case _ =>
+          tapp.appliedToArgss(vrefss)
+      }
+    }
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
     cls.baseClasses.iterator
