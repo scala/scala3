@@ -1,0 +1,2 @@
+opaque object
+  // error
