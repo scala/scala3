@@ -369,13 +369,16 @@ object Implicits {
     /** A "massaging" function for displayed types to give better info in error diagnostics */
     def clarify(tp: Type)(implicit ctx: Context): Type = tp
 
-    final protected def qualify(implicit ctx: Context): String =
-      if (expectedType.exists)
-        if (argument.isEmpty) em"match type ${clarify(expectedType)}"
-        else em"convert from ${argument.tpe} to ${clarify(expectedType)}"
-      else
+    final protected def qualify(implicit ctx: Context): String = expectedType match {
+      case SelectionProto(name, mproto, _, _) if !argument.isEmpty =>
+        em"provide an extension method `$name` on ${argument.tpe}"
+      case NoType =>
         if (argument.isEmpty) em"match expected type"
         else em"convert from ${argument.tpe} to expected type"
+      case _ =>
+        if (argument.isEmpty) em"match type ${clarify(expectedType)}"
+        else em"convert from ${argument.tpe} to ${clarify(expectedType)}"
+    }
 
     /** An explanation of the cause of the failure as a string */
     def explanation(implicit ctx: Context): String
@@ -425,9 +428,12 @@ object Implicits {
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
-    override def whyNoConversion(implicit ctx: Context): String =
-      "\nNote that implicit conversions cannot be applied because they are ambiguous;" +
-      "\n" + explanation
+    override def whyNoConversion(implicit ctx: Context): String = {
+      val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
+      i"""
+         |Note that implicit $what cannot be applied because they are ambiguous;
+         |$explanation"""
+    }
   }
 
   class MismatchedImplicit(ref: TermRef,
