@@ -6,7 +6,3 @@ object PowerMacro {
     else if (n % 2 == 0) '{ val y = $x * $x; ${ powerCode('y, n / 2) } }
     else '{ $x * ${ powerCode(x, n - 1) } }
 }
-
-class Num(x: Double) {
-  inline def power(inline n: Long) = ${ PowerMacro.powerCode('x, n) }
-}

@@ -19,7 +19,7 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.typer.{Inliner, PrepareInlineable}
 
 import scala.collection.mutable
 import dotty.tools.dotc.util.SourcePosition
@@ -33,11 +33,153 @@ import scala.annotation.constructorOnly
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
   import tpd._
 
+  private[this] val macroImplBuff: mutable.Map[Symbol, List[DefDef]] = mutable.Map.empty
+
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    // TODO cancel '[${tp$T}] in `dotc tests/run/tasty-linenumber/quoted_1.scala -Xprint:front,stag`
+    // this one is the result of healing and must be canceled after the transformation
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
     else tree match {
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
+      case tree: DefDef if tree.symbol.is(Macro) && !tree.symbol.isScala2Macro && level == 0 && tree.symbol.owner.isClass && ctx.phase == ctx.stagingPhase =>
+        val sym = tree.symbol
+        val healedDefDef = checkLevel(super.transform(tree)).asInstanceOf[DefDef]
+
+        // TODO move to Staging by overriding transform of PCPCheckAndHeal
+
+        val healedRHS = healedDefDef.rhs
+
+        def qExpr(tp: Type): Type = {
+          val tp1 = tp.widenExpr
+          val tp2 = if (tp1.isRepeatedParam) defn.SeqType.appliedTo(tp1.repeatedToSingle) else tp1
+          defn.QuotedExprType.appliedTo(tp2)
+        }
+        def qType(tp: Type): Type = defn.QuotedTypeType.appliedTo(tp)
+
+
+        def withReflectionArg(tp: Type): Type = {
+          ContextualMethodType("tasty$reflection".toTermName :: Nil, defn.TastyReflectionType :: Nil, tp)
+        }
+        def genImplMethodType(tp: Type): Type = tp match {
+          case tp: PolyType =>
+            // TODO do not rename x (only for debug for now)
+            tp.newLikeThis(
+              tp.paramNames.map(x => (x.toString+ "$").toTypeName), // TODO do not rename (just for simple debug)
+              tp.paramInfos,
+              ContextualMethodType(
+                tp.paramNames.map(n => ("tp$" + n.toString).toTermName),
+                tp.paramRefs.map(qType),
+                genImplMethodType(tp.resType)
+              )
+            )
+          case tp: MethodType =>
+            def getParams(tp: Type, vparamss: List[List[ValDef]]): Type = tp match {
+              case tp: MethodType =>
+                assert(vparamss.nonEmpty)
+                val res = getParams(tp.resType, vparamss.tail)
+                tp.newLikeThis(tp.paramNames, tp.paramInfos.zip(vparamss.head).map { case (info, param) => if (param.symbol.is(Inline)) info.stripAnnots else qExpr(info) }, res)
+              case _ => genImplMethodType(tp)
+            }
+            getParams(tp, tree.vparamss)
+          case tp: ExprType =>
+            if (sym.owner.isStaticOwner) withReflectionArg(qExpr(tp.resType))
+            else MethodType("this$".toTermName :: Nil, qExpr(sym.owner.typeRef) :: Nil, withReflectionArg(qExpr(tp.resType)))
+          case _ =>
+            if (sym.owner.isStaticOwner) withReflectionArg(qExpr(tp))
+            else MethodType("this$".toTermName :: Nil, qExpr(sym.owner.typeRef) :: Nil, withReflectionArg(qExpr(tp)))
+        }
+
+        val methodType = genImplMethodType(sym.info)
+
+        val topClass = sym.topLevelClass
+        val implOwner = if (topClass.is(ModuleClass)) topClass else topClass.companionClass
+
+        if (!implOwner.exists) // TODO lift this restriction
+          ctx.error(s"$topClass needs a companion object for the macro", topClass.sourcePos)
+
+        val implMeth = ctx.newSymbol(
+          owner = implOwner,
+          name = (sym.name.toString + "$macro$impl$" + macroImplBuff.getOrElse(implOwner, Set.empty).size).toTermName,
+          flags = /* Private | */ Method,
+          info = methodType,
+          privateWithin = NoSymbol,
+          coord = sym.coord
+        )
+
+        def splicedCode(tree: Tree)(implicit ctx: Context): Tree = tree match {
+          case Spliced(code) => code
+          case Block(List(stat), Literal(Constant(()))) => splicedCode(stat)
+          case Block(Nil, expr) => splicedCode(expr)
+          case Typed(expr, _) => splicedCode(expr)
+        }
+
+        val implDef = polyDefDef(implMeth,
+          tparams => paramss => {
+            val tpMap = tree.tparams.map(_.symbol).zip(tparams).toMap
+            val map = {
+              val paramss1 = if (tree.tparams.isEmpty) paramss else paramss.tail
+              val l1 = tree.vparamss.flatten.map(_.symbol).zip(paramss1.flatten)
+              val l2 = if (tree.symbol.owner.isStaticOwner) l1 else (tree.symbol.owner -> paramss.init.last.head) :: l1
+              val l3 = (defn.TastyReflection_macroContext -> paramss.last.head) :: l2
+              l3.toMap
+            }
+            def transformTree(tree: tpd.Tree): tpd.Tree = tree match {
+              case Quoted(quoted) =>
+                map.getOrElse(quoted.symbol, tree)
+              case _ =>
+                map.get(tree.symbol).fold(tree)(param => if (tree.symbol.is(Inline) || tree.symbol == defn.TastyReflection_macroContext) param else
+                  ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe.widen).appliedTo(param))
+            }
+            new TreeTypeMap(
+              treeMap = transformTree,
+              typeMap = tp => tpMap.getOrElse(tp.typeSymbol, tp),
+              substFrom = tree.tparams.map(_.symbol),
+              substTo = tparams.map(_.typeSymbol),
+              oldOwners = sym :: Nil,
+              newOwners = implMeth :: Nil
+            ).transform(splicedCode(healedRHS))
+          }
+        ).withSpan(tree.span)
+
+        val macroCall0 = ref(implMeth)
+        val macroCall1 =
+          if (tree.tparams.isEmpty) macroCall0
+          else macroCall0.appliedToTypes(tree.tparams.map(_.symbol.typeRef)).appliedToArgs(tree.tparams.map(x => ref(defn.InternalQuoted_typeQuote).appliedToType(x.symbol.typeRef)))
+        val macroCall2 =
+          macroCall1.appliedToArgss(tree.vparamss.map(_.map(x => if (x.symbol.is(Inline)) ref(x.symbol) else ref(defn.InternalQuoted_exprQuote).appliedToType(x.symbol.info.widenExpr).appliedTo(ref(x.symbol)))))
+        val macroCall3 =
+          if (sym.owner.isStaticOwner) macroCall2
+          else macroCall2.appliedTo(ref(defn.InternalQuoted_exprQuote).appliedToType(sym.owner.asClass.typeRef).appliedTo(This(sym.owner.asClass)))
+        val macroCall4 =
+          macroCall3.appliedTo(ref(defn.TastyReflection_macroContext))
+        val newRHS = ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpt.tpe).appliedTo(macroCall4)
+
+//        println("==================")
+//        println(implDef.show)
+//        println()
+//        println(sym.info.show)
+//        println()
+//        println(methodType.show)
+//        println(macroCall4.show)
+//        println()
+//        println()
+//        println()
+//        println()
+
+        PrepareInlineable.registerInlineInfo(sym, _ => newRHS)
+        macroImplBuff(implOwner) = implDef :: macroImplBuff.getOrElse(implOwner, Nil)
+        cpy.DefDef(healedDefDef)(rhs = newRHS)
+
+      case tree: TypeDef if tree.symbol.is(Module) && tree.symbol.isTopLevelClass && ctx.phase == ctx.stagingPhase =>
+        val tree1 @ TypeDef(_, impl: Template) = checkLevel(super.transform(tree))
+        macroImplBuff.get(tree.symbol) match {
+          case Some(macroImpls) =>
+            macroImplBuff -= tree.symbol
+            val transformedMacroImpls = macroImpls.map(x => transform(x))
+            cpy.TypeDef(tree1)(rhs = cpy.Template(impl)(body = impl.body ::: transformedMacroImpls))
+          case _ => tree1
+        }
       case _ => checkLevel(super.transform(tree))
     }
   }

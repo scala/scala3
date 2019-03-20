@@ -10,9 +10,9 @@ object Test {
   def main(args: Array[String]): Unit = {
     val nums = new Nums
     val n = new nums.Num(1.5)
-    println(n.power(0))
-    println(n.power(1))
-    println(n.power(2))
-    println(n.power(5))
+    println(n.power(0)) // error
+    println(n.power(1)) // error
+    println(n.power(2)) // error
+    println(n.power(5)) // error
   }
 }

@@ -218,6 +218,7 @@ object Phases {
 
     private[this] var myTyperPhase: Phase = _
     private[this] var myPostTyperPhase: Phase = _
+    private[this] var myStagingPhase: Phase = _
     private[this] var mySbtExtractDependenciesPhase: Phase = _
     private[this] var myPicklerPhase: Phase = _
     private[this] var myReifyQuotesPhase: Phase = _
@@ -236,6 +237,7 @@ object Phases {
 
     final def typerPhase: Phase = myTyperPhase
     final def postTyperPhase: Phase = myPostTyperPhase
+    final def stagingPhase: Phase = myStagingPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def reifyQuotesPhase: Phase = myReifyQuotesPhase
@@ -257,6 +259,7 @@ object Phases {
 
       myTyperPhase = phaseOfClass(classOf[FrontEnd])
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
+      myStagingPhase = phaseOfClass(classOf[Staging])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myReifyQuotesPhase = phaseOfClass(classOf[ReifyQuotes])

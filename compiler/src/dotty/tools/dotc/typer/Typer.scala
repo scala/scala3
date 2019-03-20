@@ -2933,7 +2933,7 @@ class Typer extends Namer
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner)
-        return tpd.Block(tree1 :: Nil, Literal(Constant(())))
+        return tpd.Block(tree1 :: Nil, Literal(Constant(()))).withSpan(tree1.span)
       }
 
       // convert function literal to SAM closure

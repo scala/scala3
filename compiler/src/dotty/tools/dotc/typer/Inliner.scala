@@ -1001,7 +1001,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
         case res: Apply if res.symbol == defn.InternalQuoted_exprSplice && level == 0 =>
-          expandMacro(res.args.head, tree.span)
+          if (enclosingInlineds.head.symbol.isDefinedInCurrentRun) {
+            ctx.error("Macro cannot be expanded in the same project as its definition.")
+            res
+          }
+          else expandMacro(res.args.head, tree.span)
         case res => res
       }
     }

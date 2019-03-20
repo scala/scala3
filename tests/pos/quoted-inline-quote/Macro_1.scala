@@ -1,4 +1,3 @@
-class Foo {
+class Macro {
   inline def foo(x: quoted.Expr[String]) = '{ println(${x}) }
-  foo('{"abc"})
 }
