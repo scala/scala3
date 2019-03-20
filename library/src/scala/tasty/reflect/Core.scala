@@ -418,22 +418,22 @@ trait Core {
   type Symbol = kernel.Symbol
 
     /** Symbol of a package definition */
-    type PackageSymbol = kernel.PackageDefSymbol
+    type PackageDefSymbol = kernel.PackageDefSymbol
 
     /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-    type ClassSymbol = kernel.ClassDefSymbol
+    type ClassDefSymbol = kernel.ClassDefSymbol
 
     /** Symbol of a type (parameter or member) definition. */
-    type TypeSymbol = kernel.TypeDefSymbol
+    type TypeDefSymbol = kernel.TypeDefSymbol
 
     /** Symbol representing a method definition. */
-    type DefSymbol = kernel.DefDefSymbol
+    type DefDefSymbol = kernel.DefDefSymbol
 
     /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-    type ValSymbol = kernel.ValDefSymbol
+    type ValDefSymbol = kernel.ValDefSymbol
 
     /** Symbol representing a bind definition. */
-    type BindSymbol = kernel.BindSymbol
+    type BindDefSymbol = kernel.BindSymbol
 
     /** No symbol available. */
     type NoSymbol = kernel.NoSymbol

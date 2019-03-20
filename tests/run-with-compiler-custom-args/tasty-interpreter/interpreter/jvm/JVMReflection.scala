@@ -13,7 +13,7 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   def loadModule(sym: Symbol): Object = {
 
     sym.owner match {
-      case IsPackageSymbol(_) =>
+      case IsPackageDefSymbol(_) =>
         val moduleClass = getClassOf(sym)
         moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
       case _ =>
@@ -81,7 +81,7 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   private def paramsSig(sym: Symbol): List[Class[_]] = {
-    sym.asDef.signature.paramSigs.map { param =>
+    sym.asDefDef.signature.paramSigs.map { param =>
       def javaArraySig(name: String): String = {
         if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))
         else name match {

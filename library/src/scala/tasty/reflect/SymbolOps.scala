@@ -34,40 +34,40 @@ trait SymbolOps extends Core {
     /** The comment for this symbol, if any */
     def comment(implicit ctx: Context): Option[Comment] = kernel.Symbol_comment(self)
 
-    /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safly check and cast to PackageSymbol */
-    def asPackage(implicit ctx: Context): PackageSymbol = self match {
-      case IsPackageSymbol(self) => self
-      case _ => throw new Exception("not a PackageSymbol")
+    /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safely check and cast to PackageSymbol */
+    def asPackageDef(implicit ctx: Context): PackageDefSymbol = self match {
+      case IsPackageDefSymbol(self) => self
+      case _ => throw new Exception("not a PackageDefSymbol")
     }
 
-    /** Unsafe cast as to ClassSymbol. Use IsClassSymbol to safly check and cast to ClassSymbol */
-    def asClass(implicit ctx: Context): ClassSymbol = self match {
-      case IsClassSymbol(self) => self
-      case _ => throw new Exception("not a ClassSymbol")
+    /** Unsafe cast as to ClassSymbol. Use IsClassDefSymbol to safely check and cast to ClassSymbol */
+    def asClassDef(implicit ctx: Context): ClassDefSymbol = self match {
+      case IsClassDefSymbol(self) => self
+      case _ => throw new Exception("not a ClassDefSymbol")
     }
 
-    /** Unsafe cast as to DefSymbol. Use IsDefSymbol to safly check and cast to DefSymbol */
-    def asDef(implicit ctx: Context): DefSymbol = self match {
-      case IsDefSymbol(self) => self
-      case _ => throw new Exception("not a DefSymbol")
+    /** Unsafe cast as to DefSymbol. Use IsDefDefSymbol to safely check and cast to DefSymbol */
+    def asDefDef(implicit ctx: Context): DefDefSymbol = self match {
+      case IsDefDefSymbol(self) => self
+      case _ => throw new Exception("not a DefDefSymbol")
     }
 
-    /** Unsafe cast as to ValSymbol. Use IsValSymbol to safly check and cast to ValSymbol */
-    def asVal(implicit ctx: Context): ValSymbol = self match {
-      case IsValSymbol(self) => self
-      case _ => throw new Exception("not a ValSymbol")
+    /** Unsafe cast as to ValSymbol. Use IsValDefSymbol to safely check and cast to ValSymbol */
+    def asValDef(implicit ctx: Context): ValDefSymbol = self match {
+      case IsValDefSymbol(self) => self
+      case _ => throw new Exception("not a ValDefSymbol")
     }
 
-    /** Unsafe cast as to TypeSymbol. Use IsTypeSymbol to safly check and cast to TypeSymbol */
-    def asType(implicit ctx: Context): TypeSymbol = self match {
-      case IsTypeSymbol(self) => self
-      case _ => throw new Exception("not a TypeSymbol")
+    /** Unsafe cast as to TypeSymbol. Use IsTypeDefSymbol to safely check and cast to TypeSymbol */
+    def asTypeDef(implicit ctx: Context): TypeDefSymbol = self match {
+      case IsTypeDefSymbol(self) => self
+      case _ => throw new Exception("not a TypeDefSymbol")
     }
 
-    /** Unsafe cast as to BindSymbol. Use IsBindSymbol to safly check and cast to BindSymbol */
-    def asBind(implicit ctx: Context): BindSymbol = self match {
-      case IsBindSymbol(self) => self
-      case _ => throw new Exception("not a BindSymbol")
+    /** Unsafe cast as to BindSymbol. Use IsBindDefSymbol to safely check and cast to BindSymbol */
+    def asBindDef(implicit ctx: Context): BindDefSymbol = self match {
+      case IsBindDefSymbol(self) => self
+      case _ => throw new Exception("not a BindDefSymbol")
     }
 
     /** Annotations attached to this symbol */
@@ -86,30 +86,30 @@ trait SymbolOps extends Core {
 
   // PackageSymbol
 
-  object IsPackageSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
+  object IsPackageDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[PackageDefSymbol] =
       kernel.matchPackageDefSymbol(symbol)
   }
 
-  implicit class PackageSymbolAPI(self: PackageSymbol) {
+  implicit class PackageDefSymbolAPI(self: PackageDefSymbol) {
     def tree(implicit ctx: Context): PackageDef =
       kernel.PackageDefSymbol_tree(self)
   }
 
   // ClassSymbol
 
-  object IsClassSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
+  object IsClassDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ClassDefSymbol] =
       kernel.matchClassDefSymbol(symbol)
   }
 
-  object ClassSymbol {
+  object ClassDefSymbol {
     /** The ClassSymbol of a global class definition */
-    def of(fullName: String)(implicit ctx: Context): ClassSymbol =
+    def of(fullName: String)(implicit ctx: Context): ClassDefSymbol =
       kernel.ClassDefSymbol_of(fullName)
   }
 
-  implicit class ClassSymbolAPI(self: ClassSymbol) {
+  implicit class ClassDefSymbolAPI(self: ClassDefSymbol) {
     /** ClassDef tree of this defintion */
     def tree(implicit ctx: Context): ClassDef =
       kernel.ClassDefSymbol_tree(self)
@@ -123,31 +123,31 @@ trait SymbolOps extends Core {
       kernel.ClassDefSymbol_field(self)(name)
 
     /** Get non-private named methods defined directly inside the class */
-    def classMethod(name: String)(implicit ctx: Context): List[DefSymbol] =
+    def classMethod(name: String)(implicit ctx: Context): List[DefDefSymbol] =
       kernel.ClassDefSymbol_classMethod(self)(name)
 
     /** Get all non-private methods defined directly inside the class, exluding constructors */
-    def classMethods(implicit ctx: Context): List[DefSymbol] =
+    def classMethods(implicit ctx: Context): List[DefDefSymbol] =
       kernel.ClassDefSymbol_classMethods(self)
 
     /** Get named non-private methods declared or inherited */
-    def method(name: String)(implicit ctx: Context): List[DefSymbol] =
+    def method(name: String)(implicit ctx: Context): List[DefDefSymbol] =
       kernel.ClassDefSymbol_method(self)(name)
 
     /** Get all non-private methods declared or inherited */
-    def methods(implicit ctx: Context): List[DefSymbol] =
+    def methods(implicit ctx: Context): List[DefDefSymbol] =
       kernel.ClassDefSymbol_methods(self)
 
     /** Fields of a case class type -- only the ones declared in primary constructor */
-    def caseFields(implicit ctx: Context): List[ValSymbol] =
+    def caseFields(implicit ctx: Context): List[ValDefSymbol] =
       kernel.ClassDefSymbol_caseFields(self)
 
     /** The class symbol of the companion module class */
-    def companionClass(implicit ctx: Context): Option[ClassSymbol] =
+    def companionClass(implicit ctx: Context): Option[ClassDefSymbol] =
       kernel.ClassDefSymbol_companionClass(self)
 
     /** The symbol of the companion module */
-    def companionModule(implicit ctx: Context): Option[ValSymbol] =
+    def companionModule(implicit ctx: Context): Option[ValDefSymbol] =
       kernel.ClassDefSymbol_companionModule(self)
 
     /** The symbol of the class of the companion module */
@@ -157,12 +157,12 @@ trait SymbolOps extends Core {
 
   // TypeSymbol
 
-  object IsTypeSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+  object IsTypeDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeDefSymbol] =
       kernel.matchTypeDefSymbol(symbol)
   }
 
-  implicit class TypeSymbolAPI(self: TypeSymbol) {
+  implicit class TypeDefSymbolAPI(self: TypeDefSymbol) {
     /** TypeDef tree of this definition */
     def tree(implicit ctx: Context): TypeDef =
       kernel.TypeDefSymbol_tree(self)
@@ -173,12 +173,12 @@ trait SymbolOps extends Core {
 
   // DefSymbol
 
-  object IsDefSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
+  object IsDefDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[DefDefSymbol] =
       kernel.matchDefDefSymbol(symbol)
   }
 
-  implicit class DefSymbolAPI(self: DefSymbol) {
+  implicit class DefDefSymbolAPI(self: DefDefSymbol) {
     /** DefDef tree of this defintion */
     def tree(implicit ctx: Context): DefDef =
       kernel.DefDefSymbol_tree(self)
@@ -190,32 +190,32 @@ trait SymbolOps extends Core {
 
   // ValSymbol
 
-  object IsValSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
+  object IsValDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[ValDefSymbol] =
       kernel.matchValDefSymbol(symbol)
   }
 
-  implicit class ValSymbolAPI(self: ValSymbol) {
+  implicit class ValDefSymbolAPI(self: ValDefSymbol) {
     /** ValDef tree of this defintion */
     def tree(implicit ctx: Context): ValDef =
       kernel.ValDefSymbol_tree(self)
 
     /** The class symbol of the companion module class */
-    def moduleClass(implicit ctx: Context): Option[ClassSymbol] =
+    def moduleClass(implicit ctx: Context): Option[ClassDefSymbol] =
       kernel.ValDefSymbol_moduleClass(self)
 
-    def companionClass(implicit ctx: Context): Option[ClassSymbol] =
+    def companionClass(implicit ctx: Context): Option[ClassDefSymbol] =
       kernel.ValDefSymbol_companionClass(self)
   }
 
   // BindSymbol
 
-  object IsBindSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
+  object IsBindDefSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindDefSymbol] =
       kernel.matchBindSymbol(symbol)
   }
 
-  implicit class BindSymbolAPI(self: BindSymbol) {
+  implicit class BindDefSymbolAPI(self: BindDefSymbol) {
     /** Bind pattern of this definition */
     def tree(implicit ctx: Context): Bind =
       kernel.BindSymbol_tree(self)

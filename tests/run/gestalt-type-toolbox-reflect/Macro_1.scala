@@ -34,7 +34,7 @@ object TypeToolbox {
   private def isCaseClassImpl(tp: Type[_])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
     val res = tp.unseal.symbol match {
-      case IsClassSymbol(sym) => sym.flags.is(Flags.Case)
+      case IsClassDefSymbol(sym) => sym.flags.is(Flags.Case)
       case _ => false
     }
     res.toExpr
@@ -44,46 +44,46 @@ object TypeToolbox {
   inline def caseFields[T]: List[String] = ${caseFieldsImpl('[T])}
   private def caseFieldsImpl(tp: Type[_])(implicit reflect: Reflection): Expr[List[String]] = {
     import reflect._
-    val fields = tp.unseal.symbol.asClass.caseFields.map(_.name)
+    val fields = tp.unseal.symbol.asClassDef.caseFields.map(_.name)
     fields.toExpr
   }
 
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl('[T], mem)}
   private def fieldInImpl(t: Type[_], mem: String)(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    val field = t.unseal.symbol.asClass.field(mem)
+    val field = t.unseal.symbol.asClassDef.field(mem)
     field.map(_.name).getOrElse("").toExpr
   }
 
   inline def fieldsIn[T]: Seq[String] = ${fieldsInImpl('[T])}
   private def fieldsInImpl(t: Type[_])(implicit reflect: Reflection): Expr[Seq[String]] = {
     import reflect._
-    val fields = t.unseal.symbol.asClass.fields
+    val fields = t.unseal.symbol.asClassDef.fields
     fields.map(_.name).toList.toExpr
   }
 
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl('[T], mem)}
   private def methodInImpl(t: Type[_], mem: String)(implicit reflect: Reflection): Expr[Seq[String]] = {
     import reflect._
-    t.unseal.symbol.asClass.classMethod(mem).map(_.name).toExpr
+    t.unseal.symbol.asClassDef.classMethod(mem).map(_.name).toExpr
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl('[T])}
   private def methodsInImpl(t: Type[_])(implicit reflect: Reflection): Expr[Seq[String]] = {
     import reflect._
-    t.unseal.symbol.asClass.classMethods.map(_.name).toExpr
+    t.unseal.symbol.asClassDef.classMethods.map(_.name).toExpr
   }
 
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl('[T], mem)}
   private def methodImpl(t: Type[_], mem: String)(implicit reflect: Reflection): Expr[Seq[String]] = {
     import reflect._
-    t.unseal.symbol.asClass.method(mem).map(_.name).toExpr
+    t.unseal.symbol.asClassDef.method(mem).map(_.name).toExpr
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl('[T])}
   private def methodsImpl(t: Type[_])(implicit reflect: Reflection): Expr[Seq[String]] = {
     import reflect._
-    t.unseal.symbol.asClass.methods.map(_.name).toExpr
+    t.unseal.symbol.asClassDef.methods.map(_.name).toExpr
   }
 
   inline def typeTag[T](x: T): String = ${typeTagImpl('[T])}
@@ -96,7 +96,7 @@ object TypeToolbox {
   inline def companion[T1, T2]: Boolean = ${companionImpl('[T1], '[T2])}
   private def companionImpl(t1: Type[_], t2: Type[_])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
-    val res = t1.unseal.symbol.asClass.companionModule.contains(t2.unseal.symbol)
+    val res = t1.unseal.symbol.asClassDef.companionModule.contains(t2.unseal.symbol)
     res.toExpr
   }
 
@@ -104,8 +104,8 @@ object TypeToolbox {
   private def companionNameImpl(tp: Type[_])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
     val companionClassOpt = tp.unseal.symbol match {
-      case IsClassSymbol(sym) => sym.companionClass
-      case IsValSymbol(sym) => sym.companionClass
+      case IsClassDefSymbol(sym) => sym.companionClass
+      case IsValDefSymbol(sym) => sym.companionClass
       case _ => None
     }
     companionClassOpt.map(_.fullName).getOrElse("").toExpr
