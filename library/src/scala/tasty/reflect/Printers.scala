@@ -1484,7 +1484,7 @@ trait Printers
 
         case Type.SymRef(sym, prefix) if sym.isTerm =>
           prefix match {
-            case NoPrefix() =>
+            case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
                 this += highlightTypeDef(sym.name, color)
             case _ =>
               printTypeOrBound(prefix)

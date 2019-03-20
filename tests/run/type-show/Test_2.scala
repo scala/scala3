@@ -3,10 +3,6 @@ object Test {
   import TypeToolbox._
   def main(args: Array[String]): Unit = {
     val x = 5
-    println(show[Nil.type])
-    println(show[Int => Int])
-    println(show[(Int, String)])
-    println(show[x.type])
     assert(show[x.type] == "x.type")
     assert(show[Nil.type] == "scala.Nil.type")
     assert(show[Int] == "scala.Int")
