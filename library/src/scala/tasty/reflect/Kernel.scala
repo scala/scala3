@@ -99,12 +99,12 @@ package scala.tasty.reflect
  *
  *  +- Constant
  *
- *  +- Symbol --+- PackageSymbol
- *              +- ClassSymbol
- *              +- TypeSymbol
- *              +- DefSymbol
- *              +- ValSymbol
- *              +- BindSymbol
+ *  +- Symbol --+- PackageDefSymbol
+ *              +- ClassDefSymbol
+ *              +- TypeDefSymbol
+ *              +- DefDefSymbol
+ *              +- ValDefSymbol
+ *              +- BindDefSymbol
  *              +- NoSymbol
  *
  *  +- Flags
@@ -207,7 +207,7 @@ trait Kernel {
 
   def PackageDef_owner(self: PackageDef)(implicit ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(implicit ctx: Context): List[Statement]
-  def PackageDef_symbol(self: PackageDef)(implicit ctx: Context): PackageSymbol
+  def PackageDef_symbol(self: PackageDef)(implicit ctx: Context): PackageDefSymbol
 
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef <: Definition
@@ -219,7 +219,7 @@ trait Kernel {
   def ClassDef_derived(self: ClassDef)(implicit ctx: Context): List[TypeTree]
   def ClassDef_self(self: ClassDef)(implicit ctx: Context): Option[ValDef]
   def ClassDef_body(self: ClassDef)(implicit ctx: Context): List[Statement]
-  def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassSymbol
+  def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassDefSymbol
 
   def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
 
@@ -229,9 +229,9 @@ trait Kernel {
   def matchTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
-  def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeSymbol
+  def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeDefSymbol
 
-  def TypeDef_apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef
+  def TypeDef_apply(symbol: TypeDefSymbol)(implicit ctx: Context): TypeDef
   def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef
 
   /** Tree representing a method definition in the source code */
@@ -243,9 +243,9 @@ trait Kernel {
   def DefDef_paramss(self: DefDef)(implicit ctx: Context): List[List[ValDef]]
   def DefDef_returnTpt(self: DefDef)(implicit ctx: Context): TypeTree
   def DefDef_rhs(self: DefDef)(implicit ctx: Context): Option[Term]
-  def DefDef_symbol(self: DefDef)(implicit ctx: Context): DefSymbol
+  def DefDef_symbol(self: DefDef)(implicit ctx: Context): DefDefSymbol
 
-  def DefDef_apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef
+  def DefDef_apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef
   def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef
 
   /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
@@ -255,9 +255,9 @@ trait Kernel {
 
   def ValDef_tpt(self: ValDef)(implicit ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(implicit ctx: Context): Option[Term]
-  def ValDef_symbol(self: ValDef)(implicit ctx: Context): ValSymbol
+  def ValDef_symbol(self: ValDef)(implicit ctx: Context): ValDefSymbol
 
-  def ValDef_apply(symbol: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef
+  def ValDef_apply(symbol: ValDefSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef
   def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef
 
   /** Tree representing an expression in the source code */
@@ -316,7 +316,7 @@ trait Kernel {
 
   def This_id(self: This)(implicit ctx: Context): Option[Id]
 
-  def This_apply(cls: ClassSymbol)(implicit ctx: Context): This
+  def This_apply(cls: ClassDefSymbol)(implicit ctx: Context): This
   def This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This
 
   /** Tree representing `new` in the source code */
@@ -802,7 +802,7 @@ trait Kernel {
    */
   def Type_dealias(self: Type)(implicit ctx: Context): Type
 
-  def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassSymbol]
+  def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassDefSymbol]
 
   def Type_typeSymbol(self: Type)(implicit ctx: Context): Symbol
 
@@ -1166,85 +1166,85 @@ trait Kernel {
   def Symbol_isDefinedInCurrentRun(self: Symbol)(implicit ctx: Context): Boolean
 
   /** Symbol of a package definition */
-  type PackageSymbol <: Symbol
+  type PackageDefSymbol <: Symbol
 
-  def matchPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
+  def matchPackageDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageDefSymbol]
 
-  def PackageSymbol_tree(self: PackageSymbol)(implicit ctx: Context): PackageDef
+  def PackageDefSymbol_tree(self: PackageDefSymbol)(implicit ctx: Context): PackageDef
 
   /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-  type ClassSymbol <: Symbol
+  type ClassDefSymbol <: Symbol
 
-  def matchClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
+  def matchClassDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassDefSymbol]
 
   /** ClassDef tree of this defintion */
-  def ClassSymbol_tree(self: ClassSymbol)(implicit ctx: Context): ClassDef
+  def ClassDefSymbol_tree(self: ClassDefSymbol)(implicit ctx: Context): ClassDef
 
   /** Fields directly declared in the class */
-  def ClassSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol]
+  def ClassDefSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol]
 
   /** Field with the given name directly declared in the class */
-  def ClassSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol]
+  def ClassDefSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol]
 
   /** Get non-private named methods defined directly inside the class */
-  def ClassSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol]
+  def ClassDefSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol]
 
-  /** Get all non-private methods defined directly inside the class, exluding constructors */
-  def ClassSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefSymbol]
+  /** Get all non-private methods defined directly inside the class, excluding constructors */
+  def ClassDefSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol]
 
   /** Get named non-private methods declared or inherited */
-  def ClassSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol]
+  def ClassDefSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol]
 
   /** Get all non-private methods declared or inherited */
-  def ClassSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefSymbol]
+  def ClassDefSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol]
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
-  def ClassSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValSymbol]
+  def ClassDefSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValDefSymbol]
 
   /** The class symbol of the companion module class */
-  def ClassSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassSymbol]
+  def ClassDefSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassDefSymbol]
 
   /** The symbol of the companion module */
-  def ClassSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValSymbol]
+  def ClassDefSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValDefSymbol]
 
   /** The symbol of the class of the companion module */
-  def ClassSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol]
+  def ClassDefSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol]
 
-  def ClassSymbol_of(fullName: String)(implicit ctx: Context): ClassSymbol
+  def ClassDefSymbol_of(fullName: String)(implicit ctx: Context): ClassDefSymbol
 
   /** Symbol of a type (parameter or member) definition. */
-  type TypeSymbol <: Symbol
+  type TypeDefSymbol <: Symbol
 
-  def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
+  def matchTypeDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeDefSymbol]
 
-  def TypeSymbol_isTypeParam(self: TypeSymbol)(implicit ctx: Context): Boolean
+  def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(implicit ctx: Context): Boolean
 
   /** TypeDef tree of this definition */
-  def TypeSymbol_tree(self: TypeSymbol)(implicit ctx: Context): TypeDef
+  def TypeDefSymbol_tree(self: TypeDefSymbol)(implicit ctx: Context): TypeDef
 
   /** Symbol representing a method definition. */
-  type DefSymbol <: Symbol
+  type DefDefSymbol <: Symbol
 
-  def matchDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
+  def matchDefDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefDefSymbol]
 
   /** DefDef tree of this defintion */
-  def DefSymbol_tree(self: DefSymbol)(implicit ctx: Context): DefDef
+  def DefDefSymbol_tree(self: DefDefSymbol)(implicit ctx: Context): DefDef
 
   /** Signature of this defintion */
-  def DefSymbol_signature(self: DefSymbol)(implicit ctx: Context): Signature
+  def DefDefSymbol_signature(self: DefDefSymbol)(implicit ctx: Context): Signature
 
   /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-  type ValSymbol <: Symbol
+  type ValDefSymbol <: Symbol
 
-  def matchValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
+  def matchValDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValDefSymbol]
 
   /** ValDef tree of this defintion */
-  def ValSymbol_tree(self: ValSymbol)(implicit ctx: Context): ValDef
+  def ValDefSymbol_tree(self: ValDefSymbol)(implicit ctx: Context): ValDef
 
   /** The class symbol of the companion module class */
-  def ValSymbol_moduleClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol]
+  def ValDefSymbol_moduleClass(self: ValDefSymbol)(implicit ctx: Context): Option[ClassDefSymbol]
 
-  def ValSymbol_companionClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol]
+  def ValDefSymbol_companionClass(self: ValDefSymbol)(implicit ctx: Context): Option[ClassDefSymbol]
 
   /** Symbol representing a bind definition. */
   type BindSymbol <: Symbol
