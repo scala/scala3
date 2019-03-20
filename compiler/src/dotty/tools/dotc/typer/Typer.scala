@@ -940,7 +940,7 @@ class Typer extends Namer
           }
         case _ =>
       }
-      errorType(AnonymousFunctionMissingParamType(param, params, tree, pt), param.sourcePos)
+      errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
     }
 
     def protoFormal(i: Int): Type =
