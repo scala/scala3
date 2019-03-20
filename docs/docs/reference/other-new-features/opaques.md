@@ -53,6 +53,6 @@ But the following operations would lead to type errors:
   l / l2                  // error: `/` is not a member fo Logarithm
 ```
 
-`opaque` is a [soft modifier](./soft-modifier.html).
+`opaque` is a [soft modifier](../soft-modifier.html).
 
 For more details, see [Scala SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
