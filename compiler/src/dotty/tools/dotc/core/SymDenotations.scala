@@ -1571,6 +1571,17 @@ object SymDenotations {
           (symbol eq defn.NothingClass) ||
             (symbol eq defn.NullClass) && (base ne defn.NothingClass))
 
+    /** Is it possible that a class inherits both `this` and `that`?
+     *
+     *  @note The test is based on single-class inheritance and the closed
+     *        hierarchy of final classes.
+     *
+     *  @return The result may contain false positives, but never false negatives.
+     */
+    final def mayHaveCommonChild(that: ClassSymbol)(implicit ctx: Context): Boolean =
+      !this.is(Final) && !that.is(Final) && (this.is(Trait) || that.is(Trait)) ||
+        this.derivesFrom(that) || that.derivesFrom(this.symbol)
+
     final override def typeParamCreationFlags: FlagSet = ClassTypeParamCreationFlags
 
     /** Hook to do a pre-enter test. Overridden in PackageDenotation */
