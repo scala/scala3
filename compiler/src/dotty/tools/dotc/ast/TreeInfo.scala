@@ -824,8 +824,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
      *  The result can be the contents of a term or type splice, which
      *  will return a term or type tree respectively.
      */
-    def unapply(tree: tpd.Select)(implicit ctx: Context): Option[tpd.Tree] =
-      if (tree.symbol.isSplice) Some(tree.qualifier) else None
+    def unapply(tree: tpd.Tree)(implicit ctx: Context): Option[tpd.Tree] = tree match {
+      case tree: tpd.Apply if tree.symbol.isSplice => Some(tree.args.head)
+      case tree: tpd.Select if tree.symbol.isSplice => Some(tree.qualifier)
+      case _ => None
+    }
   }
 }
 

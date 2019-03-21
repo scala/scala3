@@ -270,7 +270,7 @@ object PrepareInlineable {
 
       var isMacro = false
       new TreeMapWithStages(freshStagingContext) {
-        override protected def transformSplice(splice: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+        override protected def transformSplice(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
           isMacro = true
           splice
         }

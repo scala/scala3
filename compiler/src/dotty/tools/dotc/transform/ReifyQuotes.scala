@@ -170,7 +170,7 @@ class ReifyQuotes extends MacroTransform {
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.InternalQuoted_typeQuote
-      assert(!body.symbol.isSplice)
+      assert(!(body.symbol.isSplice && (body.isInstanceOf[GenericApply[_]] || body.isInstanceOf[Select])))
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
         super.transformQuotation(body1, quote)
@@ -222,21 +222,24 @@ class ReifyQuotes extends MacroTransform {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    protected def transformSplice(splice: Select)(implicit ctx: Context): Tree = {
+    protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
       if (level > 1) {
-        val body1 = nested(isQuote = false).transform(splice.qualifier)(spliceContext)
-        body1.select(splice.name)
+        val body1 = nested(isQuote = false).transform(body)(spliceContext)
+        splice match {
+          case splice: Apply => cpy.Apply(splice)(splice.fun, body1 :: Nil)
+          case splice: Select => cpy.Select(splice)(body1, splice.name)
+        }
       }
       else {
         assert(level == 1, "unexpected top splice outside quote")
-        val (body1, quotes) = nested(isQuote = false).splitSplice(splice.qualifier)(spliceContext)
-        val tpe = outer.embedded.getHoleType(splice)
+        val (body1, quotes) = nested(isQuote = false).splitSplice(body)(spliceContext)
+        val tpe = outer.embedded.getHoleType(body, splice)
         val hole = makeHole(body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
-        if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
+        if (splice.isType || outer.embedded.isLiftedSymbol(body.symbol)) hole
         else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
       }
     }
@@ -346,14 +349,13 @@ class ReifyQuotes extends MacroTransform {
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case TypeApply(Select(spliceTree @ Spliced(_), _), tp) if tree.symbol.isTypeCast =>
-            // Splice term which should be in the form `${x}.asInstanceOf[T]` where T is an artifact of
-            // typer to allow pickling/unpickling phase consistent types
-            transformSplice(spliceTree)
-
           case tree: RefTree if isCaptured(tree.symbol, level) =>
-            val t = capturers(tree.symbol).apply(tree)
-            transformSplice(t.select(if (tree.isTerm) nme.splice else tpnme.splice))
+            val body = capturers(tree.symbol).apply(tree)
+            val splice: Tree =
+              if (tree.isType) body.select(tpnme.splice)
+              else ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe).appliedTo(body)
+
+            transformSplice(body, splice)
 
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
             // Shrink size of the tree. The methods have already been inlined.
@@ -396,11 +398,11 @@ object ReifyQuotes {
     }
 
     /** Type used for the hole that will replace this splice */
-    def getHoleType(splice: tpd.Select)(implicit ctx: Context): Type = {
+    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type = {
       // For most expressions the splice.tpe but there are some types that are lost by lifting
       // that can be recoverd from the original tree. Currently the cases are:
       //  * Method types: the splice represents a method reference
-      map.get(splice.qualifier.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
+      map.get(body.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
     }
 
     def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)

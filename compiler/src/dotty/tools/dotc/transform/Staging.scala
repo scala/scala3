@@ -44,8 +44,6 @@ class Staging extends MacroTransform {
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def addSpliceCast(tree: Tree)(implicit ctx: Context): Tree = tree
-
             override protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[tpd.Tree] = {
               def symStr =
                 if (!tp.isInstanceOf[ThisType]) sym.show

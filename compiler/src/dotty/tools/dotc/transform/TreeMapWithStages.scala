@@ -64,8 +64,8 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
     }
   }
 
-  /** Transform the splice `splice`. */
-  protected def transformSplice(splice: Select)(implicit ctx: Context): Tree
+  /** Transform the splice `splice` which contains the spliced `body`. */
+  protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree
 
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
     reporting.trace(i"StagingTransformer.transform $tree at $level", show = true) {
@@ -93,7 +93,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
         case tree @ Spliced(splicedTree) =>
           dropEmptyBlocks(splicedTree) match {
             case Quoted(t) => transform(t) // ${ 'x } --> x
-            case _ => transformSplice(tree)
+            case _ => transformSplice(splicedTree, tree)
           }
 
         case Block(stats, _) =>

@@ -1926,7 +1926,7 @@ class Typer extends Namer
     }
   }
 
-  /** Translate '{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
+  /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
@@ -1941,7 +1941,7 @@ class Typer extends Namer
     }
   }
 
-  /** Translate `${ t: Expr[T] }` into expresiion `t.splice` while tracking the quotation level in the context */
+  /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
     checkSpliceOutsideQuote(tree)
     tree.expr match {
@@ -1949,7 +1949,7 @@ class Typer extends Namer
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case expr =>
-        typedSelect(untpd.Select(expr, nme.splice), pt)(spliceContext).withSpan(tree.span)
+        typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext).withSpan(tree.span)
     }
   }
 
@@ -1961,7 +1961,14 @@ class Typer extends Namer
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
     if (level == 0 && !ctx.owner.isInlineMethod)
-      ctx.error("splice outside quotes or inline method", tree.sourcePos)
+      ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
+    else if (level < 0)
+      ctx.error(
+        """Splice ${...} at level -1.
+          |
+          |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
+          |""".stripMargin, tree.sourcePos
+      )
   }
 
   /** Retrieve symbol attached to given tree */
