@@ -537,7 +537,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def companionSymbol: Symbol
     def moduleClass: Symbol
     def enclosingClassSym: Symbol
-
+    def nextOverriddenSymbol: Symbol
 
 
     // members

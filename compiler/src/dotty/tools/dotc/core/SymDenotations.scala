@@ -1140,6 +1140,15 @@ object SymDenotations {
       if (!canMatchInheritedSymbols) Iterator.empty
       else overriddenFromType(owner.info)
 
+    /** Equivalent to `allOverriddenSymbols.headOption.getOrElse(NoSymbol)` but more efficient. */
+    final def nextOverriddenSymbol(implicit ctx: Context): Symbol = {
+      val overridden = allOverriddenSymbols
+      if (overridden.hasNext)
+        overridden.next
+      else
+        NoSymbol
+    }
+
     /** Returns all matching symbols defined in parents of the selftype. */
     final def extendedOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
       if (!canMatchInheritedSymbols) Iterator.empty
