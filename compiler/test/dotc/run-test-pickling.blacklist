@@ -13,3 +13,5 @@ derive-generic.scala
 deriving-interesting-prefixes.scala
 instances.scala
 instances-anonymous.scala
+mixin-forwarder-overload
+t8905

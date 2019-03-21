@@ -262,7 +262,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm), forwarderRhsFn(meth)))
+        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
       }
 
 
