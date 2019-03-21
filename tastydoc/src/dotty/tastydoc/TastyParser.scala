@@ -34,6 +34,6 @@ class TastyParser {
 
     val out = new FormattingAppendableImpl(FormattingAppendable.SUPPRESS_TRAILING_WHITESPACE | FormattingAppendable.COLLAPSE_WHITESPACE)
     traverse(root, out)
-    new RootNode(out.getText())
+    out.getText()
   }
 }

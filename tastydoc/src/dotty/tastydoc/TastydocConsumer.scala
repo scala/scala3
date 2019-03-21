@@ -102,11 +102,7 @@ class TastydocConsumer extends TastyConsumer {
     val RENDERER = Formatter.builder(FORMAT_OPTIONS).build();
     val PARSER = new TastyParser()
     val node = PARSER.parse(reflect)(root)
-    println(node)
-    val y = Parser.builder().build()
-    val x = y.parse("test html <ul>test</ul>")
-    println(x)
-    val commonmark = RENDERER.render(x);
+    val commonmark = RENDERER.render(node);
     println(commonmark)
   }
 }
