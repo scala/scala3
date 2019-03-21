@@ -99,6 +99,8 @@ sidebar:
               url: docs/reference/changed-features/implicit-resolution.html
             - title: Implicit Conversions
               url: docs/reference/changed-features/implicit-conversions.html
+            - title: Overload Resolution
+              url: docs/reference/changed-features/overload-resolution.html
             - title: Vararg Patterns
               url: docs/reference/changed-features/vararg-patterns.html
             - title: Pattern matching
