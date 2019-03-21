@@ -1435,6 +1435,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def PackageDefSymbol_tree(self: PackageDefSymbol)(implicit ctx: Context): PackageDef =
     FromSymbol.packageDefFromSym(self)
 
+  type TypeSymbol = core.Symbols.TypeSymbol
+
+  def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+    if (symbol.isType) Some(symbol.asType) else None
+
   type ClassDefSymbol = core.Symbols.ClassSymbol
 
   def matchClassDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassDefSymbol] =
@@ -1521,6 +1526,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def TypeBindSymbol_tree(self: TypeBindSymbol)(implicit ctx: Context): TypeTree_TypeBind =
     FromSymbol.typeBindFromSym(self)
+
+  type TermSymbol = core.Symbols.TermSymbol
+
+  def matchTermSymbol(symbol: Symbol)(implicit ctx: Context): Option[TermSymbol] =
+    if (symbol.isTerm) Some(symbol.asTerm) else None
 
   type DefDefSymbol = core.Symbols.TermSymbol
 

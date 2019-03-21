@@ -101,12 +101,15 @@ package scala.tasty.reflect
  *  +- Constant
  *
  *  +- Symbol --+- PackageDefSymbol
- *              +- ClassDefSymbol
- *              +- TypeDefSymbol
- *              +- TypeBindSymbol
- *              +- DefDefSymbol
- *              +- ValDefSymbol
- *              +- BindSymbol
+ *              |
+ *              +- TypeSymbol -+- ClassDefSymbol
+ *              |              +- TypeDefSymbol
+ *              |              +- TypeBindSymbol
+ *              |
+ *              +- TermSymbol -+- DefDefSymbol
+ *              |              +- ValDefSymbol
+ *              |              +- BindSymbol
+ *              |
  *              +- NoSymbol
  *
  *  +- Flags
@@ -421,23 +424,29 @@ trait Core {
     /** Symbol of a package definition */
     type PackageDefSymbol = kernel.PackageDefSymbol
 
-    /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-    type ClassDefSymbol = kernel.ClassDefSymbol
+    /** Symbol representing a type definition. */
+    type TypeSymbol = kernel.TypeSymbol
 
-    /** Symbol of a type (parameter or member) definition. */
-    type TypeDefSymbol = kernel.TypeDefSymbol
+      /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
+      type ClassDefSymbol = kernel.ClassDefSymbol
 
-    /** Symbol representing a type bind definition. */
-    type TypeBindSymbol = kernel.TypeBindSymbol
+      /** Symbol of a type (parameter or member) definition. */
+      type TypeDefSymbol = kernel.TypeDefSymbol
 
-    /** Symbol representing a method definition. */
-    type DefDefSymbol = kernel.DefDefSymbol
+      /** Symbol representing a type bind definition. */
+      type TypeBindSymbol = kernel.TypeBindSymbol
 
-    /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-    type ValDefSymbol = kernel.ValDefSymbol
+    /** Symbol representing a term definition. */
+    type TermSymbol = kernel.TermSymbol
 
-    /** Symbol representing a bind definition. */
-    type BindSymbol = kernel.BindSymbol
+      /** Symbol representing a method definition. */
+      type DefDefSymbol = kernel.DefDefSymbol
+
+      /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
+      type ValDefSymbol = kernel.ValDefSymbol
+
+      /** Symbol representing a bind definition. */
+      type BindSymbol = kernel.BindSymbol
 
     /** No symbol available. */
     type NoSymbol = kernel.NoSymbol

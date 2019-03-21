@@ -96,6 +96,13 @@ trait SymbolOps extends Core {
       kernel.PackageDefSymbol_tree(self)
   }
 
+  // TypeSymbol
+
+  object IsTypeSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+      kernel.matchTypeSymbol(symbol)
+  }
+
   // ClassSymbol
 
   object IsClassDefSymbol {
@@ -182,6 +189,13 @@ trait SymbolOps extends Core {
     /** TypeBind pattern of this definition */
     def tree(implicit ctx: Context): TypeTree.TypeBind =
       kernel.TypeBindSymbol_tree(self)
+  }
+
+  // TermSymbol
+
+  object IsTermSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TermSymbol] =
+      kernel.matchTermSymbol(symbol)
   }
 
   // DefSymbol
