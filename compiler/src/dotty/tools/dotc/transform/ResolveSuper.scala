@@ -37,7 +37,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
                                AugmentScala2Traits.name,
                                PruneErasedDefs.name) // Erased decls make `isCurrent` work incorrectly
 
-  override def changesMembers: Boolean = true // the phase adds super accessors and method forwarders
+  override def changesMembers: Boolean = true // the phase adds super accessors
 
   override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
@@ -48,7 +48,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
       for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor))
         yield {
           util.Stats.record("super accessors")
-          polyDefDef(mkForwarder(superAcc.asTerm), forwarder(rebindSuper(cls, superAcc)))
+          polyDefDef(mkForwarderSym(superAcc.asTerm), forwarderRhsFn(rebindSuper(cls, superAcc)))
         }
 
     val overrides = mixins.flatMap(superAccessors)
@@ -63,7 +63,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisPhase)
       import ops._
-      polyDefDef(meth, forwarder(rebindSuper(cls, meth)))
+      polyDefDef(meth, forwarderRhsFn(rebindSuper(cls, meth)))
     }
     else ddef
   }
@@ -92,7 +92,7 @@ object ResolveSuper {
         // of the superaccessor's type, see i5433.scala for an example where this matters
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
-        if (!(otherTp <:< accTp))
+        if (!(otherTp.overrides(accTp, matchLoosely = true)))
           ctx.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
       }
 
