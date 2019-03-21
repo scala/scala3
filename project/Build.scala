@@ -918,7 +918,9 @@ object Build {
         (publishLocal in `dotty-compiler-bootstrapped`).value
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `dotty-bootstrapped`).value
-        val pluginText = s"""addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")"""
+        val pluginText =
+          s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
+             |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")""".stripMargin
         IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
         IO.write(baseDirectory.value / "dotty-bootstrapped.version", dottyVersion)
       },
