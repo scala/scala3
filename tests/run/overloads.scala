@@ -84,7 +84,7 @@ object overloads {
 //      check("M1.f(" + y +")", M1.f(y), 12);
 //      check("M2.f(" + y +")", M2.f(y), 21);
 
-        check("M3.f(\"abc\", _.length)", M3.f("abc", _.reverse), "cba")
+        check("M3.f(\"abc\", _.reverse)", M3.f("abc", _.reverse), "cba")
         check("M3.f(2, _ + 2)", M3.f(2, _ + 2), 4)
 
     }

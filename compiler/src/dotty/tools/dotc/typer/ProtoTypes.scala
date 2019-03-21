@@ -285,6 +285,12 @@ object ProtoTypes {
       state.typedArg.size == args.length
     }
 
+    private def isUndefined(tp: Type): Boolean = tp match {
+      case _: WildcardType => true
+      case defn.FunctionOf(args, result, _, _) => args.exists(isUndefined) || isUndefined(result)
+      case _ => false
+    }
+
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null) {
@@ -317,20 +323,14 @@ object ProtoTypes {
 
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
-     *  @param  force   if true try to typecheck arguments even if they are functions
-     *                  with unknown parameter types - this will then cause a
-     *                  "missing parameter type" error
      */
-    protected[this] def typedArgs(force: Boolean): List[Tree] =
+    def unforcedTypedArgs: List[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
-        val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
-        if (force || !args1.contains(WildcardType)) state.typedArgs = args1
+        val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force = false))
+        if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
         args1
       }
-
-    def typedArgs: List[Tree] = typedArgs(force = true)
-    def unforcedTypedArgs: List[Tree] = typedArgs(force = false)
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.
@@ -397,7 +397,7 @@ object ProtoTypes {
    *  [](args): resultType, where args are known to be typed
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isContextual: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isContextual)(ctx) {
-    override def typedArgs(force: Boolean): List[tpd.Tree] = args
+    override def unforcedTypedArgs: List[tpd.Tree] = args
     override def withContext(ctx: Context): FunProtoTyped = this
   }
 
