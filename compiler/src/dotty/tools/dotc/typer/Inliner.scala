@@ -415,7 +415,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
-      Inlined(EmptyTree, Nil, tree)(inlinedSourceCtx).withSpan(span)
+      Inlined(EmptyTree, Nil, tree)(ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to

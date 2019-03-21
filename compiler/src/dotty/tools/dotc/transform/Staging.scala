@@ -62,44 +62,6 @@ class Staging extends MacroTransform {
         case _ =>
       }
     }
-    if (ctx.phase <= ctx.erasurePhase) {
-      tree match {
-        case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          new TreeTraverser {
-            private[this] var sources: List[SourceFile] = ctx.source :: Nil
-            def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-              assert(ctx.source == sources.head)
-              if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable) {
-                if (!tree.isType) { // TODO also check types, currently we do not add Inlined(EmptyTree, _, _) for types. We should.
-                  val currentSource = sources.head
-                  assert(tree.source == currentSource, i"wrong source set for $tree # ${tree.uniqueId} of ${tree.getClass}, set to ${tree.source} but context had $currentSource")
-                }
-              }
-              tree match {
-                case Inlined(EmptyTree, bindings, expansion) =>
-                  assert(bindings.isEmpty)
-                  val old = sources
-                  sources = old.tail
-                  traverse(expansion)(inlineContext(EmptyTree))
-                  sources = old
-                case Inlined(call, bindings, expansion) =>
-                  bindings.foreach(traverse(_))
-                  sources = call.symbol.topLevelClass.source :: sources
-                  if (
-                    !( // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
-                      ((ctx.phase <= ctx.typerPhase.next) && call.symbol.is(Macro)) ||
-                      (!(ctx.phase <= ctx.typerPhase.next) && call.symbol.unforcedDecls.exists(_.is(Macro)) || call.symbol.unforcedDecls.toList.exists(_.is(Macro)))
-                    )
-                  ) traverse(expansion)(inlineContext(call))
-                  sources = sources.tail
-                case _ => traverseChildren(tree)
-              }
-            }
-          }.traverse(tree)
-        case _ =>
-      }
-
-    }
   }
 
   override def run(implicit ctx: Context): Unit =
