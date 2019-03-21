@@ -27,6 +27,15 @@ abstract class Reflection
   def typeOf[T: scala.quoted.Type]: Type =
     implicitly[scala.quoted.Type[T]].unseal.tpe
 
+
+  /** Whether the code type checks in the given context?
+   *
+   *  @param code The code to be type checked
+   *
+   *  The code should be a sequence of expressions or statements that may appear in a block.
+   */
+  def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)(ctx)
+
   val util: reflect.utils.TreeUtils { val reflect: self.type } = new reflect.utils.TreeUtils {
     val reflect: self.type = self
   }

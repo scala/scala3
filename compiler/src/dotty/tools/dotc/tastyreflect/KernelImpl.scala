@@ -3,6 +3,7 @@ package tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.typer.Typer
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.nme
@@ -10,6 +11,8 @@ import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
+import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
 
@@ -46,6 +49,23 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   type Settings = config.ScalaSettings
 
   def Settings_color(self: Settings): Boolean = self.color.value(rootContext) == "always"
+
+  //
+  // MISC
+  //
+  /** Whether the code type checks in the given context?
+   *
+   *  @param code The code to be type checked
+   *
+   *  The code should be a sequence of expressions or statements that may appear in a block.
+   */
+  def typeChecks(code: String)(implicit ctx: Context): Boolean = {
+    val tree = new Parser(SourceFile.virtual("tasty-reflect", code)).block()
+
+    val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
+    ctx2.typer.typed(tree)(ctx2)
+    !ctx2.reporter.hasErrors
+  }
 
   //
   // TREES
