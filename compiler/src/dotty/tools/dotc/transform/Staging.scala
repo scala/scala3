@@ -68,6 +68,7 @@ class Staging extends MacroTransform {
           new TreeTraverser {
             private[this] var sources: List[SourceFile] = ctx.source :: Nil
             def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+              assert(ctx.source == sources.head)
               if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable) {
                 if (!tree.isType) { // TODO also check types, currently we do not add Inlined(EmptyTree, _, _) for types. We should.
                   val currentSource = sources.head
