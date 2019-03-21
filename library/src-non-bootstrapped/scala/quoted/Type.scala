@@ -6,6 +6,9 @@ import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Type[T] {
   type `$splice` = T
+
+  /** Show a source code like representation of this type */
+  final def show(implicit toolbox: Toolbox): String = toolbox.show(this)
 }
 
 /** Some basic type tags, currently incomplete */

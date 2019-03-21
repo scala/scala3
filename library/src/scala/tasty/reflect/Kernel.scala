@@ -699,7 +699,7 @@ trait Kernel {
   //
   // PATTERNS
   //
-  
+
   /** Pattern tree of the pattern part of a CaseDef */
   type Pattern <: AnyRef
 

@@ -2,7 +2,7 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 
-import scala.quoted.Expr
+import scala.quoted._
 import scala.quoted.Exprs.{LiftedExpr, TastyTreeExpr}
 
 /** Default runners for quoted expressions */
@@ -24,5 +24,6 @@ object ToolboxImpl {
 
     def show[T](expr: Expr[T]): String = synchronized(driver.show(expr, settings))
 
+    def show[T](tpe: Type[T]): String = synchronized(driver.show(tpe, settings))
   }
 }

@@ -82,6 +82,9 @@ trait SymbolOps extends Core {
     def isAnonymousFunction(implicit ctx: Context): Boolean = kernel.Symbol_isAnonymousFunction(self)
     def isAbstractType(implicit ctx: Context): Boolean = kernel.Symbol_isAbstractType(self)
     def isClassConstructor(implicit ctx: Context): Boolean = kernel.Symbol_isClassConstructor(self)
+
+    def isType(implicit ctx: Context): Boolean = kernel.matchTypeSymbol(self).isDefined
+    def isTerm(implicit ctx: Context): Boolean = kernel.matchTermSymbol(self).isDefined
   }
 
   // PackageSymbol
