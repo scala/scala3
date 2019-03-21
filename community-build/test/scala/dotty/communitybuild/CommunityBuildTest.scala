@@ -24,8 +24,9 @@ class CommunityBuildTest {
    *  @param project        The project name, should be a git submodule in community-build/
    *  @param command        The sbt command used to test the project
    *  @param updateCommand  The sbt command used to update the project
+   *  @param extraSbtArgs   Extra arguments to pass to sbt
    */
-  def test(project: String, testCommand: String, updateCommand: String): Unit = {
+  def test(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String] = Nil): Unit = {
     def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
     log(s"Building $project with dotty-bootstrapped $compilerVersion...")
@@ -57,7 +58,7 @@ class CommunityBuildTest {
     val pluginFilePath = communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
 
     // Run the sbt command with the compiler version and sbt plugin set in the build
-    val arguments = Seq(
+    val arguments = extraSbtArgs ++ Seq(
       "-sbt-version", "1.2.7",
       s"--addPluginSbtFile=$pluginFilePath",
       s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $testCommand"
@@ -74,8 +75,8 @@ class CommunityBuildTest {
           |    cd community-build/community-projects/$project
           |    sbt ${arguments.init.mkString(" ")} "${arguments.last}"
           |
-          |For a faster feedback loop, one can try to extract a direct call to dotc from
-          |usign the sbt export command. For instance, for scalacheck, use
+          |For a faster feedback loop, one can try to extract a direct call to dotc
+          |using the sbt export command. For instance, for scalacheck, use
           |    sbt export jvm/test:compileIncremental
           |
           |""".stripMargin)
@@ -152,7 +153,8 @@ class CommunityBuildTest {
   @Test def stdLib213 = test(
     project       = "stdLib213",
     testCommand   = "library/compile",
-    updateCommand = "library/update"
+    updateCommand = "library/update",
+    extraSbtArgs  = Seq("-Dscala.build.compileWithDotty=true")
   )
 
   // TODO @oderky? It got broken by #5458
@@ -168,6 +170,6 @@ class UpdateCategory
 
 @Category(Array(classOf[UpdateCategory]))
 class CommunityBuildUpdate extends CommunityBuildTest {
-  override def test(project: String, testCommand: String, updateCommand: String): Unit =
-    super.test(project, updateCommand, null)
+  override def test(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String]): Unit =
+    super.test(project, updateCommand, null, extraSbtArgs)
 }
