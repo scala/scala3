@@ -9,8 +9,8 @@ object Foo {
   def inspectBodyImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {
-      case IsDefSymbol(sym) => sym.tree.show.toExpr
-      case IsValSymbol(sym) => sym.tree.show.toExpr
+      case IsDefDefSymbol(sym) => sym.tree.show.toExpr
+      case IsValDefSymbol(sym) => sym.tree.show.toExpr
       case IsBindSymbol(sym) => sym.tree.show.toExpr
     }
     x.unseal match {

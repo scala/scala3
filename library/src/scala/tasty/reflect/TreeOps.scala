@@ -87,7 +87,7 @@ trait TreeOps extends Core {
     def derived(implicit ctx: Context): List[TypeTree] = kernel.ClassDef_derived(self)
     def self(implicit ctx: Context): Option[ValDef] = kernel.ClassDef_self(self)
     def body(implicit ctx: Context): List[Statement] = kernel.ClassDef_body(self)
-    def symbol(implicit ctx: Context): ClassSymbol = kernel.ClassDef_symbol(self)
+    def symbol(implicit ctx: Context): ClassDefSymbol = kernel.ClassDef_symbol(self)
   }
 
   // DefDef
@@ -97,7 +97,7 @@ trait TreeOps extends Core {
   }
 
   object DefDef {
-    def apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
+    def apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
       kernel.DefDef_apply(symbol, rhsFn)
     def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef =
       kernel.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
@@ -110,7 +110,7 @@ trait TreeOps extends Core {
     def paramss(implicit ctx: Context): List[List[ValDef]] = kernel.DefDef_paramss(self)
     def returnTpt(implicit ctx: Context): TypeTree = kernel.DefDef_returnTpt(self) // TODO rename to tpt
     def rhs(implicit ctx: Context): Option[Term] = kernel.DefDef_rhs(self)
-    def symbol(implicit ctx: Context): DefSymbol = kernel.DefDef_symbol(self)
+    def symbol(implicit ctx: Context): DefDefSymbol = kernel.DefDef_symbol(self)
   }
 
   // ValDef
@@ -120,7 +120,7 @@ trait TreeOps extends Core {
   }
 
   object ValDef {
-    def apply(symbol: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
+    def apply(symbol: ValDefSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
       kernel.ValDef_apply(symbol, rhs)
     def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef =
       kernel.ValDef_copy(original)(name, tpt, rhs)
@@ -131,7 +131,7 @@ trait TreeOps extends Core {
   implicit class ValDefAPI(self: ValDef) {
     def tpt(implicit ctx: Context): TypeTree = kernel.ValDef_tpt(self)
     def rhs(implicit ctx: Context): Option[Term] = kernel.ValDef_rhs(self)
-    def symbol(implicit ctx: Context): ValSymbol = kernel.ValDef_symbol(self)
+    def symbol(implicit ctx: Context): ValDefSymbol = kernel.ValDef_symbol(self)
   }
 
   // TypeDef
@@ -141,7 +141,7 @@ trait TreeOps extends Core {
   }
 
   object TypeDef {
-    def apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef =
+    def apply(symbol: TypeDefSymbol)(implicit ctx: Context): TypeDef =
       kernel.TypeDef_apply(symbol)
     def copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef =
       kernel.TypeDef_copy(original)(name, rhs)
@@ -151,7 +151,7 @@ trait TreeOps extends Core {
 
   implicit class TypeDefAPI(self: TypeDef) {
     def rhs(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeDef_rhs(self)
-    def symbol(implicit ctx: Context): TypeSymbol = kernel.TypeDef_symbol(self)
+    def symbol(implicit ctx: Context): TypeDefSymbol = kernel.TypeDef_symbol(self)
   }
 
   // PackageDef
@@ -164,7 +164,7 @@ trait TreeOps extends Core {
   implicit class PackageDefAPI(self: PackageDef) {
     def owner(implicit ctx: Context): PackageDef = kernel.PackageDef_owner(self)
     def members(implicit ctx: Context): List[Statement] = kernel.PackageDef_members(self)
-    def symbol(implicit ctx: Context): PackageSymbol = kernel.PackageDef_symbol(self)
+    def symbol(implicit ctx: Context): PackageDefSymbol = kernel.PackageDef_symbol(self)
   }
 
   object PackageDef {
@@ -276,7 +276,7 @@ trait TreeOps extends Core {
     object This {
 
       /** Create a `this[<id: Id]>` */
-      def apply(cls: ClassSymbol)(implicit ctx: Context): This =
+      def apply(cls: ClassDefSymbol)(implicit ctx: Context): This =
         kernel.This_apply(cls)
 
       def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =

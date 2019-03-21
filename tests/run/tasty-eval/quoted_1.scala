@@ -22,7 +22,7 @@ object Macros {
       import reflect._
 
       e.unseal.tpe match {
-        case Type.SymRef(IsValSymbol(sym), pre) =>
+        case Type.SymRef(IsValDefSymbol(sym), pre) =>
           sym.tree.tpt.tpe match {
             case Type.ConstantType(Constant.Int(i)) => Some(i)
             case _ => None

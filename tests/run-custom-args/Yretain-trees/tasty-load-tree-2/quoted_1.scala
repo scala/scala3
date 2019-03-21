@@ -11,9 +11,9 @@ object Foo {
     import reflect._
 
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {
-      case IsClassSymbol(sym) => sym.tree.show.toExpr
-      case IsDefSymbol(sym) => sym.tree.show.toExpr
-      case IsValSymbol(sym) => sym.tree.show.toExpr
+      case IsClassDefSymbol(sym) => sym.tree.show.toExpr
+      case IsDefDefSymbol(sym) => sym.tree.show.toExpr
+      case IsValDefSymbol(sym) => sym.tree.show.toExpr
       case _ => '{"NO DEFINTION"}
     }
 

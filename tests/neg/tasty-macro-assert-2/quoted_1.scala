@@ -20,7 +20,7 @@ object Asserts {
     val tree = cond.unseal
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
-      case Type.SymRef(IsDefSymbol(sym), _) => sym.name == "Ops" // TODO check that the parent is Asserts
+      case Type.SymRef(IsDefDefSymbol(sym), _) => sym.name == "Ops" // TODO check that the parent is Asserts
       case _ => false
     }
 

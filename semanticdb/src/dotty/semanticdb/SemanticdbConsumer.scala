@@ -134,31 +134,31 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
 
         def isClass: Boolean = symbol match {
-          case IsClassSymbol(_) => true
+          case IsClassDefSymbol(_) => true
           case _                => false
         }
 
         def isTypeParameter: Boolean = symbol.isParameter && symbol.isType
 
         def isType: Boolean = symbol match {
-          case IsTypeSymbol(_) => true
+          case IsTypeDefSymbol(_) => true
           case _               => false
         }
 
         def isTerm: Boolean = !symbol.isType
 
         def isMethod: Boolean = symbol match {
-          case IsDefSymbol(_) => true
+          case IsDefDefSymbol(_) => true
           case _              => false
         }
 
         def isVal: Boolean = symbol match {
-          case IsValSymbol(_) => true
+          case IsValDefSymbol(_) => true
           case _              => false
         }
 
         def isPackage: Boolean = symbol match {
-          case IsPackageSymbol(_) => true
+          case IsPackageDefSymbol(_) => true
           case _                  => false
         }
 
@@ -259,12 +259,12 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         def isSyntheticValueClassCompanion(implicit ctx: Context): Boolean = {
           if (symbol.isClass) {
             if (symbol.flags.is(Flags.Object)) {
-              symbol.asClass.moduleClass.fold(false)(c =>
+              symbol.asClassDef.moduleClass.fold(false)(c =>
                 c.isSyntheticValueClassCompanion)
             } else {
               symbol.flags.is(Flags.ModuleClass) &&
               symbol.flags.is(Flags.Synthetic) &&
-              symbol.asClass.methods.isEmpty
+              symbol.asClassDef.methods.isEmpty
             }
           } else {
             false
@@ -292,7 +292,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
         def isSyntheticJavaModule(implicit ctx: Context): Boolean = {
           val resolved = symbol match {
-          case IsClassSymbol(c) => resolveClass(c)
+          case IsClassDefSymbol(c) => resolveClass(c)
           case _ => symbol
           }
           !resolved.flags.is(Flags.Package)  && resolved.flags.is(Flags.JavaDefined)  && resolved.flags.is(Flags.Object)
@@ -350,7 +350,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
         }
       }
 
-      def resolveClass(symbol: ClassSymbol): Symbol =
+      def resolveClass(symbol: ClassDefSymbol): Symbol =
         (symbol.companionClass, symbol.companionModule) match {
           case (Some(c), _)                               => c
           case (_, Some(module)) if symbol.flags.is(Flags.Object) => module
@@ -359,9 +359,9 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
       def disimbiguate(symbolPath: String, symbol: Symbol): String = {
         try {
-          val symbolcl = resolveClass(symbol.owner.asClass)
+          val symbolcl = resolveClass(symbol.owner.asClassDef)
           symbolcl match {
-            case IsClassSymbol(classsymbol) => {
+            case IsClassDefSymbol(classsymbol) => {
               val methods = classsymbol.method(symbol.name)
               val (methods_count, method_pos) =
                 methods.foldLeft((0, -1))((x: Tuple2[Int, Int], m: Symbol) => {
@@ -392,7 +392,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           ""
         } else {
           val rsymbol = symbol match {
-            case IsClassSymbol(c) => resolveClass(c)
+            case IsClassDefSymbol(c) => resolveClass(c)
             case _ => symbol
           }
           val previous_symbol =
@@ -406,7 +406,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
               iterateParent(rsymbol.owner)
 
 
-          val isdef = rsymbol match {case IsDefSymbol(_) => true case _ => false}
+          val isdef = rsymbol match {case IsDefDefSymbol(_) => true case _ => false}
           val symbolName = if (isMutableAssignement) rsymbol.trueName + "_=" else rsymbol.trueName
           val next_atom =
             if (rsymbol.isPackage) {

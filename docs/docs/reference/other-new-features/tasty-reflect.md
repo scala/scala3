@@ -177,11 +177,12 @@ TASTy Reflect provides the following types:
 
 +- Constant
 
-+- Symbol --+- PackageSymbol
-            +- ClassSymbol
-            +- TypeSymbol
-            +- DefSymbol
-            +- ValSymbol
++- Symbol --+- PackageDefSymbol
+            +- ClassDefSymbol
+            +- TypeDefSymbol
+            +- TypeBindSymbol
+            +- DefDefSymbol
+            +- ValDefSymbol
             +- BindSymbol
             +- NoSymbol
 

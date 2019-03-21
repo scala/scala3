@@ -335,11 +335,11 @@ trait Printers
       }
 
       def visitSymbol(x: Symbol): Buffer = x match {
-        case IsPackageSymbol(x) => this += "IsPackageSymbol(<" += x.fullName += ">)"
-        case IsClassSymbol(x) => this += "IsClassSymbol(<" += x.fullName += ">)"
-        case IsDefSymbol(x) => this += "IsDefSymbol(<" += x.fullName += ">)"
-        case IsValSymbol(x) => this += "IsValSymbol(<" += x.fullName += ">)"
-        case IsTypeSymbol(x) => this += "IsTypeSymbol(<" += x.fullName += ">)"
+        case IsPackageDefSymbol(x) => this += "IsPackageDefSymbol(<" += x.fullName += ">)"
+        case IsClassDefSymbol(x) => this += "IsClassDefSymbol(<" += x.fullName += ">)"
+        case IsDefDefSymbol(x) => this += "IsDefDefSymbol(<" += x.fullName += ">)"
+        case IsValDefSymbol(x) => this += "IsValDefSymbol(<" += x.fullName += ">)"
+        case IsTypeDefSymbol(x) => this += "IsTypeDefSymbol(<" += x.fullName += ">)"
         case NoSymbol() => this += "NoSymbol()"
       }
 
@@ -1225,8 +1225,8 @@ trait Printers
       def printParamDef(arg: ValDef): Unit = {
         val name = arg.name
         arg.symbol.owner match {
-          case IsDefSymbol(sym) if sym.name == "<init>" =>
-            val ClassDef(_, _, _, _, _, body) = sym.owner.asClass.tree
+          case IsDefDefSymbol(sym) if sym.name == "<init>" =>
+            val ClassDef(_, _, _, _, _, body) = sym.owner.asClassDef.tree
             body.collectFirst {
               case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
                 if (!vdef.symbol.flags.is(Flags.Local)) {
@@ -1354,10 +1354,10 @@ trait Printers
               printTypeAndAnnots(tp)
               this += " "
               printAnnotation(annot)
-            case Type.SymRef(IsClassSymbol(sym), _) if sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$" =>
+            case Type.SymRef(IsClassDefSymbol(sym), _) if sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$" =>
               // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
               printType(tpe)
-            case tpe @ Type.SymRef(IsClassSymbol(sym), _) if sym.name.endsWith("$") =>
+            case tpe @ Type.SymRef(IsClassDefSymbol(sym), _) if sym.name.endsWith("$") =>
               printType(tpe)
               this += ".type"
             case tpe => printType(tpe)
@@ -1452,7 +1452,7 @@ trait Printers
                 if (packagePath != "")
                   this += packagePath += "."
               }
-            case IsType(prefix @ Type.SymRef(IsClassSymbol(_), _)) =>
+            case IsType(prefix @ Type.SymRef(IsClassDefSymbol(_), _)) =>
               printType(prefix)
               this += "#"
             case IsType(prefix) =>
@@ -1717,7 +1717,7 @@ trait Printers
 
       def printFullClassName(tp: TypeOrBounds): Unit = {
         def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
-          case Type.SymRef(IsClassSymbol(sym), prefix2) =>
+          case Type.SymRef(IsClassDefSymbol(sym), prefix2) =>
             printClassPrefix(prefix2)
             this += sym.name += "."
           case _ =>
@@ -1756,7 +1756,7 @@ trait Printers
       def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
         case IsTerm(arg @ Term.Apply(fn, args)) =>
           fn.tpe match {
-            case Type.SymRef(IsDefSymbol(sym), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
+            case Type.SymRef(IsDefDefSymbol(sym), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
               Some((sym.tree.name, args))
             case _ => None
           }

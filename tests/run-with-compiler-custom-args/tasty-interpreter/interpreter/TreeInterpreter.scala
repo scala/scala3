@@ -23,7 +23,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: given Env => T)(implicit env: Env): T =
     in given (env ++ syms.zip(values))
 
-  def interpretCall(inst: AbstractAny, sym: DefSymbol, args: List[AbstractAny]): Result = {
+  def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
       val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
@@ -41,7 +41,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-    val IsDefSymbol(sym) = fn.symbol
+    val IsDefDefSymbol(sym) = fn.symbol
     val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
     withLocalValues(syms, evaluatedArgs) {
       eval(sym.tree.rhs.get)
@@ -134,7 +134,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
             log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))
           case _ =>
             fn.symbol match {
-              case IsDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
+              case IsDefDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
               case _ =>
                 assert(argss.isEmpty)
                 log("interpretValGet", tree)(interpretValGet(fn))

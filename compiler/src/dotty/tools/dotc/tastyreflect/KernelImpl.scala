@@ -123,7 +123,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     else self.symbol.info.decls.iterator.map(definitionFromSym).toList
   }
 
-  def PackageDef_symbol(self: PackageDef)(implicit ctx: Context): PackageSymbol = self.symbol
+  def PackageDef_symbol(self: PackageDef)(implicit ctx: Context): PackageDefSymbol = self.symbol
 
   type ClassDef = tpd.TypeDef
 
@@ -137,7 +137,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def ClassDef_derived(self: ClassDef)(implicit ctx: Context): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
   def ClassDef_self(self: ClassDef)(implicit ctx: Context): Option[ValDef] = optional(ClassDef_rhs(self).self)
   def ClassDef_body(self: ClassDef)(implicit ctx: Context): List[Statement] = ClassDef_rhs(self).body
-  def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassSymbol = self.symbol.asClass
+  def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassDefSymbol = self.symbol.asClass
   private def ClassDef_rhs(self: ClassDef) = self.rhs.asInstanceOf[tpd.Template]
 
   def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef = {
@@ -153,9 +153,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   }
 
   def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = self.rhs
-  def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeSymbol = self.symbol.asType
+  def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeDefSymbol = self.symbol.asType
 
-  def TypeDef_apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef = withDefaultPos(ctx => tpd.TypeDef(symbol)(ctx))
+  def TypeDef_apply(symbol: TypeDefSymbol)(implicit ctx: Context): TypeDef = withDefaultPos(ctx => tpd.TypeDef(symbol)(ctx))
   def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): TypeDef =
     tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
 
@@ -170,9 +170,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def DefDef_paramss(self: DefDef)(implicit ctx: Context): List[List[ValDef]] = self.vparamss
   def DefDef_returnTpt(self: DefDef)(implicit ctx: Context): TypeTree = self.tpt
   def DefDef_rhs(self: DefDef)(implicit ctx: Context): Option[Tree] = optional(self.rhs)
-  def DefDef_symbol(self: DefDef)(implicit ctx: Context): DefSymbol = self.symbol.asTerm
+  def DefDef_symbol(self: DefDef)(implicit ctx: Context): DefDefSymbol = self.symbol.asTerm
 
-  def DefDef_apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
+  def DefDef_apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
     withDefaultPos(ctx => tpd.polyDefDef(symbol, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree))(ctx))
 
   def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef =
@@ -187,9 +187,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def ValDef_tpt(self: ValDef)(implicit ctx: Context): TypeTree = self.tpt
   def ValDef_rhs(self: ValDef)(implicit ctx: Context): Option[Tree] = optional(self.rhs)
-  def ValDef_symbol(self: ValDef)(implicit ctx: Context): ValSymbol = self.symbol.asTerm
+  def ValDef_symbol(self: ValDef)(implicit ctx: Context): ValDefSymbol = self.symbol.asTerm
 
-  def ValDef_apply(symbol: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
+  def ValDef_apply(symbol: ValDefSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
     tpd.ValDef(symbol, rhs.getOrElse(tpd.EmptyTree))
 
   def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef =
@@ -278,7 +278,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def This_id(self: This)(implicit ctx: Context): Option[Id] = optional(self.qual)
 
-  def This_apply(cls: ClassSymbol)(implicit ctx: Context): This =
+  def This_apply(cls: ClassDefSymbol)(implicit ctx: Context): This =
     withDefaultPos(ctx => tpd.This(cls)(ctx))
 
   def This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This =
@@ -996,7 +996,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Type_dealias(self: Type)(implicit ctx: Context): Type = self.dealias
 
-  def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassSymbol] =
+  def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassDefSymbol] =
     if (self.classSymbol.exists) Some(self.classSymbol.asClass) else None
 
   def Type_typeSymbol(self: Type)(implicit ctx: Context): Symbol = self.typeSymbol
@@ -1427,49 +1427,54 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Symbol_isAbstractType(self: Symbol)(implicit ctx: Context): Boolean = self.isAbstractType
   def Symbol_isClassConstructor(self: Symbol)(implicit ctx: Context): Boolean = self.isClassConstructor
 
-  type PackageSymbol = core.Symbols.Symbol
+  type PackageDefSymbol = core.Symbols.Symbol
 
-  def matchPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol] =
+  def matchPackageDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageDefSymbol] =
     if (symbol.is(core.Flags.Package)) Some(symbol) else None
 
-  def PackageSymbol_tree(self: PackageSymbol)(implicit ctx: Context): PackageDef =
+  def PackageDefSymbol_tree(self: PackageDefSymbol)(implicit ctx: Context): PackageDef =
     FromSymbol.packageDefFromSym(self)
 
-  type ClassSymbol = core.Symbols.ClassSymbol
+  type TypeSymbol = core.Symbols.TypeSymbol
 
-  def matchClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol] =
+  def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+    if (symbol.isType) Some(symbol.asType) else None
+
+  type ClassDefSymbol = core.Symbols.ClassSymbol
+
+  def matchClassDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassDefSymbol] =
     if (symbol.isClass) Some(symbol.asClass) else None
 
-  def ClassSymbol_tree(self: ClassSymbol)(implicit ctx: Context): ClassDef =
+  def ClassDefSymbol_tree(self: ClassDefSymbol)(implicit ctx: Context): ClassDef =
     FromSymbol.classDef(self)
 
-  def ClassSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol] =
+  def ClassDefSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
 
-  def ClassSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol] = {
+  def ClassDefSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol] = {
     val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
     if (sym.exists && isField(sym)) Some(sym) else None
   }
 
-  def ClassSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol] = {
+  def ClassDefSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol] = {
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
   }
 
-  def ClassSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefSymbol] = {
+  def ClassDefSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol] = {
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
   }
 
-  def ClassSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefSymbol] = {
+  def ClassDefSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol] = {
     self.typeRef.allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
   }
 
-  def ClassSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefSymbol] = {
+  def ClassDefSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol] = {
     self.typeRef.allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
@@ -1478,67 +1483,80 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   private def isMethod(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
 
-  def ClassSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValSymbol] = {
+  def ClassDefSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValDefSymbol] = {
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
   }
 
-  def ClassSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassSymbol] = {
+  def ClassDefSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassDefSymbol] = {
     val sym = self.companionModule.companionClass
     if (sym.exists) Some(sym.asClass) else None
   }
 
-  def ClassSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValSymbol] = {
+  def ClassDefSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValDefSymbol] = {
     val sym = self.companionModule
     if (sym.exists) Some(sym.asTerm) else None
   }
 
-  def ClassSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol] = {
+  def ClassDefSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol] = {
     val sym = self.moduleClass
     if (sym.exists) Some(sym.asTerm) else None
   }
 
   private def isField(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def ClassSymbol_of(fullName: String)(implicit ctx: Context): ClassSymbol = ctx.requiredClass(fullName)
+  def ClassDefSymbol_of(fullName: String)(implicit ctx: Context): ClassDefSymbol = ctx.requiredClass(fullName)
 
-  type TypeSymbol = core.Symbols.TypeSymbol
+  type TypeDefSymbol = core.Symbols.TypeSymbol
 
-  def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol] =
+  def matchTypeDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeDefSymbol] =
     if (symbol.isType) Some(symbol.asType) else None
 
-  def TypeSymbol_tree(self: TypeSymbol)(implicit ctx: Context): TypeDef =
+  def TypeDefSymbol_tree(self: TypeDefSymbol)(implicit ctx: Context): TypeDef =
     FromSymbol.typeDefFromSym(self)
-  def TypeSymbol_isTypeParam(self: TypeSymbol)(implicit ctx: Context): Boolean =
+  def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(implicit ctx: Context): Boolean =
     self.isTypeParam
 
-  type DefSymbol = core.Symbols.TermSymbol
+  type TypeBindSymbol = core.Symbols.TypeSymbol
 
-  def matchDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol] =
+  def matchTypeBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeBindSymbol] =
+    if (symbol.isType && symbol.is(core.Flags.Case)) Some(symbol.asType) else None
+
+  def TypeBindSymbol_tree(self: TypeBindSymbol)(implicit ctx: Context): TypeTree_TypeBind =
+    FromSymbol.typeBindFromSym(self)
+
+  type TermSymbol = core.Symbols.TermSymbol
+
+  def matchTermSymbol(symbol: Symbol)(implicit ctx: Context): Option[TermSymbol] =
+    if (symbol.isTerm) Some(symbol.asTerm) else None
+
+  type DefDefSymbol = core.Symbols.TermSymbol
+
+  def matchDefDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefDefSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Method)) Some(symbol.asTerm) else None
 
-  def DefSymbol_tree(self: DefSymbol)(implicit ctx: Context): DefDef =
+  def DefDefSymbol_tree(self: DefDefSymbol)(implicit ctx: Context): DefDef =
     FromSymbol.defDefFromSym(self)
 
-  def DefSymbol_signature(self: DefSymbol)(implicit ctx: Context): Signature =
+  def DefDefSymbol_signature(self: DefDefSymbol)(implicit ctx: Context): Signature =
     self.signature
 
-  type ValSymbol = core.Symbols.TermSymbol
+  type ValDefSymbol = core.Symbols.TermSymbol
 
-  def matchValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol] =
+  def matchValDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValDefSymbol] =
     if (symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
 
-  def ValSymbol_tree(self: ValSymbol)(implicit ctx: Context): ValDef =
+  def ValDefSymbol_tree(self: ValDefSymbol)(implicit ctx: Context): ValDef =
     FromSymbol.valDefFromSym(self)
 
-  def ValSymbol_moduleClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol] = {
+  def ValDefSymbol_moduleClass(self: ValDefSymbol)(implicit ctx: Context): Option[ClassDefSymbol] = {
     val sym = self.moduleClass
     if (sym.exists) Some(sym.asClass) else None
   }
 
-  def ValSymbol_companionClass(self: ValSymbol)(implicit ctx: Context): Option[ClassSymbol] = {
+  def ValDefSymbol_companionClass(self: ValDefSymbol)(implicit ctx: Context): Option[ClassDefSymbol] = {
     val sym = self.companionClass
     if (sym.exists) Some(sym.asClass) else None
   }

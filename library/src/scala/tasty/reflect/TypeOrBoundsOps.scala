@@ -18,7 +18,7 @@ trait TypeOrBoundsOps extends Core {
      */
     def dealias(implicit ctx: Context): Type = kernel.Type_dealias(self)
 
-    def classSymbol(implicit ctx: Context): Option[ClassSymbol] = kernel.Type_classSymbol(self)
+    def classSymbol(implicit ctx: Context): Option[ClassDefSymbol] = kernel.Type_classSymbol(self)
     def typeSymbol(implicit ctx: Context): Symbol = kernel.Type_typeSymbol(self)
     def isSingleton(implicit ctx: Context): Boolean = kernel.Type_isSingleton(self)
     def memberType(member: Symbol)(implicit ctx: Context): Type = kernel.Type_memberType(self)(member)
