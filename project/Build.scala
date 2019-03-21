@@ -404,9 +404,9 @@ object Build {
     }.evaluated,
 
     libraryDependencies ++= {
-      val flexmarkVersion = "0.28.32"
+      val flexmarkVersion = "0.40.24"
       Seq(
-        "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
