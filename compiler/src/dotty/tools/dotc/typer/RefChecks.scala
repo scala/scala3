@@ -156,7 +156,8 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9    If M or O are erased, they must be both erased
+   *    1.9.1  If M or O are erased, they must both be erased
+   *    1.9.2  If M or O are extension methods, they must both be extension methods
    *    1.10   If M is an inline or Scala-2 macro method, O cannot be deferred unless
    *           there's also a concrete method that M overrides.
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
@@ -391,10 +392,14 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (member.is(Erased) && !other.is(Erased)) { // (1.9)
+      } else if (member.is(Erased) && !other.is(Erased)) { // (1.9.1)
         overrideError("is erased, cannot override non-erased member")
-      } else if (other.is(Erased) && !member.is(Erased)) { // (1.9)
+      } else if (other.is(Erased) && !member.is(Erased)) { // (1.9.1)
         overrideError("is not erased, cannot override erased member")
+      } else if (member.is(Extension) && !other.is(Extension)) { // (1.9.2)
+        overrideError("is an extension method, cannot override a normal method")
+      } else if (other.is(Extension) && !member.is(Extension)) { // (1.9.2)
+        overrideError("is a normal method, cannot override an extension method")
       } else if ((member.isInlineMethod || member.is(Scala2Macro)) && other.is(Deferred) &&
                  member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("is an inline method, must override at least one concrete method")
