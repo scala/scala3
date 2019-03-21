@@ -288,21 +288,28 @@ object ProtoTypes {
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null) {
-        if (!force && untpd.functionWithUnknownParamType(arg).isDefined)
-          // If force = false, assume ? rather than reporting an error.
-          // That way we don't cause a "missing parameter" error in `typerFn(arg)`
-          targ = arg.withType(WildcardType)
-        else {
-          targ = typerFn(arg)
-          if (!ctx.reporter.hasUnreportedErrors) {
-            // FIXME: This can swallow warnings by updating the typerstate from a nested
-            // context that gets discarded later. But we do have to update the
-            // typerstate if there are no errors. If we also omitted the next two lines
-            // when warning were emitted, `pos/t1756.scala` would fail when run with -feature.
-            // It would produce an orphan type parameter for CI when pickling.
-            state.typedArg = state.typedArg.updated(arg, targ)
-            state.evalState = state.evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
-          }
+        untpd.functionWithUnknownParamType(arg) match {
+          case Some(untpd.Function(args, _)) if !force =>
+            // If force = false, assume what we know about the parameter types rather than reporting an error.
+            // That way we don't cause a "missing parameter" error in `typerFn(arg)`
+            val paramTypes = args map {
+              case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
+              case _ => WildcardType
+            }
+            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+          case Some(_) if !force =>
+            targ = arg.withType(WildcardType)
+          case _ =>
+            targ = typerFn(arg)
+            if (!ctx.reporter.hasUnreportedErrors) {
+              // FIXME: This can swallow warnings by updating the typerstate from a nested
+              // context that gets discarded later. But we do have to update the
+              // typerstate if there are no errors. If we also omitted the next two lines
+              // when warning were emitted, `pos/t1756.scala` would fail when run with -feature.
+              // It would produce an orphan type parameter for CI when pickling.
+              state.typedArg = state.typedArg.updated(arg, targ)
+              state.evalState = state.evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
+            }
         }
       }
       targ
@@ -314,7 +321,7 @@ object ProtoTypes {
      *                  with unknown parameter types - this will then cause a
      *                  "missing parameter type" error
      */
-    private def typedArgs(force: Boolean): List[Tree] =
+    protected[this] def typedArgs(force: Boolean): List[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
         val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
@@ -376,7 +383,7 @@ object ProtoTypes {
       derivedFunProto(args, tm(resultType), typer)
 
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
-      ta(ta.foldOver(x, typedArgs.tpes), resultType)
+      ta(ta.foldOver(x, unforcedTypedArgs.tpes), resultType)
 
     override def deepenProto(implicit ctx: Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
 
@@ -390,7 +397,7 @@ object ProtoTypes {
    *  [](args): resultType, where args are known to be typed
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isContextual: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isContextual)(ctx) {
-    override def typedArgs: List[tpd.Tree] = args
+    override def typedArgs(force: Boolean): List[tpd.Tree] = args
     override def withContext(ctx: Context): FunProtoTyped = this
   }
 
