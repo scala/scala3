@@ -1514,6 +1514,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(implicit ctx: Context): Boolean =
     self.isTypeParam
 
+  type TypeBindSymbol = core.Symbols.TypeSymbol
+
+  def matchTypeBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeBindSymbol] =
+    if (symbol.isType && symbol.is(core.Flags.Case)) Some(symbol.asType) else None
+
+  def TypeBindSymbol_tree(self: TypeBindSymbol)(implicit ctx: Context): TypeTree_TypeBind =
+    FromSymbol.typeBindFromSym(self)
+
   type DefDefSymbol = core.Symbols.TermSymbol
 
   def matchDefDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefDefSymbol] =

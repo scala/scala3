@@ -171,6 +171,19 @@ trait SymbolOps extends Core {
       kernel.TypeDefSymbol_isTypeParam(self)
   }
 
+  // TypeBindSymbol
+
+  object IsTypeBindSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[TypeBindSymbol] =
+      kernel.matchTypeBindSymbol(symbol)
+  }
+
+  implicit class TypeBindSymbolAPI(self: TypeBindSymbol) {
+    /** TypeBind pattern of this definition */
+    def tree(implicit ctx: Context): TypeTree.TypeBind =
+      kernel.TypeBindSymbol_tree(self)
+  }
+
   // DefSymbol
 
   object IsDefDefSymbol {

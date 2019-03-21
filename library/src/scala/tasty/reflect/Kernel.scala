@@ -102,6 +102,7 @@ package scala.tasty.reflect
  *  +- Symbol --+- PackageDefSymbol
  *              +- ClassDefSymbol
  *              +- TypeDefSymbol
+ *              +- TypeBindSymbol
  *              +- DefDefSymbol
  *              +- ValDefSymbol
  *              +- BindSymbol
@@ -1221,6 +1222,14 @@ trait Kernel {
 
   /** TypeDef tree of this definition */
   def TypeDefSymbol_tree(self: TypeDefSymbol)(implicit ctx: Context): TypeDef
+
+  /** Symbol representing a bind definition. */
+  type TypeBindSymbol <: Symbol
+
+  def matchTypeBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeBindSymbol]
+
+  /** TypeBind pattern of this definition */
+  def TypeBindSymbol_tree(self: TypeBindSymbol)(implicit ctx: Context): TypeTree_TypeBind
 
   /** Symbol representing a method definition. */
   type DefDefSymbol <: Symbol

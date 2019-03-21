@@ -103,6 +103,7 @@ package scala.tasty.reflect
  *  +- Symbol --+- PackageDefSymbol
  *              +- ClassDefSymbol
  *              +- TypeDefSymbol
+ *              +- TypeBindSymbol
  *              +- DefDefSymbol
  *              +- ValDefSymbol
  *              +- BindSymbol
@@ -425,6 +426,9 @@ trait Core {
 
     /** Symbol of a type (parameter or member) definition. */
     type TypeDefSymbol = kernel.TypeDefSymbol
+
+    /** Symbol representing a type bind definition. */
+    type TypeBindSymbol = kernel.TypeBindSymbol
 
     /** Symbol representing a method definition. */
     type DefDefSymbol = kernel.DefDefSymbol
