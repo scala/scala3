@@ -182,7 +182,7 @@ TASTy Reflect provides the following types:
             +- TypeDefSymbol
             +- DefDefSymbol
             +- ValDefSymbol
-            +- BindDefSymbol
+            +- BindSymbol
             +- NoSymbol
 
 ```

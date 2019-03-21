@@ -104,7 +104,7 @@ package scala.tasty.reflect
  *              +- TypeDefSymbol
  *              +- DefDefSymbol
  *              +- ValDefSymbol
- *              +- BindDefSymbol
+ *              +- BindSymbol
  *              +- NoSymbol
  *
  *  +- Flags

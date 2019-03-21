@@ -64,10 +64,10 @@ trait SymbolOps extends Core {
       case _ => throw new Exception("not a TypeDefSymbol")
     }
 
-    /** Unsafe cast as to BindSymbol. Use IsBindDefSymbol to safely check and cast to BindSymbol */
-    def asBindDef(implicit ctx: Context): BindDefSymbol = self match {
-      case IsBindDefSymbol(self) => self
-      case _ => throw new Exception("not a BindDefSymbol")
+    /** Unsafe cast as to BindSymbol. Use IsBindSymbol to safely check and cast to BindSymbol */
+    def asBindDef(implicit ctx: Context): BindSymbol = self match {
+      case IsBindSymbol(self) => self
+      case _ => throw new Exception("not a BindSymbol")
     }
 
     /** Annotations attached to this symbol */
@@ -210,12 +210,12 @@ trait SymbolOps extends Core {
 
   // BindSymbol
 
-  object IsBindDefSymbol {
-    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindDefSymbol] =
+  object IsBindSymbol {
+    def unapply(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol] =
       kernel.matchBindSymbol(symbol)
   }
 
-  implicit class BindDefSymbolAPI(self: BindDefSymbol) {
+  implicit class BindSymbolAPI(self: BindSymbol) {
     /** Bind pattern of this definition */
     def tree(implicit ctx: Context): Bind =
       kernel.BindSymbol_tree(self)

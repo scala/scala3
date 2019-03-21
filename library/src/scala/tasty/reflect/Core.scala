@@ -105,7 +105,7 @@ package scala.tasty.reflect
  *              +- TypeDefSymbol
  *              +- DefDefSymbol
  *              +- ValDefSymbol
- *              +- BindDefSymbol
+ *              +- BindSymbol
  *              +- NoSymbol
  *
  *  +- Flags
@@ -433,7 +433,7 @@ trait Core {
     type ValDefSymbol = kernel.ValDefSymbol
 
     /** Symbol representing a bind definition. */
-    type BindDefSymbol = kernel.BindSymbol
+    type BindSymbol = kernel.BindSymbol
 
     /** No symbol available. */
     type NoSymbol = kernel.NoSymbol
