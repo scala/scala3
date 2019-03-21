@@ -1169,10 +1169,6 @@ trait Kernel {
 
   def Symbol_isDefinedInCurrentRun(self: Symbol)(implicit ctx: Context): Boolean
 
-  def Symbol_isType(self: Symbol)(implicit ctx: Context): Boolean
-
-  def Symbol_isTerm(self: Symbol)(implicit ctx: Context): Boolean
-
   /** Symbol of a package definition */
   type PackageDefSymbol <: Symbol
 
