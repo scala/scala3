@@ -1078,7 +1078,7 @@ class Namer { typer: Typer =>
   }
 
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
-  def typedAheadImpl(tree: Tree, typed: untpd.Tree => tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+  def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(implicit ctx: Context): tpd.Tree = {
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree
@@ -1090,10 +1090,10 @@ class Namer { typer: Typer =>
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits addMode Mode.Type))
+    typedAhead(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits addMode Mode.Type))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
+    typedAhead(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
 
   def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationType)
