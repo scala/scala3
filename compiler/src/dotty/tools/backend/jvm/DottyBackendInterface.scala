@@ -431,7 +431,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Flag_METHOD: Flags = Flags.Method.bits
   val ExcludedForwarderFlags: Flags = {
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-      Flags.Bridge | Flags.Private | Flags.Macro
+      Flags.Private | Flags.Macro
   }.bits
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
@@ -765,6 +765,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
       else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
     } //todo is handled specially for JavaDefined symbols in scalac
+    def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
 
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
