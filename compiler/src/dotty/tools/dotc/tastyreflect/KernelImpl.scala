@@ -60,11 +60,13 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
    *  The code should be a sequence of expressions or statements that may appear in a block.
    */
   def typeChecks(code: String)(implicit ctx: Context): Boolean = {
-    val tree = new Parser(SourceFile.virtual("tasty-reflect", code)).block()
-
     val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
-    ctx2.typer.typed(tree)(ctx2)
-    !ctx2.reporter.hasErrors
+    val tree = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
+
+    !ctx2.reporter.hasErrors && {
+      ctx2.typer.typed(tree)(ctx2)
+      !ctx2.reporter.hasErrors
+    }
   }
 
   //
