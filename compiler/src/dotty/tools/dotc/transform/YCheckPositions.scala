@@ -45,12 +45,8 @@ class YCheckPositions extends Phases.Phase {
               case Inlined(call, bindings, expansion) =>
                 bindings.foreach(traverse(_))
                 sources = call.symbol.topLevelClass.source :: sources
-                if (
-                  !( // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
-                    ((ctx.phase <= ctx.typerPhase.next) && call.symbol.is(Macro)) ||
-                    (!(ctx.phase <= ctx.typerPhase.next) && call.symbol.unforcedDecls.exists(_.is(Macro)) || call.symbol.unforcedDecls.toList.exists(_.is(Macro)))
-                  )
-                ) traverse(expansion)(inlineContext(call))
+                if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
+                  traverse(expansion)(inlineContext(call))
                 sources = sources.tail
               case _ => traverseChildren(tree)
             }
@@ -58,7 +54,11 @@ class YCheckPositions extends Phases.Phase {
         }.traverse(tree)
       case _ =>
     }
+  }
 
+  private def isMacro(call: Tree)(implicit ctx: Context) = {
+    ((ctx.phase <= ctx.typerPhase.next) && call.symbol.is(Macro)) ||
+    (!(ctx.phase <= ctx.typerPhase.next) && call.symbol.unforcedDecls.exists(_.is(Macro)) || call.symbol.unforcedDecls.toList.exists(_.is(Macro)))
   }
 
 }
