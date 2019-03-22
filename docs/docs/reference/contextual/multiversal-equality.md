@@ -175,8 +175,9 @@ does not work, since it refers to the covariant parameter `T` in a nonvariant co
 ```scala
   def contains[U >: T](x: U): Boolean
 ```
-This generic version of `contains` is the one used in the current version of
-admits exactly the same applications as the `contains(x: Any)` definition we started with. But we can make it more useful (i.e. restrictive) by adding an `Eql` parameter:
+This generic version of `contains` is the one used in the current (Scala 2.12) version of `List`.
+It looks different but it admits exactly the same applications as the `contains(x: Any)` definition we started with.
+However, we can make it more useful (i.e. restrictive) by adding an `Eql` parameter:
 ```scala
   def contains[U >: T](x: U) given Eql[T, U]: Boolean // (1)
 ```
