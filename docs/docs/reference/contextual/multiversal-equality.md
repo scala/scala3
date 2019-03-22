@@ -160,7 +160,7 @@ One particular feature of the `Eql` type is that it takes _two_ type parameters,
 implementations of an equality type class take only a single type parameter which represents the common type of _both_ operands. One type parameter is simpler than two, so why go through the additional complication? The reason has to do with the fact that, rather than coming up with a type class where no operation existed before,
 we are dealing with a refinement of pre-existing, universal equality. It's best illustrated through an example.
 
-Say you want to come up with a safe version of the `contains` method on `List[T]`. The current definition of `contains` in the standard library is:
+Say you want to come up with a safe version of the `contains` method on `List[T]`. The original definition of `contains` in the standard library was:
 ```scala
 class List[+T] {
   ...
@@ -175,7 +175,8 @@ does not work, since it refers to the covariant parameter `T` in a nonvariant co
 ```scala
   def contains[U >: T](x: U): Boolean
 ```
-This generic version of `contains` admits exactly the same applications as the `contains(x: Any)` definition we started with. But we can make it more useful (i.e. restrictive) by adding an `Eql` parameter:
+This generic version of `contains` is the one used in the current version of
+admits exactly the same applications as the `contains(x: Any)` definition we started with. But we can make it more useful (i.e. restrictive) by adding an `Eql` parameter:
 ```scala
   def contains[U >: T](x: U) given Eql[T, U]: Boolean // (1)
 ```
@@ -201,8 +202,14 @@ unusable for all types that have not yet declared an `Eql1` instance, including 
 types coming from Java. This is clearly unacceptable. It would lead to a situation where,
 rather than migrating existing libraries to use safe equality, the only upgrade path is to have parallel libraries, with the new version only catering to types deriving `Eql1` and the old version dealing with everything else. Such a split of the ecosystem would be very problematic, which means the cure is likely to be worse than the disease.
 
-For these reasons, it looks like a two-parameter type class is the only way forward because it can take the existing ecosystem where it is and migrate it towards a future
-where more and more code uses safe equality.
+For these reasons, it looks like a two-parameter type class is the only way forward because it can take the existing ecosystem where it is and migrate it towards a future where more and more code uses safe equality.
+
+In applications where `-language:strictEquality` is the default one could also introduce a one-parameter type alias such as
+```scala
+type Eq[-T] = Eql[T, T]
+```
+Operations needing safe equality could then use this alias instead of the two-parameter `Eql` class. But it would only
+work under `-language:strictEquality`, since otherwise the universal `Eq[Any]` instance would be available everywhere.
 
 
 More on multiversal equality is found in a [blog post](http://www.scala-lang.org/blog/2016/05/06/multiversal-equality.html)
