@@ -154,5 +154,56 @@ Implied instances are defined so that everyone of these types is has a reflexive
    need not be the same.
  - Any subtype of `AnyRef` can be compared with `Null` (and _vice versa_).
 
+## Why Two Type Parameters?
+
+One particular feature of the `Eql` type is that it takes _two_ type parameters, representing the types of the two items to be compared. By contrast, conventional
+implementations of an equality type class take only a single type parameter which represents the common type of _both_ operands. One type parameter is simpler than two, so why go through the additional complication? The reason has to do with the fact that, rather than coming up with a type class where no operation existed before,
+we are dealing with a refinement of pre-existing, universal equality. It's best illustrated through an example.
+
+Say you want to come up with a safe version of the `contains` method on `List[T]`. The current definition of `contains` in the standard library is:
+```scala
+class List[+T] {
+  ...
+  def contains(x: Any): Boolean
+}
+```
+That uses universal equality in an unsafe way since it permits arguments of any type to be compared with the list's elements. The "obvious" alternative definition
+```scala
+  def contains(x: T): Boolean
+```
+does not work, since it refers to the covariant parameter `T` in a nonvariant context. The only variance-correct way to use the type parameter `T` in `contains` is as a lower bound:
+```scala
+  def contains[U >: T](x: U): Boolean
+```
+This generic version of `contains` admits exactly the same applications as the `contains(x: Any)` definition we started with. But we can make it more useful (i.e. restrictive) by adding an `Eql` parameter:
+```scala
+  def contains[U >: T](x: U) given Eql[T, U]: Boolean // (1)
+```
+This version of `contains` is equality-safe! More precisely, given
+`x: T`, `xs: List[T]` and `y: U`, then `xs.contains(y)` is type-correct if and only if
+`x == y` is type-correct.
+
+Unfortunately, the crucial ability to "lift" equality type checking from simple equality and pattern matching to arbitrary user-defined operations gets lost if we restrict ourselves to an equality class with a single type parameter. Consider the following signature of `contains` with a hypothetical `Eql1[T]` type class:
+```scala
+  def contains[U >: T](x: U) given Eql1[U]: Boolean   // (2)
+```
+This version could be applied just as widely as the original `contains(x: Any)` method,
+since the `Eql1[Any]` fallback is always available! So we have gained nothing. What got lost in the transition to a single parameter type class was the original rule that `Eql[A, B]` is available only if neither `A` nor `B` have a reflexive `Eql` instance. That rule simply cannot be expressed if there is a single type parameter for `Eql`.
+
+The situation is different under `-language:strictEquality`. In that case,
+the `Eql[Any, Any]` or `Eql1[Any]` instances would never be available, and the
+single and two-parameter versions would indeed coincide for most practical purposes.
+
+But assuming `-language:strictEquality` immediately and everywhere poses migration problems which might well be unsurmountable. Consider again `contains`, which is in the standard library. Parameterizing it with the `Eql` type class as in (1) is an immediate win since it rules out non-sensical applications while still allowing all sensible ones.
+So it can be done almost at any time, modulo binary compatibility concerns.
+On the other hand, parameterizing `contains` with `Eql1` as in (2) would make `contains`
+unusable for all types that have not yet declared an `Eql1` instance, including all
+types coming from Java. This is clearly unacceptable. It would lead to a situation where,
+rather than migrating existing libraries to use safe equality, the only upgrade path is to have parallel libraries, with the new version only catering to types deriving `Eql1` and the old version dealing with everything else. Such a split of the ecosystem would be very problematic, which means the cure is likely to be worse than the disease.
+
+For these reasons, it looks like a two-parameter type class is the only way forward because it can take the existing ecosystem where it is and migrate it towards a future
+where more and more code uses safe equality.
+
+
 More on multiversal equality is found in a [blog post](http://www.scala-lang.org/blog/2016/05/06/multiversal-equality.html)
 and a [Github issue](https://github.com/lampepfl/dotty/issues/1247).
