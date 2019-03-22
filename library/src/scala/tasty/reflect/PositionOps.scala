@@ -31,6 +31,13 @@ trait PositionOps extends Core {
     /** Source code within the position */
     def sourceCode: String = kernel.Position_sourceCode(pos)
 
+    /** Create a position that ranges from start to end (exclusive) in the given source
+     *  @param start index of the start of the range (0 <= start < end)
+     *  @param end index of the end of the range (start < end <= sizeOf(pos.sourceFile))
+     */
+    def withOffset(start: Int = pos.start, end: Int = pos.end): Position =
+      kernel.Position_withOffset(pos)(start, end)
+
   }
 
 }

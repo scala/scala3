@@ -1310,6 +1310,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Position_sourceCode(self: Position): String =
     new String(self.source.content(), self.start, self.end - self.start)
 
+  def Position_withOffset(self: Position)(start: Int, end: Int): Position =
+    util.SourcePosition(self.source, util.Spans.Span(start, end))
+
   //
   // COMMENTS
   //

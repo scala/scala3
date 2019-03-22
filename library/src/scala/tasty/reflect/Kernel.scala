@@ -1067,6 +1067,12 @@ trait Kernel {
   /** Source code within the position */
   def Position_sourceCode(self: Position): String
 
+  /** Create a position that ranges from start to end (exclusive) in the given source
+   *  @param start index of the start of the range (0 <= start < end)
+   *  @param end index of the end of the range (start < end <= sizeOf(pos.sourceFile))
+   */
+  def Position_withOffset(self: Position)(start: Int, end: Int): Position
+
   //
   // COMMENTS
   //
