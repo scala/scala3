@@ -12,9 +12,9 @@ object Test {
     println(n.power(5))
 
     val n2 = new Num2(1.5)
-    println(n.power(0))
-    println(n.power(1))
-    println(n.power(2))
-    println(n.power(5))
+    println(n2.power(0))
+    println(n2.power(1))
+    println(n2.power(2))
+    println(n2.power(5))
   }
 }

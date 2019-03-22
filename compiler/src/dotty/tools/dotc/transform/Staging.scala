@@ -14,8 +14,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType

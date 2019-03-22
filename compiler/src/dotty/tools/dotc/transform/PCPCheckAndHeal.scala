@@ -33,9 +33,13 @@ import scala.annotation.constructorOnly
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
   import tpd._
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
-    case _ => checkLevel(super.transform(tree))
+  override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    if (tree.source != ctx.source && tree.source.exists)
+      transform(tree)(ctx.withSource(tree.source))
+    else tree match {
+      case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
+      case _ => checkLevel(super.transform(tree))
+    }
   }
 
   /** Transform quoted trees while maintaining phase correctness */

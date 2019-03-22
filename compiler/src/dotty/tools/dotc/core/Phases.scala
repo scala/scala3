@@ -217,6 +217,7 @@ object Phases {
     }
 
     private[this] var myTyperPhase: Phase = _
+    private[this] var myPostTyperPhase: Phase = _
     private[this] var mySbtExtractDependenciesPhase: Phase = _
     private[this] var myPicklerPhase: Phase = _
     private[this] var myReifyQuotesPhase: Phase = _
@@ -234,6 +235,7 @@ object Phases {
     private[this] var myGenBCodePhase: Phase = _
 
     final def typerPhase: Phase = myTyperPhase
+    final def postTyperPhase: Phase = myPostTyperPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def reifyQuotesPhase: Phase = myReifyQuotesPhase
@@ -254,6 +256,7 @@ object Phases {
       def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
       myTyperPhase = phaseOfClass(classOf[FrontEnd])
+      myPostTyperPhase = phaseOfClass(classOf[PostTyper])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myReifyQuotesPhase = phaseOfClass(classOf[ReifyQuotes])

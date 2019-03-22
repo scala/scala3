@@ -306,7 +306,14 @@ class ReifyQuotes extends MacroTransform {
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
+      val closure = Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth)).withSpan(tree.span)
+
+      enclosingInlineds match {
+        case enclosingInline :: _ =>
+         // In case a tree was inlined inside of the quote and we this closure corresponds to code within it we need to keep the inlined node.
+         Inlined(enclosingInline, Nil, closure)(ctx.withSource(lambdaOwner.topLevelClass.source))
+        case Nil => closure
+      }
     }
 
     private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
@@ -346,8 +353,10 @@ class ReifyQuotes extends MacroTransform {
       Hole(idx, splices).withType(tpe).asInstanceOf[Hole]
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      reporting.trace(i"Reifier.transform $tree at $level", show = true) {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+      if (tree.source != ctx.source && tree.source.exists)
+        transform(tree)(ctx.withSource(tree.source))
+      else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val body = capturers(tree.symbol).apply(tree)
@@ -366,6 +375,7 @@ class ReifyQuotes extends MacroTransform {
             super.transform(tree)
         }
       }
+    }
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
