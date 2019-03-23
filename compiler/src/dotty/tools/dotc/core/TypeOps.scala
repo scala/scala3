@@ -271,7 +271,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
      *  type parameter corresponding to the wildcard.
      */
     def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
-      case AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
+      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2Mode =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)
@@ -321,6 +321,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             def massage(tp: Type): Type = tp match {
               case tp @ AppliedType(tycon, args) =>
                 tp.derivedAppliedType(tycon, skolemizeWildcardArgs(args, tp))
+              case tp: AndOrType =>
+                tp.derivedAndOrType(massage(tp.tp1), massage(tp.tp2))
               case _ => tp
             }
             def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
