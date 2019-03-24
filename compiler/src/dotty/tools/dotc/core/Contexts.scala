@@ -929,7 +929,10 @@ object Contexts {
             // - we don't want TyperState instantiating these TypeVars
             // - we don't want TypeComparer constraining these TypeVars
             val poly = PolyType(DepParamName.fresh(sym.name.toTypeName) :: Nil)(
-              pt => TypeBounds.empty :: Nil,
+              pt => (sym.info match {
+                case tb @ TypeBounds(lo, hi) if (lo eq defn.NothingType) && hi.isLambdaSub => tb
+                case _ => TypeBounds.empty
+              }) :: Nil,
               pt => defn.AnyType)
             new TypeVar(poly.paramRefs.head, creatorState = null)
           }
