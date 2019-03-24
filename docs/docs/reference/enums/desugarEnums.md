@@ -25,9 +25,9 @@ some terminology and notational conventions:
 
 The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 
-There are eight desugaring rules. Rule (1) desugar enum definitions. Rules
+There are nine desugaring rules. Rule (1) desugar enum definitions. Rules
 (2) and (3) desugar simple cases. Rules (4) to (6) define extends clauses for cases that
-are missing them. Rules (7) and (8) define how such cases with extends clauses
+are missing them. Rules (7) to (9) define how such cases with extends clauses
 map into case classes or vals.
 
 1.  An `enum` definition
@@ -80,7 +80,7 @@ map into case classes or vals.
        case C extends E[B1, ..., Bn]
 
    where `Bi` is `Li` if `Vi = '+'` and `Ui` if `Vi = '-'`. This result is then further
-   rewritten with rule (7). Simple cases of enums with non-variant type
+   rewritten with rule (8). Simple cases of enums with non-variant type
    parameters are not permitted.
 
 5. A class case without an extends clause
@@ -91,7 +91,7 @@ map into case classes or vals.
 
         case C <type-params> <value-params> extends E
 
-   This result is then further rewritten with rule (8).
+   This result is then further rewritten with rule (9).
 
 6. If `E` is an enum with type parameters `Ts`, a class case with neither type parameters nor an extends clause
 
@@ -101,9 +101,20 @@ map into case classes or vals.
 
         case C[Ts] <value-params> extends E[Ts]
 
-   This result is then further rewritten with rule (8). For class cases that have type parameters themselves, an extends clause needs to be given explicitly.
+   This result is then further rewritten with rule (9). For class cases that have type parameters themselves, an extends clause needs to be given explicitly.
 
-7. A value case
+7. If `E` is an enum with type parameters `Ts`, a class case without type parameters but with an extends clause
+
+       case C <value-params> extends <parents>
+
+   expands to
+
+       case C[Ts] <value-params> extends <parents>
+
+   provided at least one of the parameters `Ts` is mentioned in a parameter type in
+   `<value-params>` or in a type argument in `<parents>`.
+
+8. A value case
 
        case C extends <parents>
 
@@ -116,7 +127,7 @@ map into case classes or vals.
    as one of the `enumValues` of the enumeration (see below). `$values` is a
    compiler-defined private value in the companion object.
 
-8. A class case
+9. A class case
 
        case C <params> extends <parents>
 
