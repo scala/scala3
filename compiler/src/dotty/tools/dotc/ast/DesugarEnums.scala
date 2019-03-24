@@ -201,7 +201,7 @@ object DesugarEnums {
       case TypeApply(_, targs) => targs.exists(typeHasRef)
       case Select(nu, nme.CONSTRUCTOR) => parentHasRef(nu)
       case New(tpt) => typeHasRef(tpt)
-      case parent if parent.isType => typeHasRef(parent)
+      case parent => parent.isType && typeHasRef(parent)
     }
 
     parents.isEmpty ||  // a parent class that refers to type parameters will be generated in this case
