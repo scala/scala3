@@ -355,7 +355,8 @@ object desugar {
     val originalVparamss = constr1.vparamss
     lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParam)
     val impliedTparams =
-      if (isEnumCase && originalTparams.isEmpty)
+      if (isEnumCase && originalTparams.isEmpty &&
+          typeParamIsReferenced(enumClass.typeParams, originalVparamss, parents))
         derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
       else
         originalTparams

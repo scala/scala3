@@ -168,6 +168,47 @@ object DesugarEnums {
     }
   }
 
+  /** Is a type parameter in `tparams` referenced from an enum class case that has
+   *  given value parameters `vparamss` and given parents `parents`?
+   */
+  def typeParamIsReferenced(tparams: List[TypeSymbol], vparamss: List[List[ValDef]], parents: List[Tree])(implicit ctx: Context): Boolean = {
+
+    val searchRef = new untpd.TreeAccumulator[Boolean] {
+      var tparamNames = tparams.map(_.name).toSet[Name]
+      def underBinders(binders: List[MemberDef], op: => Boolean): Boolean = {
+        val saved = tparamNames
+        tparamNames = tparamNames -- binders.map(_.name)
+        try op
+        finally tparamNames = saved
+      }
+      def apply(x: Boolean, tree: Tree)(implicit ctx: Context) = x || {
+        tree match {
+          case Ident(name) => tparamNames.contains(name)
+          case LambdaTypeTree(lambdaParams, body) =>
+            underBinders(lambdaParams, foldOver(x, tree))
+          case RefinedTypeTree(parent, refinements) =>
+            val refinementDefs = refinements collect { case r: MemberDef => r }
+            underBinders(refinementDefs, foldOver(x, tree))
+          case _ => foldOver(x, tree)
+        }
+      }
+    }
+
+    def typeHasRef(tpt: Tree) = searchRef(false, tpt)
+    def valDefHasRef(vd: ValDef) = typeHasRef(vd.tpt)
+    def parentHasRef(parent: Tree): Boolean = parent match {
+      case Apply(fn, _) => parentHasRef(fn)
+      case TypeApply(_, targs) => targs.exists(typeHasRef)
+      case Select(nu, nme.CONSTRUCTOR) => parentHasRef(nu)
+      case New(tpt) => typeHasRef(tpt)
+      case parent if parent.isType => typeHasRef(parent)
+    }
+
+    parents.isEmpty ||  // a parent class that refers to type parameters will be generated in this case
+    vparamss.exists(_.exists(valDefHasRef)) ||
+    parents.exists(parentHasRef)
+  }
+
   /** A pair consisting of
    *   - the next enum tag
    *   - scaffolding containing the necessary definitions for singleton enum cases
