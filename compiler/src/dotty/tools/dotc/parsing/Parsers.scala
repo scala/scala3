@@ -2256,7 +2256,7 @@ object Parsers {
       }
 
       def derived(impExp: Tree, qual: Tree, selectors: List[Tree]) =
-        mkTree(impliedOnly, qual, selectors).withSpan(impExp.span)
+        mkTree(importImplied, qual, selectors).withSpan(impExp.span)
 
       () => {
         val p = path(thisOK = false, handleImport)

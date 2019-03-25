@@ -594,6 +594,12 @@ trait Checking {
       ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
+  /** Check that `path` is a legal prefix for an import or export clause */
+  def checkLegalImportPath(path: Tree)(implicit ctx: Context): Unit = {
+    checkStable(path.tpe, path.sourcePos)
+    if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.posd)
+  }
+
  /**  Check that `tp` is a class type.
   *   Also, if `traitReq` is true, check that `tp` is a trait.
   *   Also, if `stablePrefixReq` is true and phase is not after RefChecks,

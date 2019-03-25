@@ -195,6 +195,7 @@ class Namer { typer: Typer =>
 
   val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
   val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
+  val ExportForwarders: Property.Key[List[tpd.MemberDef]] = new Property.Key
   val SymOfTree: Property.Key[Symbol] = new Property.Key
   val Deriver: Property.Key[typer.Deriver] = new Property.Key
 
@@ -932,6 +933,104 @@ class Namer { typer: Typer =>
 
     def init(): Context = index(params)
 
+    /** Add forwarders as required by the export statements in this class */
+    private def processExports(implicit ctx: Context): Unit = {
+
+      /** The forwarders defined by export `exp`.
+       */
+      def exportForwarders(exp: Export): List[tpd.MemberDef] = {
+        val buf = new mutable.ListBuffer[tpd.MemberDef]
+        val Export(_, expr, selectors) = exp
+        val path = typedAheadExpr(expr, AnySelectionProto)
+        checkLegalImportPath(path)
+
+        def needsForwarder(sym: Symbol) =
+          sym.is(ImplicitOrImplied) == exp.impliedOnly &&
+          sym.isAccessibleFrom(path.tpe) &&
+          !sym.isConstructor &&
+          !cls.derivesFrom(sym.owner)
+
+        /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
+         *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
+         */
+        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
+          if (needsForwarder(mbr.symbol)) {
+
+            /** The info of a forwarder to type `ref` which has info `info`
+             */
+            def fwdInfo(ref: Type, info: Type): Type = info match {
+              case _: ClassInfo =>
+                HKTypeLambda.fromParams(info.typeParams, ref)
+              case _: TypeBounds =>
+                ref
+              case info: HKTypeLambda =>
+                info.derivedLambdaType(info.paramNames, info.paramInfos,
+                  fwdInfo(ref.appliedTo(info.paramRefs), info.resultType))
+              case info => // should happen only in error cases
+                info
+            }
+
+            val forwarder =
+              if (mbr.isType)
+                ctx.newSymbol(
+                  cls, alias.toTypeName,
+                  Final,
+                  fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
+                  coord = span)
+              else
+                ctx.newSymbol(
+                  cls, alias,
+                  Method | Final | mbr.symbol.flags & ImplicitOrImplied,
+                  mbr.info,
+                  coord = span)
+            val forwarderDef =
+              if (forwarder.isType) tpd.TypeDef(forwarder.asType)
+              else {
+                import tpd._
+                val ref = path.select(mbr.symbol.asTerm)
+                tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
+                  ref.appliedToTypes(targs).appliedToArgss(prefss)
+                )
+              }
+            buf += forwarderDef.withSpan(span)
+          }
+
+        def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
+          val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
+          if (mbrs.isEmpty)
+            ctx.error(i"no accessible member $name at $path", ctx.source.atSpan(span))
+          mbrs.foreach(addForwarder(alias, _, span))
+        }
+
+        def addForwardersExcept(seen: List[TermName], span: Span): Unit =
+          for (mbr <- path.tpe.allMembers) {
+            val alias = mbr.name.toTermName
+            if (!seen.contains(alias)) addForwarder(alias, mbr, span)
+          }
+
+        def recur(seen: List[TermName], sels: List[untpd.Tree]): Unit = sels match {
+          case (sel @ Ident(nme.WILDCARD)) :: _ =>
+            addForwardersExcept(seen, sel.span)
+          case (sel @ Ident(name: TermName)) :: rest =>
+            addForwardersNamed(name, name, sel.span)
+            recur(name :: seen, rest)
+          case Thicket((sel @ Ident(fromName: TermName)) :: Ident(toName: TermName) :: Nil) :: rest =>
+            if (toName != nme.WILDCARD) addForwardersNamed(fromName, toName, sel.span)
+            recur(fromName :: seen, rest)
+          case _ =>
+        }
+
+        recur(Nil, selectors)
+        val forwarders = buf.toList
+        exp.pushAttachment(ExportForwarders, forwarders)
+        forwarders
+      }
+
+      val forwarderss =
+        for (exp @ Export(_, _, _) <- rest) yield exportForwarders(exp)
+      forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
+    }
+
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
       val parents = impl.parents
@@ -1068,12 +1167,15 @@ class Namer { typer: Typer =>
 
       tempInfo.finalize(denot, parentTypes, finalSelfInfo)
 
+
+
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
+      processExports(localCtx)
     }
   }
 
