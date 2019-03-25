@@ -176,7 +176,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
    */
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
+  protected def recur(tp1: Type, tp2: Type): Boolean = {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
