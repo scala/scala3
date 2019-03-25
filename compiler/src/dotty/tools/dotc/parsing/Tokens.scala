@@ -180,7 +180,8 @@ object Tokens extends TokensCommon {
   final val ERASED = 63;           enter(ERASED, "erased")
   final val IMPLIED = 64;          enter(IMPLIED, "implied")
   final val GIVEN = 65;            enter(GIVEN, "given")
-  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
+  final val EXPORT = 66;           enter(EXPORT, "export")
+  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -240,7 +241,7 @@ object Tokens extends TokensCommon {
   final val modifierFollowers = modifierTokens | defIntroTokens
 
   /** Is token only legal as start of statement (eof also included)? */
-  final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, PACKAGE)
+  final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
   final val canStartStatTokens: TokenSet = canStartExpressionTokens | mustStartStatTokens | BitSet(
     AT, CASE)

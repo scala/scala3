@@ -1403,7 +1403,7 @@ object Trees {
               this(x, rhs)
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
-            case Import(importImplied, expr, selectors) =>
+            case Import(_, expr, _) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
               this(this(x, pid), stats)(localCtx)
