@@ -78,7 +78,7 @@ class Pickler extends Phase {
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (pickling ne noPrinter) {
         println(i"**** pickled info of $cls")
-        println(new TastyPrinter(pickler.assembleParts()).printContents())
+        println(new TastyPrinter(pickled).printContents())
       }
     }
   }
