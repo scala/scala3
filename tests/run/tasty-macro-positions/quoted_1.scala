@@ -32,6 +32,6 @@ object Macros {
 
   def posStr(relfection: Reflection)(pos: relfection.Position): Expr[String] = {
     import relfection._
-    s"${pos.sourceFile.getFileName.toString}:[${pos.start}..${pos.end}]".toExpr
+    s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]".toExpr
   }
 }
