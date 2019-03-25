@@ -36,8 +36,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def error(msg: => String, pos: Position)(implicit ctx: Context): Unit =
     ctx.error(msg, pos)
 
+  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit =
+    ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
+
   def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit =
     ctx.warning(msg, pos)
+
+  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit =
+    ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
   //
   // Settings
@@ -1297,7 +1303,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Position_exists(self: Position): Boolean = self.exists
 
-  def Position_sourceFile(self: Position): java.nio.file.Path = self.source.file.jpath
+  def Position_sourceFile(self: Position): SourceFile = self.source
 
   def Position_startLine(self: Position): Int = self.startLine
 
@@ -1309,6 +1315,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Position_sourceCode(self: Position): String =
     new String(self.source.content(), self.start, self.end - self.start)
+
+  //
+  // SOURCE FILES
+  //
+
+  type SourceFile = util.SourceFile
+
+  def SourceFile_jpath(self: SourceFile): java.nio.file.Path = self.file.jpath
+
+  def SourceFile_content(self: SourceFile): String = new String(self.content())
 
   //
   // COMMENTS

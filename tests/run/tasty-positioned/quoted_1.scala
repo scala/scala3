@@ -15,7 +15,7 @@ object Positioned {
     import reflect.{Position => _, _}
     val pos = rootPosition
 
-    val path = pos.sourceFile.toString.toExpr
+    val path = pos.sourceFile.jpath.toString.toExpr
     val start = pos.start.toExpr
     val end = pos.end.toExpr
     val startLine = pos.startLine.toExpr

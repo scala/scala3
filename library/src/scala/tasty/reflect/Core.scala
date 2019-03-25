@@ -407,8 +407,11 @@ trait Core {
   /** JVM signature of a method */
   type Signature = kernel.Signature
 
-  /** Source position */
+  /** Position in a source file */
   type Position = kernel.Position
+
+  /** Scala source file */
+  type SourceFile = kernel.SourceFile
 
   /** Comment */
   type Comment = kernel.Comment

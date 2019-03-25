@@ -145,8 +145,14 @@ trait Kernel {
   /** Report a compilation error with the given message at the given position */
   def error(msg: => String, pos: Position)(implicit ctx: Context): Unit
 
+  /** Report a compilation error with the given message at the given position range */
+  def error(msg: => String, source: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit
+
   /** Report a compilation warning with the given message at the given position */
   def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit
+
+  /** Report a compilation warning with the given message at the given position range */
+  def warning(msg: => String, source: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit
 
   //
   // Settings
@@ -1037,7 +1043,7 @@ trait Kernel {
   // POSITIONS
   //
 
-  /** Source position */
+  /** Position in a source file */
   type Position <: AnyRef
 
   /** The start offset in the source file */
@@ -1050,7 +1056,7 @@ trait Kernel {
   def Position_exists(self: Position): Boolean
 
   /** Source file in which this position is located */
-  def Position_sourceFile(self: Position): java.nio.file.Path
+  def Position_sourceFile(self: Position): SourceFile
 
   /** The start line in the source file */
   def Position_startLine(self: Position): Int
@@ -1066,6 +1072,19 @@ trait Kernel {
 
   /** Source code within the position */
   def Position_sourceCode(self: Position): String
+
+  //
+  // SOURCE FILE
+  //
+
+  /** Scala source file */
+  type SourceFile <: AnyRef
+
+  /** Path to a source file */
+  def SourceFile_jpath(self: SourceFile): java.nio.file.Path
+
+  /** Content of a source file */
+  def SourceFile_content(self: SourceFile): String
 
   //
   // COMMENTS
