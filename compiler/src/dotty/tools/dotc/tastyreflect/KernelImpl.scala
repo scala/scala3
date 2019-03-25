@@ -63,7 +63,8 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
     val tree = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
 
-    !ctx2.reporter.hasErrors && {
+    if (ctx2.reporter.hasErrors) false
+    else {
       ctx2.typer.typed(tree)(ctx2)
       !ctx2.reporter.hasErrors
     }
