@@ -257,20 +257,96 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  @param  boundss       The list of type bounds
    *  @param  instantiate   A function that maps a bound type and the list of argument types to a resulting type.
    *                        Needed to handle bounds that refer to other bounds.
+   *  @param  app           The applied type whose arguments are checked, or NoType if
+   *                        arguments are for a TypeApply.
+   *
+   *  This is particularly difficult for F-bounds that also contain wildcard arguments (see below).
+   *  In fact the current treatment for this sitiuation can so far only be classified as "not obviously wrong",
+   *  (maybe it still needs to be revised).
    */
-  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): List[BoundsViolation] = {
+  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type, app: Type)(implicit ctx: Context): List[BoundsViolation] = {
     val argTypes = args.tpes
+
+    /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
+     *  type parameter corresponding to the wildcard.
+     */
+    def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
+      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2Mode =>
+        tps.zipWithConserve(tycon.typeSymbol.typeParams) {
+          (tp, tparam) => tp match {
+            case _: TypeBounds => app.select(tparam)
+            case _ => tp
+          }
+        }
+      case _ => tps
+    }
+
+    // Skolemized argument types are used to substitute in F-bounds.
+    val skolemizedArgTypes = skolemizeWildcardArgs(argTypes, app)
     val violations = new mutable.ListBuffer[BoundsViolation]
+
     for ((arg, bounds) <- args zip boundss) {
       def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
-        //println(i"instantiating ${bounds.hi} with $argTypes")
         //println(i" = ${instantiate(bounds.hi, argTypes)}")
-        val hiBound = instantiate(bounds.hi, argTypes.mapConserve(_.bounds.hi))
-        val loBound = instantiate(bounds.lo, argTypes.mapConserve(_.bounds.lo))
-          // Note that argTypes can contain a TypeBounds type for arguments that are
-          // not fully determined. In that case we need to check against the hi bound of the argument.
-        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
-        if (!(loBound <:< hi)) violations += ((arg, "lower", bounds.lo))
+
+        var checkCtx = ctx  // the context to be used for bounds checking
+        if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
+
+          /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
+          def isLazyIn(sym: Symbol, tp: Type): Boolean = {
+            def isReference(tp: Type) = tp match {
+              case tp: LazyRef => tp.ref.isInstanceOf[TypeRef] && tp.ref.typeSymbol == sym
+              case _ => false
+            }
+            tp.existsPart(isReference, forceLazy = false)
+          }
+
+          /** The argument types of the form `TypeRef(_, sym)` which appear as a LazyRef in `bounds`.
+           *  This indicates that the application is used as an F-bound for the symbol referred to in the LazyRef.
+           */
+          val lazyRefs = skolemizedArgTypes collect {
+            case tp: TypeRef if isLazyIn(tp.symbol, bounds) => tp.symbol
+          }
+
+          for (sym <- lazyRefs) {
+
+            // If symbol `S` has an F-bound such as `C[_, S]` that contains wildcards,
+            // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
+            // E.g. for `C[_, S]` we would add `C[C[_, S]#T0, S]` where `T0` is the first
+            // type parameter of `C`. The new bound is added as a GADT bound for `S` in
+            // `checkCtx`.
+            // This mirrors what we do for the bounds that are checked and allows us thus
+            // to bounds-check F-bounds with wildcards. A test case is pos/i6146.scala.
+
+            def massage(tp: Type): Type = tp match {
+              case tp @ AppliedType(tycon, args) =>
+                tp.derivedAppliedType(tycon, skolemizeWildcardArgs(args, tp))
+              case tp: AndOrType =>
+                tp.derivedAndOrType(massage(tp.tp1), massage(tp.tp2))
+              case _ => tp
+            }
+            def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
+              val bound1 = massage(bound)
+              if (bound1 ne bound) {
+                if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
+                if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addEmptyBounds(sym)
+                checkCtx.gadt.addBound(sym, bound1, fromBelow)
+                typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
+              }
+            }
+            narrowBound(sym.info.loBound, fromBelow = true)
+            narrowBound(sym.info.hiBound, fromBelow = false)
+          }
+        }
+
+        val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
+        val loBound = instantiate(bounds.lo, skolemizedArgTypes)
+
+        def check(implicit ctx: Context) = {
+          if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
+          if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
+        }
+        check(checkCtx)
       }
       arg.tpe match {
         case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
