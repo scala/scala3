@@ -930,7 +930,7 @@ object Contexts {
             // - we don't want TypeComparer constraining these TypeVars
             val poly = PolyType(DepParamName.fresh(sym.name.toTypeName) :: Nil)(
               pt => (sym.info match {
-                case tb @ TypeBounds(lo, hi) if (lo eq defn.NothingType) && hi.isLambdaSub => tb
+                case tb @ TypeBounds(_, hi) if hi.isLambdaSub => tb
                 case _ => TypeBounds.empty
               }) :: Nil,
               pt => defn.AnyType)
