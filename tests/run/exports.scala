@@ -1,10 +1,13 @@
 object Test extends App {
 
-  case class Config()
+  case class Config() {
+    println("config")
+  }
 
   class Printer {
     def print() = println("printing")
-    implied config for Config()
+    object cfg extends Config
+    implied config for Config
   }
 
   class Scanner {
@@ -23,6 +26,7 @@ object Test extends App {
 
   Copier.print()
   Copier.scanIt()
+  Copier.cfg
   Copier.config
   Copier.config2
 }

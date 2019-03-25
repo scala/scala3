@@ -948,6 +948,7 @@ class Namer { typer: Typer =>
           sym.is(ImplicitOrImplied) == exp.impliedOnly &&
           sym.isAccessibleFrom(path.tpe) &&
           !sym.isConstructor &&
+          !sym.is(ModuleClass) &&
           !cls.derivesFrom(sym.owner)
 
         /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
@@ -981,7 +982,7 @@ class Namer { typer: Typer =>
                 ctx.newSymbol(
                   cls, alias,
                   Method | Final | mbr.symbol.flags & ImplicitOrImplied,
-                  mbr.info,
+                  mbr.info.ensureMethodic,
                   coord = span)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
