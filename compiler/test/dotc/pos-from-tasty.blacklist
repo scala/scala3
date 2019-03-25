@@ -27,4 +27,4 @@ t6278-synth-def.scala
 
 # Need to print empty tree for implicit match
 i5938.scala
-i6014.scala
+i6014-gadt.scala
