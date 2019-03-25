@@ -153,8 +153,6 @@ object DottyPlugin extends AutoPlugin {
           scalaOrganization.value
       },
 
-      scalacOptions in (Compile, doc) ++= Seq("-project", name.value),
-
       incOptions in Compile := {
         val inc = (incOptions in Compile).value
         if (isDotty.value)
@@ -326,13 +324,32 @@ object DottyPlugin extends AutoPlugin {
   }
 
   private val docSettings = inTask(doc)(Seq(
-    sources := {
-      val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
-      val prev = sources.value
-      val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
-      prev ++ tastyFiles
-    },
-    scalacOptions += "-from-tasty"
+    sources := Def.taskDyn {
+      val old = sources.value
+
+      if (isDotty.value) Def.task {
+        val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
+        val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
+        old ++ tastyFiles
+      } else Def.task {
+        old
+      }
+    }.value,
+    scalacOptions ++= {
+      if (isDotty.value) {
+        val projectName =
+          if (configuration.value == Compile)
+            name.value
+          else
+            s"${name.value}-${configuration.value}"
+        Seq(
+          "-project", projectName,
+          "-from-tasty"
+        )
+      }
+      else
+        Seq()
+    }
   ))
 
   /** Fetch artifacts for moduleID */
