@@ -79,8 +79,7 @@ documentation](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.htm
 See the section on Expressiveness from [Simplicitly: foundations and
 applications of implicit function
 types](https://dl.acm.org/citation.cfm?id=3158130). I've extracted it in [this
-Gist](https://gist.github.com/OlivierBlanvillain/234d3927fe9e9c6fba074b53a7bd9
-592), it might easier to access than the pdf.
+Gist](https://gist.github.com/OlivierBlanvillain/234d3927fe9e9c6fba074b53a7bd9592), it might easier to access than the pdf.
 
 ### Type Checking
 
