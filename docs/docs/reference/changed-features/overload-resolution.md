@@ -72,3 +72,13 @@ is determined as followed:
    of `E` is `(S_1, ..., S_n) => ?`, where each `S_i` is the type of parameter `p_i` if it is given, or `?`
    otherwise. Here `?` stands for a _wildcard type_ that is compatible with every other type.
  - Otherwise the known type of `E` is the result of typing `E` with an undefined expected type.
+
+A pattern matching closure
+```scala
+  { case P1 => B1 ... case P_n => B_n }
+````
+is treated as if it was expanded to the function value
+```scala
+  x => x match { case P1 => B1 ... case P_n => B_n }
+```
+and is therefore also approximated with a `? => ?` type.
