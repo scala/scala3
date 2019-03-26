@@ -408,6 +408,7 @@ EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | 
 
 TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  Import
+                    |  Export
                     |  {Annotation [nl]} {Modifier} Def
                     |  Packaging
                     |  PackageObject

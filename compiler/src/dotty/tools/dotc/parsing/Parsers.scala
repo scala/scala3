@@ -2778,6 +2778,8 @@ object Parsers {
         }
         else if (in.token == IMPORT)
           stats ++= importClause(IMPORT, Import)
+        else if (in.token == EXPORT)
+          stats ++= importClause(EXPORT, Export.apply)
         else if (in.token == AT || isDefIntro(modifierTokens))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
