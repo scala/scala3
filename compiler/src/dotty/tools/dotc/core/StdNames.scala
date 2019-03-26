@@ -197,6 +197,7 @@ object StdNames {
     final val Nothing: N             = "Nothing"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
+    final val Product: N             = "Product"
     final val PartialFunction: N     = "PartialFunction"
     final val PrefixType: N          = "PrefixType"
     final val S: N                   = "S"
