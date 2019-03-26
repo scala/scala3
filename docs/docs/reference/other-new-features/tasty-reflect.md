@@ -108,6 +108,7 @@ TASTy Reflect provides the following types:
          |                             +- Lambda
          |                             +- If
          |                             +- Match
+         |                             +- ImplicitMatch
          |                             +- Try
          |                             +- Return
          |                             +- Repeated

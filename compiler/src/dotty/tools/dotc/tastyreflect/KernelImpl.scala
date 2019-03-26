@@ -3,6 +3,7 @@ package tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.typer.Typer
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.nme
@@ -10,6 +11,8 @@ import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
+import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
 
@@ -36,8 +39,14 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def error(msg: => String, pos: Position)(implicit ctx: Context): Unit =
     ctx.error(msg, pos)
 
+  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit =
+    ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
+
   def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit =
     ctx.warning(msg, pos)
+
+  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit =
+    ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
   //
   // Settings
@@ -46,6 +55,26 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   type Settings = config.ScalaSettings
 
   def Settings_color(self: Settings): Boolean = self.color.value(rootContext) == "always"
+
+  //
+  // MISC
+  //
+  /** Whether the code type checks in the given context?
+   *
+   *  @param code The code to be type checked
+   *
+   *  The code should be a sequence of expressions or statements that may appear in a block.
+   */
+  def typeChecks(code: String)(implicit ctx: Context): Boolean = {
+    val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
+    val tree = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
+
+    if (ctx2.reporter.hasErrors) false
+    else {
+      ctx2.typer.typed(tree)(ctx2)
+      !ctx2.reporter.hasErrors
+    }
+  }
 
   //
   // TREES
@@ -493,7 +522,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   type Match = tpd.Match
 
   def matchMatch(x: Term)(implicit ctx: Context): Option[Match] = x match {
-    case x: tpd.Match => Some(x)
+    case x: tpd.Match if !x.selector.isEmpty => Some(x)
     case _ => None
   }
 
@@ -505,6 +534,21 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
     tpd.cpy.Match(original)(selector, cases)
+
+  type ImplicitMatch = tpd.Match
+
+  def matchImplicitMatch(x: Term)(implicit ctx: Context): Option[Match] = x match {
+    case x: tpd.Match if x.selector.isEmpty => Some(x)
+    case _ => None
+  }
+
+  def ImplicitMatch_cases(self: Match)(implicit ctx: Context): List[CaseDef] = self.cases
+
+  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+    withDefaultPos(ctx => tpd.Match(tpd.EmptyTree, cases)(ctx))
+
+  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+    tpd.cpy.Match(original)(tpd.EmptyTree, cases)
 
   type Try = tpd.Try
 
@@ -1297,7 +1341,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Position_exists(self: Position): Boolean = self.exists
 
-  def Position_sourceFile(self: Position): java.nio.file.Path = self.source.file.jpath
+  def Position_sourceFile(self: Position): SourceFile = self.source
 
   def Position_startLine(self: Position): Int = self.startLine
 
@@ -1309,6 +1353,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Position_sourceCode(self: Position): String =
     new String(self.source.content(), self.start, self.end - self.start)
+
+  //
+  // SOURCE FILES
+  //
+
+  type SourceFile = util.SourceFile
+
+  def SourceFile_jpath(self: SourceFile): java.nio.file.Path = self.file.jpath
+
+  def SourceFile_content(self: SourceFile): String = new String(self.content())
 
   //
   // COMMENTS

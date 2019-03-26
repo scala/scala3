@@ -28,6 +28,7 @@ package scala.tasty.reflect
  *           |                             +- Lambda
  *           |                             +- If
  *           |                             +- Match
+ *           |                             +- ImplicitMatch
  *           |                             +- Try
  *           |                             +- Return
  *           |                             +- Repeated
@@ -145,8 +146,14 @@ trait Kernel {
   /** Report a compilation error with the given message at the given position */
   def error(msg: => String, pos: Position)(implicit ctx: Context): Unit
 
+  /** Report a compilation error with the given message at the given position range */
+  def error(msg: => String, source: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit
+
   /** Report a compilation warning with the given message at the given position */
   def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit
+
+  /** Report a compilation warning with the given message at the given position range */
+  def warning(msg: => String, source: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit
 
   //
   // Settings
@@ -156,6 +163,17 @@ trait Kernel {
   type Settings <: AnyRef
 
   def Settings_color(self: Settings): Boolean
+
+  //
+  // MISC
+  //
+  /** Whether the code type checks in the given context?
+   *
+   *  @param code The code to be type checked
+   *
+   *  The code should be a sequence of expressions or statements that may appear in a block.
+   */
+  def typeChecks(code: String)(implicit ctx: Context): Boolean
 
   //
   // TREES
@@ -443,6 +461,16 @@ trait Kernel {
 
   def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
+
+  /** Tree representing a pattern match `implicit match  { ... }` in the source code */
+  type ImplicitMatch <: Term
+
+  def matchImplicitMatch(tree: Tree)(implicit ctx: Context): Option[ImplicitMatch]
+
+  def ImplicitMatch_cases(self: ImplicitMatch)(implicit ctx: Context): List[CaseDef]
+
+  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch
+  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch
 
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Try <: Term
@@ -1037,7 +1065,7 @@ trait Kernel {
   // POSITIONS
   //
 
-  /** Source position */
+  /** Position in a source file */
   type Position <: AnyRef
 
   /** The start offset in the source file */
@@ -1050,7 +1078,7 @@ trait Kernel {
   def Position_exists(self: Position): Boolean
 
   /** Source file in which this position is located */
-  def Position_sourceFile(self: Position): java.nio.file.Path
+  def Position_sourceFile(self: Position): SourceFile
 
   /** The start line in the source file */
   def Position_startLine(self: Position): Int
@@ -1066,6 +1094,19 @@ trait Kernel {
 
   /** Source code within the position */
   def Position_sourceCode(self: Position): String
+
+  //
+  // SOURCE FILE
+  //
+
+  /** Scala source file */
+  type SourceFile <: AnyRef
+
+  /** Path to a source file */
+  def SourceFile_jpath(self: SourceFile): java.nio.file.Path
+
+  /** Content of a source file */
+  def SourceFile_content(self: SourceFile): String
 
   //
   // COMMENTS
