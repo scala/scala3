@@ -47,11 +47,11 @@ An export clause has the same format as an import clause. Its general form is:
 ```
 It consists of a qualifier expression `path`, which must be a stable identifier, followed by
 one or more selectors `sel_i` that identify what gets an alias. Selectors can be
-of one of three forms:
+of one of the following forms:
 
  - A _simple selector_ `x` creates aliases for all eligible members of `path` that are named `x`.
  - A _renaming selector_ `x => y` creates aliases for all eligible members of `path` that are named `x`, but the alias is named `y` instead of `x`.
- - An _omitting selector_ `x => _` presents `x` from being aliased by a subsequent
+ - An _omitting selector_ `x => _` prevents `x` from being aliased by a subsequent
    wildcard selector.
  - A _wildcard selector_ creates aliases for all eligible members of `path` except for
    those members that are named by a previous simple, renaming, or omitting selector.
@@ -63,6 +63,9 @@ A member is _eligible_ if all of the following holds:
  - it is not a constructor, nor the (synthetic) class part of an object,
  - it is an `implied` instance (or an old-style `implicit` value)
    if and only if the export is `implied`.
+
+It is a compile-time error if a simple or renaming selector does not identify any eligible
+members.
 
 Type members are aliased by type definitions, and term members are aliased by method definitions. Export aliases copy the type and value parameters of the members they refer to.
 Export aliases are always `final`. Aliases of implied instances are again `implied` (and aliases of old-style implicits are `implicit`). There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
@@ -141,4 +144,4 @@ With export clauses, the following steps are added:
 
 It is important that steps 6 and 7 are done in sequence: We first compute the types of _all_
 paths in export clauses and only after this is done we enter any export aliases as class members. This means that a path of an export clause cannot refer to an alias made available
-by another export clause of the same class object.
+by another export clause of the same class.
