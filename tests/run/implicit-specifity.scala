@@ -35,8 +35,4 @@ object Test extends App {
   assert(Show[String] == 1)
   assert(Show[Generic] == 1)   // showGen loses against fallback due to longer argument list
   assert(Show[Generic2] == 2)  // ... but the opaque type intersection trick works.
-
-  { import implied Contextual._
-    assert(Show[Generic] == 4) // shorter, more specific implicit parameter list wins
-  }
 }
