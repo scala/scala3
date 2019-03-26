@@ -22,7 +22,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
-      flags = member.flags &~ Deferred | Synthetic | Artifact | extraFlags,
+      flags = member.flags &~ Deferred | Synthetic | extraFlags,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res
