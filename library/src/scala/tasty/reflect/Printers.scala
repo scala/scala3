@@ -177,6 +177,8 @@ trait Printers
           this += "Term.Lambda(" += meth += ", " += tpt += ")"
         case Term.Match(selector, cases) =>
           this += "Term.Match(" += selector += ", " ++= cases += ")"
+        case Term.ImplicitMatch(cases) =>
+          this += "Term.ImplicitMatch(" ++= cases += ")"
         case Term.Return(expr) =>
           this += "Term.Return(" += expr += ")"
         case Term.While(cond, body) =>
@@ -894,6 +896,10 @@ trait Printers
         case Term.Match(selector, cases) =>
           printTree(selector)
           this += highlightKeyword(" match", color)
+          inBlock(printCases(cases, lineBreak()))
+
+        case Term.ImplicitMatch(cases) =>
+          this += highlightKeyword("implicit match", color)
           inBlock(printCases(cases, lineBreak()))
 
         case Term.Try(body, cases, finallyOpt) =>

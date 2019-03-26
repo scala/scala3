@@ -511,6 +511,27 @@ trait TreeOps extends Core {
 
     }
 
+    object IsImplicitMatch {
+      /** Matches any ImplicitMatch and returns it */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[ImplicitMatch] = kernel.matchImplicitMatch(tree)
+    }
+
+    /** Scala implicit `match` term */
+    object ImplicitMatch {
+
+      /** Creates a pattern match `implicit match { <cases: List[CaseDef]> }` */
+      def apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+        kernel.ImplicitMatch_apply(cases)
+
+      def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+        kernel.ImplicitMatch_copy(original)(cases)
+
+      /** Matches a pattern match `implicit match { <cases: List[CaseDef]> }` */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[List[CaseDef]] =
+        kernel.matchImplicitMatch(tree).map(_.cases)
+
+    }
+
     object IsTry {
       /** Matches any Try and returns it */
       def unapply(tree: Tree)(implicit ctx: Context): Option[Try] = kernel.matchTry(tree)
@@ -699,6 +720,10 @@ trait TreeOps extends Core {
   implicit class MatchAPI(self: Term.Match) {
     def scrutinee(implicit ctx: Context): Term = kernel.Match_scrutinee(self)
     def cases(implicit ctx: Context): List[CaseDef] = kernel.Match_cases(self)
+  }
+
+  implicit class ImplicitMatchAPI(self: Term.ImplicitMatch) {
+    def cases(implicit ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
   }
 
   implicit class TryAPI(self: Term.Try) {

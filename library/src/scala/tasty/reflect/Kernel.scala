@@ -28,6 +28,7 @@ package scala.tasty.reflect
  *           |                             +- Lambda
  *           |                             +- If
  *           |                             +- Match
+ *           |                             +- ImplicitMatch
  *           |                             +- Try
  *           |                             +- Return
  *           |                             +- Repeated
@@ -460,6 +461,16 @@ trait Kernel {
 
   def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
+
+  /** Tree representing a pattern match `implicit match  { ... }` in the source code */
+  type ImplicitMatch <: Term
+
+  def matchImplicitMatch(tree: Tree)(implicit ctx: Context): Option[ImplicitMatch]
+
+  def ImplicitMatch_cases(self: ImplicitMatch)(implicit ctx: Context): List[CaseDef]
+
+  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch
+  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch
 
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Try <: Term

@@ -24,6 +24,3 @@ i4006c.scala
 # Not sure what's wring here
 i4203.scala
 t6278-synth-def.scala
-
-# Need to print empty tree for implicit match
-i5938.scala
