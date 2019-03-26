@@ -949,6 +949,7 @@ class Namer { typer: Typer =>
           sym.isAccessibleFrom(path.tpe) &&
           !sym.isConstructor &&
           !sym.is(ModuleClass) &&
+          !sym.is(Bridge) &&
           !cls.derivesFrom(sym.owner)
 
         /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
@@ -978,12 +979,14 @@ class Namer { typer: Typer =>
                   Final,
                   fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
                   coord = span)
-              else
+              else {
+                val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
                 ctx.newSymbol(
                   cls, alias,
-                  Method | Final | mbr.symbol.flags & ImplicitOrImplied,
+                  Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImplied,
                   mbr.info.ensureMethodic,
                   coord = span)
+              }
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
@@ -1167,8 +1170,6 @@ class Namer { typer: Typer =>
         else selfInfo
 
       tempInfo.finalize(denot, parentTypes, finalSelfInfo)
-
-
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
