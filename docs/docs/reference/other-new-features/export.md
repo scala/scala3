@@ -76,7 +76,7 @@ Export aliases are always `final`. Aliases of implied instances are again `impli
  - However, export aliases can implement deferred members of base classes.
 
 Export aliases for value definitions are marked by the compiler as "stable". This means
-that they they can be used as parts of stable identifier paths, even though they are technically methods. For instance, the following is OK:
+that they can be used as parts of stable identifier paths, even though they are technically methods. For instance, the following is OK:
 ```scala
   class C { type T }
   object O { val c: C = ... }
