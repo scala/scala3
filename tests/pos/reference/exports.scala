@@ -22,8 +22,7 @@
     def status: List[String] = printUnit.status ++ scanUnit.status
   }
 
-  class C { type T }
-  object O { val c: C = ??? }
-  export O.c
-  def f: c.T = ???
-
+  class C22 { type T }
+  object O22 { val c: C22 = ??? }
+  export O22.c
+  def f22: c.T = ???
