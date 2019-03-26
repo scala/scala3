@@ -559,7 +559,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             if (tparams1.nonEmpty)
               return recur(
                 HKTypeLambda.fromParams(tparams1, tp1.appliedTo(tparams1.map(_.paramRef))),
-                tp2)
+                tp2) || fourthTry
             else tp2 match {
               case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
                 return recur(tp1, tycon2)
