@@ -944,19 +944,20 @@ class Namer { typer: Typer =>
         val path = typedAheadExpr(expr, AnySelectionProto)
         checkLegalImportPath(path)
 
-        def needsForwarder(sym: Symbol) =
-          sym.is(ImplicitOrImplied) == exp.impliedOnly &&
-          sym.isAccessibleFrom(path.tpe) &&
-          !sym.isConstructor &&
-          !sym.is(ModuleClass) &&
-          !sym.is(Bridge) &&
-          !cls.derivesFrom(sym.owner)
+        def whyNoForwarder(mbr: SingleDenotation): String = {
+          val sym = mbr.symbol
+          if (sym.is(ImplicitOrImplied) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
+          else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
+          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) "_"
+          else if (cls.derivesFrom(sym.owner)) i"is already a member of $cls"
+          else ""
+        }
 
         /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
          *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
          */
-        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
-          if (needsForwarder(mbr.symbol)) {
+        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit = {
+          if (whyNoForwarder(mbr) == "") {
 
             /** The info of a forwarder to type `ref` which has info `info`
              */
@@ -998,12 +999,19 @@ class Namer { typer: Typer =>
               }
             buf += forwarderDef.withSpan(span)
           }
+        }
 
         def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
+          val size = buf.size
           val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
-          if (mbrs.isEmpty)
-            ctx.error(i"no accessible member $name at $path", ctx.source.atSpan(span))
           mbrs.foreach(addForwarder(alias, _, span))
+          if (buf.size == size) {
+            val reason = mbrs.map(whyNoForwarder).dropWhile(_ == "-") match {
+              case Nil => ""
+              case why :: _ => i"\n$path.$name cannot be exported because it $why"
+            }
+            ctx.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+          }
         }
 
         def addForwardersExcept(seen: List[TermName], span: Span): Unit =

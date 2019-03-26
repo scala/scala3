@@ -1,0 +1,24 @@
+[991..997] in exports.scala
+no eligible member concat at this
+this.concat cannot be exported because it is already a member of trait IterableOps
+<647..647> in exports.scala
+Double definition:
+final def status: => List[String] in class Copier at line 23 and
+final def status: => List[String] in class Copier at line 24
+have the same type after erasure.
+<596..596> in exports.scala
+Double definition:
+def status: => List[String] in class Copier at line 28 and
+final def status: => List[String] in class Copier at line 23
+have the same type after erasure.
+[785..791] in exports.scala
+no eligible member status at this.printUnit
+this.printUnit.status cannot be exported because it is not implied
+[712..718] in exports.scala
+no eligible member bitmap at this.printUnit
+this.printUnit.bitmap cannot be exported because it is implied
+[518..525] in exports.scala
+no eligible member scanAll at this.scanUnit
+this.scanUnit.scanAll cannot be exported because it is not accessible
+[452..458] in exports.scala
+no eligible member scanIt at this.scanUnit
