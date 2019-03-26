@@ -239,12 +239,10 @@ class CompilationTests extends ParallelTesting {
         defaultOptions.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))(libGroup)
 
     val compilerSources = sources(Paths.get("compiler/src"))
+    val compilerManagedSources = sources(Properties.dottyCompilerManagedSources)
 
-    val scalaJSIRDir = Paths.get("compiler/target/scala-2.12/src_managed/main/scalajs-ir-src/org/scalajs/ir")
-    val scalaJSIRSources = sources(scalaJSIRDir, shallow = true)
-
-    val dotty1 = compileList("dotty", compilerSources ++ scalaJSIRSources, opt)(dotty1Group)
-    val dotty2 = compileList("dotty", compilerSources ++ scalaJSIRSources, opt)(dotty2Group)
+    val dotty1 = compileList("dotty", compilerSources ++ compilerManagedSources, opt)(dotty1Group)
+    val dotty2 = compileList("dotty", compilerSources ++ compilerManagedSources, opt)(dotty2Group)
 
     val tests = {
       lib.keepOutput :: dotty1.keepOutput :: {
@@ -262,7 +260,7 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/util", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/backend", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/backend/jvm", opt) +
-        compileList("shallow-scalajs-ir", scalaJSIRSources, opt)
+        compileList("managed-sources", compilerManagedSources, opt)
       }.keepOutput :: Nil
     }.map(_.checkCompile())
 

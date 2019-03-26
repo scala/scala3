@@ -461,6 +461,7 @@ object Build {
           else List()
 
         val jarOpts = List(
+          "-Ddotty.tests.dottyCompilerManagedSources=" + (sourceManaged in Compile).value,
           "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
           "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
           "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
