@@ -171,13 +171,13 @@ Rules
 
 
 3. Functions
-   * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-   * `(implicit erased x1: T1, x2: T2, ..., xN: TN) => y : (implicit erased T1, T2, ..., TN) => R`
-   * `implicit erased T1 => R  <:<  erased T1 => R`
-   * `(implicit erased T1, T2) => R  <:<  (erased T1, T2) => R`
+   * `erased (x1: T1, x2: T2, ..., xN: TN) => y : erased (T1, T2, ..., TN) => R`
+   * `given erased (x1: T1, x2: T2, ..., xN: TN) => y : given erased (T1, T2, ..., TN) => R`
+   * `given erased T1 => R  <:<  erased T1 => R`
+   * `given erased (T1, T2) => R  <:<  erased (T1, T2) => R`
    *  ...
 
-   Note that there is no subtype relation between `erased T => R` and `T => R` (or `implicit erased T => R` and `implicit T => R`)
+   Note that there is no subtype relation between `erased T => R` and `T => R` (or `given erased T => R` and `given T => R`)
 
 
 4. Eta expansion
@@ -189,7 +189,7 @@ Rules
    * All `erased` parameters are removed from the function
    * All argument to `erased` parameters are not passed to the function
    * All `erased` definitions are removed
-   * All `(erased T1, T2, ..., TN) => R` and `(implicit erased T1, T2, ..., TN) => R` become `() => R`
+   * All `(erased T1, T2, ..., TN) => R` and `(given erased T1, T2, ..., TN) => R` become `() => R`
 
 
 6. Overloading
