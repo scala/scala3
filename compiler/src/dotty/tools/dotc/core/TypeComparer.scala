@@ -1081,9 +1081,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
           case tparam: Symbol
-          if leftRoot.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext) =>
+          if leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext)) && leftRoot.member(tparam.name).exists =>
             val captured = TypeRef(leftRoot, tparam)
-            assert(captured.exists, i"$leftRoot has no member $tparam in isSubArgs($args1, $args2, $tp1, $tparams2)")
             isSubArg(captured, arg2)
           case _ =>
             false
