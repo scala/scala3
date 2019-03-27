@@ -484,7 +484,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
         recur(rhs, "")
-      case Import(impliedOnly, expr, selectors) =>
+      case Import(importImplied, expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
           case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
           case _ => toTextGlobal(sel)
@@ -493,7 +493,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case id :: Nil => toText(id)
           case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
         }
-        keywordText("import ") ~ (keywordText("implied ") provided impliedOnly) ~
+        keywordText("import ") ~ (keywordText("implied ") provided importImplied) ~
         toTextLocal(expr) ~ "." ~ selectorsText
       case packageDef: PackageDef =>
         packageDefText(packageDef)

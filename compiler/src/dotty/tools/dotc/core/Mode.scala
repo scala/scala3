@@ -101,4 +101,7 @@ object Mode {
 
   /** We are synthesizing the receiver of an extension method */
   val SynthesizeExtMethodReceiver: Mode = newMode(23, "SynthesizeExtMethodReceiver")
+
+  /** Are we trying to find a hidden implicit? */
+  val FindHiddenImplicits: Mode = newMode(24, "FindHiddenImplicits")
 }

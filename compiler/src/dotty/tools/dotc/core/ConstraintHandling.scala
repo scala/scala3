@@ -85,7 +85,8 @@ trait ConstraintHandling[AbstractContext] {
 
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
-      if (equalBounds && !bound.existsPart(_.isInstanceOf[WildcardType])) {
+      if (equalBounds &&
+         !bound.existsPart(bp => bp.isInstanceOf[WildcardType] || (bp eq param))) {
         // The narrowed bounds are equal and do not contain wildcards,
         // so we can remove `param` from the constraint.
         // (Handling wildcards requires choosing a bound, but we don't know which

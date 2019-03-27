@@ -532,10 +532,10 @@ class TreePickler(pickler: TastyPickler) {
             }
             pickleStats(tree.constr :: rest)
           }
-        case Import(impliedOnly, expr, selectors) =>
+        case Import(importImplied, expr, selectors) =>
           writeByte(IMPORT)
           withLength {
-            if (impliedOnly) writeByte(IMPLIED)
+            if (importImplied) writeByte(IMPLIED)
             pickleTree(expr)
             pickleSelectors(selectors)
           }

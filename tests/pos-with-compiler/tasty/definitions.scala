@@ -12,7 +12,7 @@ object definitions {
 
   case class PackageClause(pkg: Term, body: List[Tree]) extends Tree
 
-  case class Import(impliedOnly: Boolean, expr: Term, selector: List[ImportSelector]) extends Statement
+  case class Import(importImplied: Boolean, expr: Term, selector: List[ImportSelector]) extends Statement
 
   enum ImportSelector {
     case SimpleSelector(id: Id)
