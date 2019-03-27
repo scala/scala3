@@ -949,7 +949,8 @@ class Namer { typer: Typer =>
           if (sym.is(ImplicitOrImplied) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) "_"
-          else if (cls.derivesFrom(sym.owner)) i"is already a member of $cls"
+          else if (cls.derivesFrom(sym.owner) &&
+                   (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
           else ""
         }
 
@@ -965,7 +966,7 @@ class Namer { typer: Typer =>
               case _: ClassInfo =>
                 HKTypeLambda.fromParams(info.typeParams, ref)
               case _: TypeBounds =>
-                ref
+                TypeAlias(ref)
               case info: HKTypeLambda =>
                 info.derivedLambdaType(info.paramNames, info.paramInfos,
                   fwdInfo(ref.appliedTo(info.paramRefs), info.resultType))
