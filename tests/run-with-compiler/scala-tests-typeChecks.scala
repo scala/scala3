@@ -1,4 +1,4 @@
-import scala.test._
+import scala.testing._
 
 object Test {
 

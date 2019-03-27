@@ -1,4 +1,4 @@
-package scala.test
+package scala.testing
 
 import scala.quoted._
 import scala.tasty.Reflection
