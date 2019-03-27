@@ -804,7 +804,7 @@ class ClassfileParser(
               ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
               Array.empty
             case Some(jar: ZipArchive) => // We are in a jar
-              val cl = new URLClassLoader(Array(jar.jpath.toUri.toURL))
+              val cl = new URLClassLoader(Array(jar.jpath.toUri.toURL), /*parent =*/ null)
               val path = classfile.path.stripSuffix(".class") + ".tasty"
               val stream = cl.getResourceAsStream(path)
               if (stream != null) {
