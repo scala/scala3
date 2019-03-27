@@ -1,4 +1,4 @@
-import scala.tests.TypeChecking._
+import scala.test._
 
 object Test {
 

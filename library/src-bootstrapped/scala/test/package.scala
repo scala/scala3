@@ -1,9 +1,9 @@
-package scala.tests
+package scala
 
 import scala.quoted._
 import scala.tasty.Reflection
 
-object TypeChecking {
+package object test {
 
   inline def typeChecks(inline code: String): Boolean = ${ typeChecksImpl(code) }
 
