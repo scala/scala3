@@ -17,7 +17,7 @@ object Test {
                        (implicit F0: NoImplicit): HasWithFilter = ???
   }
 
-  BrokenMethod().withFilter(_ => true) // error // error
+  BrokenMethod().withFilter(_ => true) // error
   BrokenMethod().filter(_ => true)     // ok
 
   locally {
@@ -35,6 +35,6 @@ object Test {
     // `(B => Boolean)`. Only later during pickling does the
     // defensive check for erroneous types in the tree pick up
     // the problem.
-    BrokenMethod().withFilter(x => true) // error // error
+    BrokenMethod().withFilter(x => true) // error
   }
 }

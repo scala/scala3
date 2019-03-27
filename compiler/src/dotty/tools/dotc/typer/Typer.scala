@@ -525,7 +525,7 @@ class Typer extends Namer
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
         templ1.parents foreach {
           case parent: RefTree =>
-            typedAheadImpl(parent, tree => inferTypeParams(typedType(tree), pt))
+            typedAhead(parent, tree => inferTypeParams(typedType(tree), pt))
           case _ =>
         }
         val x = tpnme.ANON_CLASS
@@ -940,7 +940,7 @@ class Typer extends Namer
           }
         case _ =>
       }
-      errorType(AnonymousFunctionMissingParamType(param, params, tree, pt), param.sourcePos)
+      errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.sourcePos)
     }
 
     def protoFormal(i: Int): Type =

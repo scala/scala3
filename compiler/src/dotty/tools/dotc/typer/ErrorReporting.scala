@@ -47,7 +47,7 @@ object ErrorReporting {
           case _: WildcardType | _: IgnoredProto => ""
           case tp => em" and expected result type $tp"
         }
-        em"arguments (${tp.typedArgs.tpes}%, %)$result"
+        em"arguments (${tp.unforcedTypedArgs.tpes}%, %)$result"
       case _ =>
         em"expected type $tp"
     }

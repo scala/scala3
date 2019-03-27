@@ -832,7 +832,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case funRef: TermRef =>
             val app =
               if (proto.allArgTypesAreCurrent())
-                new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+                new ApplyToTyped(tree, fun1, funRef, proto.unforcedTypedArgs, pt)
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
             convertNewGenericArray(app.result)
@@ -857,7 +857,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
       fun1.tpe match {
-        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
+        case err: ErrorType => cpy.Apply(tree)(fun1, proto.unforcedTypedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
@@ -1604,7 +1604,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (isDetermined(alts2)) alts2
           else {
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs, resultType)
+            narrowByTrees(alts2, pt.unforcedTypedArgs, resultType)
           }
         }
 
@@ -1665,7 +1665,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     else pt match {
       case pt @ FunProto(_, resType: FunProto) =>
         // try to narrow further with snd argument list
-        val advanced = advanceCandidates(pt.typedArgs.tpes)
+        val advanced = advanceCandidates(pt.unforcedTypedArgs.tpes)
         resolveOverloaded(advanced.map(_._1), resType, Nil) // resolve with candidates where first params are stripped
           .map(advanced.toMap) // map surviving result(s) back to original candidates
       case _ =>
@@ -1697,40 +1697,38 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   private def pretypeArgs(alts: List[TermRef], pt: FunProto)(implicit ctx: Context): Unit = {
     def recur(altFormals: List[List[Type]], args: List[untpd.Tree]): Unit = args match {
       case arg :: args1 if !altFormals.exists(_.isEmpty) =>
-        def isUnknownParamType(t: untpd.Tree) = t match {
-          case ValDef(_, tpt, _) => tpt.isEmpty
-          case _ => false
-        }
-        val fn = untpd.functionWithUnknownParamType(arg)
-        if (fn.isDefined) {
-          def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
-          val formalsForArg: List[Type] = altFormals.map(_.head)
-          def argTypesOfFormal(formal: Type): List[Type] =
-            formal match {
-              case defn.FunctionOf(args, result, isImplicit, isErased) => args
-              case defn.PartialFunctionOf(arg, result) => arg :: Nil
-              case _ => Nil
+        untpd.functionWithUnknownParamType(arg) match {
+          case Some(fn) =>
+            def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
+            val formalsForArg: List[Type] = altFormals.map(_.head)
+            def argTypesOfFormal(formal: Type): List[Type] =
+              formal match {
+                case defn.FunctionOf(args, result, isImplicit, isErased) => args
+                case defn.PartialFunctionOf(arg, result) => arg :: Nil
+                case _ => Nil
+              }
+            val formalParamTypessForArg: List[List[Type]] =
+              formalsForArg.map(argTypesOfFormal)
+            if (formalParamTypessForArg.forall(_.nonEmpty) &&
+                isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
+              val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
+                // Given definitions above, for i = 1,...,m,
+                //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
+                // If all p_i_k's are the same, assume the type as formal parameter
+                // type of the i'th parameter of the closure.
+                if (isUniform(ps)(_ frozen_=:= _)) ps.head
+                else WildcardType)
+              def isPartial = // we should generate a partial function for the arg
+                fn.isInstanceOf[untpd.Match] &&
+                formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
+              val commonFormal =
+                if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
+                else defn.FunctionOf(commonParamTypes, WildcardType)
+              overload.println(i"pretype arg $arg with expected type $commonFormal")
+              if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.noBottom)))
+                pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
             }
-          val formalParamTypessForArg: List[List[Type]] =
-            formalsForArg.map(argTypesOfFormal)
-          if (formalParamTypessForArg.forall(_.nonEmpty) &&
-              isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
-            val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
-              // Given definitions above, for i = 1,...,m,
-              //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
-              // If all p_i_k's are the same, assume the type as formal parameter
-              // type of the i'th parameter of the closure.
-              if (isUniform(ps)(_ frozen_=:= _)) ps.head
-              else WildcardType)
-            def isPartial = // we should generate a partial function for the arg
-              fn.get.isInstanceOf[untpd.Match] &&
-              formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
-            val commonFormal =
-              if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
-              else defn.FunctionOf(commonParamTypes, WildcardType)
-            overload.println(i"pretype arg $arg with expected type $commonFormal")
-            pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
-          }
+          case None =>
         }
         recur(altFormals.map(_.tail), args1)
       case _ =>

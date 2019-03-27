@@ -232,9 +232,6 @@ object ProtoTypes {
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
 
-    /** A map recording the typer states and constraints in which arguments stored in myTypedArg were typed */
-    var evalState: SimpleIdentityMap[untpd.Tree, (TyperState, Constraint)] = SimpleIdentityMap.Empty
-
     /** The tupled version of this prototype, if it has been computed */
     var tupled: Type = NoType
 
@@ -265,44 +262,35 @@ object ProtoTypes {
 
     override def notApplied: Type = WildcardType
 
-    /** Forget the types of any arguments that have been typed producing a constraint
-     *    - that is in a typer state that is not yet committed into the one of the current context `ctx`,
-     *    - or that has been retracted from its typestate because oif a failed operation.
-     *  This is necessary to avoid "orphan" TypeParamRefs that are referred to from
-     *  type variables in the typed arguments, but that are not registered in the
-     *  current constraint. Test cases are pos/t1756.scala and pos/i3538.scala.
-     *  @return True if all arguments have types (in particular, no types were forgotten).
+    /** @return True if all arguments have types.
      */
-    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
-      state.evalState foreachBinding { (arg, tstateConstr) =>
-        if ((tstateConstr._1.uncommittedAncestor.constraint `ne` ctx.typerState.constraint) ||
-            tstateConstr._2.isRetracted) {
-          typr.println(i"need to invalidate $arg / ${state.typedArg(arg)}, ${tstateConstr._2}, current = ${ctx.typerState.constraint}")
-          state.typedArg = state.typedArg.remove(arg)
-          state.evalState = state.evalState.remove(arg)
-        }
-      }
+    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean =
       state.typedArg.size == args.length
+
+    private def isUndefined(tp: Type): Boolean = tp match {
+      case _: WildcardType => true
+      case defn.FunctionOf(args, result, _, _) => args.exists(isUndefined) || isUndefined(result)
+      case _ => false
     }
 
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null) {
-        if (!force && untpd.functionWithUnknownParamType(arg).isDefined)
-          // If force = false, assume ? rather than reporting an error.
-          // That way we don't cause a "missing parameter" error in `typerFn(arg)`
-          targ = arg.withType(WildcardType)
-        else {
-          targ = typerFn(arg)
-          if (!ctx.reporter.hasUnreportedErrors) {
-            // FIXME: This can swallow warnings by updating the typerstate from a nested
-            // context that gets discarded later. But we do have to update the
-            // typerstate if there are no errors. If we also omitted the next two lines
-            // when warning were emitted, `pos/t1756.scala` would fail when run with -feature.
-            // It would produce an orphan type parameter for CI when pickling.
-            state.typedArg = state.typedArg.updated(arg, targ)
-            state.evalState = state.evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
-          }
+        untpd.functionWithUnknownParamType(arg) match {
+          case Some(untpd.Function(args, _)) if !force =>
+            // If force = false, assume what we know about the parameter types rather than reporting an error.
+            // That way we don't cause a "missing parameter" error in `typerFn(arg)`
+            val paramTypes = args map {
+              case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
+              case _ => WildcardType
+            }
+            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+          case Some(_) if !force =>
+            targ = arg.withType(WildcardType)
+          case _ =>
+            targ = typerFn(arg)
+            if (!ctx.reporter.hasUnreportedErrors)
+              state.typedArg = state.typedArg.updated(arg, targ)
         }
       }
       targ
@@ -310,20 +298,14 @@ object ProtoTypes {
 
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
-     *  @param  force   if true try to typecheck arguments even if they are functions
-     *                  with unknown parameter types - this will then cause a
-     *                  "missing parameter type" error
      */
-    private def typedArgs(force: Boolean): List[Tree] =
+    def unforcedTypedArgs: List[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
-        val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
-        if (force || !args1.contains(WildcardType)) state.typedArgs = args1
+        val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force = false))
+        if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
         args1
       }
-
-    def typedArgs: List[Tree] = typedArgs(force = true)
-    def unforcedTypedArgs: List[Tree] = typedArgs(force = false)
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.
@@ -376,7 +358,7 @@ object ProtoTypes {
       derivedFunProto(args, tm(resultType), typer)
 
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
-      ta(ta.foldOver(x, typedArgs.tpes), resultType)
+      ta(ta.foldOver(x, unforcedTypedArgs.tpes), resultType)
 
     override def deepenProto(implicit ctx: Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
 
@@ -390,7 +372,7 @@ object ProtoTypes {
    *  [](args): resultType, where args are known to be typed
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isContextual: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isContextual)(ctx) {
-    override def typedArgs: List[tpd.Tree] = args
+    override def unforcedTypedArgs: List[tpd.Tree] = args
     override def withContext(ctx: Context): FunProtoTyped = this
   }
 
