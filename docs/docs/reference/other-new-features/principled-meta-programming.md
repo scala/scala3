@@ -600,6 +600,12 @@ Using lifting, we can now give the missing definition of `showExpr` in the intro
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using the `toExpr` wrapper.
 
+**Note**: the `toExpr` extension method can be ommited by importing an implicit
+conversion with `import scala.quoted.autolift._`. The programmer is able to
+declutter slightly the code at the cost of readable _phase distinction_ between
+stages.
+
+
 ## Implementation
 
 ### Syntax
