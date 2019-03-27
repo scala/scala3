@@ -568,6 +568,12 @@ object Build {
             IO.delete(trgDir)
           IO.createDirectory(trgDir)
           IO.unzip(scalaJSIRSourcesJar, trgDir)
+
+          // Remove f interpolator macro call to avoid its expansion while compiling the compiler and the implementation of the f macro
+          val utilsFile = trgDir / "org/scalajs/ir/Utils.scala"
+          val patchedSource = IO.read(utilsFile).replace("""f"\\u$c%04x"""", """"\\u%04x".format(c)""")
+          IO.write(utilsFile, patchedSource)
+
           (trgDir ** "*.scala").get.toSet
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
