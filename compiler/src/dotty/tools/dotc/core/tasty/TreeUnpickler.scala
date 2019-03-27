@@ -513,7 +513,7 @@ class TreeUnpickler(reader: TastyReader,
         def complete(denot: SymDenotation)(implicit ctx: Context) =
           denot.info = typeReader.readType()
       }
-      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, completer, coord = coordAt(start))
+      val sym = ctx.newSymbol(ctx.owner, name, Flags.Case, completer, coord = coordAt(start))
       registerSym(start, sym)
       sym
     }

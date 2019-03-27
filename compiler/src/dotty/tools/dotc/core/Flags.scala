@@ -290,7 +290,9 @@ object Flags {
   final val PackageVal: FlagSet = Package.toTermFlags
   final val PackageClass: FlagSet = Package.toTypeFlags
 
-  /** A case class or its companion object */
+  /** A case class or its companion object
+   *  Note: Case is also used to indicate that a symbol is bound by a pattern.
+   */
   final val Case: FlagSet = commonFlag(17, "case")
   final val CaseClass: FlagSet = Case.toTypeFlags
   final val CaseVal: FlagSet = Case.toTermFlags
