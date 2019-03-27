@@ -2754,7 +2754,10 @@ class Typer extends Namer
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.symbol.is(Macro, butNot = Inline)) {
-        if (tree.symbol eq defn.StringContext_f) {
+        if (ctx.settings.XignoreScala2Macros.value) {
+          ctx.warning("Scala 2 macro cannot be used in Dotty. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos)
+          tree
+        } else if (tree.symbol eq defn.StringContext_f) {
           val Apply(TypeApply(Select(sc, _), _), args) = tree
           val newCall = ref(defn.InternalStringContextModule_f).appliedTo(sc).appliedToArgs(args)
           Inliner.inlineCall(newCall, pt)
