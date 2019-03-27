@@ -46,6 +46,6 @@ The following modifications avoid this hurdle to migration.
  3. In some version after 3.1, an old-style implicits accessed implicitly through a normal import
     will give a compiler error.
 
-Thr rules mean that library users can use `import implied` to access old-style implicits in Scala 3.0,
+These rules mean that library users can use `import implied` to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to
 implied instances once their user base has migrated.
