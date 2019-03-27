@@ -1018,7 +1018,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Ident if !tree.symbol.owner.isClass && skipLocal(tree.symbol) =>
+      case tree: Ident if tree.symbol.exists && !tree.symbol.owner.isClass && skipLocal(tree.symbol) =>
         tree.symbol.defTree match {
           case defTree: ValOrDefDef => transform(defTree.rhs)
           case _ => tree
