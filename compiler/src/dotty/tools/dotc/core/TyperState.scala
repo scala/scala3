@@ -145,7 +145,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   def commit()(implicit ctx: Context): Unit = {
     Stats.record("typerState.commit")
     val targetState = ctx.typerState
-   	if (constraint ne targetState.constraint)
+    if (constraint ne targetState.constraint)
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
     assert(isCommittable)
     if (targetState.constraint eq previousConstraint) targetState.constraint = constraint

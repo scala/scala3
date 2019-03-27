@@ -188,6 +188,8 @@ object Applications {
 
   /** A wrapper indicating that its `app` argument has already integrated the type arguments
    *  of the expected type, provided that type is a (possibly ignored) PolyProto.
+   *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
+   *  `args` are the type arguments of the expected type.
    */
   class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def span = app.span

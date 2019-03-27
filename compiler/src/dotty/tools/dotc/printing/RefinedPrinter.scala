@@ -579,7 +579,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Splice(tree) =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case tree: Applications.IntegratedTypeArgs =>
-        toText(tree.app) ~ "(with integrated type args)"
+        toText(tree.app) ~ Str("(with integrated type args)").provided(ctx.settings.YprintDebug.value)
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>

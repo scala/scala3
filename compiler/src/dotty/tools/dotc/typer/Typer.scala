@@ -2233,8 +2233,11 @@ class Typer extends Namer
   }
 
   /** Try to rename `tpt` to a type `T` and typecheck `new T` with given expected type `pt`.
+   *  The operation is called from either `adapt` or `typedApply`. `adapt` gets to call `tryNew`
+   *  for calls `p.C(..)` if there is a value `p.C`. `typedApply` calls `tryNew` as a fallback
+   *  in case typing `p.C` fails since there is no value with path `p.C`. The call from `adapt`
+   *  is more efficient since it re-uses the prefix `p` in typed form.
    */
-
   def tryNew[T >: Untyped <: Type]
     (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = {
 
@@ -2246,6 +2249,8 @@ class Typer extends Namer
         else {
           def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
             case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
+              // Applications with named arguments cannot be converted, since new expressions
+              // don't accept named arguments
               IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
             case _ =>
               typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)

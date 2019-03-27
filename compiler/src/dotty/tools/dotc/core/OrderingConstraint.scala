@@ -545,7 +545,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       def hasConflictingTypeVarsFor(tl: TypeLambda) =
         this.typeVarOfParam(tl.paramRefs(0)) ne c.typeVarOfParam(tl.paramRefs(0))
           // Note: Since TypeVars are allocated in bulk for each type lambda, we only
-          // have to check the first one to find out if some of them are dufferent.
+          // have to check the first one to find out if some of them are different.
       val conflicting = c.domainLambdas.find(tl =>
         this.contains(tl) && hasConflictingTypeVarsFor(tl))
       conflicting match {
