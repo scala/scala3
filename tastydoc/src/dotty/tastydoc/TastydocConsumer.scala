@@ -10,10 +10,6 @@ import scala.annotation.tailrec
 
 import java.io._
 
-import com.vladsch.flexmark.formatter.Formatter
-import com.vladsch.flexmark.util.options.MutableDataSet
-import com.vladsch.flexmark.parser.Parser
-
 class TastydocConsumer extends TastyConsumer {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
@@ -97,12 +93,7 @@ class TastydocConsumer extends TastyConsumer {
     pw.write(formatToMarkdown(traverse(root), 0))
     pw.close()
 
-    println("Start Flexmark")
-    val FORMAT_OPTIONS = new MutableDataSet()
-    val RENDERER = Formatter.builder(FORMAT_OPTIONS).build();
-    val PARSER = new TastyParser()
-    val node = PARSER.parse(reflect)(root)
-    val commonmark = node//RENDERER.render(node);
-    println(commonmark)
+    println("Start comment parsing")
+
   }
 }
