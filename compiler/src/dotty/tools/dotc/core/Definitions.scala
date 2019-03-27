@@ -631,9 +631,16 @@ class Definitions {
     def StringContextS(implicit ctx: Context): Symbol = StringContextSR.symbol
     lazy val StringContextRawR: TermRef = StringContextClass.requiredMethodRef(nme.raw_)
     def StringContextRaw(implicit ctx: Context): Symbol = StringContextRawR.symbol
+    lazy val StringContext_fR: TermRef = StringContextClass.requiredMethodRef(nme.f)
+    def StringContext_f(implicit ctx: Context): Symbol = StringContext_fR.symbol
   def StringContextModule(implicit ctx: Context): Symbol = StringContextClass.companionModule
     lazy val StringContextModule_applyR: TermRef = StringContextModule.requiredMethodRef(nme.apply)
     def StringContextModule_apply(implicit ctx: Context): Symbol = StringContextModule_applyR.symbol
+
+  lazy val InternalStringContextModuleR: TermRef = ctx.requiredModuleRef("scala.internal.StringContext")
+  def InternalStringContextModule(implicit ctx: Context): Symbol = InternalStringContextModuleR.termSymbol
+    lazy val InternalStringContextModule_fR: TermRef = InternalStringContextModule.requiredMethodRef(nme.f)
+    def InternalStringContextModule_f(implicit ctx: Context): Symbol = InternalStringContextModule_fR.symbol
 
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context): ClassSymbol = PartialFunctionType.symbol.asClass
