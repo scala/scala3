@@ -531,8 +531,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** A utility object offering methods for rewriting inlined code */
   object reducer {
 
-    import dotty.tools.dotc.core.Contexts.GADTMap
-
     /** An extractor for terms equivalent to `new C(args)`, returning the class `C`,
      *  a list of bindings, and the arguments `args`. Can see inside blocks and Inlined nodes and can
      *  follow a reference to an inline value binding to its right hand side.

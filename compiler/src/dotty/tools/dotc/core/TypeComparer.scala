@@ -1255,8 +1255,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
     if (ctx.mode.is(Mode.GADTflexible)) {
       val preGadt = ctx.gadt.fresh
-      // if GADTflexible mode is on, we always have a SmartGADTMap
-      val pre = preGadt.asInstanceOf[SmartGADTMap]
+      // if GADTflexible mode is on, we always have a ProperGadtConstraint
+      val pre = preGadt.asInstanceOf[ProperGadtConstraint]
       if (op1) {
         val leftConstraint = constraint
         val leftGadt = ctx.gadt.fresh
