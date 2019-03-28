@@ -86,6 +86,12 @@ $ sbt
 > testCompilation --update-checkfiles
 ```
 
+Use `--help` to see all the options
+```bash
+$ sbt
+> testCompilation --help
+```
+
 ### Bootstrapped-only tests
 
 To run `testCompilation` on a bootstrapped Dotty compiler, use
