@@ -599,10 +599,10 @@ object desugar {
               constrVparamss.length > 1 ||
               mods.is(Abstract) ||
               restrictedAccess ||
-              isEnumCase && applyResultTpt.isEmpty) anyRef
+              isEnumCase) anyRef
           else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
-            (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
+            (constrVparamss :\ classTypeRef) (
               (vparams, restpe) => Function(vparams map (_.tpt), restpe))
         def widenedCreatorExpr =
           (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
