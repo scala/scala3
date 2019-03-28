@@ -809,7 +809,7 @@ trait Printers
         case Term.Apply(fn, args) =>
           fn match {
             case Term.Select(Term.This(_), "<init>") => this += "this" // call to constructor inside a constructor
-            case _ => printTree(fn)
+            case _ => printQualTree(fn)
           }
           val args1 = args match {
             case init :+ Term.Typed(Term.Repeated(Nil, _), _) => init // drop empty var args at the end
@@ -819,7 +819,7 @@ trait Printers
           inParens(printTrees(args1, ", "))
 
         case Term.TypeApply(fn, args) =>
-          printTree(fn)
+          printQualTree(fn)
           fn match {
             case Term.Select(Term.New(TypeTree.Applied(_, _)), "<init>") =>
               // type bounds already printed in `fn`
@@ -894,7 +894,7 @@ trait Printers
           printTree(elsep)
 
         case Term.Match(selector, cases) =>
-          printTree(selector)
+          printQualTree(selector)
           this += highlightKeyword(" match", color)
           inBlock(printCases(cases, lineBreak()))
 
