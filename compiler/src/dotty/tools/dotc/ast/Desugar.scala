@@ -598,7 +598,8 @@ object desugar {
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
               mods.is(Abstract) ||
-              restrictedAccess) anyRef
+              restrictedAccess ||
+              isEnumCase && applyResultTpt.isEmpty) anyRef
           else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
             (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
