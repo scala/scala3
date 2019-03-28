@@ -680,19 +680,39 @@ object Build {
     case Bootstrapped => `dotty-library-bootstrapped`
   }
 
-  lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
-    dependsOn(dottyCompiler(NonBootstrapped) % Provided).
+  lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge/src")).
+    // We cannot depend on any bootstrapped project to compile the bridge, since the
+    // bridge is needed to compile these projects.
     dependsOn(dottyDoc(NonBootstrapped) % Provided).
     settings(commonJavaSettings).
     settings(
       description := "sbt compiler bridge for Dotty",
-      libraryDependencies ++= Seq(
-        Dependencies.`compiler-interface` % Provided,
-        (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
-      ),
+
+      sources in Test := Seq(),
+      scalaSource in Compile := baseDirectory.value,
+      javaSource  in Compile := baseDirectory.value,
+
+      // Referring to the other project using a string avoids an infinite loop
+      // when sbt reads the settings.
+      test in Test := (test in (LocalProject("dotty-sbt-bridge-tests"), Test)).value,
+
+      libraryDependencies += Dependencies.`compiler-interface` % Provided
+    )
+
+  // We use a separate project for the bridge tests since they can only be run
+  // with the bootstrapped library on the classpath.
+  lazy val `dotty-sbt-bridge-tests` = project.in(file("sbt-bridge/test")).
+    dependsOn(dottyCompiler(Bootstrapped) % Test).
+    settings(commonBootstrappedSettings).
+    settings(
+      sources in Compile := Seq(),
+      scalaSource in Test := baseDirectory.value,
+      javaSource  in Test := baseDirectory.value,
 
       fork in Test := true,
-      parallelExecution in Test := false
+      parallelExecution in Test := false,
+
+      libraryDependencies += (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
     )
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
