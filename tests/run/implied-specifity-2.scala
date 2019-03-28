@@ -41,9 +41,10 @@ implied lo2 given Low for Bam2("lo")
 implied mid2 given High given Arg for Bam2("mid")
 implied hi2 for Bam2("hi")
 
+class Arg2
 class Red(val str: String)
-implied normal given Arg for Red("normal")
-implied reduced given Arg given Low for Red("reduced")
+implied normal given Arg2 for Red("normal")
+implied reduced given (ev: Arg2 | Low) for Red("reduced")
 
 object Test extends App {
   assert(Foo[Int] == 0)
@@ -51,5 +52,9 @@ object Test extends App {
   assert(Foo[Bar[Baz]] == 5)
   assert(the[Bam].str == "hi")
   assert(the[Bam2].str == "hi")
-  //assert(the[Red].str == "normal")
+  assert(the[Red].str == "reduced")
+
+  { implied for Arg2
+    assert(the[Red].str == "normal")
+  }
 }
