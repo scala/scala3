@@ -68,9 +68,10 @@ package scala.tasty.reflect
  *  +- TypeOrBounds -+- TypeBounds
  *                   |
  *                   +- Type -------+- ConstantType
- *                                  +- SymRef
- *                                  +- TermRef
- *                                  +- TypeRef
+ *                                  +- TypeRef -+- SymTypeRef
+ *                                  |           +- NameTypeRef
+ *                                  +- TermRef -+- SymTermRef
+ *                                  |           +- NameTermRef
  *                                  +- SuperType
  *                                  +- Refinement
  *                                  +- AppliedType
@@ -335,14 +336,23 @@ trait Core {
       /** A singleton type representing a known constant value */
       type ConstantType = kernel.ConstantType
 
-      /** Type of a reference to a symbol */
-      type SymRef = kernel.SymRef
-
       /** Type of a reference to a term */
       type TermRef = kernel.TermRef
 
+        /** Type of a reference to a term symbol */
+        type TermSymRef= kernel.TermSymRef
+
+        /** Type of a reference to a term by its name */
+        type TermNameRef= kernel.TermNameRef
+
       /** Type of a reference to a type */
       type TypeRef = kernel.TypeRef
+
+        /** Type of a reference to a type symbol */
+        type TypeSymRef= kernel.TypeSymRef
+
+        /** Type of a reference to a type by its name */
+        type TypeNameRef= kernel.TypeNameRef
 
       /** Type of a `super` refernce */
       type SuperType = kernel.SuperType

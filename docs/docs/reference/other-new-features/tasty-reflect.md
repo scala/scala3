@@ -145,9 +145,10 @@ TASTy Reflect provides the following types:
 +- TypeOrBounds -+- TypeBounds
                  |
                  +- Type -------+- ConstantType
-                                +- SymRef
-                                +- TermRef
-                                +- TypeRef
+                                +- TypeRef -+- SymTypeRef
+                                |           +- NameTypeRef
+                                +- TermRef -+- SymTermRef
+                                |           +- NameTermRef
                                 +- SuperType
                                 +- Refinement
                                 +- AppliedType

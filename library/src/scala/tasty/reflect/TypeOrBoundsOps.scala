@@ -42,29 +42,35 @@ trait TypeOrBoundsOps extends Core {
         kernel.matchConstantType(typeOrBounds).map(_.constant)
     }
 
-    object IsSymRef {
-      /** Matches any SymRef and returns it */
-      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] =
-        kernel.matchSymRef(tpe)
-    }
-
-    object SymRef {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
-        kernel.matchSymRef_unapply(typeOrBounds)
-    }
-
     object IsTermRef {
       /** Matches any TermRef and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] =
         kernel.matchTermRef(tpe)
     }
 
-    object TermRef {
+    object IsTermSymRef {
+      /** Matches any TermRef and returns it */
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermSymRef] =
+        kernel.matchTermSymRef(tpe)
+    }
+
+    object TermSymRef {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(TermSymbol, TypeOrBounds /* Type | NoPrefix */)] =
+        kernel.matchTermSymRef(typeOrBounds).map(x => (x.symbol, x.qualifier))
+    }
+
+    object IsTermNameRef {
+      /** Matches any TermRef and returns it */
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermNameRef] =
+        kernel.matchTermNameRef(tpe)
+    }
+
+    object TermNameRef {
       // TODO should qual be a Type?
       def apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef =
-        kernel.TermRef_apply(qual, name)
+        kernel.TermNameRef_apply(qual, name)
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        kernel.matchTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
+        kernel.matchTermNameRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
     object IsTypeRef {
@@ -73,9 +79,29 @@ trait TypeOrBoundsOps extends Core {
         kernel.matchTypeRef(tpe)
     }
 
-    object TypeRef {
+    object IsTypeSymRef {
+      /** Matches any TypeRef and returns it */
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeSymRef] =
+        kernel.matchTypeSymRef(tpe)
+    }
+
+    object TypeSymRef {
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(TypeSymbol, TypeOrBounds /* Type | NoPrefix */)] =
+        kernel.matchTypeSymRef(typeOrBounds).map(x => (x.symbol, x.qualifier))
+    }
+
+    object IsTypeNameRef {
+      /** Matches any TypeRef and returns it */
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeSymRef] =
+        kernel.matchTypeSymRef(tpe)
+    }
+
+    object TypeNameRef {
+      // TODO should qual be a Type?
+      def apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TypeNameRef =
+        kernel.TypeNameRef_apply(qual, name)
       def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        kernel.matchTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
+        kernel.matchTypeNameRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
     object IsSuperType {
@@ -249,18 +275,28 @@ trait TypeOrBoundsOps extends Core {
     def constant(implicit ctx: Context): Constant = kernel.ConstantType_constant(self)
   }
 
-  implicit class Type_SymRefAPI(self: SymRef) {
-    def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.SymRef_qualifier(self)
-  }
-
   implicit class Type_TermRefAPI(self: TermRef) {
-    def name(implicit ctx: Context): String = kernel.TermRef_name(self)
     def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.TermRef_qualifier(self)
   }
 
+  implicit class Term_SymRefAPI(self: TermSymRef) {
+    def symbol(implicit ctx: Context): TermSymbol = kernel.TermSymRef_symbol(self)
+  }
+
+  implicit class Type_TermNameRefAPI(self: TermNameRef) {
+    def name(implicit ctx: Context): String = kernel.TermNameRef_name(self)
+  }
+
   implicit class Type_TypeRefAPI(self: TypeRef) {
-    def name(implicit ctx: Context): String = kernel.TypeRef_name(self)
     def qualifier(implicit ctx: Context): TypeOrBounds /* Type | NoPrefix */ = kernel.TypeRef_qualifier(self)
+  }
+
+  implicit class Type_TypeSymRefAPI(self: TypeSymRef) {
+    def symbol(implicit ctx: Context): TypeSymbol = kernel.TypeSymRef_symbol(self)
+  }
+
+  implicit class Type_TypeNameRefAPI(self: TypeNameRef) {
+    def name(implicit ctx: Context): String = kernel.TypeNameRef_name(self)
   }
 
   implicit class Type_SuperTypeAPI(self: SuperType) {

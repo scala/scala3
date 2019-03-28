@@ -1059,49 +1059,80 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def ConstantType_constant(self: ConstantType)(implicit ctx: Context): Constant = self.value
 
-  type SymRef = Types.NamedType
-
-  def matchSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef] = tpe match {
-    case tp: Types.NamedType =>
-      tp.designator match {
-        case sym: Symbol => Some(tp)
-        case _ => None
-      }
-    case _ => None
-  }
-
-  def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds = self.prefix
-
-  // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
-  def matchSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] = tpe match {
-    case tpe: Types.NamedType =>
-      tpe.designator match {
-        case sym: Symbol => Some((sym, tpe.prefix))
-        case _ => None
-      }
-    case _ => None
-  }
-
   type TermRef = Types.NamedType
 
   def matchTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
+        case sym: Symbol if sym.isTerm => Some(tpe)
         case name: Names.TermName => Some(tpe)
         case _ => None
       }
     case _ => None
   }
 
-  def TermRef_name(self: TermRef)(implicit ctx: Context): String = self.name.toString
   def TermRef_qualifier(self: TermRef)(implicit ctx: Context): TypeOrBounds = self.prefix
 
-  def TermRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef =
+  type TermSymRef = Types.NamedType
+
+  def matchTermSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermSymRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Symbol if sym.isTerm => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TermSymRef_symbol(self: TermSymRef)(implicit ctx: Context): TermSymbol =
+    self.designator.asInstanceOf[TermSymbol]
+
+  type TermNameRef = Types.NamedType
+
+  def matchTermNameRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermNameRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Names.TermName => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TermNameRef_name(self: TermRef)(implicit ctx: Context): String = self.name.toString
+
+  def TermNameRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermNameRef =
     Types.TermRef(qual, name.toTermName)
 
   type TypeRef = Types.NamedType
 
   def matchTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Symbol if sym.isType => Some(tp)
+        case sym: Names.TypeName => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds = self.prefix
+
+  type TypeSymRef = Types.NamedType
+
+  def matchTypeSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeSymRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Symbol if sym.isType => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TypeSymRef_symbol(self: TypeSymRef)(implicit ctx: Context): TypeSymbol = self.typeSymbol.asType
+
+  type TypeNameRef = Types.NamedType
+
+  def matchTypeNameRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeNameRef] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
         case name: Names.TypeName => Some(tpe)
@@ -1110,8 +1141,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def TypeRef_name(self: TypeRef)(implicit ctx: Context): String = self.name.toString
-  def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds = self.prefix
+  def TypeNameRef_name(self: TypeRef)(implicit ctx: Context): String = self.name.toString
+
+  def TypeNameRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TypeNameRef =
+    Types.TypeRef(qual, name.toTermName)
 
   type SuperType = Types.SuperType
 

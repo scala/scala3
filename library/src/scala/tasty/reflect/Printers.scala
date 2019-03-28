@@ -277,12 +277,14 @@ trait Printers
       def visitType(x: TypeOrBounds): Buffer = x match {
         case Type.ConstantType(value) =>
           this += "Type.ConstantType(" += value += ")"
-        case Type.SymRef(sym, qual) =>
-          this += "Type.SymRef(" += sym += ", " += qual += ")"
-        case Type.TermRef(name, qual) =>
-          this += "Type.TermRef(\"" += name += "\", " += qual += ")"
-        case Type.TypeRef(name, qual) =>
-          this += "Type.TypeRef(\"" += name += "\", " += qual += ")"
+        case Type.TermSymRef(sym, qual) =>
+          this += "Type.TermSymRef(" += sym += ", " += qual += ")"
+        case Type.TermNameRef(name, qual) =>
+          this += "Type.TermNameRef(\"" += name += "\", " += qual += ")"
+        case Type.TypeSymRef(sym, qual) =>
+          this += "Type.TypeSymRef(" += sym += ", " += qual += ")"
+        case Type.TypeNameRef(name, qual) =>
+          this += "Type.TypeNameRef(\"" += name += "\", " += qual += ")"
         case Type.Refinement(parent, name, info) =>
           this += "Type.Refinement(" += parent += ", " += name += ", " += info += ")"
         case Type.AppliedType(tycon, args) =>
@@ -1368,13 +1370,13 @@ trait Printers
               printTypeAndAnnots(tp)
               this += " "
               printAnnotation(annot)
-            case Type.SymRef(IsClassDefSymbol(sym), _) if sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$" =>
+            case Type.TypeSymRef(IsClassDefSymbol(sym), _) if sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$" =>
               // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
               printType(tpe)
-            case tpe @ Type.SymRef(IsClassDefSymbol(sym), _) if sym.name.endsWith("$") =>
+            case tpe @ Type.TypeSymRef(IsClassDefSymbol(sym), _) if sym.name.endsWith("$") =>
               printType(tpe)
               this += ".type"
-            case tpe @ Type.SymRef(sym, _) if sym.isTerm =>
+            case tpe @ Type.TermSymRef(sym, _) =>
               printType(tpe)
               this += ".type"
             case tpe => printType(tpe)
@@ -1467,7 +1469,7 @@ trait Printers
         case Type.ConstantType(const) =>
           printConstant(const)
 
-        case Type.SymRef(sym, prefix) if sym.isType =>
+        case Type.TypeSymRef(sym, prefix) =>
           prefix match {
             case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
             case NoPrefix() =>
@@ -1477,18 +1479,20 @@ trait Printers
                 if (packagePath != "")
                   this += packagePath += "."
               }
-            case IsType(prefix @ Type.SymRef(IsClassDefSymbol(_), _)) =>
+            case IsType(prefix @ Type.TypeSymRef(IsClassDefSymbol(_), _)) =>
               printType(prefix)
               this += "#"
-            case IsType(Type.ThisType(Type.SymRef(cdef, _)))
-            if elideThis.nonEmpty && cdef == elideThis.get =>
+            case IsType(Type.ThisType(Type.TypeSymRef(cdef, _)))
+                if elideThis.nonEmpty && cdef == elideThis.get =>
+            case IsType(Type.ThisType(Type.TermSymRef(cdef, _)))
+              if elideThis.nonEmpty && cdef == elideThis.get =>
             case IsType(prefix) =>
               printType(prefix)
               this += "."
           }
           this += highlightTypeDef(sym.name.stripSuffix("$"), color)
 
-        case Type.SymRef(sym, prefix) if sym.isTerm =>
+        case Type.TermSymRef(sym, prefix) =>
           prefix match {
             case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
                 this += highlightTypeDef(sym.name, color)
@@ -1499,7 +1503,7 @@ trait Printers
               this
           }
 
-        case Type.TermRef(name, prefix) =>
+        case Type.TermNameRef(name, prefix) =>
           prefix match {
             case Type.ThisType(Types.EmptyPackage()) =>
               this += highlightTypeDef(name, color)
@@ -1512,7 +1516,7 @@ trait Printers
               this += highlightTypeDef(name, color)
           }
 
-        case Type.TypeRef(name, prefix) =>
+        case Type.TypeNameRef(name, prefix) =>
           prefix match {
             case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
             case IsType(prefix) => printType(prefix) += "."
@@ -1525,7 +1529,7 @@ trait Printers
 
         case Type.AppliedType(tp, args) =>
           tp match {
-            case Type.TypeRef("<repeated>", Types.ScalaPackage()) =>
+            case Type.TypeNameRef("<repeated>", Types.ScalaPackage()) =>
               this += "_*"
             case _ =>
               printType(tp)
@@ -1559,10 +1563,10 @@ trait Printers
 
         case Type.ThisType(tp) =>
           tp match {
-            case Type.SymRef(cdef, _) if !cdef.flags.is(Flags.Object) =>
+            case Type.TermSymRef(cdef, _) if !cdef.flags.is(Flags.Object) =>
               printFullClassName(tp)
               this += highlightTypeDef(".this", color)
-            case Type.TypeRef(name, prefix) if name.endsWith("$") =>
+            case Type.TypeNameRef(name, prefix) if name.endsWith("$") =>
               prefix match {
                 case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
                 case _ =>
@@ -1628,8 +1632,8 @@ trait Printers
         val annots = definition.symbol.annots.filter {
           case Annotation(annot, _) =>
             annot.tpe match {
-              case Type.TypeRef(_, Type.SymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => false
-              case Type.TypeRef("forceInline", Types.ScalaPackage()) => false
+              case Type.TypeNameRef(_, Type.TermSymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => false
+              case Type.TypeNameRef("forceInline", Types.ScalaPackage()) => false
               case _ => true
             }
           case x => throw new MatchError(x.show)
@@ -1725,7 +1729,9 @@ trait Printers
       def printProtectedOrPrivate(definition: Definition): Boolean = {
         var prefixWasPrinted = false
         def printWithin(within: Type) = within match {
-          case Type.SymRef(sym, _) =>
+          case Type.TermSymRef(sym, _) =>
+            this += sym.name
+          case Type.TypeSymRef(sym, _) =>
             this += sym.name
           case _ => printFullClassName(within)
         }
@@ -1753,12 +1759,12 @@ trait Printers
 
       def printFullClassName(tp: TypeOrBounds): Unit = {
         def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
-          case Type.SymRef(IsClassDefSymbol(sym), prefix2) =>
+          case Type.TypeSymRef(IsClassDefSymbol(sym), prefix2) =>
             printClassPrefix(prefix2)
             this += sym.name += "."
           case _ =>
         }
-        val Type.SymRef(sym, prefix) = tp
+        val Type.TypeSymRef(sym, prefix) = tp
         printClassPrefix(prefix)
         this += sym.name
       }
@@ -1792,7 +1798,7 @@ trait Printers
       def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
         case IsTerm(arg @ Term.Apply(fn, args)) =>
           fn.tpe match {
-            case Type.SymRef(IsDefDefSymbol(sym), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
+            case Type.TermSymRef(IsDefDefSymbol(sym), Type.ThisType(Type.TermSymRef(sym2, _))) if sym2.name == "<special-ops>" =>
               Some((sym.tree.name, args))
             case _ => None
           }
@@ -1814,49 +1820,49 @@ trait Printers
 
       object JavaLangObject {
         def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
-          case Type.TypeRef("Object", Type.SymRef(sym, _)) if sym.fullName == "java.lang" => true
+          case Type.TypeNameRef("Object", Type.TermSymRef(sym, _)) if sym.fullName == "java.lang" => true
           case _ => false
         }
       }
 
       object Sequence {
         def unapply(tpe: Type)(implicit ctx: Context): Option[Type] = tpe match {
-          case Type.AppliedType(Type.TypeRef("Seq", Type.SymRef(sym, _)), IsType(tp) :: Nil) if sym.fullName == "scala.collection" => Some(tp)
+          case Type.AppliedType(Type.TypeNameRef("Seq", Type.TermSymRef(sym, _)), IsType(tp) :: Nil) if sym.fullName == "scala.collection" => Some(tp)
           case _ => None
         }
       }
 
       object RepeatedAnnotation {
         def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
-          case Type.TypeRef("Repeated", Type.SymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => true
+          case Type.TypeNameRef("Repeated", Type.TermSymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => true
           case _ => false
         }
       }
 
       object Repeated {
         def unapply(tpe: Type)(implicit ctx: Context): Option[Type] = tpe match {
-          case Type.AppliedType(Type.TypeRef("<repeated>", ScalaPackage()), IsType(tp) :: Nil) => Some(tp)
+          case Type.AppliedType(Type.TypeNameRef("<repeated>", ScalaPackage()), IsType(tp) :: Nil) => Some(tp)
           case _ => None
         }
       }
 
       object ScalaPackage {
         def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-          case Type.SymRef(sym, _) => sym == definitions.ScalaPackage
+          case Type.TypeSymRef(sym, _) => sym == definitions.ScalaPackage
           case _ => false
         }
       }
 
       object RootPackage {
         def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-          case Type.SymRef(sym, _) => sym.fullName == "<root>" // TODO use Symbol.==
+          case Type.TypeSymRef(sym, _) => sym.fullName == "<root>" // TODO use Symbol.==
           case _ => false
         }
       }
 
       object EmptyPackage {
         def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-          case Type.SymRef(sym, _) => sym.fullName == "<empty>"
+          case Type.TypeSymRef(sym, _) => sym.fullName == "<empty>"
           case _ => false
         }
       }

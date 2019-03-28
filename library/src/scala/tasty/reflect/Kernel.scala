@@ -67,9 +67,10 @@ package scala.tasty.reflect
  *  +- TypeOrBounds -+- TypeBounds
  *                   |
  *                   +- Type -------+- ConstantType
- *                                  +- SymRef
- *                                  +- TermRef
- *                                  +- TypeRef
+ *                                  +- TypeRef -+- SymTypeRef
+ *                                  |           +- NameTypeRef
+ *                                  +- TermRef -+- SymTermRef
+ *                                  |           +- NameTermRef
  *                                  +- SuperType
  *                                  +- Refinement
  *                                  +- AppliedType
@@ -849,33 +850,51 @@ trait Kernel {
 
   def ConstantType_constant(self: ConstantType)(implicit ctx: Context): Constant
 
-  /** Type of a reference to a symbol */
-  type SymRef <: Type
-
-  def matchSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]
-
-  // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
-  def matchSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
-
-  def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds
-
   /** Type of a reference to a term */
   type TermRef <: Type
 
   def matchTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]
 
-  def TermRef_name(self: TermRef)(implicit ctx: Context): String
   def TermRef_qualifier(self: TermRef)(implicit ctx: Context): TypeOrBounds
 
-  def TermRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef
+  /** Type of a reference to a term symbol */
+  type TermSymRef <: TermRef
+
+  def matchTermSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermSymRef]
+
+  def TermSymRef_symbol(self: TermSymRef)(implicit ctx: Context): TermSymbol
+
+  /** Type of a reference to a term by its name */
+  type TermNameRef <: TermRef
+
+  def matchTermNameRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermNameRef]
+
+  def TermNameRef_name(self: TermRef)(implicit ctx: Context): String
+
+  def TermNameRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermNameRef
 
   /** Type of a reference to a type */
   type TypeRef <: Type
 
   def matchTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]
 
-  def TypeRef_name(self: TypeRef)(implicit ctx: Context): String
   def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds
+
+  /** Type of a reference to a type symbol */
+  type TypeSymRef <: TypeRef
+
+  def matchTypeSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeSymRef]
+
+  def TypeSymRef_symbol(self: TypeSymRef)(implicit ctx: Context): TypeSymbol
+
+  /** Type of a reference to a type by its name */
+  type TypeNameRef <: TypeRef
+
+  def matchTypeNameRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeNameRef]
+
+  def TypeNameRef_name(self: TypeRef)(implicit ctx: Context): String
+
+  def TypeNameRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TypeNameRef
 
   /** Type of a `super` refernce */
   type SuperType <: Type
