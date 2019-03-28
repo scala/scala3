@@ -41,7 +41,7 @@ pipeline:
       - cp -R . /tmp/3/ && cd /tmp/3/
       - git submodule update --init --recursive --jobs 7
       - export PATH=/tmp/4/project/scripts:$PATH
-      - sbt community-build/test
+      - ./project/scripts/sbt community-build/test
 
   test_sbt:
     group: test
