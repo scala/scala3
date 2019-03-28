@@ -244,7 +244,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    override val isContextual: Boolean, state: FunProtoState = new FunProtoState)(implicit ctx: Context)
+    override val isContextual: Boolean, state: FunProtoState = new FunProtoState)(implicit val ctx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(implicit ctx: Context): Type = resType
 
@@ -298,13 +298,26 @@ object ProtoTypes {
 
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
+     *
+     *  Arguments are typechecked in the typerState where the FunProto was created.
+     *  However, any constraint changes are also propagated to the currently passed
+     *  context.
+     *
      */
-    def unforcedTypedArgs: List[Tree] =
+    def unforcedTypedArgs(implicit ctx: Context): List[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
-        val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force = false))
-        if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
-        args1
+        val prevConstraint = this.ctx.typerState.constraint
+
+        try {
+          implicit val ctx = this.ctx
+          val args1 = args.mapconserve(cacheTypedArg(_, typer.typed(_), force = false))
+          if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
+          args1
+        }
+        finally
+          if (this.ctx.typerState.constraint ne prevConstraint)
+            ctx.typerState.mergeConstraintWith(this.ctx.typerState)
       }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
@@ -372,7 +385,7 @@ object ProtoTypes {
    *  [](args): resultType, where args are known to be typed
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, isContextual: Boolean)(implicit ctx: Context) extends FunProto(args, resultType)(typer, isContextual)(ctx) {
-    override def unforcedTypedArgs: List[tpd.Tree] = args
+    override def unforcedTypedArgs(implicit ctx: Context): List[tpd.Tree] = args
     override def withContext(ctx: Context): FunProtoTyped = this
   }
 
@@ -485,20 +498,7 @@ object ProtoTypes {
         tt.withType(tvar)
       }
 
-    /** Ensure that `tl` is not already in constraint, make a copy of necessary */
-    def ensureFresh(tl: TypeLambda): TypeLambda =
-      if (state.constraint contains tl) {
-      	var paramInfos = tl.paramInfos
-      	if (tl.isInstanceOf[HKLambda]) {
-      	  // HKLambdas are hash-consed, need to create an artificial difference by adding
-      	  // a LazyRef to a bound.
-          val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
-          paramInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1
-        }
-        ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
-      }
-      else tl
-    val added = ensureFresh(tl)
+    val added = state.constraint.ensureFresh(tl)
     val tvars = if (addTypeVars) newTypeVars(added) else Nil
     ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)

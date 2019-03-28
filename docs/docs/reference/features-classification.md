@@ -44,8 +44,9 @@ These features replace existing constructs with the aim of making the language s
    of value classes while guaranteeing absence of boxing,
  - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate,
  - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
- - [Synthesized creation methods](https://contributors.scala-lang.org/t/expunging-new-from-scala-3/2868/81) allow to use simple function call syntax
- instead of `new` expressions (under discussion, not implemented).
+ - [Creator applications](https://dotty.epfl.ch/docs/reference/other-new-features/creator-applications.html) allow to use simple function call syntax
+ instead of `new` expressions. `new` expressions stay around as a fallback for
+ the cases where creator applications cannot be used.
 
 With the exception of early initializers and old-style vararg patterns, all superseded features continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 

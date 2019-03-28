@@ -95,17 +95,18 @@ trait Reporting { this: Context =>
   def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
     val fullPos = addInlineds(pos)
     if (this.settings.strict.value) error(msg, fullPos)
-    else reportWarning(new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(fullPos))
+    else reportWarning(
+      new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)")
+        .warning(fullPos))
   }
 
-  def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
-    reporter.report(new Error(msg, addInlineds(pos)))
-  }
-
-  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit = {
+  def error(msg: => Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
-    if (ctx.scala2Mode) migrationWarning(msg, fullPos) else error(msg, fullPos)
+    reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
   }
+
+  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
 
   def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report {
@@ -202,6 +203,9 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
+
+  /** Were sticky errors reported? Overridden in StoreReporter. */
+  def hasStickyErrors: Boolean = false
 
   /** Have errors been reported by this reporter, or in the
    *  case where this is a StoreReporter, by an outer reporter?

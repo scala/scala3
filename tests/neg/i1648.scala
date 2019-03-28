@@ -1,1 +1,1 @@
-class Foo { Object[A] } // error // error
+class Foo { Object[A] } // error

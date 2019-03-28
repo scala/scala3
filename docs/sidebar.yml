@@ -69,6 +69,8 @@ sidebar:
           subsection:
             - title: Trait Parameters
               url: docs/reference/other-new-features/trait-parameters.html
+            - title: Creator Applications
+              url: docs/reference/other-new-features/creator-applications.html
             - title: Inlining by Rewriting
               url: docs/reference/other-new-features/inline.html
             - title: Meta Programming

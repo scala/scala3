@@ -15,7 +15,7 @@ import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
 import ast.{Trees, untpd}
-import typer.{Implicits, Namer}
+import typer.{Implicits, Namer, Applications}
 import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
@@ -578,6 +578,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Splice(tree) =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
+      case tree: Applications.IntegratedTypeArgs =>
+        toText(tree.app) ~ Str("(with integrated type args)").provided(ctx.settings.YprintDebug.value)
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>

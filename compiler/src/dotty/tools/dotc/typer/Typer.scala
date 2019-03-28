@@ -27,7 +27,7 @@ import EtaExpansion.etaExpand
 import util.Spans._
 import util.common._
 import util.Property
-import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs}
+import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
 
 import collection.mutable
 import annotation.tailrec
@@ -441,25 +441,25 @@ class Typer extends Namer
     tree
   }
 
-  private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
-    Applications.handleMeta(checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
+  def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Tree = qual match {
+    case qual @ IntegratedTypeArgs(app) =>
+      pt.revealIgnored match {
+        case _: PolyProto => qual // keep the IntegratedTypeArgs to strip at next typedTypeApply
+        case _ => app
+      }
+    case qual =>
+      if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
+      val select = Applications.handleMeta(
+        checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
+      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
+      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
+      else typedDynamicSelect(tree, Nil, pt)
+  }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
     def typeSelectOnTerm(implicit ctx: Context): Tree =
-      typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
-        case qual1 @ ExtMethodApply(app) =>
-          pt.revealIgnored match {
-            case _: PolyProto => qual1 // keep the ExtMethodApply to strip at next typedTypeApply
-            case _ => app
-          }
-        case qual1 =>
-          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.sourcePos)
-          val select = typedSelect(tree, pt, qual1)
-          if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-          else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
-          else typedDynamicSelect(tree, Nil, pt)
-      }
+      typedSelect(tree, pt, typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)))
 
     def typeSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
       typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
@@ -2113,7 +2113,7 @@ class Typer extends Namer
         try adapt(typedUnadapted(tree, pt, locked), pt, locked)
         catch {
           case ex: TypeError =>
-            errorTree(tree, ex.toMessage, tree.sourcePos.focus)
+            errorTree(tree, ex.toMessage, tree.sourcePos.focus, sticky = true)
             // This uses tree.span.focus instead of the default tree.span, because:
             // - since tree can be a top-level definition, tree.span can point to the whole definition
             // - that would in turn hide all other type errors inside tree.
@@ -2203,7 +2203,7 @@ class Typer extends Namer
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(nestedCtx)
-    if (nestedCtx.reporter.hasErrors) {
+    if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
       record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
     }
@@ -2230,6 +2230,55 @@ class Typer extends Namer
     case pt: SelectionProto => pt.name == nme.apply
     case pt: FunProto       => pt.args.isEmpty && isApplyProto(pt.resultType)
     case _                  => false
+  }
+
+  /** Try to rename `tpt` to a type `T` and typecheck `new T` with given expected type `pt`.
+   *  The operation is called from either `adapt` or `typedApply`. `adapt` gets to call `tryNew`
+   *  for calls `p.C(..)` if there is a value `p.C`. `typedApply` calls `tryNew` as a fallback
+   *  in case typing `p.C` fails since there is no value with path `p.C`. The call from `adapt`
+   *  is more efficient since it re-uses the prefix `p` in typed form.
+   */
+  def tryNew[T >: Untyped <: Type]
+    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = {
+
+    def tryWithType(tpt: untpd.Tree): Tree =
+      tryEither { implicit ctx =>
+        val tycon = typed(tpt)
+        if (ctx.reporter.hasErrors)
+          EmptyTree // signal that we should return the error in fallBack
+        else {
+          def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
+            case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
+              // Applications with named arguments cannot be converted, since new expressions
+              // don't accept named arguments
+              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
+            case _ =>
+              typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
+          }
+          recur(tycon, pt)
+            .reporting(res => i"try new $tree -> $res", typr)
+        }
+      } { (nu, nuState) =>
+        if (nu.isEmpty) fallBack
+        else {
+          // we found a type constructor, signal the error in its application instead of the original one
+          nuState.commit()
+          nu
+        }
+      }
+
+    tree match {
+      case Ident(name) =>
+        tryWithType(cpy.Ident(tree)(name.toTypeName))
+      case Select(qual, name) =>
+        val qual1 = treesInst match {
+          case `tpd` => untpd.TypedSplice(qual)
+          case `untpd` => qual
+        }
+        tryWithType(cpy.Select(tree)(qual1, name.toTypeName))
+      case _ =>
+        fallBack
+    }
   }
 
   /** Potentially add apply node or implicit conversions. Before trying either,
@@ -2273,7 +2322,8 @@ class Typer extends Namer
     }
 
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked)
+        .getOrElse(tryNew(tpd)(tree, pt, fallBack))
 
     if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
       // Suppress insertion of apply or implicit conversion on extension method receiver
@@ -2376,64 +2426,64 @@ class Typer extends Namer
       tree.withType(mt.resultType)
     }
 
-      def adaptOverloaded(ref: TermRef) = {
-        val altDenots = ref.denot.alternatives
-        typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
-        val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
-        resolveOverloaded(alts, pt) match {
-          case alt :: Nil =>
-            readaptSimplified(tree.withType(alt))
-          case Nil =>
-            def noMatches =
-              errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
-            def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
-            pt match {
-              case pt: FunProto if !pt.isContextual =>
-              	// insert apply or convert qualifier only for a regular application
-                tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
-              case _ =>
-                if (altDenots exists (_.info.paramInfoss == ListOfNil))
-                  typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
-                else
-                  noMatches
-            }
-          case alts =>
-            if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
-            else {
-              val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-              errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
-            }
-        }
-      }
-
-      def isUnary(tp: Type): Boolean = tp match {
-        case tp: MethodicType =>
-          tp.firstParamTypes match {
-            case ptype :: Nil => !ptype.isRepeatedParam
-            case _ => false
+    def adaptOverloaded(ref: TermRef) = {
+      val altDenots = ref.denot.alternatives
+      typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
+      val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
+      resolveOverloaded(alts, pt) match {
+        case alt :: Nil =>
+          readaptSimplified(tree.withType(alt))
+        case Nil =>
+          def noMatches =
+            errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
+          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
+          pt match {
+            case pt: FunProto if !pt.isContextual =>
+              // insert apply or convert qualifier only for a regular application
+              tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
+            case _ =>
+              if (altDenots exists (_.info.paramInfoss == ListOfNil))
+                typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
+              else
+                noMatches
           }
-        case tp: TermRef =>
-          tp.denot.alternatives.forall(alt => isUnary(alt.info))
-        case _ =>
-          false
+        case alts =>
+          if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
+          else {
+            val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
+            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+          }
       }
+    }
 
-      def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-        case wtp: MethodOrPoly =>
-          def methodStr = methPart(tree).symbol.showLocated
-          if (matchingApply(wtp, pt))
-            if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
-              adapt(tree, pt.tupled, locked)
-            else
-              tree
-          else if (wtp.isContextual)
-            adaptNoArgs(wtp)  // insert arguments implicitly
-          else
-            errorTree(tree, em"Missing arguments for $methodStr")
-        case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
-          errorTree(tree, MethodDoesNotTakeParameters(tree))
+    def isUnary(tp: Type): Boolean = tp match {
+      case tp: MethodicType =>
+        tp.firstParamTypes match {
+          case ptype :: Nil => !ptype.isRepeatedParam
+          case _ => false
         }
+      case tp: TermRef =>
+        tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      case _ =>
+        false
+    }
+
+    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+      case wtp: MethodOrPoly =>
+        def methodStr = methPart(tree).symbol.showLocated
+        if (matchingApply(wtp, pt))
+          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+            adapt(tree, pt.tupled, locked)
+          else
+            tree
+        else if (wtp.isContextual)
+          adaptNoArgs(wtp)  // insert arguments implicitly
+        else
+          errorTree(tree, em"Missing arguments for $methodStr")
+      case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
+        errorTree(tree, MethodDoesNotTakeParameters(tree))
       }
+    }
 
     /** If `tp` is a TypeVar which is fully constrained (i.e. its upper bound `hi` conforms
      *  to its lower bound `lo`), replace `tp` by `hi`. This is necessary to
@@ -2828,13 +2878,13 @@ class Typer extends Namer
               }
             }
             catch {
-              case ex: TypeError => errorTree(tree, ex.toMessage, tree.sourcePos)
+              case ex: TypeError => errorTree(tree, ex.toMessage, tree.sourcePos, sticky = true)
             }
           val nestedCtx = ctx.fresh.setNewTyperState()
           val app = tryExtension(nestedCtx)
           if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
             nestedCtx.typerState.commit()
-            return ExtMethodApply(app).withType(WildcardType)
+            return new ExtMethodApply(app).withType(WildcardType)
               // Use wildcard type in order not to prompt any further adaptations such as eta expansion
               // before the method is fully applied.
           }
@@ -2932,7 +2982,7 @@ class Typer extends Namer
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tree match {
-                case _: ExtMethodApply => tree
+                case _: IntegratedTypeArgs => tree
                 case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
               }
             case _ =>

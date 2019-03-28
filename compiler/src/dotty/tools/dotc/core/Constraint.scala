@@ -17,8 +17,8 @@ abstract class Constraint extends Showable {
 
   type This <: Constraint
 
-  /** Does the constraint's domain contain the type parameters of `pt`? */
-  def contains(pt: TypeLambda): Boolean
+  /** Does the constraint's domain contain the type parameters of `tl`? */
+  def contains(tl: TypeLambda): Boolean
 
   /** Does the constraint's domain contain the type parameter `param`? */
   def contains(param: TypeParamRef): Boolean
@@ -106,14 +106,22 @@ abstract class Constraint extends Showable {
    */
   def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
 
-  /** Is entry associated with `pt` removable? This is the case if
+  /** Is entry associated with `tl` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
    *  which have their `inst` fields set.
    */
-  def isRemovable(pt: TypeLambda): Boolean
+  def isRemovable(tl: TypeLambda): Boolean
 
-  /** A new constraint with all entries coming from `pt` removed. */
-  def remove(pt: TypeLambda)(implicit ctx: Context): This
+  /** A new constraint with all entries coming from `tl` removed. */
+  def remove(tl: TypeLambda)(implicit ctx: Context): This
+
+  /** A new constraint with entry `tl` renamed to a fresh type lambda */
+  def rename(tl: TypeLambda)(implicit ctx: Context): This
+
+  /** The given `tl` in case it is not contained in this constraint,
+   *  a fresh copy of `tl` otherwise.
+   */
+  def ensureFresh(tl: TypeLambda)(implicit ctx: Context): TypeLambda
 
   /** The type lambdas constrained by this constraint */
   def domainLambdas: List[TypeLambda]

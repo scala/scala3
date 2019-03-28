@@ -186,9 +186,12 @@ object Applications {
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
-  /** A wrapper indicating that its argument is an application of an extension method.
+  /** A wrapper indicating that its `app` argument has already integrated the type arguments
+   *  of the expected type, provided that type is a (possibly ignored) PolyProto.
+   *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
+   *  `args` are the type arguments of the expected type.
    */
-  class ExtMethodApply(val app: Tree)(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
+  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def span = app.span
 
     def canEqual(that: Any): Boolean = app.canEqual(that)
@@ -196,18 +199,23 @@ object Applications {
     def productElement(n: Int): Any = app.productElement(n)
   }
 
-  /** The unapply method of this extractor also recognizes ExtMethodApplys in closure blocks.
+  /** The unapply method of this extractor also recognizes IntegratedTypeArgs in closure blocks.
    *  This is necessary to deal with closures as left arguments of extension method applications.
    *  A test case is i5606.scala
    */
-  object ExtMethodApply {
-    def apply(app: Tree)(implicit ctx: Context) = new ExtMethodApply(app)
+  object IntegratedTypeArgs {
+    def apply(app: Tree)(implicit ctx: Context) = new IntegratedTypeArgs(app)
     def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-      case tree: ExtMethodApply => Some(tree.app)
-      case Block(stats, ExtMethodApply(app)) => Some(tpd.cpy.Block(tree)(stats, app))
+      case tree: IntegratedTypeArgs => Some(tree.app)
+      case Block(stats, IntegratedTypeArgs(app)) => Some(tpd.cpy.Block(tree)(stats, app))
       case _ => None
     }
   }
+
+  /** A wrapper indicating that its argument is an application of an extension method.
+   */
+  class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
+  extends IntegratedTypeArgs(app)
 
   /** 1. If we are in an inline method but not in a nested quote, mark the inline method
    *  as a macro.
@@ -797,6 +805,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     if (ctx.owner.isClassConstructor && untpd.isSelfConstrCall(app)) ctx.thisCallArgContext
     else ctx
 
+  /** Typecheck the function part of an application.
+   *  Fallback if this fails: try to convert `E` to `new E`.
+   */
+  def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
+    tryEither { implicit ctx =>
+      typedExpr(fn, pt)
+    } { (result, tstate) =>
+      def fallBack = {
+        tstate.commit()
+        result
+      }
+      if (untpd.isPath(fn)) tryNew(untpd)(fn, pt, fallBack)
+      else fallBack
+    }
+
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
@@ -806,7 +829,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def realApply(implicit ctx: Context): Tree = track("realApply") {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isContextual)(argCtx(tree))
       record("typedApply")
-      val fun1 = typedExpr(tree.fun, originalProto)
+      val fun1 = typedFunPart(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
       // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application,
@@ -941,8 +964,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
-    handleMeta(typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
-      case ExtMethodApply(app) =>
+    handleMeta(typedFunPart(tree.fun, PolyProto(typedArgs, pt)) match {
+      case IntegratedTypeArgs(app) =>
         app
       case _: TypeApply if !ctx.isAfterTyper =>
         errorTree(tree, "illegal repeated type application")
@@ -1391,11 +1414,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         tp
     }
 
-    val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
-    val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
-    val ownerScore = compareOwner(owner1, owner2)
-
     def compareWithTypes(tp1: Type, tp2: Type) = {
+      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
       def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 

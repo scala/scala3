@@ -8,7 +8,8 @@ import Symbols._
 import StdNames._
 import Decorators._
 import typer.ProtoTypes._
-import ast.{tpd, untpd}
+import ast.{tpd, untpd, Trees}
+import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
 
@@ -64,6 +65,9 @@ class ReTyper extends Typer with ReChecking {
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
     promote(tree)
 
+  override def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
+    typedExpr(fn, pt)
+
   override def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
     assertTyped(tree)
     val body1 = typed(tree.body, pt)
@@ -92,6 +96,9 @@ class ReTyper extends Typer with ReChecking {
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree =
     fallBack
+
+  override def tryNew[T >: Untyped <: Type]
+    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = fallBack
 
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = ()
 

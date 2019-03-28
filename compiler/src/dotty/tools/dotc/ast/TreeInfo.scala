@@ -106,6 +106,13 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => Nil
   }
 
+  /** Is tree a path? */
+  def isPath(tree: Tree): Boolean = unsplice(tree) match {
+    case Ident(_) | This(_) | Super(_, _) => true
+    case Select(qual, _) => isPath(qual)
+    case _ => false
+  }
+
   /** Is tree a self constructor call this(...)? I.e. a call to a constructor of the
    *  same object?
    */
