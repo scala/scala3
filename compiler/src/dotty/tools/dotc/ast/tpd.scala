@@ -1040,7 +1040,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** Is this a symbol that of a local val or parameterless def for which we could get the rhs */
     private def isBinding(sym: Symbol)(implicit ctx: Context): Boolean = {
-      sym.exists && !sym.is(Param) && !sym.owner.isClass &&
+      sym.isTerm && !sym.is(Param) && !sym.owner.isClass &&
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
     }
   }
