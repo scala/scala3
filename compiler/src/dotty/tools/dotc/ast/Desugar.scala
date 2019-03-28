@@ -355,11 +355,14 @@ object desugar {
     val originalVparamss = constr1.vparamss
     lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParam)
     val impliedTparams =
-      if (isEnumCase && originalTparams.isEmpty &&
-          typeParamIsReferenced(enumClass.typeParams, originalVparamss, parents))
-        derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
-      else
-        originalTparams
+      if (isEnumCase) {
+        val tparamReferenced = typeParamIsReferenced(
+            enumClass.typeParams, originalTparams, originalVparamss, parents)
+        if (originalTparams.isEmpty && (parents.isEmpty || tparamReferenced))
+          derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
+        else originalTparams
+      }
+      else originalTparams
     val constrTparams = impliedTparams.map(toDefParam)
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
@@ -739,8 +742,11 @@ object desugar {
 
     if (mods is Package)
       PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
-    else if (isEnumCase)
+    else if (isEnumCase) {
+      typeParamIsReferenced(enumClass.typeParams, Nil, Nil, impl.parents)
+        // used to check there are no illegal references to enum's type parameters in parents
       expandEnumModule(moduleName, impl, mods, mdef.span)
+    }
     else {
       val clsName = moduleName.moduleClassName
       val clsRef = Ident(clsName)

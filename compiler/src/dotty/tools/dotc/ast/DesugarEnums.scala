@@ -168,22 +168,34 @@ object DesugarEnums {
     }
   }
 
-  /** Is a type parameter in `tparams` referenced from an enum class case that has
-   *  given value parameters `vparamss` and given parents `parents`?
+  /** Is a type parameter in `enumTypeParams` referenced from an enum class case that has
+   *  given type parameters `caseTypeParams`, value parameters `vparamss` and parents `parents`?
+   *  Issues an error if that is the case but the reference is illegal.
+   *  The reference could be illegal for two reasons:
+   *   - explicit type parameters are given
+   *   - it's a value case, i.e. no value parameters are given
    */
-  def typeParamIsReferenced(tparams: List[TypeSymbol], vparamss: List[List[ValDef]], parents: List[Tree])(implicit ctx: Context): Boolean = {
+  def typeParamIsReferenced(
+    enumTypeParams: List[TypeSymbol],
+    caseTypeParams: List[TypeDef],
+    vparamss: List[List[ValDef]],
+    parents: List[Tree])(implicit ctx: Context): Boolean = {
 
-    val searchRef = new untpd.TreeAccumulator[Boolean] {
-      var tparamNames = tparams.map(_.name).toSet[Name]
+    object searchRef extends UntypedTreeAccumulator[Boolean] {
+      var tparamNames = enumTypeParams.map(_.name).toSet[Name]
       def underBinders(binders: List[MemberDef], op: => Boolean): Boolean = {
         val saved = tparamNames
         tparamNames = tparamNames -- binders.map(_.name)
         try op
         finally tparamNames = saved
       }
-      def apply(x: Boolean, tree: Tree)(implicit ctx: Context) = x || {
+      def apply(x: Boolean, tree: Tree)(implicit ctx: Context): Boolean = x || {
         tree match {
-          case Ident(name) => tparamNames.contains(name)
+          case Ident(name) =>
+            val matches = tparamNames.contains(name)
+            if (matches && (caseTypeParams.nonEmpty || vparamss.isEmpty))
+              ctx.error(i"illegal reference to type parameter $name from enum case", tree.sourcePos)
+            matches
           case LambdaTypeTree(lambdaParams, body) =>
             underBinders(lambdaParams, foldOver(x, tree))
           case RefinedTypeTree(parent, refinements) =>
@@ -192,9 +204,11 @@ object DesugarEnums {
           case _ => foldOver(x, tree)
         }
       }
+      def apply(tree: Tree)(implicit ctx: Context): Boolean =
+        underBinders(caseTypeParams, apply(false, tree))
     }
 
-    def typeHasRef(tpt: Tree) = searchRef(false, tpt)
+    def typeHasRef(tpt: Tree) = searchRef(tpt)
     def valDefHasRef(vd: ValDef) = typeHasRef(vd.tpt)
     def parentHasRef(parent: Tree): Boolean = parent match {
       case Apply(fn, _) => parentHasRef(fn)
@@ -204,9 +218,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    parents.isEmpty ||  // a parent class that refers to type parameters will be generated in this case
-    vparamss.exists(_.exists(valDefHasRef)) ||
-    parents.exists(parentHasRef)
+    vparamss.exists(_.exists(valDefHasRef)) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of

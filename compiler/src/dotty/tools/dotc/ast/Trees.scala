@@ -1419,7 +1419,7 @@ object Trees {
       }
 
       def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = {
-        assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive))
+        assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), tree)
           // In interactive mode, errors might come from previous runs.
           // In case of errors it may be that typed trees point to untyped ones.
           // The IDE can still traverse inside such trees, either in the run where errors

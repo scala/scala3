@@ -24,6 +24,12 @@ enum E4 {
 case class C4() extends E4 // error: cannot extend enum
 case object O4 extends E4 // error: cannot extend enum
 
+enum Captured[T] {
+  case Case1[U](x: T) extends Captured[U] // error: illegal reference to type parameter T from enum case
+  case Case2[U]()     extends Captured[T] // error: illegal reference to type parameter T from enum case
+  case Case3          extends Captured[T] // error: illegal reference to type parameter T from enum case
+}
+
 enum Option[+T] derives Eql {
   case Some(x: T)
   case None

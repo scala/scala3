@@ -127,6 +127,9 @@ map into case classes or vals.
    as one of the `enumValues` of the enumeration (see below). `$values` is a
    compiler-defined private value in the companion object.
 
+   It is an error if a value case refers to a type parameter of the enclosing `enum`
+   in a type argument of `<parents>`.
+
 9. A class case
 
        case C <params> extends <parents>
@@ -144,6 +147,11 @@ map into case classes or vals.
 
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.
+
+   It is an error if a value case refers to a type parameter of the enclosing `enum`
+   in a parameter type in `<params>` or in a type argument of `<parents>`, unless that parameter is already
+   a type parameter of the case, i.e. the parameter name is defined in `<params>`.
+
 
 ### Translation of Enumerations
 
