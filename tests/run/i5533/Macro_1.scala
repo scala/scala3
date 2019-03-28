@@ -13,7 +13,7 @@ object scalatest {
 
     val tree = condition.unseal
 
-    val expr = tree.seal[Boolean]
+    val expr = tree.seal.cast[Boolean]
 
     '{println($expr)}
   }

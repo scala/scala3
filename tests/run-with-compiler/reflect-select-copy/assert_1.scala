@@ -18,27 +18,27 @@ object scalatest {
         let(lhs) { left =>
           let(rhs) { right =>
             let(Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
-              val l = left.seal[Any]
-              val r = right.seal[Any]
-              val b = result.seal[Boolean]
+              val l = left.seal
+              val r = right.seal
+              val b = result.seal.cast[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
               code.unseal
             }
           }
-        }.seal[Unit]
+        }.seal.cast[Unit]
       case Apply(f @ Apply(IsSelect(sel @ Select(Apply(qual, lhs :: Nil), op)), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
         let(lhs) { left =>
           let(rhs) { right =>
             let(Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
-              val l = left.seal[Any]
-              val r = right.seal[Any]
-              val b = result.seal[Boolean]
+              val l = left.seal
+              val r = right.seal
+              val b = result.seal.cast[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
               code.unseal
             }
           }
-        }.seal[Unit]
+        }.seal.cast[Unit]
     }
   }
 

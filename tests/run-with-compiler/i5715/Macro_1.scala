@@ -11,7 +11,7 @@ object scalatest {
     cond.unseal.underlyingArgument match {
       case app @ Apply(sel @ Select(lhs, op), rhs :: Nil) =>
         val IsSelect(select) = sel
-        val cond = Apply(Select.copy(select)(lhs, "exists"), rhs :: Nil).seal[Boolean]
+        val cond = Apply(Select.copy(select)(lhs, "exists"), rhs :: Nil).seal.cast[Boolean]
         '{ scala.Predef.assert($cond) }
       case _ =>
         '{ scala.Predef.assert($cond) }

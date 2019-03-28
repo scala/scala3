@@ -59,19 +59,19 @@ abstract class MacroStringInterpolator[T] {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
           case Literal(Constant.String(str)) => str
-          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal[Any])
+          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal)
         }
         StringContext(strCtxArgs: _*)
       case tree =>
-        throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal[Any])
+        throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal)
     }
   }
 
   protected def getArgsList(argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): List[Expr[Any]] = {
     import reflect._
     argsExpr.unseal.underlyingArgument match {
-      case Typed(Repeated(args, _), _) => args.map(_.seal[Any])
-      case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.seal[Any])
+      case Typed(Repeated(args, _), _) => args.map(_.seal)
+      case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.seal)
     }
   }
 

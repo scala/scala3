@@ -1681,19 +1681,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   // QUOTED SEAL/UNSEAL
   //
 
-  /** View this expression `Expr[_]` as a `Term` */
+  /** View this expression `quoted.Expr[_]` as a `Term` */
   def QuotedExpr_unseal(self: scala.quoted.Expr[_])(implicit ctx: Context): Term =
     PickledQuotes.quotedExprToTree(self)
 
-  /** View this expression `Type[T]` as a `TypeTree` */
+  /** View this expression `quoted.Type[_]` as a `TypeTree` */
   def QuotedType_unseal(self: scala.quoted.Type[_])(implicit ctx: Context): TypeTree =
     PickledQuotes.quotedTypeToTree(self)
 
-  /** Convert `Term` to an `Expr[T]` and check that it conforms to `T` */
-  def QuotedExpr_seal[T](self: Term)(tpe: scala.quoted.Type[T])(implicit ctx: Context): scala.quoted.Expr[T] = {
-
-    val expectedType = QuotedType_unseal(tpe).tpe
-
+  /** Convert `Term` to an `quoted.Expr[Any]`  */
+  def QuotedExpr_seal(self: Term)(implicit ctx: Context): scala.quoted.Expr[Any] = {
     def etaExpand(term: Term): Term = term.tpe.widen match {
       case mtpe: Types.MethodType if !mtpe.isParamDependent =>
         val closureResType = mtpe.resType match {
@@ -1705,20 +1702,25 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
         tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
       case _ => term
     }
+    new scala.quoted.Exprs.TastyTreeExpr(etaExpand(self))
+  }
 
-    val expanded = etaExpand(self)
-    if (expanded.tpe <:< expectedType) {
-      new scala.quoted.Exprs.TastyTreeExpr(expanded).asInstanceOf[scala.quoted.Expr[T]]
+  /** Checked cast to a `quoted.Expr[U]` */
+  def QuotedExpr_cast[U](self: scala.quoted.Expr[_])(implicit tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
+    val tree = QuotedExpr_unseal(self)
+    val expectedType = QuotedType_unseal(tp).tpe
+    if (tree.tpe <:< expectedType) {
+      self.asInstanceOf[scala.quoted.Expr[U]]
     } else {
-      throw new scala.tasty.TastyTypecheckError(
-        s"""Term: ${self.show}
+      throw new scala.tasty.reflect.ExprCastError(
+        s"""Expr: ${tree.show}
            |did not conform to type: ${expectedType.show}
            |""".stripMargin
       )
     }
   }
 
-  /** Convert `Type` to an `quoted.Type[T]` */
+  /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type)(implicit ctx: Context): scala.quoted.Type[_] = {
     val dummySpan = ctx.owner.span // FIXME
     new scala.quoted.Types.TreeType(tpd.TypeTree(self).withSpan(dummySpan))

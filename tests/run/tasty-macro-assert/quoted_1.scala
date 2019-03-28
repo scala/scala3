@@ -35,8 +35,8 @@ object Asserts {
     tree match {
       case Inlined(_, Nil, Apply(Select(OpsTree(left), op), right :: Nil)) =>
         op match {
-          case "===" => '{assertEquals(${left.seal[Any]}, ${right.seal[Any]})}
-          case "!==" => '{assertNotEquals(${left.seal[Any]}, ${right.seal[Any]})}
+          case "===" => '{assertEquals(${left.seal}, ${right.seal})}
+          case "!==" => '{assertNotEquals(${left.seal}, ${right.seal})}
         }
       case _ =>
         '{assertTrue($cond)}

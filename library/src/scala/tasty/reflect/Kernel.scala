@@ -1375,16 +1375,20 @@ trait Kernel {
   // QUOTED SEAL/UNSEAL
   //
 
-  /** View this expression `Expr[_]` as a `Term` */
+  /** View this expression `quoted.Expr[_]` as a `Term` */
   def QuotedExpr_unseal(self: scala.quoted.Expr[_])(implicit ctx: Context): Term
 
-  /** View this expression `Type[T]` as a `TypeTree` */
+  /** Checked cast to a `quoted.Expr[U]` */
+  def QuotedExpr_cast[U](self: scala.quoted.Expr[_])(implicit tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U]
+
+  /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def QuotedType_unseal(self: scala.quoted.Type[_])(implicit ctx: Context): TypeTree
 
-  /** Convert `Term` to an `Expr[T]` and check that it conforms to `T` */
-  def QuotedExpr_seal[T](self: Term)(tpe: scala.quoted.Type[T])(implicit ctx: Context): scala.quoted.Expr[T]
+  /** Convert `Term` to an `quoted.Expr[Any]` */
+  def QuotedExpr_seal(self: Term)(implicit ctx: Context): scala.quoted.Expr[Any]
 
-  /** Convert `Type` to an `quoted.Type[T]` */
+
+  /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type)(implicit ctx: Context): scala.quoted.Type[_]
 
   //

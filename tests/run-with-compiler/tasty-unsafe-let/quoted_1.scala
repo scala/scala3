@@ -14,8 +14,8 @@ object Macros {
 
     import reflect.util.{let => letTerm}
     letTerm(rhsTerm) { rhsId =>
-      body(rhsId.seal[Any].asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
-    }.seal[Unit]
+      body(rhsId.seal.asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
+    }.seal.cast[Unit]
   }
 
 
