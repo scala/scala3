@@ -477,14 +477,32 @@ object Build {
 
       testCompilation := Def.inputTaskDyn {
         val args = spaceDelimited("<arg>").parsed
-        val updateCheckfile = args.contains("--update-checkfiles")
-        val fromTasty = args.contains("--from-tasty")
-        val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
-        val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
-        val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
-          (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
-          (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
-        (testOnly in Test).toTask(cmd)
+        if (args.contains("--help")) {
+          println(
+            s"""
+               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [<filter>]
+               |
+               |By default runs tests in dotty.tools.dotc.*CompilationTests excluding tests tagged with dotty.SlowTests.
+               |
+               |  --help                show this message
+               |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
+               |  --update-checkfiles   override the checkfiles that did not match with the current output
+               |  <filter>              substring of the path of the tests file
+               |
+             """.stripMargin
+          )
+          (testOnly in Test).toTask(" not.a.test")
+        }
+        else {
+          val updateCheckfile = args.contains("--update-checkfiles")
+          val fromTasty = args.contains("--from-tasty")
+          val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
+          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
+          val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+            (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
+            (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
+          (testOnly in Test).toTask(cmd)
+        }
       }.evaluated,
 
       dotr := {
