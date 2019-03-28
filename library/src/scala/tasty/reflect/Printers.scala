@@ -758,7 +758,7 @@ trait Printers
           printType(tree.tpe)
 
         case Term.Select(qual, name) =>
-          printTree(qual)
+          printQualTree(qual)
           if (name != "<init>" && name != "package")
             this += "." += name
           this
@@ -939,6 +939,14 @@ trait Printers
         case _ =>
           throw new MatchError(tree.show)
 
+      }
+
+      def printQualTree(tree: Tree): Buffer = tree match {
+        case Term.IsIf(_) | Term.IsMatch(_) | Term.IsWhile(_) | Term.IsTry(_) | Term.IsReturn(_) =>
+          this += "("
+          printTree(tree)
+          this += ")"
+        case _ => printTree(tree)
       }
 
       def flatBlock(stats: List[Statement], expr: Term): (List[Statement], Term) = {
