@@ -2753,7 +2753,7 @@ class Typer extends Namer
         tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
-      else if (tree.symbol.is(Macro, butNot = Inline)) {
+      else if (tree.symbol.isScala2Macro) {
         if (ctx.settings.XignoreScala2Macros.value) {
           ctx.warning("Scala 2 macro cannot be used in Dotty. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos)
           tree
