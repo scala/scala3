@@ -1378,11 +1378,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
 
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type, weight: Int): Type = tp match {
+    def stripImplicit(tp: Type): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
-        resultTypeApprox(mt)
+        stripImplicit(resultTypeApprox(mt))
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, weight))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
       case _ =>
         tp
     }
@@ -1408,8 +1408,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     val fullType1 = widenImplied(alt1.widen, alt1)
     val fullType2 = widenImplied(alt2.widen, alt2)
-    val strippedType1 = stripImplicit(fullType1, -1)
-    val strippedType2 = stripImplicit(fullType2, +1)
+    val strippedType1 = stripImplicit(fullType1)
+    val strippedType2 = stripImplicit(fullType2)
 
     val result = compareWithTypes(strippedType1, strippedType2)
     if (result != 0) result
