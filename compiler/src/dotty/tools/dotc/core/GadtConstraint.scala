@@ -193,14 +193,20 @@ final class ProperGadtConstraint private(
       case null =>
         val res = {
           import NameKinds.DepParamName
+          // For symbols standing for HK types, we need to preserve the kind information
+          // (see also usage of adaptHKvariances above)
+          // Ideally we'd always preserve the bounds,
+          // but first we need an equivalent of ConstraintHandling#addConstraint
+          // TODO: implement the above
+          val initialBounds = sym.info match {
+            case tb @ TypeBounds(_, hi) if hi.isLambdaSub => tb
+            case _ => TypeBounds.empty
+          }
           // avoid registering the TypeVar with TyperState / TyperState#constraint
           // - we don't want TyperState instantiating these TypeVars
           // - we don't want TypeComparer constraining these TypeVars
           val poly = PolyType(DepParamName.fresh(sym.name.toTypeName) :: Nil)(
-            pt => (sym.info match {
-              case tb @ TypeBounds(_, hi) if hi.isLambdaSub => tb
-              case _ => TypeBounds.empty
-            }) :: Nil,
+            pt => initialBounds :: Nil,
             pt => defn.AnyType)
           new TypeVar(poly.paramRefs.head, creatorState = null)
         }
