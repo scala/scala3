@@ -119,7 +119,7 @@ TASTy Reflect provides the following types:
          +- TypeTree ----+- Inferred
          |               +- TypeIdent
          |               +- TypeSelect
-         |               +- Project
+         |               +- Projection
          |               +- Singleton
          |               +- Refined
          |               +- Applied

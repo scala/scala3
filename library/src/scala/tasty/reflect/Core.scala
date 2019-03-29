@@ -41,7 +41,7 @@ package scala.tasty.reflect
  *           +- TypeTree ----+- Inferred
  *           |               +- TypeIdent
  *           |               +- TypeSelect
- *           |               +- Project
+ *           |               +- Projection
  *           |               +- Singleton
  *           |               +- Refined
  *           |               +- Applied
