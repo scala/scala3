@@ -76,8 +76,8 @@ trait TreeUtils
         case IsPackageClause(clause @ PackageClause(pid, stats)) =>
           foldTrees(foldTree(x, pid), stats)(clause.symbol.localContext)
         case TypeTree.Inferred() => x
-        case TypeTree.Ident(_) => x
-        case TypeTree.Select(qualifier, _) => foldTree(x, qualifier)
+        case TypeTree.TypeIdent(_) => x
+        case TypeTree.TypeSelect(qualifier, _) => foldTree(x, qualifier)
         case TypeTree.Projection(qualifier, _) => foldTree(x, qualifier)
         case TypeTree.Singleton(ref) => foldTree(x, ref)
         case TypeTree.Refined(tpt, refinements) => foldTrees(foldTree(x, tpt), refinements)
@@ -87,7 +87,7 @@ trait TreeUtils
         case TypeTree.LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs), arg)
         case TypeTree.TypeBind(_, tbt) => foldTree(x, tbt)
         case TypeTree.TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
-        case TypeTree.MatchType(boundopt, selector, cases) =>
+        case TypeTree.MatchTypeTree(boundopt, selector, cases) =>
           foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
         case WildcardTypeTree() => x
         case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
@@ -209,9 +209,9 @@ trait TreeUtils
 
     def transformTypeTree(tree: TypeTree)(implicit ctx: Context): TypeTree = tree match {
       case TypeTree.Inferred() => tree
-      case TypeTree.IsIdent(tree) => tree
-      case TypeTree.IsSelect(tree) =>
-        TypeTree.Select.copy(tree)(tree.qualifier, tree.name)
+      case TypeTree.IsTypeIdent(tree) => tree
+      case TypeTree.IsTypeSelect(tree) =>
+        TypeTree.TypeSelect.copy(tree)(tree.qualifier, tree.name)
       case TypeTree.IsProjection(tree) =>
         TypeTree.Projection.copy(tree)(tree.qualifier, tree.name)
       case TypeTree.IsAnnotated(tree) =>
@@ -222,8 +222,8 @@ trait TreeUtils
         TypeTree.Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
       case TypeTree.IsApplied(tree) =>
         TypeTree.Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
-      case TypeTree.IsMatchType(tree) =>
-        TypeTree.MatchType.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
+      case TypeTree.IsMatchTypeTree(tree) =>
+        TypeTree.MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
       case TypeTree.IsByName(tree) =>
         TypeTree.ByName.copy(tree)(transformTypeTree(tree.result))
       case TypeTree.IsLambdaTypeTree(tree) =>

@@ -634,13 +634,13 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       def traverseTypeTree(tree: Tree /*TypeTree | TypeBoundsTree*/)(
           implicit ctx: Context): Unit = {
         tree match {
-          case TypeTree.Ident(_) => {
+          case TypeTree.TypeIdent(_) => {
             val typetree = tree.typetree
             addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
                                  createRange(typetree.pos))
           }
-          case TypeTree.Select(qualifier, _) => {
+          case TypeTree.TypeSelect(qualifier, _) => {
             val typetree = tree.typetree
             val range = rangeSelect(typetree.symbol.trueName, typetree.pos)
             addOccurenceTypeTree(typetree,

@@ -39,14 +39,14 @@ package scala.tasty.reflect
  *           |
  *           |
  *           +- TypeTree ----+- Inferred
- *           |               +- Ident
- *           |               +- Select
+ *           |               +- TypeIdent
+ *           |               +- TypeSelect
  *           |               +- Project
  *           |               +- Singleton
  *           |               +- Refined
  *           |               +- Applied
  *           |               +- Annotated
- *           |               +- MatchType
+ *           |               +- MatchTypeTree
  *           |               +- ByName
  *           |               +- LambdaTypeTree
  *           |               +- TypeBind
@@ -247,43 +247,43 @@ trait Core {
       trait TypeTreeCoreModule {
 
         /** Type tree representing an inferred type */
-        type Inferred = kernel.TypeTree_Inferred
+        type Inferred = kernel.Inferred
 
         /** Type tree representing a reference to definition with a given name */
-        type Ident = kernel.TypeTree_Ident
+        type TypeIdent = kernel.TypeIdent
 
         /** Type tree representing a selection of definition with a given name on a given term prefix */
-        type Select = kernel.TypeTree_Select
+        type TypeSelect = kernel.TypeSelect
 
         /** Type tree representing a selection of definition with a given name on a given type prefix */
-        type Projection = kernel.TypeTree_Projection
+        type Projection = kernel.Projection
 
         /** Type tree representing a singleton type */
-        type Singleton = kernel.TypeTree_Singleton
+        type Singleton = kernel.Singleton
 
         /** Type tree representing a type refinement */
-        type Refined = kernel.TypeTree_Refined
+        type Refined = kernel.Refined
 
         /** Type tree representing a type application */
-        type Applied = kernel.TypeTree_Applied
+        type Applied = kernel.Applied
 
         /** Type tree representing an annotated type */
-        type Annotated = kernel.TypeTree_Annotated
+        type Annotated = kernel.Annotated
 
         /** Type tree representing a type match */
-        type MatchType = kernel.TypeTree_MatchType
+        type MatchTypeTree = kernel.MatchTypeTree
 
         /** Type tree representing a by name parameter */
-        type ByName = kernel.TypeTree_ByName
+        type ByName = kernel.ByName
 
         /** Type tree representing a lambda abstraction type */
-        type LambdaTypeTree = kernel.TypeTree_LambdaTypeTree
+        type LambdaTypeTree = kernel.LambdaTypeTree
 
         /** Type tree representing a type binding */
-        type TypeBind = kernel.TypeTree_TypeBind
+        type TypeBind = kernel.TypeBind
 
         /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
-        type TypeBlock = kernel.TypeTree_TypeBlock
+        type TypeBlock = kernel.TypeBlock
 
       }
 
