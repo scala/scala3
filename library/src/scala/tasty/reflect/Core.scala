@@ -39,8 +39,8 @@ package scala.tasty.reflect
  *           |
  *           |
  *           +- TypeTree ----+- Inferred
- *           |               +- Ident
- *           |               +- Select
+ *           |               +- TypeIdent
+ *           |               +- TypeSelect
  *           |               +- Project
  *           |               +- Singleton
  *           |               +- Refined
@@ -250,10 +250,10 @@ trait Core {
         type Inferred = kernel.TypeTree_Inferred
 
         /** Type tree representing a reference to definition with a given name */
-        type Ident = kernel.TypeTree_Ident
+        type TypeIdent = kernel.TypeTree_TypeIdent
 
         /** Type tree representing a selection of definition with a given name on a given term prefix */
-        type Select = kernel.TypeTree_Select
+        type TypeSelect = kernel.TypeTree_TypeSelect
 
         /** Type tree representing a selection of definition with a given name on a given type prefix */
         type Projection = kernel.TypeTree_Projection

@@ -24,7 +24,7 @@ tree: Term.Inlined(None, Nil, Term.Ident("x"))
 tree deref. vals: Term.Apply(Term.Ident("d3"), List(Term.Literal(Constant.Int(3))))
 
 tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.TypeApply(Term.Ident("d4"), List(TypeTree.Ident("Int")))
+tree deref. vals: Term.TypeApply(Term.Ident("d4"), List(TypeTree.TypeIdent("Int")))
 
 tree: Term.Inlined(None, Nil, Term.Ident("vv"))
 tree deref. vals: Term.Literal(Constant.Int(1))

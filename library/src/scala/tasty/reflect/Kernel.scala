@@ -38,8 +38,8 @@ package scala.tasty.reflect
  *           |
  *           |
  *           +- TypeTree ----+- TypeTree_Inferred
- *           |               +- TypeTree_Ident
- *           |               +- TypeTree_Select
+ *           |               +- TypeTree_TypeIdent
+ *           |               +- TypeTree_TypeSelect
  *           |               +- TypeTree_Project
  *           |               +- TypeTree_Singleton
  *           |               +- TypeTree_Refined
@@ -557,24 +557,24 @@ trait Kernel {
   def TypeTree_Inferred_apply(tpe: Type)(implicit ctx: Context): TypeTree_Inferred
 
   /** Type tree representing a reference to definition with a given name */
-  type TypeTree_Ident <: TypeTree
+  type TypeTree_TypeIdent <: TypeTree
 
-  def matchTypeTree_Ident(tree: Tree)(implicit ctx: Context): Option[TypeTree_Ident]
+  def matchTypeTree_TypeIdent(tree: Tree)(implicit ctx: Context): Option[TypeTree_TypeIdent]
 
-  def TypeTree_Ident_name(self: TypeTree_Ident)(implicit ctx: Context): String
+  def TypeTree_TypeIdent_name(self: TypeTree_TypeIdent)(implicit ctx: Context): String
 
-  def TypeTree_Ident_copy(original: TypeTree_Ident)(name: String)(implicit ctx: Context): TypeTree_Ident
+  def TypeTree_TypeIdent_copy(original: TypeTree_TypeIdent)(name: String)(implicit ctx: Context): TypeTree_TypeIdent
 
   /** Type tree representing a selection of definition with a given name on a given term prefix */
-  type TypeTree_Select <: TypeTree
+  type TypeTree_TypeSelect <: TypeTree
 
-  def matchTypeTree_Select(tree: Tree)(implicit ctx: Context): Option[TypeTree_Select]
+  def matchTypeTree_TypeSelect(tree: Tree)(implicit ctx: Context): Option[TypeTree_TypeSelect]
 
-  def TypeTree_Select_qualifier(self: TypeTree_Select)(implicit ctx: Context): Term
-  def TypeTree_Select_name(self: TypeTree_Select)(implicit ctx: Context): String
+  def TypeTree_TypeSelect_qualifier(self: TypeTree_TypeSelect)(implicit ctx: Context): Term
+  def TypeTree_TypeSelect_name(self: TypeTree_TypeSelect)(implicit ctx: Context): String
 
-  def TypeTree_Select_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select
-  def TypeTree_Select_copy(original: TypeTree_Select)(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select
+  def TypeTree_TypeSelect_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_TypeSelect
+  def TypeTree_TypeSelect_copy(original: TypeTree_TypeSelect)(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_TypeSelect
 
   /** Type tree representing a selection of definition with a given name on a given type prefix */
   type TypeTree_Projection <: TypeTree

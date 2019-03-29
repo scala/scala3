@@ -211,10 +211,10 @@ trait Printers
           this += "PackageClause(" += pid += ", " ++= stats += ")"
         case TypeTree.Inferred() =>
           this += "TypeTree.Inferred()"
-        case TypeTree.Ident(name) =>
-          this += "TypeTree.Ident(\"" += name += "\")"
-        case TypeTree.Select(qualifier, name) =>
-          this += "TypeTree.Select(" += qualifier += ", \"" += name += "\")"
+        case TypeTree.TypeIdent(name) =>
+          this += "TypeTree.TypeIdent(\"" += name += "\")"
+        case TypeTree.TypeSelect(qualifier, name) =>
+          this += "TypeTree.TypeSelect(" += qualifier += ", \"" += name += "\")"
         case TypeTree.Projection(qualifier, name) =>
           this += "TypeTree.Projection(" += qualifier += ", \"" += name += "\")"
         case TypeTree.Singleton(ref) =>
@@ -575,8 +575,8 @@ trait Printers
 
           val parents1 = parents.filter {
             case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
-            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Product")) => false
-            case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala"), "Serializable")) => false
+            case IsTypeTree(TypeTree.TypeSelect(Term.Select(Term.Ident("_root_"), "scala"), "Product")) => false
+            case IsTypeTree(TypeTree.TypeSelect(Term.Select(Term.Ident("_root_"), "scala"), "Serializable")) => false
             case _ => true
           }
           if (parents1.nonEmpty)
@@ -1389,10 +1389,10 @@ trait Printers
           }
           printTypeAndAnnots(tree.tpe)
 
-        case TypeTree.Ident(name) =>
+        case TypeTree.TypeIdent(name) =>
           printType(tree.tpe)
 
-        case TypeTree.Select(qual, name) =>
+        case TypeTree.TypeSelect(qual, name) =>
           printTree(qual) += "." += highlightTypeDef(name, color)
 
         case TypeTree.Projection(qual, name) =>

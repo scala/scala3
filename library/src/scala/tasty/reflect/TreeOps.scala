@@ -793,33 +793,33 @@ trait TreeOps extends Core {
         kernel.matchTypeTree_Inferred(tree).isDefined
     }
 
-    object IsIdent {
-      /** Matches any Ident and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] =
-        kernel.matchTypeTree_Ident(tree)
+    object IsTypeIdent {
+      /** Matches any TypeIdent and returns it */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeIdent] =
+        kernel.matchTypeTree_TypeIdent(tree)
     }
 
-    object Ident {
-      // TODO def apply(name: String)(implicit ctx: Context): Ident
-      def copy(original: Ident)(name: String)(implicit ctx: Context): Ident =
-        kernel.TypeTree_Ident_copy(original)(name)
+    object TypeIdent {
+      // TODO def apply(name: String)(implicit ctx: Context): TypeIdent
+      def copy(original: TypeIdent)(name: String)(implicit ctx: Context): TypeIdent =
+        kernel.TypeTree_TypeIdent_copy(original)(name)
       def unapply(tree: Tree)(implicit ctx: Context): Option[String] =
-        kernel.matchTypeTree_Ident(tree).map(_.name)
+        kernel.matchTypeTree_TypeIdent(tree).map(_.name)
     }
 
-    object IsSelect {
-      /** Matches any Select and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Select] =
-        kernel.matchTypeTree_Select(tree)
+    object IsTypeSelect {
+      /** Matches any TypeSelect and returns it */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeSelect] =
+        kernel.matchTypeTree_TypeSelect(tree)
     }
 
-    object Select {
-      def apply(qualifier: Term, name: String)(implicit ctx: Context): Select =
-        kernel.TypeTree_Select_apply(qualifier, name)
-      def copy(original: Select)(qualifier: Term, name: String)(implicit ctx: Context): Select =
-        kernel.TypeTree_Select_copy(original)(qualifier, name)
+    object TypeSelect {
+      def apply(qualifier: Term, name: String)(implicit ctx: Context): TypeSelect =
+        kernel.TypeTree_TypeSelect_apply(qualifier, name)
+      def copy(original: TypeSelect)(qualifier: Term, name: String)(implicit ctx: Context): TypeSelect =
+        kernel.TypeTree_TypeSelect_copy(original)(qualifier, name)
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)] =
-        kernel.matchTypeTree_Select(tree).map(x => (x.qualifier, x.name))
+        kernel.matchTypeTree_TypeSelect(tree).map(x => (x.qualifier, x.name))
     }
 
     object IsProjection {
@@ -970,13 +970,13 @@ trait TreeOps extends Core {
     }
   }
 
-  implicit class TypeTree_IdentAPI(self: TypeTree.Ident) {
-    def name(implicit ctx: Context): String = kernel.TypeTree_Ident_name(self)
+  implicit class TypeTree_TypeIdentAPI(self: TypeTree.TypeIdent) {
+    def name(implicit ctx: Context): String = kernel.TypeTree_TypeIdent_name(self)
   }
 
-  implicit class TypeTree_SelectAPI(self: TypeTree.Select) {
-    def qualifier(implicit ctx: Context): Term = kernel.TypeTree_Select_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.TypeTree_Select_name(self)
+  implicit class TypeTree_TypeSelectAPI(self: TypeTree.TypeSelect) {
+    def qualifier(implicit ctx: Context): Term = kernel.TypeTree_TypeSelect_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.TypeTree_TypeSelect_name(self)
   }
 
   implicit class TypeTree_ProjectionAPI(self: TypeTree.Projection) {

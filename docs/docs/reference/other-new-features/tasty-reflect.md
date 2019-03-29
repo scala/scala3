@@ -117,8 +117,8 @@ TASTy Reflect provides the following types:
          |                             +- While
          |
          +- TypeTree ----+- Synthetic
-         |               +- Ident
-         |               +- Select
+         |               +- TypeIdent
+         |               +- TypeSelect
          |               +- Project
          |               +- Singleton
          |               +- Refined

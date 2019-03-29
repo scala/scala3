@@ -658,32 +658,32 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def TypeTree_Inferred_apply(tpe: Type)(implicit ctx: Context): TypeTree_Inferred = withDefaultPos(ctx => tpd.TypeTree(tpe)(ctx))
 
-  type TypeTree_Ident = tpd.Ident
+  type TypeTree_TypeIdent = tpd.Ident
 
-  def matchTypeTree_Ident(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Ident] = tpt match {
+  def matchTypeTree_TypeIdent(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_TypeIdent] = tpt match {
     case tpt: tpd.Ident if tpt.isType => Some(tpt)
     case _ => None
   }
 
-  def TypeTree_Ident_name(self: TypeTree_Ident)(implicit ctx: Context): String = self.name.toString
+  def TypeTree_TypeIdent_name(self: TypeTree_TypeIdent)(implicit ctx: Context): String = self.name.toString
 
-  def TypeTree_Ident_copy(original: TypeTree_Ident)(name: String)(implicit ctx: Context): TypeTree_Ident =
+  def TypeTree_TypeIdent_copy(original: TypeTree_TypeIdent)(name: String)(implicit ctx: Context): TypeTree_TypeIdent =
     tpd.cpy.Ident(original)(name.toTypeName)
 
-  type TypeTree_Select = tpd.Select
+  type TypeTree_TypeSelect = tpd.Select
 
-  def matchTypeTree_Select(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_Select] = tpt match {
+  def matchTypeTree_TypeSelect(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_TypeSelect] = tpt match {
     case tpt: tpd.Select if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
     case _ => None
   }
 
-  def TypeTree_Select_qualifier(self: TypeTree_Select)(implicit ctx: Context): Term = self.qualifier
-  def TypeTree_Select_name(self: TypeTree_Select)(implicit ctx: Context): String = self.name.toString
+  def TypeTree_TypeSelect_qualifier(self: TypeTree_TypeSelect)(implicit ctx: Context): Term = self.qualifier
+  def TypeTree_TypeSelect_name(self: TypeTree_TypeSelect)(implicit ctx: Context): String = self.name.toString
 
-  def TypeTree_Select_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select =
+  def TypeTree_TypeSelect_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_TypeSelect =
     withDefaultPos(ctx => tpd.Select(qualifier, name.toTypeName)(ctx))
 
-  def TypeTree_Select_copy(original: TypeTree_Select)(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_Select =
+  def TypeTree_TypeSelect_copy(original: TypeTree_TypeSelect)(qualifier: Term, name: String)(implicit ctx: Context): TypeTree_TypeSelect =
     tpd.cpy.Select(original)(qualifier, name.toTypeName)
 
 
