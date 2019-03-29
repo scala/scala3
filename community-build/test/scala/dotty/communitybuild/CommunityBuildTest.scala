@@ -58,11 +58,19 @@ class CommunityBuildTest {
     val pluginFilePath = communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
 
     // Run the sbt command with the compiler version and sbt plugin set in the build
-    val arguments = extraSbtArgs ++ Seq(
-      "-sbt-version", "1.2.7",
-      s"--addPluginSbtFile=$pluginFilePath",
-      s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $testCommand"
-    )
+    val arguments = {
+      val sbtProps = Option(System.getProperty("sbt.ivy.home")) match {
+        case Some(ivyHome) =>
+          Seq(s"-Dsbt.ivy.home=$ivyHome")
+        case _ =>
+          Seq()
+      }
+      extraSbtArgs ++ sbtProps ++ Seq(
+        "-sbt-version", "1.2.7",
+        s"--addPluginSbtFile=$pluginFilePath",
+        s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $testCommand"
+      )
+    }
 
     val exitCode = exec("sbt", arguments: _*)
 
