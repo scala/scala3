@@ -349,17 +349,9 @@ class Definitions {
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
-  def SubTypeClass(implicit ctx: Context): ClassSymbol =
-    if (isNewCollections)
-      ctx.requiredClass("scala.<:<")
-    else
-      ScalaPredefModule.requiredClass("<:<")
+  def SubTypeClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.<:<")
 
-  def DummyImplicitClass(implicit ctx: Context): ClassSymbol =
-    if (isNewCollections)
-      ctx.requiredClass("scala.DummyImplicit")
-    else
-      ScalaPredefModule.requiredClass("DummyImplicit")
+  def DummyImplicitClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.DummyImplicit")
 
   @tu lazy val ScalaRuntimeModule: Symbol = ctx.requiredModule("scala.runtime.ScalaRunTime")
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
@@ -385,10 +377,7 @@ class Definitions {
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
-  // TODO: Remove once we drop support for 2.12 standard library
-  @tu lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value
-
-  def getWrapVarargsArrayModule: Symbol = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
+  def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
   val WrapArrayMethods: PerRun[collection.Set[Symbol]] = new PerRun({ implicit ctx =>
@@ -406,9 +395,7 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  @tu lazy val SeqType: TypeRef =
-    if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
-    else ctx.requiredClassRef("scala.collection.Seq")
+  @tu lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.immutable.Seq")
   def SeqClass given Context: ClassSymbol = SeqType.symbol.asClass
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
@@ -540,11 +527,7 @@ class Definitions {
 
   @tu lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
   def ThrowableClass given Context: ClassSymbol = ThrowableType.symbol.asClass
-  @tu lazy val SerializableType: TypeRef       =
-    if (isNewCollections)
-      JavaSerializableClass.typeRef
-    else
-      ctx.requiredClassRef("scala.Serializable")
+  @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass given Context: ClassSymbol = SerializableType.symbol.asClass
 
    @tu lazy val JavaEnumClass: ClassSymbol = {

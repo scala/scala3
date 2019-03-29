@@ -117,7 +117,7 @@ object PickleFormat {
  *   len is remaining length after `len`.
  */
   val MajorVersion: Int = 5
-  val MinorVersion: Int = 0
+  val MinorVersion: Int = 2
 
   final val TERMname = 1
   final val TYPEname = 2

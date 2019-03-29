@@ -145,10 +145,8 @@ object Implicits {
               val isFunctionInS2 =
                 ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
-              val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
-                  tpw.derivesFrom(defn.SubTypeClass) &&
-                    (defn.isNewCollections || // In 2.13, the type of `$conforms` changed from `A <:< A` to `A => A`
-                     ref.symbol != defn.Predef_conforms)
+              // An implementation of <:< counts as a view
+              val isConforms = tpw.derivesFrom(defn.SubTypeClass)
               val hasExtensions = resType match {
                 case SelectionProto(name, _, _, _) =>
                   tpw.memberBasedOnFlags(name, required = ExtensionMethod).exists

@@ -1,7 +1,6 @@
 import scala.collection.{immutable, mutable}
 import java.nio.file.Paths
 
-// Start of Test
 class repeatedArgs {
   def bar(xs: String*): Int = xs.length
 

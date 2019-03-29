@@ -610,8 +610,6 @@ object desugar {
         }
       }
 
-      // TODO When the Scala library is updated to 2.13.x add the override keyword to this generated method.
-      // (because Product.scala was updated)
       def productElemNameMeth = {
         val methodParam = makeSyntheticParameter(tpt = scalaDot(tpnme.Int))
         val paramRef = Ident(methodParam.name)
@@ -625,7 +623,7 @@ object desugar {
         } :+ defaultCase
         val body = Match(paramRef, patternMatchCases)
         DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
-          .withFlags(if (defn.isNewCollections) Override | Synthetic else Synthetic)
+          .withFlags(Override | Synthetic)
       }
 
       if (isCaseClass)
