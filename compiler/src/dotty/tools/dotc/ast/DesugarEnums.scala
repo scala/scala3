@@ -168,6 +168,59 @@ object DesugarEnums {
     }
   }
 
+  /** Is a type parameter in `enumTypeParams` referenced from an enum class case that has
+   *  given type parameters `caseTypeParams`, value parameters `vparamss` and parents `parents`?
+   *  Issues an error if that is the case but the reference is illegal.
+   *  The reference could be illegal for two reasons:
+   *   - explicit type parameters are given
+   *   - it's a value case, i.e. no value parameters are given
+   */
+  def typeParamIsReferenced(
+    enumTypeParams: List[TypeSymbol],
+    caseTypeParams: List[TypeDef],
+    vparamss: List[List[ValDef]],
+    parents: List[Tree])(implicit ctx: Context): Boolean = {
+
+    object searchRef extends UntypedTreeAccumulator[Boolean] {
+      var tparamNames = enumTypeParams.map(_.name).toSet[Name]
+      def underBinders(binders: List[MemberDef], op: => Boolean): Boolean = {
+        val saved = tparamNames
+        tparamNames = tparamNames -- binders.map(_.name)
+        try op
+        finally tparamNames = saved
+      }
+      def apply(x: Boolean, tree: Tree)(implicit ctx: Context): Boolean = x || {
+        tree match {
+          case Ident(name) =>
+            val matches = tparamNames.contains(name)
+            if (matches && (caseTypeParams.nonEmpty || vparamss.isEmpty))
+              ctx.error(i"illegal reference to type parameter $name from enum case", tree.sourcePos)
+            matches
+          case LambdaTypeTree(lambdaParams, body) =>
+            underBinders(lambdaParams, foldOver(x, tree))
+          case RefinedTypeTree(parent, refinements) =>
+            val refinementDefs = refinements collect { case r: MemberDef => r }
+            underBinders(refinementDefs, foldOver(x, tree))
+          case _ => foldOver(x, tree)
+        }
+      }
+      def apply(tree: Tree)(implicit ctx: Context): Boolean =
+        underBinders(caseTypeParams, apply(false, tree))
+    }
+
+    def typeHasRef(tpt: Tree) = searchRef(tpt)
+    def valDefHasRef(vd: ValDef) = typeHasRef(vd.tpt)
+    def parentHasRef(parent: Tree): Boolean = parent match {
+      case Apply(fn, _) => parentHasRef(fn)
+      case TypeApply(_, targs) => targs.exists(typeHasRef)
+      case Select(nu, nme.CONSTRUCTOR) => parentHasRef(nu)
+      case New(tpt) => typeHasRef(tpt)
+      case parent => parent.isType && typeHasRef(parent)
+    }
+
+    vparamss.exists(_.exists(valDefHasRef)) || parents.exists(parentHasRef)
+  }
+
   /** A pair consisting of
    *   - the next enum tag
    *   - scaffolding containing the necessary definitions for singleton enum cases

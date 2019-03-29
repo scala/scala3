@@ -355,10 +355,14 @@ object desugar {
     val originalVparamss = constr1.vparamss
     lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParam)
     val impliedTparams =
-      if (isEnumCase && originalTparams.isEmpty)
-        derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
-      else
-        originalTparams
+      if (isEnumCase) {
+        val tparamReferenced = typeParamIsReferenced(
+            enumClass.typeParams, originalTparams, originalVparamss, parents)
+        if (originalTparams.isEmpty && (parents.isEmpty || tparamReferenced))
+          derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
+        else originalTparams
+      }
+      else originalTparams
     val constrTparams = impliedTparams.map(toDefParam)
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
@@ -594,10 +598,11 @@ object desugar {
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
               mods.is(Abstract) ||
-              restrictedAccess) anyRef
+              restrictedAccess ||
+              isEnumCase) anyRef
           else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
-            (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
+            (constrVparamss :\ classTypeRef) (
               (vparams, restpe) => Function(vparams map (_.tpt), restpe))
         def widenedCreatorExpr =
           (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
@@ -738,8 +743,11 @@ object desugar {
 
     if (mods is Package)
       PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
-    else if (isEnumCase)
+    else if (isEnumCase) {
+      typeParamIsReferenced(enumClass.typeParams, Nil, Nil, impl.parents)
+        // used to check there are no illegal references to enum's type parameters in parents
       expandEnumModule(moduleName, impl, mods, mdef.span)
+    }
     else {
       val clsName = moduleName.moduleClassName
       val clsRef = Ident(clsName)
