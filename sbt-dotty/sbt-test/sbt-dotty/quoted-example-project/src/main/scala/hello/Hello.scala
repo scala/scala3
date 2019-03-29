@@ -5,29 +5,35 @@ import scala.quoted._
 
 object Main {
 
-  // Needed to run or show quotes
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
   def main(args: Array[String]): Unit = {
     val square = stagedPower(2)
-    println("3^2 = " + square(3))
-    println("4.1^2 = " + square(4.1))
-    println()
+
+    assert(Math.pow(3, 2) == square(3))
+
+    square(3)
+    square(4)
+
+    assert(Math.pow(4, 2) == square(4))
+
     val cube = stagedPower(3)
-    println("2.4^3 = " + cube(2.4))
-    println()
+    cube(2)
+
+
+    assert(Math.pow(2, 3) == cube(2))
+
+
 
     val toTheFourth = stagedPower(4)
-    println("3^4 = " + toTheFourth(3))
-    println()
+    assert(Math.pow(3, 4) == toTheFourth(3))
   }
 
   def stagedPower(n: Int): Double => Double = {
     // Code representing the labmda where the recursion is unrolled based on the value of n
     val code = '{ (x: Double) => ${powerCode(n, '{x})}}
 
-    println(s"staged power for n=" + n + ":")
-    println(code.show)
+    code.show
 
     // Evaluate the contents of the code and return it's value
     code.run

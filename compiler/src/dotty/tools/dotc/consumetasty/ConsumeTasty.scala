@@ -16,7 +16,7 @@ object ConsumeTasty {
         new TastyFromClass(tastyConsumer)
     }
 
-    val currentClasspath = QuoteDriver.currentClasspath
+    val currentClasspath = QuoteDriver.currentClasspath(getClass.getClassLoader)
     import java.io.File.{ pathSeparator => sep }
     val args = "-from-tasty" :: "-Yretain-trees" :: "-classpath" :: s"$classpath$sep$currentClasspath" :: classes
     (new Consume).process(args.toArray)

@@ -11,7 +11,11 @@ import scala.quoted.{Expr, Type}
 import scala.quoted.Toolbox
 import java.net.URLClassLoader
 
-class QuoteDriver extends Driver {
+/** Driver to compile quoted code
+  *
+  * @param appClassloader classloader of the application that generated the quotes
+  */
+class QuoteDriver(appClassloader: ClassLoader) extends Driver {
   import tpd._
 
   private[this] val contextBase: ContextBase = new ContextBase
@@ -32,7 +36,9 @@ class QuoteDriver extends Driver {
     val driver = new QuoteCompiler
     driver.newRun(ctx).compileExpr(expr)
 
-    val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)
+    assert(!ctx.reporter.hasErrors)
+
+    val classLoader = new AbstractFileClassLoader(outDir, appClassloader)
 
     val clazz = classLoader.loadClass(driver.outputClassName.toString)
     val method = clazz.getMethod("apply")
@@ -82,7 +88,7 @@ class QuoteDriver extends Driver {
 
   override def initCtx: Context = {
     val ictx = contextBase.initialCtx
-    ictx.settings.classpath.update(QuoteDriver.currentClasspath)(ictx)
+    ictx.settings.classpath.update(QuoteDriver.currentClasspath(appClassloader))(ictx)
     ictx
   }
 
@@ -94,9 +100,9 @@ class QuoteDriver extends Driver {
 
 object QuoteDriver {
 
-  def currentClasspath: String = {
+  def currentClasspath(cl: ClassLoader): String = {
     val classpath0 = System.getProperty("java.class.path")
-    this.getClass.getClassLoader match {
+    cl match {
       case cl: URLClassLoader =>
         // Loads the classes loaded by this class loader
         // When executing `run` or `test` in sbt the classpath is not in the property java.class.path

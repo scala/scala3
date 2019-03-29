@@ -16,15 +16,35 @@ object Toolbox {
     implicit def make(implicit settings: Settings): Toolbox = Toolbox.make
   }
 
-  def make(implicit settings: Settings): Toolbox = {
-    val cl = getClass.getClassLoader
-    println(">>>>>")
-    cl.asInstanceOf[java.net.URLClassLoader].getURLs().toList.foreach(println)
+  /** Create a new instance of the toolbox.
+    *
+    * This instance of the toolbox tries to recover the classloader of the application based on
+    * the classloader of the class that call make. This may not always be the correct classloader,
+    * in which case the classloader must be passed explicitly.
+    *
+    * @param settings TODO
+    * @return A new instance of the toolbox
+    */
+  @forceInline def make(implicit settings: Settings): Toolbox = {
+    // Get the name of the class at call site
+    val className = new Throwable().getStackTrace.head.getClassName
+    // We inline to make forName use the classloader of the class at call site
+    val clazz = Class.forName(className)
+    val cl = clazz.getClassLoader
+    make(cl)
+  }
 
+  /** Create a new instance of the toolbox using the the classloader of the application.
+    *
+    * @param appClassloader classloader of the application that generated the quotes
+    * @param settings toolbox settings
+    * @return A new instance of the toolbox
+    */
+  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox = {
     try {
-      val toolboxImplCls = cl.loadClass("dotty.tools.dotc.quoted.ToolboxImpl")
-      val makeMeth = toolboxImplCls.getMethod("make", classOf[Settings])
-      makeMeth.invoke(null, settings).asInstanceOf[Toolbox]
+      val toolboxImplCls = appClassloader.loadClass("dotty.tools.dotc.quoted.ToolboxImpl")
+      val makeMeth = toolboxImplCls.getMethod("make", classOf[Settings], classOf[ClassLoader])
+      makeMeth.invoke(null, settings, appClassloader).asInstanceOf[Toolbox]
     }
     catch {
       case ex: ClassNotFoundException =>

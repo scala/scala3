@@ -37,7 +37,7 @@ class QuoteCompiler extends Compiler {
     new ExprRun(this, ctx.addMode(Mode.ReadPositions))
   }
 
-  def outputClassName: TypeName = "Quoted".toTypeName
+  def outputClassName: TypeName = "Generated$Code$From$Quoted".toTypeName
 
   /** Frontend that receives a scala.quoted.Expr or scala.quoted.Type as input */
   class QuotedFrontend(putInClass: Boolean) extends Phase {

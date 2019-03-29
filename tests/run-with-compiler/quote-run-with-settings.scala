@@ -19,7 +19,7 @@ object Test {
     println()
 
     val outDir = Paths.get("out/out-quoted-1")
-    val classFile = outDir.resolve("Quoted.class")
+    val classFile = outDir.resolve("Generated$Code$From$Quoted.class")
 
     Files.deleteIfExists(classFile)
 
