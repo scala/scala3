@@ -187,11 +187,6 @@ trait TreeOps extends Core {
       kernel.matchTerm(tree)
   }
 
-  object IsIdent {
-    /** Matches any Ident and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] = kernel.matchIdent(tree)
-  }
-
   object Ref {
 
     /** Create a reference tree */
@@ -200,6 +195,15 @@ trait TreeOps extends Core {
 
     // TODO def copy(original: Tree)(name: String)(implicit ctx: Context): Ref
 
+  }
+
+  object IsIdent {
+    /** Matches any Ident and returns it */
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] = kernel.matchIdent(tree)
+  }
+
+  implicit class IdentAPI(self: Ident) {
+    def name(implicit ctx: Context): String = kernel.Ident_name(self)
   }
 
   /** Scala term identifier */
@@ -244,6 +248,12 @@ trait TreeOps extends Core {
       kernel.matchSelect(tree).map(x => (x.qualifier, x.name))
   }
 
+  implicit class SelectAPI(self: Select) {
+    def qualifier(implicit ctx: Context): Term = kernel.Select_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.Select_name(self)
+    def signature(implicit ctx: Context): Option[Signature] = kernel.Select_signature(self)
+  }
+
   object IsLiteral {
     /** Matches any Literal and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Literal] = kernel.matchLiteral(tree)
@@ -262,6 +272,10 @@ trait TreeOps extends Core {
     /** Matches a literal constant */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Constant] =
       kernel.matchLiteral(tree).map(_.constant)
+  }
+
+  implicit class LiteralAPI(self:  Literal) {
+    def constant(implicit ctx: Context): Constant = kernel.Literal_constant(self)
   }
 
   object IsThis {
@@ -285,6 +299,10 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class ThisAPI(self:  This) {
+    def id(implicit ctx: Context): Option[Id] = kernel.This_id(self)
+  }
+
   object IsNew {
     /** Matches any New and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[New] = kernel.matchNew(tree)
@@ -303,6 +321,10 @@ trait TreeOps extends Core {
     /** Matches a `new <tpt: TypeTree>` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
       kernel.matchNew(tree).map(_.tpt)
+  }
+
+  implicit class NewAPI(self: New) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.New_tpt(self)
   }
 
   object IsNamedArg {
@@ -326,6 +348,11 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class NamedArgAPI(self: NamedArg) {
+    def name(implicit ctx: Context): String = kernel.NamedArg_name(self)
+    def value(implicit ctx: Context): Term = kernel.NamedArg_value(self)
+  }
+
   object IsApply {
     /** Matches any Apply and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Apply] = kernel.matchApply(tree)
@@ -344,6 +371,11 @@ trait TreeOps extends Core {
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Term])] =
       kernel.matchApply(tree).map(x => (x.fun, x.args))
+  }
+
+  implicit class ApplyAPI(self: Apply) {
+    def fun(implicit ctx: Context): Term = kernel.Apply_fun(self)
+    def args(implicit ctx: Context): List[Term] = kernel.Apply_args(self)
   }
 
   object IsTypeApply {
@@ -368,6 +400,11 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class TypeApplyAPI(self: TypeApply) {
+    def fun(implicit ctx: Context): Term = kernel.TypeApply_fun(self)
+    def args(implicit ctx: Context): List[TypeTree] = kernel.TypeApply_args(self)
+  }
+
   object IsSuper {
     /** Matches any Super and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Super] = kernel.matchSuper(tree)
@@ -386,6 +423,11 @@ trait TreeOps extends Core {
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])] =
       kernel.matchSuper(tree).map(x => (x.qualifier, x.id))
+  }
+
+  implicit class SuperAPI(self: Super) {
+    def qualifier(implicit ctx: Context): Term = kernel.Super_qualifier(self)
+    def id(implicit ctx: Context): Option[Id] = kernel.Super_id(self)
   }
 
   object IsTyped {
@@ -409,6 +451,11 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class TypedAPI(self: Typed) {
+    def expr(implicit ctx: Context): Term = kernel.Typed_expr(self)
+    def tpt(implicit ctx: Context): TypeTree = kernel.Typed_tpt(self)
+  }
+
   object IsAssign {
     /** Matches any Assign and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Assign] = kernel.matchAssign(tree)
@@ -427,6 +474,11 @@ trait TreeOps extends Core {
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
       kernel.matchAssign(tree).map(x => (x.lhs, x.rhs))
+  }
+
+  implicit class AssignAPI(self: Assign) {
+    def lhs(implicit ctx: Context): Term = kernel.Assign_lhs(self)
+    def rhs(implicit ctx: Context): Term = kernel.Assign_rhs(self)
   }
 
   object IsBlock {
@@ -449,6 +501,11 @@ trait TreeOps extends Core {
       kernel.matchBlock(tree).map(x => (x.statements, x.expr))
   }
 
+  implicit class BlockAPI(self: Block) {
+    def statements(implicit ctx: Context): List[Statement] = kernel.Block_statements(self)
+    def expr(implicit ctx: Context): Term = kernel.Block_expr(self)
+  }
+
   object IsLambda {
     /** Matches any Lambda and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda] = kernel.matchLambda(tree)
@@ -464,6 +521,11 @@ trait TreeOps extends Core {
 
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])] =
       kernel.matchLambda(tree).map(x => (x.meth, x.tptOpt))
+  }
+
+  implicit class LambdaAPI(self: Lambda) {
+    def meth(implicit ctx: Context): Term = kernel.Lambda_meth(self)
+    def tptOpt(implicit ctx: Context): Option[TypeTree] = kernel.Lambda_tptOpt(self)
   }
 
   object IsIf {
@@ -487,6 +549,12 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class IfAPI(self: If) {
+    def cond(implicit ctx: Context): Term = kernel.If_cond(self)
+    def thenp(implicit ctx: Context): Term = kernel.If_thenp(self)
+    def elsep(implicit ctx: Context): Term = kernel.If_elsep(self)
+  }
+
   object IsMatch {
     /** Matches any Match and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Match] = kernel.matchMatch(tree)
@@ -506,6 +574,11 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef])] =
       kernel.matchMatch(tree).map(x => (x.scrutinee, x.cases))
 
+  }
+
+  implicit class MatchAPI(self: Match) {
+    def scrutinee(implicit ctx: Context): Term = kernel.Match_scrutinee(self)
+    def cases(implicit ctx: Context): List[CaseDef] = kernel.Match_cases(self)
   }
 
   object IsImplicitMatch {
@@ -529,6 +602,10 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class ImplicitMatchAPI(self: ImplicitMatch) {
+    def cases(implicit ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
+  }
+
   object IsTry {
     /** Matches any Try and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Try] = kernel.matchTry(tree)
@@ -548,6 +625,12 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
       kernel.matchTry(tree).map(x => (x.body, x.cases, x.finalizer))
 
+  }
+
+  implicit class TryAPI(self: Try) {
+    def body(implicit ctx: Context): Term = kernel.Try_body(self)
+    def cases(implicit ctx: Context): List[CaseDef] = kernel.Try_cases(self)
+    def finalizer(implicit ctx: Context): Option[Term] = kernel.Try_finalizer(self)
   }
 
   object IsReturn {
@@ -571,6 +654,10 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class ReturnAPI(self: Return) {
+    def expr(implicit ctx: Context): Term = kernel.Return_expr(self)
+  }
+
   object IsRepeated {
     /** Matches any Repeated and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated] = kernel.matchRepeated(tree)
@@ -587,6 +674,11 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Term], TypeTree)] =
       kernel.matchRepeated(tree).map(x => (x.elems, x.elemtpt))
 
+  }
+
+  implicit class RepeatedAPI(self: Repeated) {
+    def elems(implicit ctx: Context): List[Term] = kernel.Repeated_elems(self)
+    def elemtpt(implicit ctx: Context): TypeTree = kernel.Repeated_elemtpt(self)
   }
 
   object IsInlined {
@@ -607,6 +699,12 @@ trait TreeOps extends Core {
 
   }
 
+  implicit class InlinedAPI(self: Inlined) {
+    def call(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = kernel.Inlined_call(self)
+    def bindings(implicit ctx: Context): List[Definition] = kernel.Inlined_bindings(self)
+    def body(implicit ctx: Context): Term = kernel.Inlined_body(self)
+  }
+
   object IsSelectOuter {
     /** Matches any SelectOuter and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter] = kernel.matchSelectOuter(tree)
@@ -623,6 +721,12 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
       kernel.matchSelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
 
+  }
+
+  implicit class SelectOuterAPI(self: SelectOuter) {
+    def qualifier(implicit ctx: Context): Term = kernel.SelectOuter_qualifier(self)
+    def level(implicit ctx: Context): Int = kernel.SelectOuter_level(self)
+    def tpe(implicit ctx: Context): Type = kernel.SelectOuter_tpe(self)
   }
 
   object IsWhile {
@@ -643,110 +747,6 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
       kernel.matchWhile(tree).map(x => (x.cond, x.body))
 
-  }
-
-  implicit class IdentAPI(self: Ident) {
-    def name(implicit ctx: Context): String = kernel.Ident_name(self)
-  }
-
-  implicit class SelectAPI(self: Select) {
-    def qualifier(implicit ctx: Context): Term = kernel.Select_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.Select_name(self)
-    def signature(implicit ctx: Context): Option[Signature] = kernel.Select_signature(self)
-  }
-
-  implicit class LiteralAPI(self:  Literal) {
-    def constant(implicit ctx: Context): Constant = kernel.Literal_constant(self)
-  }
-
-  implicit class ThisAPI(self:  This) {
-    def id(implicit ctx: Context): Option[Id] = kernel.This_id(self)
-  }
-
-  implicit class NewAPI(self: New) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.New_tpt(self)
-  }
-
-  implicit class NamedArgAPI(self: NamedArg) {
-    def name(implicit ctx: Context): String = kernel.NamedArg_name(self)
-    def value(implicit ctx: Context): Term = kernel.NamedArg_value(self)
-  }
-
-  implicit class ApplyAPI(self: Apply) {
-    def fun(implicit ctx: Context): Term = kernel.Apply_fun(self)
-    def args(implicit ctx: Context): List[Term] = kernel.Apply_args(self)
-  }
-
-  implicit class TypeApplyAPI(self: TypeApply) {
-    def fun(implicit ctx: Context): Term = kernel.TypeApply_fun(self)
-    def args(implicit ctx: Context): List[TypeTree] = kernel.TypeApply_args(self)
-  }
-
-  implicit class SuperAPI(self: Super) {
-    def qualifier(implicit ctx: Context): Term = kernel.Super_qualifier(self)
-    def id(implicit ctx: Context): Option[Id] = kernel.Super_id(self)
-  }
-
-  implicit class TypedAPI(self: Typed) {
-    def expr(implicit ctx: Context): Term = kernel.Typed_expr(self)
-    def tpt(implicit ctx: Context): TypeTree = kernel.Typed_tpt(self)
-  }
-
-  implicit class AssignAPI(self: Assign) {
-    def lhs(implicit ctx: Context): Term = kernel.Assign_lhs(self)
-    def rhs(implicit ctx: Context): Term = kernel.Assign_rhs(self)
-  }
-
-  implicit class BlockAPI(self: Block) {
-    def statements(implicit ctx: Context): List[Statement] = kernel.Block_statements(self)
-    def expr(implicit ctx: Context): Term = kernel.Block_expr(self)
-  }
-
-  implicit class LambdaAPI(self: Lambda) {
-    def meth(implicit ctx: Context): Term = kernel.Lambda_meth(self)
-    def tptOpt(implicit ctx: Context): Option[TypeTree] = kernel.Lambda_tptOpt(self)
-  }
-
-  implicit class IfAPI(self: If) {
-    def cond(implicit ctx: Context): Term = kernel.If_cond(self)
-    def thenp(implicit ctx: Context): Term = kernel.If_thenp(self)
-    def elsep(implicit ctx: Context): Term = kernel.If_elsep(self)
-  }
-
-  implicit class MatchAPI(self: Match) {
-    def scrutinee(implicit ctx: Context): Term = kernel.Match_scrutinee(self)
-    def cases(implicit ctx: Context): List[CaseDef] = kernel.Match_cases(self)
-  }
-
-  implicit class ImplicitMatchAPI(self: ImplicitMatch) {
-    def cases(implicit ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
-  }
-
-  implicit class TryAPI(self: Try) {
-    def body(implicit ctx: Context): Term = kernel.Try_body(self)
-    def cases(implicit ctx: Context): List[CaseDef] = kernel.Try_cases(self)
-    def finalizer(implicit ctx: Context): Option[Term] = kernel.Try_finalizer(self)
-  }
-
-  implicit class ReturnAPI(self: Return) {
-    def expr(implicit ctx: Context): Term = kernel.Return_expr(self)
-  }
-
-  implicit class RepeatedAPI(self: Repeated) {
-    def elems(implicit ctx: Context): List[Term] = kernel.Repeated_elems(self)
-    def elemtpt(implicit ctx: Context): TypeTree = kernel.Repeated_elemtpt(self)
-  }
-
-  implicit class InlinedAPI(self: Inlined) {
-    def call(implicit ctx: Context): Option[Tree /* Term | TypeTree */] = kernel.Inlined_call(self)
-    def bindings(implicit ctx: Context): List[Definition] = kernel.Inlined_bindings(self)
-    def body(implicit ctx: Context): Term = kernel.Inlined_body(self)
-  }
-
-  implicit class SelectOuterAPI(self: SelectOuter) {
-    def qualifier(implicit ctx: Context): Term = kernel.SelectOuter_qualifier(self)
-    def level(implicit ctx: Context): Int = kernel.SelectOuter_level(self)
-    def tpe(implicit ctx: Context): Type = kernel.SelectOuter_tpe(self)
   }
 
   implicit class WhileAPI(self: While) {
@@ -793,6 +793,10 @@ trait TreeOps extends Core {
       kernel.matchTypeIdent(tree)
   }
 
+  implicit class TypeIdentAPI(self: TypeIdent) {
+    def name(implicit ctx: Context): String = kernel.TypeIdent_name(self)
+  }
+
   object TypeIdent {
     // TODO def apply(name: String)(implicit ctx: Context): TypeIdent
     def copy(original: TypeIdent)(name: String)(implicit ctx: Context): TypeIdent =
@@ -816,6 +820,11 @@ trait TreeOps extends Core {
       kernel.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
   }
 
+  implicit class TypeSelectAPI(self: TypeSelect) {
+    def qualifier(implicit ctx: Context): Term = kernel.TypeSelect_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.TypeSelect_name(self)
+  }
+
   object IsProjection {
     /** Matches any Projection and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Projection] =
@@ -828,6 +837,11 @@ trait TreeOps extends Core {
       kernel.Projection_copy(original)(qualifier, name)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, String)] =
       kernel.matchProjection(tree).map(x => (x.qualifier, x.name))
+  }
+
+  implicit class ProjectionAPI(self: Projection) {
+    def qualifier(implicit ctx: Context): TypeTree = kernel.Projection_qualifier(self)
+    def name(implicit ctx: Context): String = kernel.Projection_name(self)
   }
 
   object IsSingleton {
@@ -845,6 +859,10 @@ trait TreeOps extends Core {
       kernel.matchSingleton(tree).map(_.ref)
   }
 
+  implicit class SingletonAPI(self: Singleton) {
+    def ref(implicit ctx: Context): Term = kernel.Singleton_ref(self)
+  }
+
   object IsRefined {
     /** Matches any Refined and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Refined] =
@@ -857,6 +875,11 @@ trait TreeOps extends Core {
       kernel.Refined_copy(original)(tpt, refinements)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] =
       kernel.matchRefined(tree).map(x => (x.tpt, x.refinements))
+  }
+
+  implicit class RefinedAPI(self: Refined) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.Refined_tpt(self)
+    def refinements(implicit ctx: Context): List[Definition] = kernel.Refined_refinements(self)
   }
 
   object IsApplied {
@@ -874,6 +897,11 @@ trait TreeOps extends Core {
       kernel.matchApplied(tree).map(x => (x.tpt, x.args))
   }
 
+  implicit class AppliedAPI(self: Applied) {
+    def tpt(implicit ctx: Context): TypeTree = kernel.Applied_tpt(self)
+    def args(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = kernel.Applied_args(self)
+  }
+
   object IsAnnotated {
     /** Matches any Annotated and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Annotated] =
@@ -887,6 +915,11 @@ trait TreeOps extends Core {
       kernel.Annotated_copy(original)(arg, annotation)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(TypeTree, Term)] =
       kernel.matchAnnotated(tree).map(x => (x.arg, x.annotation))
+  }
+
+  implicit class AnnotatedAPI(self: Annotated) {
+    def arg(implicit ctx: Context): TypeTree = kernel.Annotated_arg(self)
+    def annotation(implicit ctx: Context): Term = kernel.Annotated_annotation(self)
   }
 
   object IsMatchTypeTree {
@@ -904,6 +937,12 @@ trait TreeOps extends Core {
       kernel.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
   }
 
+  implicit class MatchTypeTreeAPI(self: MatchTypeTree) {
+    def bound(implicit ctx: Context): Option[TypeTree] = kernel.MatchTypeTree_bound(self)
+    def selector(implicit ctx: Context): TypeTree = kernel.MatchTypeTree_selector(self)
+    def cases(implicit ctx: Context): List[TypeCaseDef] = kernel.MatchTypeTree_cases(self)
+  }
+
   object IsByName {
     /** Matches any ByName and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[ByName] =
@@ -917,6 +956,10 @@ trait TreeOps extends Core {
       kernel.ByName_copy(original)(result)
     def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
       kernel.matchByName(tree).map(_.result)
+  }
+
+  implicit class ByNameAPI(self: ByName) {
+    def result(implicit ctx: Context): TypeTree = kernel.ByName_result(self)
   }
 
   object IsLambdaTypeTree {
@@ -934,6 +977,11 @@ trait TreeOps extends Core {
       kernel.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
   }
 
+  implicit class LambdaTypeTreeAPI(self: LambdaTypeTree) {
+    def tparams(implicit ctx: Context): List[TypeDef] = kernel.Lambdatparams(self)
+    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.Lambdabody(self)
+  }
+
   object IsTypeBind {
     /** Matches any TypeBind and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[TypeBind] =
@@ -946,6 +994,11 @@ trait TreeOps extends Core {
       kernel.TypeBind_copy(original)(name, tpt)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
       kernel.matchTypeBind(tree).map(x => (x.name, x.body))
+  }
+
+  implicit class TypeBindAPI(self: TypeBind) {
+    def name(implicit ctx: Context): String = kernel.TypeBind_name(self)
+    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeBind_body(self)
   }
 
   object IsTypeBlock {
@@ -961,59 +1014,6 @@ trait TreeOps extends Core {
       kernel.TypeBlock_copy(original)(aliases, tpt)
     def unapply(tree: Tree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] =
       kernel.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
-  }
-
-  implicit class TypeIdentAPI(self: TypeIdent) {
-    def name(implicit ctx: Context): String = kernel.TypeIdent_name(self)
-  }
-
-  implicit class TypeSelectAPI(self: TypeSelect) {
-    def qualifier(implicit ctx: Context): Term = kernel.TypeSelect_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.TypeSelect_name(self)
-  }
-
-  implicit class ProjectionAPI(self: Projection) {
-    def qualifier(implicit ctx: Context): TypeTree = kernel.Projection_qualifier(self)
-    def name(implicit ctx: Context): String = kernel.Projection_name(self)
-  }
-
-  implicit class SingletonAPI(self: Singleton) {
-    def ref(implicit ctx: Context): Term = kernel.Singleton_ref(self)
-  }
-
-  implicit class RefinedAPI(self: Refined) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.Refined_tpt(self)
-    def refinements(implicit ctx: Context): List[Definition] = kernel.Refined_refinements(self)
-  }
-
-  implicit class AppliedAPI(self: Applied) {
-    def tpt(implicit ctx: Context): TypeTree = kernel.Applied_tpt(self)
-    def args(implicit ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = kernel.Applied_args(self)
-  }
-
-  implicit class AnnotatedAPI(self: Annotated) {
-    def arg(implicit ctx: Context): TypeTree = kernel.Annotated_arg(self)
-    def annotation(implicit ctx: Context): Term = kernel.Annotated_annotation(self)
-  }
-
-  implicit class MatchTypeTreeAPI(self: MatchTypeTree) {
-    def bound(implicit ctx: Context): Option[TypeTree] = kernel.MatchTypeTree_bound(self)
-    def selector(implicit ctx: Context): TypeTree = kernel.MatchTypeTree_selector(self)
-    def cases(implicit ctx: Context): List[TypeCaseDef] = kernel.MatchTypeTree_cases(self)
-  }
-
-  implicit class ByNameAPI(self: ByName) {
-    def result(implicit ctx: Context): TypeTree = kernel.ByName_result(self)
-  }
-
-  implicit class LambdaTypeTreeAPI(self: LambdaTypeTree) {
-    def tparams(implicit ctx: Context): List[TypeDef] = kernel.Lambdatparams(self)
-    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.Lambdabody(self)
-  }
-
-  implicit class TypeBindAPI(self: TypeBind) {
-    def name(implicit ctx: Context): String = kernel.TypeBind_name(self)
-    def body(implicit ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeBind_body(self)
   }
 
   implicit class TypeBlockAPI(self: TypeBlock) {
