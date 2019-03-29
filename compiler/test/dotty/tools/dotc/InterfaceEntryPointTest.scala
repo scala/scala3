@@ -3,6 +3,7 @@ package tools.dotc
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.experimental.categories.Category
 import interfaces._
 import scala.collection.mutable.ListBuffer
 import java.nio.file._
@@ -18,6 +19,7 @@ import java.nio.file._
  *
  *  @see [[OtherEntryPointsTest]]
  */
+@Category(Array(classOf[BootstrappedOnlyTests]))
 class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
     val sources =
