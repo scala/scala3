@@ -2,7 +2,7 @@ package scala.tasty
 
 import scala.tasty.reflect._
 
-abstract class Reflection
+class Reflection(val kernel: Kernel)
     extends Core
     with ConstantOps
     with ContextOps
