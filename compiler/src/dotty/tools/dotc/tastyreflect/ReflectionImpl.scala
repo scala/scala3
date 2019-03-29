@@ -10,13 +10,13 @@ object ReflectionImpl {
     apply(rootContext, SourcePosition(rootContext.source, Spans.NoSpan))
 
   def apply(rootContext: Contexts.Context, rootPosition: SourcePosition): scala.tasty.Reflection =
-    new ReflectionImpl(new KernelImpl(rootContext, rootPosition))
+    new scala.tasty.Reflection(new KernelImpl(rootContext, rootPosition))
 
   def showTree(tree: tpd.Tree)(implicit ctx: Contexts.Context): String = {
-    val refl = new ReflectionImpl(new KernelImpl(ctx, tree.sourcePos))
-    new refl.SourceCodePrinter().showTree(tree)
+    val refl = new scala.tasty.Reflection(new KernelImpl(ctx, tree.sourcePos))
+    val reflCtx = ctx.asInstanceOf[refl.Context]
+    val reflTree = tree.asInstanceOf[refl.Tree]
+    new refl.SourceCodePrinter().showTree(reflTree)(reflCtx)
   }
-
-  private class ReflectionImpl(val kernel: KernelImpl) extends scala.tasty.Reflection
 
 }
