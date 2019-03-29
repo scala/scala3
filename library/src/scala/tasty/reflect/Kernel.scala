@@ -45,7 +45,7 @@ package scala.tasty.reflect
  *           |               +- TypeTree_Refined
  *           |               +- TypeTree_Applied
  *           |               +- TypeTree_Annotated
- *           |               +- TypeTree_MatchType
+ *           |               +- TypeTree_MatchTypeTreeTree
  *           |               +- TypeTree_ByName
  *           |               +- TypeTree_LambdaTypeTree
  *           |               +- TypeTree_TypeBind
@@ -629,16 +629,16 @@ trait Kernel {
   def TypeTree_Annotated_copy(original: TypeTree_Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): TypeTree_Annotated
 
   /** Type tree representing a type match */
-  type TypeTree_MatchType <: TypeTree
+  type TypeTree_MatchTypeTree <: TypeTree
 
-  def matchTypeTree_MatchType(tree: Tree)(implicit ctx: Context): Option[TypeTree_MatchType]
+  def matchTypeTree_MatchTypeTree(tree: Tree)(implicit ctx: Context): Option[TypeTree_MatchTypeTree]
 
-  def TypeTree_MatchType_bound(self: TypeTree_MatchType)(implicit ctx: Context): Option[TypeTree]
-  def TypeTree_MatchType_selector(self: TypeTree_MatchType)(implicit ctx: Context): TypeTree
-  def TypeTree_MatchType_cases(self: TypeTree_MatchType)(implicit ctx: Context): List[TypeCaseDef]
+  def TypeTree_MatchTypeTree_bound(self: TypeTree_MatchTypeTree)(implicit ctx: Context): Option[TypeTree]
+  def TypeTree_MatchTypeTree_selector(self: TypeTree_MatchTypeTree)(implicit ctx: Context): TypeTree
+  def TypeTree_MatchTypeTree_cases(self: TypeTree_MatchTypeTree)(implicit ctx: Context): List[TypeCaseDef]
 
-  def TypeTree_MatchType_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType
-  def TypeTree_MatchType_copy(original: TypeTree_MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType
+  def TypeTree_MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchTypeTree
+  def TypeTree_MatchTypeTree_copy(original: TypeTree_MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchTypeTree
 
   /** Type tree representing a by name parameter */
   type TypeTree_ByName <: TypeTree

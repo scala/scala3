@@ -895,19 +895,19 @@ trait TreeOps extends Core {
         kernel.matchTypeTree_Annotated(tree).map(x => (x.arg, x.annotation))
     }
 
-    object IsMatchType {
-      /** Matches any MatchType and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[MatchType] =
-        kernel.matchTypeTree_MatchType(tree)
+    object IsMatchTypeTree {
+      /** Matches any MatchTypeTree and returns it */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[MatchTypeTree] =
+        kernel.matchTypeTree_MatchTypeTree(tree)
     }
 
-    object MatchType {
-      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
-        kernel.TypeTree_MatchType_apply(bound, selector, cases)
-      def copy(original: MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchType =
-        kernel.TypeTree_MatchType_copy(original)(bound, selector, cases)
+    object MatchTypeTree {
+      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchTypeTree =
+        kernel.TypeTree_MatchTypeTree_apply(bound, selector, cases)
+      def copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchTypeTree =
+        kernel.TypeTree_MatchTypeTree_copy(original)(bound, selector, cases)
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        kernel.matchTypeTree_MatchType(tree).map(x => (x.bound, x.selector, x.cases))
+        kernel.matchTypeTree_MatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
     }
 
     object IsByName {
@@ -1003,10 +1003,10 @@ trait TreeOps extends Core {
     def annotation(implicit ctx: Context): Term = kernel.TypeTree_Annotated_annotation(self)
   }
 
-  implicit class TypeTree_MatchTypeAPI(self: TypeTree.MatchType) {
-    def bound(implicit ctx: Context): Option[TypeTree] = kernel.TypeTree_MatchType_bound(self)
-    def selector(implicit ctx: Context): TypeTree = kernel.TypeTree_MatchType_selector(self)
-    def cases(implicit ctx: Context): List[TypeCaseDef] = kernel.TypeTree_MatchType_cases(self)
+  implicit class TypeTree_MatchTypeTreeAPI(self: TypeTree.MatchTypeTree) {
+    def bound(implicit ctx: Context): Option[TypeTree] = kernel.TypeTree_MatchTypeTree_bound(self)
+    def selector(implicit ctx: Context): TypeTree = kernel.TypeTree_MatchTypeTree_selector(self)
+    def cases(implicit ctx: Context): List[TypeCaseDef] = kernel.TypeTree_MatchTypeTree_cases(self)
   }
 
   implicit class TypeTree_ByNameAPI(self: TypeTree.ByName) {

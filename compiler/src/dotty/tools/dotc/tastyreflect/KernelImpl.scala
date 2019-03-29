@@ -760,21 +760,21 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def TypeTree_Annotated_copy(original: TypeTree_Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): TypeTree_Annotated =
     tpd.cpy.Annotated(original)(arg, annotation)
 
-  type TypeTree_MatchType = tpd.MatchTypeTree
+  type TypeTree_MatchTypeTree = tpd.MatchTypeTree
 
-  def matchTypeTree_MatchType(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_MatchType] = tpt match {
+  def matchTypeTree_MatchTypeTree(tpt: Tree /*TypeTree | TypeBoundsTree*/)(implicit ctx: Context): Option[TypeTree_MatchTypeTree] = tpt match {
     case tpt: tpd.MatchTypeTree => Some(tpt)
     case _ => None
   }
 
-  def TypeTree_MatchType_bound(self: TypeTree_MatchType)(implicit ctx: Context): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
-  def TypeTree_MatchType_selector(self: TypeTree_MatchType)(implicit ctx: Context): TypeTree = self.selector
-  def TypeTree_MatchType_cases(self: TypeTree_MatchType)(implicit ctx: Context): List[CaseDef] = self.cases
+  def TypeTree_MatchTypeTree_bound(self: TypeTree_MatchTypeTree)(implicit ctx: Context): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
+  def TypeTree_MatchTypeTree_selector(self: TypeTree_MatchTypeTree)(implicit ctx: Context): TypeTree = self.selector
+  def TypeTree_MatchTypeTree_cases(self: TypeTree_MatchTypeTree)(implicit ctx: Context): List[CaseDef] = self.cases
 
-  def TypeTree_MatchType_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType =
+  def TypeTree_MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchTypeTree =
     withDefaultPos(ctx => tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)(ctx))
 
-  def TypeTree_MatchType_copy(original: TypeTree_MatchType)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchType =
+  def TypeTree_MatchTypeTree_copy(original: TypeTree_MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): TypeTree_MatchTypeTree =
     tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
 
   type TypeTree_ByName = tpd.ByNameTypeTree

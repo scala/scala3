@@ -87,7 +87,7 @@ trait TreeUtils
         case TypeTree.LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs), arg)
         case TypeTree.TypeBind(_, tbt) => foldTree(x, tbt)
         case TypeTree.TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
-        case TypeTree.MatchType(boundopt, selector, cases) =>
+        case TypeTree.MatchTypeTree(boundopt, selector, cases) =>
           foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
         case WildcardTypeTree() => x
         case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
@@ -222,8 +222,8 @@ trait TreeUtils
         TypeTree.Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
       case TypeTree.IsApplied(tree) =>
         TypeTree.Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
-      case TypeTree.IsMatchType(tree) =>
-        TypeTree.MatchType.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
+      case TypeTree.IsMatchTypeTree(tree) =>
+        TypeTree.MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
       case TypeTree.IsByName(tree) =>
         TypeTree.ByName.copy(tree)(transformTypeTree(tree.result))
       case TypeTree.IsLambdaTypeTree(tree) =>

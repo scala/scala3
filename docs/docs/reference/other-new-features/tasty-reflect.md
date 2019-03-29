@@ -116,7 +116,7 @@ TASTy Reflect provides the following types:
          |                             +- SelectOuter
          |                             +- While
          |
-         +- TypeTree ----+- Synthetic
+         +- TypeTree ----+- Inferred
          |               +- TypeIdent
          |               +- TypeSelect
          |               +- Project
@@ -124,7 +124,7 @@ TASTy Reflect provides the following types:
          |               +- Refined
          |               +- Applied
          |               +- Annotated
-         |               +- MatchType
+         |               +- MatchTypeTree
          |               +- ByName
          |               +- LambdaTypeTree
          |               +- Bind

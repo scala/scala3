@@ -237,8 +237,8 @@ trait Printers
           this += "TypeBoundsTree(" += lo += ", " += hi += ")"
         case WildcardTypeTree() =>
           this += s"WildcardTypeTree()"
-        case TypeTree.MatchType(bound, selector, cases) =>
-          this += "TypeTree.MatchType(" += bound += ", " += selector += ", " ++= cases += ")"
+        case TypeTree.MatchTypeTree(bound, selector, cases) =>
+          this += "TypeTree.MatchTypeTree(" += bound += ", " += selector += ", " ++= cases += ")"
         case CaseDef(pat, guard, body) =>
           this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
         case TypeCaseDef(pat, body) =>
@@ -1188,7 +1188,7 @@ trait Printers
             inSquare(printSeparated(tparams))
             if (isMember) {
               body match {
-                case TypeTree.MatchType(Some(bound), _, _) =>
+                case TypeTree.MatchTypeTree(Some(bound), _, _) =>
                   this +=  " <: "
                   printTypeTree(bound)
                 case _ =>
@@ -1426,7 +1426,7 @@ trait Printers
               printAnnotation(annot)
           }
 
-        case TypeTree.MatchType(bound, selector, cases) =>
+        case TypeTree.MatchTypeTree(bound, selector, cases) =>
           printTypeTree(selector)
           this += highlightKeyword(" match ", color)
           inBlock(printTypeCases(cases, lineBreak()))

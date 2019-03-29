@@ -46,7 +46,7 @@ package scala.tasty.reflect
  *           |               +- Refined
  *           |               +- Applied
  *           |               +- Annotated
- *           |               +- MatchType
+ *           |               +- MatchTypeTree
  *           |               +- ByName
  *           |               +- LambdaTypeTree
  *           |               +- TypeBind
@@ -271,7 +271,7 @@ trait Core {
         type Annotated = kernel.TypeTree_Annotated
 
         /** Type tree representing a type match */
-        type MatchType = kernel.TypeTree_MatchType
+        type MatchTypeTree = kernel.TypeTree_MatchTypeTree
 
         /** Type tree representing a by name parameter */
         type ByName = kernel.TypeTree_ByName
