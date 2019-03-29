@@ -14,10 +14,10 @@ object scalatest {
       Type.IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
 
     cond.unseal.underlyingArgument match {
-      case Term.Apply(sel @ Term.Select(lhs, op), rhs :: Nil) =>
+      case Apply(sel @ Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
-            let(Term.Apply(Term.Select.copy(sel)(left, op), right :: Nil)) { result =>
+            let(Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]
@@ -26,11 +26,11 @@ object scalatest {
             }
           }
         }.seal[Unit]
-      case Term.Apply(f @ Term.Apply(Term.IsSelect(sel @ Term.Select(Term.Apply(qual, lhs :: Nil), op)), rhs :: Nil), implicits)
+      case Apply(f @ Apply(IsSelect(sel @ Select(Apply(qual, lhs :: Nil), op)), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
         let(lhs) { left =>
           let(rhs) { right =>
-            let(Term.Apply(Term.Apply(Term.Select.copy(sel)(Term.Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
+            let(Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
               val l = left.seal[Any]
               val r = right.seal[Any]
               val b = result.seal[Boolean]

@@ -14,7 +14,6 @@ object XmlQuote {
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
           (implicit reflect: Reflection): Expr[Xml] = {
     import reflect._
-    import Term._
 
     def abort(msg: String): Nothing =
       throw new QuoteError(msg)

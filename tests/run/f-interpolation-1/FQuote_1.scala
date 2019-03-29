@@ -21,7 +21,7 @@ object FQuote {
     }
 
     def isStringConstant(tree: Term) = tree match {
-      case Term.Literal(_) => true
+      case Literal(_) => true
       case _ => false
     }
 
@@ -33,17 +33,17 @@ object FQuote {
 
     // FQuote.SCOps(StringContext.apply([p0, ...]: String*)
     val parts = receiver.unseal.underlyingArgument match {
-      case Term.Apply(conv, List(Term.Apply(fun, List(Term.Typed(Term.Repeated(values, _), _)))))
+      case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Term.Literal(Constant.String(value)) => value }
+        values.collect { case Literal(Constant.String(value)) => value }
       case tree =>
         throw new QuoteError(s"String literal expected, but ${tree.show} found")
     }
 
     // [a0, ...]: Any*
-    val Term.Typed(Term.Repeated(allArgs, _), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(allArgs, _), _) = args.unseal.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {

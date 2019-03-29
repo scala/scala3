@@ -22,19 +22,19 @@ object Lens {
     def setterBody(obj: Term, value: Term, parts: List[String]): Term = {
       // o.copy(field = value)
       def helper(obj: Term, value: Term, field: String): Term =
-        Term.Select.overloaded(obj, "copy", Nil, Term.NamedArg(field, value) :: Nil)
+        Select.overloaded(obj, "copy", Nil, NamedArg(field, value) :: Nil)
 
       parts match {
         case field :: Nil => helper(obj, value, field)
         case field :: parts =>
-          helper(obj, setterBody(Term.Select.unique(obj, field), value, parts), field)
+          helper(obj, setterBody(Select.unique(obj, field), value, parts), field)
       }
     }
 
     object Path {
       private def recur(tree: Term, selects: List[String]): Option[(Term, List[String])] = tree match {
-        case Term.Ident(_) if selects.nonEmpty => Some((tree, selects))
-        case Term.Select(qual, name) => recur(qual, name :: selects)
+        case Ident(_) if selects.nonEmpty => Some((tree, selects))
+        case Select(qual, name) => recur(qual, name :: selects)
         case _ => None
       }
 
@@ -43,11 +43,11 @@ object Lens {
 
     object Function {
       def unapply(t: Term): Option[(List[ValDef], Term)] = t match {
-        case Term.Inlined(
+        case Inlined(
           None, Nil,
-          Term.Block(
+          Block(
             (ddef @ DefDef(_, Nil, params :: Nil, _, Some(body))) :: Nil,
-            Term.Lambda(meth, _)
+            Lambda(meth, _)
           )
         ) if meth.symbol == ddef.symbol => Some((params, body))
         case _ => None
@@ -122,9 +122,9 @@ object Iso {
 
     '{
       // (p: S) => p._1
-      val to = (p: S) =>  ${ Term.Select.unique(('p).unseal, "_1").seal[A] }
+      val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ${ Term.Select.overloaded(Term.Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal[S] }
+      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal[S] }
       apply(from)(to)
     }
   }
@@ -137,7 +137,7 @@ object Iso {
     val tpS = typeOf[S]
 
     if (tpS.isSingleton) {
-      val ident = Term.Ident(tpS.asInstanceOf[TermRef]).seal[S]
+      val ident = Ident(tpS.asInstanceOf[TermRef]).seal[S]
       '{
         Iso[S, 1](Function.const($ident))(Function.const(1))
       }
@@ -153,7 +153,7 @@ object Iso {
         case Type.TypeRef(name, prefix) => Type.TermRef(prefix, name)
       }
 
-      val obj = Term.Select.overloaded(Term.Ident(companion), "apply", Nil, Nil).seal[S]
+      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal[S]
 
       '{
         Iso[S, 1](Function.const($obj))(Function.const(1))

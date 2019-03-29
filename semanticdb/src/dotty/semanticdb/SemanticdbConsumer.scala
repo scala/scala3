@@ -596,11 +596,11 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
 
       def getImportPath(pathTerm: Term): String = {
         val range = pathTerm match {
-          case Term.Select(qualifier, selected) => {
+          case Select(qualifier, selected) => {
             getImportPath(qualifier)
             rangeSelect(selected, pathTerm.pos)
           }
-          case Term.Ident(x) => {
+          case Ident(x) => {
             createRange(pathTerm.pos.startLine, pathTerm.pos.startColumn, pathTerm.symbol.trueName.length)
           }
         }
@@ -634,13 +634,13 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
       def traverseTypeTree(tree: Tree /*TypeTree | TypeBoundsTree*/)(
           implicit ctx: Context): Unit = {
         tree match {
-          case TypeTree.TypeIdent(_) => {
+          case TypeIdent(_) => {
             val typetree = tree.typetree
             addOccurenceTypeTree(typetree,
                                  s.SymbolOccurrence.Role.REFERENCE,
                                  createRange(typetree.pos))
           }
-          case TypeTree.TypeSelect(qualifier, _) => {
+          case TypeSelect(qualifier, _) => {
             val typetree = tree.typetree
             val range = rangeSelect(typetree.symbol.trueName, typetree.pos)
             addOccurenceTypeTree(typetree,
@@ -649,7 +649,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             super.traverseTree(typetree)
           }
 
-          case TypeTree.Projection(qualifier, x) => {
+          case Projection(qualifier, x) => {
               val typetree = tree.typetree
               val range = rangeSelect(typetree.symbol.trueName, typetree.pos)
               addOccurenceTypeTree(typetree,
@@ -658,7 +658,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
               super.traverseTree(typetree)
           }
 
-          case TypeTree.Inferred() => {
+          case Inferred() => {
             /* In theory no inferred types should be put in the semanticdb file.
             However, take the case where a typed is refered from an imported class:
               class PrefC {
@@ -750,10 +750,10 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
               packageDefinitions += key
               getImportSelectors(getImportPath(path), selectors)
             }
-          case Term.New(ty) => {
+          case New(ty) => {
             super.traverseTree(tree)
           }
-          case Term.Apply(_, _) => {
+          case Apply(_, _) => {
             super.traverseTree(tree)
           }
           case ClassDef(classname, constr, parents, derived, selfopt, statements) => {
@@ -875,7 +875,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
           case DefDef("<init>", _, _, _, _) if tree.symbol.owner.flags.is(Flags.Object) => {
           }
 
-          case Term.Assign(lhs, rhs) => {
+          case Assign(lhs, rhs) => {
             // We make sure to set [isAssignedTerm] to true on the lhs
             isAssignedTerm = true
             traverseTree(lhs)
@@ -929,7 +929,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             super.traverseTree(cdef)
           }
 
-          case Term.This(Some(id)) => {
+          case This(Some(id)) => {
             /* We've got two options here:
             - either the this is explicit: eg C.this.XXX. In this case, the position is [C.this], but
               we want to put the symbol on the C, so around id
@@ -946,14 +946,14 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
                              rangeThis)
           }
 
-          case Term.Super(_, Some(id)) => {
+          case Super(_, Some(id)) => {
             addOccurence(classStacks.head,
               s.SymbolOccurrence.Role.DEFINITION,
               createRange(id.pos))
             super.traverseTree(tree)
           }
 
-          case Term.Select(qualifier, _) => {
+          case Select(qualifier, _) => {
             var range = rangeSelect(tree.symbol.trueName, tree.pos)
 
             /* This branch deals with select of a `this`. Their is two options:
@@ -985,7 +985,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             addOccurenceTree(tree, s.SymbolOccurrence.Role.REFERENCE, range, shouldForceAdd, isMutableAssignement)
           }
 
-          case Term.Ident(name) => {
+          case Ident(name) => {
             addOccurenceTree(tree,
                              s.SymbolOccurrence.Role.REFERENCE,
                              createRange(tree.pos.startLine, tree.pos.startColumn, tree.symbol.trueName.length))
@@ -993,7 +993,7 @@ class SemanticdbConsumer(sourceFilePath: java.nio.file.Path) extends TastyConsum
             super.traverseTree(tree)
           }
 
-          case Term.Inlined(Some(c), b, d) => {
+          case Inlined(Some(c), b, d) => {
             /* In theory files should be compiled with -Yno-inline before running semanticdb.
             If this is not the case, here is a fallback to heuristically determine which predefFunction
             corresponds to an inlined term.
