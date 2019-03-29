@@ -10,6 +10,8 @@ import org.junit.experimental.categories.Category
 import scala.concurrent.duration._
 import vulpix._
 
+import java.nio.file._
+
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BootstrappedOnlyCompilationTests extends ParallelTesting {
   import ParallelTesting._
@@ -109,4 +111,27 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     compileDir("compiler/src/dotty/tools/dotc/core/tasty", picklingWithCompilerOptions) +
     compileDir("compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingWithCompilerOptions)
   }.limitThreads(4).checkCompile()
+
+  @Test def testPlugins: Unit = {
+    val pluginFile = "plugin.properties"
+
+    // 1. hack with absolute path for -Xplugin
+    // 2. copy `pluginFile` to destination
+    def compileFilesInDir(dir: String): CompilationTest = {
+      val outDir = defaultOutputDir + "testPlugins/"
+      val sourceDir = new java.io.File(dir)
+
+      val dirs = sourceDir.listFiles.toList.filter(_.isDirectory)
+      val targets = dirs.map { dir =>
+        val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
+        Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)
+        val flags = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+        SeparateCompilationSource("testPlugins", dir, flags, compileDir)
+      }
+
+      new CompilationTest(targets)
+    }
+
+    compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
+  }
 }
