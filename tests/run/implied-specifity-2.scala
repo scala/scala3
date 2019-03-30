@@ -29,8 +29,32 @@ object Baz {
   implied baz given High for Foo[Bar[Baz]](5)
 }
 
+class Arg
+implied for Arg
+
+class Bam(val str: String)
+implied lo given Low for Bam("lo")
+implied hi given High given Arg for Bam("hi")
+
+class Bam2(val str: String)
+implied lo2 given Low for Bam2("lo")
+implied mid2 given High given Arg for Bam2("mid")
+implied hi2 for Bam2("hi")
+
+class Arg2
+class Red(val str: String)
+implied normal given Arg2 for Red("normal")
+implied reduced given (ev: Arg2 | Low) for Red("reduced")
+
 object Test extends App {
   assert(Foo[Int] == 0)
   assert(Foo[Bar[Int]] == 3)
   assert(Foo[Bar[Baz]] == 5)
+  assert(the[Bam].str == "hi")
+  assert(the[Bam2].str == "hi")
+  assert(the[Red].str == "reduced")
+
+  { implied for Arg2
+    assert(the[Red].str == "normal")
+  }
 }

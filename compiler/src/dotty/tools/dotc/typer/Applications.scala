@@ -1367,9 +1367,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
       }
 
-    // # skipped implicit parameters in tp1  -  # skipped implicit parameters in tp2
-    var implicitBalance: Int = 0
-
     /** Widen the result type of synthetic implied methods from the implementation class to the
      *  type that's implemented. Example
      *
@@ -1404,12 +1401,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
 
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type, weight: Int): Type = tp match {
+    def stripImplicit(tp: Type): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
-        implicitBalance += mt.paramInfos.length * weight
-        resultTypeApprox(mt)
+        stripImplicit(resultTypeApprox(mt))
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType, weight))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
       case _ =>
         tp
     }
@@ -1432,18 +1428,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     val fullType1 = widenImplied(alt1.widen, alt1)
     val fullType2 = widenImplied(alt2.widen, alt2)
-    val strippedType1 = stripImplicit(fullType1, -1)
-    val strippedType2 = stripImplicit(fullType2, +1)
+    val strippedType1 = stripImplicit(fullType1)
+    val strippedType2 = stripImplicit(fullType2)
 
     val result = compareWithTypes(strippedType1, strippedType2)
-    if (result != 0 || !ctx.typerState.test(implicit ctx => strippedType1 =:= strippedType2))
-      result
-    else if (implicitBalance != 0)
-      -implicitBalance.signum
-    else if ((strippedType1 `ne` fullType1) || (strippedType2 `ne` fullType2))
-      compareWithTypes(fullType1, fullType2)
-    else
-      0
+    if (result != 0) result
+    else if (strippedType1 eq fullType1)
+      if (strippedType2 eq fullType2) 0         // no implicits either side: its' a draw
+      else 1                                    // prefer 1st alternative with no implicits
+    else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
+    else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {

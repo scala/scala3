@@ -2597,7 +2597,10 @@ class Typer extends Namer
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither { implicit ctx =>
-              typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt, locked)
+              val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
+              if (wtp.isContextual) app.pushAttachment(untpd.ApplyGiven, ())
+              typr.println(i"try with default implicit args $app")
+              typed(app, pt, locked)
             } { (_, _) =>
               issueErrors()
             }

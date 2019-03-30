@@ -63,14 +63,18 @@ package p3 {
       import implied TextParser._
       import TextParser._
 
-      val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
-      val tp_i = the[TokenParser[Char, Position[CharSequence]]]
-      implicit val co_i: Conversion[Char, Position[CharSequence]] = the[Conversion[Char, Position[CharSequence]]]
-      val co_x : Position[CharSequence] = 'x'
+      val co_i: Conversion[Char, Position[CharSequence]] = the[Conversion[Char, Position[CharSequence]]]
 
       {
-        implied XXX for Conversion[Char, Position[CharSequence]] = co_i
-        val co_y : Position[CharSequence] = 'x'
+        val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
+        val tp_i = the[TokenParser[Char, Position[CharSequence]]]
+        implied for Conversion[Char, Position[CharSequence]] = co_i
+        val co_x : Position[CharSequence] = 'x'
+
+        {
+          implied XXX for Conversion[Char, Position[CharSequence]] = co_i
+          val co_y : Position[CharSequence] = 'x'
+        }
       }
     }
   }
