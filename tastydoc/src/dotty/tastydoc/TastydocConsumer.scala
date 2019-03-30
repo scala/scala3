@@ -13,6 +13,8 @@ import java.io._
 class TastydocConsumer extends TastyConsumer {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
+    import internal._
+    import references._
 
     println("Full tree =========================")
     println(root.show)
@@ -88,10 +90,79 @@ class TastydocConsumer extends TastyConsumer {
       }
     }
 
+    def convertToEntity(child: reflect.Tree) : Entity = child match {
+        case reflect.PackageClause(pid, stats) =>
+          //Find whole package path
+          if(!stats.isEmpty && false){ //TOASK: isInstanceOf not working? find package recursively is right?
+            convertToEntity(stats.head)
+          } else{
+            val pidSplit = pid.symbol.showCode.split("\\.") //TOASK: showcode on symbol?
+            //TODO: Complete
+            val annotations = Nil
+            val name = pidSplit.last //TOASK: Cleaner directly in constructor?
+            val members = stats.map(convertToEntity)
+            val path = pidSplit.init.toList
+            val superTypes = Nil
+            val comment = None
+            val parent = None
+            PackageImpl(annotations, name, members, path, superTypes, comment, parent)
+          }
+
+        case reflect.Import(impliedOnly, expr, selectors) =>
+          //TODO: rework all
+          val annotations = Nil
+          val name = selectors.map(_.toString).reduce(_+_)
+          val path = expr.symbol.showCode.split("\\.").toList
+          val comment = None
+          val parent = None
+          ImportImpl(annotations, name, path, comment, parent)
+
+        case reflect.ClassDef(name, constr, parents, derived, self, body) =>
+          //TODO: Generic type
+          //TODO: TypeDef
+          //TODO: Classes inside class
+          //TODO: case class
+
+          //child.symbol.annots.foreach(x => println(x.symbol.showCode))
+          //TODO: Complete
+          val annotations = Nil
+          val members = body.map(convertToEntity)
+          val modifiers = child.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").toList
+          val path = Nil
+          // typeParams: List[String] = Nil,
+          // constructors: List[List[ParamList]] = Nil,
+          // superTypes: List[MaterializableLink] = Nil,
+          // var comment: Option[Comment] = None,
+          // var companionPath: List[String] = Nil,
+          // var parent: Option[Entity] = None
+          // new ClassContainer(sign, defdef, valdef, typedef, extractUserDoc(child.symbol.comment))
+          ClassImpl(annotations, name, members, modifiers, path)
+
+        case reflect.ValDef(name, tpt, rhs) =>
+          //println(tpt.showCode)
+          //TODO: Complete
+          val annotations = Nil
+          val modifiers = Nil
+          val path = Nil
+          val returnValue = null
+          val kind = null
+          // var comment: Option[Comment] = None,
+          // implicitlyAddedFrom: Option[Reference] = None,
+          // var parent: Option[Entity] = None
+          ValImpl(annotations, name, modifiers, path, returnValue, kind)
+
+        case _ => EmptyPackage(Nil, "Error") //TODO: should never go there
+    }
+
     //print(formatToMarkdown(traverse(root), 0))
-    val pw = new PrintWriter(new File("./tastydoc/docOutputTest.md" ))
-    pw.write(formatToMarkdown(traverse(root), 0))
-    pw.close()
+    // val pw = new PrintWriter(new File("./tastydoc/docOutputTest.md" ))
+    // pw.write(formatToMarkdown(traverse(root), 0))
+    // pw.close()
+
+    println("Start convert to Entity")
+
+    //convertToEntity(root)
+    println(convertToEntity(root))
 
     println("Start comment parsing")
 

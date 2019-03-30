@@ -52,7 +52,7 @@ class Tests {
   @Test def testDocumentation(): Unit = {
     ConsumeTasty(
       "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-      List("example.Documentation"),
+      List("example.level2.Documentation"),
       new dotty.tastydoc.TastydocConsumer
     )
   }

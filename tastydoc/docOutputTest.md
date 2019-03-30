@@ -1,8 +1,11 @@
 ## package Ident(example)
+## package Ident(level2)
 
 ### import scala.collection.List(Ident(_))
 
 ### import scala.List(Ident(deprecated))
+
+### import scala.annotation.List(Ident(_))
 # class: Documentation
 This class is used for testing tasty doc generation
 @constructor create new object
@@ -99,4 +102,5 @@ val privateVal : scala.Nothing
 ```
 
 ## Types :
+
 

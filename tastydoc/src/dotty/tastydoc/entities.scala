@@ -3,6 +3,8 @@ package dotty.tastydoc
 import comment._
 import references._
 
+//TODO: Clean and remove useless stuff (sometimes override, sometimes not, def and val, etc.)
+
 trait Entity { entity =>
   //def symbol: Symbol TODO
 
@@ -123,3 +125,7 @@ trait Def extends Entity with Modifiers with TypeParams with ReturnValue with Im
 }
 
 trait Val extends Entity with Modifiers with ReturnValue with ImplicitlyAddedEntity
+
+trait Import extends Entity {
+  override val kind = "import"
+}

@@ -1,7 +1,11 @@
 package example
+/** Test
+*/
+package level2
 
 import scala.collection._
 import scala.deprecated
+import scala.annotation._
 
 /** This class is used for testing tasty doc generation
  * @constructor create new object
@@ -9,7 +13,8 @@ import scala.deprecated
  * @param c2 class parameter 2
  * @tparam T class type parameter
  */
-abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] {
+@strictfp
+sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] {
 
   /** Auxiliary constructor
    * @param ac auxiliary parameter
@@ -27,6 +32,7 @@ abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] {
 
   /** Test value
   */
+  @showAsInfix
   val v : Int = ???
 
   protected def protectedMethod = ???
@@ -37,10 +43,9 @@ abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] {
 
   def abstractDefinition : Int
 
-  //Define function otherwise class should be abstract
   def apply(idx: Int) = ???
   def iterator = ???
-  def length = ???
+  override def length = ???
 
   /** An example documention with markdown formatting
    *
