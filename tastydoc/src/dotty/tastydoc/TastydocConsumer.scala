@@ -159,10 +159,14 @@ class TastydocConsumer extends TastyConsumer {
     // pw.write(formatToMarkdown(traverse(root), 0))
     // pw.close()
 
-    println("Start convert to Entity")
+    println("Start convert to Representation")
 
     //convertToEntity(root)
-    println(convertToEntity(root))
+    println(representations.convertToRepresentation(reflect)(root))
+    representations.convertToRepresentation(reflect)(root) match {
+      case e: representations.PackageRepresentation => println("YES")
+      case _ => println("NO")
+    }
 
     println("Start comment parsing")
 

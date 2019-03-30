@@ -21,9 +21,9 @@ object representations {
   trait Modifiers {
     val modifiers: List[String]
 
-    val isPrivate: Boolean = modifiers.contains("private")
+    // val isPrivate: Boolean = modifiers.contains("private")
 
-    def isProtected: Boolean = modifiers.contains("protected")
+    // val isProtected: Boolean = modifiers.contains("protected")
   }
 
   trait Companion {
@@ -50,51 +50,55 @@ object representations {
   }
 
   //TOASK Pass reflection eachtime
-  case class PackageRepresentation(reflect: Reflection)(pid: reflect.kernel.Ref, stats: List[reflect.Tree]) extends Representation with Members {
+  case class PackageRepresentation(reflect: Reflection)(internal: reflect.PackageClause) extends Representation with Members {
     import reflect._
 
     override val (name, path) = {
-      val pidSplit = pid.symbol.showCode.split("\\.")
+      val pidSplit = internal.pid.symbol.showCode.split("\\.")
       (pidSplit.last, pidSplit.init.toList)
     }
-    override val comments = ???
-    override val members = stats.map(convertToRepresentation(reflect)(_))
+    override val comments = ""
+    override val members = internal.stats.map(convertToRepresentation(reflect)(_))
   }
 
-  //TODO: Use impliedOnly
-  case class ImportRepresentation(reflect: Reflection)(impliedOnly: Boolean, expr: reflect.kernel.Term, selectors: List[reflect.ImportSelector]) extends Representation {
+  //TODO: Handle impliedOnly
+  case class ImportRepresentation(reflect: Reflection)(internal: reflect.Import) extends Representation {
     import reflect._
 
-    override val name = selectors.map(_.toString).reduce(_+_)
-    override val path = expr.symbol.showCode.split("\\.").toList
-    override val comments = ???
+    override val name = internal.selectors.map(_.toString).reduce(_+_)
+    override val path = internal.expr.symbol.showCode.split("\\.").toList
+    override val comments = ""
   }
 
-  case class ClassRepresenation(reflect: Reflection)(internal: reflect.ClassDef, override val name: String, constr: reflect.kernel.DefDef, parents: List[reflect.TermOrTypeTree], derived: List[reflect.TypeTree], self: Option[reflect.ValDef], body: List[reflect.Statement]) extends Representation with Members with Parents with Modifiers with Companion with ParamList{
+  case class ClassRepresentation(reflect: Reflection)(internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors {
     import reflect._
+
+    override val name = internal.name
+    override val path = Nil
+    override val comments = ""
+    override val members = internal.body.map(convertToRepresentation(reflect))//TOASK: Override for trait member or just val?
+    override val parents = Nil
+    override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").toList
+    override val companionPath = Nil
+    override val constructors = Nil
+  }
+
+  case class DebugRepresentation(reflect: Reflection) extends Representation {
+    val name = "DEBUG"
+    val path = Nil
+    val comments = ""
   }
 
   def convertToRepresentation(reflect: Reflection)(child: reflect.Tree) = {
     import reflect._
     child match {
-      case reflect.PackageClause(pid, stats) => PackageRepresentation(reflect)(pid, stats)
+      case reflect.PackageClause(_) => PackageRepresentation(reflect)(child.asInstanceOf)
 
-      case reflect.Import(impliedOnly, expr, selectors) => ImportRepresentation(reflect)(impliedOnly, expr, selectors)
+      case reflect.Import(_) => ImportRepresentation(reflect)(child.asInstanceOf)
 
-      case reflect.ClassDef(name, constr, parents, derived, self, body) => ClassRepresenation(reflect)(child, name, constr, parents, derived, self, body)
-        //TODO: Generic type
-        //TODO: TypeDef
-        //TODO: Classes inside class
-        // val sign = "class: " + name
-        // def iterBody(body: List[reflect.Statement], defdef: List[Container], valdef: List[Container], typedef: List[Container]) : (List[Container], List[Container], List[Container]) = body match {
-        //   case Nil => (defdef.reverse, valdef.reverse, typedef.reverse) //TODO: More efficient than reverse?
-        //   case (x @ reflect.DefDef(_, _, _, _, _)) :: xs => iterBody(xs, traverse(x)::defdef, valdef, typedef)
-        //   case (x @ reflect.ValDef(_, _, _)) :: xs => iterBody(xs, defdef, traverse(x)::valdef, typedef)
-        //   //case (x @ reflect.TypeDef())
-        //   case x :: xs => iterBody(xs, defdef, valdef, typedef)
-        // }
-        // val (defdef, valdef, typedef) = iterBody(body, Nil, Nil, Nil)
-        // new ClassContainer(sign, defdef, valdef, typedef, extractUserDoc(child.symbol.comment))
+      case reflect.ClassDef(_) => ClassRepresentation(reflect)(child.asInstanceOf) //TOASK: asInstanceOf bad practice?
+
+      case _ => DebugRepresentation(reflect)
 
       //   case reflect.DefDef(name, typeParams, paramss, tpt, rhs) =>
       //     @tailrec def handleParams(ls: List[List[ValDef]], str: String) : String = ls match {
