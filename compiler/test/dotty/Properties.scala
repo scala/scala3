@@ -1,5 +1,7 @@
 package dotty
 
+import java.nio.file._
+
 /** Runtime properties from defines or environmnent */
 object Properties {
 
@@ -35,6 +37,9 @@ object Properties {
    *  test, so that they are never reused.
    */
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
+
+  /** Extra directory containing sources for the compiler */
+  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")

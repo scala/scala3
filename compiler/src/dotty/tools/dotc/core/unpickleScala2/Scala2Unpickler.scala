@@ -467,6 +467,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
+
+      // Temporary measure, as long as we do not read these classes from Tasty.
+      // Scala-2 classes don't have NoInits set even if they are pure. We override this
+      // for Product and Serializable so that case classes can be pure. A full solution
+      // requires that we read all Scala code from Tasty.
+      if (owner == defn.ScalaPackageClass && ((name eq tpnme.Serializable) || (name eq tpnme.Product)))
+        denot.setFlag(NoInits)
+
       denot.info = completer
       denot.symbol
     }

@@ -62,7 +62,7 @@ object TestSources {
       (fileName.endsWith(".scala") || fileName.endsWith(".java")) && !excludedFiles.contains(fileName)
     }
 
-    assert(Files.isDirectory(path))
+    assert(Files.isDirectory(path), s"Not a directory: $path")
     val files = if (shallow) Files.list(path) else Files.walk(path)
     try {
       val sources = files

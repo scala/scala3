@@ -1391,13 +1391,6 @@ class Definitions {
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
 
-      // Temporary measure, as long as we do not read these classes from Tasty.
-      // Scala-2 classes don't have NoInits set even if they are pure. We override this
-      // for Product and Serializable so that case classes can be pure. A full solution
-      // requires that we read all Scala code from Tasty.
-      ProductClass.setFlag(NoInits)
-      SerializableClass.setFlag(NoInits)
-
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
