@@ -705,13 +705,13 @@ class Definitions {
   lazy val QuotedExprType: TypeRef = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context): ClassSymbol = QuotedExprType.symbol.asClass
 
-  lazy val InternalQuotedModule: TermRef = ctx.requiredModuleRef("scala.internal.Quoted")
-  def InternalQuotedModuleClass: Symbol = InternalQuotedModule.symbol
-    lazy val InternalQuoted_exprQuoteR: TermRef = InternalQuotedModuleClass.requiredMethodRef("exprQuote".toTermName)
+  lazy val InternalQuotedModuleRef: TermRef = ctx.requiredModuleRef("scala.internal.Quoted")
+  def InternalQuotedModule: Symbol = InternalQuotedModuleRef.symbol
+    lazy val InternalQuoted_exprQuoteR: TermRef = InternalQuotedModule.requiredMethodRef("exprQuote".toTermName)
     def InternalQuoted_exprQuote(implicit ctx: Context): Symbol = InternalQuoted_exprQuoteR.symbol
-    lazy val InternalQuoted_exprSpliceR: TermRef = InternalQuotedModuleClass.requiredMethodRef("exprSplice".toTermName)
+    lazy val InternalQuoted_exprSpliceR: TermRef = InternalQuotedModule.requiredMethodRef("exprSplice".toTermName)
     def InternalQuoted_exprSplice(implicit ctx: Context): Symbol = InternalQuoted_exprSpliceR.symbol
-    lazy val InternalQuoted_typeQuoteR: TermRef = InternalQuotedModuleClass.requiredMethodRef("typeQuote".toTermName)
+    lazy val InternalQuoted_typeQuoteR: TermRef = InternalQuotedModule.requiredMethodRef("typeQuote".toTermName)
     def InternalQuoted_typeQuote(implicit ctx: Context): Symbol = InternalQuoted_typeQuoteR.symbol
 
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
@@ -723,24 +723,8 @@ class Definitions {
     lazy val QuotedType_spliceR: TypeRef = QuotedTypeClass.requiredType(tpnme.splice).typeRef
     def QuotedType_splice : Symbol = QuotedType_spliceR.symbol
 
-  lazy val QuotedTypeModuleType: TermRef = ctx.requiredModuleRef("scala.quoted.Type")
-  def QuotedTypeModule(implicit ctx: Context): Symbol = QuotedTypeModuleType.symbol
-
-  lazy val QuotedLiftableModule: TermSymbol = ctx.requiredModule("scala.quoted.Liftable")
-  def QuotedLiftableModuleClass(implicit ctx: Context): ClassSymbol = QuotedLiftableModule.asClass
-
-    def QuotedLiftable_BooleanIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("BooleanIsLiftable")
-    def QuotedLiftable_ByteIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("ByteIsLiftable")
-    def QuotedLiftable_CharIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("CharIsLiftable")
-    def QuotedLiftable_ShortIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("ShortIsLiftable")
-    def QuotedLiftable_IntIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("IntIsLiftable")
-    def QuotedLiftable_LongIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("LongIsLiftable")
-    def QuotedLiftable_FloatIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("FloatIsLiftable")
-    def QuotedLiftable_DoubleIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("DoubleIsLiftable")
-    def QuotedLiftable_StringIsLiftable: TermRef = QuotedLiftableModule.requiredMethodRef("StringIsLiftable")
-
-  lazy val QuotedLiftableType: TypeRef = ctx.requiredClassRef("scala.quoted.Liftable")
-  def QuotedLiftableClass(implicit ctx: Context): ClassSymbol = QuotedLiftableType.symbol.asClass
+  lazy val QuotedTypeModuleRef: TermRef = ctx.requiredModuleRef("scala.quoted.Type")
+  def QuotedTypeModule(implicit ctx: Context): Symbol = QuotedTypeModuleRef.symbol
 
   def Unpickler_unpickleExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
   def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
@@ -751,6 +735,12 @@ class Definitions {
 
   lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
     lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
+
+  lazy val QuotedMatcherModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.quoted.Matcher")
+  def QuotedMatcherModule(implicit ctx: Context): Symbol = QuotedMatcherModuleRef.symbol
+
+    lazy val QuotedMatcher_unapplyR: TermRef = QuotedMatcherModule.requiredMethodRef(nme.unapply)
+    def QuotedMatcher_unapply(implicit ctx: Context) = QuotedMatcher_unapplyR.symbol
 
   lazy val EqlType: TypeRef = ctx.requiredClassRef("scala.Eql")
   def EqlClass(implicit ctx: Context): ClassSymbol = EqlType.symbol.asClass
