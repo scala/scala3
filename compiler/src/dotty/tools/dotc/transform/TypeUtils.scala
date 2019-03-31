@@ -48,8 +48,8 @@ object TypeUtils {
         else throw new AssertionError("not a tuple")
     }
 
-    /** The `*:` equivalent of an instantce of a Tuple class */
+    /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(implicit ctx: Context): Type =
-      (tupleElementTypes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+      TypeOps.tupleOf(tupleElementTypes)
   }
 }

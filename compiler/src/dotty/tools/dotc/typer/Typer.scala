@@ -1919,7 +1919,7 @@ class Typer extends Namer
         else {
           val elemTpes = (elems, pts).zipped.map((elem, pt) =>
             ctx.typeComparer.widenInferred(elem.tpe, pt))
-          val resTpe = (elemTpes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+          val resTpe = TypeOps.tupleOf(elemTpes)
           app1.cast(resTpe)
         }
       }
