@@ -1943,7 +1943,7 @@ class Typer extends Namer
           val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
           val (shape, splices) = splitQuotePattern(quoted1)
           val splicePat = typed(untpd.Tuple(splices.map(untpd.TypedSplice(_))).withSpan(quoted.span))
-          val patType = TypeOps.tupleOf(splices.tpes)
+          val patType = TypeOps.tupleOf(splices.tpes.map(_.widen))
           UnApply(
             ref(defn.QuotedMatcher_unapplyR).appliedToType(patType),
             ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) :: givenReflection :: Nil,
@@ -1960,10 +1960,10 @@ class Typer extends Namer
       val patBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
         case Typed(Splice(pat), tpt) =>
-          val exprTpt = ref(defn.QuotedExprType).appliedToTypeTrees(tpt :: Nil)
+          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprType), tpt :: Nil)
           transform(Splice(Typed(pat, exprTpt)))
         case Splice(pat) =>
-          try holeForSplice(tree)
+          try patternHole(tree)
           finally patBuf += pat
         case _ =>
           super.transform(tree)
@@ -1973,12 +1973,9 @@ class Typer extends Namer
     (result, splitter.patBuf.toList)
   }
 
-  // TODO: Currently, a hole is expressed as interal.quoted.ExprSplice[T](???)
-  // Settle on a different representation and apply Stagin
-  def holeForSplice(splice: Tree)(implicit ctx: Context): Tree = {
-    val Apply(fn, arg) = splice
-    tpd.cpy.Apply(splice)(fn, ref(defn.Predef_undefined) :: Nil)
-  }
+  /** A hole the shape pattern of a quoted.Matcher.unapply, representing a splice */
+  def patternHole(splice: Tree)(implicit ctx: Context): Tree =
+    ref(defn.InternalQuoted_patternHoleR).appliedToType(splice.tpe).withSpan(splice.span)
 
   def givenReflection(implicit ctx: Context): Tree = Literal(Constant(null)) // FIXME: fill in
 

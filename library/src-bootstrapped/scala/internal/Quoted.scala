@@ -16,4 +16,7 @@ object Quoted {
   def typeQuote[T <: AnyKind]: Type[T] =
     throw new Error("Internal error: this method call should have been replaced by the compiler")
 
+  /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
+  def patternHole[T]: T =
+    throw new Error("Internal error: this method call should have been replaced by the compiler")
 }

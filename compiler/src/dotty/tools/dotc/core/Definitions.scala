@@ -707,12 +707,14 @@ class Definitions {
 
   lazy val InternalQuotedModuleRef: TermRef = ctx.requiredModuleRef("scala.internal.Quoted")
   def InternalQuotedModule: Symbol = InternalQuotedModuleRef.symbol
-    lazy val InternalQuoted_exprQuoteR: TermRef = InternalQuotedModule.requiredMethodRef("exprQuote".toTermName)
+    lazy val InternalQuoted_exprQuoteR: TermRef = InternalQuotedModule.requiredMethodRef("exprQuote")
     def InternalQuoted_exprQuote(implicit ctx: Context): Symbol = InternalQuoted_exprQuoteR.symbol
-    lazy val InternalQuoted_exprSpliceR: TermRef = InternalQuotedModule.requiredMethodRef("exprSplice".toTermName)
+    lazy val InternalQuoted_exprSpliceR: TermRef = InternalQuotedModule.requiredMethodRef("exprSplice")
     def InternalQuoted_exprSplice(implicit ctx: Context): Symbol = InternalQuoted_exprSpliceR.symbol
-    lazy val InternalQuoted_typeQuoteR: TermRef = InternalQuotedModule.requiredMethodRef("typeQuote".toTermName)
+    lazy val InternalQuoted_typeQuoteR: TermRef = InternalQuotedModule.requiredMethodRef("typeQuote")
     def InternalQuoted_typeQuote(implicit ctx: Context): Symbol = InternalQuoted_typeQuoteR.symbol
+    lazy val InternalQuoted_patternHoleR: TermRef = InternalQuotedModule.requiredMethodRef("patternHole")
+    def InternalQuoted_patternHole(implicit ctx: Context): Symbol = InternalQuoted_patternHoleR.symbol
 
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
   def QuotedExprsClass(implicit ctx: Context): ClassSymbol = QuotedExprsModule.asClass
