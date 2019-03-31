@@ -1963,7 +1963,7 @@ class Typer extends Namer
           val exprTpt = ref(defn.QuotedExprType).appliedToTypeTrees(tpt :: Nil)
           transform(Splice(Typed(pat, exprTpt)))
         case Splice(pat) =>
-          try tasty.TreePickler.Hole(patBuf.length, Nil)
+          try holeForSplice(tree)
           finally patBuf += pat
         case _ =>
           super.transform(tree)
@@ -1971,6 +1971,13 @@ class Typer extends Namer
     }
     val result = splitter.transform(quoted)
     (result, splitter.patBuf.toList)
+  }
+
+  // TODO: Currently, a hole is expressed as interal.quoted.ExprSplice[T](???)
+  // Settle on a different representation and apply Stagin
+  def holeForSplice(splice: Tree)(implicit ctx: Context): Tree = {
+    val Apply(fn, arg) = splice
+    tpd.cpy.Apply(splice)(fn, ref(defn.Predef_undefined) :: Nil)
   }
 
   def givenReflection(implicit ctx: Context): Tree = Literal(Constant(null)) // FIXME: fill in
