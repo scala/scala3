@@ -62,3 +62,9 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
   def docWithMd = ???
 
 }
+
+/** Companion object
+ */
+object Documentation {
+
+}

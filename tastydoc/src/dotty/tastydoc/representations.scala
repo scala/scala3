@@ -2,7 +2,7 @@ package dotty.tastydoc
 
 import scala.tasty.Reflection
 
-object representations {
+object representations { //TOASK: In entity has self=>
 
   trait Representation {
     val name : String
@@ -11,7 +11,8 @@ object representations {
   }
 
   trait Parents {
-    val parents : List[String]
+    val parent : Option[Representation]
+    val parents : List[Representation]
   }
 
   trait Members {
@@ -49,7 +50,12 @@ object representations {
     //val returnValue: Reference //TODO
   }
 
+  trait TypeParams {
+    val typeParams: List[String]
+  }
+
   //TOASK Pass reflection eachtime
+  //TOASK Bad practice case class with fields?
   case class PackageRepresentation(reflect: Reflection)(internal: reflect.PackageClause) extends Representation with Members {
     import reflect._
 
@@ -70,17 +76,55 @@ object representations {
     override val comments = ""
   }
 
-  case class ClassRepresentation(reflect: Reflection)(internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors {
+  case class ClassRepresentation(reflect: Reflection)(internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
     import reflect._
 
     override val name = internal.name
-    override val path = Nil
+    override val path = internal.symbol.showCode.split("\\.").toList
     override val comments = ""
     override val members = internal.body.map(convertToRepresentation(reflect))//TOASK: Override for trait member or just val?
+    override val parent = None //TOASK: Why 2 and how to do it
     override val parents = Nil
     override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").toList
-    override val companionPath = Nil
+    override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
+      case Some(_) => path.init ++ List(name + "$")
+      case None => Nil
+      }
     override val constructors = Nil
+    override val typeParams = Nil
+  }
+
+  case class DefRepresentation(reflect: Reflection)(internal: reflect.DefDef) extends Representation with Parents with Modifiers with ReturnValue with TypeParams {
+    import reflect._
+
+    override val name = internal.name
+    override val path = internal.symbol.showCode.split("\\.").toList
+    override val comments = ""
+    override val parent = None
+    override val parents = Nil
+    override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").toList
+    override val typeParams = Nil
+  }
+
+  case class ValRepresentation(reflect: Reflection)(internal: reflect.ValDef) extends Representation with Parents with Modifiers with ReturnValue {
+    import reflect._
+
+    override val name = internal.name
+    override val path = internal.symbol.showCode.split("\\.").toList
+    override val comments = ""
+    override val parent = None
+    override val parents = Nil
+    override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").toList
+  }
+
+  case class TypeRepresentation(reflect: Reflection)(internal: reflect.TypeDef) extends Representation with Modifiers with TypeParams {
+    import reflect._
+
+    override val name = internal.name
+    override val path = internal.symbol.showCode.split("\\.").toList
+    override val comments = ""
+    override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").toList
+    override val typeParams = Nil
   }
 
   case class DebugRepresentation(reflect: Reflection) extends Representation {
@@ -92,11 +136,17 @@ object representations {
   def convertToRepresentation(reflect: Reflection)(child: reflect.Tree) = {
     import reflect._
     child match {
-      case reflect.PackageClause(_) => PackageRepresentation(reflect)(child.asInstanceOf)
+      case reflect.PackageClause(_) => PackageRepresentation(reflect)(child.asInstanceOf) //TOASK: asInstanceOf bad practice?
 
       case reflect.Import(_) => ImportRepresentation(reflect)(child.asInstanceOf)
 
-      case reflect.ClassDef(_) => ClassRepresentation(reflect)(child.asInstanceOf) //TOASK: asInstanceOf bad practice?
+      case reflect.ClassDef(_) => ClassRepresentation(reflect)(child.asInstanceOf)
+
+      case reflect.DefDef(_) => DefRepresentation(reflect)(child.asInstanceOf)
+
+      case reflect.ValDef(_) => ValRepresentation(reflect)(child.asInstanceOf) //TODO: contains object too, separate from Val
+
+      case reflect.TypeDef(_) => TypeRepresentation(reflect)(child.asInstanceOf)
 
       case _ => DebugRepresentation(reflect)
 
