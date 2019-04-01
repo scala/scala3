@@ -1937,7 +1937,7 @@ class Typer extends Namer
       case quoted if quoted.isType =>
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext).withSpan(tree.span)
       case quoted =>
-        if (ctx.mode.is(Mode.Pattern)) {
+        if (ctx.mode.is(Mode.Pattern) && level == 0) {
           val exprPt = pt.baseType(defn.QuotedExprClass)
           val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
           val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
@@ -1989,7 +1989,7 @@ class Typer extends Namer
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case expr =>
-        if (ctx.mode.is(Mode.QuotedPattern)) {
+        if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
           fullyDefinedType(pt, "quoted pattern selector", tree.span)
           val pat = typedPattern(expr, defn.QuotedExprType.appliedTo(pt))(
             spliceContext.retractMode(Mode.QuotedPattern))
