@@ -4,8 +4,7 @@ import scala.tasty._
 
 object Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = {
     '[List]
     val list = bound('{List(1, 2, 3)})

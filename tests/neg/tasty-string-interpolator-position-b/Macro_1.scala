@@ -10,8 +10,7 @@ object Macro {
 }
 
 object FIntepolator {
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
   def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
     error("there are no args", argsExpr.unseal.underlyingArgument.pos)

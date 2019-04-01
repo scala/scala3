@@ -11,6 +11,7 @@ object Index {
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${ succImpl('prev)('[K], '[H], '[T]) }
 
   def succImpl[K, H, T](prev: Expr[Index[K, T]])(implicit k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     val value = s"1 + {${prev.show}}"
     '{new Index(${value})}
   }

@@ -8,9 +8,8 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
   def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
     import refl._
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
     val tree = condition.unseal
     def exprStr: String = condition.show
 

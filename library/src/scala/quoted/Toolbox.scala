@@ -2,7 +2,7 @@ package scala.quoted
 
 import scala.annotation.implicitNotFound
 
-@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make`\n\n")
+@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox {
   def run[T](expr: Expr[T]): T
   def show[T](expr: Expr[T]): String
@@ -11,25 +11,12 @@ trait Toolbox {
 
 object Toolbox {
 
-  /** Create a new instance of the toolbox.
-    *
-    * This instance of the toolbox tries to recover the classloader of the application based on
-    * the classloader of the class that call make. This may not always be the correct classloader,
-    * in which case the classloader must be passed explicitly.
-    *
-    * @param settings toolbox settings
-    * @return A new instance of the toolbox
-    */
-  @forceInline def make(implicit settings: Settings): Toolbox = {
-    // Get the name of the class at call site
-    val className = new Throwable().getStackTrace.head.getClassName
-    // We inline to make forName use the classloader of the class at call site
-    val clazz = Class.forName(className)
-    val cl = clazz.getClassLoader
-    make(cl)
-  }
-
   /** Create a new instance of the toolbox using the the classloader of the application.
+    *
+    * Usuage:
+    * ```
+    * implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    * ```
     *
     * @param appClassloader classloader of the application that generated the quotes
     * @param settings toolbox settings

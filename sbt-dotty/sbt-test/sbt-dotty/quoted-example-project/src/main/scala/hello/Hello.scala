@@ -5,9 +5,10 @@ import scala.quoted._
 
 object Main {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
+
     val square = stagedPower(2)
 
     assert(Math.pow(3, 2) == square(3))

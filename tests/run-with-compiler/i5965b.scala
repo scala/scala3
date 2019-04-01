@@ -4,9 +4,9 @@ import scala.tasty._
 
 object Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+
     '[List]
     val list = bound('{List(1, 2, 3)})
     println(list.show)
