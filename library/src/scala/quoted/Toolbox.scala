@@ -22,7 +22,7 @@ object Toolbox {
     * the classloader of the class that call make. This may not always be the correct classloader,
     * in which case the classloader must be passed explicitly.
     *
-    * @param settings TODO
+    * @param settings toolbox settings
     * @return A new instance of the toolbox
     */
   @forceInline def make(implicit settings: Settings): Toolbox = {
