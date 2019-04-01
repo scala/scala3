@@ -1310,10 +1310,17 @@ trait Printers
           printPattern(pattern)
 
         case Pattern.Unapply(fun, implicits, patterns) =>
-          fun match {
-            case Select(extractor, "unapply" | "unapplySeq") => printTree(extractor)
-            case TypeApply(Select(extractor, "unapply" | "unapplySeq"), _) => printTree(extractor)
-            case _ => throw new MatchError(fun.show)
+          val fun2 = fun match {
+            case TypeApply(fun2, _) => fun2
+            case _ => fun
+          }
+          fun2 match {
+            case Select(extractor, "unapply" | "unapplySeq") =>
+              printTree(extractor)
+            case Ident("unapply" | "unapplySeq") =>
+              this += fun.symbol.owner.fullName.stripSuffix("$")
+            case _ =>
+              throw new MatchError(fun.show)
           }
           inParens(printPatterns(patterns, ", "))
 
