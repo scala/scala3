@@ -41,7 +41,7 @@ package scala.tasty.reflect
  *           +- TypeTree ----+- Inferred
  *           |               +- TypeIdent
  *           |               +- TypeSelect
- *           |               +- Project
+ *           |               +- Projection
  *           |               +- Singleton
  *           |               +- Refined
  *           |               +- Applied
@@ -160,12 +160,6 @@ trait Core {
       /** Tree representing an expression in the source code */
       type Term = kernel.Term
 
-      /** Trees representing an expression in the source code */
-      val Term: TermCoreModule
-
-      /** Trees representing an expression in the source code */
-      trait TermCoreModule {
-
         /** Tree representing a reference to definition */
         type Ref = kernel.Ref
 
@@ -235,16 +229,8 @@ trait Core {
         /** Tree representing a while loop */
         type While = kernel.While
 
-      }
-
       /** Type tree representing a type written in the source */
       type TypeTree = kernel.TypeTree
-
-      /** Type trees representing a type written in the source */
-      val TypeTree: TypeTreeCoreModule
-
-      /** Type trees representing a type written in the source */
-      trait TypeTreeCoreModule {
 
         /** Type tree representing an inferred type */
         type Inferred = kernel.Inferred
@@ -284,8 +270,6 @@ trait Core {
 
         /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
         type TypeBlock = kernel.TypeBlock
-
-      }
 
       /** Type tree representing a type bound written in the source */
       type TypeBoundsTree = kernel.TypeBoundsTree

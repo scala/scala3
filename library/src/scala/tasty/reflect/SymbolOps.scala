@@ -190,7 +190,7 @@ trait SymbolOps extends Core {
 
   implicit class TypeBindSymbolAPI(self: TypeBindSymbol) {
     /** TypeBind pattern of this definition */
-    def tree(implicit ctx: Context): TypeTree.TypeBind =
+    def tree(implicit ctx: Context): TypeBind =
       kernel.TypeBindSymbol_tree(self)
   }
 

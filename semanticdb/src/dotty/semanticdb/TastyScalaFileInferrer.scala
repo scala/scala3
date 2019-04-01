@@ -23,8 +23,8 @@ class TastyScalaFileInferrer extends TastyConsumer {
           case IsClassDef(cdef) => {
             cdef.symbol.annots.foreach { annot =>
               annot match {
-                case Term.Apply(Term.Select(Term.New(t), _),
-                                List(Term.Literal(Constant.String(path))))
+                case Apply(Select(New(t), _),
+                                List(Literal(Constant.String(path))))
                     if t.symbol.name == "SourceFile" =>
                   // we found the path to a file. In this case, we do not need to
                   // continue traversing the tree

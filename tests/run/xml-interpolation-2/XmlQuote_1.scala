@@ -17,7 +17,6 @@ object XmlQuote {
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
           (implicit reflect: Reflection): Expr[Xml] = {
     import reflect._
-    import Term._
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {

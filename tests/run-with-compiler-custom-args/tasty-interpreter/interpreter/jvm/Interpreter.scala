@@ -55,7 +55,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     if (fn.symbol.isDefinedInCurrentRun) super.interpretCall(fn, argss)
     else {
       fn match {
-        case Term.Select(prefix, _) =>
+        case Select(prefix, _) =>
           val IsDefDefSymbol(sym) = fn.symbol
           val pre = eval(prefix).asInstanceOf[Object]
           val argss2 = evaluatedArgss(argss)
@@ -71,7 +71,6 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
   override def interpretValGet(fn: Term): Result = {
     if (fn.symbol.isDefinedInCurrentRun) super.interpretValGet(fn)
     else {
-      import Term._
       fn match {
         case Select(prefix, _) =>
           // FIXME not necesarly static

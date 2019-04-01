@@ -20,44 +20,44 @@ trait TreeUtils
     def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
       tree match {
-        case Term.Ident(_) =>
+        case Ident(_) =>
           x
-        case Term.Select(qualifier, _) =>
+        case Select(qualifier, _) =>
           foldTree(x, qualifier)
-        case Term.This(qual) =>
+        case This(qual) =>
           x
-        case Term.Super(qual, _) =>
+        case Super(qual, _) =>
           foldTree(x, qual)
-        case Term.Apply(fun, args) =>
+        case Apply(fun, args) =>
           foldTrees(foldTree(x, fun), args)
-        case Term.TypeApply(fun, args) =>
+        case TypeApply(fun, args) =>
           foldTrees(foldTree(x, fun), args)
-        case Term.Literal(const) =>
+        case Literal(const) =>
           x
-        case Term.New(tpt) =>
+        case New(tpt) =>
           foldTree(x, tpt)
-        case Term.Typed(expr, tpt) =>
+        case Typed(expr, tpt) =>
           foldTree(foldTree(x, expr), tpt)
-        case Term.NamedArg(_, arg) =>
+        case NamedArg(_, arg) =>
           foldTree(x, arg)
-        case Term.Assign(lhs, rhs) =>
+        case Assign(lhs, rhs) =>
           foldTree(foldTree(x, lhs), rhs)
-        case Term.Block(stats, expr) =>
+        case Block(stats, expr) =>
           foldTree(foldTrees(x, stats), expr)
-        case Term.If(cond, thenp, elsep) =>
+        case If(cond, thenp, elsep) =>
           foldTree(foldTree(foldTree(x, cond), thenp), elsep)
-        case Term.Lambda(meth, tpt) =>
+        case Lambda(meth, tpt) =>
           val a = foldTree(x, meth)
           tpt.fold(a)(b => foldTree(a, b))
-        case Term.Match(selector, cases) =>
+        case Match(selector, cases) =>
           foldTrees(foldTree(x, selector), cases)
-        case Term.Return(expr) =>
+        case Return(expr) =>
           foldTree(x, expr)
-        case Term.Try(block, handler, finalizer) =>
+        case Try(block, handler, finalizer) =>
           foldTrees(foldTrees(foldTree(x, block), handler), finalizer)
-        case Term.Repeated(elems, elemtpt) =>
+        case Repeated(elems, elemtpt) =>
           foldTrees(foldTree(x, elemtpt), elems)
-        case Term.Inlined(call, bindings, expansion) =>
+        case Inlined(call, bindings, expansion) =>
           foldTree(foldTrees(x, bindings), expansion)
         case IsDefinition(vdef @ ValDef(_, tpt, rhs)) =>
           implicit val ctx = localCtx(vdef)
@@ -75,19 +75,19 @@ trait TreeUtils
           foldTree(x, expr)
         case IsPackageClause(clause @ PackageClause(pid, stats)) =>
           foldTrees(foldTree(x, pid), stats)(clause.symbol.localContext)
-        case TypeTree.Inferred() => x
-        case TypeTree.TypeIdent(_) => x
-        case TypeTree.TypeSelect(qualifier, _) => foldTree(x, qualifier)
-        case TypeTree.Projection(qualifier, _) => foldTree(x, qualifier)
-        case TypeTree.Singleton(ref) => foldTree(x, ref)
-        case TypeTree.Refined(tpt, refinements) => foldTrees(foldTree(x, tpt), refinements)
-        case TypeTree.Applied(tpt, args) => foldTrees(foldTree(x, tpt), args)
-        case TypeTree.ByName(result) => foldTree(x, result)
-        case TypeTree.Annotated(arg, annot) => foldTree(foldTree(x, arg), annot)
-        case TypeTree.LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs), arg)
-        case TypeTree.TypeBind(_, tbt) => foldTree(x, tbt)
-        case TypeTree.TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
-        case TypeTree.MatchTypeTree(boundopt, selector, cases) =>
+        case Inferred() => x
+        case TypeIdent(_) => x
+        case TypeSelect(qualifier, _) => foldTree(x, qualifier)
+        case Projection(qualifier, _) => foldTree(x, qualifier)
+        case Singleton(ref) => foldTree(x, ref)
+        case Refined(tpt, refinements) => foldTrees(foldTree(x, tpt), refinements)
+        case Applied(tpt, args) => foldTrees(foldTree(x, tpt), args)
+        case ByName(result) => foldTree(x, result)
+        case Annotated(arg, annot) => foldTree(foldTree(x, arg), annot)
+        case LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs), arg)
+        case TypeBind(_, tbt) => foldTree(x, tbt)
+        case TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
+        case MatchTypeTree(boundopt, selector, cases) =>
           foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
         case WildcardTypeTree() => x
         case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
@@ -124,7 +124,7 @@ trait TreeUtils
     def transformTree(tree: Tree)(implicit ctx: Context): Tree = {
       tree match {
         case IsPackageClause(tree) =>
-          PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Term.Ref], transformTrees(tree.stats)(tree.symbol.localContext))
+          PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol.localContext))
         case IsImport(tree) =>
           Import.copy(tree)(tree.importImplied, transformTerm(tree.expr), tree.selectors)
         case IsStatement(tree) =>
@@ -164,74 +164,74 @@ trait TreeUtils
 
     def transformTerm(tree: Term)(implicit ctx: Context): Term = {
       tree match {
-        case Term.Ident(name) =>
+        case Ident(name) =>
           tree
-        case Term.Select(qualifier, name) =>
-          Term.Select.copy(tree)(transformTerm(qualifier), name)
-        case Term.This(qual) =>
+        case Select(qualifier, name) =>
+          Select.copy(tree)(transformTerm(qualifier), name)
+        case This(qual) =>
           tree
-        case Term.Super(qual, mix) =>
-          Term.Super.copy(tree)(transformTerm(qual), mix)
-        case Term.Apply(fun, args) =>
-          Term.Apply.copy(tree)(transformTerm(fun), transformTerms(args))
-        case Term.TypeApply(fun, args) =>
-          Term.TypeApply.copy(tree)(transformTerm(fun), transformTypeTrees(args))
-        case Term.Literal(const) =>
+        case Super(qual, mix) =>
+          Super.copy(tree)(transformTerm(qual), mix)
+        case Apply(fun, args) =>
+          Apply.copy(tree)(transformTerm(fun), transformTerms(args))
+        case TypeApply(fun, args) =>
+          TypeApply.copy(tree)(transformTerm(fun), transformTypeTrees(args))
+        case Literal(const) =>
           tree
-        case Term.New(tpt) =>
-          Term.New.copy(tree)(transformTypeTree(tpt))
-        case Term.Typed(expr, tpt) =>
-          Term.Typed.copy(tree)(transformTerm(expr), transformTypeTree(tpt))
-        case Term.IsNamedArg(tree) =>
-          Term.NamedArg.copy(tree)(tree.name, transformTerm(tree.value))
-        case Term.Assign(lhs, rhs) =>
-          Term.Assign.copy(tree)(transformTerm(lhs), transformTerm(rhs))
-        case Term.Block(stats, expr) =>
-          Term.Block.copy(tree)(transformStats(stats), transformTerm(expr))
-        case Term.If(cond, thenp, elsep) =>
-          Term.If.copy(tree)(transformTerm(cond), transformTerm(thenp), transformTerm(elsep))
-        case Term.Lambda(meth, tpt) =>
-          Term.Lambda.copy(tree)(transformTerm(meth), tpt.map(x => transformTypeTree(x)))
-        case Term.Match(selector, cases) =>
-          Term.Match.copy(tree)(transformTerm(selector), transformCaseDefs(cases))
-        case Term.Return(expr) =>
-          Term.Return.copy(tree)(transformTerm(expr))
-        case Term.While(cond, body) =>
-          Term.While.copy(tree)(transformTerm(cond), transformTerm(body))
-        case Term.Try(block, cases, finalizer) =>
-          Term.Try.copy(tree)(transformTerm(block), transformCaseDefs(cases), finalizer.map(x => transformTerm(x)))
-        case Term.Repeated(elems, elemtpt) =>
-          Term.Repeated.copy(tree)(transformTerms(elems), transformTypeTree(elemtpt))
-        case Term.Inlined(call, bindings, expansion) =>
-          Term.Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion)/*()call.symbol.localContext)*/)
+        case New(tpt) =>
+          New.copy(tree)(transformTypeTree(tpt))
+        case Typed(expr, tpt) =>
+          Typed.copy(tree)(transformTerm(expr), transformTypeTree(tpt))
+        case IsNamedArg(tree) =>
+          NamedArg.copy(tree)(tree.name, transformTerm(tree.value))
+        case Assign(lhs, rhs) =>
+          Assign.copy(tree)(transformTerm(lhs), transformTerm(rhs))
+        case Block(stats, expr) =>
+          Block.copy(tree)(transformStats(stats), transformTerm(expr))
+        case If(cond, thenp, elsep) =>
+          If.copy(tree)(transformTerm(cond), transformTerm(thenp), transformTerm(elsep))
+        case Lambda(meth, tpt) =>
+          Lambda.copy(tree)(transformTerm(meth), tpt.map(x => transformTypeTree(x)))
+        case Match(selector, cases) =>
+          Match.copy(tree)(transformTerm(selector), transformCaseDefs(cases))
+        case Return(expr) =>
+          Return.copy(tree)(transformTerm(expr))
+        case While(cond, body) =>
+          While.copy(tree)(transformTerm(cond), transformTerm(body))
+        case Try(block, cases, finalizer) =>
+          Try.copy(tree)(transformTerm(block), transformCaseDefs(cases), finalizer.map(x => transformTerm(x)))
+        case Repeated(elems, elemtpt) =>
+          Repeated.copy(tree)(transformTerms(elems), transformTypeTree(elemtpt))
+        case Inlined(call, bindings, expansion) =>
+          Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion)/*()call.symbol.localContext)*/)
       }
     }
 
     def transformTypeTree(tree: TypeTree)(implicit ctx: Context): TypeTree = tree match {
-      case TypeTree.Inferred() => tree
-      case TypeTree.IsTypeIdent(tree) => tree
-      case TypeTree.IsTypeSelect(tree) =>
-        TypeTree.TypeSelect.copy(tree)(tree.qualifier, tree.name)
-      case TypeTree.IsProjection(tree) =>
-        TypeTree.Projection.copy(tree)(tree.qualifier, tree.name)
-      case TypeTree.IsAnnotated(tree) =>
-        TypeTree.Annotated.copy(tree)(tree.arg, tree.annotation)
-      case TypeTree.IsSingleton(tree) =>
-        TypeTree.Singleton.copy(tree)(transformTerm(tree.ref))
-      case TypeTree.IsRefined(tree) =>
-        TypeTree.Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
-      case TypeTree.IsApplied(tree) =>
-        TypeTree.Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
-      case TypeTree.IsMatchTypeTree(tree) =>
-        TypeTree.MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
-      case TypeTree.IsByName(tree) =>
-        TypeTree.ByName.copy(tree)(transformTypeTree(tree.result))
-      case TypeTree.IsLambdaTypeTree(tree) =>
-        TypeTree.LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(tree.symbol.localContext)
-      case TypeTree.IsTypeBind(tree) =>
-        TypeTree.TypeBind.copy(tree)(tree.name, tree.body)
-      case TypeTree.IsTypeBlock(tree) =>
-        TypeTree.TypeBlock.copy(tree)(tree.aliases, tree.tpt)
+      case Inferred() => tree
+      case IsTypeIdent(tree) => tree
+      case IsTypeSelect(tree) =>
+        TypeSelect.copy(tree)(tree.qualifier, tree.name)
+      case IsProjection(tree) =>
+        Projection.copy(tree)(tree.qualifier, tree.name)
+      case IsAnnotated(tree) =>
+        Annotated.copy(tree)(tree.arg, tree.annotation)
+      case IsSingleton(tree) =>
+        Singleton.copy(tree)(transformTerm(tree.ref))
+      case IsRefined(tree) =>
+        Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
+      case IsApplied(tree) =>
+        Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
+      case IsMatchTypeTree(tree) =>
+        MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
+      case IsByName(tree) =>
+        ByName.copy(tree)(transformTypeTree(tree.result))
+      case IsLambdaTypeTree(tree) =>
+        LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(tree.symbol.localContext)
+      case IsTypeBind(tree) =>
+        TypeBind.copy(tree)(tree.name, tree.body)
+      case IsTypeBlock(tree) =>
+        TypeBlock.copy(tree)(tree.aliases, tree.tpt)
     }
 
     def transformCaseDef(tree: CaseDef)(implicit ctx: Context): CaseDef = {

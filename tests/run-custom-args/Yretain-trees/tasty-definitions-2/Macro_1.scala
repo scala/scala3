@@ -14,7 +14,7 @@ object Foo {
       case IsBindSymbol(sym) => sym.tree.show.toExpr
     }
     x.unseal match {
-      case Term.Inlined(None, Nil, arg) => definitionString(arg)
+      case Inlined(None, Nil, arg) => definitionString(arg)
       case arg => definitionString(arg) // TODO should all by name parameters be in an inline node?
     }
   }

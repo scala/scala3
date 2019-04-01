@@ -12,7 +12,7 @@ object Asserts {
     import reflect._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     x.unseal.underlyingArgument match {
-      case Term.Apply(fn, args) =>
+      case Apply(fn, args) =>
         fn.tpe.widen match {
           case Type.IsMethodType(_) =>
             args.size match {
@@ -34,7 +34,7 @@ object Asserts {
     import reflect._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     def rec(term: Term): Term = term match {
-      case Term.Apply(fn, args) =>
+      case Apply(fn, args) =>
         val pre = rec(fn)
         args.size match {
           case 0 => pre.seal[() => Any].apply().unseal

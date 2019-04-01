@@ -1,42 +1,42 @@
 
-tree: Term.Inlined(None, Nil, Term.Literal(Constant.Int(3)))
-tree deref. vals: Term.Literal(Constant.Int(3))
+tree: Inlined(None, Nil, Literal(Constant.Int(3)))
+tree deref. vals: Literal(Constant.Int(3))
 
-tree: Term.Inlined(None, Nil, Term.Ident("v"))
-tree deref. vals: Term.Literal(Constant.Int(1))
+tree: Inlined(None, Nil, Ident("v"))
+tree deref. vals: Literal(Constant.Int(1))
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Literal(Constant.Int(2))
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Literal(Constant.Int(2))
 
-tree: Term.Inlined(None, Nil, Term.Ident("l"))
-tree deref. vals: Term.Literal(Constant.Int(3))
+tree: Inlined(None, Nil, Ident("l"))
+tree deref. vals: Literal(Constant.Int(3))
 
-tree: Term.Inlined(None, Nil, Term.Ident("a"))
-tree deref. vals: Term.Ident("a")
+tree: Inlined(None, Nil, Ident("a"))
+tree deref. vals: Ident("a")
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Ident("b")
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Ident("b")
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Apply(Term.Ident("d2"), Nil)
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Apply(Ident("d2"), Nil)
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Apply(Term.Ident("d3"), List(Term.Literal(Constant.Int(3))))
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Apply(Ident("d3"), List(Literal(Constant.Int(3))))
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.TypeApply(Term.Ident("d4"), List(TypeTree.TypeIdent("Int")))
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: TypeApply(Ident("d4"), List(TypeIdent("Int")))
 
-tree: Term.Inlined(None, Nil, Term.Ident("vv"))
-tree deref. vals: Term.Literal(Constant.Int(1))
+tree: Inlined(None, Nil, Ident("vv"))
+tree deref. vals: Literal(Constant.Int(1))
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Literal(Constant.Int(1))
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Literal(Constant.Int(1))
 
-tree: Term.Inlined(None, Nil, Term.Ident("vd"))
-tree deref. vals: Term.Literal(Constant.Int(2))
+tree: Inlined(None, Nil, Ident("vd"))
+tree deref. vals: Literal(Constant.Int(2))
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Literal(Constant.Int(2))
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Literal(Constant.Int(2))
 
-tree: Term.Inlined(None, Nil, Term.Ident("x"))
-tree deref. vals: Term.Apply(Term.TypeApply(Term.Select(Term.Ident("Tuple2"), "apply"), List(TypeTree.Inferred(), TypeTree.Inferred())), List(Term.Literal(Constant.Int(1)), Term.Literal(Constant.Int(2))))
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Apply(TypeApply(Select(Ident("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Literal(Constant.Int(1)), Literal(Constant.Int(2))))
