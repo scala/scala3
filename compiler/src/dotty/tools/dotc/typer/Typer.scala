@@ -1919,7 +1919,7 @@ class Typer extends Namer
         else {
           val elemTpes = (elems, pts).zipped.map((elem, pt) =>
             ctx.typeComparer.widenInferred(elem.tpe, pt))
-          val resTpe = TypeOps.tupleOf(elemTpes)
+          val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
         }
       }
@@ -1942,13 +1942,15 @@ class Typer extends Namer
           val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
           val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
           val (shape, splices) = splitQuotePattern(quoted1)
-          val splicePat = typed(untpd.Tuple(splices.map(untpd.TypedSplice(_))).withSpan(quoted.span))
-          val patType = TypeOps.tupleOf(splices.tpes.map(_.widen))
+          val patType = defn.tupleType(splices.tpes.map(_.widen))
+          val splicePat = typed(untpd.Tuple(splices.map(untpd.TypedSplice(_))).withSpan(quoted.span), patType)
           UnApply(
-            ref(defn.QuotedMatcher_unapplyR).appliedToType(patType),
-            ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) :: givenReflection :: Nil,
-            splicePat :: Nil,
-            pt)
+            fun = ref(defn.QuotedMatcher_unapplyR).appliedToType(patType),
+            implicits =
+              ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
+              givenReflection :: Nil,
+            patterns = splicePat :: Nil,
+            proto = pt)
         }
         else
           typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), quoted), pt)(quoteContext).withSpan(tree.span)

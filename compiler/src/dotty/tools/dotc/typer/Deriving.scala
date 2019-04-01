@@ -78,14 +78,14 @@ trait Deriving { this: Typer =>
           case _ =>
             (sym.termRef, Nil)
         }
-      val elemShape = TypeOps.tupleOf(elems)
+      val elemShape = TypeOps.nestedPairs(elems)
       defn.ShapeCaseType.appliedTo(constr, elemShape)
     }
 
     /** The shape of `cls` if `cls` is sealed */
     private def sealedShape: Type = {
       val cases = children.map(caseShape).filter(_.exists)
-      val casesShape = TypeOps.tupleOf(cases)
+      val casesShape = TypeOps.nestedPairs(cases)
       defn.ShapeCasesType.appliedTo(casesShape)
     }
 

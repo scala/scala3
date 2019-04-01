@@ -570,6 +570,6 @@ object TypeOps {
 
   // TODO: Move other typeops here. It's a bit weird that they are a part of `ctx`
 
-  def tupleOf(ts: List[Type])(implicit ctx: Context): Type =
+  def nestedPairs(ts: List[Type])(implicit ctx: Context): Type =
     (ts :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
 }

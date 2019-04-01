@@ -1170,7 +1170,9 @@ class Definitions {
   }
 
   def tupleType(elems: List[Type]): Type = {
-    TupleType(elems.size).appliedTo(elems)
+    val arity = elems.length
+    if (arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
+    else TypeOps.nestedPairs(elems)
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context): Boolean =
@@ -1263,8 +1265,9 @@ class Definitions {
   def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
     def syntheticParent(tparams: List[TypeSymbol]): Type =
       if (tparams.isEmpty) TupleTypeRef
-      else (tparams :\ (UnitType: Type)) ((tparam, tail) => PairType.appliedTo(tparam.typeRef, tail))
-    if (isTupleClass(cls) || cls == UnitClass) parents :+ syntheticParent(tparams) else parents
+      else TypeOps.nestedPairs(tparams.map(_.typeRef))
+    if (isTupleClass(cls) || cls == UnitClass) parents :+ syntheticParent(tparams)
+    else parents
   }
 
   // ----- primitive value class machinery ------------------------------------------

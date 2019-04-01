@@ -50,6 +50,6 @@ object TypeUtils {
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(implicit ctx: Context): Type =
-      TypeOps.tupleOf(tupleElementTypes)
+      TypeOps.nestedPairs(tupleElementTypes)
   }
 }
