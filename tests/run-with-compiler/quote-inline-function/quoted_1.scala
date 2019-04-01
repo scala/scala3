@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.quoted.Toolbox.Default._
-
 object Macros {
 
   inline def foreach1(start: Int, end: Int, f: Int => Unit): String = ${impl('start, 'end, 'f)}

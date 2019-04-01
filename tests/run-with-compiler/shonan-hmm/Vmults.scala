@@ -1,5 +1,3 @@
-
-import scala.quoted.Toolbox.Default._
 import scala.quoted._
 
 class Vmult[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {

@@ -2,7 +2,6 @@ import scala.quoted._
 import scala.tasty.Reflection
 import scala.language.implicitConversions
 import scala.quoted.Exprs.LiftedExpr
-import scala.quoted.Toolbox.Default._
 
 object Macro {
 
@@ -14,6 +13,7 @@ object FIntepolator {
 
   def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
     error("there are no parts", strCtxExpr.unseal.underlyingArgument.pos)
     '{ ($strCtxExpr).s($argsExpr: _*) }
   }

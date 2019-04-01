@@ -1,10 +1,9 @@
 import scala.quoted._
 
-import scala.quoted.Toolbox.Default._
-
 object Test {
 
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
     val ack3 = ackermann(3).run
     println(ack3(1))
     println(ack3(2))

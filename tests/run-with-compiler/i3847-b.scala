@@ -1,4 +1,3 @@
-import scala.quoted.Toolbox.Default._
 import scala.quoted._
 import scala.reflect.ClassTag
 
@@ -14,6 +13,8 @@ object Arrays {
 }
 
 object Test {
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
+
   def main(args: Array[String]): Unit = {
     import Arrays._
     implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}

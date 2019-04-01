@@ -9,7 +9,7 @@ object scalatest {
 
   def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
-    import quoted.Toolbox.Default._
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
     val tree = condition.unseal
     def exprStr: String = condition.show

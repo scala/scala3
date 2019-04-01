@@ -1,6 +1,3 @@
-
-import scala.quoted.Toolbox.Default._
-
 import scala.quoted._
 
 object Test {

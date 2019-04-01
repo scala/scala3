@@ -15,7 +15,7 @@ object Lens {
   def impl[S: Type, T: Type](getter: Expr[S => T])(implicit refl: Reflection): Expr[Lens[S, T]] = {
     import refl._
     import util._
-    import quoted.Toolbox.Default._
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =

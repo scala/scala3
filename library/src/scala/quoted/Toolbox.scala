@@ -2,7 +2,7 @@ package scala.quoted
 
 import scala.annotation.implicitNotFound
 
-@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make`\n\nIf only needed once it can also be imported with:\n `import scala.quoted.Toolbox.Default._`")
+@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make`\n\n")
 trait Toolbox {
   def run[T](expr: Expr[T]): T
   def show[T](expr: Expr[T]): String
@@ -10,11 +10,6 @@ trait Toolbox {
 }
 
 object Toolbox {
-
-  object Default {
-    // TODO remove? It may be better to only have one way to instantiate the toolbox
-    implicit def make(implicit settings: Settings): Toolbox = Toolbox.make
-  }
 
   /** Create a new instance of the toolbox.
     *

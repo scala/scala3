@@ -7,7 +7,6 @@ object scalatest {
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
-    import quoted.Toolbox.Default._
 
     cond.unseal.underlyingArgument match {
       case Apply(sel @ Select(lhs, op), rhs :: Nil) =>

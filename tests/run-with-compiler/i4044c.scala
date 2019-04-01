@@ -1,8 +1,8 @@
 import scala.quoted._
-import scala.quoted.Toolbox.Default._
 
 class Foo {
   def foo: Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
     val q = '{ ${ '{ ${ '{ 5 } } } } }
     println(q.show)
   }

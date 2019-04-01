@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.quoted.Toolbox.Default._
-
 sealed abstract class VarRef[T] {
   def update(expr: Expr[T]): Expr[Unit]
   def expr: Expr[T]
@@ -22,6 +20,7 @@ object VarRef {
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
     val q = VarRef('{4})(varRef => '{ ${varRef.update('{3})}; ${varRef.expr} })
     println(q.show)
   }

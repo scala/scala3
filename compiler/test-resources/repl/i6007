@@ -1,4 +1,5 @@
-scala> import quoted.Toolbox.Default._
+scala> implicit def toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
+def toolbox: quoted.Toolbox
 scala> val v = '{ (if true then Some(1) else None).map(v => v+1) }
 val v: quoted.Expr[Option[Int]] = Expr(<pickled tasty>)
 scala> v.show

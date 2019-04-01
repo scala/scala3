@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.quoted.Toolbox.Default._
-
 enum Exp {
   case Num(n: Int)
   case Plus(e1: Exp, e2: Exp)
@@ -29,6 +27,8 @@ object Test {
 
 
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
+
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 

@@ -1,4 +1,4 @@
-import scala.quoted.Toolbox.Default._
+
 import scala.quoted._
 import Macros._
 
@@ -14,6 +14,8 @@ object Test {
 
     ${ assertImpl('{x != 0}) }
   }
+
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
   program.run
 }

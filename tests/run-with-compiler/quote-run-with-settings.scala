@@ -1,9 +1,6 @@
 
 import java.nio.file.{Files, Paths}
 
-import scala.quoted.Toolbox.Default._
-import scala.quoted.Toolbox
-
 import scala.quoted._
 
 object Test {

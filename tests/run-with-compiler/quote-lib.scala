@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.Toolbox.Default._
 import scala.quoted.autolift._
 
 import liftable.Units._

@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.quoted.Toolbox.Default._
-
 object Macros {
 
 
@@ -40,6 +38,8 @@ class Test {
 
     ${ powerCode(3, '{math.sqrt(2.0)}) }
   }
+
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
   program.run
 }
