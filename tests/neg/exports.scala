@@ -35,3 +35,17 @@ trait IterableOps[+A, +CC[_], +C] {
   export this.{concat => ++}   // error: no eligible member
 
 }
+
+class Foo {
+  val foo : Foo = new Foo
+  export foo.foo // error: no eligible member
+}
+
+class Baz {
+  val bar: Bar = new Bar // error: cyclic reference
+  export bar._
+}
+class Bar {
+  val baz: Baz = new Baz
+  export baz._
+}

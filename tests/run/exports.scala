@@ -30,3 +30,8 @@ object Test extends App {
   Copier.config
   Copier.config2
 }
+
+final class Foo {
+  lazy val foo : Foo = new Foo
+  export foo._ // nothing is exported
+}

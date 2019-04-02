@@ -936,6 +936,9 @@ class Namer { typer: Typer =>
     /** Add forwarders as required by the export statements in this class */
     private def processExports(implicit ctx: Context): Unit = {
 
+      /** A string indicating that no forwarders for this kind of symbol are emitted */
+      val SKIP = "(skip)"
+
       /** The forwarders defined by export `exp`.
        */
       def exportForwarders(exp: Export): List[tpd.MemberDef] = {
@@ -948,7 +951,7 @@ class Namer { typer: Typer =>
           val sym = mbr.symbol
           if (sym.is(ImplicitOrImplied) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
-          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) "_"
+          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
                    (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
           else ""
@@ -1007,7 +1010,7 @@ class Namer { typer: Typer =>
           val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
           mbrs.foreach(addForwarder(alias, _, span))
           if (buf.size == size) {
-            val reason = mbrs.map(whyNoForwarder).dropWhile(_ == "-") match {
+            val reason = mbrs.map(whyNoForwarder).dropWhile(_ == SKIP) match {
               case Nil => ""
               case why :: _ => i"\n$path.$name cannot be exported because it $why"
             }

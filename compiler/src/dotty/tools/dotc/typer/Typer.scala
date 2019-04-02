@@ -2205,7 +2205,8 @@ class Typer extends Namer
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case (stat: untpd.Export) :: rest =>
-        buf ++= stat.attachment(ExportForwarders)
+        buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
+          // no attachment can happen in case of cyclic references
         traverse(rest)
       case stat :: rest =>
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
