@@ -194,7 +194,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case OrType(tp1, tp2) =>
         return toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
 
-      case EtaExpansion(tycon) =>
+      case EtaExpansion(tycon) if !ctx.settings.YprintDebug.value =>
         return toText(tycon)
       case tp: RefinedType if defn.isFunctionType(tp) =>
         return toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
