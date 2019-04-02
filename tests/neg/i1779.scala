@@ -8,6 +8,6 @@ object Test {
   def f = {
     val _parent = 3
     q"val hello = $_parent"
-    q"class $_" // error
+    q"class $_" // error // error
   } // error
 }
