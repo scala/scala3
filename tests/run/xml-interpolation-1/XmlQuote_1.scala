@@ -1,4 +1,6 @@
 import scala.quoted._
+import scala.quoted.autolift._
+
 import scala.tasty.Reflection
 
 import scala.language.implicitConversions
@@ -58,6 +60,6 @@ object XmlQuote {
     val Typed(Repeated(args0, _), _) = args.unseal.underlyingArgument
 
     val string = parts.mkString("??")
-    '{new Xml(${string.toExpr}, ${liftListOfAny(args0)})}
+    '{new Xml(${string}, ${liftListOfAny(args0)})}
   }
 }

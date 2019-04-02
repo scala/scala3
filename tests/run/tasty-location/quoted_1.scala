@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -16,11 +17,11 @@ object Location {
       else listOwnerNames(sym.owner, sym.name :: acc)
 
     val list = listOwnerNames(rootContext.owner, Nil)
-    '{new Location(${list.toExpr})}
+    '{new Location(${list})}
   }
 
   private implicit def ListIsLiftable[T : Liftable : Type]: Liftable[List[T]] = {
-    case x :: xs  => '{ ${x.toExpr} :: ${xs.toExpr} }
+    case x :: xs  => '{ ${x} :: ${xs} }
     case Nil => '{ List.empty[T] }
   }
 }

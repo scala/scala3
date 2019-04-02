@@ -1,5 +1,6 @@
 import scala.annotation.tailrec
 import scala.quoted._
+import scala.quoted.autolift._
 
 object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
@@ -29,13 +30,13 @@ object Test {
     println(code4.show)
     println()
 
-    val liftedArray = Array(1, 2, 3, 4).toExpr
+    val liftedArray = Array(1, 2, 3, 4)
     println(liftedArray.show)
     println()
 
 
     def printAll(arr: Array[Int]) = '{
-      val arr1 = ${ arr.toExpr }
+      val arr1 = ${ arr }
       ${ foreach1('arr1, '{x => println(x)}) }
     }
 
@@ -110,17 +111,17 @@ object Test {
   def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
-    if (size % ${unrollSize.toExpr} != 0) throw new Exception("...") // for simplicity of the implementation
+    if (size % ${unrollSize} != 0) throw new Exception("...") // for simplicity of the implementation
     while (i < size) {
-      ${ foreachInRange(0, unrollSize)(j => '{ ($f)(($arrRef)(i + ${j.toExpr})) }) }
-      i += ${unrollSize.toExpr}
+      ${ foreachInRange(0, unrollSize)(j => '{ ($f)(($arrRef)(i + ${j})) }) }
+      i += ${unrollSize}
     }
   }
 
   implicit object ArrayIntIsLiftable extends Liftable[Array[Int]] {
     override def toExpr(x: Array[Int]): Expr[Array[Int]] = '{
-      val array = new Array[Int](${x.length.toExpr})
-      ${ foreachInRange(0, x.length)(i => '{ array(${i.toExpr}) = ${x(i).toExpr}}) }
+      val array = new Array[Int](${x.length})
+      ${ foreachInRange(0, x.length)(i => '{ array(${i}) = ${x(i)}}) }
       array
     }
   }

@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -15,8 +16,8 @@ object Macros {
     val treeTpeStr = tree.tpe.show
 
     '{
-      println(${treeStr.toExpr})
-      println(${treeTpeStr.toExpr})
+      println(${treeStr})
+      println(${treeTpeStr})
       println()
     }
   }

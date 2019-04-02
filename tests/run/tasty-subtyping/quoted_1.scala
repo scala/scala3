@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -13,12 +14,12 @@ object Macros {
   def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
     val isTypeEqual = t.unseal.tpe =:= u.unseal.tpe
-    isTypeEqual.toExpr
+    isTypeEqual
   }
 
   def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(implicit reflect: Reflection): Expr[Boolean] = {
     import reflect._
     val isTypeEqual = t.unseal.tpe <:< u.unseal.tpe
-    isTypeEqual.toExpr
+    isTypeEqual
   }
 }

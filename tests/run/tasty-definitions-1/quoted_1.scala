@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -93,7 +94,7 @@ object Macros {
     printout(definitions.StringType.show)
 
 
-    '{println(${buff.result().mkString("\n").toExpr})}
+    '{println(${buff.result().mkString("\n")})}
   }
 
 }

@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 import scala.tasty.util._
@@ -22,6 +23,6 @@ object Macros {
 
     '{new Object} match { case Constant(n) => println(n); case _ => stagedPrintln("OK") }
 
-    '{print(${buff.result().toExpr})}
+    '{print(${buff.result()})}
   }
 }

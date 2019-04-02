@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -8,7 +9,7 @@ object Macros {
     ${ impl('i) }
 
   def impl(i: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
-    value(i).toString.toExpr
+    value(i).toString
   }
 
   inline implicit def value[X](e: Expr[X])(implicit reflect: Reflection, ev: Valuable[X]): Option[X] = ev.value(e)

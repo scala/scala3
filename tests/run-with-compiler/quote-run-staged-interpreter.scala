@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.quoted.Toolbox.Default._
 
@@ -14,7 +15,7 @@ object Test {
 
   def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean): Expr[Int] = {
     def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
-      case Num(n) => n.toExpr
+      case Num(n) => n
       case Plus(e1, e2) => '{${compileImpl(e1, env)} + ${compileImpl(e2, env)}}
       case Var(x) => env(x)
       case Let(x, e, body) =>

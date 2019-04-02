@@ -4,6 +4,7 @@ import scala.tasty.Reflection
 import scala.language.implicitConversions
 import scala.quoted.Exprs.LiftedExpr
 import scala.quoted.Toolbox.Default._
+import scala.quoted.autolift._
 
 object Macro {
 
@@ -17,17 +18,17 @@ object Macro {
 
 object SIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(implicit reflect: Reflection): Expr[String] =
-    '{(${strCtx.toExpr}).s(${args.toExprOfList}: _*)}
+    '{(${strCtx}).s(${args.toExprOfList}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(implicit reflect: Reflection): Expr[String] =
-    '{(${strCtx.toExpr}).raw(${args.toExprOfList}: _*)}
+    '{(${strCtx}).raw(${args.toExprOfList}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(implicit reflect: Reflection): Expr[String] =
-    '{(${strCtx.toExpr}).s(${args.map(_ => '{"foo"}).toExprOfList}: _*)}
+    '{(${strCtx}).s(${args.map(_ => '{"foo"}).toExprOfList}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
@@ -84,7 +85,7 @@ abstract class MacroStringInterpolator[T] {
           case Nil => '{Nil}
         }
       }
-      '{StringContext(${strCtx.parts.toList.toExpr}: _*)}
+      '{StringContext(${strCtx.parts.toList}: _*)}
     }
   }
 

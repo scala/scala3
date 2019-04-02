@@ -1,15 +1,16 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 object Test {
 
   inline def foo1: Int = { // error
     println()
-    ${ impl(1.toExpr) }
+    ${ impl(1) }
   }
 
   inline def foo2: Int = { // error
-    ${ impl(1.toExpr) }
-    ${ impl(2.toExpr) }
+    ${ impl(1) }
+    ${ impl(2) }
   }
 
   inline def foo3: Int = { // error

@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.autolift._
 
 import scala.tasty._
 
@@ -13,7 +14,7 @@ object LineNumber {
 
   def lineImpl(x: Type[Unit])(implicit reflect: Reflection): Expr[LineNumber] = {
     import reflect._
-    '{new LineNumber(${rootPosition.startLine.toExpr})}
+    '{new LineNumber(${rootPosition.startLine})}
   }
 
 }
