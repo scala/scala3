@@ -45,8 +45,6 @@ object Matcher {
     import reflection._
 
     def treeMatches(scrutinee: Tree, pattern: Tree)(implicit env: Set[(Symbol, Symbol)]): Option[Tuple] = {
-      import Term._
-      import TypeTree.{Ident => TypeIdent, IsIdent => IsTypeIdent, Select => TypeSelect, _}
 
       /** Check that both are `val` or both are `lazy val` or both are `var` **/
       def checkValFlags(): Boolean = {
@@ -196,6 +194,9 @@ object Matcher {
               else foldMatchings(cases1.zip(cases2).map(caseMatches): _*)
           val finalizerMatch = treeOptMatches(finalizer1, finalizer2)
           foldMatchings(bodyMacth, casesMatch, finalizerMatch)
+
+        case (_, Block(stats, expr)) if stats.forall { case IsTypeDef(s) if s.name.toString.startsWith("Binding$") => true; case _ => false } =>
+          treeMatches(scrutinee, expr)
 
         case _ =>
           if (debug)

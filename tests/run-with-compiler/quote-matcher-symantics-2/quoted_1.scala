@@ -4,9 +4,7 @@ import scala.quoted.matching._
 
 import scala.tasty.Reflection
 
-import scala.runtime.quoted.Matcher.Hole
-import scala.runtime.quoted.Matcher.hole
-import scala.runtime.quoted.Matcher.bindHole
+import scala.runtime.quoted.Matcher._
 
 object Macros {
 

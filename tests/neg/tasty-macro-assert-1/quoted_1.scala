@@ -26,14 +26,14 @@ object Asserts {
 
     object OpsTree {
       def unapply(arg: Term): Option[Term] = arg match {
-        case Apply(TypeApply(term, _), left :: Nil) if isOps(term.tpe) =>
+        case Term.Apply(Term.TypeApply(term, _), left :: Nil) if isOps(term.tpe) =>
           Some(left)
         case _ => None
       }
     }
 
     tree match {
-      case Inlined(_, Nil, Apply(Select(OpsTree(left), op), right :: Nil)) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op), right :: Nil)) =>
         '{assertTrue(${left.seal.cast[Boolean]})} // Buggy code. To generate the errors
       case _ =>
         '{assertTrue($cond)}

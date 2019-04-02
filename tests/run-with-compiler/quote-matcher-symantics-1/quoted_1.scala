@@ -4,8 +4,7 @@ import scala.quoted.matching._
 
 import scala.tasty.Reflection
 
-import scala.runtime.quoted.Matcher.Hole
-import scala.runtime.quoted.Matcher.hole
+import scala.runtime.quoted.Matcher._
 
 object Macros {
 
@@ -20,7 +19,7 @@ object Macros {
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
       // case '{ LitDSL(${Literal(c)}) } =>
-      // case scala.runtime.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple1(Literal(c)))(/*implicits*/ '{ LitDSL(hole) }, reflect) =>
+      // case scala.runtime.quoted.Matcher.unapply[Tuple1[Expr[DSL]]](Tuple1(Literal(c)))(/*implicits*/ '{ LitDSL(hole) }, reflect) =>
       case ValueExpr(Tuple1(Literal(c: Int))) =>
         '{ $sym.value(${c.toExpr}) }
 

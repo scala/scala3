@@ -4,7 +4,7 @@ import scala.quoted.matching._
 
 import scala.tasty.Reflection
 
-import scala.runtime.quoted.Matcher.{Hole, hole, bindHole}
+import scala.runtime.quoted.Matcher._
 
 object Macros {
 
@@ -14,9 +14,9 @@ object Macros {
     object StringContextExpr extends ExprMatch[Tuple1[Expr[Seq[String]]]]('{StringContext(hole[Seq[String]]: _*)}) // case '{ StringContext($args: _*) } =>
 
     self match {
-      // case '{ StringContext(${parts: _*}) } =>
-      // case '{ StringContext(${Repeated(parts)}: _*) } =>
-      // scala.runtime.quoted.Matcher.unapplySeq[Tuple1[Expr[Seq[String]]]](Tuple1(Repeated(parts: Seq[Expr[String]]): Expr[Seq[String]]))('{ StringContext(hole[Seq[String]]: _*) }, reflect)
+      // case '{ StringContext(${args: _*}) } =>
+      // case '{ StringContext(${Repeated(args)}: _*) } =>
+      // scala.runtime.quoted.Matcher.unapplySeq(Tuple1(Repeated(parts: Seq[Expr[String]]): Expr[Seq[String]]))('{ StringContext(hole[Seq[String]]: _*) }, reflect)
       case StringContextExpr(Tuple1(Repeated(parts))) =>
         val parts2 = parts.map(x => '{ $x.reverse }).toList.toExprOfList
         '{ StringContext($parts2: _*).s($args: _*) }

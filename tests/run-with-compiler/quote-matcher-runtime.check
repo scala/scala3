@@ -4,6 +4,18 @@ Scrutinee: 1
 Pattern: 1
 Result: Some(List())
 
+Scrutinee: (1: scala.Int)
+Pattern: 1
+Result: None
+
+Scrutinee: (1: scala.Int)
+Pattern: (1: scala.Int)
+Result: Some(List())
+
+Scrutinee: 1
+Pattern: (1: scala.Int)
+Result: None
+
 Scrutinee: 3
 Pattern: scala.runtime.quoted.Matcher.hole[scala.Int]
 Result: Some(List(Expr(3)))
@@ -225,20 +237,10 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  val a: scala.runtime.quoted.Matcher.Hole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.Hole[scala.Int]]
+  val a: scala.runtime.quoted.Matcher.bindHole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.Int]]
   ()
 }
-Result: Some(List(Type(scala.Int), Expr(45)))
-
-Scrutinee: {
-  val a: scala.Int = 45
-  ()
-}
-Pattern: {
-  val a: scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]]]
-  ()
-}
-Result: Some(List(Binding(a), Type(scala.Int), Expr(45)))
+Result: Some(List(Binding(a), Expr(45)))
 
 Scrutinee: {
   val a: scala.Int = 45
@@ -265,7 +267,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  var a: scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]]]
+  var a: scala.runtime.quoted.Matcher.bindHole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.Int]]
   ()
 }
 Result: None
@@ -305,7 +307,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  val a: scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]]]
+  val a: scala.runtime.quoted.Matcher.bindHole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.Int]]
   ()
 }
 Result: None
@@ -315,7 +317,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  var a: scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]]]
+  var a: scala.runtime.quoted.Matcher.bindHole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.Int]]
   ()
 }
 Result: None
@@ -355,7 +357,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  val a: scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]]]
+  val a: scala.runtime.quoted.Matcher.bindHole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.Int]]
   ()
 }
 Result: None
@@ -365,7 +367,7 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  lazy val a: scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.runtime.quoted.Matcher.Hole[scala.Int]]]
+  lazy val a: scala.runtime.quoted.Matcher.bindHole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.runtime.quoted.Matcher.bindHole[scala.Int]]
   ()
 }
 Result: None
@@ -429,16 +431,6 @@ Pattern: {
   ()
 }
 Result: Some(List())
-
-Scrutinee: {
-  def a: scala.Int = 45
-  ()
-}
-Pattern: {
-  def a: scala.runtime.quoted.Matcher.Hole[scala.Int] = scala.runtime.quoted.Matcher.hole[scala.Int]
-  ()
-}
-Result: Some(List(Type(scala.Int), Expr(45)))
 
 Scrutinee: {
   def a: scala.Int = 45
@@ -505,10 +497,10 @@ Scrutinee: {
   ()
 }
 Pattern: {
-  def a(x: scala.runtime.quoted.Matcher.Hole[scala.Predef.String]): scala.runtime.quoted.Matcher.Hole[scala.Int] = 45
+  def a(x: scala.Predef.String): scala.Int = 45
   ()
 }
-Result: Some(List(Type(scala.Predef.String), Type(scala.Int)))
+Result: Some(List())
 
 Scrutinee: {
   def a(x: scala.Int): scala.Int = 45
@@ -670,38 +662,6 @@ Pattern: try scala.runtime.quoted.Matcher.hole[scala.Int] finally {
 }
 Result: Some(List(Expr(1), Expr(2)))
 
-Scrutinee: (1: scala.Int)
-Pattern: (1: scala.Int)
-Result: Some(List())
-
-Scrutinee: (1: scala.Int)
-Pattern: (1: scala.runtime.quoted.Matcher.Hole[scala.Int])
-Result: Some(List(Type(scala.Int)))
-
-Scrutinee: (scala.Nil: scala.collection.immutable.List[scala.Int])
-Pattern: (scala.Nil: scala.collection.immutable.List[scala.runtime.quoted.Matcher.Hole[scala.Int]])
-Result: Some(List(Type(scala.Int)))
-
-Scrutinee: g[scala.Int]
-Pattern: g[scala.runtime.quoted.Matcher.Hole[scala.Int]]
-Result: Some(List(Type(scala.Int)))
-
-Scrutinee: h[scala.Int](6)
-Pattern: h[scala.runtime.quoted.Matcher.Hole[scala.Int]](6)
-Result: Some(List(Type(scala.Int)))
-
-Scrutinee: h[6](6)
-Pattern: h[scala.runtime.quoted.Matcher.Hole[6]](6)
-Result: Some(List(Type(6)))
-
-Scrutinee: h[6](6)
-Pattern: h[scala.runtime.quoted.Matcher.Hole[scala.Int]](6)
-Result: Some(List(Type(6)))
-
-Scrutinee: g[this.type]
-Pattern: g[scala.runtime.quoted.Matcher.Hole[this.type]]
-Result: Some(List(Type(Test)))
-
 
 No match
 
@@ -730,7 +690,7 @@ Pattern: h[scala.Predef.String](scala.runtime.quoted.Matcher.hole[scala.Predef.S
 Result: None
 
 Scrutinee: h[scala.Int](6)
-Pattern: h[scala.runtime.quoted.Matcher.Hole[scala.Int]](7)
+Pattern: h[scala.Int](7)
 Result: None
 
 Scrutinee: z = 4
@@ -739,17 +699,5 @@ Result: None
 
 Scrutinee: z = 4
 Pattern: z2 = 4
-Result: None
-
-Scrutinee: (scala.Predef.??? : scala.Int)
-Pattern: (scala.Predef.??? : scala.runtime.quoted.Matcher.Hole[scala.Predef.String])
-Result: None
-
-Scrutinee: g[scala.Int]
-Pattern: g[scala.runtime.quoted.Matcher.Hole[scala.Predef.String]]
-Result: None
-
-Scrutinee: h[scala.Int](6)
-Pattern: h[scala.runtime.quoted.Matcher.Hole[scala.Predef.String]]("abc")
 Result: None
 
