@@ -102,14 +102,19 @@ final class ProperGadtConstraint private(
           else addLess(boundTvar.origin, symTvar.origin)
         case bound =>
           val oldUpperBound = bounds(symTvar.origin)
-          // If we already have bounds `F >: [t] => List[t] <: [t] => Any`
-          // and we want to record that `F <: [+A] => List[A]`, we need to adapt
-          // type parameter variances of the bound. Consider that the following is valid:
+          // If we have bounds:
+          //     F >: [t] => List[t] <: [t] => Any
+          // and we want to record that: 
+          //     F <: [+A] => List[A]
+          // we need to adapt the variance and instead record that:
+          //     F <: [A] => List[A]
+          // We cannot record the original bound, since it is false that:
+          //     [t] => List[t]  <:  [+A] => List[A]
           //
-          // class Foo[F[t] >: List[t]]
-          // type T = Foo[List]
-          //
-          // precisely because `Foo[List]` is desugared to `Foo[[A] => List[A]]`.
+          // Note that the following code is accepted:
+          //     class Foo[F[t] >: List[t]]
+          //     type T = Foo[List]
+          // precisely because Foo[List] is desugared to Foo[[A] => List[A]].
           val bound1 = bound.adaptHkVariances(oldUpperBound)
           if (isUpper) addUpperBound(symTvar.origin, bound1)
           else addLowerBound(symTvar.origin, bound1)
