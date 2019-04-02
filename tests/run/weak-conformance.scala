@@ -42,12 +42,12 @@ object Test extends App {
   locally {
     def f(): Int = b + 1
     val x1 = if (true) b else if (true) 33 else 5.5    ; x1: Double // b is an inline val
-    val x2 = if (true) f() else if (true) 33 else 5.5) ; x2: AnyVal // f() is not a constant
-    val x3 = if (true) 5 else 11L)                     ; x3: Long
-    val x4 = if (true) 5 else if (true) 11L else 5.5)  ; x4: AnyVal // Long and Double found
-    val x5 = if (true) 1.0f else 2)                    ; x5: Float
-    val x6 = if (true) 1.0f else 1234567890)           ; x6: AnyVal // loss of precision
-    val x7 = if (true) b else if (true) 33 else 'a')   ; x7: Char
-    val x8 = if (true) 5.toByte else 11)               ; x8: Byte
+    val x2 = if (true) f() else if (true) 33 else 5.5  ; x2: AnyVal // f() is not a constant
+    val x3 = if (true) 5 else 11L                      ; x3: Long
+    val x4 = if (true) 5 else if (true) 11L else 5.5   ; x4: AnyVal // Long and Double found
+    val x5 = if (true) 1.0f else 2                     ; x5: Float
+    val x6 = if (true) 1.0f else 1234567890            ; x6: AnyVal // loss of precision
+    val x7 = if (true) b else if (true) 33 else 'a'    ; x7: Char
+    val x8 = if (true) 5.toByte else 11                ; x8: Byte
   }
 }

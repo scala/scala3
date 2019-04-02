@@ -341,6 +341,7 @@ object Parsers {
           case NEWLINE | NEWLINES => in.nextToken()
           case SEMI => in.nextToken()
           case _ =>
+            syntaxError("end of statement expected")
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
         }
