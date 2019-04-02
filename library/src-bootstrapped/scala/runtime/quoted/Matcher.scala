@@ -9,15 +9,29 @@ object Matcher {
 
   private final val debug = false
 
-  /**
+  /** Pattern matches an the scrutineeExpr aquainsnt the patternExpr and returns a tuple
+   *  with the matched holes if successful.
    *
-   * @param scrutineeExpr
-   * @param patternExpr
-   * @param reflection
-   * @return None if it did not match, Some(tup) if it matched where tup contains Expr[_], Type[_] or Binding[_]
+   *  Examples:
+   *    - `Matcher.unapply('{ f(0, myInt) })('{ f(0, myInt) }, _)`
+   *       will return `Some(())` (where `()` is a tuple of arity 0)
+   *    - `Matcher.unapply('{ f(0, myInt) })('{ f(patternHole[Int], patternHole[Int]) }, _)`
+   *       will return `Some(Tuple2('{0}, '{ myInt }))`
+   *    - `Matcher.unapply('{ f(0, "abc") })('{ f(0, patternHole[Int]) }, _)`
+   *       will return `None` due to the missmatch of types in the hole
+   *
+   *  Holes:
+   *    - scala.internal.Quoted.patternHole[T]: hole that matches an expression `x` of type `Expr[U]`
+   *                                            if `U <:< T` and returns `x` as part of the match.
+   *
+   *  @param scrutineeExpr `Expr[_]` on which we are pattern matching
+   *  @param patternExpr `Expr[_]` containing the pattern tree
+   *  @param reflection instance of the reflection API (implicitly provided by the macro)
+   *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
   def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] = {
     import reflection._
+    // TODO improve performance
 
     def treeMatches(scrutinee: Tree, pattern: Tree)(implicit env: Set[(Symbol, Symbol)]): Option[Tuple] = {
 
@@ -38,15 +52,18 @@ object Matcher {
         case (Block(Nil, expr), _) => treeMatches(expr, pattern)
         case (_, Block(Nil, pat)) => treeMatches(scrutinee, pat)
 
-        // Match
+        // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
         case (IsTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
             if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole && scrutinee.tpe <:< tpt.tpe =>
           Some(Tuple1(scrutinee.seal))
 
-        case (Inlined(_, Nil, scr), _) =>
-          treeMatches(scr, pattern)
-        case (_, Inlined(_, Nil, pat)) =>
-          treeMatches(scrutinee, pat)
+        // Normalize inline trees
+        case (Inlined(_, Nil, scr), _) => treeMatches(scr, pattern)
+        case (_, Inlined(_, Nil, pat)) => treeMatches(scrutinee, pat)
+
+        //
+        // Match two equivalent trees
+        //
 
         case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
           Some(())
@@ -150,6 +167,7 @@ object Matcher {
           val finalizerMatch = treeOptMatches(finalizer1, finalizer2)
           foldMatchings(bodyMacth, casesMatch, finalizerMatch)
 
+        // No Match
         case _ =>
           if (debug)
             println(
@@ -245,7 +263,11 @@ object Matcher {
     treeMatches(scrutineeExpr.unseal, patternExpr.unseal)(Set.empty).asInstanceOf[Option[Tup]]
   }
 
+  /** Joins the mattchings into a single matching. If any matching is `None` the result is `None`.
+   *  Otherwise the result is `Some` of the concatenation of the tupples.
+   */
   private def foldMatchings(matchings: Option[Tuple]*): Option[Tuple] = {
+    // TODO improve performance
     matchings.foldLeft[Option[Tuple]](Some(())) {
       case (Some(acc), Some(holes)) => Some(acc ++ holes)
       case (_, _) => None
