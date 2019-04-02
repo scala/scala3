@@ -1478,9 +1478,8 @@ object Parsers {
 
     /** SimpleExpr    ::= ‘new’ (ConstrApp [TemplateBody] | TemplateBody)
      *                 |  BlockExpr
-     *                 |  ‘'’ ‘{’ Block ‘}’
-     *                 |  ‘'’ ‘[’ Type ‘]’
      *                 |  ‘$’ ‘{’ Block ‘}’
+     *                 |  Quoted
      *                 |  quoteId
      *                 |  SimpleExpr1 [`_']
      *  SimpleExpr1   ::= literal
@@ -1490,6 +1489,8 @@ object Parsers {
      *                 |  SimpleExpr `.' id
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
+     *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
+     *                 |  ‘'’ ‘[’ Type ‘]’
      */
     def simpleExpr(): Tree = {
       var canApply = true
@@ -1827,6 +1828,7 @@ object Parsers {
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
+     *                    |  Quoted
      *                    |  XmlPattern
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
@@ -1853,6 +1855,8 @@ object Parsers {
         } else wildIndent
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
+      case QUOTE =>
+        simpleExpr()
       case XMLSTART =>
         xmlLiteralPattern()
       case _ =>

@@ -93,7 +93,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType: Boolean = !isTerm
   }
   case class Throw(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
-  case class Quote(t: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
+  case class Quote(quoted: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class Splice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class TypSplice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
   case class DoWhile(body: Tree, cond: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
@@ -492,9 +492,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Throw if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.Throw(expr)(tree.source))
     }
-    def Quote(tree: Tree)(t: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Quote if t eq tree.t => tree
-      case _ => finalize(tree, untpd.Quote(t)(tree.source))
+    def Quote(tree: Tree)(quoted: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: Quote if quoted eq tree.quoted => tree
+      case _ => finalize(tree, untpd.Quote(quoted)(tree.source))
     }
     def Splice(tree: Tree)(expr: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: Splice if expr eq tree.expr => tree

@@ -209,9 +209,8 @@ InfixExpr         ::=  PrefixExpr
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
                     |  BlockExpr
-                    |  ‘'’ ‘{’ Block ‘}’
-                    |  ‘'’ ‘[’ Type ‘]’
                     |  ‘$’ ‘{’ Block ‘}’
+                    |  Quoted
                     |  quoteId     // only inside splices
                     |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
 SimpleExpr1       ::=  Literal
@@ -222,6 +221,8 @@ SimpleExpr1       ::=  Literal
                     |  SimpleExpr (TypeArgs | NamedTypeArgs)                    TypeApply(expr, args)
                     |  SimpleExpr1 ArgumentExprs                                Apply(expr, args)
                     |  XmlExpr
+Quoted            ::=  ‘'’ ‘{’ Block ‘}’
+                    |  ‘'’ ‘[’ Type ‘]’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
                     |  Expr
@@ -261,6 +262,7 @@ InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
                     |  ‘(’ [Patterns] ‘)’                                       Parens(pats) Tuple(pats)
+                    |  Quoted
                     |  XmlPattern
                     |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
 SimplePattern1    ::=  Path

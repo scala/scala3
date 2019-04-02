@@ -1178,6 +1178,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  /** An extractor for typed splices */
+  object Splice {
+    def apply(tree: Tree)(implicit ctx: Context): Tree = {
+      val argType = tree.tpe.baseType(defn.QuotedExprClass).argTypesHi.head
+      ref(defn.InternalQuoted_exprSplice).appliedToType(argType).appliedTo(tree)
+    }
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
+      case Apply(fn, arg :: Nil) if fn.symbol == defn.InternalQuoted_exprSplice => Some(arg)
+      case _ => None
+    }
+  }
+
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 

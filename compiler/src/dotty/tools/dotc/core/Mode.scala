@@ -104,4 +104,7 @@ object Mode {
 
   /** Are we trying to find a hidden implicit? */
   val FindHiddenImplicits: Mode = newMode(24, "FindHiddenImplicits")
+
+  /** Are we in a quote in a pattern? */
+  val QuotedPattern: Mode = newMode(25, "QuotedPattern")
 }
