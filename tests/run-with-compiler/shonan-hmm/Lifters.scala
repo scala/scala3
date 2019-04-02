@@ -6,12 +6,12 @@ import scala.quoted._
 import scala.quoted.autolift._
 
 object Lifters {
-
-  implicit def ClassTagIsLiftable[T : Type](implicit ct: ClassTag[T]): Liftable[ClassTag[T]] =
-    ct => '{ClassTag(${ct.runtimeClass})}
+  implicit def LiftedClassTag[T: Type](implicit ct: ClassTag[T]): Expr[ClassTag[T]] = {
+    '{ ClassTag(${ct.runtimeClass })}
+  }
 
   implicit def ArrayIsLiftable[T : Type: ClassTag](implicit l: Liftable[T]): Liftable[Array[T]] = arr => '{
-    val array = new Array[T](${arr.length})(${implicitly[ClassTag[T]]})
+    val array = new Array[T](${arr.length})(${implicitly[Expr[ClassTag[T]]]})
     ${initArray(arr, 'array)}
   }
 
@@ -27,5 +27,4 @@ object Lifters {
       }.toList,
       array)
   }
-
 }
