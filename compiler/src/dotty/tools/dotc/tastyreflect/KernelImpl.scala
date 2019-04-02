@@ -1730,6 +1730,8 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   // DEFINITIONS
   //
 
+  // Symbols
+
   def Definitions_RootPackage: Symbol = defn.RootPackage
   def Definitions_RootClass: Symbol = defn.RootClass
 
@@ -1777,6 +1779,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol =
     defn.FunctionClass(arity, isImplicit, isErased).asClass
   def Definitions_TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
+
+  def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
+
+  // Types
 
   def Definitions_UnitType: Type = defn.UnitType
   def Definitions_ByteType: Type = defn.ByteType
