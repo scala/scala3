@@ -6,6 +6,7 @@ package level2
 import scala.collection._
 import scala.deprecated
 import scala.annotation._
+import scala.math.{Pi, max}
 
 /** This class is used for testing tasty doc generation
  * @constructor create new object
@@ -14,12 +15,20 @@ import scala.annotation._
  * @tparam T class type parameter
  */
 @strictfp
-sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] {
+sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable{
 
   /** Auxiliary constructor
    * @param ac auxiliary parameter
    */
   def this(ac: String) = this(ac, Nil)
+
+  class innerDocumentationClass {
+
+  }
+
+  object testObject {
+
+  }
 
   /** Test methods with params
    *
@@ -29,6 +38,8 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
    * @return something is returned
    */
   def methodsWithParams(x : T, y: Int) : List[Map[Int, T]] = ???
+
+  def methodsWithImplicit(x: Int)(implicit imp: Int, notImp: String) = ???
 
   /** Test value
   */
@@ -60,6 +71,10 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
    *  1. I'm a list
    */
   def docWithMd = ???
+
+  val complexTypeVal : Int | List[List[T]] & String | (Double | Int, Double) | ((Int) => (String))
+
+  type typeExamle >: Null <: String //TypeBound
 
 }
 

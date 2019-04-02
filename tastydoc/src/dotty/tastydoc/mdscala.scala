@@ -1,4 +1,4 @@
-package mdscala
+package dotty.tastydoc
 
 /** Contains function to generate markdown (follows CommonMarkdown specifications)*/
 object Md {
@@ -83,5 +83,14 @@ object Md {
    */
   def bold(obj: Any) : String = {
     "**" + obj.toString + "**"
+  }
+
+  /** Transform something in italics
+   *
+   *  @param obj The content of the code block
+   *  @return The object string in italics
+   */
+  def italics(obj: Any) : String = {
+    "*" + obj.toString + "*"
   }
 }

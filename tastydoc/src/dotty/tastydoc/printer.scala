@@ -1,7 +1,5 @@
 package dotty.tastydoc
 
-import mdscala.Md
-
 def formatToMarkdown(container: Container, level: Int) : String = {
 
   def formatDoc(doc: String) : String = {
@@ -53,4 +51,53 @@ def formatToMarkdown(container: Container, level: Int) : String = {
 
     case MissingMatchContainer() => "Documentation missmatch"
   }
+}
+
+import representations._
+
+def ParamListPrinter(paramList: ParamList) : String = paramList.list.mkString(
+  "(" + (if(paramList.isImplicit) "implicit " else ""),
+  ", ",
+  ")"
+)
+
+def formatRepresentationToMarkdown(representation: Representation) : String = representation match {
+  //case _ => ""
+  case r : PackageRepresentation =>
+    r.name +
+    "\n" +
+    r.members.map(formatRepresentationToMarkdown).mkString("\n")
+
+  case r: ImportRepresentation =>
+    "import " +
+    r.path.mkString("", ".", ".") +
+    r.name +
+    "\n"
+
+  case r: ClassRepresentation =>
+    Md.header1("class " + r.name) +
+    "\n" +
+    (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
+    Md.codeBlock(r.modifiers.mkString("", " ", " ") + r.name, "scala") +
+    "\n" +
+    Md.italics(r.comments) +
+    "\n" +
+    Md.header2("Members :") +
+    "\n" +
+    r.members.map(formatRepresentationToMarkdown).mkString("") +
+    "\n"
+
+  case r: DefRepresentation =>
+    Md.codeBlock(
+      (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
+      "def " +
+      r.name +
+      r.paramLists.map(ParamListPrinter).mkString("") +
+      ": " +
+      r.returnValue, "scala") +
+      r.comments +
+      "\n"
+
+  case _ : DebugRepresentation => "=============>ERROR<==============="
+  case _ => ""
 }

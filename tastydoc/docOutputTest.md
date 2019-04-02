@@ -1,106 +1,100 @@
-## package Ident(example)
-## package Ident(level2)
+example
+level2
+import scala.collection.Ident(_)
 
-### import scala.collection.List(Ident(_))
+import scala.Ident(deprecated)
 
-### import scala.List(Ident(deprecated))
+import scala.annotation.Ident(_)
 
-### import scala.annotation.List(Ident(_))
-# class: Documentation
-This class is used for testing tasty doc generation
-@constructor create new object
-@tparam T class type parameter
-/
+import scala.math.{Ident(Pi), Ident(max)}
 
-**c1**	class parameter 1
+# class Documentation
 
-**c2**	class parameter 2
-
-## Methods :
-```scala
-def <init>(ac: scala.Predef.String) : scala.Unit
-```
-Auxiliary constructor
-/
-
-**ac**	auxiliary parameter
+## Companion object : example.level2.Documentation$
 
 ```scala
-def methodsWithParams(x: T, y: scala.Int) : immutable.List[scala.collection.Map[scala.Int, T]]
+abstract sealed Documentation
 ```
-Test methods with params
 
-
-/
-
-**x**	parameter 1
-
-**y**	parameter 2
-
-
-**return** something is returned
+*Comments placeholder*
+## Members :
 
 ```scala
-def protectedMethod : scala.Nothing
+def <init>(scala.Predef.String): scala.Unit
 ```
+Comments placeholder
+# class innerDocumentationClass
 
 ```scala
-def privateMethod : scala.Nothing
+ innerDocumentationClass
 ```
+
+*Comments placeholder*
+## Members :
+
+
+# class testObject$
 
 ```scala
-def abstractDefinition : scala.Int
+final object moduleClass testObject$
 ```
+
+*Comments placeholder*
+## Members :
+
 
 ```scala
-def apply(idx: scala.Int) : T
+def methodsWithParams(Documentation.this.T, scala.Int): scala.collection.immutable.List[scala.collection.Map[scala.Int, Documentation.this.T]]
 ```
+Comments placeholder
+```scala
+def methodsWithImplicit(scala.Int)(implicit scala.Int, scala.Predef.String): scala.Nothing
+```
+Comments placeholder
+```scala
+protected def protectedMethod: scala.Nothing
+```
+Comments placeholder
+```scala
+private private[this] def privateMethod: scala.Nothing
+```
+Comments placeholder
+```scala
+def abstractDefinition: scala.Int
+```
+Comments placeholder
+```scala
+def apply(scala.Int): Documentation.this.T
+```
+Comments placeholder
+```scala
+def iterator: scala.collection.Iterator[Documentation.this.T]
+```
+Comments placeholder
+```scala
+override def length: scala.Int
+```
+Comments placeholder
+```scala
+def docWithMd: scala.Nothing
+```
+Comments placeholder
+
+
+
+# class Documentation$
+
+## Companion object : example.level2.Documentation$$
 
 ```scala
-def iterator : scala.collection.Iterator[T]
+final object moduleClass Documentation$
 ```
+
+*Comments placeholder*
+## Members :
 
 ```scala
-def length : scala.Int
+private synthetic private[this] def writeReplace(): scala.AnyRef
 ```
-
-```scala
-def docWithMd : scala.Nothing
-```
-An example documention with markdown formatting
-
-**I'm bold**
-
-*I'm italic*
-
-`some code`
-```scala
-def someScalaCode(x: String) = println("Hello " + x)
-```
-1. I'm a list
-/
-## Values :
-```scala
-val c1 : scala.Predef.String
-```
-
-```scala
-val c2 : collection.immutable.List[T]
-```
-
-```scala
-val v : scala.Int
-```
-Test value
-/
-```scala
-val protectedVal : scala.Nothing
-```
-
-```scala
-val privateVal : scala.Nothing
-```
-
-## Types :
-
+Comments placeholder
 
