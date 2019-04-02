@@ -1810,6 +1810,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
 
   def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
+  def Definitions_InternalQuoted_patternBindHoleAnnot: Symbol = defn.InternalQuoted_patternBindHoleAnnot
 
   // Types
 

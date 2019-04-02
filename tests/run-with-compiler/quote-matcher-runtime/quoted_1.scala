@@ -16,6 +16,8 @@ object Macros {
           s"Expr(${r.unseal.show})"
         case r: quoted.Type[_] =>
           s"Type(${r.unseal.show})"
+        case r: Binding[_] =>
+          s"Binding(${r.name})"
       }
     }
 

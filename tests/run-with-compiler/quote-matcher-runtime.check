@@ -236,6 +236,10 @@ Scrutinee: ((x: scala.Int) => "abc").apply(4)
 Pattern: scala.internal.Quoted.patternHole[scala.Function1[scala.Int, scala.Predef.String]].apply(4)
 Result: Some(List(Expr(((x: scala.Int) => "abc"))))
 
+Scrutinee: ((x: scala.Int) => "abc")
+Pattern: ((x: scala.Int @scala.internal.Quoted.patternBindHole) => scala.internal.Quoted.patternHole[scala.Predef.String])
+Result: Some(List(Binding(x), Expr("abc")))
+
 Scrutinee: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
 Pattern: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
 Result: Some(List())
@@ -263,6 +267,16 @@ Scrutinee: {
   ()
 }
 Pattern: {
+  @scala.internal.Quoted.patternBindHole val a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: Some(List(Binding(a), Expr(45)))
+
+Scrutinee: {
+  val a: scala.Int = 45
+  ()
+}
+Pattern: {
   lazy val a: scala.Int = 45
   ()
 }
@@ -274,6 +288,16 @@ Scrutinee: {
 }
 Pattern: {
   var a: scala.Int = 45
+  ()
+}
+Result: None
+
+Scrutinee: {
+  val a: scala.Int = 45
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternBindHole var a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
   ()
 }
 Result: None
@@ -309,6 +333,26 @@ Pattern: {
 Result: None
 
 Scrutinee: {
+  lazy val a: scala.Int = 45
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternBindHole val a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: None
+
+Scrutinee: {
+  lazy val a: scala.Int = 45
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternBindHole var a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: None
+
+Scrutinee: {
   var a: scala.Int = 45
   ()
 }
@@ -337,6 +381,26 @@ Pattern: {
   ()
 }
 Result: Some(List())
+
+Scrutinee: {
+  var a: scala.Int = 45
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternBindHole val a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: None
+
+Scrutinee: {
+  var a: scala.Int = 45
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternBindHole lazy val a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: None
 
 Scrutinee: {
   scala.Predef.println()
@@ -399,6 +463,16 @@ Pattern: {
 Result: Some(List())
 
 Scrutinee: {
+  def a: scala.Int = 45
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternBindHole def a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: Some(List(Binding(a), Expr(45)))
+
+Scrutinee: {
   def a(x: scala.Int): scala.Int = 45
   ()
 }
@@ -457,6 +531,26 @@ Pattern: {
   ()
 }
 Result: Some(List())
+
+Scrutinee: {
+  def a(x: scala.Int): scala.Int = 45
+  ()
+}
+Pattern: {
+  def a(x: scala.Int @scala.internal.Quoted.patternBindHole): scala.Int = 45
+  ()
+}
+Result: Some(List(Binding(x)))
+
+Scrutinee: {
+  def a(x: scala.Int): scala.Int = 45
+  ()
+}
+Pattern: {
+  def a(x: scala.Int @scala.internal.Quoted.patternBindHole): scala.Int = 45
+  ()
+}
+Result: Some(List(Binding(x)))
 
 Scrutinee: {
   def a(x: scala.Int): scala.Int = x
@@ -498,6 +592,16 @@ Pattern: 1 match {
 }
 Result: Some(List())
 
+Scrutinee: 1 match {
+  case _ =>
+    2
+}
+Pattern: scala.internal.Quoted.patternHole[scala.Int] match {
+  case _ =>
+    scala.internal.Quoted.patternHole[scala.Int]
+}
+Result: Some(List(Expr(1), Expr(2)))
+
 Scrutinee: scala.Predef.??? match {
   case scala.None =>
     2
@@ -537,4 +641,24 @@ Pattern: try 1 finally {
   ()
 }
 Result: Some(List())
+
+Scrutinee: try 1 catch {
+  case _ =>
+    2
+}
+Pattern: try scala.internal.Quoted.patternHole[scala.Int] catch {
+  case _ =>
+    scala.internal.Quoted.patternHole[scala.Int]
+}
+Result: Some(List(Expr(1), Expr(2)))
+
+Scrutinee: try 1 finally {
+  2
+  ()
+}
+Pattern: try scala.internal.Quoted.patternHole[scala.Int] finally {
+  scala.internal.Quoted.patternHole[scala.Int]
+  ()
+}
+Result: Some(List(Expr(1), Expr(2)))
 

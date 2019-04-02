@@ -410,6 +410,8 @@ object Parsers {
         makeParameter(name.asTermName, TypeTree()).withSpan(tree.span)
       case Typed(Ident(name), tpt) =>
         makeParameter(name.asTermName, tpt).withSpan(tree.span)
+      case Typed(Splice(Ident(name)), tpt) =>
+        makeParameter(("$" + name).toTermName, tpt).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree)

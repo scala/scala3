@@ -139,7 +139,8 @@ object desugar {
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
    */
-  def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
+  def valDef(vdef0: ValDef)(implicit ctx: Context): Tree = {
+    val vdef = transformQuotedPatternName(vdef0)
     val ValDef(name, tpt, rhs) = vdef
     val mods = vdef.mods
     val setterNeeded =
@@ -162,6 +163,14 @@ object desugar {
       Thicket(vdef, setter)
     }
     else vdef
+  }
+
+  def transformQuotedPatternName(vdef: ValDef)(implicit ctx: Context): ValDef = {
+    if (ctx.mode.is(Mode.QuotedPattern) && vdef.name.startsWith("$")) {
+      val name = vdef.name.toString.substring(1).toTermName
+      val mods = vdef.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(vdef.span))
+      cpy.ValDef(vdef)(name).withMods(mods)
+    } else vdef
   }
 
   def makeImplicitParameters(tpts: List[Tree], contextualFlag: FlagSet = EmptyFlags, forPrimaryConstructor: Boolean = false)(implicit ctx: Context): List[ValDef] =
