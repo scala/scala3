@@ -947,7 +947,7 @@ trait Implicits { self: Typer =>
 
   private def strictEquality(implicit ctx: Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) ||
-    ctx.featureEnabled(defn.LanguageModuleClass, nme.strictEquality)
+    ctx.featureEnabled(nme.strictEquality)
 
   /** An Eql[T, U] instance is assumed
    *   - if one of T, U is an error type, or

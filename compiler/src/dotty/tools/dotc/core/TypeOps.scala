@@ -379,29 +379,24 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  where <prefix> is the full name of the owner followed by a "." minus
    *  the prefix "dotty.language.".
    */
-  def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
-    val hasImport =
+  def featureEnabled(feature: TermName): Boolean = {
+    def hasImport =
       ctx.importInfo != null &&
-      ctx.importInfo.featureImported(owner, feature)(ctx.withPhase(ctx.typerPhase))
-    def hasOption = {
-      def toPrefix(sym: Symbol): String =
-        if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
-        else toPrefix(sym.owner) + sym.name + "."
-      val featureName = toPrefix(owner) + feature
-      ctx.base.settings.language.value exists (s => s == featureName || s == "_")
-    }
-    hasImport || hasOption
+      ctx.importInfo.featureImported(feature)(ctx.withPhase(ctx.typerPhase))
+    val hasOption =
+      ctx.base.settings.language.value.exists(s => s == feature.toString || s == "_")
+    hasOption || hasImport
   }
 
   /** Is auto-tupling enabled? */
   def canAutoTuple: Boolean =
-    !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
+    !featureEnabled(nme.noAutoTupling)
 
   def scala2Mode: Boolean =
-    featureEnabled(defn.LanguageModuleClass, nme.Scala2)
+    featureEnabled(nme.Scala2)
 
   def dynamicsEnabled: Boolean =
-    featureEnabled(defn.LanguageModuleClass, nme.dynamics)
+    featureEnabled(nme.dynamics)
 
   def testScala2Mode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
     if (scala2Mode) {
@@ -414,7 +409,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** Is option -language:Scala2 set?
    *  This test is used when we are too early in the pipeline to consider imports.
    */
-  def scala2Setting = ctx.settings.language.value.contains(nme.Scala2.toString)
+  def scala2Setting: Boolean =
+    ctx.settings.language.value.contains(nme.Scala2.toString)
 
   /** Refine child based on parent
    *

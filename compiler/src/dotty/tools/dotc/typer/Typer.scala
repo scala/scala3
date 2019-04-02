@@ -1692,8 +1692,7 @@ class Typer extends Namer
         !ctx.dynamicsEnabled
       if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
-          cls, isRequired, cdef.sourcePos)
+        ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.sourcePos)
       }
 
       checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.posd)

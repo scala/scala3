@@ -30,6 +30,7 @@ package scalaShadowing
  *
  *   - [[Scala2              `Scala2`]               backwards compatibility mode for Scala2
  *   - [[noAtoTupling        `noAutoTupling`]]       disable auto-tupling
+ *   - [[strictEquality      `strictEquality`]]      enable strick equality
  *
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
@@ -217,6 +218,6 @@ object language {
   /** Where imported, auto-tupling is disabled */
   object noAutoTupling
 
-  /* Where imported loose equality using eqAny is disabled */
+  /** Where imported loose equality using eqAny is disabled */
   object strictEquality
 }

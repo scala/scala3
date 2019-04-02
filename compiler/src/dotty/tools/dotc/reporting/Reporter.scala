@@ -66,11 +66,10 @@ trait Reporting { this: Context =>
   def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new FeatureWarning(msg, pos))
 
-  def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
+  def featureWarning(feature: String, featureDescription: String,
       featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
     val req = if (required) "needs to" else "should"
-    val prefix = if (isScala2Feature) "scala." else "dotty."
-    val fqname = prefix + "language." + feature
+    val fqname = s"scala.language.$feature"
 
     val explain = {
       if (reporter.isReportedFeatureUseSite(featureUseSite)) ""

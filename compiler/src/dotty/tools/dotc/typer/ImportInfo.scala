@@ -146,7 +146,8 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   private[this] var myUnimported: Symbol = _
 
   /** Does this import clause or a preceding import clause import `owner.feature`? */
-  def featureImported(owner: Symbol, feature: TermName)(implicit ctx: Context): Boolean = {
+  def featureImported(feature: TermName)(implicit ctx: Context): Boolean = {
+    val owner: Symbol = defn.LanguageModuleClass
     def compute = {
       val isImportOwner = site.widen.typeSymbol `eq` owner
       if (isImportOwner && originals.contains(feature)) true
@@ -154,7 +155,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
       else {
         var c = ctx.outer
         while (c.importInfo eq ctx.importInfo) c = c.outer
-        (c.importInfo != null) && c.importInfo.featureImported(owner, feature)(c)
+        (c.importInfo != null) && c.importInfo.featureImported(feature)(c)
       }
     }
     if (lastOwner.ne(owner) || !lastResults.contains(feature)) {
