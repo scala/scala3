@@ -1948,7 +1948,7 @@ class Typer extends Namer
             fun = ref(defn.QuotedMatcher_unapplyR).appliedToType(patType),
             implicits =
               ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
-              givenReflection :: Nil,
+              givenReflection(tree.span) :: Nil,
             patterns = splicePat :: Nil,
             proto = pt)
         }
@@ -1979,7 +1979,8 @@ class Typer extends Namer
   def patternHole(splice: Tree)(implicit ctx: Context): Tree =
     ref(defn.InternalQuoted_patternHoleR).appliedToType(splice.tpe).withSpan(splice.span)
 
-  def givenReflection(implicit ctx: Context): Tree = Literal(Constant(null)) // FIXME: fill in
+  def givenReflection(span: Span)(implicit ctx: Context): Tree =
+    implicitArgTree(defn.TastyReflectionType, span)
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {

@@ -5,7 +5,7 @@ object Test {
   def f(x: Int) = x
   def g(x: Int, y: Int) = x * y
 
-  val res: quoted.Expr[Int] = x match {
+  def res given tasty.Reflection: quoted.Expr[Int] = x match {
     case '{1 + 2} => '{0}
     case '{f($y)} => y
     case '{g($y, $z)} => '{$y * $z}
