@@ -19,7 +19,7 @@ object Lens {
 
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
-      Select.overloaded(obj.unseal, "copy", Nil, NamedArg(field, value.unseal) :: Nil).seal[S]
+      Select.overloaded(obj.unseal, "copy", Nil, NamedArg(field, value.unseal) :: Nil).seal.cast[S]
 
     // exception: getter.unseal.underlyingArgument
     getter.unseal match {

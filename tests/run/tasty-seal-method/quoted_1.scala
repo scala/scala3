@@ -16,10 +16,10 @@ object Asserts {
         fn.tpe.widen match {
           case Type.IsMethodType(_) =>
             args.size match {
-              case 0 => fn.seal[() => Int].apply()
-              case 1 => fn.seal[Int => Int].apply('{0})
-              case 2 => fn.seal[(Int, Int) => Int].apply('{0}, '{0})
-              case 3 => fn.seal[(Int, Int, Int) => Int].apply('{0}, '{0}, '{0})
+              case 0 => fn.seal.cast[() => Int].apply()
+              case 1 => fn.seal.cast[Int => Int].apply('{0})
+              case 2 => fn.seal.cast[(Int, Int) => Int].apply('{0}, '{0})
+              case 3 => fn.seal.cast[(Int, Int, Int) => Int].apply('{0}, '{0}, '{0})
             }
         }
       case _ => x
@@ -37,15 +37,15 @@ object Asserts {
       case Apply(fn, args) =>
         val pre = rec(fn)
         args.size match {
-          case 0 => pre.seal[() => Any].apply().unseal
-          case 1 => pre.seal[Int => Any].apply('{0}).unseal
-          case 2 => pre.seal[(Int, Int) => Any].apply('{0}, '{0}).unseal
-          case 3 => pre.seal[(Int, Int, Int) => Any].apply('{0}, '{0}, '{0}).unseal
+          case 0 => pre.seal.cast[() => Any].apply().unseal
+          case 1 => pre.seal.cast[Int => Any].apply('{0}).unseal
+          case 2 => pre.seal.cast[(Int, Int) => Any].apply('{0}, '{0}).unseal
+          case 3 => pre.seal.cast[(Int, Int, Int) => Any].apply('{0}, '{0}, '{0}).unseal
         }
       case _ => term
     }
 
-    rec(x.unseal.underlyingArgument).seal[Int]
+    rec(x.unseal.underlyingArgument).seal.cast[Int]
   }
 
 }

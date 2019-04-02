@@ -8,7 +8,7 @@ object Macros {
   def impl[T: Type](x: Expr[T])(implicit reflection: Reflection): Expr[T] = {
     import reflection._
     val identityMap = new TreeMap { }
-    val transformed = identityMap.transformTerm(x.unseal).seal[T]
+    val transformed = identityMap.transformTerm(x.unseal).seal.cast[T]
     transformed
   }
 

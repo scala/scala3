@@ -7,7 +7,7 @@ object Macros {
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
-    val b = cond.unseal.underlyingArgument.seal[Boolean]
+    val b = cond.unseal.underlyingArgument.seal.cast[Boolean]
     '{ scala.Predef.assert($b) }
   }
 

@@ -58,7 +58,7 @@ object Lens {
     getter.unseal match {
       case Function(param :: Nil, Path(o, parts)) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ${ setterBody(('s).unseal, ('t).unseal, parts).seal[S] }
+          val setter = (t: T) => (s: S) => ${ setterBody(('s).unseal, ('t).unseal, parts).seal.cast[S] }
           apply($getter)(setter)
         }
       case _ =>
@@ -122,9 +122,9 @@ object Iso {
 
     '{
       // (p: S) => p._1
-      val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal[A] }
+      val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal.cast[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal[S] }
+      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal.cast[S] }
       apply(from)(to)
     }
   }
@@ -137,7 +137,7 @@ object Iso {
     val tpS = typeOf[S]
 
     if (tpS.isSingleton) {
-      val ident = Ident(tpS.asInstanceOf[TermRef]).seal[S]
+      val ident = Ident(tpS.asInstanceOf[TermRef]).seal.cast[S]
       '{
         Iso[S, 1](Function.const($ident))(Function.const(1))
       }
@@ -153,7 +153,7 @@ object Iso {
         case Type.TypeRef(name, prefix) => Type.TermRef(prefix, name)
       }
 
-      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal[S]
+      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal.cast[S]
 
       '{
         Iso[S, 1](Function.const($obj))(Function.const(1))
