@@ -1084,8 +1084,7 @@ object SymDenotations {
           case RefinedType(_, _, TypeBounds(lo, _)) =>
             def extractAlias(tp: Type): Type = tp match {
               case OrType(alias, _) => alias
-              case HKTypeLambda(tparams, tp) =>
-                HKTypeLambda(tparams.map(_.paramInfo), extractAlias(tp))
+              case tp: HKTypeLambda => tp.derivedLambdaType(resType = extractAlias(tp.resType))
             }
             extractAlias(lo)
         }
