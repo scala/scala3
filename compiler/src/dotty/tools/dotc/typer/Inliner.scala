@@ -237,7 +237,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** A buffer for bindings that define proxies for actual arguments */
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
-  private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
+  private def newSym(name: Name, flags: FlagSet, info: Type)(implicit ctx: Context): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.span)
 
   /** A binding for the parameter of an inline method. This is a `val` def for

@@ -16,6 +16,12 @@ object TypeLevel {
     def apply(n: Int): Any = elems.productElement(n)
   }
 
+  object EmptyProduct extends Product {
+    def canEqual(that: Any): Boolean = true
+    def productElement(n: Int) = throw new IndexOutOfBoundsException
+    def productArity = 0
+  }
+
   object Mirror {
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
@@ -67,15 +73,29 @@ object TypeLevel {
    *  It informs that type `T` has shape `S` and also implements runtime reflection on `T`.
    */
   abstract class Generic[T] {
-
     /** The shape of the `T` */
     type Shape <: TypeLevel.Shape
+
 
     /** The case mirror corresponding to ADT instance `x` */
     def reflect(x: T): Mirror
 
     /** The ADT instance corresponding to given `mirror` */
     def reify(mirror: Mirror): T
+  }
+
+  abstract class Generic2[T] {
+    type Shape <: Tuple
+  }
+
+  abstract class GenericSum[S] extends Generic2[S] {
+    def ordinal(x: S): Int
+    def alternative(n: Int): GenericProduct[_ <: S] = ???
+  }
+
+  abstract class GenericProduct[P] extends Generic2[P] {
+    def toProduct(x: P): Product
+    def fromProduct(p: Product): P
   }
 }
 
@@ -101,10 +121,41 @@ object Lst {
     }
   }
 
+  class Generic2Lst[T] extends GenericSum[Lst[T]] {
+    override type Shape = (Cons[T], Nil.type)
+    def ordinal(x: Lst[T]) = x match {
+      case x: Cons[_] => 0
+      case Nil => 1
+    }
+    inline override def alternative(inline n: Int) <: GenericProduct[_ <: Lst[T]] =
+      inline n match {
+        case 0 => Cons.GenericCons[T]
+        case 1 => Nil.GenericNil
+      }
+  }
+
   implicit def GenericLst[T]: GenericLst[T] = new GenericLst[T]
+  implicit def Generic2Lst[T]: Generic2Lst[T] = new Generic2Lst[T]
 
   case class Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
-  case object Nil extends Lst[Nothing]
+
+  object Cons {
+    class GenericCons[T] extends GenericProduct[Cons[T]] {
+      type Shape = (T, Lst[T])
+      def toProduct(x: Cons[T]): Product = x
+      def fromProduct(p: Product): Cons[T] =
+        Cons(p.productElement(0).asInstanceOf, p.productElement(1).asInstanceOf)
+    }
+    implicit def GenericCons[T]: GenericCons[T] = new GenericCons[T]
+  }
+  case object Nil extends Lst[Nothing] {
+    class GenericNil extends GenericProduct[Nil.type] {
+      type Shape = Unit
+      def toProduct(x: Nil.type): Product = EmptyProduct
+      def fromProduct(p: Product): Nil.type = Nil
+    }
+    implicit def GenericNil: GenericNil = new GenericNil
+  }
 
   // three clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Lst[T]] = Eq.derived
@@ -143,7 +194,42 @@ object Eq {
         false
     }
 
-  inline def derived[T, S <: Shape](implicit ev: Generic[T]): Eq[T] = new {
+  inline def eqlProducts[Elems <: Tuple](x: Product, y: Product, n: Int): Boolean =
+    inline erasedValue[Elems] match {
+      case _: (elem *: elems1) =>
+        tryEql[elem](x.productElement(n).asInstanceOf, y.productElement(n).asInstanceOf) &&
+        eqlProducts[elems1](x, y, n + 1)
+      case _: Unit =>
+        true
+    }
+
+  inline def eqlAlts[T, Alts <: Tuple](x: T, y: T, genSum: GenericSum[T], ord: Int, inline n: Int): Boolean =
+    inline erasedValue[Alts] match {
+      case _: (alt *: alts1) =>
+        if (ord == n)
+          inline genSum.alternative(n) match {
+            case genProd => eqlProducts[genProd.Shape](
+                  genProd.toProduct(x.asInstanceOf),
+                  genProd.toProduct(y.asInstanceOf), 0)
+          }
+        else eqlAlts[T, alts1](x, y, genSum, ord, n + 1)
+     case _: Unit =>
+        false
+    }
+
+  inline def derived[T](implicit ev: Generic2[T]): Eq[T] = new Eq[T] {
+    def eql(x: T, y: T): Boolean = {
+      inline ev match {
+        case evv: GenericSum[T] =>
+          val ord = evv.ordinal(x)
+          ord == evv.ordinal(y) && eqlAlts[T, evv.Shape](x, y, evv, ord, 0)
+        case evv: GenericProduct[T] =>
+          eqlProducts[evv.Shape](evv.toProduct(x), evv.toProduct(y), 0)
+      }
+    }
+  }
+
+  inline def derived2[T, S <: Shape](implicit ev: Generic[T]): Eq[T] = new {
     def eql(x: T, y: T): Boolean = {
       val xm = ev.reflect(x)
       val ym = ev.reflect(y)
