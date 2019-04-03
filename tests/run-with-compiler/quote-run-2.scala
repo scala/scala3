@@ -1,12 +1,9 @@
 
-import scala.quoted.Toolbox.Default._
-
 import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
       if (n == 0) '{1.0}
       else if (n == 1) x

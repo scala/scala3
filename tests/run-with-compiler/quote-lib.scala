@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.Toolbox.Default._
 import scala.quoted.autolift._
 
 import liftable.Units._
@@ -12,8 +11,7 @@ import liftable.Exprs._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     val liftedUnit: Expr[Unit] = '{}
 
     letVal('{1})(a => '{ $a + 1 }).show

@@ -2,8 +2,7 @@ import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     def asof[T: Type, U](x: Expr[T], t: Type[U]): Expr[U] =
       '{$x.asInstanceOf[$t]}
 

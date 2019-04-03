@@ -15,8 +15,6 @@ object Lens {
   def impl[S: Type, T: Type](getter: Expr[S => T])(implicit refl: Reflection): Expr[Lens[S, T]] = {
     import refl._
     import util._
-    import quoted.Toolbox.Default._
-
 
     // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
     def setterBody(obj: Term, value: Term, parts: List[String]): Term = {
@@ -95,7 +93,6 @@ object Iso {
   def impl[S: Type, A: Type](implicit refl: Reflection): Expr[Iso[S, A]] = {
     import refl._
     import util._
-    import quoted.Toolbox.Default._
 
     val tpS = typeOf[S]
     val tpA = typeOf[A]
@@ -132,7 +129,6 @@ object Iso {
   def implUnit[S: Type](implicit refl: Reflection): Expr[Iso[S, 1]] = {
     import refl._
     import util._
-    import quoted.Toolbox.Default._
 
     val tpS = typeOf[S]
 

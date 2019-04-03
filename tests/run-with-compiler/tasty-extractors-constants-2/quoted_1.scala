@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.Toolbox.Default._
 import scala.quoted.autolift._
 
 import scala.tasty._
@@ -10,6 +9,7 @@ object Macros {
   inline def testMacro: Unit = ${impl}
 
   def impl(implicit reflect: Reflection): Expr[Unit] = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = power(2, 3.0).show
     val run1  = power(2, 3.0).run

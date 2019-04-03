@@ -677,8 +677,7 @@ object Test {
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     println(test1().run)
     println
     println(test2().run)

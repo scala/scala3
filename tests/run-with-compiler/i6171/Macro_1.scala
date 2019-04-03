@@ -8,7 +8,6 @@ object scalatest {
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
     import util._
-    import quoted.Toolbox.Default._
 
     def isImplicitMethodType(tp: Type): Boolean =
       Type.IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty

@@ -2,7 +2,6 @@ import scala.quoted._
 import scala.tasty.Reflection
 import scala.language.implicitConversions
 import scala.quoted.Exprs.LiftedExpr
-import scala.quoted.Toolbox.Default._
 
 object Macro {
 

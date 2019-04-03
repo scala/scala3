@@ -1,13 +1,11 @@
 
-import scala.quoted.Toolbox.Default._
 import scala.quoted.autolift._
 
 import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
-
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     def run[T](expr: Expr[T]): Unit = println(expr.run)
     def show[T](expr: Expr[T]): Unit = println(expr.show)
 

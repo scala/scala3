@@ -1,4 +1,3 @@
-import scala.quoted.Toolbox.Default._
 
 import scala.quoted.Exprs.TastyExpr
 
@@ -60,6 +59,8 @@ object Test {
 
       new Foo(5)
     }
+
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
     assert(a.asInstanceOf[TastyExpr[_]].tasty.size > 1, "Test should be testing a quote with TastyExpr encoded in more than one string")
     a.show // Force unpiclking of the expression

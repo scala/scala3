@@ -1,8 +1,8 @@
 import quoted._
-import scala.quoted.Toolbox.Default._
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     println(('{ () => x(0) }).apply().show)
     println(('{ (x1: Int) => x1 }).apply('{x(1)}).show)
     println(('{ (x1: Int, x2: Int) => x1 + x2 }).apply('{x(1)}, '{x(2)}).show)
