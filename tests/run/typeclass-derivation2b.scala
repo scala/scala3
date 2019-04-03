@@ -5,95 +5,32 @@ import scala.annotation.tailrec
 // The real typeclass derivation is tested in typeclass-derivation3.scala.
 object TypeLevel {
 
-  /** A generic representation of a case in an ADT
-  *  @param  deriving  The companion object of the ADT
-  *  @param  ordinal   The ordinal value of the case in the list of the ADT's cases
-  *  @param  elems     The elements of the case
-  */
-  class Mirror(val ordinal: Int, val elems: Product) {
-
-    /** The `n`'th element of this generic case */
-    def apply(n: Int): Any = elems.productElement(n)
-  }
-
   object EmptyProduct extends Product {
     def canEqual(that: Any): Boolean = true
     def productElement(n: Int) = throw new IndexOutOfBoundsException
     def productArity = 0
   }
 
-  object Mirror {
-
-    /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
-    def apply(ordinal: Int, product: Product): Mirror =
-      new Mirror(ordinal, product)
-
-    /** A mirror with elements given as an array */
-    def apply(ordinal: Int, elems: Array[AnyRef]): Mirror =
-      apply(ordinal, new ArrayProduct(elems))
-
-    /** A mirror with an initial empty array of `numElems` elements, to be filled in. */
-    def apply(ordinal: Int, numElems: Int): Mirror =
-      apply(ordinal, new Array[AnyRef](numElems))
-
-    /** A mirror of a case with no elements */
-    def apply(ordinal: Int): Mirror =
-      apply(ordinal, EmptyProduct)
-
-    /** Helper class to turn arrays into products */
-    private class ArrayProduct(val elems: Array[AnyRef]) extends Product {
-      def canEqual(that: Any): Boolean = true
-      def productElement(n: Int) = elems(n)
-      def productArity = elems.length
-      override def productIterator: Iterator[Any] = elems.iterator
-      def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
-    }
-
-    /** Helper object */
-    private object EmptyProduct extends Product {
-      def canEqual(that: Any): Boolean = true
-      def productElement(n: Int) = throw new IndexOutOfBoundsException
-      def productArity = 0
-    }
+  /** Helper class to turn arrays into products */
+  class ArrayProduct(val elems: Array[AnyRef]) extends Product {
+    def canEqual(that: Any): Boolean = true
+    def productElement(n: Int) = elems(n)
+    def productArity = elems.length
+    override def productIterator: Iterator[Any] = elems.iterator
+    def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
   }
 
-  /** The shape of an ADT.
-   *  This is eithe a product (`Case`) or a sum (`Cases`) of products.
-   */
-  enum Shape {
-
-    /** A sum with alternative types `Alts` */
-    case Cases[Alts <: Tuple]
-
-    /** A product type `T` with element types `Elems` */
-    case Case[T, Elems <: Tuple]
-  }
-
-  /** Every generic derivation starts with a typeclass instance of this type.
-   *  It informs that type `T` has shape `S` and also implements runtime reflection on `T`.
-   */
   abstract class Generic[T] {
-    /** The shape of the `T` */
-    type Shape <: TypeLevel.Shape
-
-
-    /** The case mirror corresponding to ADT instance `x` */
-    def reflect(x: T): Mirror
-
-    /** The ADT instance corresponding to given `mirror` */
-    def reify(mirror: Mirror): T
-  }
-
-  abstract class Generic2[T] {
     type Shape <: Tuple
   }
 
-  abstract class GenericSum[S] extends Generic2[S] {
+  abstract class GenericSum[S] extends Generic[S] {
     def ordinal(x: S): Int
     def alternative(n: Int): GenericProduct[_ <: S] = ???
   }
 
-  abstract class GenericProduct[P] extends Generic2[P] {
+  abstract class GenericProduct[P] extends Generic[P] {
+    type Prod = P
     def toProduct(x: P): Product
     def fromProduct(p: Product): P
   }
@@ -106,22 +43,7 @@ object Lst {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  class GenericLst[T] extends Generic[Lst[T]] {
-    type Shape = Shape.Cases[(
-      Shape.Case[Cons[T], (T, Lst[T])],
-      Shape.Case[Nil.type, Unit]
-    )]
-    def reflect(xs: Lst[T]): Mirror = xs match {
-      case xs: Cons[T] => Mirror(0, xs)
-      case Nil => Mirror(1)
-    }
-    def reify(c: Mirror): Lst[T] = c.ordinal match {
-      case 0 => Cons[T](c(0).asInstanceOf, c(1).asInstanceOf)
-      case 1 => Nil
-    }
-  }
-
-  class Generic2Lst[T] extends GenericSum[Lst[T]] {
+  class GenericLst[T] extends GenericSum[Lst[T]] {
     override type Shape = (Cons[T], Nil.type)
     def ordinal(x: Lst[T]) = x match {
       case x: Cons[_] => 0
@@ -135,7 +57,6 @@ object Lst {
   }
 
   implicit def GenericLst[T]: GenericLst[T] = new GenericLst[T]
-  implicit def Generic2Lst[T]: Generic2Lst[T] = new Generic2Lst[T]
 
   case class Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
 
@@ -144,7 +65,8 @@ object Lst {
       type Shape = (T, Lst[T])
       def toProduct(x: Cons[T]): Product = x
       def fromProduct(p: Product): Cons[T] =
-        Cons(p.productElement(0).asInstanceOf, p.productElement(1).asInstanceOf)
+        Cons(p.productElement(0).asInstanceOf[T],
+             p.productElement(1).asInstanceOf[Cons[T]])
     }
     implicit def GenericCons[T]: GenericCons[T] = new GenericCons[T]
   }
@@ -176,69 +98,41 @@ object Eq {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
-  inline def eqlElems[Elems <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
+  inline def eqlElems[Elems <: Tuple](x: Product, y: Product, n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
-        tryEql[elem](xm(n).asInstanceOf, ym(n).asInstanceOf) &&
-        eqlElems[elems1](xm, ym, n + 1)
+        tryEql[elem](
+          x.productElement(n).asInstanceOf[elem],
+          y.productElement(n).asInstanceOf[elem]) &&
+        eqlElems[elems1](x, y, n + 1)
       case _: Unit =>
         true
     }
 
-  inline def eqlCases[Alts <: Tuple](xm: Mirror, ym: Mirror, n: Int): Boolean =
-    inline erasedValue[Alts] match {
-      case _: (Shape.Case[alt, elems] *: alts1) =>
-        if (xm.ordinal == n) eqlElems[elems](xm, ym, 0)
-        else eqlCases[alts1](xm, ym, n + 1)
-     case _: Unit =>
-        false
-    }
-
-  inline def eqlProducts[Elems <: Tuple](x: Product, y: Product, n: Int): Boolean =
-    inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
-        tryEql[elem](x.productElement(n).asInstanceOf, y.productElement(n).asInstanceOf) &&
-        eqlProducts[elems1](x, y, n + 1)
-      case _: Unit =>
-        true
-    }
-
-  inline def eqlAlts[T, Alts <: Tuple](x: T, y: T, genSum: GenericSum[T], ord: Int, inline n: Int): Boolean =
+  inline def eqlCases[T, Alts <: Tuple](x: T, y: T, genSum: GenericSum[T], ord: Int, inline n: Int): Boolean =
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         if (ord == n)
           inline genSum.alternative(n) match {
-            case genProd => eqlProducts[genProd.Shape](
-                  genProd.toProduct(x.asInstanceOf),
-                  genProd.toProduct(y.asInstanceOf), 0)
+            case cas =>
+              eqlElems[cas.Shape](
+                cas.toProduct(x.asInstanceOf[cas.Prod]),
+                cas.toProduct(y.asInstanceOf[cas.Prod]),
+                0)
           }
-        else eqlAlts[T, alts1](x, y, genSum, ord, n + 1)
+        else eqlCases[T, alts1](x, y, genSum, ord, n + 1)
      case _: Unit =>
         false
     }
 
-  inline def derived[T](implicit ev: Generic2[T]): Eq[T] = new Eq[T] {
+  inline def derived[T](implicit ev: Generic[T]): Eq[T] = new Eq[T] {
     def eql(x: T, y: T): Boolean = {
       inline ev match {
         case evv: GenericSum[T] =>
           val ord = evv.ordinal(x)
-          ord == evv.ordinal(y) && eqlAlts[T, evv.Shape](x, y, evv, ord, 0)
+          ord == evv.ordinal(y) && eqlCases[T, evv.Shape](x, y, evv, ord, 0)
         case evv: GenericProduct[T] =>
-          eqlProducts[evv.Shape](evv.toProduct(x), evv.toProduct(y), 0)
-      }
-    }
-  }
-
-  inline def derived2[T, S <: Shape](implicit ev: Generic[T]): Eq[T] = new {
-    def eql(x: T, y: T): Boolean = {
-      val xm = ev.reflect(x)
-      val ym = ev.reflect(y)
-      inline erasedValue[ev.Shape] match {
-        case _: Shape.Cases[alts] =>
-          xm.ordinal == ym.ordinal &&
-          eqlCases[alts](xm, ym, 0)
-        case _: Shape.Case[_, elems] =>
-          eqlElems[elems](xm, ym, 0)
+          eqlElems[evv.Shape](evv.toProduct(x), evv.toProduct(y), 0)
       }
     }
   }
