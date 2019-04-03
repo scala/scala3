@@ -162,10 +162,10 @@ class TastydocConsumer extends TastyConsumer {
     println("Start convert to Representation")
 
     //convertToEntity(root)
-    println(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root)))
+    println(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root), false))
 
     val pw = new PrintWriter(new File("./tastydoc/docOutputTest.md" ))
-    pw.write(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root)))
+    pw.write(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root), false))
     pw.close()
 
     println("Start comment parsing")

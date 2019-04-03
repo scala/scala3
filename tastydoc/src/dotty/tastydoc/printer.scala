@@ -55,18 +55,18 @@ def formatToMarkdown(container: Container, level: Int) : String = {
 
 import representations._
 
-def ParamListPrinter(paramList: ParamList) : String = paramList.list.mkString(
+def ParamListPrinter(paramList: ParamList) : String = paramList.list.map(x => x.title + ": " + x.tpe).mkString(
   "(" + (if(paramList.isImplicit) "implicit " else ""),
   ", ",
   ")"
 )
 
-def formatRepresentationToMarkdown(representation: Representation) : String = representation match {
+def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean) : String = representation match {
   //case _ => ""
   case r : PackageRepresentation =>
     r.name +
     "\n" +
-    r.members.map(formatRepresentationToMarkdown).mkString("\n")
+    r.members.map(formatRepresentationToMarkdown(_, insideClassOrObject)).mkString("\n")
 
   case r: ImportRepresentation =>
     "import " +
@@ -75,17 +75,24 @@ def formatRepresentationToMarkdown(representation: Representation) : String = re
     "\n"
 
   case r: ClassRepresentation =>
-    Md.header1("class " + r.name) +
-    "\n" +
-    (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
-    Md.codeBlock(r.modifiers.mkString("", " ", " ") + r.name, "scala") +
-    "\n" +
-    Md.italics(r.comments) +
-    "\n" +
-    Md.header2("Members :") +
-    "\n" +
-    r.members.map(formatRepresentationToMarkdown).mkString("") +
-    "\n"
+    if(insideClassOrObject){
+      Md.codeBlock((if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+      "\n" +
+      Md.italics(r.comments) +
+      "\n"
+    }else{
+      Md.header1("class " + r.name) +
+      "\n" +
+      (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
+      Md.codeBlock((if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+      "\n" +
+      r.comments +
+      "\n" +
+      Md.header2("Members :") +
+      "\n" +
+      r.members.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      "\n"
+    }
 
   case r: DefRepresentation =>
     Md.codeBlock(
@@ -93,6 +100,16 @@ def formatRepresentationToMarkdown(representation: Representation) : String = re
       "def " +
       r.name +
       r.paramLists.map(ParamListPrinter).mkString("") +
+      ": " +
+      r.returnValue, "scala") +
+      r.comments +
+      "\n"
+
+  case r: ValRepresentation =>
+    Md.codeBlock(
+      (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
+      "val " +
+      r.name +
       ": " +
       r.returnValue, "scala") +
       r.comments +

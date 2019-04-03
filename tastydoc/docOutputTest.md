@@ -13,42 +13,48 @@ import scala.math.{Ident(Pi), Ident(max)}
 ## Companion object : example.level2.Documentation$
 
 ```scala
-abstract sealed Documentation
+abstract sealed class Documentation
 ```
 
-*Comments placeholder*
-## Members :
-
-```scala
-def <init>(scala.Predef.String): scala.Unit
-```
 Comments placeholder
-# class innerDocumentationClass
-
-```scala
- innerDocumentationClass
-```
-
-*Comments placeholder*
 ## Members :
 
-
-# class testObject$
-
 ```scala
-final object moduleClass testObject$
-```
-
-*Comments placeholder*
-## Members :
-
-
-```scala
-def methodsWithParams(Documentation.this.T, scala.Int): scala.collection.immutable.List[scala.collection.Map[scala.Int, Documentation.this.T]]
+private local paramAccessor private[this] val c1: scala.Predef.String
 ```
 Comments placeholder
 ```scala
-def methodsWithImplicit(scala.Int)(implicit scala.Int, scala.Predef.String): scala.Nothing
+paramAccessor val c2: scala.collection.immutable.List[Documentation.this.T]
+```
+Comments placeholder
+```scala
+def <init>(ac: scala.Predef.String): scala.Unit
+```
+Comments placeholder
+```scala
+class innerDocumentationClass
+```
+
+*Comments placeholder*
+```scala
+final lazy object stableRealizable val testObject: Documentation.this.testObject
+```
+Comments placeholder
+```scala
+final object moduleClass class testObject$
+```
+
+*Comments placeholder*
+```scala
+def methodsWithParams(x: Documentation.this.T, y: scala.Int): scala.collection.immutable.List[scala.collection.Map[scala.Int, Documentation.this.T]]
+```
+Comments placeholder
+```scala
+def methodsWithImplicit(x: scala.Int)(implicit imp: scala.Int, notImp: scala.Predef.String): scala.Nothing
+```
+Comments placeholder
+```scala
+val v: scala.Int
 ```
 Comments placeholder
 ```scala
@@ -60,11 +66,19 @@ private private[this] def privateMethod: scala.Nothing
 ```
 Comments placeholder
 ```scala
+protected val protectedVal: scala.Nothing
+```
+Comments placeholder
+```scala
+private private[this] val privateVal: scala.Nothing
+```
+Comments placeholder
+```scala
 def abstractDefinition: scala.Int
 ```
 Comments placeholder
 ```scala
-def apply(scala.Int): Documentation.this.T
+def apply(idx: scala.Int): Documentation.this.T
 ```
 Comments placeholder
 ```scala
@@ -79,18 +93,26 @@ Comments placeholder
 def docWithMd: scala.Nothing
 ```
 Comments placeholder
+```scala
+val complexTypeVal: scala.Int | scala.collection.immutable.List[scala.collection.immutable.List[Documentation.this.T]] & scala.Predef.String | scala.Tuple2[scala.Double | scala.Int, scala.Double] | scala.Function1[scala.Int, scala.Predef.String]
+```
+Comments placeholder
 
 
+```scala
+final lazy object stableRealizable val Documentation: example.level2.Documentation
+```
+Comments placeholder
 
 # class Documentation$
 
 ## Companion object : example.level2.Documentation$$
 
 ```scala
-final object moduleClass Documentation$
+final object moduleClass class Documentation$
 ```
 
-*Comments placeholder*
+Comments placeholder
 ## Members :
 
 ```scala

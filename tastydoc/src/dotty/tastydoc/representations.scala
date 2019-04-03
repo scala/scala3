@@ -5,8 +5,10 @@ import scala.tasty.Reflection
 object representations {
 
   def removeColorFromType(tpe: String) : String = { //TODO: This a workaround, fix this
-  tpe.replaceAll("\u001B\\[[;\\d]*m", "")
-}
+    tpe.replaceAll("\u001B\\[[;\\d]*m", "")
+  }
+
+  case class Ref(title: String, tpe: String) //TODO: This is a workaround
 
   trait Representation {
     val name : String
@@ -40,7 +42,7 @@ object representations {
   }
 
   trait ParamList {
-    val list: List[String] //TODO: Use Reference, currently using String workaround
+    val list: List[Ref] //TODO: Use Reference, currently using Ref workaround
     val isImplicit: Boolean
 
     //override def toString = list.map(_.title).mkString("(", ",", ")")
@@ -116,7 +118,7 @@ object representations {
     override val typeParams = Nil
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
-        override val list = p.map(x => removeColorFromType(x.tpt.tpe.showCode))
+        override val list = p.map(x => Ref(x.name, removeColorFromType(x.tpt.tpe.showCode)))
         override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.show.contains("Flags.Implicit") else false //TODO: Verfiy this
       }
     }
