@@ -1351,6 +1351,7 @@ object desugar {
           case ts: Thicket => ts.trees.tail
           case t => Nil
         } map {
+          case Block(Nil, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
