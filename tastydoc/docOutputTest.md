@@ -17,7 +17,18 @@ abstract sealed class Documentation
 ```
 
 Comments placeholder
-## Members :
+## Constructors:
+```scala
+def this(c1: scala.Predef.String, c2: scala.collection.immutable.List[T])
+```
+```scala
+def this(ac: scala.Predef.String)
+```
+```scala
+def this()
+```
+
+## Members:
 
 ```scala
 private local param private[this] type T: 
@@ -29,10 +40,6 @@ private local paramAccessor private[this] val c1: scala.Predef.String
 Comments placeholder
 ```scala
 paramAccessor val c2: scala.collection.immutable.List[Documentation.this.T]
-```
-Comments placeholder
-```scala
-def <init>(ac: scala.Predef.String): scala.Unit
 ```
 Comments placeholder
 ```scala
@@ -121,7 +128,12 @@ final object moduleClass class Documentation$
 ```
 
 Comments placeholder
-## Members :
+## Constructors:
+```scala
+def this()
+```
+
+## Members:
 
 ```scala
 private synthetic private[this] def writeReplace(): scala.AnyRef

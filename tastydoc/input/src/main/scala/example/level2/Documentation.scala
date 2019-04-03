@@ -22,6 +22,8 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
    */
   def this(ac: String) = this(ac, Nil)
 
+  def this() = this("", Nil)
+
   class innerDocumentationClass {
 
   }
@@ -81,5 +83,9 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
 /** Companion object
  */
 object Documentation {
+
+}
+
+trait TraitTest {
 
 }

@@ -91,10 +91,17 @@ object representations {
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
     import reflect._
 
+    //println(internal.body.filter(x => removeColorFromType(x.showCode).contains("def this")).map(_.showCode))
+
+
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
     override val comments = "Comments placeholder"
-    override val members = internal.body.map(convertToRepresentation(reflect))
+    override val members = internal.body
+      .filter{x => //Filter fields which shouldn't be displayed in the doc
+        !removeColorFromType(x.showCode).contains("def this") //No constructor
+      }
+      .map(convertToRepresentation(reflect))
     override val parent = None
     override val parents = Nil
     override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").filter(_!="").toList
@@ -102,7 +109,22 @@ object representations {
       case Some(_) => path.init ++ List(name + "$")
       case None => Nil
       }
-    override val constructors = Nil
+    override val constructors = (internal.constructor :: (internal.body
+      .filter(x => removeColorFromType(x.showCode).contains("def this"))
+      .map{x => x match {
+        case IsDefDef(d@reflect.DefDef(_)) => d //TOASK Not safe?
+        }
+    }))
+    .map{x =>
+      new MultipleParamList {
+        override val paramLists = x.paramss.map{p =>
+          new ParamList {
+            override val list = p.map(x => Ref(x.name, removeColorFromType(x.tpt.tpe.showCode)))
+            override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.show.contains("Flags.Implicit") else false //TODO: Verfiy this
+          }
+        }
+      }
+    }
     override val typeParams = Nil
   }
 
