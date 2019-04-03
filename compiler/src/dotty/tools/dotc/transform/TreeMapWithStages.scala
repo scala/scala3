@@ -108,9 +108,12 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           val last = enteredSyms
           // mark all bindings
           new TreeTraverser {
-            def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-              markDef(tree)
-              traverseChildren(tree)
+            def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
+              case Quoted(t) => traverse(t)(quoteContext)
+              case Splice(t) => traverse(t)(spliceContext)
+              case _ =>
+                markDef(tree)
+                traverseChildren(tree)
             }
           }.traverse(pat)
           mapOverTree(last)
