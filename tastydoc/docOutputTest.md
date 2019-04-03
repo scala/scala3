@@ -20,6 +20,10 @@ Comments placeholder
 ## Members :
 
 ```scala
+private local param private[this] type T: 
+```
+Comments placeholder
+```scala
 private local paramAccessor private[this] val c1: scala.Predef.String
 ```
 Comments placeholder
@@ -95,6 +99,10 @@ def docWithMd: scala.Nothing
 Comments placeholder
 ```scala
 val complexTypeVal: scala.Int | scala.collection.immutable.List[scala.collection.immutable.List[Documentation.this.T]] & scala.Predef.String | scala.Tuple2[scala.Double | scala.Int, scala.Double] | scala.Function1[scala.Int, scala.Predef.String]
+```
+Comments placeholder
+```scala
+type typeExamle: 
 ```
 Comments placeholder
 

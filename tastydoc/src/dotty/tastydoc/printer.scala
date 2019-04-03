@@ -115,6 +115,15 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       r.comments +
       "\n"
 
+  case r: TypeRepresentation =>
+      Md.codeBlock(
+      (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
+      "type " +
+      r.name +
+      ": ", "scala") +
+      r.comments +
+      "\n"
+
   case _ : DebugRepresentation => "=============>ERROR<==============="
   case _ => ""
 }

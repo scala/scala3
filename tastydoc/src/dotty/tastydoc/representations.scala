@@ -38,7 +38,7 @@ object representations {
 
     val companionPath: List[String]
 
-    // val companionPath_=(xs: List[String]): Unit //TOASK: What is this
+    // val companionPath_=(xs: List[String]): Unit
   }
 
   trait ParamList {
@@ -94,8 +94,8 @@ object representations {
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
     override val comments = "Comments placeholder"
-    override val members = internal.body.map(convertToRepresentation(reflect))//TOASK: Override for trait member or just val?
-    override val parent = None //TOASK: Why 2 and how to do it
+    override val members = internal.body.map(convertToRepresentation(reflect))
+    override val parent = None
     override val parents = Nil
     override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").filter(_!="").toList
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
@@ -153,45 +153,21 @@ object representations {
     val comments = ""
   }
 
-  def convertToRepresentation(reflect: Reflection)(child: reflect.Tree) = {
+  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree) = {
     import reflect._
-    child match {
-      case reflect.PackageClause(_) => new PackageRepresentation(reflect, child.asInstanceOf)
+    tree match {
+      case IsPackageClause(t@reflect.PackageClause(_)) => new PackageRepresentation(reflect, t)
 
-      case reflect.Import(_) => new ImportRepresentation(reflect, child.asInstanceOf)
+      case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t)
 
-      case reflect.ClassDef(_) => new ClassRepresentation(reflect, child.asInstanceOf)
+      case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t)
 
-      case reflect.DefDef(_) => new DefRepresentation(reflect, child.asInstanceOf)
+      case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
 
-      case reflect.ValDef(_) => new ValRepresentation(reflect, child.asInstanceOf) //TODO: contains object too, separate from Val
+      case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t) //TODO: contains object too, separate from Val
 
-      case reflect.TypeDef(_) => new TypeRepresentation(reflect, child.asInstanceOf)
+      case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t)
 
       case _ => new DebugRepresentation(reflect)
-
-      //   case reflect.DefDef(name, typeParams, paramss, tpt, rhs) =>
-      //     @tailrec def handleParams(ls: List[List[ValDef]], str: String) : String = ls match {
-      //       case Nil => str
-      //       case List()::xs => handleParams(xs, str + "()")
-      //       case args::xs => handleParams(xs, str + "(" + args.map{case ValDef(vname, vtype, _) => vname + ": " + beautifyType(vtype)}.reduce((x, y) => x + ", " + y) + ")")
-      //     }
-      //     new DefContainer("def " +
-      //       name +
-      //       handleParams(paramss, "") +
-      //       " : " +
-      //       beautifyType(tpt),
-      //       extractUserDoc(child.symbol.comment)
-      //     )
-
-      //   case reflect.ValDef(name, tpt, rhs) =>
-      //     new ValContainer("val " +
-      //       name +
-      //       " : " +
-      //       beautifyType(tpt),
-      //       extractUserDoc(child.symbol.comment)
-      //     )
-
-      //   case _ => new MissingMatchContainer()
   }}
 }
