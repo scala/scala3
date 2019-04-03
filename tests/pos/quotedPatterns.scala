@@ -9,6 +9,7 @@ object Test {
     case '{1 + 2} => '{0}
     case '{f($y)} => y
     case '{g($y, $z)} => '{$y * $z}
+    case '{ ((a: Int) => 3)($y) } => y
     case '{ 1 + ($y: Int)} => y
       // currently gives an unreachable case warning
       // but only when used in conjunction with the others.
