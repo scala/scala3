@@ -1,3 +1,8 @@
+<1150..1150> in exports.scala
+Cyclic reference involving value bar
+[1091..1094] in exports.scala
+no eligible member foo at this.foo
+this.foo.foo cannot be exported because it is already a member of class Foo
 [991..997] in exports.scala
 no eligible member concat at this
 this.concat cannot be exported because it is already a member of trait IterableOps
