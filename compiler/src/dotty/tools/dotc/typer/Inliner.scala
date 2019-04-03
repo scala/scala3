@@ -902,9 +902,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       def reduceCase(cdef: CaseDef): MatchRedux = {
         val caseBindingsBuf = new mutable.ListBuffer[ValOrDefDef]()
         def guardOK(implicit ctx: Context) = cdef.guard.isEmpty || {
-          val guardCtx = ctx.fresh.setNewScope
-          caseBindingsBuf.foreach(binding => guardCtx.enter(binding.symbol))
-          typer.typed(cdef.guard, defn.BooleanType)(guardCtx) match {
+          typer.typed(cdef.guard, defn.BooleanType) match {
             case ConstantValue(true) => true
             case _ => false
           }
