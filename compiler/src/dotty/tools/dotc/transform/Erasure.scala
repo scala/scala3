@@ -358,9 +358,13 @@ object Erasure {
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
       val Typed(expr, tpt) = tree
-      val tpt1 = promote(tpt)
-      val expr1 = typed(expr, tpt1.tpe)
-      assignType(untpd.cpy.Typed(tree)(expr1, tpt1), tpt1)
+      val tpt1 = tpt match {
+        case Block(_, tpt) => tpt // erase type aliases (statements) from type block
+        case tpt => tpt
+      }
+      val tpt2 = promote(tpt1)
+      val expr1 = typed(expr, tpt2.tpe)
+      assignType(untpd.cpy.Typed(tree)(expr1, tpt2), tpt2)
     }
 
     override def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Tree =
