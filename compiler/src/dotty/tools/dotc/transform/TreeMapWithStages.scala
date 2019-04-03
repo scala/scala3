@@ -3,6 +3,7 @@ package transform
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeMapWithImplicits, TreeTypeMap, tpd, untpd}
+import dotty.tools.dotc.config.Printers.staging
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -71,7 +72,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
-    else reporting.trace(i"StagingTransformer.transform $tree at $level", show = true) {
+    else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
       def mapOverTree(lastEntered: List[Symbol]) =
         try super.transform(tree)
         finally

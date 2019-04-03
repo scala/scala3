@@ -34,6 +34,7 @@ object Printers {
   val quotePickling: Printer = noPrinter
   val plugins: Printer = noPrinter
   val simplify: Printer = noPrinter
+  val staging: Printer = noPrinter
   val subtyping: Printer = noPrinter
   val tailrec: Printer = noPrinter
   val transforms: Printer = noPrinter
