@@ -58,7 +58,7 @@ class YCheckPositions extends Phases.Phase {
 
   private def isMacro(call: Tree)(implicit ctx: Context) = {
     if (ctx.phase <= ctx.typerPhase.next) call.symbol.is(Macro)
-    else (call.symbol.unforcedDecls.exists(_.is(Macro)) || call.symbol.unforcedDecls.toList.exists(_.is(Macro)))
+    else (call.symbol.unforcedDecls.isEmpty /* bug from exists */ || call.symbol.unforcedDecls.exists(_.is(Macro)) || call.symbol.unforcedDecls.toList.exists(_.is(Macro)))
   }
 
 }
