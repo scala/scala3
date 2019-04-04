@@ -1,0 +1,6 @@
+ListBuffer(0, 11, 0, 22, 0, 33, 1)
+Cons(11,Cons(22,Cons(33,Nil)))
+ListBuffer(0, 0, 11, 0, 22, 0, 33, 1, 0, 0, 11, 0, 22, 1, 1)
+Cons(Cons(11,Cons(22,Cons(33,Nil))),Cons(Cons(11,Cons(22,Nil)),Nil))
+ListBuffer(1, 2)
+Pair(1,2)

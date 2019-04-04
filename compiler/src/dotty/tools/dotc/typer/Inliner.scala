@@ -1056,8 +1056,29 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
     // inlining.println(i"drop unused $bindings%, % in $tree")
-
-    def inlineTermBindings(termBindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
+    val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
+    if (typeBindings.nonEmpty) {
+      val typeBindingsSet = typeBindings.foldLeft[SimpleIdentitySet[Symbol]](SimpleIdentitySet.empty)(_ + _.symbol)
+      val inlineTypeBindings = new TreeTypeMap(
+        typeMap = new TypeMap() {
+          override def apply(tp: Type): Type = tp match {
+            case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
+              val TypeAlias(res) = tr.info
+              res
+            case tp => mapOver(tp)
+          }
+        },
+        treeMap = {
+          case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
+            val TypeAlias(r) = ident.symbol.info
+            TypeTree(r).withSpan(ident.span)
+          case tree => tree
+        }
+      )
+      val Block(termBindings1, tree1) = inlineTypeBindings(Block(termBindings, tree))
+      dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
+    }
+    else {
       val refCount = newMutableSymbolMap[Int]
       val bindingOfSym = newMutableSymbolMap[MemberDef]
 
@@ -1066,7 +1087,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
         case _ => false
       }
-      for (binding <- termBindings if isInlineable(binding)) {
+      for (binding <- bindings if isInlineable(binding)) {
         refCount(binding.symbol) = 0
         bindingOfSym(binding.symbol) = binding
       }
@@ -1124,39 +1145,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         }
       }
 
-      val retained = termBindings.filterConserve(binding => retain(binding.symbol))
-      if (retained `eq` termBindings) {
-        (termBindings, tree)
+      val retained = bindings.filterConserve(binding => retain(binding.symbol))
+      if (retained `eq` bindings) {
+        (bindings, tree)
       }
       else {
         val expanded = inlineBindings.transform(tree)
         dropUnusedDefs(retained, expanded)
       }
-    }
-
-    val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
-    if (typeBindings.isEmpty) inlineTermBindings(termBindings, tree)
-    else {
-      val typeBindingsSet = typeBindings.foldLeft[SimpleIdentitySet[Symbol]](SimpleIdentitySet.empty)(_ + _.symbol)
-      val inlineTypeBindings = new TreeTypeMap(
-        typeMap = new TypeMap() {
-          override def apply(tp: Type): Type = tp match {
-            case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
-              val TypeAlias(res) = tr.info
-              res
-            case tp => mapOver(tp)
-          }
-        },
-        treeMap = {
-          case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
-            val TypeAlias(r) = ident.symbol.info
-            TypeTree(r).withSpan(ident.span)
-          case tree => tree
-        }
-      )
-
-      val Block(termBindings1, tree1) = inlineTypeBindings(Block(termBindings, tree))
-      inlineTermBindings(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
     }
   }
 
