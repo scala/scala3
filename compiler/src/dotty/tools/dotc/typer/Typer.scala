@@ -1780,8 +1780,7 @@ class Typer extends Namer
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkStable(expr1.tpe, imp.expr.sourcePos)
-    if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.posd)
+    checkLegalImportPath(expr1)
     assignType(cpy.Import(imp)(imp.importImplied, expr1, imp.selectors), sym)
   }
 
@@ -2205,6 +2204,10 @@ class Typer extends Namer
         }
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
+      case (stat: untpd.Export) :: rest =>
+        buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
+          // no attachment can happen in case of cyclic references
+        traverse(rest)
       case stat :: rest =>
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
         checkStatementPurity(stat1)(stat, exprOwner)

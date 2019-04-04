@@ -103,6 +103,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class GenAlias(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
+  case class Export(impliedOnly: Boolean, expr: Tree, selectors: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
+
+  /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
   case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(NoSource) with WithoutTypeOrPos[Untyped] {
@@ -532,6 +535,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
+    def Export(tree: Tree)(impliedOnly: Boolean, expr: Tree, selectors: List[Tree])(implicit ctx: Context): Tree = tree match {
+      case tree: Export if (impliedOnly == tree.impliedOnly) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+      case _ => finalize(tree, untpd.Export(impliedOnly, expr, selectors)(tree.source))
+    }
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(ctx))
@@ -584,6 +591,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
+      case Export(impliedOnly, expr, selectors) =>
+        cpy.Export(tree)(impliedOnly, transform(expr), selectors)
       case TypedSplice(_) =>
         tree
       case _ =>
@@ -637,6 +646,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
+      case Export(_, expr, _) =>
+        this(x, expr)
       case TypedSplice(splice) =>
         this(x, splice)
       case _ =>

@@ -195,6 +195,7 @@ class Namer { typer: Typer =>
 
   val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
   val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
+  val ExportForwarders: Property.Key[List[tpd.MemberDef]] = new Property.Key
   val SymOfTree: Property.Key[Symbol] = new Property.Key
   val Deriver: Property.Key[typer.Deriver] = new Property.Key
 
@@ -932,6 +933,120 @@ class Namer { typer: Typer =>
 
     def init(): Context = index(params)
 
+    /** Add forwarders as required by the export statements in this class */
+    private def processExports(implicit ctx: Context): Unit = {
+
+      /** A string indicating that no forwarders for this kind of symbol are emitted */
+      val SKIP = "(skip)"
+
+      /** The forwarders defined by export `exp`.
+       */
+      def exportForwarders(exp: Export): List[tpd.MemberDef] = {
+        val buf = new mutable.ListBuffer[tpd.MemberDef]
+        val Export(_, expr, selectors) = exp
+        val path = typedAheadExpr(expr, AnySelectionProto)
+        checkLegalImportPath(path)
+
+        def whyNoForwarder(mbr: SingleDenotation): String = {
+          val sym = mbr.symbol
+          if (sym.is(ImplicitOrImplied) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
+          else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
+          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
+          else if (cls.derivesFrom(sym.owner) &&
+                   (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
+          else ""
+        }
+
+        /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
+         *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
+         */
+        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit = {
+          if (whyNoForwarder(mbr) == "") {
+
+            /** The info of a forwarder to type `ref` which has info `info`
+             */
+            def fwdInfo(ref: Type, info: Type): Type = info match {
+              case _: ClassInfo =>
+                HKTypeLambda.fromParams(info.typeParams, ref)
+              case _: TypeBounds =>
+                TypeAlias(ref)
+              case info: HKTypeLambda =>
+                info.derivedLambdaType(info.paramNames, info.paramInfos,
+                  fwdInfo(ref.appliedTo(info.paramRefs), info.resultType))
+              case info => // should happen only in error cases
+                info
+            }
+
+            val forwarder =
+              if (mbr.isType)
+                ctx.newSymbol(
+                  cls, alias.toTypeName,
+                  Final,
+                  fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
+                  coord = span)
+              else {
+                val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
+                ctx.newSymbol(
+                  cls, alias,
+                  Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImplied,
+                  mbr.info.ensureMethodic,
+                  coord = span)
+              }
+            val forwarderDef =
+              if (forwarder.isType) tpd.TypeDef(forwarder.asType)
+              else {
+                import tpd._
+                val ref = path.select(mbr.symbol.asTerm)
+                tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
+                  ref.appliedToTypes(targs).appliedToArgss(prefss)
+                )
+              }
+            buf += forwarderDef.withSpan(span)
+          }
+        }
+
+        def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
+          val size = buf.size
+          val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
+          mbrs.foreach(addForwarder(alias, _, span))
+          if (buf.size == size) {
+            val reason = mbrs.map(whyNoForwarder).dropWhile(_ == SKIP) match {
+              case Nil => ""
+              case why :: _ => i"\n$path.$name cannot be exported because it $why"
+            }
+            ctx.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+          }
+        }
+
+        def addForwardersExcept(seen: List[TermName], span: Span): Unit =
+          for (mbr <- path.tpe.allMembers) {
+            val alias = mbr.name.toTermName
+            if (!seen.contains(alias)) addForwarder(alias, mbr, span)
+          }
+
+        def recur(seen: List[TermName], sels: List[untpd.Tree]): Unit = sels match {
+          case (sel @ Ident(nme.WILDCARD)) :: _ =>
+            addForwardersExcept(seen, sel.span)
+          case (sel @ Ident(name: TermName)) :: rest =>
+            addForwardersNamed(name, name, sel.span)
+            recur(name :: seen, rest)
+          case Thicket((sel @ Ident(fromName: TermName)) :: Ident(toName: TermName) :: Nil) :: rest =>
+            if (toName != nme.WILDCARD) addForwardersNamed(fromName, toName, sel.span)
+            recur(fromName :: seen, rest)
+          case _ =>
+        }
+
+        recur(Nil, selectors)
+        val forwarders = buf.toList
+        exp.pushAttachment(ExportForwarders, forwarders)
+        forwarders
+      }
+
+      val forwarderss =
+        for (exp @ Export(_, _, _) <- rest) yield exportForwarders(exp)
+      forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
+    }
+
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
       val parents = impl.parents
@@ -1074,6 +1189,7 @@ class Namer { typer: Typer =>
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
+      processExports(localCtx)
     }
   }
 

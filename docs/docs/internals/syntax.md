@@ -334,6 +334,7 @@ Import            ::=  ‘import’ [‘implied’] ImportExpr {‘,’ ImportEx
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
 ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} (ImportSelector | ‘_’) ‘}’
 ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]                                  Ident(name), Pair(id, id)
+Export            ::=  ‘export’ [‘implied’] ImportExpr {‘,’ ImportExpr}
 ```
 
 ### Declarations and Definitions
@@ -370,7 +371,8 @@ DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr          
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘witness’ WitnessDef
+                    |  ‘implied’ InstanceDef
+                    |  Export
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
@@ -406,6 +408,7 @@ EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | 
 
 TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  Import
+                    |  Export
                     |  {Annotation [nl]} {Modifier} Def
                     |  Packaging
                     |  PackageObject

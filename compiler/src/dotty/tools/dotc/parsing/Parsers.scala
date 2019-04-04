@@ -2225,13 +2225,16 @@ object Parsers {
     def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
       md.withMods(mods).setComment(in.getDocComment(start))
 
+    type ImportConstr = (Boolean, Tree, List[Tree]) => Tree
+
     /** Import  ::= import [implied] [ImportExpr {`,' ImportExpr}
+     *  Export  ::= export [implied] [ImportExpr {`,' ImportExpr}
      */
-    def importClause(): List[Tree] = {
-      val offset = accept(IMPORT)
+    def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
+      val offset = accept(leading)
       val importImplied = in.token == IMPLIED
       if (importImplied) in.nextToken()
-      commaSeparated(importExpr(importImplied)) match {
+      commaSeparated(importExpr(importImplied, mkTree)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -2244,23 +2247,28 @@ object Parsers {
 
     /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
      */
-    def importExpr(importImplied: Boolean): () => Import = {
+    def importExpr(importImplied: Boolean, mkTree: ImportConstr): () => Tree = {
 
       val handleImport: Tree => Tree = { tree: Tree =>
-        if (in.token == USCORE) Import(importImplied, tree, importSelector() :: Nil)
-        else if (in.token == LBRACE) Import(importImplied, tree, inBraces(importSelectors()))
+        if (in.token == USCORE) mkTree(importImplied, tree, importSelector() :: Nil)
+        else if (in.token == LBRACE) mkTree(importImplied, tree, inBraces(importSelectors()))
         else tree
       }
 
-      () => path(thisOK = false, handleImport) match {
-        case imp: Import =>
-          imp
-        case sel @ Select(qual, name) =>
-          val selector = atSpan(pointOffset(sel)) { Ident(name) }
-          cpy.Import(sel)(importImplied, qual, selector :: Nil)
-        case t =>
-          accept(DOT)
-          Import(importImplied, t, Ident(nme.WILDCARD) :: Nil)
+      def derived(impExp: Tree, qual: Tree, selectors: List[Tree]) =
+        mkTree(importImplied, qual, selectors).withSpan(impExp.span)
+
+      () => {
+        val p = path(thisOK = false, handleImport)
+        p match {
+          case _: Import | _: Export => p
+          case sel @ Select(qual, name) =>
+            val selector = atSpan(pointOffset(sel)) { Ident(name) }
+            mkTree(importImplied, qual, selector :: Nil).withSpan(sel.span)
+          case t =>
+            accept(DOT)
+            mkTree(importImplied, t, Ident(nme.WILDCARD) :: Nil)
+        }
       }
     }
 
@@ -2769,7 +2777,9 @@ object Parsers {
           else stats += packaging(start)
         }
         else if (in.token == IMPORT)
-          stats ++= importClause()
+          stats ++= importClause(IMPORT, Import)
+        else if (in.token == EXPORT)
+          stats ++= importClause(EXPORT, Export.apply)
         else if (in.token == AT || isDefIntro(modifierTokens))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
@@ -2816,7 +2826,9 @@ object Parsers {
       while (!isStatSeqEnd && !exitOnError) {
         setLastStatOffset()
         if (in.token == IMPORT)
-          stats ++= importClause()
+          stats ++= importClause(IMPORT, Import)
+        else if (in.token == EXPORT)
+          stats ++= importClause(EXPORT, Export.apply)
         else if (isExprIntro)
           stats += expr1()
         else if (isDefIntro(modifierTokensOrCase))
@@ -2888,7 +2900,7 @@ object Parsers {
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
         setLastStatOffset()
         if (in.token == IMPORT)
-          stats ++= importClause()
+          stats ++= importClause(IMPORT, Import)
         else if (in.token == GIVEN)
           stats += implicitClosure(in.offset, Location.InBlock, modifiers(closureMods))
         else if (isExprIntro)
