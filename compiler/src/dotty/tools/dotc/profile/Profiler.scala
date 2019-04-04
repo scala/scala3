@@ -228,7 +228,7 @@ object ConsoleProfileReporter extends ProfileReporter {
   }
 
   override def reportGc(data: GcEventData): Unit = {
-    println(f"Profiler GC reported ${data.gcEndMillis - data.gcStartMillis}ms")
+    println(s"Profiler GC reported ${data.gcEndMillis - data.gcStartMillis}ms")
   }
 }
 

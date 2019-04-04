@@ -661,9 +661,6 @@ object Flags {
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter: FlagConjunction = allOf(Param, DefaultParameterized)
 
-  /** A Scala 2 Macro */
-  final val Scala2Macro: FlagConjunction = allOf(Macro, Scala2x)
-
   /** A trait that does not need to be initialized */
   final val NoInitsTrait: FlagConjunction = allOf(Trait, NoInits)
 

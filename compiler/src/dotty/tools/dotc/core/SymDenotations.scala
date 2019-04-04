@@ -807,6 +807,9 @@ object SymDenotations {
                            // we need an inline flag on them only do that
                            // reduceProjection gets access to their rhs
 
+    /** Is this a Scala 2 macro */
+    final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
+
     /** An erased value or an inline method, excluding @forceInline annotated methods.
      *  The latter have to be kept around to get to parity with Scala.
      *  This is necessary at least until we have full bootstrap. Right now
