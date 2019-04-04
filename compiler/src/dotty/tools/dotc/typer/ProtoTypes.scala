@@ -598,6 +598,7 @@ object ProtoTypes {
           wildApprox(tp.refinedInfo, theMap, seen))
     case tp: AliasingBounds => // default case, inlined for speed
       tp.derivedAlias(wildApprox(tp.alias, theMap, seen))
+    case tp @ TypeParamRef(hktl: HKTypeLambda, _) if representsKind(hktl) => tp
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
         if (seen.contains(tp)) WildcardType
@@ -652,6 +653,18 @@ object ProtoTypes {
   }
 
   final def wildApprox(tp: Type)(implicit ctx: Context): Type = wildApprox(tp, null, Set.empty)
+
+  final def representsKind(tl: HKTypeLambda)(implicit ctx: Context): Boolean = {
+    tl.paramInfos.forall {
+      case TypeBounds(lo, hi) =>
+        def isKindBound(tp: Type): Boolean =
+          Inferencing.isFullyDefined(tp, ForceDegree.none) || (tp match {
+            case tp: HKTypeLambda => representsKind(tp)
+            case _ => false
+          })
+        isKindBound(lo) && isKindBound(hi)
+    }
+  }
 
   @sharable object AssignProto extends UncachedGroundType with MatchAlways
 
