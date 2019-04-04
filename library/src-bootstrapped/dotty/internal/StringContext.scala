@@ -1,9 +1,10 @@
-package scala.internal
+package dotty.internal
 
 import scala.quoted._
 
 object StringContext {
 
+  /** Implemetation of scala.StringContext.f used in Dotty while the standard library is still not bootstrapped */
   inline def f(sc: => scala.StringContext)(args: Any*): String = ${ fImpl('sc, 'args) }
 
   private def fImpl(sc: Expr[StringContext], args: Expr[Seq[Any]]): Expr[String] = {

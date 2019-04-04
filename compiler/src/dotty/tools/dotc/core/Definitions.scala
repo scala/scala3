@@ -637,7 +637,7 @@ class Definitions {
     lazy val StringContextModule_applyR: TermRef = StringContextModule.requiredMethodRef(nme.apply)
     def StringContextModule_apply(implicit ctx: Context): Symbol = StringContextModule_applyR.symbol
 
-  lazy val InternalStringContextModuleR: TermRef = ctx.requiredModuleRef("scala.internal.StringContext")
+  lazy val InternalStringContextModuleR: TermRef = ctx.requiredModuleRef("dotty.internal.StringContext")
   def InternalStringContextModule(implicit ctx: Context): Symbol = InternalStringContextModuleR.termSymbol
     lazy val InternalStringContextModule_fR: TermRef = InternalStringContextModule.requiredMethodRef(nme.f)
     def InternalStringContextModule_f(implicit ctx: Context): Symbol = InternalStringContextModule_fR.symbol

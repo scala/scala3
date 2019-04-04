@@ -1,4 +1,4 @@
-package scala.internal
+package dotty.internal
 
 object StringContext {
 
