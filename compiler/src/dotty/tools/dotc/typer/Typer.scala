@@ -36,6 +36,7 @@ import util.Stats.record
 import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
+import dotty.tools.dotc.core.FlowTyper.{FlowFacts, Inferred}
 import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
 import transform.SymUtils._
 import transform.TypeUtils._
@@ -419,11 +420,13 @@ class Typer extends Namer
       else
         errorType(new MissingIdent(tree, kind, name.show), tree.sourcePos)
 
-    val tree1 = ownType match {
-      case ownType: NamedType if !prefixIsElidable(ownType) =>
-        ref(ownType).withSpan(tree.span)
+    val ownType1 = if (ctx.explicitNulls) FlowTyper.refineType(ownType) else ownType
+
+    val tree1 = ownType1 match {
+      case ownType1: NamedType if !prefixIsElidable(ownType1) =>
+        ref(ownType1).withSpan(tree.span)
       case _ =>
-        tree.withType(ownType)
+        tree.withType(ownType1)
     }
 
     checkStableIdentPattern(tree1, pt)
@@ -451,8 +454,9 @@ class Typer extends Namer
     case qual =>
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
-      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
+      val select1 = if (ctx.explicitNulls) select.withType(FlowTyper.refineType(select.tpe)) else select
+      if (select1.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select1, pt))
+      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select1
       else typedDynamicSelect(tree, Nil, pt)
   }
 
@@ -762,8 +766,12 @@ class Typer extends Namer
         }
     }
 
-  def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) =
-    (index(stats), typedStats(stats, ctx.owner))
+  def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) = {
+    val ctx1 = index(stats)
+    val (stats1, facts) = typedStatsAndGetFacts(stats, ctx.owner)
+    val ctx2 = if (ctx.explicitNulls && facts.nonEmpty) ctx1.fresh.addFlowFacts(facts) else ctx1
+    (ctx2, stats1)
+  }
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = {
     val localCtx = ctx.retractMode(Mode.Pattern)
@@ -815,15 +823,25 @@ class Typer extends Namer
     if (tree.isInline) checkInInlineContext("inline if", tree.posd)
     val cond1 = typed(tree.cond, defn.BooleanType)
 
+    val (thenCtx, elseCtx) = if (ctx.explicitNulls) {
+      val Inferred(ifTrue, ifFalse) = FlowTyper.inferFromCond(cond1)
+      (ctx.fresh.addFlowFacts(ifTrue), ctx.fresh.addFlowFacts(ifFalse))
+    } else {
+      (ctx, ctx)
+    }
+
     if (tree.elsep.isEmpty) {
-      val thenp1 = typed(tree.thenp, defn.UnitType)
+      val thenp1 = typed(tree.thenp, defn.UnitType)(thenCtx)
       val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
       cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
     }
     else {
-      val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt)(
-        (tree.thenp :: tree.elsep :: Nil).map(typed(_, pt.dropIfProto)))
-      assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
+      val thenp2 :: elsep2 :: Nil = harmonic(harmonize, pt) {
+        val thenp1 = typed(tree.thenp, pt.dropIfProto)(thenCtx)
+        val elsep1 = typed(tree.elsep, pt.dropIfProto)(elseCtx)
+        thenp1 :: elsep1 :: Nil
+      }
+      assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
     }
   }
 
@@ -1261,7 +1279,13 @@ class Typer extends Namer
   }
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = {
-    val expr1 = typed(tree.expr, defn.ThrowableType)
+    val pt = if (ctx.explicitNulls) {
+      // `throw null` is valid Scala code
+      OrType(defn.ThrowableType, defn.NullType)
+    } else {
+      defn.ThrowableType
+    }
+    val expr1 = typed(tree.expr, pt)
     Throw(expr1).withSpan(tree.span)
   }
 
@@ -2170,20 +2194,35 @@ class Typer extends Namer
     trees mapconserve (typed(_))
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+    val (stats1, _) = typedStatsAndGetFacts(stats, exprOwner)
+    stats1
+  }
+
+  def typedStatsAndGetFacts(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], FlowFacts) = {
     val buf = new mutable.ListBuffer[Tree]
     val enumContexts = new mutable.HashMap[Symbol, Context]
       // A map from `enum` symbols to the contexts enclosing their definitions
-    @tailrec def traverse(stats: List[untpd.Tree])(implicit ctx: Context): List[Tree] = stats match {
+    @tailrec def traverse(stats: List[untpd.Tree], facts: FlowFacts)(implicit ctx: Context): (List[Tree], FlowFacts) = stats match {
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)
         buf += imp1
-        traverse(rest)(ctx.importContext(imp, imp1.symbol))
+        traverse(rest, facts)(ctx.importContext(imp, imp1.symbol))
       case (mdef: untpd.DefTree) :: rest =>
         mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>
-            traverse(xtree :: rest)
+            traverse(xtree :: rest, facts)
           case none =>
-            typed(mdef) match {
+            import untpd.modsDeco
+            val ctx1 = if (ctx.explicitNulls) {
+              mdef match {
+                case mdef: untpd.ValDef if ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy | Implicit) =>
+                  ctx.fresh.addFlowFacts(facts)
+                case _ => ctx
+              }
+            } else {
+              ctx
+            }
+            typed(mdef)(ctx1) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
@@ -2196,21 +2235,31 @@ class Typer extends Namer
               case mdef1 =>
                 buf += mdef1
             }
-            traverse(rest)
+            traverse(rest, facts)
         }
       case Thicket(stats) :: rest =>
-        traverse(stats ++ rest)
+        traverse(stats ++ rest, facts)
       case (stat: untpd.Export) :: rest =>
         buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
           // no attachment can happen in case of cyclic references
-        traverse(rest)
+        traverse(rest, facts)
       case stat :: rest =>
-        val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
-        checkStatementPurity(stat1)(stat, exprOwner)
+        val ctx1 = if (ctx.explicitNulls && facts.nonEmpty) {
+          ctx.fresh.addFlowFacts(facts)
+        } else {
+          ctx
+        }
+        val stat1 = typed(stat)(ctx1.exprContext(stat, exprOwner))
+        checkStatementPurity(stat1)(stat, exprOwner)(ctx1)
         buf += stat1
-        traverse(rest)
+        val newFacts = if (ctx.explicitNulls) {
+          facts ++ FlowTyper.inferWithinBlock(stat1)(ctx1)
+        } else {
+          facts
+        }
+        traverse(rest, newFacts)(ctx)
       case nil =>
-        buf.toList
+        (buf.toList, facts)
     }
     val localCtx = {
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
@@ -2227,9 +2276,10 @@ class Typer extends Namer
       case _ =>
         stat
     }
-    val stats1 = traverse(stats)(localCtx).mapConserve(finalize)
-    if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
-    stats1
+    val (stats1, ctx1) = traverse(stats, FlowTyper.emptyFlowFacts)(localCtx)
+    val stats2 = stats1.mapConserve(finalize)
+    if (ctx.owner == exprOwner) checkNoAlphaConflict(stats2)
+    (stats2, ctx1)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body

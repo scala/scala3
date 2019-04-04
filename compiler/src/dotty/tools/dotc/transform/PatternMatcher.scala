@@ -17,6 +17,7 @@ import config.Printers.patmatch
 import reporting.diagnostic.messages._
 import dotty.tools.dotc.ast._
 import util.Property._
+import NullOpsDecorator._
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches

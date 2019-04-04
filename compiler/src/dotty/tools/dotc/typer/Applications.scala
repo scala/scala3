@@ -857,8 +857,19 @@ trait Applications extends Compatibility {
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
-      def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree =
-        methPart(fun1).tpe match {
+      def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree = {
+        val ctx1 = if (ctx.explicitNulls) {
+          // TODO(abeln): we're re-doing work here by recomputing what's implies by the lhs of the comparison.
+          // e.g. in `A && B && C && D`, we'll recompute the facts implied by `A && B` twice.
+          // Find a more-efficient way to do this.
+          val newFacts = FlowTyper.inferWithinCond(fun1)
+          if (newFacts.isEmpty) ctx else ctx.fresh.addFlowFacts(newFacts)
+        } else {
+          ctx
+        }
+
+        // Separate into a function so we can pass the updated context.
+        def proc(implicit ctx: Context): tpd.Tree = methPart(fun1).tpe match {
           case funRef: TermRef =>
             val app =
               if (proto.allArgTypesAreCurrent())
@@ -869,6 +880,9 @@ trait Applications extends Compatibility {
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
+
+        proc(ctx1)
+      }
 
       /** Try same application with an implicit inserted around the qualifier of the function
        *  part. Return an optional value to indicate success.

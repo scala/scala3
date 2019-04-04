@@ -37,6 +37,8 @@ import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 
+import dotty.tools.dotc.core.FlowTyper.FlowFacts
+
 object Contexts {
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
@@ -47,7 +49,8 @@ object Contexts {
   private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
   private val (runLoc,              store7) = store6.newLocation[Run]()
   private val (profilerLoc,         store8) = store7.newLocation[Profiler]()
-  private val initialStore = store8
+  private val (flowFactsLoc,        store9) = store8.newLocation[FlowFacts](FlowTyper.emptyFlowFacts)
+  private val initialStore = store9
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -142,6 +145,9 @@ object Contexts {
     private[this] var _gadt: GadtConstraint = _
     protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
     final def gadt: GadtConstraint = _gadt
+
+    /** The terms currently known to be non-null (in spite of their declared type) */
+    def flowFacts: FlowFacts = store(flowFactsLoc)
 
     /** The history of implicit searches that are currently active */
     private[this] var _searchHistory: SearchHistory = null
@@ -420,6 +426,9 @@ object Contexts {
     def useColors: Boolean =
       base.settings.color.value == "always"
 
+    /** Is the explicit nulls option set? */
+    def explicitNulls: Boolean = base.settings.YexplicitNulls.value
+
     protected def init(outer: Context, origin: Context): this.type = {
       util.Stats.record("Context.fresh")
       _outer = outer
@@ -536,6 +545,10 @@ object Contexts {
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setGadt(gadt: GadtConstraint): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
+    def addFlowFacts(facts: FlowFacts): this.type = {
+      assert(settings.YexplicitNulls.value)
+      updateStore(flowFactsLoc, store(flowFactsLoc) ++ facts)
+    }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setSource(source: SourceFile): this.type = { this.source = source; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }

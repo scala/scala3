@@ -22,6 +22,7 @@ import reporting.diagnostic.messages._
 import reporting.trace
 import config.Printers.{exhaustivity => debug}
 import util.SourcePosition
+import NullOpsDecorator._
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -293,14 +294,28 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")
 
-  private val nullType             = ConstantType(Constant(null))
-  private val nullSpace            = Typ(nullType)
+  private val constantNullType     = ConstantType(Constant(null))
+  private val constantNullSpace    = Typ(constantNullType)
+
+  /** Does the given tree stand for the literal `null`? */
+  def isNullLit(tree: Tree): Boolean = tree match {
+    case Literal(Constant(null)) => true
+    case _ => false
+  }
+
+  /** Does the given space contain just the value `null`? */
+  def isNullSpace(space: Space): Boolean = space match {
+    case Typ(tpe, _) => tpe =:= constantNullType || tpe.isNullType
+    case Or(spaces) => spaces.forall(isNullSpace)
+    case _ => false
+  }
 
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = trace(s"atomic intersection: ${AndType(tp1, tp2).show}", debug) {
-    // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1)
-
-    // Since projections of types don't include null, intersection with null is empty.
-    if (tp1 == nullType || tp2 == nullType) Empty
+    // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
+    if (!ctx.explicitNulls && (tp1.isNullType || tp2.isNullType)) {
+      // Since projections of types don't include null, intersection with null is empty.
+      return Empty
+    }
     else {
       val res = ctx.typeComparer.disjoint(tp1, tp2)
 
@@ -320,7 +335,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         Typ(ConstantType(c), false)
     case pat: Ident if isBackquoted(pat) => Typ(pat.tpe, false)
     case Ident(nme.WILDCARD) =>
-      Or(Typ(pat.tpe.stripAnnots, false) :: nullSpace :: Nil)
+      Or(Typ(pat.tpe.stripAnnots, false) :: constantNullSpace :: Nil)
     case Ident(_) | Select(_, _) =>
       Typ(erase(pat.tpe.stripAnnots), false)
     case Alternative(trees) => Or(trees.map(project(_)))
@@ -437,7 +452,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
     debug.println(TypeComparer.explained(tp1 <:< tp2))
-    val res = (tp1 != nullType || tp2 == nullType) && tp1 <:< tp2
+    val res = if (ctx.explicitNulls) {
+      tp1 <:< tp2
+    } else {
+      (tp1 != constantNullType || tp2 == constantNullType) && tp1 <:< tp2
+    }
     res
   }
 
@@ -661,7 +680,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
       case Empty => ""
-      case Typ(c: ConstantType, _) => "" + c.value.value
+      case Typ(c: ConstantType, _) =>
+        val v = c.value.value
+        if (v == null) "null" else "" + v
       case Typ(tp: TermRef, _) => tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
@@ -763,10 +784,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     if (!redundancyCheckable(sel)) return
 
     val targetSpace =
-      if (selTyp.classSymbol.isPrimitiveValueClass)
-        Typ(selTyp, true)
-      else
-        Or(Typ(selTyp, true) :: nullSpace :: Nil)
+      if (ctx.explicitNulls) Typ(selTyp, true)
+      else if (selTyp.classSymbol.isPrimitiveValueClass) Typ(selTyp, true)
+      else Or(Typ(selTyp, true) :: constantNullSpace :: Nil)
 
     // in redundancy check, take guard as false in order to soundly approximate
     def projectPrevCases(cases: List[CaseDef]): Space =
@@ -774,11 +794,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (x.guard.isEmpty) project(x.pat)
         else Empty
       }.reduce((a, b) => Or(List(a, b)))
-
-    def isNull(tree: Tree): Boolean = tree match {
-      case Literal(Constant(null)) => true
-      case _ => false
-    }
 
     (1 until cases.length).foreach { i =>
       val prevs = projectPrevCases(cases.take(i))
@@ -796,16 +811,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
         // `covered == Empty` may happen for primitive types with auto-conversion
         // see tests/patmat/reader.scala  tests/patmat/byte.scala
-        if (covered == Empty) covered = curr
+        if (covered == Empty && !isNullLit(pat)) covered = curr
 
         if (isSubspace(covered, prevs)) {
           ctx.warning(MatchCaseUnreachable(), pat.sourcePos)
         }
 
         // if last case is `_` and only matches `null`, produce a warning
-        if (i == cases.length - 1 && !isNull(pat) ) {
-          simplify(minus(covered, prevs)) match {
-            case Typ(`nullType`, _) =>
+        // If explicit nulls are enabled, this check isn't needed because most of the cases
+        // that would trigger it would also trigger unreachability warnings.
+        if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
+          val simpl = simplify(minus(covered, prevs))
+          simpl match {
+            case Typ(`constantNullType`, _) =>
               ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
           }
