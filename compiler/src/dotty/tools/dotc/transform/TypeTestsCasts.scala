@@ -234,6 +234,10 @@ object TypeTestsCasts {
           def testCls = testType.widen.classSymbol
           if (expr.tpe <:< testType)
             Typed(expr, tree.args.head)
+          else if (testCls eq defn.BoxedUnitClass) {
+            // as a special case, casting to Unit always successfully returns Unit
+            Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
+          }
           else if (foundCls.isPrimitiveValueClass) {
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
