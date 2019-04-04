@@ -29,6 +29,8 @@ object TypeLevel {
 
   abstract class GenericProduct[T] extends Generic[T] {
     type ElemTypes <: Tuple
+    type CaseLabel
+    type ElemLabels <: Tuple
     def toProduct(x: T): Product
     def fromProduct(p: Product): T
   }
@@ -63,6 +65,8 @@ object Lst {
 
     class GenericCons[T] extends GenericProduct[Cons[T]] {
       type ElemTypes = (T, Lst[T])
+      type CaseLabel = "Cons"
+      type ElemLabels = ("hd", "tl")
       def toProduct(x: Cons[T]): Product = x
       def fromProduct(p: Product): Cons[T] =
         new Cons(p.productElement(0).asInstanceOf[T],
@@ -73,6 +77,8 @@ object Lst {
   case object Nil extends Lst[Nothing] {
     class GenericNil extends GenericProduct[Nil.type] {
       type ElemTypes = Unit
+      type CaseLabel = "Nil"
+      type ElemLabels = Unit
       def toProduct(x: Nil.type): Product = EmptyProduct
       def fromProduct(p: Product): Nil.type = Nil
     }
@@ -82,7 +88,7 @@ object Lst {
   // three clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Lst[T]] = Eq.derived
   implicit def derived$Pickler[T: Pickler]: Pickler[Lst[T]] = Pickler.derived
-  //implicit def derived$Show[T: Show]: Show[Lst[T]] = Show.derived
+  implicit def derived$Show[T: Show]: Show[Lst[T]] = Show.derived
 }
 
 // A typeclass
@@ -148,6 +154,8 @@ object Pair {
 
   class GenericPair[T] extends GenericProduct[Pair[T]] {
     type ElemTypes = (T, T)
+    type CaseLabel = "Pair"
+    type ElemLabels = ("x", "y")
     def toProduct(x: Pair[T]): Product = x
     def fromProduct(p: Product): Pair[T] =
       Pair(p.productElement(0).asInstanceOf, p.productElement(1).asInstanceOf)
@@ -157,7 +165,7 @@ object Pair {
   // clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Pair[T]] = Eq.derived
   implicit def derived$Pickler[T: Pickler]: Pickler[Pair[T]] = Pickler.derived
-  //implicit def derived$Show[T: Show]: Show[Pair[T]] = Show.derived
+  implicit def derived$Show[T: Show]: Show[Pair[T]] = Show.derived
 }
 
 sealed trait Either[+L, +R] extends Product with Serializable // derives Eq, Pickler, Show
@@ -181,7 +189,7 @@ object Either {
 
   implicit def derived$Eq[L: Eq, R: Eq]: Eq[Either[L, R]] = Eq.derived
   implicit def derived$Pickler[L: Pickler, R: Pickler]: Pickler[Either[L, R]] = Pickler.derived
-  //implicit def derived$Show[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
+  implicit def derived$Show[L: Show, R: Show]: Show[Either[L, R]] = Show.derived
 }
 
 case class Left[L](elem: L) extends Either[L, Nothing]
@@ -191,6 +199,8 @@ object Left {
   import TypeLevel._
   class GenericLeft[L] extends GenericProduct[Left[L]] {
     type ElemTypes = L *: Unit
+    type CaseLabel = "Left"
+    type ElemLabels = "x" *: Unit
     def toProduct(x: Left[L]) = x
     def fromProduct(p: Product): Left[L] = Left(p.productElement(0).asInstanceOf[L])
   }
@@ -201,6 +211,8 @@ object Right {
   import TypeLevel._
   class GenericRight[R] extends GenericProduct[Right[R]] {
     type ElemTypes = R *: Unit
+    type CaseLabel = "Right"
+    type ElemLabels = "x" *: Unit
     def toProduct(x: Right[R]) = x
     def fromProduct(p: Product): Right[R] = Right(p.productElement(0).asInstanceOf[R])
   }
@@ -298,6 +310,63 @@ object Pickler {
   }
 }
 
+// A third typeclass, making use of labels
+trait Show[T] {
+  def show(x: T): String
+}
+object Show {
+  import scala.compiletime.{erasedValue, constValue}
+  import TypeLevel._
+
+  inline def tryShow[T](x: T): String = implicit match {
+    case s: Show[T] => s.show(x)
+  }
+
+  inline def showElems[Elems <: Tuple, Labels <: Tuple](x: Product, n: Int): List[String] =
+    inline erasedValue[Elems] match {
+      case _: (elem *: elems1) =>
+        inline erasedValue[Labels] match {
+          case _: (label *: labels1) =>
+            val formal = constValue[label]
+            val actual = tryShow(x.productElement(n).asInstanceOf[elem])
+            s"$formal = $actual" :: showElems[elems1, labels1](x, n + 1)
+        }
+      case _: Unit =>
+        Nil
+    }
+
+  inline def showCase[T](gp: GenericProduct[T], x: T): String = {
+    val labl = constValue[gp.CaseLabel]
+    showElems[gp.ElemTypes, gp.ElemLabels](gp.toProduct(x), 0)
+      .mkString(s"$labl(", ", ", ")")
+  }
+
+  inline def showCases[T](x: T, genSum: GenericSum[T], ord: Int, n: Int): String =
+    inline if (n == genSum.numberOfCases)
+      ""
+    else if (ord == n)
+      inline genSum.alternative(n) match {
+        case cas: GenericProduct[p] =>
+          showCase(cas, x.asInstanceOf[p])
+      }
+    else showCases[T](x, genSum, ord, n + 1)
+
+  inline def derived[T](implicit ev: Generic[T]): Show[T] = new {
+    def show(x: T): String = {
+      inline ev match {
+        case ev: GenericSum[T] =>
+          showCases(x, ev, ev.ordinal(x), 0)
+        case ev: GenericProduct[p] =>
+          showCase(ev, x)
+      }
+    }
+  }
+
+  implicit object IntShow extends Show[Int] {
+    def show(x: Int): String = x.toString
+  }
+}
+
 // Tests
 object Test extends App {
   import TypeLevel._
@@ -349,7 +418,14 @@ object Test extends App {
   assert(p1 == p1a)
   assert(eqp.eql(p1, p1a))
 
+  def showPrintln[T: Show](x: T): Unit =
+    println(implicitly[Show[T]].show(x))
+    
+  showPrintln(xs)
+  showPrintln(xss)
+
   val zs = Lst.Cons(Left(1), Lst.Cons(Right(Pair(2, 3)), Lst.Nil))
+  showPrintln(zs)
 
   def pickle[T: Pickler](buf: mutable.ListBuffer[Int], x: T): Unit =
     implicitly[Pickler[T]].pickle(buf, x)
@@ -366,5 +442,6 @@ object Test extends App {
   def eql[T: Eq](x: T, y: T) = implicitly[Eq[T]].eql(x, y)
 
   val zs1 = copy(zs)
+  showPrintln(zs1)
   assert(eql(zs, zs1))
 }
