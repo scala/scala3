@@ -117,7 +117,7 @@ object StagedTuple {
           tup.as[Tuple5[_, _, _, _, _]].bind(t => '{Tuple4($t._2, $t._3, $t._4, $t._5)})
         case Some(n) if n > 5 =>
           val arr = toArrayStaged(tup, size)
-          fromArrayStaged('{ $arr.tail }, Some(n - 1))
+          fromArrayStaged[Tail[Tup]]('{ $arr.tail }, Some(n - 1))
         case None =>
           '{dynamicTail($tup)}
       }

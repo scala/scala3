@@ -60,7 +60,7 @@ object Lens {
           apply($getter)(setter)
         }
       case _ =>
-        throw new QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
     }
   }
 }
@@ -101,7 +101,7 @@ object Iso {
     // 2. A must be a tuple
     // 3. The parameters of S must match A
     if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).isEmpty)
-      throw new QuoteError("Only support generation for case classes")
+      QuoteError("Only support generation for case classes")
 
     val cls = tpS.classSymbol.get
 
@@ -111,11 +111,11 @@ object Iso {
     }
 
     if (cls.caseFields.size != 1)
-      throw new QuoteError("Use GenIso.fields for case classes more than one parameter")
+      QuoteError("Use GenIso.fields for case classes more than one parameter")
 
     val fieldTp = tpS.memberType(cls.caseFields.head)
     if (!(fieldTp =:= tpA))
-      throw new QuoteError(s"The type of case class field $fieldTp does not match $tpA")
+      QuoteError(s"The type of case class field $fieldTp does not match $tpA")
 
     '{
       // (p: S) => p._1
@@ -142,7 +142,7 @@ object Iso {
       val cls = tpS.classSymbol.get
 
       if (cls.caseFields.size != 0)
-        throw new QuoteError("Use GenIso.fields for case classes more than one parameter")
+        QuoteError("Use GenIso.fields for case classes more than one parameter")
 
       val companion = tpS match {
         case Type.SymRef(sym, prefix)   => Type.TermRef(prefix, sym.name)
@@ -156,7 +156,7 @@ object Iso {
       }
     }
     else {
-      throw new QuoteError("Only support generation for case classes or singleton types")
+      QuoteError("Only support generation for case classes or singleton types")
     }
   }
 
