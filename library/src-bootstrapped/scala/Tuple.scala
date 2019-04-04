@@ -124,7 +124,7 @@ sealed trait Tuple extends Any {
 }
 
 object Tuple {
-  final val stageIt = true
+  final val stageIt = false
 
   type Head[X <: NonEmptyTuple] = X match {
     case x *: _ => x
