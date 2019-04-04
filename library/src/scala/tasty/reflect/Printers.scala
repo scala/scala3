@@ -24,7 +24,7 @@ trait Printers
   /** Adds `show` as an extension method of a `Tree` */
   implicit class TreeShowDeco(tree: Tree) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showTree(tree)
+    def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showTree(tree)
     /** Shows the tree as source code */
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTree(tree)
   }
@@ -32,7 +32,7 @@ trait Printers
   /** Adds `show` as an extension method of a `TypeOrBounds` */
   implicit class TypeOrBoundsShowDeco(tpe: TypeOrBounds) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showTypeOrBounds(tpe)
+    def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showTypeOrBounds(tpe)
     /** Shows the tree as source code */
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBounds(tpe)
   }
@@ -40,7 +40,7 @@ trait Printers
   /** Adds `show` as an extension method of a `Pattern` */
   implicit class PatternShowDeco(pattern: Pattern) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
+    def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
     /** Shows the tree as source code */
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showPattern(pattern)
   }
@@ -48,7 +48,7 @@ trait Printers
   /** Adds `show` as an extension method of a `Constant` */
   implicit class ConstantShowDeco(const: Constant) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showConstant(const)
+    def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showConstant(const)
     /** Shows the tree as source code */
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showConstant(const)
   }
@@ -56,7 +56,7 @@ trait Printers
   /** Adds `show` as an extension method of a `Symbol` */
   implicit class SymbolShowDeco(symbol: Symbol) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
+    def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
     /** Shows the tree as source code */
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showSymbol(symbol)
   }
@@ -64,7 +64,7 @@ trait Printers
   /** Adds `show` as an extension method of a `Flags` */
   implicit class FlagsShowDeco(flags: Flags) {
     /** Shows the tree as extractors */
-    def show(implicit ctx: Context): String = new ExtractorsPrinter().showFlags(flags)
+    def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showFlags(flags)
     /** Shows the tree as source code */
     def showCode(implicit ctx: Context): String = new SourceCodePrinter().showFlags(flags)
   }
@@ -598,7 +598,7 @@ trait Printers
             case IsTerm(Select(IsNew(newTree), _)) =>
               printType(newTree.tpe)(Some(cdef.symbol))
             case IsTerm(parent) =>
-              throw new MatchError(parent.show)
+              throw new MatchError(parent.showExtractors)
           }
 
           def printSeparated(list: List[Tree /* Term | TypeTree */]): Unit = list match {
@@ -937,7 +937,7 @@ trait Printers
           printTypeTree(tpt)
 
         case _ =>
-          throw new MatchError(tree.show)
+          throw new MatchError(tree.showExtractors)
 
       }
 
@@ -1320,7 +1320,7 @@ trait Printers
             case Ident("unapply" | "unapplySeq") =>
               this += fun.symbol.owner.fullName.stripSuffix("$")
             case _ =>
-              throw new MatchError(fun.show)
+              throw new MatchError(fun.showExtractors)
           }
           inParens(printPatterns(patterns, ", "))
 
@@ -1332,7 +1332,7 @@ trait Printers
           printTypeOrBoundsTree(tpt)
 
         case _ =>
-          throw new MatchError(pattern.show)
+          throw new MatchError(pattern.showExtractors)
 
       }
 
@@ -1457,7 +1457,7 @@ trait Printers
           }
 
         case _ =>
-          throw new MatchError(tree.show)
+          throw new MatchError(tree.showExtractors)
 
       }
 
@@ -1612,7 +1612,7 @@ trait Printers
           this += highlightTypeDef("this", color)
 
         case _ =>
-          throw new MatchError(tpe.show)
+          throw new MatchError(tpe.showExtractors)
       }
 
       def printImportSelector(sel: ImportSelector): Buffer = sel match {
@@ -1647,7 +1647,7 @@ trait Printers
               case Type.TypeRef("forceInline", Types.ScalaPackage()) => false
               case _ => true
             }
-          case x => throw new MatchError(x.show)
+          case x => throw new MatchError(x.showExtractors)
         }
         printAnnotations(annots)
         if (annots.nonEmpty) this += " "

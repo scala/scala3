@@ -152,7 +152,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
       case Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
 
-      case _ => throw new MatchError(tree.show)
+      case _ => throw new MatchError(tree.showExtractors)
     }
   }
 
@@ -161,7 +161,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       println(
         s"""#> $tag:
            |${tree.showCode}
-           |${tree.show}
+           |${tree.showExtractors}
            |
            |""".stripMargin)
     thunk

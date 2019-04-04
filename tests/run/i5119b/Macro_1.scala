@@ -9,7 +9,7 @@ object Macro {
 
   def impl(arg1: Expr[Any], arg2: Expr[Any])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    (arg1.unseal.underlyingArgument.show + "\n" + arg2.unseal.underlyingArgument.show)
+    (arg1.unseal.underlyingArgument.showExtractors + "\n" + arg2.unseal.underlyingArgument.showExtractors)
   }
 
 }

@@ -12,8 +12,8 @@ object Macros {
     val tree = x.unseal
     '{
       println()
-      println("tree: " + ${tree.show})
-      println("tree deref. vals: " + ${tree.underlying.show})
+      println("tree: " + ${tree.showExtractors})
+      println("tree deref. vals: " + ${tree.underlying.showExtractors})
     }
   }
 }
