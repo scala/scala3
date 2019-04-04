@@ -75,7 +75,11 @@ class ReTyper extends Typer with ReChecking {
   }
 
   override def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply = {
-    val fun1 = typedUnadapted(tree.fun, AnyFunctionProto)
+    val fun1 = {
+      // retract PatternOrTypeBits like in typedExpr
+      val ctx1 = ctx.retractMode(Mode.PatternOrTypeBits)
+      typedUnadapted(tree.fun, AnyFunctionProto)(ctx1)
+    }
     val implicits1 = tree.implicits.map(typedExpr(_))
     val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)

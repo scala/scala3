@@ -961,6 +961,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
+    if (ctx.mode.is(Mode.Pattern)) {
+      return errorTree(tree, "invalid pattern")
+    }
+
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
