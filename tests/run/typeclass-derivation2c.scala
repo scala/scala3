@@ -27,32 +27,38 @@ object Deriving {
    *  enums, case classes and objects, and their sealed parents.
    */
   sealed abstract class Generic[T]
+  object Generic {
 
-  /** The Generic for a sum type */
-  abstract class GenericSum[T] extends Generic[T] {
+    /** The Generic for a sum type */
+    abstract class Sum[T] extends Generic[T] {
 
-    /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
-    def ordinal(x: T): Int
+      /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
+      def ordinal(x: T): Int
 
-    /** The number of cases in the sum.
-     *  Implemented by an inline method in concrete subclasses.
-     */
-    erased def numberOfCases: Int = ???
+      /** The number of cases in the sum.
+      *  Implemented by an inline method in concrete subclasses.
+      */
+      erased def numberOfCases: Int = ???
 
-    /** The Generic representations of the sum's alternatives.
-     *  Implemented by an inline method in concrete subclasses.
-     */
-    erased def alternative(n: Int): GenericProduct[_ <: T] = ???
-  }
+      /** The Generic representations of the sum's alternatives.
+      *  Implemented by an inline method in concrete subclasses.
+      */
+      erased def alternative(n: Int): Generic[_ <: T] = ???
+    }
 
-  /** A Generic for a product type */
-  abstract class GenericProduct[T] extends Generic[T] {
-    type ElemTypes <: Tuple
-    type CaseLabel
-    type ElemLabels <: Tuple
+    /** A Generic for a product type */
+    abstract class Product[T] extends Generic[T] {
+      type ElemTypes <: Tuple
+      type CaseLabel <: String
+      type ElemLabels <: Tuple
 
-    def toProduct(x: T): Product
-    def fromProduct(p: Product): T
+      def toProduct(x: T): scala.Product
+      def fromProduct(p: scala.Product): T
+    }
+
+    class Singleton[T](val value: T) extends Generic[T] {
+      type CaseLabel <: String
+    }
   }
 }
 
@@ -65,13 +71,13 @@ sealed trait Lst[+T] // derives Eq, Pickler, Show
 object Lst {
   import Deriving._
 
-  class GenericLst[T] extends GenericSum[Lst[T]] {
+  class GenericLst[T] extends Generic.Sum[Lst[T]] {
     def ordinal(x: Lst[T]) = x match {
       case x: Cons[_] => 0
       case Nil => 1
     }
     inline override def numberOfCases = 2
-    inline override def alternative(n: Int) <: GenericProduct[_ <: Lst[T]] =
+    inline override def alternative(n: Int) <: Generic[_ <: Lst[T]] =
       inline n match {
         case 0 => Cons.GenericCons[T]
         case 1 => Nil.GenericNil
@@ -85,7 +91,7 @@ object Lst {
   object Cons {
     def apply[T](x: T, xs: Lst[T]): Lst[T] = new Cons(x, xs)
 
-    class GenericCons[T] extends GenericProduct[Cons[T]] {
+    class GenericCons[T] extends Generic.Product[Cons[T]] {
       type ElemTypes = (T, Lst[T])
       type CaseLabel = "Cons"
       type ElemLabels = ("hd", "tl")
@@ -98,12 +104,8 @@ object Lst {
   }
 
   case object Nil extends Lst[Nothing] {
-    class GenericNil extends GenericProduct[Nil.type] {
-      type ElemTypes = Unit
+    class GenericNil extends Generic.Singleton[Nil.type](Nil) {
       type CaseLabel = "Nil"
-      type ElemLabels = Unit
-      def toProduct(x: Nil.type): Product = EmptyProduct
-      def fromProduct(p: Product): Nil.type = Nil
     }
     implicit def GenericNil: GenericNil = new GenericNil
   }
@@ -121,7 +123,7 @@ object Pair {
   // common compiler-generated infrastructure
   import Deriving._
 
-  class GenericPair[T] extends GenericProduct[Pair[T]] {
+  class GenericPair[T] extends Generic.Product[Pair[T]] {
     type ElemTypes = (T, T)
     type CaseLabel = "Pair"
     type ElemLabels = ("x", "y")
@@ -143,13 +145,13 @@ sealed trait Either[+L, +R] extends Product with Serializable // derives Eq, Pic
 object Either {
   import Deriving._
 
-  class GenericEither[L, R] extends GenericSum[Either[L, R]] {
+  class GenericEither[L, R] extends Generic.Sum[Either[L, R]] {
     def ordinal(x: Either[L, R]) = x match {
       case x: Left[L] => 0
       case x: Right[R] => 1
     }
     inline override def numberOfCases = 2
-    inline override def alternative(n: Int) <: GenericProduct[_ <: Either[L, R]] =
+    inline override def alternative(n: Int) <: Generic[_ <: Either[L, R]] =
       inline n match {
         case 0 => Left.GenericLeft[L]
         case 1 => Right.GenericRight[R]
@@ -167,7 +169,7 @@ case class Right[R](elem: R) extends Either[Nothing, R]
 
 object Left {
   import Deriving._
-  class GenericLeft[L] extends GenericProduct[Left[L]] {
+  class GenericLeft[L] extends Generic.Product[Left[L]] {
     type ElemTypes = L *: Unit
     type CaseLabel = "Left"
     type ElemLabels = "x" *: Unit
@@ -179,7 +181,7 @@ object Left {
 
 object Right {
   import Deriving._
-  class GenericRight[R] extends GenericProduct[Right[R]] {
+  class GenericRight[R] extends Generic.Product[Right[R]] {
     type ElemTypes = R *: Unit
     type CaseLabel = "Right"
     type ElemLabels = "x" *: Unit
@@ -217,26 +219,29 @@ object Eq {
         true
     }
 
-  inline def eqlCase[T](gp: GenericProduct[T])(x: T, y: T): Boolean =
-    eqlElems[gp.ElemTypes](0)(gp.toProduct(x), gp.toProduct(y))
+  inline def eqlProduct[T](g: Generic.Product[T])(x: T, y: T): Boolean =
+    eqlElems[g.ElemTypes](0)(g.toProduct(x), g.toProduct(y))
 
-  inline def eqlCases[T](gs: GenericSum[T], n: Int)(x: T, y: T, ord: Int): Boolean =
-    inline if (n == gs.numberOfCases)
+  inline def eqlCases[T](g: Generic.Sum[T], n: Int)(x: T, y: T, ord: Int): Boolean =
+    inline if (n == g.numberOfCases)
       false
     else if (ord == n)
-      inline gs.alternative(n) match {
-        case gp: GenericProduct[p] => eqlCase[p](gp)(x.asInstanceOf[p], y.asInstanceOf[p])
+      inline g.alternative(n) match {
+        case g: Generic.Product[p] => eqlProduct[p](g)(x.asInstanceOf[p], y.asInstanceOf[p])
+        case g: Generic.Singleton[_] => true
       }
-    else eqlCases[T](gs, n + 1)(x, y, ord)
+    else eqlCases[T](g, n + 1)(x, y, ord)
 
   inline def derived[T](implicit ev: Generic[T]): Eq[T] = new Eq[T] {
     def eql(x: T, y: T): Boolean =
       inline ev match {
-        case gs: GenericSum[T] =>
-          val ord = gs.ordinal(x)
-          ord == gs.ordinal(y) && eqlCases[T](gs, 0)(x, y, ord)
-        case gp: GenericProduct[T] =>
-          eqlCase[T](gp)(x, y)
+        case g: Generic.Sum[T] =>
+          val ord = g.ordinal(x)
+          ord == g.ordinal(y) && eqlCases[T](g, 0)(x, y, ord)
+        case g: Generic.Product[T] =>
+          eqlProduct[T](g)(x, y)
+        case g: Generic.Singleton[_] =>
+          true
       }
   }
 
@@ -269,17 +274,18 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def pickleCase[T](gp: GenericProduct[T])(buf: mutable.ListBuffer[Int], x: T): Unit =
-    pickleElems[gp.ElemTypes](0)(buf, gp.toProduct(x))
+  inline def pickleProduct[T](g: Generic.Product[T])(buf: mutable.ListBuffer[Int], x: T): Unit =
+    pickleElems[g.ElemTypes](0)(buf, g.toProduct(x))
 
-  inline def pickleCases[T](gs: GenericSum[T], inline n: Int)(buf: mutable.ListBuffer[Int], x: T, ord: Int): Unit =
-    inline if (n == gs.numberOfCases)
+  inline def pickleCases[T](g: Generic.Sum[T], inline n: Int)(buf: mutable.ListBuffer[Int], x: T, ord: Int): Unit =
+    inline if (n == g.numberOfCases)
       ()
     else if (ord == n)
-      inline gs.alternative(n) match {
-        case gp: GenericProduct[p] => pickleCase(gp)(buf, x.asInstanceOf[p])
+      inline g.alternative(n) match {
+        case g: Generic.Product[p] => pickleProduct(g)(buf, x.asInstanceOf[p])
+        case g: Generic.Singleton[s] =>
       }
-    else pickleCases[T](gs, n + 1)(buf, x, ord)
+    else pickleCases[T](g, n + 1)(buf, x, ord)
 
   inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implicit match {
     case pkl: Pickler[T] => pkl.unpickle(buf)
@@ -293,42 +299,46 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def unpickleCase[T](gp: GenericProduct[T])(buf: mutable.ListBuffer[Int]): T = {
-    inline val size = constValue[Tuple.Size[gp.ElemTypes]]
+  inline def unpickleProduct[T](g: Generic.Product[T])(buf: mutable.ListBuffer[Int]): T = {
+    inline val size = constValue[Tuple.Size[g.ElemTypes]]
     inline if (size == 0)
-      gp.fromProduct(EmptyProduct)
+      g.fromProduct(EmptyProduct)
     else {
       val elems = new Array[Object](size)
-      unpickleElems[gp.ElemTypes](0)(buf, elems)
-      gp.fromProduct(ArrayProduct(elems))
+      unpickleElems[g.ElemTypes](0)(buf, elems)
+      g.fromProduct(ArrayProduct(elems))
     }
   }
 
-  inline def unpickleCases[T](gs: GenericSum[T], n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
-    inline if (n == gs.numberOfCases)
+  inline def unpickleCases[T](g: Generic.Sum[T], n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
+    inline if (n == g.numberOfCases)
       throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ord")
     else if (ord == n)
-      inline gs.alternative(n) match {
-        case gp: GenericProduct[p] => unpickleCase(gp)(buf)
+      inline g.alternative(n) match {
+        case g: Generic.Product[p] => unpickleProduct(g)(buf)
+        case g: Generic.Singleton[s] => g.value
       }
-    else unpickleCases[T](gs, n + 1)(buf, ord)
+    else unpickleCases[T](g, n + 1)(buf, ord)
 
   inline def derived[T](implicit ev: Generic[T]): Pickler[T] = new {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit =
       inline ev match {
-        case gs: GenericSum[T] =>
-          val ord = gs.ordinal(x)
+        case g: Generic.Sum[T] =>
+          val ord = g.ordinal(x)
           buf += ord
-          pickleCases[T](gs, 0)(buf, x, ord)
-        case gp: GenericProduct[p] =>
-          pickleCase(gp)(buf, x)
+          pickleCases[T](g, 0)(buf, x, ord)
+        case g: Generic.Product[p] =>
+          pickleProduct(g)(buf, x)
+        case g: Generic.Singleton[_] =>
       }
     def unpickle(buf: mutable.ListBuffer[Int]): T =
       inline ev match {
-        case gs: GenericSum[T] =>
-          unpickleCases[T](gs, 0)(buf, nextInt(buf))
-        case gp: GenericProduct[T] =>
-          unpickleCase[T](gp)(buf)
+        case g: Generic.Sum[T] =>
+          unpickleCases[T](g, 0)(buf, nextInt(buf))
+        case g: Generic.Product[T] =>
+          unpickleProduct[T](g)(buf)
+        case g: Generic.Singleton[s] =>
+          constValue[s]
       }
   }
 
@@ -363,27 +373,30 @@ object Show {
         Nil
     }
 
-  inline def showCase[T](gp: GenericProduct[T])(x: T): String = {
-    val labl = constValue[gp.CaseLabel]
-    showElems[gp.ElemTypes, gp.ElemLabels](0)(gp.toProduct(x)).mkString(s"$labl(", ", ", ")")
+  inline def showProduct[T](g: Generic.Product[T])(x: T): String = {
+    val labl = constValue[g.CaseLabel]
+    showElems[g.ElemTypes, g.ElemLabels](0)(g.toProduct(x)).mkString(s"$labl(", ", ", ")")
   }
 
-  inline def showCases[T](gs: GenericSum[T], n: Int)(x: T, ord: Int): String =
-    inline if (n == gs.numberOfCases)
+  inline def showCases[T](g: Generic.Sum[T], n: Int)(x: T, ord: Int): String =
+    inline if (n == g.numberOfCases)
       ""
     else if (ord == n)
-      inline gs.alternative(n) match {
-        case gp: GenericProduct[p] => showCase(gp)(x.asInstanceOf[p])
+      inline g.alternative(n) match {
+        case g: Generic.Product[p] => showProduct(g)(x.asInstanceOf[p])
+        case g: Generic.Singleton[s] => constValue[g.CaseLabel]
       }
-    else showCases[T](gs, n + 1)(x, ord)
+    else showCases[T](g, n + 1)(x, ord)
 
   inline def derived[T](implicit ev: Generic[T]): Show[T] = new {
     def show(x: T): String =
       inline ev match {
-        case gs: GenericSum[T] =>
-          showCases(gs, 0)(x, gs.ordinal(x))
-        case gp: GenericProduct[p] =>
-          showCase(gp)(x)
+        case g: Generic.Sum[T] =>
+          showCases(g, 0)(x, g.ordinal(x))
+        case g: Generic.Product[p] =>
+          showProduct(g)(x)
+        case g: Generic.Singleton[s] =>
+          constValue[g.CaseLabel]
       }
   }
 
