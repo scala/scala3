@@ -7,7 +7,7 @@ Creator applications allow to use simple function call syntax to create instance
 of a class, even if there is no apply method implemented. Example:
 ```scala
 class StringBuilder(s: String) {
-   def this() = this(s)
+   def this() = this("")
 }
 
 StringBuilder("abc")  // same as new StringBuilder("abc")
