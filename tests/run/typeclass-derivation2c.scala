@@ -57,7 +57,7 @@ object Deriving {
       def fromProduct(p: scala.Product): T
     }
 
-    class Singleton[T] extends Generic[T] {
+    trait Singleton[T] extends Generic[T] {
       inline def singletonValue = implicit match {
         case ev: ValueOf[T] => ev.value
       }
@@ -105,11 +105,9 @@ object Lst {
     implicit def GenericCons[T]: GenericCons[T] = new GenericCons[T]
   }
 
-  case object Nil extends Lst[Nothing] {
-    class GenericNil extends Generic.Singleton[Nil.type] {
-      type CaseLabel = "Nil"
-    }
-    implicit def GenericNil: GenericNil = new GenericNil
+  case object Nil extends Lst[Nothing] with Generic.Singleton[Nil.type] {
+    type CaseLabel = "Nil"
+    implicit def GenericNil: Nil.type = this
   }
 
   // three clauses that would be generated from a `derives` clause
