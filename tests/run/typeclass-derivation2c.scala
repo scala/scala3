@@ -57,7 +57,10 @@ object Deriving {
       def fromProduct(p: scala.Product): T
     }
 
-    class Singleton[T](val value: T) extends Generic[T] {
+    class Singleton[T] extends Generic[T] {
+      inline def singletonValue = implicit match {
+        case ev: ValueOf[T] => ev.value
+      }
       type CaseLabel <: String
     }
   }
@@ -103,7 +106,7 @@ object Lst {
   }
 
   case object Nil extends Lst[Nothing] {
-    class GenericNil extends Generic.Singleton[Nil.type](Nil) {
+    class GenericNil extends Generic.Singleton[Nil.type] {
       type CaseLabel = "Nil"
     }
     implicit def GenericNil: GenericNil = new GenericNil
@@ -310,7 +313,7 @@ object Pickler {
     else if (ord == n)
       inline g.alternative(n) match {
         case g: Generic.Product[p] => unpickleProduct(g)(buf)
-        case g: Generic.Singleton[s] => g.value
+        case g: Generic.Singleton[s] => g.singletonValue
       }
     else unpickleCases[T](g, n + 1)(buf, ord)
 
