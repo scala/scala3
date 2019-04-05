@@ -47,19 +47,18 @@ object Matcher {
         if (scrutinees.size != patterns.size) None
         else foldMatchings(scrutinees.zip(patterns).map(treeMatches): _*)
 
-      (scrutinee, pattern) match {
-        // Normalize blocks without statements
-        case (Block(Nil, expr), _) => treeMatches(expr, pattern)
-        case (_, Block(Nil, pat)) => treeMatches(scrutinee, pat)
+      def normalize(tree: Tree): Tree = tree match {
+        case Block(Nil, expr) => normalize(expr)
+        case Inlined(_, Nil, expr) => normalize(expr)
+        case _ => tree
+      }
+
+      (normalize(scrutinee), normalize(pattern)) match {
 
         // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
         case (IsTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
             if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole && scrutinee.tpe <:< tpt.tpe =>
           Some(Tuple1(scrutinee.seal))
-
-        // Normalize inline trees
-        case (Inlined(_, Nil, scr), _) => treeMatches(scr, pattern)
-        case (_, Inlined(_, Nil, pat)) => treeMatches(scrutinee, pat)
 
         //
         // Match two equivalent trees
