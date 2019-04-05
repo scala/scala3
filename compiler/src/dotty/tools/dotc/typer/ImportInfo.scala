@@ -13,11 +13,11 @@ import printing.Texts.Text
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef)(implicit ctx: Context): ImportInfo = {
+  def rootImport(refFn: () => TermRef, importImplied: Boolean = false)(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(importImplied = false, expr, selectors)
-    new ImportInfo(implicit ctx => imp.symbol, selectors, None, importImplied = false, isRootImport = true)
+    def imp(implicit ctx: Context) = tpd.Import(importImplied = importImplied, expr, selectors)
+    new ImportInfo(implicit ctx => imp.symbol, selectors, None, importImplied = importImplied, isRootImport = true)
   }
 }
 

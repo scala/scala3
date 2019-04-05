@@ -127,4 +127,42 @@ class ReplCompilerTests extends ReplTest {
     run(source)
     assertEquals(expected, lines())
   }
+
+  @Test def i5897 =
+    fromInitialState { implicit state => run("implied for Int = 10") }
+    .andThen         { implicit state =>
+      assertEquals(
+        "def Int_instance: Int",
+        storedOutput().trim
+      )
+      run("implicitly[Int]")
+      assertEquals(
+        "val res0: Int = 10",
+        storedOutput().trim
+      )
+    }
+
+  @Test def i6200 =
+    fromInitialState { implicit state =>
+      run("""
+        |trait Ord[T] {
+        |  def compare(x: T, y: T): Int
+        |  def (x: T) < (y: T) = compare(x, y) < 0
+        |  def (x: T) > (y: T) = compare(x, y) > 0
+        |}
+        |
+        |implied IntOrd for Ord[Int] {
+        |  def compare(x: Int, y: Int) =
+        |  if (x < y) -1 else if (x > y) +1 else 0
+        |}
+      """.stripMargin) }
+    .andThen         { implicit state =>
+      assertEquals(
+        """// defined trait Ord
+          |// defined object IntOrd""".stripMargin,
+        storedOutput().trim
+      )
+      run("IntOrd")
+      assertTrue(storedOutput().startsWith("val res0: IntOrd.type ="))
+    }
 }
