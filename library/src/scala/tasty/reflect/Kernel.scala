@@ -295,6 +295,8 @@ trait Kernel {
   /** Tree representing a reference to definition */
   type Ref <: Term
 
+  def matchRef(tree: Tree)(implicit ctx: Context): Option[Ref]
+
   def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref
 
   /** Tree representing a reference to definition with a given name */

@@ -239,6 +239,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Ref = tpd.RefTree
 
+  def matchRef(tree: Tree)(implicit ctx: Context): Option[Ref] = tree match {
+    case x: tpd.RefTree if x.isTerm => Some(x)
+    case _ => None
+  }
+
   def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref =
     withDefaultPos(ctx => tpd.ref(sym)(ctx).asInstanceOf[tpd.RefTree])
 

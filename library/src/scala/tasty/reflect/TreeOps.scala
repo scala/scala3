@@ -187,6 +187,11 @@ trait TreeOps extends Core {
       kernel.matchTerm(tree)
   }
 
+  object IsRef {
+    /** Matches any Ref and returns it */
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Ref] = kernel.matchRef(tree)
+  }
+
   object Ref {
 
     /** Create a reference tree */

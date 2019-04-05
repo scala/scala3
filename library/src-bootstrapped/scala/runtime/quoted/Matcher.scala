@@ -76,19 +76,16 @@ object Matcher {
         case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
           Some(())
 
-        case (Ident(_), Ident(_)) if scrutinee.symbol == pattern.symbol || env((scrutinee.symbol, pattern.symbol)) =>
-          Some(())
-
         case (Typed(expr1, tpt1), Typed(expr2, tpt2)) =>
           foldMatchings(treeMatches(expr1, expr2), treeMatches(tpt1, tpt2))
+
+        case (Ident(_), Ident(_)) if scrutinee.symbol == pattern.symbol || env((scrutinee.symbol, pattern.symbol)) =>
+          Some(())
 
         case (Select(qual1, _), Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
           treeMatches(qual1, qual2)
 
-        case (Ident(_), Select(_, _)) if scrutinee.symbol == pattern.symbol =>
-          Some(())
-
-        case (Select(_, _), Ident(_)) if scrutinee.symbol == pattern.symbol =>
+        case (IsRef(_), IsRef(_, _)) if scrutinee.symbol == pattern.symbol =>
           Some(())
 
         case (Apply(fn1, args1), Apply(fn2, args2)) if fn1.symbol == fn2.symbol =>
