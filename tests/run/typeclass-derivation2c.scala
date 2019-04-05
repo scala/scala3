@@ -65,6 +65,7 @@ object Deriving {
     }
   }
 }
+import Deriving._
 
 // -- Example Datatypes ---------------------------------------------------------
 
@@ -73,7 +74,6 @@ object Deriving {
 sealed trait Lst[+T] // derives Eq, Pickler, Show
 
 object Lst {
-  import Deriving._
 
   class GenericLst[T] extends Generic.Sum[Lst[T]] {
     def ordinal(x: Lst[T]) = x match {
@@ -92,17 +92,17 @@ object Lst {
 
   case class Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
 
-  object Cons {
+  object Cons extends Generic.Product[Cons[_]] {
     def apply[T](x: T, xs: Lst[T]): Lst[T] = new Cons(x, xs)
 
-    class GenericCons[T] extends Generic.Product[Cons[T]] {
+    def fromProduct(p: Product): Cons[_] =
+      new Cons(productElement[Any](p, 0), productElement[Lst[Any]](p, 1))
+
+    implicit def GenericCons[T]: Generic.Product[Cons[T]] {
       type ElemTypes = (T, Lst[T])
       type CaseLabel = "Cons"
       type ElemLabels = ("hd", "tl")
-      def fromProduct(p: Product): Cons[T] =
-        new Cons(productElement[T](p, 0), productElement[Lst[T]](p, 1))
-    }
-    implicit def GenericCons[T]: GenericCons[T] = new GenericCons[T]
+    } = this.asInstanceOf
   }
 
   case object Nil extends Lst[Nothing] with Generic.Singleton[Nil.type] {
@@ -119,18 +119,16 @@ object Lst {
 // A simple product type
 case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
-object Pair {
-  // common compiler-generated infrastructure
-  import Deriving._
+object Pair extends Generic.Product[Pair[_]] {
 
-  class GenericPair[T] extends Generic.Product[Pair[T]] {
+  def fromProduct(p: Product): Pair[_] =
+    Pair(productElement[Any](p, 0), productElement[Any](p, 1))
+
+  implicit def GenericPair[T]: Generic.Product[Pair[T]] {
     type ElemTypes = (T, T)
     type CaseLabel = "Pair"
     type ElemLabels = ("x", "y")
-    def fromProduct(p: Product): Pair[T] =
-      Pair(productElement[T](p, 0), productElement[T](p, 1))
-  }
-  implicit def GenericPair[T]: GenericPair[T] = new GenericPair[T]
+  } = this.asInstanceOf
 
   // clauses that could be generated from a `derives` clause
   implicit def derived$Eq[T: Eq]: Eq[Pair[T]] = Eq.derived
@@ -142,12 +140,10 @@ object Pair {
 sealed trait Either[+L, +R] extends Product with Serializable // derives Eq, Pickler, Show
 
 object Either {
-  import Deriving._
-
   class GenericEither[L, R] extends Generic.Sum[Either[L, R]] {
     def ordinal(x: Either[L, R]) = x match {
-      case x: Left[L] => 0
-      case x: Right[R] => 1
+      case x: Left[_] => 0
+      case x: Right[_] => 1
     }
     inline override def numberOfCases = 2
     inline override def alternative(n: Int) <: Generic[_ <: Either[L, R]] =
@@ -166,26 +162,22 @@ object Either {
 case class Left[L](elem: L) extends Either[L, Nothing]
 case class Right[R](elem: R) extends Either[Nothing, R]
 
-object Left {
-  import Deriving._
-  class GenericLeft[L] extends Generic.Product[Left[L]] {
+object Left extends Generic.Product[Left[_]] {
+  def fromProduct(p: Product): Left[_] = Left(productElement[Any](p, 0))
+  implicit def GenericLeft[L]: Generic.Product[Left[L]] {
     type ElemTypes = L *: Unit
     type CaseLabel = "Left"
     type ElemLabels = "x" *: Unit
-    def fromProduct(p: Product): Left[L] = Left(productElement[L](p, 0))
-  }
-  implicit def GenericLeft[L]: GenericLeft[L] = new GenericLeft[L]
+  } = this.asInstanceOf
 }
 
-object Right {
-  import Deriving._
-  class GenericRight[R] extends Generic.Product[Right[R]] {
+object Right extends Generic.Product[Right[_]] {
+  def fromProduct(p: Product): Right[_] = Right(productElement[Any](p, 0))
+  implicit def GenericRight[R]: Generic.Product[Right[R]] {
     type ElemTypes = R *: Unit
     type CaseLabel = "Right"
     type ElemLabels = "x" *: Unit
-    def fromProduct(p: Product): Right[R] = Right(productElement[R](p, 0))
-  }
-  implicit def GenericRight[R]: GenericRight[R] = new GenericRight[R]
+  } = this.asInstanceOf
 }
 
 // -- Type classes ------------------------------------------------------------
@@ -199,7 +191,6 @@ trait Eq[T] {
 
 object Eq {
   import scala.compiletime.erasedValue
-  import Deriving._
 
   inline def tryEql[T](x: T, y: T) = implicit match {
     case eq: Eq[T] => eq.eql(x, y)
@@ -253,7 +244,6 @@ trait Pickler[T] {
 
 object Pickler {
   import scala.compiletime.{erasedValue, constValue}
-  import Deriving._
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -349,7 +339,6 @@ trait Show[T] {
 }
 object Show {
   import scala.compiletime.{erasedValue, constValue}
-  import Deriving._
 
   inline def tryShow[T](x: T): String = implicit match {
     case s: Show[T] => s.show(x)
@@ -403,7 +392,6 @@ object Show {
 // -- Tests ----------------------------------------------------------------------
 
 object Test extends App {
-  import Deriving._
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
   val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))
