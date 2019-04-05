@@ -33,6 +33,14 @@ object Matcher {
     import reflection._
     // TODO improve performance
 
+    /** Check that the trees match and return the contents from the pattern holes.
+     *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
+     *
+     * @param scrutinee The tree beeing matched
+     * @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
+     * @param env Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
+     * @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
+     */
     def treeMatches(scrutinee: Tree, pattern: Tree)(implicit env: Set[(Symbol, Symbol)]): Option[Tuple] = {
 
       /** Check that both are `val` or both are `lazy val` or both are `var` **/
@@ -47,6 +55,7 @@ object Matcher {
         if (scrutinees.size != patterns.size) None
         else foldMatchings(scrutinees.zip(patterns).map(treeMatches): _*)
 
+      /** Normalieze the tree */
       def normalize(tree: Tree): Tree = tree match {
         case Block(Nil, expr) => normalize(expr)
         case Inlined(_, Nil, expr) => normalize(expr)
@@ -204,6 +213,16 @@ object Matcher {
       foldMatchings(patternMatch, guardMatch, rhsMatch)
     }
 
+    /** Check that the pattern trees match and return the contents from the pattern holes.
+     *  Return a tuple with the new environment containing the bindings defined in this pattern and a matching.
+     *  The matching is None if the pattern trees do not match otherwise return Some of a tuple containing all the contents in the holes.
+     *
+     * @param scrutinee The pattern tree beeing matched
+     * @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
+     * @param env Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
+     * @return The new environment containing the bindings defined in this pattern tuppled with
+     *         `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
+     */
     def patternMatches(scrutinee: Pattern, pattern: Pattern)(implicit env: Set[(Symbol, Symbol)]): (Set[(Symbol, Symbol)], Option[Tuple]) = (scrutinee, pattern) match {
       case (Pattern.Value(v1), Pattern.Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
           if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
