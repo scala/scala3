@@ -5,25 +5,8 @@ import scala.annotation.tailrec
 
 // -- Classes and Objects of the Derivation Framework ----------------------------------
 
-/** Simulates the scala.reflect package */
+/** Core classes. In the current implementation these are in the scala.reflect package */
 object Deriving {
-
-  object EmptyProduct extends Product {
-    def canEqual(that: Any): Boolean = true
-    def productElement(n: Int) = throw new IndexOutOfBoundsException
-    def productArity = 0
-  }
-
-  /** Helper class to turn arrays into products */
-  class ArrayProduct(val elems: Array[AnyRef]) extends Product {
-    def canEqual(that: Any): Boolean = true
-    def productElement(n: Int) = elems(n)
-    def productArity = elems.length
-    override def productIterator: Iterator[Any] = elems.iterator
-    def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
-  }
-
-  def productElement[T](x: Any, idx: Int) = x.asInstanceOf[Product].productElement(idx).asInstanceOf[T]
 
   /** The Generic class hierarchy allows typelevel access to
    *  enums, case classes and objects, and their sealed parents.
@@ -48,22 +31,47 @@ object Deriving {
       erased def alternative(n: Int): Generic[_ <: T] = ???
     }
 
-    /** A Generic for a product type */
+    /** The Generic for a product type */
     abstract class Product[T] extends Generic[T] {
+
+      /** The types of the elements */
       type ElemTypes <: Tuple
+
+      /** The name of the whole product type */
       type CaseLabel <: String
+
+      /** The names of the product elements */
       type ElemLabels <: Tuple
 
+      /** Create a new instance of type `T` with elements taken from product `p`. */
       def fromProduct(p: scala.Product): T
     }
 
+    /** The Generic for a singleton */
     trait Singleton[T] extends Generic[T] {
+
+      /** The name of the singleton */
+      type CaseLabel <: String
+
+      /** The represented value */
       inline def singletonValue = implicit match {
         case ev: ValueOf[T] => ev.value
       }
-      type CaseLabel <: String
     }
   }
+
+  /** Helper class to turn arrays into products */
+  class ArrayProduct(val elems: Array[AnyRef]) extends Product {
+    def canEqual(that: Any): Boolean = true
+    def productElement(n: Int) = elems(n)
+    def productArity = elems.length
+    override def productIterator: Iterator[Any] = elems.iterator
+    def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
+  }
+
+  /** Helper method to select a product element */
+  def productElement[T](x: Any, idx: Int) =
+    x.asInstanceOf[Product].productElement(idx).asInstanceOf[T]
 }
 import Deriving._
 
@@ -183,6 +191,18 @@ object Right extends Generic.Product[Right[_]] {
 // -- Type classes ------------------------------------------------------------
 
 // Everything here is hand-written by the authors of the derivable typeclasses
+// The same schema is used throughout.
+//
+//  - A typeclass implements an inline `derived` method, given a `Generic` instance.
+//  - Each implemented typeclass operation `xyz` calls 4 inline helper methods:
+//      1. `xyzCases` for sums,
+//      2. `xyzProduct` for products,
+//      3. `xyzElems` stepping through the elements of a product,
+//      4. `tryXyz` for searching the implicit to handles a single element.
+//  - The first three methods have two parameter lists. The first parameter
+//    list contains inline parameters that guide the code generation, whereas
+//    the second parameter list contains parameters that show up in the
+//    generated code. (This is done just to make things clearer).
 
 // Equality typeclass
 trait Eq[T] {
@@ -286,13 +306,9 @@ object Pickler {
 
   inline def unpickleProduct[T](g: Generic.Product[T])(buf: mutable.ListBuffer[Int]): T = {
     inline val size = constValue[Tuple.Size[g.ElemTypes]]
-    inline if (size == 0)
-      g.fromProduct(EmptyProduct)
-    else {
-      val elems = new Array[Object](size)
-      unpickleElems[g.ElemTypes](0)(buf, elems)
-      g.fromProduct(ArrayProduct(elems))
-    }
+    val elems = new Array[Object](size)
+    unpickleElems[g.ElemTypes](0)(buf, elems)
+    g.fromProduct(ArrayProduct(elems))
   }
 
   inline def unpickleCases[T](g: Generic.Sum[T], n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
