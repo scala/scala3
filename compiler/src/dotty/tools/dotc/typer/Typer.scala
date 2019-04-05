@@ -1944,7 +1944,7 @@ class Typer extends Namer
           val patType = defn.tupleType(splices.tpes.map(_.widen))
           val splicePat = typed(untpd.Tuple(splices.map(untpd.TypedSplice(_))).withSpan(quoted.span), patType)
           UnApply(
-            fun = ref(defn.QuotedMatcher_unapplyR).appliedToType(patType),
+            fun = ref(defn.InternalQuotedMatcher_unapplyR).appliedToType(patType),
             implicits =
               ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
               implicitArgTree(defn.TastyReflectionType, tree.span) :: Nil,

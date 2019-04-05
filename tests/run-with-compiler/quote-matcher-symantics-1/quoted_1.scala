@@ -4,9 +4,6 @@ import scala.quoted.matching._
 
 import scala.tasty.Reflection
 
-import scala.runtime.quoted.Matcher._
-
-import scala.internal.Quoted.patternHole
 
 object Macros {
 

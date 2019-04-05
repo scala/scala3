@@ -1,7 +1,7 @@
-package scala.runtime.quoted
+package scala.internal.quoted
 
-import scala.quoted._
-import scala.tasty._
+import scala.quoted.Expr
+import scala.tasty.Reflection
 
 object Matcher {
 

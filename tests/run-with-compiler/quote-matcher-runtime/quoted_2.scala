@@ -1,7 +1,7 @@
 
 import Macros._
 
-import scala.runtime.quoted.Matcher._
+import scala.internal.quoted.Matcher._
 
 import scala.internal.Quoted.patternHole
 

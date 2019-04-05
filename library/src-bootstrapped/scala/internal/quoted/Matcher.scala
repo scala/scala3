@@ -1,4 +1,4 @@
-package scala.runtime.quoted
+package scala.internal.quoted
 
 import scala.annotation.internal.sharable
 
