@@ -773,7 +773,7 @@ trait Implicits { self: Typer =>
               success(Literal(c))
             case TypeRef(_, sym) if sym == defn.UnitClass =>
               success(Literal(Constant(())))
-            case n: NamedType =>
+            case n: TermRef =>
               success(ref(n))
             case tp =>
               EmptyTree
