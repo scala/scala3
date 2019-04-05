@@ -1320,10 +1320,13 @@ class Namer { typer: Typer =>
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
-      def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
-        case ctp: ConstantType if isInlineVal => ctp
-        case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-        case _ => tp.widen.widenUnion
+      def widenRhs(tp: Type): Type = {
+        val tp1 = tp.widenTermRefExpr match {
+          case ctp: ConstantType if isInlineVal => ctp
+          case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
+          case _ => tp.widen.widenUnion
+        }
+        tp1.dropRepeatedAnnot
       }
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in

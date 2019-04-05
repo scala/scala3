@@ -1485,6 +1485,13 @@ object Types {
      */
     def signature(implicit ctx: Context): Signature = Signature.NotAMethod
 
+    def dropRepeatedAnnot(implicit ctx: Context): Type = this match {
+      case AnnotatedType(parent, annot) if annot.symbol eq defn.RepeatedAnnot => parent
+      case tp @ AnnotatedType(parent, annot) =>
+        tp.derivedAnnotatedType(parent.dropRepeatedAnnot, annot)
+      case tp => tp
+    }
+
     def annotatedToRepeated(implicit ctx: Context): Type = this match {
       case tp @ ExprType(tp1) => tp.derivedExprType(tp1.annotatedToRepeated)
       case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>

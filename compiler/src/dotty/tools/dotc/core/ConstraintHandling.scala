@@ -302,7 +302,7 @@ trait ConstraintHandling[AbstractContext] {
       if (isMultiSingleton(tp) && !isMultiSingleton(bound) &&
           !isSubTypeWhenFrozen(bound, defn.SingletonType)) tp.widen
       else tp
-    widenOr(widenSingle(tp))
+    widenOr(widenSingle(tp)).dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
