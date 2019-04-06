@@ -600,8 +600,12 @@ object ProtoTypes {
       tp.derivedAlias(wildApprox(tp.alias, theMap, seen))
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
-        if (seen.contains(tp)) WildcardType
-        else WildcardType(wildApprox(bounds, theMap, seen + tp).bounds)
+        if (seen.contains(tp))
+          WildcardType
+        else if (bounds.hi.isLambdaSub)
+          bounds.derivedTypeBounds(wildApprox(bounds.lo, theMap, seen), wildApprox(bounds.hi, theMap, seen))
+        else
+          WildcardType(wildApprox(bounds, theMap, seen + tp).bounds)
       def unconstrainedApprox = wildApproxBounds(poly.paramInfos(pnum))
       def approxPoly =
         if (ctx.mode.is(Mode.TypevarsMissContext)) unconstrainedApprox
