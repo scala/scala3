@@ -35,14 +35,17 @@ Since these are additions, there's generally no migration cost for old code. An 
 
 These features replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
- - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) replace [early initializers](https://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) with a more generally useful construct,
+ - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) replace [early initializers](https://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) with a more generally useful construct.
  - [Implied Instances](https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html)
-   replace implicit objects and defs, focussing on intent over mechanism,
- - [Inferable parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities,
- - [Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) replace implicit classes with a clearer and simpler mechanism,
+   replace implicit objects and defs, focussing on intent over mechanism.
+ - [Inferable parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities.
+ - [Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) replace most uses
-   of value classes while guaranteeing absence of boxing,
- - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate,
+   of value classes while guaranteeing absence of boxing.
+ - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate.
+ - [Export clauses](https://dotty.epfl.ch/docs/reference/new-features/export.html)
+ provide a simple and general way to express aggregation, which can replace the
+ previous facade pattern of package objects inheriting from classes.
  - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
  - [Creator applications](https://dotty.epfl.ch/docs/reference/other-new-features/creator-applications.html) allow to use simple function call syntax
  instead of `new` expressions. `new` expressions stay around as a fallback for
