@@ -295,6 +295,8 @@ trait Kernel {
   /** Tree representing a reference to definition */
   type Ref <: Term
 
+  def matchRef(tree: Tree)(implicit ctx: Context): Option[Ref]
+
   def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref
 
   /** Tree representing a reference to definition with a given name */
@@ -1443,6 +1445,9 @@ trait Kernel {
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
   def Definitions_TupleClass(arity: Int): Symbol
+
+  /** Symbol of scala.runtime.Quoted.patternHole */
+  def Definitions_InternalQuoted_patternHole: Symbol
 
   def Definitions_UnitType: Type
   def Definitions_ByteType: Type

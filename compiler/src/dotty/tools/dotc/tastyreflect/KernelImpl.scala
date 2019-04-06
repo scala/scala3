@@ -239,6 +239,11 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type Ref = tpd.RefTree
 
+  def matchRef(tree: Tree)(implicit ctx: Context): Option[Ref] = tree match {
+    case x: tpd.RefTree if x.isTerm => Some(x)
+    case _ => None
+  }
+
   def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref =
     withDefaultPos(ctx => tpd.ref(sym)(ctx).asInstanceOf[tpd.RefTree])
 
@@ -1730,6 +1735,8 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   // DEFINITIONS
   //
 
+  // Symbols
+
   def Definitions_RootPackage: Symbol = defn.RootPackage
   def Definitions_RootClass: Symbol = defn.RootClass
 
@@ -1777,6 +1784,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol =
     defn.FunctionClass(arity, isImplicit, isErased).asClass
   def Definitions_TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
+
+  def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
+
+  // Types
 
   def Definitions_UnitType: Type = defn.UnitType
   def Definitions_ByteType: Type = defn.ByteType

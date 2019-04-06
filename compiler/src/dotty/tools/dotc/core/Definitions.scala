@@ -723,6 +723,12 @@ class Definitions {
     lazy val InternalQuoted_patternHoleR: TermRef = InternalQuotedModule.requiredMethodRef("patternHole")
     def InternalQuoted_patternHole(implicit ctx: Context): Symbol = InternalQuoted_patternHoleR.symbol
 
+  lazy val InternalQuotedMatcherModuleRef: TermRef = ctx.requiredModuleRef("scala.internal.quoted.Matcher")
+    def InternalQuotedMatcherModule(implicit ctx: Context): Symbol = InternalQuotedMatcherModuleRef.symbol
+
+    lazy val InternalQuotedMatcher_unapplyR: TermRef = InternalQuotedMatcherModule.requiredMethodRef(nme.unapply)
+    def InternalQuotedMatcher_unapply(implicit ctx: Context) = InternalQuotedMatcher_unapplyR.symbol
+
   lazy val QuotedExprsModule: TermSymbol = ctx.requiredModule("scala.quoted.Exprs")
   def QuotedExprsClass(implicit ctx: Context): ClassSymbol = QuotedExprsModule.asClass
 
@@ -744,12 +750,6 @@ class Definitions {
 
   lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
     lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
-
-  lazy val QuotedMatcherModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.quoted.Matcher")
-  def QuotedMatcherModule(implicit ctx: Context): Symbol = QuotedMatcherModuleRef.symbol
-
-    lazy val QuotedMatcher_unapplyR: TermRef = QuotedMatcherModule.requiredMethodRef(nme.unapply)
-    def QuotedMatcher_unapply(implicit ctx: Context) = QuotedMatcher_unapplyR.symbol
 
   lazy val EqlType: TypeRef = ctx.requiredClassRef("scala.Eql")
   def EqlClass(implicit ctx: Context): ClassSymbol = EqlType.symbol.asClass
