@@ -44,7 +44,7 @@ object Decorators {
     }
   }
 
-  final val MaxFilterRecursions = 1000
+  final val MaxFilterRecursions = 100
 
   /** Implements filterConserve, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.
