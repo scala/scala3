@@ -129,6 +129,8 @@ object TypeApplications {
     def apply(t: Type): Type = t match {
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
+      case t @ RefinedType(parent, name, TypeAlias(info)) =>
+        t.derivedRefinedType(apply(parent), name, applyArg(info).bounds)
       case p: TypeParamRef if p.binder == tycon =>
         args(p.paramNum) match {
           case TypeBounds(lo, hi) =>
