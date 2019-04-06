@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Export"
+title: "Export Clauses"
 ---
 
 An export clause defines aliases for selected members of an object. Example:
