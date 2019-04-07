@@ -12,8 +12,8 @@ object Macros {
 
     val tree = x.unseal
     '{
-      println(${tree.show})
-      println(${tree.tpe.show})
+      println(${tree.showExtractors})
+      println(${tree.tpe.showExtractors})
       println()
     }
   }

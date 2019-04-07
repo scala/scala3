@@ -28,12 +28,12 @@ object Macros {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.symbol.owner.treeOpt.get.show)
+            buff.append(tree.symbol.owner.treeOpt.get.showExtractors)
             buff.append("\n\n")
           case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.symbol.owner.treeOpt.get.show)
+            buff.append(tree.symbol.owner.treeOpt.get.showExtractors)
             buff.append("\n\n")
           case _ =>
         }

@@ -13,8 +13,8 @@ object Macros {
 
     val tree = x.unseal
 
-    val treeStr = tree.show
-    val treeTpeStr = tree.tpe.show
+    val treeStr = tree.showExtractors
+    val treeTpeStr = tree.tpe.showExtractors
 
     '{
       println(${treeStr})
