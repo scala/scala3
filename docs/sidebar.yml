@@ -81,8 +81,8 @@ sidebar:
               url: docs/reference/other-new-features/tasty-reflect.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
-            - title: Auto Parameter Tupling
-              url: docs/reference/other-new-features/auto-parameter-tupling.html
+            - title: Parameter Untupling
+              url: docs/reference/other-new-features/parameter-untupling.html
             - title: Erased Terms
               url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism

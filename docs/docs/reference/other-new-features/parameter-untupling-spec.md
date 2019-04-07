@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Automatic Tupling of Function Parameters - More Details"
+title: "Parameter Untupling - More Details"
 ---
 
 ### Motivation
@@ -11,7 +11,7 @@ Say you have a list of pairs
 val xs: List[(Int, Int)]
 ```
 
-and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to their sum. 
+and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to their sum.
 Previously, the best way to do this was with a pattern-matching decomposition:
 ```scala
 xs.map {
@@ -50,7 +50,7 @@ can in turn be adapted to the expected type with auto-tupling.
 
 #### Term addaptation
 
-If the a function 
+If the a function
 ```scala
 (p1: T1, ..., pn: Tn) => e
 ```
@@ -76,7 +76,7 @@ Translation of such a tuples would use the `apply` method on the tuple to access
 Code like this could not be written before, hence the new notation would not be ambigouous after adoption.
 
 Though it is possible that someone has written an implicit conversion form `(T1, ..., Tn) => R` to `TupleN[T1, ..., Tn] => R`
-for some `n`. This change could be detected and fixed by `Scalafix`. Furthermore, such conversion would probably 
+for some `n`. This change could be detected and fixed by `Scalafix`. Furthermore, such conversion would probably
 be doing the same translation (semantically) but in a less efficient way.
 
 ### Reference
