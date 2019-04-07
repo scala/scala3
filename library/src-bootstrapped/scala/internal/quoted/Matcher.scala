@@ -180,12 +180,12 @@ object Matcher {
                  |Scrutinee
                  |  ${scrutinee.showCode}
                  |
-                 |${scrutinee.show}
+                 |${scrutinee.showExtractors}
                  |
                  |did not match pattern
                  |  ${pattern.showCode}
                  |
-                 |${pattern.show}
+                 |${pattern.showExtractors}
                  |
                  |
                  |
@@ -253,12 +253,12 @@ object Matcher {
                |Scrutinee
                |  ${scrutinee.showCode}
                |
-               |${scrutinee.show}
+               |${scrutinee.showExtractors}
                |
                |did not match pattern
                |  ${pattern.showCode}
                |
-               |${pattern.show}
+               |${pattern.showExtractors}
                |
                |
                |
