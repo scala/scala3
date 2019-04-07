@@ -2250,20 +2250,6 @@ class Typer extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
-  def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
-    val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = op(nestedCtx)
-    if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
-      record("tryEither.fallBack")
-      fallBack(result, nestedCtx.typerState)
-    }
-    else {
-      record("tryEither.commit")
-      nestedCtx.typerState.commit()
-      result
-    }
-  }
-
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */

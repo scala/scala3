@@ -13,6 +13,8 @@ import ast.Trees._
 import NameOps._
 import collection.mutable
 import reporting.diagnostic.messages._
+import util.Stats.record
+import Inferencing._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
 trait TypeAssigner {
@@ -163,6 +165,20 @@ trait TypeAssigner {
 
    def arrayToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.ArrayClass)
 
+  def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
+    val nestedCtx = ctx.fresh.setNewTyperState()
+    val result = op(nestedCtx)
+    if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
+      record("tryEither.fallBack")
+      fallBack(result, nestedCtx.typerState)
+    }
+    else {
+      record("tryEither.commit")
+      nestedCtx.typerState.commit()
+      result
+    }
+  }
+
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
     denot match {
@@ -228,6 +244,7 @@ trait TypeAssigner {
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
+
     var qualType = qual1.tpe.widenIfUnstable
     if (!qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR)
       // constructors are selected on typeconstructor, type arguments are passed afterwards
@@ -236,29 +253,39 @@ trait TypeAssigner {
       qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.sourcePos)
     val name = tree.name
     val mbr = qualType.member(name)
+
+    def fail = if (name == nme.CONSTRUCTOR)
+        errorType(ex"$qualType does not have a constructor", tree.sourcePos)
+      else {
+        val kind = if (name.isTypeName) "type" else "value"
+        val addendum =
+          if (qualType.derivesFrom(defn.DynamicClass))
+            "\npossible cause: maybe a wrong Dynamic method signature?"
+          else qual1.getAttachment(Typer.HiddenSearchFailure) match {
+            case Some(failure) if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits] =>
+              i""".
+                |An extension method was tried, but could not be fully constructed:
+                |
+                |    ${failure.tree.show.replace("\n", "\n    ")}"""
+            case _ => ""
+          }
+        errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
+      }
+
     if (reallyExists(mbr))
       qualType.select(name, mbr)
     else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !Dynamic.isDynamicMethod(name))
       TryDynamicCallType
     else if (qualType.isErroneous || name.toTermName == nme.ERROR)
       UnspecifiedErrorType
-    else if (name == nme.CONSTRUCTOR)
-      errorType(ex"$qualType does not have a constructor", tree.sourcePos)
-    else {
-      val kind = if (name.isTypeName) "type" else "value"
-      val addendum =
-        if (qualType.derivesFrom(defn.DynamicClass))
-          "\npossible cause: maybe a wrong Dynamic method signature?"
-        else qual1.getAttachment(Typer.HiddenSearchFailure) match {
-          case Some(failure) if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits] =>
-            i""".
-              |An extension method was tried, but could not be fully constructed:
-              |
-              |    ${failure.tree.show.replace("\n", "\n    ")}"""
-          case _ => ""
-        }
-      errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
-    }
+    else if (!isFullyDefined(qualType, force = ForceDegree.none))
+      tryEither { implicit ctx =>
+        fullyDefinedType(qualType, "selection prefix", qual1.span)
+        selectionType(tree, qual1)
+      } { (_, _) =>
+        fail
+      }
+    else fail
   }
 
   /** The type of the selection in `tree`, where `qual1` is the typed qualifier part.
