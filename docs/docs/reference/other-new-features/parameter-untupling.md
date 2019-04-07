@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Automatic Tupling of Function Parameters"
+title: "Parameter Untupling"
 ---
 
 Say you have a list of pairs
@@ -31,5 +31,5 @@ function type of the form `((T_1, ..., T_n)) => U`.
 ### Reference
 
 For more info see:
-* [More details](./auto-parameter-tupling-spec.html)
+* [More details](./parameter-untupling-spec.html)
 * [Issue #897](https://github.com/lampepfl/dotty/issues/897).
