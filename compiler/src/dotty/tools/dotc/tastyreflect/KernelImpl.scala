@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package tastyreflect
 
+import dotty.tools.dotc.ast.Trees.SeqLiteral
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.typer.Typer
@@ -1055,6 +1056,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Type_memberType(self: Type)(member: Symbol)(implicit ctx: Context): Type =
     member.info.asSeenFrom(self, member.owner)
 
+  def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean =
+    self.derivesFrom(cls)
+
   type ConstantType = Types.ConstantType
 
   def matchConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] = tpe match {
@@ -1774,7 +1778,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_Array_length: Symbol = defn.Array_length.asTerm
   def Definitions_Array_update: Symbol = defn.Array_update.asTerm
 
-  def Definitions_RepeatedParamClass: Symbol = defn.RepeatedParamClass
+  def Definitions_RepeatedParamClass: ClassDefSymbol = defn.RepeatedParamClass
 
   def Definitions_OptionClass: Symbol = defn.OptionClass
   def Definitions_NoneModule: Symbol = defn.NoneClass.companionModule.asTerm

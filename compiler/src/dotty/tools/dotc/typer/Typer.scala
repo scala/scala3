@@ -580,7 +580,10 @@ class Typer extends Namer
 
     if (untpd.isWildcardStarArg(tree)) {
       def typedWildcardStarArgExpr = {
-        val tpdExpr = typedExpr(tree.expr)
+        val ptArg =
+          if (ctx.mode.is(Mode.QuotedPattern)) pt.subst(defn.RepeatedParamClass :: Nil, defn.SeqType :: Nil)
+          else WildcardType
+        val tpdExpr = typedExpr(tree.expr, ptArg)
         tpdExpr.tpe.widenDealias match {
           case defn.ArrayOf(_) =>
             val starType = defn.ArrayType.appliedTo(WildcardType)
@@ -1960,12 +1963,15 @@ class Typer extends Namer
     object splitter extends tpd.TreeMap {
       val patBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-        case Typed(Splice(pat), tpt) =>
+        case Typed(Splice(pat), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprType), tpt :: Nil)
           transform(Splice(Typed(pat, exprTpt)))
         case Splice(pat) =>
           try patternHole(tree)
-          finally patBuf += pat
+          finally {
+            val pat1 = pat.subst(defn.RepeatedParamClass :: Nil, defn.SeqClass :: Nil)
+            patBuf += pat1
+          }
         case _ =>
           super.transform(tree)
       }
