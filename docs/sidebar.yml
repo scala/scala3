@@ -72,7 +72,7 @@ sidebar:
             - title: Creator Applications
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
-              url: docs/reference/other-new-features/export.html"
+              url: docs/reference/other-new-features/export.html
             - title: Inlining by Rewriting
               url: docs/reference/other-new-features/inline.html
             - title: Meta Programming
@@ -83,8 +83,6 @@ sidebar:
               url: docs/reference/other-new-features/opaques.html
             - title: Auto Parameter Tupling
               url: docs/reference/other-new-features/auto-parameter-tupling.html
-            - title: Named Type Arguments
-              url: docs/reference/other-new-features/named-typeargs.html
             - title: Erased Terms
               url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism
