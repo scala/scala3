@@ -5,23 +5,23 @@ date: April 6, 2019
 author: Martin Odersky
 ---
 
-This document provides an overview of the features proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into eight groups: (1) essential foundations, (2) simplifications, (3) restrictions, (4) dropped features, (5) changed features, (6) new features, (7) features oriented towards meta-programming with the aim to replace existing macros, and (8) changes to type checking and inference.
+This document provides an overview of the constructs proposed for Scala 3 with the aim to facilitate the discussion what to include and when to include it. It classifies features into eight groups: (1) essential foundations, (2) simplifications, (3) restrictions, (4) dropped features, (5) changed features, (6) new features, (7) features oriented towards meta-programming with the aim to replace existing macros, and (8) changes to type checking and inference.
 
-Each feature group contains sections classifying the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and the migration cost
-of the features in it.
+Each group contains sections classifying the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and the migration cost
+of the constructs in it.
 
-The current document reflects the state of things as of end of February, 2019. It will be updated to reflect any future changes in that status.
+The current document reflects the state of things as of April, 2019. It will be updated to reflect any future changes in that status.
 
 ## Essential Foundations
 
-These new features directly model core features of DOT, higher-kinded types, and the [SI calculus for implicit resolution](https://infoscience.epfl.ch/record/229878/files/simplicitly_1.pdf).
+These new constructs directly model core features of DOT, higher-kinded types, and the [SI calculus for implicit resolution](https://infoscience.epfl.ch/record/229878/files/simplicitly_1.pdf).
 
  - [Intersection types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html), replacing compound types,
  - [Union types](https://dotty.epfl.ch/docs/reference/new-types/union-types.html),
  - [Type lambdas](https://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html),
  replacing encodings using structural types and type projection.
  - [Context Queries](https://dotty.epfl.ch/docs/reference/contextual/query-types.html)
-  (aka implicit function types) offering abstraction over inferable parameters.
+  (_aka_ implicit function types) offering abstraction over inferable parameters.
 
 **Status: essential**
 
@@ -33,7 +33,7 @@ Since these are additions, there's generally no migration cost for old code. An 
 
 ## Simplifications
 
-These features replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
+These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
  - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) replace [early initializers](https://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) with a more generally useful construct.
  - [Implied Instances](https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html)
@@ -51,7 +51,7 @@ These features replace existing constructs with the aim of making the language s
  instead of `new` expressions. `new` expressions stay around as a fallback for
  the cases where creator applications cannot be used.
 
-With the exception of early initializers and old-style vararg patterns, all superseded features continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
+With the exception of early initializers and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
 Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM as is planned by project Valhalla.
 
@@ -68,7 +68,7 @@ For the next several versions, old features will remain available and deprecatio
 
 ## Restrictions
 
-These features are restricted to make the language safer.
+These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](https://dotty.epfl.ch/docs/reference/contextual/conversions.html): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
  - [Implied Imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
@@ -77,7 +77,7 @@ These features are restricted to make the language safer.
  - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
  make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
 
-Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other features in the list above are available only under `-language:Scala2`.
+Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-language:Scala2`.
 
 **Status: now or never**
 
@@ -89,9 +89,9 @@ These are essential restrictions. If we decide to adopt them, we should do it fo
  - _moderate_: Restrictions to implicits can be accommodated by straightforward rewriting.
  - _high_: Unrestricted type projection cannot always rewritten directly since it is unsound in general.
 
-## Dropped Features
+## Dropped Constructs
 
-These features are proposed to be dropped without a new feature replacing them. The motivation for dropping these features is to simplify the language and its implementation.
+These constructs are proposed to be dropped without a new construct replacing them. The motivation for dropping these constructs is to simplify the language and its implementation.
 
  - [DelayedInit](https://dotty.epfl.ch/docs/reference/dropped-features/delayed-init.html),
  - [Existential types](https://dotty.epfl.ch/docs/reference/dropped-features/existential-types.html),
@@ -104,7 +104,7 @@ These features are proposed to be dropped without a new feature replacing them. 
  - [Compound types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html),
  - [Auto tupling](https://github.com/lampepfl/dotty/pull/4311) (implemented, but not merged).
 
-The date when these features are dropped varies. The current status is:
+The date when these constructs are dropped varies. The current status is:
 
  - Not implemented at all:
    - DelayedInit, existential types, weak conformance.
@@ -126,7 +126,7 @@ and sometimes need to be manual (e.g. class shadowing, auto tupling). Sometimes 
 
 ## Changes
 
-These features have undergone changes in Scala 3 to make them more regular and useful.
+These constructs have undergone changes to make them more regular and useful.
 
  - [Structural Types](https://dotty.epfl.ch/docs/reference/changed-features/structural-types.html): They now allow pluggable implementations, which greatly increases their usefulness. Some usage patterns are restricted compared to the status quo.
  - [Name-based pattern matching](https://dotty.epfl.ch/docs/reference/changed-features/pattern-matching.html): The existing undocumented Scala 2 implementation has been codified in a slightly simplified form.
@@ -143,16 +143,14 @@ The features have been implemented in their new form in Scala 3.0's compiler. Th
 
 Only a few programs should require changes, but some necessary changes might be non-local (as in the case of restrictions to implicit scope).
 
-## New Features
+## New Constructs
 
 These are additions to the language that make it more powerful or pleasant to use.
 
  - [Enums](https://dotty.epfl.ch/docs/reference/enums/enums.html) provide concise syntax for enumerations and [algebraic data types](https://dotty.epfl.ch/docs/reference/enums/adts.html).
- - [Auto Parameter Tupling](https://dotty.epfl.ch/docs/reference/other-new-features/auto-parameter-tupling.html) avoid having to use `case` for tupled parameter destructuring.
- - [Named Type Arguments](https://dotty.epfl.ch/docs/reference/other-new-features/named-typeargs.html) generalize named parameters, providing the ability to define
- a partial list of type arguments.
+ - [Parameter Untupling](https://dotty.epfl.ch/docs/reference/other-new-features/parameter-untupling.html) avoids having to use `case` for tupled parameter destructuring.
  - [Dependent Function Types](https://dotty.epfl.ch/docs/reference/new-types/dependent-function-types.html) generalize dependent methods to dependent function values and types.
- - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types (proposed, not fully implemented).
+ - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
  - [Kind Polymorphism](https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html) allows the definition of operators working equally on types and type constructors.
 
 **Status: mixed**
@@ -165,18 +163,18 @@ Being new features, existing code migrates without changes. To be sure, sometime
 
 ## Meta Programming
 
-The following features together try to put meta programming in Scala on a new basis. So far, meta programming was achieved by a combination of macros and libraries such as Shapeless that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
+The following constructs together aim to put meta programming in Scala on a new basis. So far, meta programming was achieved by a combination of macros and libraries such as Shapeless that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
 
 It's worth noting that macros were never included in the Scala 2 language specification and were so far made available only under an `-experimental` flag. This has not prevented their widespread usage.
 
-To enable porting most uses of macros, we propose the advanced language features listed below. These designs are more provisional than the rest of the proposed language features for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
+To enable porting most uses of macros, we are experimenting with the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
 
 - [Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) allow computation on types.
-- [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
-- [Inferable by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
 - [Inline](https://dotty.epfl.ch/docs/reference/other-new-features/inline.html) provides
 by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
 - [Quotes and Splices](https://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) provide a principled way to express macros and staging with a unified set of abstractions.
+- [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
+- [Implicit by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
 - [Erased Terms](https://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html) provide a general mechanism for compile-time-only computations.
 
 **Status: not yet settled**

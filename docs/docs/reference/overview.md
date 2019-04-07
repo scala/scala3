@@ -3,7 +3,7 @@ layout: doc-page
 title: "Overview"
 ---
 
-Dotty contains many language changes compared to Scala 2. These changes are currently discussed for inclusion in Scala 3, the new Scala language standard which will be based on the Dotty codebase.
+Dotty implements many language changes compared to Scala 2. These changes are currently discussed for inclusion in Scala 3, the new Scala language standard which will be based on the Dotty codebase.
 
 ## Goals
 
@@ -108,35 +108,29 @@ These are additions to the language that make it more powerful or pleasant to us
 
  - [Enums](https://dotty.epfl.ch/docs/reference/enums/enums.html) provide concise syntax for enumerations and [algebraic data types](https://dotty.epfl.ch/docs/reference/enums/adts.html).
  - [Parameter Untupling](https://dotty.epfl.ch/docs/reference/other-new-features/parameter-untupling.html) avoids having to use `case` for tupled parameter destructuring.
- - [Named Type Arguments](https://dotty.epfl.ch/docs/reference/other-new-features/named-typeargs.html) generalize named parameters, providing the ability to define
- a partial list of type arguments. _Update_: Named type arguments were received
- with skepticism by the SIP committee. They will likely not be part of Scala 3.0.
  - [Dependent Function Types](https://dotty.epfl.ch/docs/reference/new-types/dependent-function-types.html) generalize dependent methods to dependent function values and types.
- - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged.
+ - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
  - [Kind Polymorphism](https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html) allows the definition of operators working equally on types and type constructors.
 
 ## Meta Programming
 
-The following constructs together try to put meta programming in Scala on a new basis. So far, meta programming was achieved by a combination of macros and libraries such as Shapeless that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
+The following constructs together aim to put meta programming in Scala on a new basis. So far, meta programming was achieved by a combination of macros and libraries such as Shapeless that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
 
 It's worth noting that macros were never included in the Scala 2 language specification and were so far made available only under an `-experimental` flag. This has not prevented their widespread usage.
 
-To enable porting most uses of macros, we propose the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
+To enable porting most uses of macros, we are experimenting with the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
 
 - [Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) allow computation on types.
-- [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
-- [Inferable by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
 - [Inline](https://dotty.epfl.ch/docs/reference/other-new-features/inline.html) provides
 by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
 - [Quotes and Splices](https://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) provide a principled way to express macros and staging with a unified set of abstractions.
+- [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
+- [Implicit by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
 - [Erased Terms](https://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html) provide a general mechanism for compile-time-only computations.
 
+## See Also
 
-## Changes to Type Checking and Inference
+[A classification of proposed language features](./features-classification.html) is
+an expanded version of this page that adds the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and expected migration cost
+of each language construct.
 
-The Scala 3 compiler uses a new algorithm for type inference, which relies on
-a general subtype constraint solver. The new algorithm often
-[works better than the old](https://contributors.scala-lang.org/t/better-type-inference-for-scala-send-us-your-problematic-cases/2410), but there are inevitably situations where the results of both algorithms differ, leading to errors diagnosed by Scala 3 for programs that the Scala 2 compiler accepts.
-
-See also: [A classification of proposed language features](./features-classification.html)
-is an expanded version of this page which gives some recommendations.
