@@ -65,6 +65,9 @@ class ReTyper extends Typer with ReChecking {
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
     promote(tree)
 
+  override def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): TypTree =
+    promote(TypeTree(tree.tpe).withSpan(tree.span))
+
   override def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
     typedExpr(fn, pt)
 
