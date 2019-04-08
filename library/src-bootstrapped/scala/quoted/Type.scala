@@ -6,13 +6,15 @@ import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Type[T <: AnyKind] {
   type `$splice` = T
-
-  /** Show a source code like representation of this type */
-  final def show(implicit toolbox: Toolbox): String = toolbox.show(this.asInstanceOf[Type[Any]])
 }
 
 /** Some basic type tags, currently incomplete */
 object Type {
+
+  implicit class TypeOps[T](tpe: Type[T]) {
+    /** Show a source code like representation of this type */
+    def show(implicit toolbox: Toolbox): String = toolbox.show(tpe.asInstanceOf[Type[Any]])
+  }
 
   implicit def UnitTag: Type[Unit] = new TaggedType[Unit]
   implicit def BooleanTag: Type[Boolean] = new TaggedType[Boolean]

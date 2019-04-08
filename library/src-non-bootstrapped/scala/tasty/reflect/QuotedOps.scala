@@ -1,7 +1,7 @@
 package scala.tasty.reflect
 
 /** Extension methods on scala.quoted.{Expr|Type} to convert to scala.tasty.Tasty objects */
-trait QuotedOps extends Core {
+trait QuotedOps extends Core { self: Printers =>
 
   implicit class QuotedExprAPI[T](expr: scala.quoted.Expr[T]) {
     /** View this expression `quoted.Expr[T]` as a `Term` */
@@ -11,12 +11,20 @@ trait QuotedOps extends Core {
     /** Checked cast to a `quoted.Expr[U]` */
     def cast[U: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[U] =
       kernel.QuotedExpr_cast[U](expr)
+
+    /** Show a source code like representation of this expression */
+    def show(implicit ctx: Context): String =
+      unseal.showCode
   }
 
   implicit class QuotedTypeAPI[T](tpe: scala.quoted.Type[T]) {
     /** View this expression `quoted.Type[T]` as a `TypeTree` */
     def unseal(implicit ctx: Context): TypeTree =
       kernel.QuotedType_unseal(tpe)
+
+    /** Show a source code like representation of this type */
+    def show(implicit ctx: Context): String =
+      unseal.showCode
   }
 
   implicit class TermToQuotedAPI(term: Term) {
