@@ -1,1 +1,1 @@
-6: Pattern Match Exhaustivity: _: Foo
+6: Pattern Match Exhaustivity: _: Foo[T]

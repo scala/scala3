@@ -1,1 +1,1 @@
-10: Pattern Match Exhaustivity: _: a.Elem
+10: Pattern Match Exhaustivity: _: a.Elem[_]
