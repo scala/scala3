@@ -29,7 +29,7 @@ object Test {
     println(code4.show)
     println()
 
-    val liftedArray = Array(1, 2, 3, 4)
+    val liftedArray: Expr[Array[Int]] = Array(1, 2, 3, 4)
     println(liftedArray.show)
     println()
 

@@ -10,14 +10,16 @@ sealed abstract class Expr[+T] {
    */
   final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
 
-  /** Show a source code like representation of this expression */
-  final def show(implicit toolbox: Toolbox): String = toolbox.show(this)
-
 }
 
 object Expr {
 
   // TODO simplify using new extension methods
+
+  implicit class ExprOps[T](expr: Expr[T]) {
+    /** Show a source code like representation of this expression */
+    def show(implicit toolbox: Toolbox): String = toolbox.show(expr)
+  }
 
   implicit class AsFunction0[R](private val f: Expr[() => R]) extends AnyVal {
     def apply(): Expr[R] = new Exprs.FunctionAppliedTo[R](f, Array.empty)
