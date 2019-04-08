@@ -57,7 +57,6 @@ Standard-Section: "ASTs" TopLevelStat*
   Stat          = Term
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
-                  OBJECTDEF      Length NameRef Template Modifier*                 -- modifiers object name template
                   IMPORT         Length [IMPLIED] qual_Term Selector*              -- import implied? qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
@@ -430,7 +429,6 @@ object TastyFormat {
   final val ANNOTATION = 173
   final val TERMREFin = 174
   final val TYPEREFin = 175
-  final val OBJECTDEF = 176
 
   final val METHODtype = 180
   final val ERASEDMETHODtype = 181
@@ -593,7 +591,6 @@ object TastyFormat {
     case VALDEF => "VALDEF"
     case DEFDEF => "DEFDEF"
     case TYPEDEF => "TYPEDEF"
-    case OBJECTDEF => "OBJECTDEF"
     case IMPORT => "IMPORT"
     case TYPEPARAM => "TYPEPARAM"
     case PARAMS => "PARAMS"
@@ -669,7 +666,7 @@ object TastyFormat {
    *          If negative, minus the number of leading non-reference trees.
    */
   def numRefs(tag: Int): Int = tag match {
-    case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
+    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | TYPELAMBDAtype |
