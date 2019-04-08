@@ -346,5 +346,6 @@ sealed class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {
   inline def unapply[H, T <: Tuple](x: H *: T) =
-    (scala.runtime.DynamicTuple.dynamicHead(x), scala.runtime.DynamicTuple.dynamicTail(x))
+    if (Tuple.stageIt) (scala.runtime.DynamicTuple.dynamicHead(x), scala.runtime.DynamicTuple.dynamicTail(x))
+    else (x.head, x.tail)
 }

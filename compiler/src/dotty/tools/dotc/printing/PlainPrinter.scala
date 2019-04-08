@@ -46,10 +46,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def homogenize(tp: Type): Type =
     if (homogenizedView) {
-       val a = tp.tryNormalize
-          if (a.exists) {
-            homogenize(a)
-          } else tp match {
+      tp match {
         case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
           ctx.requiredPackage(tp.cls.fullName).termRef
         case tp: TypeVar if tp.isInstantiated =>
@@ -65,7 +62,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case AppliedType(tycon, args) =>
           tycon.dealias.appliedTo(args)
         case _ =>
-         tp
+          tp
       }
     } else tp
 
