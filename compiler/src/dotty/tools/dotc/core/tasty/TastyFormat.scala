@@ -13,36 +13,36 @@ can be dropped without changing the grammar.
 
 Micro-syntax:
 
-  LongInt       = Digit* StopDigit        // big endian 2's complement, value fits in a Long w/o overflow
-  Int           = LongInt                 // big endian 2's complement, fits in an Int w/o overflow
-  Nat           = LongInt                 // non-negative value, fits in an Int without overflow
+  LongInt       = Digit* StopDigit        -- big endian 2's complement, value fits in a Long w/o overflow
+  Int           = LongInt                 -- big endian 2's complement, fits in an Int w/o overflow
+  Nat           = LongInt                 -- non-negative value, fits in an Int without overflow
   Digit         = 0 | ... | 127
-  StopDigit     = 128 | ... | 255         // value = digit - 128
+  StopDigit     = 128 | ... | 255         -- value = digit - 128
 
 Macro-format:
 
   File          = Header majorVersion_Nat minorVersion_Nat UUID
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
-  UUID          = Byte*16                // random UUID
+  UUID          = Byte*16                 -- random UUID
 
   Section       = NameRef Length Bytes
-  Length        = Nat                    // length of rest of entry in bytes
+  Length        = Nat                     -- length of rest of entry in bytes
 
   Name          = UTF8              Length UTF8-CodePoint*
-                  QUALIFIED         Length qualified_NameRef selector_NameRef
-                  EXPANDED          Length qualified_NameRef selector_NameRef
-                  EXPANDPREFIX      Length qualified_NameRef selector_NameRef
+                  QUALIFIED         Length qualified_NameRef selector_NameRef               -- A.B
+                  EXPANDED          Length qualified_NameRef selector_NameRef               -- A$$B, semantically a NameKinds.ExpandedName
+                  EXPANDPREFIX      Length qualified_NameRef selector_NameRef               -- A$B, prefix of expanded name, see NamedKinds.ExpandPrefixName
 
-                  UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef?
-                  DEFAULTGETTER     Length underlying_NameRef index_Nat
-                  VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
+                  UNIQUE            Length separator_NameRef uniqid_Nat underlying_NameRef? -- Unique name A<separator><number>
+                  DEFAULTGETTER     Length underlying_NameRef index_Nat                     -- DefaultGetter$<number>
+                  VARIANT           Length underlying_NameRef variance_Nat                  -- variance 0: +A, variance = 1: -A
 
-                  SUPERACCESSOR     Length underlying_NameRef
-                  INLINEACCESSOR    Length underlying_NameRef
-                  OBJECTCLASS       Length underlying_NameRef
+                  SUPERACCESSOR     Length underlying_NameRef                               -- super$A
+                  INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
+                  OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
 
-                  SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
+                  SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*   -- name + signature
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
 
@@ -51,162 +51,167 @@ a type-name or a term-name. The same string can represent both.
 
 Standard-Section: "ASTs" TopLevelStat*
 
-  TopLevelStat  = PACKAGE        Length Path TopLevelStat*
+  TopLevelStat  = PACKAGE        Length Path TopLevelStat*                         -- package path { topLevelStats }
                   Stat
 
   Stat          = Term
                   ValOrDefDef
-                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*
-                  OBJECTDEF      Length NameRef Template Modifier*
-                  IMPORT         Length [IMPLIED] qual_Term Selector*
-  ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*
+                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
+                  OBJECTDEF      Length NameRef Template Modifier*                 -- modifiers object name template
+                  IMPORT         Length [IMPLIED] qual_Term Selector*              -- import implied? qual selectors
+  ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
-                                        Modifier*
-  Selector      = IMPORTED              name_NameRef
-                  RENAMED               to_NameRef
+                                        Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
+  Selector      = IMPORTED              name_NameRef                               -- name
+                  RENAMED               to_NameRef                                 -- => name
 
-                                 // Imports are for scala.meta, they are not used in the backend
-
-  TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*
+  TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
   Params        = PARAMS         Length Param*
-  Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
-  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* // Stat* always starts with the primary constructor.
-  Self          = SELFDEF               selfName_NameRef selfType_Term
+  Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
+  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
+  Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
 
-  Term          = Path
-                  IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
-                  SELECT                possiblySigned_NameRef qual_Term
-                  QUALTHIS              typeIdent_Tree
-                  NEW                   clsType_Term
-                  THROW                 throwableExpr_Term
-                  NAMEDARG              paramName_NameRef arg_Term
-                  APPLY          Length fn_Term arg_Term*
-                  TYPEAPPLY      Length fn_Term arg_Type*
-                  SUPER          Length this_Term mixinTypeIdent_Tree?
-                  TYPED          Length expr_Term ascriptionType_Tern
-                  ASSIGN         Length lhs_Term rhs_Term
-                  BLOCK          Length expr_Term Stat*
-                  INLINED        Length expr_Term call_Term? ValOrDefDef*
-                  LAMBDA         Length meth_Term target_Type?
-                  IF             Length [INLINE] cond_Term then_Term else_Term
-                  MATCH          Length (IMPLICIT | [INLINE] sel_Term) CaseDef*
-                  TRY            Length expr_Term CaseDef* finalizer_Term?
-                  RETURN         Length meth_ASTRef expr_Term?
-                  WHILE          Length cond_Term body_Term
-                  REPEATED       Length elem_Type elem_Term*
-                  SELECTouter    Length levels_Nat qual_Term underlying_Type
-                  BIND           Length boundName_NameRef patType_Type pat_Term
-                  ALTERNATIVE    Length alt_Term*
-                  UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
-                  IDENTtpt              NameRef Type      // used for all type idents
-                  SELECTtpt             NameRef qual_Term
-                  SINGLETONtpt          ref_Term
-                  REFINEDtpt     Length underlying_Term refinement_Stat*
-                  APPLIEDtpt     Length tycon_Term arg_Term*
-                  LAMBDAtpt      Length TypeParam* body_Term
-                  TYPEBOUNDStpt  Length low_Term high_Term?
-                  ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
-                  MATCHtpt       Length bound_Term? sel_Term CaseDef*
-                  BYNAMEtpt             underlying_Term
-                  SHAREDterm            term_ASTRef
-                  HOLE           Length idx_Nat arg_Tree*
+  Term          = Path                                                             -- Paths represent both types and terms
+                  IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef
+                  SELECT                possiblySigned_NameRef qual_Term           -- qual.name
+                  QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
+                  NEW                   clsType_Term                               -- new cls
+                  THROW                 throwableExpr_Term                         -- throw throwableExpr
+                  NAMEDARG              paramName_NameRef arg_Term                 -- paramName = arg
+                  APPLY          Length fn_Term arg_Term*                          -- fn(args)
+                  TYPEAPPLY      Length fn_Term arg_Type*                          -- fn[args]
+                  SUPER          Length this_Term mixinTypeIdent_Tree?             -- super[mixin]
+                  TYPED          Length expr_Term ascriptionType_Tern              -- expr: ascription
+                  ASSIGN         Length lhs_Term rhs_Term                          -- lhs = rhs
+                  BLOCK          Length expr_Term Stat*                            -- { stats; expr }
+                  INLINED        Length expr_Term call_Term? ValOrDefDef*          -- Inlined code from call, with given body `expr` and given bindings
+                  LAMBDA         Length meth_Term target_Type?                     -- Closure over method `f` of type `target` (omitted id `target` is a function type)
+                  IF             Length [INLINE] cond_Term then_Term else_Term     -- inline? if cond then thenPart else elsePart
+                  MATCH          Length (IMPLICIT | [INLINE] sel_Term) CaseDef*    -- (inline? sel | implicit) match caseDefs
+                  TRY            Length expr_Term CaseDef* finalizer_Term?         -- try expr catch {casdeDef} (finally finalizer)?
+                  RETURN         Length meth_ASTRef expr_Term?                     -- return expr?,  `methASTRef` is method from which is returned
+                  WHILE          Length cond_Term body_Term                        -- while cond do body
+                  REPEATED       Length elem_Type elem_Term*                       -- Varargs argument of type `elem`
+                  SELECTouter    Length levels_Nat qual_Term underlying_Type       -- Follow `levels` outer links, starting from `qual`, with given `underlying` type
+    -- patterns:
+                  BIND           Length boundName_NameRef patType_Type pat_Term    -- name @ pat, wherev `patType` is the type of the bound symbol
+                  ALTERNATIVE    Length alt_Term*                                  -- alt1 | ... | altn   as a pattern
+                  UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*   -- Unapply node `fun(_: pat_Type)(implicitArgs)` flowing into patterns `pat`.
+    -- type trees:
+                  IDENTtpt              NameRef Type                               -- Used for all type idents
+                  SELECTtpt             NameRef qual_Term                          -- qual.name
+                  SINGLETONtpt          ref_Term                                   -- ref.type
+                  REFINEDtpt     Length underlying_Term refinement_Stat*           -- underlying {refinements}
+                  APPLIEDtpt     Length tycon_Term arg_Term*                       -- tycon [args]
+                  LAMBDAtpt      Length TypeParam* body_Term                       -- [TypeParams] => body
+                  TYPEBOUNDStpt  Length low_Term high_Term?                        -- >: low <: high
+                  ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term        -- underlying @ annotation
+                  MATCHtpt       Length bound_Term? sel_Term CaseDef*              -- sel match { CaseDef } where `bound` is optional upper bound of all rhs
+                  BYNAMEtpt             underlying_Term                            -- => underlying
+                  SHAREDterm            term_ASTRef                                -- Link to previously serialized term
+                  HOLE           Length idx_Nat arg_Tree*                          -- Hole where a splice goes with sequence number idx, splice is applied to arguments `arg`s
 
-  CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
-  ImplicitArg   = IMPLICITARG           arg_Term
-  ASTRef        = Nat                               // byte position in AST payload
+  CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?              -- case pat if guard => rhs
+  ImplicitArg   = IMPLICITARG           arg_Term                                   -- implicit unapply argument
+
+  ASTRef        = Nat                                                              -- Byte position in AST payload
 
   Path          = Constant
-                  TERMREFdirect         sym_ASTRef
-                  TERMREFsymbol         sym_ASTRef qual_Type
-                  TERMREFpkg            fullyQualified_NameRef
-                  TERMREFin      Length possiblySigned_NameRef qual_Type namespace_Type
-                  TERMREF               possiblySigned_NameRef qual_Type
-                  THIS                  clsRef_Type
-                  RECthis               recType_ASTRef
-                  SHAREDtype            path_ASTRef
+                  TERMREFdirect         sym_ASTRef                                 -- A reference to a local symbol (without a prefix). Reference is to definition node of symbol.
+                  TERMREFsymbol         sym_ASTRef qual_Type                       -- A reference `qual.sym` to a local member with prefix `qual`
+                  TERMREFpkg            fullyQualified_NameRef                     -- A reference to a package member with given fully qualified name
+                  TERMREF               possiblySigned_NameRef qual_Type           -- A reference `qual.name` to a non-local member
+                  TERMREFin      Length possiblySigned_NameRef qual_Type namespace_Type -- A reference `qual.name` to a non-local member that's private in `namespace`
+                  THIS                  clsRef_Type                                -- cls.this
+                  RECthis               recType_ASTRef                             -- The `this` in a recursive refined type `recType`.
+                  SHAREDtype            path_ASTRef                                -- link to previously serialized path
 
-  Constant      = UNITconst
-                  FALSEconst
-                  TRUEconst
-                  BYTEconst             Int
-                  SHORTconst            Int
-                  CHARconst             Nat
-                  INTconst              Int
-                  LONGconst             LongInt
-                  FLOATconst            Int
-                  DOUBLEconst           LongInt
-                  STRINGconst           NameRef
-                  NULLconst
-                  CLASSconst            Type
-                  ENUMconst             Path
-                  SYMBOLconst           NameRef
+  Constant      = UNITconst                                                        -- ()
+                  FALSEconst                                                       -- false
+                  TRUEconst                                                        -- true
+                  BYTEconst             Int                                        -- A byte number
+                  SHORTconst            Int                                        -- A short number
+                  CHARconst             Nat                                        -- A character
+                  INTconst              Int                                        -- An int number
+                  LONGconst             LongInt                                    -- A long number
+                  FLOATconst            Int                                        -- A float number
+                  DOUBLEconst           LongInt                                    -- A double number
+                  STRINGconst           NameRef                                    -- A string literal
+                  NULLconst                                                        -- null
+                  CLASSconst            Type                                       -- classOf[Type]
+                  ENUMconst             Path                                       -- An enum constant
+                  SYMBOLconst           NameRef                                    -- A symbol literal (todo: drop?)
 
-  Type          = Path
-                  TYPEREFdirect         sym_ASTRef
-                  TYPEREFsymbol         sym_ASTRef qual_Type
-                  TYPEREFpkg            fullyQualified_NameRef
-                  TYPEREFin      Length NameRef qual_Type namespace_Type
-                  TYPEREF               NameRef qual_Type
-                  RECtype               parent_Type
-                  TYPEALIAS             alias_Type
-                  SUPERtype      Length this_Type underlying_Type
-                  REFINEDtype    Length underlying_Type refinement_NameRef info_Type
-                  APPLIEDtype    Length tycon_Type arg_Type*
-                  TYPEBOUNDS     Length low_Type high_Type
-                  ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
-                  ANDtype        Length left_Type right_Type
-                  ORtype         Length left_Type right_Type
-                  MATCHtype      Length bound_Type sel_Type case_Type*
-                  BIND           Length boundName_NameRef bounds_Type
-                                        // for type-variables defined in a type pattern
-                  BYNAMEtype            underlying_Type
-                  PARAMtype      Length binder_ASTref paramNum_Nat
-                  POLYtype       Length result_Type NamesTypes
-                  methodType(_, _) Length result_Type NamesTypes    // needed for refinements
-                  TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
-                  SHAREDtype            type_ASTRef
+  Type          = Path                                                             -- Paths represent both types and terms
+                  TYPEREFdirect         sym_ASTRef                                 -- A reference to a local symbol (without a prefix). Reference is to definition node of symbol.
+                  TYPEREFsymbol         sym_ASTRef qual_Type                       -- A reference `qual.sym` to a local member with prefix `qual`
+                  TYPEREFpkg            fullyQualified_NameRef                     -- A reference to a package member with given fully qualified name
+                  TYPEREF               NameRef qual_Type                          -- A reference `qual.name` to a non-local member
+                  TYPEREFin      Length NameRef qual_Type namespace_Type           -- A reference `qual.name` to a non-local member that's private in `namespace`.
+                  RECtype               parent_Type                                -- A wrapper for recursive refined types
+                  SUPERtype      Length this_Type underlying_Type                  -- A super type reference to `underlying`
+                  REFINEDtype    Length underlying_Type refinement_NameRef info_Type -- underlying { refinement_name : info }
+                  APPLIEDtype    Length tycon_Type arg_Type*                       -- tycon[args]
+                  TYPEALIAS             alias_Type                                 -- = alias
+                  TYPEBOUNDS     Length low_Type high_Type                         -- >: low <: high
+                  ANNOTATEDtype  Length underlying_Type annotation_Term            -- underlying @ annotation
+                  ANDtype        Length left_Type right_Type                       -- left & right
+                  ORtype         Length left_Type right_Type                       -- lefgt | right
+                  MATCHtype      Length bound_Type sel_Type case_Type*             -- sel match {cases} with optional upper `bound`
+                  BIND           Length boundName_NameRef bounds_Type              -- boundName @ bounds,  for type-variables defined in a type pattern
+                  BYNAMEtype            underlying_Type                            -- => underlying
+                  PARAMtype      Length binder_ASTRef paramNum_Nat                 -- A reference to parameter # paramNum in lambda type `binder`
+                  POLYtype       Length result_Type NamesTypes                     -- A polymorphic method type `[NamesTypes]result`, used in refinements
+                  METHODtype     Length result_Type NamesTypes                     -- A method type `(NamesTypes)result`, needed for refinements
+                  ERASEDMETHODtype      Length result_Type NamesTypes              -- A method type `erased (NamesTypes)result`, needed for refinements
+                  GIVENMETHODtype       Length result_Type NamesTypes              -- A method type `given (NamesTypes)result`, needed for refinements
+                  ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `given erased (NamesTypes)result`, needed for refinements
+                  IMPLCITMETHODtype     Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
+  // TODO: remove ERASEDIMPLICITMETHODtype
+                  TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`, variance encoded using VARIANT names
+                  SHAREDtype            type_ASTRef                                -- link to previously serialized type
   NamesTypes    = NameType*
-  NameType      = paramName_NameRef typeOrBounds_ASTRef
+  NameType      = paramName_NameRef typeOrBounds_ASTRef                            -- `termName : type`  or  `typeName bounds`
 
-  Modifier      = PRIVATE
-                  INTERNAL                            // package private
-                  PROTECTED
-                  PRIVATEqualified     qualifier_Type // to be dropped(?)
-                  PROTECTEDqualified   qualifier_Type // to be dropped(?)
-                  ABSTRACT
-                  FINAL
-                  SEALED
-                  CASE
-                  IMPLICIT
-                  IMPLIED
-                  ERASED
-                  LAZY
-                  OVERRIDE
-                  OPAQUE
-                  INLINE
-                  MACRO                               // inline method containing toplevel splices
-                  INLINEPROXY                         // symbol of binding representing an inline parameter
-                  STATIC                              // mapped to static Java member
-                  OBJECT                              // an object or its class
-                  TRAIT                               // a trait
-                  ENUM                                // a enum class or enum case
-                  LOCAL                               // private[this] or protected[this]
-                  SYNTHETIC                           // generated by Scala compiler
-                  ARTIFACT                            // to be tagged Java Synthetic
-                  MUTABLE                             // a var
-                  FIELDaccessor                       // getter or setter
-                  CASEaccessor                        // getter for case class param
-                  COVARIANT                           // type parameter marked “+”
-                  CONTRAVARIANT                       // type parameter marked “-”
-                  SCALA2X                             // Imported from Scala2.x
-                  DEFAULTparameterized                // Method with default parameters
-                  STABLE                              // Method that is assumed to be stable
-                  EXTENSION                           // An extension method
-                  GIVEN                               // new style implicit parameters, introduced with `given`
-                  PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
+  Modifier      = PRIVATE                                                          -- private
+                  INTERNAL                                                         -- package private (not yet used)
+                  PROTECTED                                                        -- protected
+                  PRIVATEqualified     qualifier_Type                              -- private[qualifier]    (to be dropped(?)
+                  PROTECTEDqualified   qualifier_Type                              -- protecred[qualifier]  (to be dropped(?)
+                  ABSTRACT                                                         -- abstract
+                  FINAL                                                            -- final
+                  SEALED                                                           -- sealed
+                  CASE                                                             -- case  (for classes or objects)
+                  IMPLICIT                                                         -- implicit
+                  IMPLIED                                                          -- implied
+                  ERASED                                                           -- erased
+                  LAZY                                                             -- lazy
+                  OVERRIDE                                                         -- override
+                  OPAQUE                                                           -- opaque
+                  INLINE                                                           -- inline
+                  MACRO                                                            -- Inline method containing toplevel splices
+                  INLINEPROXY                                                      -- Symbol of binding with an argument to an inline method as rhs (TODO: do we still need this?)
+                  STATIC                                                           -- Mapped to static Java member
+                  OBJECT                                                           -- An object or its class
+                  TRAIT                                                            -- A trait
+                  ENUM                                                             -- A enum class or enum case
+                  LOCAL                                                            -- private[this] or protected[this], used in conjunction with PRIVATE or PROTECTED
+                  SYNTHETIC                                                        -- Generated by Scala compiler
+                  ARTIFACT                                                         -- To be tagged Java Synthetic
+                  MUTABLE                                                          -- A var
+                  FIELDaccessor                                                    -- A getter or setter (note: the corresponding field is not serialized)
+                  CASEaccessor                                                     -- A getter for a case class parameter
+                  COVARIANT                                                        -- A type parameter marked “+”
+                  CONTRAVARIANT                                                    -- A type parameter marked “-”
+                  SCALA2X                                                          -- Imported from Scala2.x
+                  DEFAULTparameterized                                             -- Method with default parameters (default arguments are separate methods with DEFAULTGETTER names)
+                  STABLE                                                           -- Method that is assumed to be stable, i.e. its applications are legal paths
+                  EXTENSION                                                        -- An extension method
+                  GIVEN                                                            -- A new style implicit parameter, introduced with `given`
+                  PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
                   Annotation
 
-  Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
+  Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -429,8 +434,8 @@ object TastyFormat {
 
   final val METHODtype = 180
   final val ERASEDMETHODtype = 181
-  final val CONTEXTUALMETHODtype = 182
-  final val ERASEDCONTEXTUALMETHODtype = 183
+  final val GIVENMETHODtype = 182
+  final val ERASEDGIVENMETHODtype = 183
   final val IMPLICITMETHODtype = 184
 
   final val MATCHtype = 190
@@ -646,8 +651,8 @@ object TastyFormat {
     case POLYtype => "POLYtype"
     case METHODtype => "METHODtype"
     case ERASEDMETHODtype => "ERASEDMETHODtype"
-    case CONTEXTUALMETHODtype => "CONTEXTUALMETHODtype"
-    case ERASEDCONTEXTUALMETHODtype => "ERASEDCONTEXTUALMETHODtype"
+    case GIVENMETHODtype => "GIVENMETHODtype"
+    case ERASEDGIVENMETHODtype => "ERASEDGIVENMETHODtype"
     case IMPLICITMETHODtype => "IMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
@@ -669,7 +674,7 @@ object TastyFormat {
     case RENAMED | PARAMtype => 2
     case POLYtype | TYPELAMBDAtype |
          METHODtype | ERASEDMETHODtype |
-         CONTEXTUALMETHODtype | ERASEDCONTEXTUALMETHODtype |
+         GIVENMETHODtype | ERASEDGIVENMETHODtype |
          IMPLICITMETHODtype => -1
     case _ => 0
   }
