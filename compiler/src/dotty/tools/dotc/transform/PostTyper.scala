@@ -224,7 +224,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree1)
           }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          val callTrace = Inliner.inlineCallTrace(call.symbol, call.sourcePos)
+          val pos = call.sourcePos
+          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {

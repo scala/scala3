@@ -40,13 +40,13 @@ class YCheckPositions extends Phases.Phase {
                 assert(bindings.isEmpty)
                 val old = sources
                 sources = old.tail
-                traverse(expansion)(inlineContext(EmptyTree))
+                traverse(expansion)(inlineContext(EmptyTree).withSource(sources.head))
                 sources = old
               case Inlined(call, bindings, expansion) =>
                 bindings.foreach(traverse(_))
                 sources = call.symbol.topLevelClass.source :: sources
                 if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
-                  traverse(expansion)(inlineContext(call))
+                  traverse(expansion)(inlineContext(call).withSource(sources.head))
                 sources = sources.tail
               case _ => traverseChildren(tree)
             }
@@ -57,8 +57,9 @@ class YCheckPositions extends Phases.Phase {
   }
 
   private def isMacro(call: Tree)(implicit ctx: Context) = {
-    if (ctx.phase <= ctx.typerPhase.next) call.symbol.is(Macro)
-    else (call.symbol.unforcedDecls.exists(_.is(Macro)) || call.symbol.unforcedDecls.toList.exists(_.is(Macro)))
+    if (ctx.phase <= ctx.postTyperPhase) call.symbol.is(Macro)
+    else call.isInstanceOf[Select] // The call of a macro after typer is encoded as a Select while other inlines are Ident
+                                   // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
   }
 
 }
