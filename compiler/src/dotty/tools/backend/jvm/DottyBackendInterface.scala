@@ -254,7 +254,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
-      case t: tpd.Select =>
+      case t: tpd.RefTree =>
         if (t.symbol.denot.owner.is(Flags.JavaEnum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
