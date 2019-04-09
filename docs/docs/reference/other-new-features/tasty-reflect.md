@@ -24,7 +24,7 @@ To provide reflection capabilities in macros we need to add an implicit paramete
 import scala.quoted._
 import scala.tasty._
 
-inline def natConst(x: => Int): Int = ~natConstImpl('(x))
+inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
   import reflection._
