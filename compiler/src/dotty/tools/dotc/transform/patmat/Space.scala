@@ -718,6 +718,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
+    // Ignore Expr for unreachability as a special case.
+    // Quote patterns produce repeated calls to the same unapply method, but with different implicit parameters.
+    // Since we assume that repeated calls to the same unapply method overlap
+    // and implicit parameters cannot normally differ between two patterns in one `match`,
+    // the easiest solution is just to ignore Expr.
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot) && !sel.tpe.widen.isRef(defn.QuotedExprClass)
 
   def checkRedundancy(_match: Match): Unit = {
