@@ -252,7 +252,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
-    val isQuote = tree.fun.hasType && tree.fun.symbol == defn.InternalQuoted_typeQuote
+    val isQuote = !ctx.settings.YprintDebug.value && tree.fun.hasType && tree.fun.symbol == defn.InternalQuoted_typeQuote
     val (open, close) = if (isQuote) (keywordStr("'["), keywordStr("]")) else ("[", "]")
     val funText = toTextLocal(tree.fun).provided(!isQuote)
     tree.fun match {
@@ -334,7 +334,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
+        if (!ctx.settings.YprintDebug.value && tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided (name != nme.CONSTRUCTOR || ctx.settings.YprintDebug.value))
       case tree: This =>
@@ -346,9 +346,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if (fun.hasType && fun.symbol == defn.InternalQuoted_exprQuote)
+        else if (!ctx.settings.YprintDebug.value && fun.hasType && fun.symbol == defn.InternalQuoted_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
+        else if (!ctx.settings.YprintDebug.value && fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
