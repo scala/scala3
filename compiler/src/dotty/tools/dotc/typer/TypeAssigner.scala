@@ -226,6 +226,17 @@ trait TypeAssigner {
     test(tpe, true)
   }
 
+  /** Return a potentially skolemized version of `qualTpe` to be used
+   *  as a prefix when selecting `name`.
+   *
+   *  @see QualSkolemType, TypeOps#asSeenFrom
+   */
+  def maybeSkolemizePrefix(qualType: Type, name: Name)(implicit ctx: Context): Type =
+    if (name.isTermName && !ctx.isLegalPrefix(qualType))
+      QualSkolemType(qualType)
+    else
+      qualType
+
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
     var qualType = qual1.tpe.widenIfUnstable
@@ -234,8 +245,10 @@ trait TypeAssigner {
       qualType = errorType(em"$qualType takes type parameters", qual1.sourcePos)
     else if (!qualType.isInstanceOf[TermType])
       qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.sourcePos)
+
     val name = tree.name
-    val mbr = qualType.member(name)
+    val pre = maybeSkolemizePrefix(qualType, name)
+    val mbr = qualType.findMember(name, pre)
     if (reallyExists(mbr))
       qualType.select(name, mbr)
     else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !Dynamic.isDynamicMethod(name))

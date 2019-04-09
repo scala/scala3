@@ -1016,14 +1016,14 @@ class TreeUnpickler(reader: TastyReader,
         val localCtx =
           if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
         val qual = readTerm()(localCtx)
-        var pre = qual.tpe.widenIfUnstable
-        val denot = accessibleDenot(pre, name, sig)
+        var qualType = qual.tpe.widenIfUnstable
+        val denot = accessibleDenot(qualType, name, sig)
         val owner = denot.symbol.maybeOwner
-        if (owner.isPackageObject && pre.termSymbol.is(Package))
-          pre = pre.select(owner.sourceModule)
+        if (owner.isPackageObject && qualType.termSymbol.is(Package))
+          qualType = qualType.select(owner.sourceModule)
         val tpe = name match {
-          case name: TypeName => TypeRef(pre, name, denot)
-          case name: TermName => TermRef(pre, name, denot)
+          case name: TypeName => TypeRef(qualType, name, denot)
+          case name: TermName => TermRef(qualType, name, denot)
         }
         ConstFold(untpd.Select(qual, name).withType(tpe))
       }
@@ -1033,10 +1033,11 @@ class TreeUnpickler(reader: TastyReader,
          (untpd.Ident(qual.name).withSpan(qual.span), qual.tpe.asInstanceOf[TypeRef])
       }
 
-      def accessibleDenot(pre: Type, name: Name, sig: Signature) = {
-        val d = pre.member(name).atSignature(sig)
+      def accessibleDenot(qualType: Type, name: Name, sig: Signature) = {
+        val pre = ctx.typeAssigner.maybeSkolemizePrefix(qualType, name)
+        val d = qualType.findMember(name, pre).atSignature(sig)
         if (!d.symbol.exists || d.symbol.isAccessibleFrom(pre)) d
-        else pre.nonPrivateMember(name).atSignature(sig)
+        else qualType.findMember(name, pre, excluded = Private).atSignature(sig)
       }
 
       def readSimpleTerm(): Tree = tag match {
