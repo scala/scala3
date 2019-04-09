@@ -839,18 +839,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(sym).owner.is(Flags.PackageClass)
       }
 
-    /**
-     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
-     *
-     * The problem is that we are interested in a source-level property. Various phases changed the
-     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
-     * Therefore, `sym.isStatic` is not what we want. For example, in
-     *   object T { def f { object U } }
-     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
-     */
-    def isOriginallyStaticOwner: Boolean = sym.isStatic
-
-
     def addRemoteRemoteExceptionAnnotation: Unit = ()
 
     def samMethod(): Symbol =

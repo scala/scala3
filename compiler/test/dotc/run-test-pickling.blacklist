@@ -15,3 +15,4 @@ instances.scala
 instances-anonymous.scala
 mixin-forwarder-overload
 t8905
+t10889

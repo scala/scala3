@@ -583,8 +583,8 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
      *   object T { def f { object U } }
      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
      */
-    def isOriginallyStaticOwner: Boolean
-
+    def isOriginallyStaticOwner: Boolean =
+      isPackageClass || isModuleClass && originalOwner.isOriginallyStaticOwner
 
     def samMethod(): Symbol
 
