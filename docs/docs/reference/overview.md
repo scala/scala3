@@ -40,7 +40,7 @@ These constructs replace existing constructs with the aim of making the language
  - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) replace most uses
    of value classes while guaranteeing absence of boxing.
  - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate.
- - [Export clauses](https://dotty.epfl.ch/docs/reference/new-features/export.html)
+ - [Export clauses](https://dotty.epfl.ch/docs/reference/other-new-features/export.html)
  provide a simple and general way to express aggregation, which can replace the
  previous facade pattern of package objects inheriting from classes.
  - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
