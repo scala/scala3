@@ -1320,6 +1320,8 @@ class Namer { typer: Typer =>
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
+      // We also drop the @Repeated annotation here to avoid leaking it in method result types
+      // (see run/inferred-repeated-result).
       def widenRhs(tp: Type): Type = {
         val tp1 = tp.widenTermRefExpr match {
           case ctp: ConstantType if isInlineVal => ctp
