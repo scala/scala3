@@ -31,7 +31,7 @@ class CompilationTests extends ParallelTesting {
 
   // Positive tests ------------------------------------------------------------
 
-  @Test  // enable to test compileStdLib separately with detailed stats
+  // @Test  // enable to test compileStdLib separately with detailed stats
   def compileStdLibOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileStdLibOnly")
     compileList("compileStdLib", TestSources.stdLibSources, scala2Mode.and("-migration", "-Yno-inline"))

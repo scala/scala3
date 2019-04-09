@@ -379,12 +379,19 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  where <prefix> is the full name of the owner followed by a "." minus
    *  the prefix "dotty.language.".
    */
-  def featureEnabled(feature: TermName): Boolean = {
-    def hasImport =
+  def featureEnabled(feature: TermName, owner: Symbol = NoSymbol): Boolean = {
+    def hasImport = {
+      val owner1 = if (!owner.exists) defn.LanguageModuleClass else owner
       ctx.importInfo != null &&
-      ctx.importInfo.featureImported(feature)(ctx.withPhase(ctx.typerPhase))
-    val hasOption =
-      ctx.base.settings.language.value.exists(s => s == feature.toString || s == "_")
+      ctx.importInfo.featureImported(feature, owner1)(ctx.withPhase(ctx.typerPhase))
+    }
+    val hasOption = {
+      def toPrefix(sym: Symbol): String =
+        if (!sym.exists) ""
+        else toPrefix(sym.owner) + sym.name + "."
+      val featureName = toPrefix(owner) + feature
+      ctx.base.settings.language.value exists (s => s == featureName || s == "_")
+    }
     hasOption || hasImport
   }
 
