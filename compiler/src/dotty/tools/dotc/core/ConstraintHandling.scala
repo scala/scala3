@@ -277,6 +277,9 @@ trait ConstraintHandling[AbstractContext] {
    *      of `scala.Singleton`, widen `tp`.
    *   2. If `tp` is a union type, yet upper bound is not a union type,
    *      approximate the union type from above by an intersection of all common base types.
+   *
+   * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
+   * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
   def widenInferred(tp: Type, bound: Type)(implicit actx: AbstractContext): Type = {
     def isMultiSingleton(tp: Type): Boolean = tp.stripAnnots match {
@@ -302,7 +305,7 @@ trait ConstraintHandling[AbstractContext] {
       if (isMultiSingleton(tp) && !isMultiSingleton(bound) &&
           !isSubTypeWhenFrozen(bound, defn.SingletonType)) tp.widen
       else tp
-    widenOr(widenSingle(tp))
+    widenOr(widenSingle(tp)).dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
