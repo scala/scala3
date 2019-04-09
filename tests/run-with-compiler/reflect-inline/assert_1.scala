@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.tasty._
 
 object api {
-  inline def (inline x: String) stripMargin <: String =
+  inline def (inline x: String) stripMargin: String =
     ${ stripImpl(x) }
 
   private def stripImpl(x: String)(implicit refl: Reflection): Expr[String] =

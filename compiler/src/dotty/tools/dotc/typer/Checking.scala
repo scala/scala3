@@ -710,6 +710,8 @@ trait Checking {
         tree match {
           case Typed(expr, _) =>
             checkInlineConformant(expr, isFinal, what)
+          case Inlined(_, Nil, expr) =>
+            checkInlineConformant(expr, isFinal, what)
           case SeqLiteral(elems, _) =>
             elems.foreach(elem => checkInlineConformant(elem, isFinal, what))
           case Apply(fn, List(arg)) if defn.WrapArrayMethods().contains(fn.symbol) =>

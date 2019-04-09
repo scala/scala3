@@ -356,7 +356,7 @@ object Splicer {
         interpretTree(expr)(newEnv)
       case NamedArg(_, arg) => interpretTree(arg)
 
-      case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
+      case Inlined(_, Nil, expansion) => interpretTree(expansion)
 
       case Typed(expr, _) =>
         interpretTree(expr)
