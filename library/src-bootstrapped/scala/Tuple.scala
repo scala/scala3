@@ -1,6 +1,7 @@
 package scala
 import annotation.showAsInfix
 import compiletime._
+import internal._
 
 sealed trait Tuple extends Any {
   import Tuple._
@@ -346,6 +347,7 @@ sealed class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {
   inline def unapply[H, T <: Tuple](x: H *: T) =
+    // With stageIt on we cannot expand x.head in the same run and fails
     if (Tuple.stageIt) (scala.runtime.DynamicTuple.dynamicHead(x), scala.runtime.DynamicTuple.dynamicTail(x))
     else (x.head, x.tail)
 }

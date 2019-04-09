@@ -1,4 +1,4 @@
-package scala.compiletime
+package scala.internal
 
 import scala.quoted._
 
@@ -131,7 +131,7 @@ object StagedTuple {
     if (!specialize) '{dynamicApply($tup, $n)}
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
-        case Some(n) => quoted.QuoteError("index out of bounds: " + n, tup)
+        case Some(n) => QuoteError("index out of bounds: " + n, tup)
         case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
