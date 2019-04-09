@@ -21,7 +21,13 @@ object Quoted {
   def patternHole[T]: T =
     throw new Error("Internal error: this method call should have been replaced by the compiler")
 
-  /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
+  /** A splice of a name in a quoted pattern is desugared by adding this annotation */
   class patternBindHole extends Annotation
+
+  /** A splice of a name in a quoted pattern in pattern position is desugared by wrapping it in this extractor */
+  object patternMatchBindHole {
+    def unapply(x: Any): Some[x.type] =
+      throw new Error("Internal error: this method call should have been replaced by the compiler")
+  }
 
 }

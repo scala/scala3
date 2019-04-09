@@ -723,6 +723,10 @@ class Definitions {
     lazy val InternalQuoted_patternHoleR: TermRef = InternalQuotedModule.requiredMethodRef("patternHole")
     def InternalQuoted_patternHole(implicit ctx: Context): Symbol = InternalQuoted_patternHoleR.symbol
     lazy val InternalQuoted_patternBindHoleAnnot: ClassSymbol = InternalQuotedModule.requiredClass("patternBindHole")
+    lazy val InternalQuoted_patternMatchBindHoleModuleR: TermRef = InternalQuotedModule.requiredValueRef("patternMatchBindHole".toTermName)
+    def InternalQuoted_patternMatchBindHoleModule: Symbol = InternalQuoted_patternMatchBindHoleModuleR.symbol
+      lazy val InternalQuoted_patternMatchBindHole_unapplyR: TermRef = InternalQuoted_patternMatchBindHoleModule.requiredMethodRef("unapply")
+      def InternalQuoted_patternMatchBindHole_unapply(implicit ctx: Context): Symbol = InternalQuoted_patternMatchBindHole_unapplyR.symbol
 
   lazy val InternalQuotedMatcherModuleRef: TermRef = ctx.requiredModuleRef("scala.internal.quoted.Matcher")
     def InternalQuotedMatcherModule(implicit ctx: Context): Symbol = InternalQuotedMatcherModuleRef.symbol

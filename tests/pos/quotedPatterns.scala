@@ -34,6 +34,10 @@ object Test {
     case '{ def $ff[T](i: T): Int = $z; 2 } =>
       val a: quoted.matching.Bind[[T] => T => Int] = ff
       z
+    case '{ Option(1) match { case $a @ Some(_) => $z } } => z
+    case '{ Option(1) match { case $b: Some[_] => $z } } => z
+    //    case '{ Option(1) match { case Some($n @ _) => $z } } => z
+//    case '{ Option(1) match { case $c => $z } } => z
     case _ => '{1}
   }
 }

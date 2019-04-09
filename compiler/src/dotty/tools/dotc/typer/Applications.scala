@@ -1013,7 +1013,17 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       tree
   }
 
-  def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
+  def typedUnApply(tree0: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
+    val tree =
+      if (ctx.mode.is(Mode.QuotedPattern)) { // TODO move to desugar
+      val Apply(qual0, args0) = tree0
+      val args1 = args0 map {
+        case arg: untpd.Ident if arg.name.startsWith("$") =>
+          untpd.Apply(untpd.ref(defn.InternalQuoted_patternMatchBindHoleModuleR), untpd.Ident(arg.name.toString.substring(1).toTermName) :: Nil)
+        case arg => arg
+      }
+      untpd.cpy.Apply(tree0)(qual0, args1)
+    } else tree0
     val Apply(qual, args) = tree
 
     def notAnExtractor(tree: Tree) =

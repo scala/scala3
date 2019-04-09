@@ -3,7 +3,7 @@ import Macros._
 
 import scala.internal.quoted.Matcher._
 
-import scala.internal.Quoted.{patternHole, patternBindHole}
+import scala.internal.Quoted.{patternHole, patternBindHole, patternMatchBindHole}
 
 object Test {
 
@@ -123,8 +123,8 @@ object Test {
     matches(??? match { case None => 2 }, ??? match { case None => 2 })
     matches(??? match { case Some(1) => 2 }, ??? match { case Some(1) => 2 })
     // matches(??? match { case Some(1) => 2 }, ??? match { case Some(patternMatchHole()) => 2 })
-    // matches(??? match { case Some(n) => 2 }, ??? match { case Some(patternMatchBindHole(n)) => 2 })
-    // matches(??? match { case Some(n @ Some(m)) => 2 }, ??? match { case Some(patterMatchBindHole(n @ Some(patternMatchBindHole(m)))) => 2 })
+    matches(??? match { case Some(n) => 2 }, ??? match { case Some(patternMatchBindHole(n)) => 2 })
+    matches(??? match { case Some(n @ Some(m)) => 2 }, ??? match { case Some(patternMatchBindHole(n @ Some(patternMatchBindHole(m)))) => 2 })
     matches(try 1 catch { case _ => 2 }, try 1 catch { case _ => 2 })
     matches(try 1 finally 2, try 1 finally 2)
     matches(try 1 catch { case _ => 2 }, try patternHole[Int] catch { case _ => patternHole[Int] })

@@ -622,6 +622,26 @@ Pattern: scala.Predef.??? match {
 }
 Result: Some(List())
 
+Scrutinee: scala.Predef.??? match {
+  case scala.Some(n) =>
+    2
+}
+Pattern: scala.Predef.??? match {
+  case scala.Some(scala.internal.Quoted.patternMatchBindHole(n)) =>
+    2
+}
+Result: Some(List(Binding(n)))
+
+Scrutinee: scala.Predef.??? match {
+  case scala.Some(n @ scala.Some(m)) =>
+    2
+}
+Pattern: scala.Predef.??? match {
+  case scala.Some(scala.internal.Quoted.patternMatchBindHole(n @ scala.Some(scala.internal.Quoted.patternMatchBindHole(m)))) =>
+    2
+}
+Result: Some(List(Binding(n), Binding(m)))
+
 Scrutinee: try 1 catch {
   case _ =>
     2

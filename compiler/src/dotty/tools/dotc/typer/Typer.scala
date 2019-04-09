@@ -1416,6 +1416,10 @@ class Typer extends Namer
   }
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
+    if (ctx.mode.is(Mode.QuotedPattern) && tree.name.startsWith("$")) {
+      val bind1 = untpd.cpy.Bind(tree)(tree.name.toString.substring(1).toTermName, tree.body)
+      return typed(untpd.Apply(untpd.ref(defn.InternalQuoted_patternMatchBindHoleModuleR), bind1 :: Nil).withSpan(tree.span), pt)
+    }
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.span)
     val body1 = typed(tree.body, pt1)
     body1 match {
@@ -1960,6 +1964,13 @@ class Typer extends Namer
 
   def splitQuotePattern(quoted: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
     val ctx0 = ctx
+
+    def bindExpr(name: Name, tpe: Type, span: Span): Tree = {
+      val exprTpe = AppliedType(defn.QuotedMatchingBindingType, tpe :: Nil)
+      val sym = ctx0.newPatternBoundSymbol(name, exprTpe, span)
+      Bind(sym, untpd.Ident(nme.WILDCARD).withType(exprTpe)).withSpan(span)
+    }
+
     object splitter extends tpd.TreeMap {
       val patBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
@@ -1990,6 +2001,9 @@ class Typer extends Namer
             patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(exprTpe)).withSpan(ddef.span)
           }
           super.transform(tree)
+        case tree @ UnApply(_, _, (bind: Bind) :: Nil) if tree.fun.symbol == defn.InternalQuoted_patternMatchBindHole_unapply =>
+          patBuf += bindExpr(bind.name, bind.tpe.widen, bind.span)
+          cpy.UnApply(tree)(patterns = untpd.Ident(nme.WILDCARD).withType(bind.tpe.widen) :: Nil)
         case _ =>
           super.transform(tree)
       }

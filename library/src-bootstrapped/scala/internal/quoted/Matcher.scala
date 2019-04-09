@@ -35,6 +35,10 @@ object Matcher {
 
     // TODO improve performance
 
+    /** Create a new matching with the resulting binding for the symbol */
+    def bindingMatched(sym: Symbol) =
+      Some(Tuple1(new Binding(sym.name, sym)))
+
     /** Check that the trees match and return the contents from the pattern holes.
      *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
      *
@@ -253,9 +257,19 @@ object Matcher {
      *         `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
      */
     def patternMatches(scrutinee: Pattern, pattern: Pattern)(implicit env: Set[(Symbol, Symbol)]): (Set[(Symbol, Symbol)], Option[Tuple]) = (scrutinee, pattern) match {
-      case (Pattern.Value(v1), Pattern.Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
-          if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
-        (env, Some(Tuple1(v1.seal)))
+//      case (Pattern.Value(v1), Pattern.Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
+//          if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
+//        (env, Some(Tuple1(v1.seal)))
+
+      case (Pattern.Bind(name1, pat1), Pattern.Unapply(Select(Ident("patternMatchBindHole"), "unapply"), Nil, List(Pattern.Bind(name2, pat2))))
+// TODO            if pattern.symbol == ... =>
+          =>
+        val (env1, patMatch) = patternMatches(pat1, pat2)
+        (env1, foldMatchings(bindingMatched(scrutinee.symbol), patMatch))
+
+      case (Pattern.Value(Ident("_")), Pattern.Value(Ident("_"))) => // TODO add Wildcard to patterns
+        val bindEnv = env + (scrutinee.symbol -> pattern.symbol)
+        (bindEnv, Some(()))
 
       case (Pattern.Value(v1), Pattern.Value(v2)) =>
         (env, treeMatches(v1, v2))
