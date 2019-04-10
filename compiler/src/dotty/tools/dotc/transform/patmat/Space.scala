@@ -545,7 +545,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *          C            -->  C     if current owner is C !!!
    *
    */
-  def showType(tp: Type): String = {
+  def showType(tp: Type, showTypeArgs: Boolean = false): String = {
     val enclosingCls = ctx.owner.enclosingClass
 
     def isOmittable(sym: Symbol) =
@@ -564,25 +564,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case _ => tp.show
     }
 
-    def refine(tp: Type): String = tp match {
+    def refine(tp: Type): String = tp.stripAnnots match {
       case tp: RefinedType => refine(tp.parent)
-      case tp: AppliedType => refine(tp.typeConstructor)
+      case tp: AppliedType =>
+        refine(tp.typeConstructor) + (
+          if (showTypeArgs) tp.argInfos.map(refine).mkString("[", ",", "]")
+          else ""
+        )
       case tp: ThisType => refine(tp.tref)
       case tp: NamedType =>
         val pre = refinePrefix(tp.prefix)
         if (tp.name == tpnme.higherKinds) pre
         else if (pre.isEmpty) tp.name.show.stripSuffix("$")
         else pre + "." + tp.name.show.stripSuffix("$")
+      case tp: OrType => refine(tp.tp1) + " | " + refine(tp.tp2)
+      case _: TypeBounds => "_"
       case _ => tp.show.stripSuffix("$")
     }
 
-    val text = tp.stripAnnots match {
-      case tp: OrType => showType(tp.tp1) + " | " + showType(tp.tp2)
-      case tp => refine(tp)
-    }
-
-    if (text.isEmpty) enclosingCls.show.stripSuffix("$")
-    else text
+    refine(tp)
   }
 
   /** Whether the counterexample is satisfiable. The space is flattened and non-empty. */
@@ -646,7 +646,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class
           showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (decomposed) "_: " + showType(tp)
+        else if (decomposed) "_: " + showType(tp, showTypeArgs = true)
         else "_"
       case Prod(tp, fun, sym, params, _) =>
         if (ctx.definitions.isTupleType(tp))
@@ -677,7 +677,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         }) ||
         tpw.isRef(defn.BooleanClass) ||
         tpw.typeSymbol.is(JavaEnum) ||
-        canDecompose(tpw) ||
         (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
       }
 
@@ -719,7 +718,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
-    !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
+    // Ignore Expr for unreachability as a special case.
+    // Quote patterns produce repeated calls to the same unapply method, but with different implicit parameters.
+    // Since we assume that repeated calls to the same unapply method overlap
+    // and implicit parameters cannot normally differ between two patterns in one `match`,
+    // the easiest solution is just to ignore Expr.
+    !sel.tpe.hasAnnotation(defn.UncheckedAnnot) && !sel.tpe.widen.isRef(defn.QuotedExprClass)
 
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
