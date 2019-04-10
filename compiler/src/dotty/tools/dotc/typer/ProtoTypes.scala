@@ -647,14 +647,12 @@ object ProtoTypes {
           wildApprox(tp.resultType, theMap, seen, internal))
     case  _: ThisType | _: BoundType => // default case, inlined for speed
       tp
-    case tl: HKTypeLambda =>
+    case tl: TypeLambda =>
       val internal1 = internal + tl
       tl.derivedLambdaType(
         paramInfos = tl.paramInfos.mapConserve(wildApprox(_, theMap, seen, internal1).bounds),
         resType = wildApprox(tl.resType, theMap, seen, internal1)
       )
-    case tl: PolyType =>
-      wildApprox(tl.resType, theMap, seen, internal)
     case _ =>
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen, internal))
         .mapOver(tp)
