@@ -357,8 +357,6 @@ class TreeUnpickler(reader: TastyReader,
               readMethodic(ErasedContextualMethodType, _.toTermName)
             case IMPLICITMETHODtype =>
               readMethodic(ImplicitMethodType, _.toTermName)
-            case ERASEDIMPLICITMETHODtype =>
-              readMethodic(ErasedImplicitMethodType, _.toTermName)
             case TYPELAMBDAtype =>
               readMethodic(HKTypeLambda, _.toTypeName)
             case PARAMtype =>
