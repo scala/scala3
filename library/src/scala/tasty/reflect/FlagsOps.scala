@@ -17,6 +17,9 @@ trait FlagsOps extends Core {
 
   object Flags {
 
+    /** The empty set of flags */
+    def EmptyFlags = kernel.Flags_EmptyFlags
+
     /** Is this symbol `private` */
     def Private: Flags = kernel.Flags_Private
 
@@ -38,7 +41,10 @@ trait FlagsOps extends Core {
     /** Is this symbol `implicit` */
     def Implicit: Flags = kernel.Flags_Implicit
 
-    /** Is this symbol `erased` */
+    /** Is this symbol an inferable ("given") parameter */
+    def Given: Flags = kernel.Flags_Given
+
+     /** Is this symbol `erased` */
     def Erased: Flags = kernel.Flags_Erased
 
     /** Is this symbol `lazy` */
