@@ -256,6 +256,8 @@ trait Printers
           this += "Pattern.Alternative(" ++= patterns += ")"
         case Pattern.TypeTest(tpt) =>
           this += "Pattern.TypeTest(" += tpt += ")"
+        case Pattern.WildcardPattern() =>
+          this += "Pattern.WildcardPattern()"
       }
 
       def visitConstant(x: Constant): Buffer = x match {
@@ -1293,12 +1295,12 @@ trait Printers
 
       def printPattern(pattern: Pattern): Buffer = pattern match {
         case Pattern.Value(v) =>
-          v match {
-            case Ident("_") => this += "_"
-            case _ => printTree(v)
-          }
+          printTree(v)
 
-        case Pattern.Bind(name, Pattern.Value(Ident("_"))) =>
+        case Pattern.WildcardPattern() =>
+          this += "_"
+
+        case Pattern.Bind(name, Pattern.WildcardPattern()) =>
           this += name
 
         case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>

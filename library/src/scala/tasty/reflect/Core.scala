@@ -62,6 +62,7 @@ package scala.tasty.reflect
  *               +- Unapply
  *               +- Alternatives
  *               +- TypeTest
+ *               +- WildcardPattern
  *
  *
  *                   +- NoPrefix
@@ -303,6 +304,9 @@ trait Core {
 
     /** Pattern representing a `x: Y` type test. */
     type TypeTest = kernel.TypeTest
+
+    /** Pattern representing a `_` pattern */
+    type WildcardPattern = kernel.WildcardPattern
 
   /** Type or bounds */
   type TypeOrBounds = kernel.TypeOrBounds

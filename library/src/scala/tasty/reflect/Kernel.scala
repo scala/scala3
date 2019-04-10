@@ -61,6 +61,7 @@ package scala.tasty.reflect
  *               +- Unapply
  *               +- Alternatives
  *               +- TypeTest
+ *               +- WildcardPattern
  *
  *
  *                   +- NoPrefix
@@ -790,6 +791,13 @@ trait Kernel {
 
   def Pattern_TypeTest_module_apply(tpt: TypeTree)(implicit ctx: Context): TypeTest
   def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest
+
+  /** Pattern representing a `_` pattern */
+  type WildcardPattern <: Pattern
+
+  def matchPattern_WildcardPattern(pattern: Pattern)(implicit ctx: Context): Option[WildcardPattern]
+
+  def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds)(implicit ctx: Context): WildcardPattern
 
   //
   // TYPES
