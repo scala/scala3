@@ -12,7 +12,9 @@ trait QuotedOps extends Core { self: Printers =>
     def cast[U: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[U] =
       kernel.QuotedExpr_cast[U](expr)
 
-    /** Show a source code like representation of this expression */
+    /** Show a source code like representation of this expression.
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
     def show(implicit ctx: Context): String =
       unseal.showCode
   }
@@ -22,7 +24,9 @@ trait QuotedOps extends Core { self: Printers =>
     def unseal(implicit ctx: Context): TypeTree =
       kernel.QuotedType_unseal(tpe)
 
-    /** Show a source code like representation of this type */
+    /** Show a source code like representation of this type
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
     def show(implicit ctx: Context): String =
       unseal.showCode
   }
