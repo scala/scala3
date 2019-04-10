@@ -67,7 +67,7 @@ Standard-Section: "ASTs" TopLevelStat*
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
   Params        = PARAMS         Length Param*
   Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
-  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
+  Template      = TEMPLATE       Length TypeParam* Params* parent_Term* Self? Stat* -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
 
   Term          = Path                                                             -- Paths represent both types and terms
@@ -165,7 +165,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASEDMETHODtype      Length result_Type NamesTypes              -- A method type `erased (NamesTypes)result`, needed for refinements
                   GIVENMETHODtype       Length result_Type NamesTypes              -- A method type `given (NamesTypes)result`, needed for refinements
                   ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `given erased (NamesTypes)result`, needed for refinements
-                  IMPLCITMETHODtype     Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
+                  IMPLICITMETHODtype    Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
   // TODO: remove ERASEDIMPLICITMETHODtype
                   TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`, variance encoded using VARIANT names
                   SHAREDtype            type_ASTRef                                -- link to previously serialized type
