@@ -647,27 +647,14 @@ object ProtoTypes {
           wildApprox(tp.resultType, theMap, seen, internal))
     case  _: ThisType | _: BoundType => // default case, inlined for speed
       tp
-    case tl: TypeLambda =>
+    case tl: HKTypeLambda =>
       val internal1 = internal + tl
-      val paramInfos = tl.paramInfos
-      val paramInfos1 = tl.paramInfos.mapConserve {
-        case tb @ TypeBounds(lo, hi) =>
-          tb.derivedTypeBounds(
-            wildApprox(lo, theMap, seen, internal1),
-            wildApprox(hi, theMap, seen, internal1)
-          )
-      }
-      val res = tl.resultType
-      val res1 = wildApprox(res, theMap, seen, internal1)
-      if ((res eq res1) && (paramInfos eq paramInfos1)) tl
-      else {
-        def substBounds(tl1: TypeLambda)(tb: TypeBounds): TypeBounds =
-          tb.derivedTypeBounds(tb.lo.subst(tl, tl1), tb.hi.subst(tl, tl1))
-        tl match {
-          case _: HKTypeLambda => HKTypeLambda(tl.paramNames)(tl1 => paramInfos.map(substBounds(tl1)), tl1 => res1.subst(tl, tl1))
-          case _: PolyType     => PolyType(tl.paramNames)(tl1 => paramInfos.map(substBounds(tl1)), tl1 => res1.subst(tl, tl1))
-        }
-      }
+      tl.derivedLambdaType(
+        paramInfos = tl.paramInfos.mapConserve(wildApprox(_, theMap, seen, internal1).bounds),
+        resType = wildApprox(tl.resType, theMap, seen, internal1)
+      )
+    case tl: PolyType =>
+      wildApprox(tl.resType, theMap, seen, internal)
     case _ =>
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen, internal))
         .mapOver(tp)
