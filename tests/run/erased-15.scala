@@ -11,7 +11,7 @@ object Test {
 }
 
 class Foo extends ErasedFunction1[Int, Int] {
-  def apply(erased x: Int): Int = {
+  def apply erased (x: Int): Int = {
     println("Foo.apply")
     42
   }

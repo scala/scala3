@@ -8,7 +8,7 @@ object Test {
     println("foo")
     42
   }
-  def fun(erased boo: Int): Unit = {
+  def fun erased (boo: Int): Unit = {
     println("fun")
   }
 }

@@ -1210,7 +1210,7 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if (in.token == IMPLICIT || in.token == ERASED || in.token == GIVEN) {
+      if (closureMods.contains(in.token)) {
         val imods = modifiers(closureMods)
         if (in.token == MATCH) implicitMatch(start, imods)
         else implicitClosure(start, location, imods)
@@ -1994,11 +1994,9 @@ object Parsers {
       normalize(loop(start))
     }
 
-    /** FunArgMods  ::=  { `implicit` | `erased` }
-     *  ClosureMods ::=  { ‘implicit’ | ‘erased’ | ‘given’}
+    /** ClosureMods ::=  { ‘implicit’ | ‘erased’ | ‘given’}
      *  FunTypeMods ::=  { ‘erased’ | ‘given’}
      */
-    val funArgMods: BitSet = BitSet(IMPLICIT, ERASED)
     val closureMods: BitSet = BitSet(GIVEN, IMPLICIT, ERASED)
     val funTypeMods: BitSet = BitSet(GIVEN, ERASED)
 
@@ -2083,11 +2081,12 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ClsParamClause    ::=  [nl | ‘with’] `(' [FunArgMods] [ClsParams] ')'
+    /** ClsParamClause    ::=  [nl] [‘erased’] ‘(’ [ClsParams] ‘)’
+     *                      |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | ContextTypes)
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{ParamModifier} (`val' | `var') | `inline'] Param
-     *  DefParamClause    ::=  [nl] `(' [FunArgMods] [DefParams] ')' | InferParamClause
-     *  InferParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
+     *  DefParamClause    ::=  [nl] [‘erased’] ‘(’ [DefParams] ‘)’ | GivenParamClause
+     *  GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | ContextTypes)
      *  ContextTypes      ::=  RefinedType {`,' RefinedType}
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
@@ -2158,17 +2157,10 @@ object Parsers {
 
       // begin paramClause
       inParens {
-      	val isContextual = impliedMods.is(Given)
-        if (in.token == RPAREN && !prefix && !isContextual) Nil
+        if (in.token == RPAREN && !prefix && !impliedMods.is(Given)) Nil
         else {
-          def funArgMods(mods: Modifiers): Modifiers =
-            if (in.token == IMPLICIT && !isContextual)
-              funArgMods(addMod(mods, atSpan(accept(IMPLICIT)) { Mod.Implicit() }))
-            else if (in.token == ERASED)
-              funArgMods(addMod(mods, atSpan(accept(ERASED)) { Mod.Erased() }))
-            else mods
-
-          impliedMods = funArgMods(impliedMods)
+          if (in.token == IMPLICIT && !impliedMods.is(Given | Erased))
+            impliedMods = addMod(impliedMods, atSpan(accept(IMPLICIT)) { Mod.Implicit() })
           val clause =
             if (prefix) param() :: Nil
             else commaSeparated(() => param())
@@ -2178,9 +2170,8 @@ object Parsers {
       }
     }
 
-    /** ClsParamClauses   ::=  {ClsParamClause}
-     *  DefParamClauses   ::=  {DefParamClause}
-     *  InferParamClauses ::=  {InferParamClause}
+    /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
+     *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
      *
      *  @return  The parameter definitions
      */
@@ -2188,12 +2179,15 @@ object Parsers {
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] = {
       def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] = {
-        val initialMods =
-          if (in.token == GIVEN) {
-            in.nextToken()
-            Modifiers(Given | Implicit)
-          }
-          else EmptyModifiers
+        var initialMods = EmptyModifiers
+        if (in.token == GIVEN) {
+          in.nextToken()
+          initialMods |= Given | Implicit
+        }
+        if (in.token == ERASED) {
+          in.nextToken()
+          initialMods |= Erased
+        }
         val isContextual = initialMods.is(Given)
         newLineOptWhenFollowedBy(LPAREN)
         if (in.token == LPAREN) {
@@ -2617,7 +2611,7 @@ object Parsers {
     }
 
     /** InstanceDef    ::=  [id] InstanceParams InstanceBody
-     *  InstanceParams ::=  [DefTypeParamClause] {InferParamClause}
+     *  InstanceParams ::=  [DefTypeParamClause] {GivenParamClause}
      *  InstanceBody   ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
      *                   |  ‘of’ Type ‘=’ Expr
      */
@@ -2906,7 +2900,7 @@ object Parsers {
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
-          if (in.token == IMPLICIT || in.token == ERASED || in.token == GIVEN) {
+          if (closureMods.contains(in.token)) {
             val start = in.offset
             var imods = modifiers(closureMods)
             if (isBindingIntro)

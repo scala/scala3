@@ -6,9 +6,9 @@ object Test {
   fun2(new Bar)
   fun3(new Bar)
 
-  def fun1[F >: Bar <: Foo](erased f: F): f.X = null.asInstanceOf[f.X] // error // error
-  def fun2[F >: Bar <: Foo](erased f: F)(erased bar: f.B): f.B = null.asInstanceOf[f.B] // error // error // error
-  def fun3[F >: Bar <: Foo](erased f: F)(erased b: f.B): b.X = null.asInstanceOf[b.X] // error // error // error
+  def fun1[F >: Bar <: Foo] erased (f: F): f.X = null.asInstanceOf[f.X] // error // error
+  def fun2[F >: Bar <: Foo] erased (f: F) erased (bar: f.B): f.B = null.asInstanceOf[f.B] // error // error // error
+  def fun3[F >: Bar <: Foo] erased (f: F) erased (b: f.B): b.X = null.asInstanceOf[b.X] // error // error // error
 }
 
 class Foo {

@@ -11,6 +11,6 @@ object Test {
   }
 }
 
-class Bar(x: Int)(erased y: Int) extends AnyVal {
+class Bar(x: Int) erased (y: Int) extends AnyVal {
   def foo() = x
 }

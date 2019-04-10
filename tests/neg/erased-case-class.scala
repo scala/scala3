@@ -1,1 +1,1 @@
-case class Foo1(erased x: Int) // error // error
+case class Foo1 erased (x: Int) // error // error

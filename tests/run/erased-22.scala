@@ -10,7 +10,7 @@ object Test {
     println("foo")
     42
   }
-  def fun1(implicit erased boo: Int): Int = {
+  def fun1 given erased (boo: Int): Int = {
     println("fun1")
     43
   }

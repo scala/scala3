@@ -1,6 +1,6 @@
 object Test {
   def foo0(a: Int): Int = a
-  def foo1(erased a: Int): Int = {
+  def foo1 erased (a: Int): Int = {
     foo0(
       a // error
     )
@@ -24,7 +24,7 @@ object Test {
     foo3(a) // OK
     a // OK
   }
-  erased def foo3(erased a: Int): Int = {
+  erased def foo3 erased (a: Int): Int = {
     foo0(a) // OK
     foo1(a) // OK
     foo2(a) // OK

@@ -25,7 +25,7 @@ object Test {
     ()
   }
 
-  def bar(erased i: Int): Unit = ()
+  def bar erased (i: Int): Unit = ()
 
   erased def foo0: Int = 0
   erased def foo1(): Int = 1

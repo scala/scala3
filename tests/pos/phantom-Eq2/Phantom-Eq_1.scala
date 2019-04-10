@@ -6,7 +6,7 @@ object EqUtil {
   type PhantomEqEq[T] = PhantomEq[T, T]
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit erased ce: PhantomEq[T, U]) = x.equals(y)
+    def ===[U] (y: U) given erased (ce: PhantomEq[T, U]) = x.equals(y)
   }
 
   implicit erased def eqString: PhantomEqEq[String] = new PhantomEq[String, String]
@@ -16,6 +16,6 @@ object EqUtil {
   implicit erased def eqByteNum: PhantomEq[Byte, Number] = new PhantomEq[Byte, Number]
   implicit erased def eqNumByte: PhantomEq[Number, Byte] = new PhantomEq[Number, Byte]
 
-  implicit erased def eqSeq[T, U](implicit erased eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] =
+  implicit erased def eqSeq[T, U] given erased (eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] =
     new PhantomEq[Seq[T], Seq[U]]
 }

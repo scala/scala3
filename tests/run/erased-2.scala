@@ -12,7 +12,7 @@ object Test {
     }
   }
 
-  def fun(erased bottom: Nothing): Unit = {
+  def fun erased (bottom: Nothing): Unit = {
     println("fun")
   }
 }

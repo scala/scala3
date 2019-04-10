@@ -1,12 +1,12 @@
 class X { type R }
-class T(erased val a: X)(val value: a.R)
+class T erased (val a: X)(val value: a.R)
 
 object App {
   def coerce[U, V](u: U): V = {
     trait X { type R >: U }
     trait Y { type R = V }
 
-    class T[A <: X](erased val a: A)(val value: a.R) // error
+    class T[A <: X] erased (val a: A)(val value: a.R) // error
 
     object O { lazy val x : Y & X = ??? }
 

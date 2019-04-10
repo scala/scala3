@@ -106,13 +106,13 @@ class Definitions {
    *  ErasedFunctionN traits follow this template:
    *
    *      trait ErasedFunctionN[T0,...,T{N-1}, R] extends Object {
-   *        def apply(erased $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *        def apply erased ($x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedImplicitFunctionN traits follow this template:
    *
    *      trait ErasedImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
-   *        def apply given (erased $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *        def apply given erased ($x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN and ErasedImplicitFunctionN erase to Function0.
