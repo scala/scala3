@@ -15,7 +15,7 @@ import scala.math.{Pi, max}
  * @tparam T class type parameter
  */
 @strictfp
-sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable{
+sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable{
 
   /** Auxiliary constructor
    * @param ac auxiliary parameter
@@ -23,6 +23,8 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
   def this(ac: String) = this(ac, Nil)
 
   def this() = this("", Nil)
+
+  def this(x: T) = this()
 
   class innerDocumentationClass {
 
@@ -74,9 +76,11 @@ sealed abstract class Documentation[T](c1: String, val c2: List[T]) extends Seq[
    */
   def docWithMd = ???
 
+  def functionWithType[U]() : U
+
   val complexTypeVal : Int | List[List[T]] & String | (Double | Int, Double) | ((Int) => (String))
 
-  type typeExamle >: Null <: String //TypeBound
+  type typeExamle[X] >: X <: String //TypeBound
 
 }
 

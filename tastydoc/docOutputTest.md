@@ -13,7 +13,7 @@ import scala.math.{Ident(Pi), Ident(max)}
 ## Companion object : example.level2.Documentation$
 
 ```scala
-abstract sealed class Documentation
+abstract sealed class Documentation[T, Z]
 ```
 
 Comments placeholder
@@ -27,11 +27,19 @@ def this(ac: scala.Predef.String)
 ```scala
 def this()
 ```
+```scala
+def this(x: T)
+```
 
 ## Members:
 
+### Definitions: 
 ```scala
 private local param private[this] type T: 
+```
+Comments placeholder
+```scala
+private local param private[this] type Z: 
 ```
 Comments placeholder
 ```scala
@@ -105,6 +113,10 @@ def docWithMd: scala.Nothing
 ```
 Comments placeholder
 ```scala
+def functionWithType[U](): U
+```
+Comments placeholder
+```scala
 val complexTypeVal: scala.Int | scala.collection.immutable.List[scala.collection.immutable.List[Documentation.this.T]] & scala.Predef.String | scala.Tuple2[scala.Double | scala.Int, scala.Double] | scala.Function1[scala.Int, scala.Predef.String]
 ```
 Comments placeholder
@@ -135,6 +147,7 @@ def this()
 
 ## Members:
 
+### Definitions: 
 ```scala
 private synthetic private[this] def writeReplace(): scala.AnyRef
 ```

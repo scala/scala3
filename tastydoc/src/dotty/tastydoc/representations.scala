@@ -91,9 +91,6 @@ object representations {
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
     import reflect._
 
-    //println(internal.body.filter(x => removeColorFromType(x.showCode).contains("def this")).map(_.showCode))
-
-
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
     override val comments = "Comments placeholder"
@@ -111,8 +108,9 @@ object representations {
       }
     override val constructors = (internal.constructor :: (internal.body
       .filter(x => removeColorFromType(x.showCode).contains("def this"))
-      .map{x => x match {
-        case IsDefDef(d@reflect.DefDef(_)) => d //TOASK Not safe?
+      .flatMap{x => x match {
+        case IsDefDef(d@reflect.DefDef(_)) => Some(d)
+        case _ => None
         }
     }))
     .map{x =>
@@ -125,7 +123,10 @@ object representations {
         }
       }
     }
-    override val typeParams = Nil
+    override val typeParams = internal.body.flatMap{
+      case IsTypeDef(t@TypeDef(_)) if t.symbol.flags.showCode.contains("local param") => Some(t.name)
+      case _ => None
+    }
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Parents with Modifiers with TypeParams with MultipleParamList with ReturnValue{
@@ -137,7 +138,8 @@ object representations {
     override val parent = None
     override val parents = Nil
     override val modifiers = internal.symbol.flags.showCode.replaceAll("\\/\\*|\\*\\/", "").split(" ").filter(_!="").toList
-    override val typeParams = Nil
+    override val typeParams = internal.typeParams.map(_.name)
+
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
         override val list = p.map(x => Ref(x.name, removeColorFromType(x.tpt.tpe.showCode)))

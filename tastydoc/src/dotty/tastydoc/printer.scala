@@ -31,7 +31,7 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       Md.header1("class " + r.name) +
       "\n" +
       (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
-      Md.codeBlock((if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+      Md.codeBlock((if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name + (if(r.typeParams.size > 0) r.typeParams.mkString("[", ", ", "]") else ""), "scala") +
       "\n" +
       r.comments +
       "\n" +
@@ -40,6 +40,7 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       "\n" +
       Md.header2("Members:") +
       "\n" +
+      Md.header3("Definitions: ") +
       r.members.map(formatRepresentationToMarkdown(_, true)).mkString("") +
       "\n"
     }
@@ -49,6 +50,7 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
       "def " +
       r.name +
+      (if(r.typeParams.size > 0) r.typeParams.mkString("[", ", ", "]") else "") +
       r.paramLists.map(ParamListPrinter).mkString("") +
       ": " +
       r.returnValue, "scala") +
