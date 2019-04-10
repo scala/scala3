@@ -581,7 +581,7 @@ class Typer extends Namer
     if (untpd.isWildcardStarArg(tree)) {
       def typedWildcardStarArgExpr = {
         val ptArg =
-          if (ctx.mode.is(Mode.QuotedPattern)) pt.subst(defn.RepeatedParamClass :: Nil, defn.SeqType :: Nil)
+          if (ctx.mode.is(Mode.QuotedPattern)) pt.underlyingIfRepeated(isJava = false)
           else WildcardType
         val tpdExpr = typedExpr(tree.expr, ptArg)
         tpdExpr.tpe.widenDealias match {
@@ -1969,7 +1969,9 @@ class Typer extends Namer
         case Splice(pat) =>
           try patternHole(tree)
           finally {
-            val pat1 = pat.subst(defn.RepeatedParamClass :: Nil, defn.SeqClass :: Nil)
+            val patType = pat.tpe.widen
+            val patType1 = patType.underlyingIfRepeated(isJava = false)
+            val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
         case _ =>
