@@ -16,7 +16,6 @@ class Reflection(val kernel: Kernel)
     with Printers
     with ReportingOps
     with RootPosition
-    with SettingsOps
     with SignatureOps
     with StandardDefinitions
     with SymbolOps

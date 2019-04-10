@@ -14,7 +14,6 @@ trait Printers
   with ImportSelectorOps
   with PatternOps
   with PositionOps
-  with SettingsOps
   with SignatureOps
   with StandardDefinitions
   with SymbolOps
@@ -426,7 +425,7 @@ trait Printers
 
   class SourceCodePrinter extends Printer {
 
-    private[this] val color: Boolean = settings.color
+    private def color(implicit ctx: Context): Boolean = kernel.Context_printColors(ctx)
 
     def showTree(tree: Tree)(implicit ctx: Context): String =
       (new Buffer).printTree(tree).result()
