@@ -22,6 +22,11 @@ trait TypeOrBoundsOps extends Core {
     def typeSymbol(implicit ctx: Context): Symbol = kernel.Type_typeSymbol(self)
     def isSingleton(implicit ctx: Context): Boolean = kernel.Type_isSingleton(self)
     def memberType(member: Symbol)(implicit ctx: Context): Type = kernel.Type_memberType(self)(member)
+
+    /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
+    def derivesFrom(cls: ClassDefSymbol)(implicit ctx: Context): Boolean =
+      kernel.Type_derivesFrom(self)(cls)
+
   }
 
   object IsType {

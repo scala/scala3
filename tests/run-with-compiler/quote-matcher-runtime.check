@@ -190,7 +190,7 @@ Result: Some(List())
 
 Scrutinee: fs()
 Pattern: fs((scala.internal.Quoted.patternHole[scala.Seq[scala.Int]]: scala.<repeated>[scala.Int]))
-Result: Some(List(Expr()))
+Result: Some(List(Expr((: scala.<repeated>[scala.Int]))))
 
 Scrutinee: fs((1, 2, 3: scala.<repeated>[scala.Int]))
 Pattern: fs((1, 2, 3: scala.<repeated>[scala.Int]))
@@ -202,7 +202,7 @@ Result: Some(List(Expr(1), Expr(2)))
 
 Scrutinee: fs((1, 2, 3: scala.<repeated>[scala.Int]))
 Pattern: fs((scala.internal.Quoted.patternHole[scala.Seq[scala.Int]]: scala.<repeated>[scala.Int]))
-Result: Some(List(Expr(1, 2, 3)))
+Result: Some(List(Expr((1, 2, 3: scala.<repeated>[scala.Int]))))
 
 Scrutinee: f2(1, 2)
 Pattern: f2(1, 2)
@@ -246,7 +246,7 @@ Result: Some(List(Expr("abc"), Expr("xyz")))
 
 Scrutinee: scala.StringContext.apply(("abc", "xyz": scala.<repeated>[scala.Predef.String]))
 Pattern: scala.StringContext.apply((scala.internal.Quoted.patternHole[scala.Seq[scala.Predef.String]]: scala.<repeated>[scala.Predef.String]))
-Result: Some(List(Expr("abc", "xyz")))
+Result: Some(List(Expr(("abc", "xyz": scala.<repeated>[scala.Predef.String]))))
 
 Scrutinee: {
   val a: scala.Int = 45
