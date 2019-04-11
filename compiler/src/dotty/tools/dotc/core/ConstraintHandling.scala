@@ -34,8 +34,6 @@ trait ConstraintHandling[AbstractContext] {
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
 
-  protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type
-
   private[this] var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
@@ -71,28 +69,20 @@ trait ConstraintHandling[AbstractContext] {
     case tp => tp
   }
 
-  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
-    constraint.nonParamBounds(param) match {
-      case TypeAlias(tpr: TypeParamRef) => TypeAlias(externalize(tpr))
-      case tb => tb
-    }
+  def nonParamBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds = constraint.nonParamBounds(param)
 
-  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
-    (nonParamBounds(param).lo /: constraint.minLower(param)) {
-      (t, u) => t | externalize(u)
-    }
+  def fullLowerBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
+    (nonParamBounds(param).lo /: constraint.minLower(param))(_ | _)
 
-  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
-    (nonParamBounds(param).hi /: constraint.minUpper(param)) {
-      (t, u) => t & externalize(u)
-    }
+  def fullUpperBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
+    (nonParamBounds(param).hi /: constraint.minUpper(param))(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
     *
     * Note that underlying operations perform subtype checks - for this reason, recursing on `fullBounds`
     * of some param when comparing types might lead to infinite recursion. Consider `bounds` instead.
     */
-  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+  def fullBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =

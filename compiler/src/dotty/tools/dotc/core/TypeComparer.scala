@@ -33,8 +33,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
-  override protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type = param
-
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
   private[this] var monitored = false

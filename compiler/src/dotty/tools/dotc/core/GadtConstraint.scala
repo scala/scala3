@@ -180,16 +180,32 @@ final class ProperGadtConstraint private(
   override protected def constraint = myConstraint
   override protected def constraint_=(c: Constraint) = myConstraint = c
 
-  override protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
+  override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
+  override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
+
+   override def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+     constraint.nonParamBounds(param) match {
+       case TypeAlias(tpr: TypeParamRef) => TypeAlias(externalize(tpr))
+       case tb => tb
+     }
+
+   override def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
+     (nonParamBounds(param).lo /: constraint.minLower(param)) {
+       (t, u) => t | externalize(u)
+     }
+
+   override def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
+     (nonParamBounds(param).hi /: constraint.minUpper(param)) {
+       (t, u) => t & externalize(u)
+     }
+
+  // ---- Private ----------------------------------------------------------
+
+  private[this] def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
     reverseMapping(param) match {
       case sym: Symbol => sym.typeRef
       case null => param
     }
-
-  override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
-  override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
-
-  // ---- Private ----------------------------------------------------------
 
   private[this] def tvar(sym: Symbol)(implicit ctx: Context): TypeVar = {
     mapping(sym) match {
