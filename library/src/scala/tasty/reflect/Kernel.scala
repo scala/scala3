@@ -862,6 +862,9 @@ trait Kernel {
 
   def Type_memberType(self: Type)(member: Symbol)(implicit ctx: Context): Type
 
+  /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
+  def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean
+
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
 
@@ -1454,7 +1457,7 @@ trait Kernel {
   def Definitions_Array_length: Symbol
   def Definitions_Array_update: Symbol
 
-  def Definitions_RepeatedParamClass: Symbol
+  def Definitions_RepeatedParamClass: ClassDefSymbol
 
   def Definitions_OptionClass: Symbol
   def Definitions_NoneModule: Symbol
