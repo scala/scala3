@@ -189,4 +189,40 @@ final class JSDefinitions()(implicit ctx: Context) {
   def isJSThisFunctionClass(cls: Symbol): Boolean =
     isScalaJSVarArityClass(cls, "ThisFunction")
 
+  /** Definitions related to the treatment of JUnit boostrappers. */
+  object junit {
+    lazy val TestAnnotType: TypeRef = ctx.requiredClassRef("org.junit.Test")
+    def TestAnnotClass(implicit ctx: Context): ClassSymbol = TestAnnotType.symbol.asClass
+
+    lazy val BeforeAnnotType: TypeRef = ctx.requiredClassRef("org.junit.Before")
+    def BeforeAnnotClass(implicit ctx: Context): ClassSymbol = BeforeAnnotType.symbol.asClass
+
+    lazy val AfterAnnotType: TypeRef = ctx.requiredClassRef("org.junit.After")
+    def AfterAnnotClass(implicit ctx: Context): ClassSymbol = AfterAnnotType.symbol.asClass
+
+    lazy val BeforeClassAnnotType: TypeRef = ctx.requiredClassRef("org.junit.BeforeClass")
+    def BeforeClassAnnotClass(implicit ctx: Context): ClassSymbol = BeforeClassAnnotType.symbol.asClass
+
+    lazy val AfterClassAnnotType: TypeRef = ctx.requiredClassRef("org.junit.AfterClass")
+    def AfterClassAnnotClass(implicit ctx: Context): ClassSymbol = AfterClassAnnotType.symbol.asClass
+
+    lazy val IgnoreAnnotType: TypeRef = ctx.requiredClassRef("org.junit.Ignore")
+    def IgnoreAnnotClass(implicit ctx: Context): ClassSymbol = IgnoreAnnotType.symbol.asClass
+
+    lazy val BootstrapperType: TypeRef = ctx.requiredClassRef("org.scalajs.junit.Bootstrapper")
+
+    lazy val TestMetadataType: TypeRef = ctx.requiredClassRef("org.scalajs.junit.TestMetadata")
+
+    lazy val NoSuchMethodExceptionType: TypeRef = ctx.requiredClassRef("java.lang.NoSuchMethodException")
+
+    lazy val FutureType: TypeRef = ctx.requiredClassRef("scala.concurrent.Future")
+    def FutureClass(implicit ctx: Context): ClassSymbol = FutureType.symbol.asClass
+
+    private lazy val FutureModule_successfulR = ctx.requiredModule("scala.concurrent.Future").requiredMethodRef("successful")
+    def FutureModule_successful(implicit ctx: Context): Symbol = FutureModule_successfulR.symbol
+
+    private lazy val SuccessModule_applyR = ctx.requiredModule("scala.util.Success").requiredMethodRef(nme.apply)
+    def SuccessModule_apply(implicit ctx: Context): Symbol = SuccessModule_applyR.symbol
+  }
+
 }

@@ -832,6 +832,13 @@ object Build {
       },
       scalacOptions += "-scalajs",
 
+      // Replace the JVM JUnit dependency by the Scala.js one
+      libraryDependencies ~= {
+        _.filter(!_.name.startsWith("junit-interface"))
+      },
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").withDottyCompat(scalaVersion.value),
+
       // The main class cannot be found automatically due to the empty inc.Analysis
       mainClass in Compile := Some("hello.HelloWorld"),
 
