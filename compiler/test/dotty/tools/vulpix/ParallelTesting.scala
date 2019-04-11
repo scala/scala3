@@ -481,7 +481,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw new TimeoutException("Compiling targets timed out")
         }
 
-        eventualResults.foreach(_.get)
+        eventualResults.foreach { x =>
+          try x.get()
+          catch {
+            case ex: Exception =>
+              System.err.println(ex.getMessage)
+              ex.printStackTrace()
+          }
+        }
 
         if (logProgress) {
           timer.cancel()
