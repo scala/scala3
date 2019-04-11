@@ -102,6 +102,7 @@ trait TreeUtils
       case Pattern.Unapply(fun, implicits, patterns) => foldPatterns(foldTrees(foldTree(x, fun), implicits), patterns)
       case Pattern.Alternatives(patterns) => foldPatterns(x, patterns)
       case Pattern.TypeTest(tpt) => foldTree(x, tpt)
+      case Pattern.WildcardPattern() => x
     }
 
   }
@@ -243,7 +244,7 @@ trait TreeUtils
     }
 
     def transformPattern(pattern: Pattern)(implicit ctx: Context): Pattern = pattern match {
-      case Pattern.Value(_) =>
+      case Pattern.Value(_) | Pattern.WildcardPattern() =>
         pattern
       case Pattern.IsTypeTest(pattern) =>
         Pattern.TypeTest.copy(pattern)(transformTypeTree(pattern.tpt))

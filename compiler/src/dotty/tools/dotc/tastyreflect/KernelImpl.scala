@@ -922,7 +922,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def matchPattern_Value(pattern: Pattern): Option[Value] = pattern match {
     case lit: tpd.Literal => Some(lit)
-    case ref: tpd.RefTree if ref.isTerm => Some(ref)
+    case ref: tpd.RefTree if ref.isTerm && !tpd.isWildcardArg(ref) => Some(ref)
     case ths: tpd.This => Some(ths)
     case _ => None
   }
@@ -1004,6 +1004,18 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest =
     tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
+
+  type WildcardPattern = tpd.Ident
+
+  def matchPattern_WildcardPattern(pattern: Pattern)(implicit ctx: Context): Option[WildcardPattern] = {
+    pattern match {
+      case pattern: tpd.Ident if tpd.isWildcardArg(pattern) => Some(pattern)
+      case _ => None
+    }
+  }
+
+  def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds)(implicit ctx: Context): WildcardPattern =
+    untpd.Ident(nme.WILDCARD).withType(tpe)
 
   //
   // TYPES

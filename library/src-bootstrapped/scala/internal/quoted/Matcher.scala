@@ -246,6 +246,9 @@ object Matcher {
       case (Pattern.TypeTest(tpt1), Pattern.TypeTest(tpt2)) =>
         (env, treeMatches(tpt1, tpt2))
 
+      case (Pattern.WildcardPattern(), Pattern.WildcardPattern()) =>
+        (env, Some(()))
+
       case _ =>
         if (debug)
           println(

@@ -105,6 +105,18 @@ trait PatternOps extends Core {
         kernel.matchPattern_TypeTest(pattern).map(_.tpt)
     }
 
+    object IsWildcardPattern {
+      def unapply(pattern: Pattern)(implicit ctx: Context): Option[WildcardPattern] =
+        kernel.matchPattern_WildcardPattern(pattern)
+    }
+
+    object WildcardPattern {
+      def apply(tpe: TypeOrBounds)(implicit ctx: Context): WildcardPattern =
+        kernel.Pattern_WildcardPattern_module_apply(tpe)
+      def unapply(pattern: Pattern)(implicit ctx: Context): Boolean =
+        kernel.matchPattern_WildcardPattern(pattern).isDefined
+    }
+
   }
 
 }

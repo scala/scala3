@@ -66,7 +66,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       }
     }
     else {
-      assert(!enclosingInlineds.nonEmpty, "unexpanded macro")
+      assert(enclosingInlineds.isEmpty, "unexpanded macro")
       assert(ctx.owner.isInlineMethod)
       if (Splicer.canBeSpliced(body)) { // level 0 inside an inline definition
         transform(body)(spliceContext) // Just check PCP

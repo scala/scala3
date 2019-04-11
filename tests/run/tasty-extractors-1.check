@@ -40,13 +40,13 @@ Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDe
 Inlined(None, Nil, Match(Literal(Constant.String("a")), List(CaseDef(Pattern.Value(Literal(Constant.String("a"))), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Match(Literal(Constant.String("b")), List(CaseDef(Pattern.Bind("n", Pattern.Value(Ident("_"))), None, Block(Nil, Literal(Constant.Unit()))))))
+Inlined(None, Nil, Match(Literal(Constant.String("b")), List(CaseDef(Pattern.Bind("n", Pattern.WildcardPattern()), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
 Inlined(None, Nil, Match(Literal(Constant.String("c")), List(CaseDef(Pattern.Bind("n", Pattern.TypeTest(TypeIdent("String"))), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Match(Literal(Constant.String("e")), List(CaseDef(Pattern.Value(Ident("_")), None, Block(Nil, Literal(Constant.Unit()))))))
+Inlined(None, Nil, Match(Literal(Constant.String("e")), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
 Inlined(None, Nil, Match(Literal(Constant.String("f")), List(CaseDef(Pattern.TypeTest(TypeIdent("String")), None, Block(Nil, Literal(Constant.Unit()))))))
@@ -55,22 +55,22 @@ Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageD
 Inlined(None, Nil, Match(Typed(Literal(Constant.String("g")), TypeIdent("Any")), List(CaseDef(Pattern.Alternative(List(Pattern.TypeTest(TypeIdent("String")), Pattern.TypeTest(TypeIdent("Int")))), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Match(Literal(Constant.String("h")), List(CaseDef(Pattern.Value(Ident("_")), Some(Literal(Constant.Boolean(false))), Block(Nil, Literal(Constant.Unit()))))))
+Inlined(None, Nil, Match(Literal(Constant.String("h")), List(CaseDef(Pattern.WildcardPattern(), Some(Literal(Constant.Boolean(false))), Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Block(List(ValDef("a", Inferred(), Some(Literal(Constant.String("o"))))), Match(Literal(Constant.String("i")), List(CaseDef(Pattern.Bind("a", Pattern.Value(Ident("_"))), None, Block(Nil, Literal(Constant.Unit())))))))
+Inlined(None, Nil, Block(List(ValDef("a", Inferred(), Some(Literal(Constant.String("o"))))), Match(Literal(Constant.String("i")), List(CaseDef(Pattern.Bind("a", Pattern.WildcardPattern()), None, Block(Nil, Literal(Constant.Unit())))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Match(Ident("Nil"), List(CaseDef(Pattern.Unapply(TypeApply(Select(Ident("List"), "unapplySeq"), List(Inferred())), Nil, List(Pattern.Bind("a", Pattern.Value(Ident("_"))), Pattern.Bind("b", Pattern.Value(Ident("_"))), Pattern.Bind("c", Pattern.Value(Ident("_"))))), None, Block(Nil, Literal(Constant.Unit()))))))
+Inlined(None, Nil, Match(Ident("Nil"), List(CaseDef(Pattern.Unapply(TypeApply(Select(Ident("List"), "unapplySeq"), List(Inferred())), Nil, List(Pattern.Bind("a", Pattern.WildcardPattern()), Pattern.Bind("b", Pattern.WildcardPattern()), Pattern.Bind("c", Pattern.WildcardPattern()))), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Try(Literal(Constant.Int(1)), List(CaseDef(Pattern.Value(Ident("_")), None, Block(Nil, Literal(Constant.Unit())))), None))
+Inlined(None, Nil, Try(Literal(Constant.Int(1)), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant.Unit())))), None))
 Type.OrType(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
 
 Inlined(None, Nil, Try(Literal(Constant.Int(2)), Nil, Some(Literal(Constant.Unit()))))
 Type.ConstantType(Constant.Int(2))
 
-Inlined(None, Nil, Try(Literal(Constant.Int(3)), List(CaseDef(Pattern.Value(Ident("_")), None, Block(Nil, Literal(Constant.Unit())))), Some(Literal(Constant.Unit()))))
+Inlined(None, Nil, Try(Literal(Constant.Int(3)), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant.Unit())))), Some(Literal(Constant.Unit()))))
 Type.OrType(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
 
 Inlined(None, Nil, Apply(Select(Literal(Constant.String("a")), "=="), List(Literal(Constant.String("b")))))

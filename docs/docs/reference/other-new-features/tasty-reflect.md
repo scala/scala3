@@ -139,6 +139,7 @@ TASTy Reflect provides the following types:
              +- Unapply
              +- Alternative
              +- TypeTest
+             +- WildcardPattern
 
 
                  +- NoPrefix
