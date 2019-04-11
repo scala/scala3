@@ -41,8 +41,7 @@ def maximum[T](xs: List[T]) given Ord[T]: T =
 inferred argument to `max`. The name of the parameter is left out.
 
 Generally, inferable parameters may be given either as a parameter list `(p_1: T_1, ..., p_n: T_n)`
-or as a sequence of types, separated by commas. To distinguish the two, a leading
-`(` always indicates a parameter list.
+or as a sequence of types, separated by commas.
 
 ## Inferring Complex Arguments
 
@@ -105,7 +104,7 @@ ClsParamClause    ::=  ...
 DefParamClause    ::=  ...
                     |  GivenParamClause
 GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
-GivenTypes        ::=  RefinedType {‘,’ RefinedType}
+GivenTypes        ::=  AnnotType {‘,’ AnnotType}
 
 InfixExpr         ::=  ...
                     |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)

@@ -68,10 +68,10 @@ TmplDef          ::=  ...
                   |  ‘implied’ InstanceDef
 InstanceDef      ::=  [id] InstanceParams InstanceBody
 InstanceParams   ::=  [DefTypeParamClause] {GivenParamClause}
-InferParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
+GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
 InstanceBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
                    |  ‘for’ Type ‘=’ Expr
-GivenTypes       ::=  RefinedType {‘,’ RefinedType}
+GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
 The identifier `id` can be omitted only if either the `for` part or the template body is present.
 If the `for` part is missing, the template body must define at least one extension method.
