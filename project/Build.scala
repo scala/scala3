@@ -355,7 +355,22 @@ object Build {
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
     baseDirectory in Test := baseDirectory.value / "..",
     libraryDependencies +=
-      "com.novocode" % "junit-interface" % "0.11"
+      "com.novocode" % "junit-interface" % "0.11",
+    libraryDependencies ++= {
+      val flexmarkVersion = "0.40.24"
+      Seq(
+        "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
+        Dependencies.`jackson-dataformat-yaml`,
+        "nl.big-o" % "liqp" % "0.6.7"
+      )
+    }
   )
 
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
