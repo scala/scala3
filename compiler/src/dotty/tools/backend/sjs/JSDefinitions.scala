@@ -24,6 +24,9 @@ final class JSDefinitions()(implicit ctx: Context) {
   lazy val NoinlineAnnotType: TypeRef = ctx.requiredClassRef("scala.noinline")
   def NoinlineAnnot(implicit ctx: Context) = NoinlineAnnotType.symbol.asClass
 
+  lazy val JavaLangVoidType: TypeRef = ctx.requiredClassRef("java.lang.Void")
+  def JavaLangVoidClass(implicit ctx: Context) = JavaLangVoidType.symbol.asClass
+
   lazy val ScalaJSJSPackageVal = ctx.requiredPackage("scala.scalajs.js")
   lazy val ScalaJSJSPackageClass = ScalaJSJSPackageVal.moduleClass.asClass
     lazy val JSPackage_typeOfR = ScalaJSJSPackageClass.requiredMethodRef("typeOf")
