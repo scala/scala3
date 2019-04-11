@@ -2190,7 +2190,19 @@ object Parsers {
         }
         val isContextual = initialMods.is(Given)
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == LPAREN) {
+        def isParamClause: Boolean =
+          !isContextual || {
+            val lookahead = in.lookaheadScanner
+            lookahead.nextToken()
+            paramIntroTokens.contains(lookahead.token) && {
+              lookahead.token != IDENTIFIER ||
+              lookahead.name == nme.inline || {
+                lookahead.nextToken()
+                lookahead.token == COLON
+              }
+            }
+          }
+        if (in.token == LPAREN && isParamClause) {
           if (ofInstance && !isContextual)
             syntaxError(em"parameters of instance definitions must come after `given'")
           val params = paramClause(
