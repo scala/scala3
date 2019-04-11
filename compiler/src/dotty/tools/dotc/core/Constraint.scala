@@ -45,10 +45,16 @@ abstract class Constraint extends Showable {
   /** The parameters that are known to be greater wrt <: than `param` */
   def upper(param: TypeParamRef): List[TypeParamRef]
 
-  /** `lower`, except that `minLower.forall(tpr => !minLower.exists(_ <:< tpr))` */
+  /** The lower dominator set.
+   *
+   * This is like `lower`, except that each parameter returned is no smaller than every other returned parameter.
+   */
   def minLower(param: TypeParamRef): List[TypeParamRef]
 
-  /** `upper`, except that `minUpper.forall(tpr => !minUpper.exists(tpr <:< _))` */
+  /** The upper dominator set.
+   *
+   * This is like `upper`, except that each parameter returned is no greater than every other returned parameter.
+   */
   def minUpper(param: TypeParamRef): List[TypeParamRef]
 
   /** lower(param) \ lower(butNot) */
