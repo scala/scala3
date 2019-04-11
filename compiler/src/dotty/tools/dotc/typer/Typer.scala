@@ -2553,10 +2553,12 @@ class Typer extends Namer
           inst(lo)
         case tp: TypeParamRef =>
           constraint.typeVarOfParam(tp).orElse(tp)
-        case _ => tp
+        case _ =>
+          NoType
       }
       tp match {
-        case tp: TypeVar if constraint.contains(tp) => inst(constraint.entry(tp.origin))
+        case tp: TypeVar if constraint.contains(tp) =>
+          inst(constraint.entry(tp.origin)).orElse(tp)
         case _ => tp
       }
     }
