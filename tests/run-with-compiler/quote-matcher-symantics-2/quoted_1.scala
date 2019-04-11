@@ -34,7 +34,7 @@ object Macros {
     }
 
     def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Binding[DSL], Expr[T]]): Expr[T => T] = e match {
-      case '{ (`$x`: DSL) => ($body: DSL) } =>
+      case '{ ($x: DSL) => ($body: DSL) } =>
         sym.lam((y: Expr[T]) => lift(body)(env + (x -> y)))
 
       case _ =>

@@ -704,6 +704,15 @@ object Trees {
     assert(isEmpty || tpt != genericEmptyTree)
     def unforced: LazyTree = preRhs
     protected def force(x: AnyRef): Unit = preRhs = x
+
+    /** Is this a `BackquotedValDef` ? */
+    def isBackquoted: Boolean = false
+  }
+
+  class BackquotedValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+    extends ValDef[T](name, tpt, preRhs) {
+    override def isBackquoted: Boolean = true
+    override def productPrefix: String = "BackquotedValDef"
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
@@ -932,6 +941,7 @@ object Trees {
     type Alternative = Trees.Alternative[T]
     type UnApply = Trees.UnApply[T]
     type ValDef = Trees.ValDef[T]
+    type BackquotedValDef = Trees.BackquotedValDef[T]
     type DefDef = Trees.DefDef[T]
     type TypeDef = Trees.TypeDef[T]
     type Template = Trees.Template[T]
@@ -1125,6 +1135,9 @@ object Trees {
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns)(sourceFile(tree)))
       }
       def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(implicit ctx: Context): ValDef = tree match {
+        case tree: BackquotedValDef =>
+          if ((name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs)) tree
+          else finalize(tree, untpd.BackquotedValDef(name, tpt, rhs)(sourceFile(tree)))
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }

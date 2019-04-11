@@ -166,7 +166,7 @@ object desugar {
   }
 
   def transformQuotedPatternName(vdef: ValDef)(implicit ctx: Context): ValDef = {
-    if (ctx.mode.is(Mode.QuotedPattern) && vdef.name.startsWith("$")) {
+    if (ctx.mode.is(Mode.QuotedPattern) && !vdef.isBackquoted && vdef.name.startsWith("$")) {
       val name = vdef.name.toString.substring(1).toTermName
       val mods = vdef.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(vdef.span))
       cpy.ValDef(vdef)(name).withMods(mods)
