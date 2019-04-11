@@ -158,6 +158,16 @@ final class JSDefinitions()(implicit ctx: Context) {
   lazy val BoxesRunTime_unboxToCharR = defn.BoxesRunTimeModule.requiredMethodRef("unboxToChar")
   def BoxesRunTime_unboxToChar(implicit ctx: Context): Symbol = BoxesRunTime_unboxToCharR.symbol
 
+  lazy val EnableReflectiveInstantiationAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
+  def EnableReflectiveInstantiationAnnot(implicit ctx: Context) = EnableReflectiveInstantiationAnnotType.symbol.asClass
+
+  lazy val ReflectModuleRef = ctx.requiredModuleRef("scala.scalajs.reflect.Reflect")
+  def ReflectModule(implicit ctx: Context) = ReflectModuleRef.symbol
+    lazy val Reflect_registerLoadableModuleClassR = ReflectModule.requiredMethodRef("registerLoadableModuleClass")
+    def Reflect_registerLoadableModuleClass(implicit ctx: Context) = Reflect_registerLoadableModuleClassR.symbol
+    lazy val Reflect_registerInstantiatableClassR = ReflectModule.requiredMethodRef("registerInstantiatableClass")
+    def Reflect_registerInstantiatableClass(implicit ctx: Context) = Reflect_registerInstantiatableClassR.symbol
+
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   private def scalajsClassName(cls: Symbol)(implicit ctx: Context): TypeName =
     if (cls.isClass && cls.owner == ScalaJSJSPackageClass) cls.asClass.name
