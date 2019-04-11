@@ -67,11 +67,11 @@ Here is the new syntax of implied instance definitions, seen as a delta from the
 TmplDef          ::=  ...
                   |  ‘implied’ InstanceDef
 InstanceDef      ::=  [id] InstanceParams InstanceBody
-InstanceParams   ::=  [DefTypeParamClause] {InferParamClause}
-InferParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | ContextTypes)
+InstanceParams   ::=  [DefTypeParamClause] {GivenParamClause}
+GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
 InstanceBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
                    |  ‘for’ Type ‘=’ Expr
-ContextTypes     ::=  RefinedType {‘,’ RefinedType}
+GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
 The identifier `id` can be omitted only if either the `for` part or the template body is present.
 If the `for` part is missing, the template body must define at least one extension method.

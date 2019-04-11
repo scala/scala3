@@ -292,7 +292,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] [‘erased’] ‘(’ [ClsParams] ‘)’
-                    |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | ContextTypes)
+                    |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -301,10 +301,10 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
 DefParamClause    ::=  [nl] [‘erased’] ‘(’ [DefParams] ‘)’ | GivenParamClause
-GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | ContextTypes)
+GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
-ContextTypes      ::=  RefinedType {‘,’ RefinedType}
+GivenTypes        ::=  AnnotType {‘,’ AnnotType}
 ClosureMods       ::=  { ‘implicit’ | ‘erased’ | ‘given’}
 ```
 
@@ -356,7 +356,6 @@ Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef
                     |  ‘def’ DefDef
                     |  ‘type’ {nl} TypeDcl
-                    |  ‘instance’ {nl} InstanceDef
                     |  TmplDef
                     |  INT
 PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr              PatDef(_, pats, tpe?, expr)
@@ -379,8 +378,8 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 InstanceDef       ::=  [id] InstanceParams InstanceBody
 InstanceParams    ::=  [DefTypeParamClause] {GivenParamClause}
-InstanceBody      ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                    |  ‘of’ Type ‘=’ Expr
+InstanceBody      ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+                    |  ‘for’ Type ‘=’ Expr
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

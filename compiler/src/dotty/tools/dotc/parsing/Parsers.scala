@@ -2082,12 +2082,12 @@ object Parsers {
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
     /** ClsParamClause    ::=  [nl] [‘erased’] ‘(’ [ClsParams] ‘)’
-     *                      |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | ContextTypes)
+     *                      |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{ParamModifier} (`val' | `var') | `inline'] Param
      *  DefParamClause    ::=  [nl] [‘erased’] ‘(’ [DefParams] ‘)’ | GivenParamClause
-     *  GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | ContextTypes)
-     *  ContextTypes      ::=  RefinedType {`,' RefinedType}
+     *  GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
+     *  GivenTypes        ::=  RefinedType {`,' RefinedType}
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
@@ -2190,7 +2190,19 @@ object Parsers {
         }
         val isContextual = initialMods.is(Given)
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == LPAREN) {
+        def isParamClause: Boolean =
+          !isContextual || {
+            val lookahead = in.lookaheadScanner
+            lookahead.nextToken()
+            paramIntroTokens.contains(lookahead.token) && {
+              lookahead.token != IDENTIFIER ||
+              lookahead.name == nme.inline || {
+                lookahead.nextToken()
+                lookahead.token == COLON
+              }
+            }
+          }
+        if (in.token == LPAREN && isParamClause) {
           if (ofInstance && !isContextual)
             syntaxError(em"parameters of instance definitions must come after `given'")
           val params = paramClause(
@@ -2203,7 +2215,7 @@ object Parsers {
           params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length))
         }
         else if (isContextual) {
-          val tps = commaSeparated(refinedType)
+          val tps = commaSeparated(() => annotType())
           var counter = nparams
           def nextIdx = { counter += 1; counter }
           val params = tps.map(makeSyntheticParameter(nextIdx, _, Given | Implicit))
@@ -2612,8 +2624,8 @@ object Parsers {
 
     /** InstanceDef    ::=  [id] InstanceParams InstanceBody
      *  InstanceParams ::=  [DefTypeParamClause] {GivenParamClause}
-     *  InstanceBody   ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-     *                   |  ‘of’ Type ‘=’ Expr
+     *  InstanceBody   ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+     *                   |  ‘for’ Type ‘=’ Expr
      */
     def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)

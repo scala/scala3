@@ -240,6 +240,8 @@ object Tokens extends TokensCommon {
 
   final val modifierFollowers = modifierTokens | defIntroTokens
 
+  final val paramIntroTokens: TokenSet = modifierTokens | identifierTokens | BitSet(AT, VAL, VAR, IMPLICIT)
+
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
