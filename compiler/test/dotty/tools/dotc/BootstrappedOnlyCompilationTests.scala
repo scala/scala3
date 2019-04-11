@@ -16,7 +16,7 @@ import java.nio.file._
 class BootstrappedOnlyCompilationTests extends ParallelTesting {
   import ParallelTesting._
   import TestConfiguration._
-  import CompilationTests._
+  import BootstrappedOnlyCompilationTests._
 
   // Test suite configuration --------------------------------------------------
 
@@ -134,4 +134,9 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
   }
+}
+
+object BootstrappedOnlyCompilationTests {
+  implicit val summaryReport: SummaryReporting = new SummaryReport
+  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }
