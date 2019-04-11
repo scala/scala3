@@ -216,7 +216,7 @@ class TreeUnpickler(reader: TastyReader,
     def readParamTypes[T <: Type](end: Addr)(implicit ctx: Context): List[T] =
       until(end) { readNat(); readType().asInstanceOf[T] }
 
-    /** Read referece to definition and return symbol created at that definition */
+    /** Read reference to definition and return symbol created at that definition */
     def readSymRef()(implicit ctx: Context): Symbol = symbolAt(readAddr())
 
     /** The symbol at given address; createa new one if none exists yet */
@@ -351,9 +351,9 @@ class TreeUnpickler(reader: TastyReader,
               readMethodic(MethodType, _.toTermName)
             case ERASEDMETHODtype =>
               readMethodic(ErasedMethodType, _.toTermName)
-            case CONTEXTUALMETHODtype =>
+            case GIVENMETHODtype =>
               readMethodic(ContextualMethodType, _.toTermName)
-            case ERASEDCONTEXTUALMETHODtype =>
+            case ERASEDGIVENMETHODtype =>
               readMethodic(ErasedContextualMethodType, _.toTermName)
             case IMPLICITMETHODtype =>
               readMethodic(ImplicitMethodType, _.toTermName)
