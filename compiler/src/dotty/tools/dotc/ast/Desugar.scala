@@ -158,7 +158,7 @@ object desugar {
         vparamss = (setterParam :: Nil) :: Nil,
         tpt      = TypeTree(defn.UnitType),
         rhs      = setterRhs
-      ).withMods((mods | Accessor) &~ CaseAccessor)
+      ).withMods((mods | Accessor) &~ (CaseAccessor | Implicit | Given))
       Thicket(vdef, setter)
     }
     else vdef
