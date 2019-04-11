@@ -31,7 +31,7 @@ import scala.util.Properties.isJavaAtLeast
 object Build {
   val scalacVersion = "2.12.8"
 
-  val baseVersion = "0.14.0"
+  val baseVersion = "0.15.0"
   val baseSbtDottyVersion = "0.3.2"
 
   // Versions used by the vscode extension to create a new project
