@@ -101,11 +101,11 @@ Functions like `the` that have only inferable parameters are also called _contex
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
 ClsParamClause    ::=  ...
-                    |  ‘given’ (‘(’ [ClsParams] ‘)’ | ContextTypes)
+                    |  ‘given’ (‘(’ [ClsParams] ‘)’ | GivenTypes)
 DefParamClause    ::=  ...
-                    |  InferParamClause
-InferParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | ContextTypes)
-ContextTypes      ::=  RefinedType {‘,’ RefinedType}
+                    |  GivenParamClause
+GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
+GivenTypes        ::=  RefinedType {‘,’ RefinedType}
 
 InfixExpr         ::=  ...
                     |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
