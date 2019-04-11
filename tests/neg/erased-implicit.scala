@@ -5,4 +5,5 @@ object Test {
   def fun(implicit a: Double): Int = 42
 
   erased implicit def doubleImplicit: Double = 42.0
+
 }

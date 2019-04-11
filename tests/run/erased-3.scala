@@ -14,7 +14,7 @@ object Test {
     "abc"
   }
 
-  def fun(erased a: Int)(erased b: String): Unit = {
+  def fun erased (a: Int) erased (b: String): Unit = {
     println("fun")
   }
 

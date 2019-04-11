@@ -1,2 +1,2 @@
-scala> def f(erased a: Int): Int = ???
-def f(erased a: Int): Int
+scala> def f erased (a: Int): Int = ???
+def f erased (a: Int): Int

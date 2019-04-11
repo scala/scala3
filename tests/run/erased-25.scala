@@ -6,5 +6,5 @@ object Test {
 }
 
 class Dataset {
-  def select[A](erased c: Boolean): String = "abc"
+  def select[A] erased (c: Boolean): String = "abc"
 }

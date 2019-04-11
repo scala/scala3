@@ -432,7 +432,6 @@ object TastyFormat {
   final val CONTEXTUALMETHODtype = 182
   final val ERASEDCONTEXTUALMETHODtype = 183
   final val IMPLICITMETHODtype = 184
-  final val ERASEDIMPLICITMETHODtype = 185
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
@@ -440,7 +439,7 @@ object TastyFormat {
   def methodType(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
     val implicitOffset =
       if (isContextual) 2
-      else if (isImplicit) 4
+      else if (isImplicit) { assert(!isErased); 4 }
       else 0
     val erasedOffset = if (isErased) 1 else 0
     METHODtype + erasedOffset + implicitOffset
@@ -650,7 +649,6 @@ object TastyFormat {
     case CONTEXTUALMETHODtype => "CONTEXTUALMETHODtype"
     case ERASEDCONTEXTUALMETHODtype => "ERASEDCONTEXTUALMETHODtype"
     case IMPLICITMETHODtype => "IMPLICITMETHODtype"
-    case ERASEDIMPLICITMETHODtype => "ERASEDIMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
     case MATCHtype => "MATCHtype"
@@ -672,7 +670,7 @@ object TastyFormat {
     case POLYtype | TYPELAMBDAtype |
          METHODtype | ERASEDMETHODtype |
          CONTEXTUALMETHODtype | ERASEDCONTEXTUALMETHODtype |
-         IMPLICITMETHODtype | ERASEDIMPLICITMETHODtype => -1
+         IMPLICITMETHODtype => -1
     case _ => 0
   }
 }

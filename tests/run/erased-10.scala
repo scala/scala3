@@ -4,7 +4,7 @@ object Test {
     fun2.pacFun4(inky)
   }
 
-  def pacFun4(erased clyde: Int) = {
+  def pacFun4 erased (clyde: Int) = {
     println("pacFun4")
   }
 

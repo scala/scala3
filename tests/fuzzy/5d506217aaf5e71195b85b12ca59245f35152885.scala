@@ -24,7 +24,7 @@ case List(i4: Int) =>
 }
 }
 trait i5 {
-def i3(erased i2: Int): Int = 0
+def i3 erased (i2: Int): Int = 0
 def i2() = { class i3 } match {
 case i4 @ i5 => 1
 case i6: i7 => i5 _ extends i5 =>

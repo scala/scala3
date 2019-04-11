@@ -15,11 +15,11 @@ object Test {
     "abc"
   }
 
-  def fun(a: Int)(erased b: String): Unit = {
+  def fun(a: Int) erased (b: String): Unit = {
     println("fun " + a)
   }
 
-  def fun2(erased a: Int)(b: String): Unit = {
+  def fun2 erased (a: Int)(b: String): Unit = {
     println("fun2 " + b)
   }
 }

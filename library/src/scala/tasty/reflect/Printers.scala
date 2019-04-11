@@ -1212,24 +1212,30 @@ trait Printers
         }
       }
 
-      def printArgsDefs(args: List[ValDef])(implicit elideThis: Option[Symbol]): Unit = inParens {
-        args match {
-          case Nil =>
-          case arg :: _ =>
-            if (arg.symbol.flags.is(Flags.Erased)) this += "erased "
-            if (arg.symbol.flags.is(Flags.Implicit)) this += "implicit "
+      def printArgsDefs(args: List[ValDef])(implicit elideThis: Option[Symbol]): Unit = {
+        val argFlags = args match {
+          case Nil => Flags.EmptyFlags
+          case arg :: _ => arg.symbol.flags
         }
-
-        def printSeparated(list: List[ValDef]): Unit = list match {
-          case Nil =>
-          case x :: Nil => printParamDef(x)
-          case x :: xs =>
-            printParamDef(x)
-            this += ", "
-            printSeparated(xs)
+        if (argFlags.is(Flags.Erased | Flags.Given)) {
+          if (argFlags.is(Flags.Given)) this += " given"
+          if (argFlags.is(Flags.Erased)) this += " erased"
+          this += " "
         }
+        inParens {
+          if (argFlags.is(Flags.Implicit) && !argFlags.is(Flags.Given)) this += "implicit "
 
-        printSeparated(args)
+          def printSeparated(list: List[ValDef]): Unit = list match {
+            case Nil =>
+            case x :: Nil => printParamDef(x)
+            case x :: xs =>
+              printParamDef(x)
+              this += ", "
+              printSeparated(xs)
+          }
+
+          printSeparated(args)
+        }
       }
 
       def printAnnotations(trees: List[Term])(implicit elideThis: Option[Symbol]): Buffer = {

@@ -12,6 +12,6 @@ object Test {
 
 }
 
-case class Foo(a: Int)(erased b: Int) {
+case class Foo(a: Int) erased (b: Int) {
   println("Foo")
 }

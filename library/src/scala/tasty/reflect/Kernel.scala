@@ -1348,6 +1348,7 @@ trait Kernel {
   /** Intersection of the two flag sets */
   def Flags_and(self: Flags)(that: Flags): Flags
 
+  def Flags_EmptyFlags: Flags
   def Flags_Private: Flags
   def Flags_Protected: Flags
   def Flags_Abstract: Flags
@@ -1355,6 +1356,7 @@ trait Kernel {
   def Flags_Sealed: Flags
   def Flags_Case: Flags
   def Flags_Implicit: Flags
+  def Flags_Given: Flags
   def Flags_Implied: Flags
   def Flags_Erased: Flags
   def Flags_Lazy: Flags

@@ -1,5 +1,5 @@
 object Test {
-  def foo(erased a: Int)(b: Int, c: Int) = 42
+  def foo erased (a: Int)(b: Int, c: Int) = 42
   def bar(i: Int): Int = {
     println(1)
     42

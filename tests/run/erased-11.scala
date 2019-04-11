@@ -8,17 +8,17 @@ object Test {
     (new Fun2().fun)({ println("z1"); boo })({ println("z2"); boo })
   }
 
-  def fun(erased x1: Int)(erased x2: Int) = {
+  def fun erased (x1: Int) erased (x2: Int) = {
     println("fun")
   }
 
-  class Fun(erased y1: Int)(erased y2: Int) {
+  class Fun erased (y1: Int) erased (y2: Int) {
     println("Fun")
   }
 
   class Fun2 {
     println("Fun2")
-    def fun(erased z1: Int)(erased z2: Int) = {
+    def fun erased (z1: Int) erased (z2: Int) = {
       println("Fun2fun")
     }
   }

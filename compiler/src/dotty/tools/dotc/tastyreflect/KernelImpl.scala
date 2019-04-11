@@ -1653,6 +1653,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   /** Intersection of the two flag sets */
   def Flags_and(self: Flags)(that: Flags): Flags = self & that
 
+  def Flags_EmptyFlags: Flags = core.Flags.EmptyFlags
   def Flags_Private: Flags = core.Flags.Private
   def Flags_Protected: Flags = core.Flags.Protected
   def Flags_Abstract: Flags = core.Flags.Abstract
@@ -1660,6 +1661,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Flags_Sealed: Flags = core.Flags.Sealed
   def Flags_Case: Flags = core.Flags.Case
   def Flags_Implicit: Flags = core.Flags.Implicit
+  def Flags_Given: Flags = core.Flags.Given
   def Flags_Implied: Flags = core.Flags.Implied
   def Flags_Erased: Flags = core.Flags.Erased
   def Flags_Lazy: Flags = core.Flags.Lazy

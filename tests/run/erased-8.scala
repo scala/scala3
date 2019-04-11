@@ -1,7 +1,7 @@
 object Test {
 
   def main(args: Array[String]): Unit = {
-    def f(erased i: Int) = {
+    def f erased (i: Int) = {
       new Foo(foo)(i)
     }
     f(foo)
@@ -14,6 +14,6 @@ object Test {
 
 }
 
-class Foo(a: Int)(erased b: Int) {
+class Foo(a: Int) erased (b: Int) {
   println("Foo")
 }

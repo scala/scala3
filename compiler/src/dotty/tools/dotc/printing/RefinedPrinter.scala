@@ -136,14 +136,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        (keywordText("erased ") provided isErased) ~
         (keywordText("given ") provided isContextual) ~
+        (keywordText("erased ") provided isErased) ~
         argStr ~ " => " ~ argText(args.last)
       }
 
     def toTextDependentFunction(appType: MethodType): Text =
-      (keywordText("erased ") provided appType.isErasedMethod) ~
       (keywordText("given ") provided appType.isImplicitMethod) ~
+      (keywordText("erased ") provided appType.isErasedMethod) ~
       "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
 
     def isInfixType(tp: Type): Boolean = tp match {

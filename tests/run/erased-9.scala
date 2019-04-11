@@ -9,7 +9,7 @@ object Test {
     42
   }
 
-  def fun[T](erased x: T): Unit = {
+  def fun[T] erased (x: T): Unit = {
     println("fun")
   }
 }

@@ -38,10 +38,10 @@ present in some form in the generated code to be able to do separate compilation
 
 How to define erased terms?
 -------------------------------
-Parameters of methods and functions can be declared as erased, placing `erased` at the start of the parameter list (like `implicit`).
+Parameters of methods and functions can be declared as erased, placing `erased` in front of a parameter list (like `given`).
 
 ```scala
-def methodWithErasedEv(erased ev: Ev): Int = 42
+def methodWithErasedEv erased (ev: Ev): Int = 42
 
 val lambdaWithErasedEv: erased Ev => Int =
   erased (ev: Ev) => 42
@@ -50,10 +50,10 @@ val lambdaWithErasedEv: erased Ev => Int =
 `erased` parameters will not be usable for computations, though they can be used as arguments to other `erased` parameters.
 
 ```scala
-def methodWithErasedInt1(erased i: Int): Int =
+def methodWithErasedInt1 erased (i: Int): Int =
   i + 42 // ERROR: can not use i
 
-def methodWithErasedInt2(erased i: Int): Int =
+def methodWithErasedInt2 erased (i: Int): Int =
   methodWithErasedInt1(i) // OK
 ```
 
@@ -70,7 +70,7 @@ As `erased` are guaranteed not to be used in computations, they can and will be 
 
 ```scala
 // becomes def methodWithErasedEv(): Int at runtime
-def methodWithErasedEv(erased ev: Ev): Int = ...
+def methodWithErasedEv erased (ev: Ev): Int = ...
 
 def evidence1: Ev = ...
 erased def erasedEvidence2: Ev = ... // does not exist at runtime
@@ -83,13 +83,13 @@ methodWithErasedEv(evidence1)
 State machine with erased evidence example
 ------------------------------------------
 The following example is an extended implementation of a simple state machine which can be in a state `On` or `Off`.
-The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`, 
+The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`,
 conversely from `On` to `Off` with `turnedOff` only if it is currently `On`. These last constraint are
-captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `IsOn[On]`. 
-For example, not allowing calling `turnedOff` on in an `Off` state as we would require an evidence `IsOn[Off]` 
+captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `IsOn[On]`.
+For example, not allowing calling `turnedOff` on in an `Off` state as we would require an evidence `IsOn[Off]`
 that will not be found.
 
-As the implicit evidences of `turnedOn` and `turnedOff` are not used in the bodies of those functions 
+As the implicit evidences of `turnedOn` and `turnedOff` are not used in the bodies of those functions
 we can mark them as `erased`. This will remove the evidence parameters at runtime, but we would still
 evaluate the `isOn` and `isOff` implicits that were found as arguments.
 As `isOn` and `isOff` are not used except as `erased` arguments, we can mark them as `erased`, hence
@@ -117,9 +117,9 @@ object IsOn {
 }
 
 class Machine[S <: State] private {
-  // ev will disapear from both functions
-  def turnedOn(implicit erased ev: IsOff[S]): Machine[On] = new Machine[On]
-  def turnedOff(implicit erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
+  // ev will disappear from both functions
+  def turnedOn given erased (ev: IsOff[S]): Machine[On] = new Machine[On]
+  def turnedOff given erased (ev: IsOn[S]): Machine[Off] = new Machine[Off]
 }
 
 object Machine {
@@ -156,12 +156,12 @@ Rules
     erased val x = ...
     erased def f = ...
 
-    def g(erased x: Int) = ...
+    def g erased (x: Int) = ...
 
-    (erased x: Int) => ...
+     erased (x: Int) => ...
     def h(x: erased Int => Int) = ...
 
-    class K(erased x: Int) { ... }
+    class K erased (x: Int) { ... }
     ```
 
 
@@ -182,14 +182,14 @@ Rules
 
 4. Eta expansion
 
-   if `def f(erased x: T): U` then `f: (erased T) => U`.
+   if `def f erased (x: T): U` then `f:  erased (T) => U`.
 
 
 5. Erasure Semantics
    * All `erased` parameters are removed from the function
    * All argument to `erased` parameters are not passed to the function
    * All `erased` definitions are removed
-   * All `(erased T1, T2, ..., TN) => R` and `(given erased T1, T2, ..., TN) => R` become `() => R`
+   * All ` erased (T1, T2, ..., TN) => R` and `(given erased T1, T2, ..., TN) => R` become `() => R`
 
 
 6. Overloading
@@ -198,6 +198,6 @@ Rules
 
 
 7. Overriding
-   * Member definitions overidding each other must both be `erased` or not be `erased`
-   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` an viceversa
+   * Member definitions overriding each other must both be `erased` or not be `erased`
+   * `def foo(x: T): U` cannot be overridden by `def foo erased (x: T): U` an vice-versa
 
