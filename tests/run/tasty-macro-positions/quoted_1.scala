@@ -13,7 +13,7 @@ object Macros {
   def impl(x: Expr[Any])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
     val pos = x.unseal.underlyingArgument.pos
-    val code = x.unseal.underlyingArgument.showCode
+    val code = x.unseal.underlyingArgument.show
     '{
       println(${posStr(reflect)(pos)})
       println(${code.toExpr})
@@ -23,7 +23,7 @@ object Macros {
   def impl2[T](x: quoted.Type[T])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
     val pos = x.unseal.pos
-    val code = x.unseal.showCode
+    val code = x.unseal.show
     '{
       println(${posStr(reflect)(pos)})
       println(${code.toExpr})

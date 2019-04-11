@@ -13,15 +13,15 @@ object Macros {
     val res = scala.internal.quoted.Matcher.unapply[Tuple](a)(b, reflect).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
-          s"Expr(${r.unseal.showCode})"
+          s"Expr(${r.unseal.show})"
         case r: quoted.Type[_] =>
-          s"Type(${r.unseal.showCode})"
+          s"Type(${r.unseal.show})"
       }
     }
 
     '{
-      println("Scrutinee: " + ${a.unseal.showCode.toExpr})
-      println("Pattern: " + ${b.unseal.showCode.toExpr})
+      println("Scrutinee: " + ${a.unseal.show.toExpr})
+      println("Pattern: " + ${b.unseal.show.toExpr})
       println("Result: " + ${res.toString.toExpr})
       println()
     }

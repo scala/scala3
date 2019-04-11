@@ -25,9 +25,9 @@ object Macros {
       assert(${(typeOf[Object] =:= definitions.ObjectType)}, "Object")
       assert(${(typeOf[Nothing] =:= definitions.NothingType)}, "Nothing")
 
-      println(${typeOf[List[Int]].showCode})
-      println(${typeOf[Macros].showCode})
-      println(${typeOf[Macros.type].showCode})
+      println(${typeOf[List[Int]].show})
+      println(${typeOf[Macros].show})
+      println(${typeOf[Macros.type].show})
     }
   }
 

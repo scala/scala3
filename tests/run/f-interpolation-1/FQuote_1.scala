@@ -48,7 +48,7 @@ object FQuote {
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {
-        return '{s"`${${arg.showCode}}` is not of type Int"}
+        return '{s"`${${arg.show}}` is not of type Int"}
       }
 
     }

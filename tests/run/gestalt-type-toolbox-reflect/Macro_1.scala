@@ -89,7 +89,7 @@ object TypeToolbox {
   inline def typeTag[T](x: T): String = ${typeTagImpl('[T])}
   private def typeTagImpl(tp: Type[_])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    val res = tp.unseal.tpe.showCode
+    val res = tp.unseal.tpe.show
     res.toExpr
   }
 

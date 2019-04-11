@@ -8,7 +8,7 @@ object Macros {
 
   def impl(x: Expr[Any])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
-    error("here is the the argument is " + x.unseal.underlyingArgument.showCode, x.unseal.underlyingArgument.pos)
+    error("here is the the argument is " + x.unseal.underlyingArgument.show, x.unseal.underlyingArgument.pos)
     '{}
   }
 
