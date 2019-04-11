@@ -6,5 +6,4 @@ object Test {
 
   erased implicit def doubleImplicit: Double = 42.0
 
-  def foo erased (implicit a: Double) = 42   // error
 }
