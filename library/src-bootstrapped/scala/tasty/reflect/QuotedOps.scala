@@ -14,7 +14,7 @@ trait QuotedOps extends Core { self: Printers =>
 
     /** Show a source code like representation of this expression */
     def show(implicit ctx: Context): String =
-      unseal.showCode
+      unseal.show
   }
 
   implicit class QuotedTypeAPI[T <: AnyKind](tpe: scala.quoted.Type[T]) {
@@ -24,7 +24,7 @@ trait QuotedOps extends Core { self: Printers =>
 
     /** Show a source code like representation of this type */
     def show(implicit ctx: Context): String =
-      unseal.showCode
+      unseal.show
   }
 
   implicit class TermToQuotedAPI(term: Term) {

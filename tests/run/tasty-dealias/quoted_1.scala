@@ -7,6 +7,6 @@ object Macros {
 
   def impl[T](x: quoted.Type[T])(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    x.unseal.tpe.dealias.showCode.toExpr
+    x.unseal.tpe.dealias.show.toExpr
   }
 }

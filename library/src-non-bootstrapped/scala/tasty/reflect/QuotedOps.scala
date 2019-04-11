@@ -15,8 +15,7 @@ trait QuotedOps extends Core { self: Printers =>
     /** Show a source code like representation of this expression.
      *  Will print Ansi colors if ctx.printColors is enabled.
      */
-    def show(implicit ctx: Context): String =
-      unseal.showCode
+    def show(implicit ctx: Context): String = unseal.show
   }
 
   implicit class QuotedTypeAPI[T](tpe: scala.quoted.Type[T]) {
@@ -27,8 +26,7 @@ trait QuotedOps extends Core { self: Printers =>
     /** Show a source code like representation of this type
      *  Will print Ansi colors if ctx.printColors is enabled.
      */
-    def show(implicit ctx: Context): String =
-      unseal.showCode
+    def show(implicit ctx: Context): String = unseal.show
   }
 
   implicit class TermToQuotedAPI(term: Term) {

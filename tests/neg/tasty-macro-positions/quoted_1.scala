@@ -9,8 +9,8 @@ object Macros {
   def impl(x: Expr[Any])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect._
     val pos = x.unseal.underlyingArgument.pos
-    error("here is the the argument is " + x.unseal.underlyingArgument.showCode, pos)
-    error("here (+5) is the the argument is " + x.unseal.underlyingArgument.showCode, pos.sourceFile, pos.start + 5, pos.end + 5)
+    error("here is the the argument is " + x.unseal.underlyingArgument.show, pos)
+    error("here (+5) is the the argument is " + x.unseal.underlyingArgument.show, pos.sourceFile, pos.start + 5, pos.end + 5)
     '{}
   }
 

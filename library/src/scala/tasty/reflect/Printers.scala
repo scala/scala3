@@ -24,48 +24,58 @@ trait Printers
   implicit class TreeShowDeco(tree: Tree) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showTree(tree)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTree(tree)
+    /** Shows the tree as fully typed source code.
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
+    def show(implicit ctx: Context): String = new SourceCodePrinter().showTree(tree)
   }
 
   /** Adds `show` as an extension method of a `TypeOrBounds` */
   implicit class TypeOrBoundsShowDeco(tpe: TypeOrBounds) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showTypeOrBounds(tpe)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBounds(tpe)
+    /** Shows the tree as fully typed source code.
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
+    def show(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBounds(tpe)
   }
 
   /** Adds `show` as an extension method of a `Pattern` */
   implicit class PatternShowDeco(pattern: Pattern) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showPattern(pattern)
+    /** Shows the tree as fully typed source code.
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
+    def show(implicit ctx: Context): String = new SourceCodePrinter().showPattern(pattern)
   }
 
   /** Adds `show` as an extension method of a `Constant` */
   implicit class ConstantShowDeco(const: Constant) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showConstant(const)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showConstant(const)
+    /** Shows the tree as fully typed source code.
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
+    def show(implicit ctx: Context): String = new SourceCodePrinter().showConstant(const)
   }
 
   /** Adds `show` as an extension method of a `Symbol` */
   implicit class SymbolShowDeco(symbol: Symbol) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showSymbol(symbol)
+    /** Shows the tree as fully typed source code */
+    def show(implicit ctx: Context): String = new SourceCodePrinter().showSymbol(symbol)
   }
 
   /** Adds `show` as an extension method of a `Flags` */
   implicit class FlagsShowDeco(flags: Flags) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showFlags(flags)
-    /** Shows the tree as source code */
-    def showCode(implicit ctx: Context): String = new SourceCodePrinter().showFlags(flags)
+    /** Shows the tree as fully typed source code.
+     *  Will print Ansi colors if ctx.printColors is enabled.
+     */
+    def show(implicit ctx: Context): String = new SourceCodePrinter().showFlags(flags)
   }
 
   abstract class Printer {

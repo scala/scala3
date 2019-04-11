@@ -22,7 +22,7 @@ object XmlQuote {
     // for debugging purpose
     def pp(tree: Tree): Unit = {
       println(tree.showExtractors)
-      println(tree.showCode)
+      println(tree.show)
     }
 
     def isSCOpsConversion(tree: Term) =

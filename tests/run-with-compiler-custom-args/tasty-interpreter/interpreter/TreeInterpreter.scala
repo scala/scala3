@@ -160,7 +160,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     if (LOG)
       println(
         s"""#> $tag:
-           |${tree.showCode}
+           |${tree.show}
            |${tree.showExtractors}
            |
            |""".stripMargin)

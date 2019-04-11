@@ -178,12 +178,12 @@ object Matcher {
             println(
               s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                  |Scrutinee
-                 |  ${scrutinee.showCode}
+                 |  ${scrutinee.show}
                  |
                  |${scrutinee.showExtractors}
                  |
                  |did not match pattern
-                 |  ${pattern.showCode}
+                 |  ${pattern.show}
                  |
                  |${pattern.showExtractors}
                  |
@@ -251,12 +251,12 @@ object Matcher {
           println(
             s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                |Scrutinee
-               |  ${scrutinee.showCode}
+               |  ${scrutinee.show}
                |
                |${scrutinee.showExtractors}
                |
                |did not match pattern
-               |  ${pattern.showCode}
+               |  ${pattern.show}
                |
                |${pattern.showExtractors}
                |
