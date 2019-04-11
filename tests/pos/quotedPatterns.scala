@@ -22,6 +22,19 @@ object Test {
     case '{ (($y: Int) => 1 + y + ($z: Int))(2) } =>
       val a: quoted.matching.Binding[Int] = y
       z
+    case '{ def $ff: Int = $z; ff } =>
+      val a: quoted.matching.Binding[Int] = ff
+      z
+    case '{ def $ff(i: Int): Int = $z; 2 } =>
+      val a: quoted.matching.Binding[Int => Int] = ff
+      z
+    case '{ def $ff(i: Int)(j: Int): Int = $z; 2 } =>
+      val a: quoted.matching.Binding[Int => Int => Int] = ff
+      z
+    // FIXME
+//    case '{ def `$ff`[T](i: T): Int = $z; 2 } =>
+//      val a: quoted.matching.Binding[[T] => T => Int] = ff // TODO make Binding any-kinded
+//      z
     case _ => '{1}
   }
 }

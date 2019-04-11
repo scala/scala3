@@ -2418,10 +2418,10 @@ object Parsers {
           else
             (Nil, Method)
         val mods1 = addFlag(mods, flags)
-        val name = ident()
+        val ident = termIdent()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses() match {
-          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(name) =>
+          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(ident.name) =>
             rparams :: leadingParamss ::: rparamss
           case rparamss =>
             leadingParamss ::: rparamss
@@ -2451,7 +2451,9 @@ object Parsers {
             accept(EQUALS)
             expr()
           }
-        finalizeDef(DefDef(name, tparams, vparamss, tpt, rhs), mods1, start)
+
+        if (ident.isBackquoted) finalizeDef(BackquotedDefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
+        else finalizeDef(DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
       }
     }
 

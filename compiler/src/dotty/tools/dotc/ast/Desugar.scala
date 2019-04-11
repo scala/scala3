@@ -206,7 +206,9 @@ object desugar {
    *  ==>
    *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
    */
-  private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+  private def defDef(meth0: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+    val meth = transformQuotedPatternName(meth0)
+
     val DefDef(_, tparams, vparamss, tpt, rhs) = meth
     val methName = normalizeName(meth, tpt).asTermName
     val mods = meth.mods
@@ -279,6 +281,14 @@ object desugar {
         .withMods(meth1.mods | DefaultParameterized)
       Thicket(meth2 :: defGetters)
     }
+  }
+
+  def transformQuotedPatternName(ddef: DefDef)(implicit ctx: Context): DefDef = {
+    if (ctx.mode.is(Mode.QuotedPattern) && !ddef.isBackquoted && ddef.name != nme.ANON_FUN && ddef.name.startsWith("$")) {
+      val name = ddef.name.toString.substring(1).toTermName
+      val mods = ddef.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(ddef.span))
+      cpy.DefDef(ddef)(name).withMods(mods)
+    } else ddef
   }
 
   // Add all evidence parameters in `params` as implicit parameters to `meth` */
