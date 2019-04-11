@@ -14,7 +14,6 @@ class TastydocConsumer extends TastyConsumer {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
     import internal._
-    import references._
 
     println("Full tree =========================")
     println(root.show)

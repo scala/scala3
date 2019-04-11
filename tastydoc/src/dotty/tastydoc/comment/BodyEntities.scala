@@ -2,6 +2,7 @@ package dotty.tastydoc
 package comment
 
 import scala.collection._
+import representations._
 
 /** A body of text. A comment has a single body, which is composed of
   * at least one block. Inside every body is exactly one summary (see
@@ -60,10 +61,10 @@ final case class Subscript(text: Inline) extends Inline
 final case class Link(target: String, title: Inline) extends Inline
 final case class Monospace(text: Inline) extends Inline
 final case class Text(text: String) extends Inline
-abstract class EntityLink(val title: Inline) extends Inline { def link: LinkTo }
-object EntityLink {
-  def apply(title: Inline, linkTo: LinkTo) = new EntityLink(title) { def link: LinkTo = linkTo }
-  def unapply(el: EntityLink): Some[(Inline, LinkTo)] = Some((el.title, el.link))
+abstract class RepresentationLink(val title: Inline) extends Inline { def link: LinkTo }
+object RepresentationLink {
+  def apply(title: Inline, linkTo: LinkTo) = new RepresentationLink(title) { def link: LinkTo = linkTo }
+  def unapply(el: RepresentationLink): Some[(Inline, LinkTo)] = Some((el.title, el.link))
 }
 final case class HtmlTag(data: String) extends Inline {
   private val Pattern = """(?ms)\A<(/?)(.*?)[\s>].*\z""".r
@@ -90,4 +91,4 @@ final case class LinkToExternal(name: String, url: String) extends LinkTo
 final case class Tooltip(name: String) extends LinkTo
 
 /** Linking directly to entities is not picklable because of cyclic references */
-final case class LinkToEntity(entity: Entity) extends LinkTo
+final case class LinkToRepresentation(Representation: Representation) extends LinkTo

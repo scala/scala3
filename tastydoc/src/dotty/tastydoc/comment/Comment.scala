@@ -6,7 +6,8 @@ package comment
 // import dotty.tools.dotc.util.Spans._
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
 // import HtmlParsers._
-// import util.MemberLookup
+import util.MemberLookup
+import representations._
 
 case class Comment (
   body:                    String,
@@ -55,112 +56,112 @@ private[comment] case class ParsedComment (
   shortDescription:        List[String]
 )
 
-// trait MarkupConversion[T] extends MemberLookup {
-//   def ent: Entity
-//   def span: Span
-//   def parsed: ParsedComment
+trait MarkupConversion[T] extends MemberLookup {
+  def ent: Representation
+  // def span: Span
+  def parsed: ParsedComment
 
-//   protected def linkedExceptions(m: Map[String, String])(implicit ctx: Context): Map[String, String]
-//   protected def stringToMarkup(str: String)(implicit ctx: Context): T
-//   protected def markupToHtml(t: T)(implicit ctx: Context): String
-//   protected def stringToShortHtml(str: String)(implicit ctx: Context): String
-//   protected def filterEmpty(xs: List[String])(implicit ctx: Context): List[T]
-//   protected def filterEmpty(xs: Map[String, String])(implicit ctx: Context): Map[String, T]
+  protected def linkedExceptions(m: Map[String, String]): Map[String, String]
+  protected def stringToMarkup(str: String): T
+  protected def markupToHtml(t: T): String
+  protected def stringToShortHtml(str: String): String
+  protected def filterEmpty(xs: List[String]): List[T]
+  protected def filterEmpty(xs: Map[String, String]): Map[String, T]
 
-//   private def single(annot: String, xs: List[String], filter: Boolean = true)(implicit ctx: Context): Option[T] =
-//     (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
-//       case x :: xs =>
-//         if (xs.nonEmpty) ctx.docbase.warn(
-//           s"Only allowed to have a single annotation for $annot",
-//           ent.symbol.sourcePosition(span)
-//         )
-//         Some(x)
-//       case _ => None
-//     }
+  private def single(annot: String, xs: List[String], filter: Boolean = true): Option[T] =
+    (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
+      case x :: xs =>
+        // if (xs.nonEmpty) ctx.docbase.warn(
+        //   s"Only allowed to have a single annotation for $annot",
+        //   ent.symbol.sourcePosition(span)
+        // )
+        Some(x)
+      case _ => None
+    }
 
-//   final def comment(implicit ctx: Context): Comment = Comment(
-//     body                    = markupToHtml(stringToMarkup(parsed.body)),
-//     short                   = stringToShortHtml(parsed.body),
-//     authors                 = filterEmpty(parsed.authors).map(markupToHtml),
-//     see                     = filterEmpty(parsed.see).map(markupToHtml),
-//     result                  = single("@result", parsed.result).map(markupToHtml),
-//     throws                  = linkedExceptions(parsed.throws),
-//     valueParams             = filterEmpty(parsed.valueParams).mapValues(markupToHtml),
-//     typeParams              = filterEmpty(parsed.typeParams).mapValues(markupToHtml),
-//     version                 = single("@version", parsed.version).map(markupToHtml),
-//     since                   = single("@since", parsed.since).map(markupToHtml),
-//     todo                    = filterEmpty(parsed.todo).map(markupToHtml),
-//     deprecated              = single("@deprecated", parsed.deprecated, filter = false).map(markupToHtml),
-//     note                    = filterEmpty(parsed.note).map(markupToHtml),
-//     example                 = filterEmpty(parsed.example).map(markupToHtml),
-//     constructor             = single("@constructor", parsed.constructor).map(markupToHtml),
-//     group                   = single("@group", parsed.group).map(markupToHtml),
-//     groupDesc               = filterEmpty(parsed.groupDesc).mapValues(markupToHtml),
-//     groupNames              = filterEmpty(parsed.groupNames).mapValues(markupToHtml),
-//     groupPrio               = filterEmpty(parsed.groupPrio).mapValues(markupToHtml),
-//     hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(markupToHtml)
-//   )
-// }
+  final def comment: Comment = Comment(
+    body                    = markupToHtml(stringToMarkup(parsed.body)),
+    short                   = stringToShortHtml(parsed.body),
+    authors                 = filterEmpty(parsed.authors).map(markupToHtml),
+    see                     = filterEmpty(parsed.see).map(markupToHtml),
+    result                  = single("@result", parsed.result).map(markupToHtml),
+    throws                  = linkedExceptions(parsed.throws),
+    valueParams             = filterEmpty(parsed.valueParams).mapValues(markupToHtml),
+    typeParams              = filterEmpty(parsed.typeParams).mapValues(markupToHtml),
+    version                 = single("@version", parsed.version).map(markupToHtml),
+    since                   = single("@since", parsed.since).map(markupToHtml),
+    todo                    = filterEmpty(parsed.todo).map(markupToHtml),
+    deprecated              = single("@deprecated", parsed.deprecated, filter = false).map(markupToHtml),
+    note                    = filterEmpty(parsed.note).map(markupToHtml),
+    example                 = filterEmpty(parsed.example).map(markupToHtml),
+    constructor             = single("@constructor", parsed.constructor).map(markupToHtml),
+    group                   = single("@group", parsed.group).map(markupToHtml),
+    groupDesc               = filterEmpty(parsed.groupDesc).mapValues(markupToHtml),
+    groupNames              = filterEmpty(parsed.groupNames).mapValues(markupToHtml),
+    groupPrio               = filterEmpty(parsed.groupPrio).mapValues(markupToHtml),
+    hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(markupToHtml)
+  )
+}
 
-// case class MarkdownComment(ent: Entity, parsed: ParsedComment, span: Span)
-// extends MarkupConversion[MarkdownNode] {
+case class MarkdownComment(ent: Representation, parsed: ParsedComment)//, span: Span)
+extends MarkupConversion[MarkdownNode] {
 
-//   def stringToMarkup(str: String)(implicit ctx: Context) =
-//     str.toMarkdown(ent)
+  def stringToMarkup(str: String) =
+    str.toMarkdown(ent)
 
-//   def stringToShortHtml(str: String)(implicit ctx: Context) =
-//     str.toMarkdown(ent).shortenAndShow
+  def stringToShortHtml(str: String) =
+    str.toMarkdown(ent).shortenAndShow
 
-//   def markupToHtml(md: MarkdownNode)(implicit ctx: Context) =
-//     md.show
+  def markupToHtml(md: MarkdownNode) =
+    md.show
 
-//   def linkedExceptions(m: Map[String, String])(implicit ctx: Context) = {
-//     val inlineToHtml = InlineToHtml(ent)
-//     m.map { case (targetStr, body) =>
-//       val link = makeEntityLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
-//       (targetStr, inlineToHtml(link))
-//     }
-//   }
+  def linkedExceptions(m: Map[String, String]) = {
+    val inlineToHtml = InlineToHtml(ent)
+    m.map { case (targetStr, body) =>
+      val link = makeRepresentationLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
+      (targetStr, inlineToHtml(link))
+    }
+  }
 
-//   def filterEmpty(xs: List[String])(implicit ctx: Context) =
-//     xs.map(_.trim)
-//       .filterNot(_.isEmpty)
-//       .map(stringToMarkup)
+  def filterEmpty(xs: List[String]) =
+    xs.map(_.trim)
+      .filterNot(_.isEmpty)
+      .map(stringToMarkup)
 
-//   def filterEmpty(xs: Map[String, String])(implicit ctx: Context) =
-//     xs.mapValues(_.trim)
-//       .filterNot { case (_, v) => v.isEmpty }
-//       .mapValues(stringToMarkup)
-// }
+  def filterEmpty(xs: Map[String, String]) =
+    xs.mapValues(_.trim)
+      .filterNot { case (_, v) => v.isEmpty }
+      .mapValues(stringToMarkup)
+}
 
-// case class WikiComment(ent: Entity, parsed: ParsedComment, span: Span)
+// case class WikiComment(ent: Representation, parsed: ParsedComment, span: Span)
 // extends MarkupConversion[Body] {
 
-//   def filterEmpty(xs: Map[String,String])(implicit ctx: Context) =
+//   def filterEmpty(xs: Map[String,String]) =
 //     xs.mapValues(_.toWiki(ent, ctx.docbase.packages, span))
 //       .filterNot { case (_, v) => v.blocks.isEmpty }
 
-//   def filterEmpty(xs: List[String])(implicit ctx: Context) =
+//   def filterEmpty(xs: List[String]) =
 //     xs.map(_.toWiki(ent, ctx.docbase.packages, span))
 
-//   def markupToHtml(t: Body)(implicit ctx: Context) =
+//   def markupToHtml(t: Body) =
 //     t.show(ent)
 
-//   def stringToMarkup(str: String)(implicit ctx: Context) =
+//   def stringToMarkup(str: String) =
 //     str.toWiki(ent, ctx.docbase.packages, span)
 
-//   def stringToShortHtml(str: String)(implicit ctx: Context) = {
+//   def stringToShortHtml(str: String) = {
 //     val parsed = stringToMarkup(str)
 //     parsed.summary.getOrElse(parsed).show(ent)
 //   }
 
-//   def linkedExceptions(m: Map[String, String])(implicit ctx: Context) = {
+//   def linkedExceptions(m: Map[String, String]) = {
 //     m.mapValues(_.toWiki(ent, ctx.docbase.packages, span)).map { case (targetStr, body) =>
 //       val link = lookup(Some(ent), ctx.docbase.packages, targetStr)
 //       val newBody = body match {
 //         case Body(List(Paragraph(Chain(content)))) =>
 //           val descr = Text(" ") +: content
-//           val link = makeEntityLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
+//           val link = makeRepresentationLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
 //           Body(List(Paragraph(Chain(link +: descr))))
 //         case _ => body
 //       }

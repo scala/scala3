@@ -11,6 +11,7 @@ import scala.collection.mutable
 import scala.util.matching.Regex
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
 import com.vladsch.flexmark.parser.{ Parser => MarkdownParser }
+import dotty.tastydoc.representations._
 
 trait CommentParser {
   import Regexes._
@@ -23,7 +24,7 @@ trait CommentParser {
    * @param span         the position of the comment in source.
    */
   def parse(
-    entity: Entity,
+    //representation: Representation,
     packages: Map[String, Package],
     comment: List[String],
     src: String,

@@ -35,6 +35,10 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       "\n" +
       r.comments +
       "\n" +
+      Md.header2("Annotations:") +
+      "\n" +
+      r.annotations.mkString("\n") +
+      "\n" +
       Md.header2("Constructors:")+
       r.constructors.map(x=>Md.codeBlock("def this" + x.paramLists.map(ParamListPrinter(_)).mkString(""), "scala")).mkString("") +
       "\n" +

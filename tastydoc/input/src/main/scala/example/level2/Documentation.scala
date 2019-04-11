@@ -10,6 +10,7 @@ import scala.math.{Pi, max}
 
 /** This class is used for testing tasty doc generation
  * @constructor create new object
+ * @author Bryan Abate
  * @param c1 class parameter 1
  * @param c2 class parameter 2
  * @tparam T class type parameter
@@ -29,6 +30,9 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
   class innerDocumentationClass {
 
   }
+
+  sealed trait CaseImplementThis
+  case class IAmACaseClass(x: T) extends CaseImplementThis
 
   object testObject {
 
@@ -76,7 +80,7 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
    */
   def docWithMd = ???
 
-  def functionWithType[U]() : U
+  def functionWithType[U >: String]() : U
 
   val complexTypeVal : Int | List[List[T]] & String | (Double | Int, Double) | ((Int) => (String))
 

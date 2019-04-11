@@ -10,13 +10,16 @@ import scala.math.{Ident(Pi), Ident(max)}
 
 # class Documentation
 
-## Companion object : example.level2.Documentation$
+## Companion object : example.level2.Documentation
 
 ```scala
-abstract sealed class Documentation[T, Z]
+sealed abstract class Documentation[T, Z <: scala.Int]
 ```
 
-Comments placeholder
+Some(ParsedComment(This class is used for testing tasty doc generation,List(Bryan Abate),List(),List(),Map(),Map(c1 -> class parameter 1, c2 -> class parameter 2),Map(T -> class type parameter),List(),List(),List(),List(),List(),List(),List(create new object),List(),Map(),Map(),Map(),List(),List()))
+## Annotations:
+
+
 ## Constructors:
 ```scala
 def this(c1: scala.Predef.String, c2: scala.collection.immutable.List[T])
@@ -35,111 +38,136 @@ def this(x: T)
 
 ### Definitions: 
 ```scala
-private local param private[this] type T: 
+val c2: scala.collection.immutable.List[Documentation.this.T]
 ```
-Comments placeholder
-```scala
-private local param private[this] type Z: 
-```
-Comments placeholder
-```scala
-private local paramAccessor private[this] val c1: scala.Predef.String
-```
-Comments placeholder
-```scala
-paramAccessor val c2: scala.collection.immutable.List[Documentation.this.T]
-```
-Comments placeholder
+None
 ```scala
 class innerDocumentationClass
 ```
 
-*Comments placeholder*
+*None*
 ```scala
-final lazy object stableRealizable val testObject: Documentation.this.testObject
-```
-Comments placeholder
-```scala
-final object moduleClass class testObject$
+sealed class CaseImplementThis
 ```
 
-*Comments placeholder*
+*None*
+```scala
+class IAmACaseClass
+```
+
+*None*
+```scala
+final val IAmACaseClass: Documentation.this.IAmACaseClass
+```
+None
+```scala
+final class IAmACaseClass$
+```
+
+*None*
+```scala
+final val testObject: Documentation.this.testObject
+```
+None
+```scala
+final class testObject$
+```
+
+*None*
 ```scala
 def methodsWithParams(x: Documentation.this.T, y: scala.Int): scala.collection.immutable.List[scala.collection.Map[scala.Int, Documentation.this.T]]
 ```
-Comments placeholder
+Some(ParsedComment(Test methods with params
+,List(),List(),List(something is returned),Map(),Map(y -> parameter 2, x -> parameter 1),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
 ```scala
 def methodsWithImplicit(x: scala.Int)(implicit imp: scala.Int, notImp: scala.Predef.String): scala.Nothing
 ```
-Comments placeholder
+None
 ```scala
 val v: scala.Int
 ```
-Comments placeholder
+Some(ParsedComment(Test value
+,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
 ```scala
 protected def protectedMethod: scala.Nothing
 ```
-Comments placeholder
+None
 ```scala
-private private[this] def privateMethod: scala.Nothing
+private def privateMethod: scala.Nothing
 ```
-Comments placeholder
+None
 ```scala
 protected val protectedVal: scala.Nothing
 ```
-Comments placeholder
+None
 ```scala
-private private[this] val privateVal: scala.Nothing
+private val privateVal: scala.Nothing
 ```
-Comments placeholder
+None
 ```scala
 def abstractDefinition: scala.Int
 ```
-Comments placeholder
+None
 ```scala
 def apply(idx: scala.Int): Documentation.this.T
 ```
-Comments placeholder
+None
 ```scala
 def iterator: scala.collection.Iterator[Documentation.this.T]
 ```
-Comments placeholder
+None
 ```scala
-override def length: scala.Int
+def length: scala.Int
 ```
-Comments placeholder
+None
 ```scala
 def docWithMd: scala.Nothing
 ```
-Comments placeholder
+Some(ParsedComment(An example documention with markdown formatting
+
+**I'm bold**
+
+*I'm italic*
+
+`some code`
 ```scala
-def functionWithType[U](): U
+def someScalaCode(x: String) = println("Hello " + x)
 ```
-Comments placeholder
+1. I'm a list
+,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+```scala
+def functionWithType[U >: scala.Predef.String](): U
+```
+None
 ```scala
 val complexTypeVal: scala.Int | scala.collection.immutable.List[scala.collection.immutable.List[Documentation.this.T]] & scala.Predef.String | scala.Tuple2[scala.Double | scala.Int, scala.Double] | scala.Function1[scala.Int, scala.Predef.String]
 ```
-Comments placeholder
+None
 ```scala
 type typeExamle: 
 ```
-Comments placeholder
+None
 
 
 ```scala
-final lazy object stableRealizable val Documentation: example.level2.Documentation
+final val Documentation: example.level2.Documentation
 ```
-Comments placeholder
+Some(ParsedComment(Companion object
+,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
 
 # class Documentation$
 
-## Companion object : example.level2.Documentation$$
+## Companion object : example.level2.Documentation$
 
 ```scala
-final object moduleClass class Documentation$
+final class Documentation$
 ```
 
-Comments placeholder
+Some(ParsedComment(Companion object
+,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+## Annotations:
+
+
 ## Constructors:
 ```scala
 def this()
@@ -149,7 +177,7 @@ def this()
 
 ### Definitions: 
 ```scala
-private synthetic private[this] def writeReplace(): scala.AnyRef
+private def writeReplace(): scala.AnyRef
 ```
-Comments placeholder
+None
 
