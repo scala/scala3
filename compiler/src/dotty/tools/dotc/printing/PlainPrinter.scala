@@ -45,7 +45,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def debugPos: Boolean = ctx.settings.YdebugPos.value
 
   def homogenize(tp: Type): Type =
-    if (homogenizedView) {
+    if (homogenizedView)
       tp match {
         case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
           ctx.requiredPackage(tp.cls.fullName).termRef
@@ -64,7 +64,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case _ =>
           tp
       }
-    } else tp
+    else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
     try lo frozen_=:= hi catch { case NonFatal(ex) => false }
