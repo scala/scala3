@@ -357,6 +357,7 @@ object Trees {
 
   /** A ValDef or DefDef tree */
   abstract class ValOrDefDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends MemberDef[T] with WithLazyField[Tree[T]] {
+    type ThisTree[-T >: Untyped] <: ValOrDefDef[T]
     def name: TermName
     def tpt: Tree[T]
     def unforcedRhs: LazyTree = unforced
