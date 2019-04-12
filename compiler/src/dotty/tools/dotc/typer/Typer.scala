@@ -2535,34 +2535,6 @@ class Typer extends Namer
       }
     }
 
-    /** If `tp` is a TypeVar which is fully constrained (i.e. its upper bound `hi` conforms
-     *  to its lower bound `lo`), replace `tp` by `hi`. This is necessary to
-     *  keep the right constraints for some implicit search problems. The paradigmatic case
-     *  is `implicitNums.scala`. Without the healing done in `followAlias`, we cannot infer
-     *  implicitly[_3], where _2 is the typelevel number 3. The problem here is that if a
-     *  prototype is, say, Succ[Succ[Zero]], we can infer that it's argument type is Succ[Zero].
-     *  But if the prototype is N? >: Succ[Succ[Zero]] <: Succ[Succ[Zero]], the same
-     *  decomposition does not work - we'd get a N?#M where M is the element type name of Succ
-     *  instead.
-     */
-    def followAlias(tp: Type)(implicit ctx: Context): Type = {
-      val constraint = ctx.typerState.constraint
-      def inst(tp: Type): Type = tp match {
-        case TypeBounds(lo, hi)
-        if (lo eq hi) || ctx.test(implicit ctx => hi <:< lo) =>
-          inst(lo)
-        case tp: TypeParamRef =>
-          constraint.typeVarOfParam(tp).orElse(tp)
-        case _ =>
-          NoType
-      }
-      tp match {
-        case tp: TypeVar if constraint.contains(tp) =>
-          inst(constraint.entry(tp.origin)).orElse(tp)
-        case _ => tp
-      }
-    }
-
     /** Reveal ignored parts of prototype when synthesizing the receiver
      *  of an extension method. This is necessary for pos/i5773a.scala
      */
@@ -2811,7 +2783,7 @@ class Typer extends Namer
     }
 
     def resultMatches(wtp: Type, pt: Type) =
-      constrainResult(tree.symbol, wtp, revealProtoOfExtMethod(followAlias(pt)))
+      constrainResult(tree.symbol, wtp, revealProtoOfExtMethod(pt))
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
