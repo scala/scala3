@@ -8,7 +8,7 @@ import scala.tasty.Reflection // TODO do not depend on reflection directly
  *  @param name string name of this binding
  *  @param id unique id used for equality
  */
-class Binding[+T] private[scala](val name: String, private[Binding] val id: Object) { self =>
+class Binding[T <: AnyKind] private[scala](val name: String, private[Binding] val id: Object) { self =>
 
   override def equals(obj: Any): Boolean = obj match {
     case obj: Binding[_] => obj.id == id

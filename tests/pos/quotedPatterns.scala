@@ -31,10 +31,9 @@ object Test {
     case '{ def $ff(i: Int)(j: Int): Int = $z; 2 } =>
       val a: quoted.matching.Binding[Int => Int => Int] = ff
       z
-    // FIXME
-//    case '{ def `$ff`[T](i: T): Int = $z; 2 } =>
-//      val a: quoted.matching.Binding[[T] => T => Int] = ff // TODO make Binding any-kinded
-//      z
+    case '{ def $ff[T](i: T): Int = $z; 2 } =>
+      val a: quoted.matching.Binding[[T] => T => Int] = ff
+      z
     case _ => '{1}
   }
 }

@@ -1978,8 +1978,11 @@ class Typer extends Namer
           if (ddef.symbol.annotations.exists(_.symbol == defn.InternalQuoted_patternBindHoleAnnot)) {
             val tpe = ddef.symbol.info match {
               case t: ExprType => t.resType
-              case t: PolyType => t.resultType.toFunctionType()
               case t: MethodType => t.toFunctionType()
+              case t: PolyType =>
+                HKTypeLambda(t.paramNames)(
+                    x => t.paramInfos.mapConserve(_.subst(t, x).asInstanceOf[TypeBounds]),
+                    x => t.resType.subst(t, x).toFunctionType())
               case t => t
             }
             val exprTpe = AppliedType(defn.QuotedMatchingBindingType, tpe :: Nil)
