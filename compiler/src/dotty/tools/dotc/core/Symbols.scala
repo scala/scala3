@@ -209,16 +209,10 @@ trait Symbols { this: Context =>
       modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
       Nil, decls)
 
-  /** Define a new symbol associated with a Bind or pattern wildcard and
-   *  make it gadt narrowable.
-   */
-  def newPatternBoundSymbol(name: Name, info: Type, span: Span): Symbol = {
+  /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
+  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true): Symbol = {
     val sym = newSymbol(owner, name, Case, info, coord = span)
-    if (name.isTypeName) {
-      val bounds = info.bounds
-      gadt.addBound(sym, bounds.lo, isUpper = false)
-      gadt.addBound(sym, bounds.hi, isUpper = true)
-    }
+    if (addToGadt && name.isTypeName) gadt.addToConstraint(sym)
     sym
   }
 

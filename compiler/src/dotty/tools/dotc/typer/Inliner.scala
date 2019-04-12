@@ -821,11 +821,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
 
         def registerAsGadtSyms(typeBinds: TypeBindsMap)(implicit ctx: Context): Unit =
-          typeBinds.foreachBinding { case (sym, _) =>
-            val TypeBounds(lo, hi) = sym.info.bounds
-            ctx.gadt.addBound(sym, lo, isUpper = false)
-            ctx.gadt.addBound(sym, hi, isUpper = true)
-          }
+          if (typeBinds.size > 0) ctx.gadt.addToConstraint(typeBinds.keys)
 
         pat match {
           case Typed(pat1, tpt) =>

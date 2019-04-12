@@ -1508,38 +1508,28 @@ class Typer extends Namer
     if (sym is ImplicitOrImplied) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
-    val rhsCtx: Context = {
-      var _result: FreshContext = null
-      def resultCtx(): FreshContext = {
-        if (_result == null) _result = ctx.fresh
-        _result
-      }
-
-      if (tparams1.nonEmpty) {
-        resultCtx().setFreshGADTBounds
-        if (!sym.isConstructor) {
-          // if we're _not_ in a constructor, allow constraining type parameters
-          tparams1.foreach { tdef =>
-            val tb @ TypeBounds(lo, hi) = tdef.symbol.info.bounds
-            resultCtx().gadt.addBound(tdef.symbol, lo, isUpper = false)
-            resultCtx().gadt.addBound(tdef.symbol, hi, isUpper = true)
-          }
-        } else if (!sym.isPrimaryConstructor) {
-          // otherwise, for secondary constructors we need a context that "knows"
-          // that their type parameters are aliases of the class type parameters.
-          // See pos/i941.scala
-          (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
-            val tr = tparam.typeRef
-            resultCtx().gadt.addBound(tdef.symbol, tr, isUpper = false)
-            resultCtx().gadt.addBound(tdef.symbol, tr, isUpper = true)
-          }
+    val rhsCtx = ctx.fresh
+    if (tparams1.nonEmpty) {
+      rhsCtx.setFreshGADTBounds
+      if (!sym.isConstructor) {
+        // we're typing a polymorphic definition's body,
+        // so we allow constraining all of its type parameters
+        // constructors are an exception as we don't allow constraining type params of classes
+        rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
+      } else if (!sym.isPrimaryConstructor) {
+        // otherwise, for secondary constructors we need a context that "knows"
+        // that their type parameters are aliases of the class type parameters.
+        // See pos/i941.scala
+        rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
+        (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
+          val tr = tparam.typeRef
+          rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
+          rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
         }
       }
-
-      if (sym.isInlineMethod) resultCtx().addMode(Mode.InlineableBody)
-
-      if (_result ne null) _result else ctx
     }
+
+    if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
     if (sym.isInlineMethod) {

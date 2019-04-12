@@ -1338,12 +1338,11 @@ class Namer { typer: Typer =>
       var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
       if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
       if (typeParams.nonEmpty) {
+        // we'll be typing an expression from a polymorphic definition's body,
+        // so we must allow constraining its type parameters
+        // compare with typedDefDef, see tests/pos/gadt-inference.scala
         rhsCtx.setFreshGADTBounds
-        typeParams.foreach { tdef =>
-          val TypeBounds(lo, hi) = tdef.info.bounds
-          rhsCtx.gadt.addBound(tdef, lo, isUpper = false)
-          rhsCtx.gadt.addBound(tdef, hi, isUpper = true)
-        }
+        rhsCtx.gadt.addToConstraint(typeParams)
       }
       def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(rhsCtx).tpe
 

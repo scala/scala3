@@ -284,13 +284,17 @@ object Inferencing {
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
-          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span)
+          // since the symbols we're creating may have inter-dependencies in their bounds,
+          // we add them to the GADT constraint later, simultaneously
+          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }
       }
     }
-    patternBound.toList
+    val res = patternBound.toList
+    if (res.nonEmpty) ctx.gadt.addToConstraint(res)
+    res
   }
 
   type VarianceMap = SimpleIdentityMap[TypeVar, Integer]
