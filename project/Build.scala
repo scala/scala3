@@ -330,7 +330,10 @@ object Build {
 
       val sources =
         unmanagedSources.in(Compile, compile).value ++
-        unmanagedSources.in(`dotty-compiler`, Compile).value
+        unmanagedSources.in(`dotty-compiler`, Compile).value ++
+        // TODO use bootstrapped library
+        // Blocked by #6295, also see https://github.com/lampepfl/dotty/pull/5499
+        unmanagedSources.in(`dotty-library`, Compile).value
       val args = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
