@@ -3,7 +3,7 @@ package scala.internal.quoted
 import scala.annotation.internal.sharable
 
 import scala.quoted._
-import scala.quoted.matching.Binding
+import scala.quoted.matching.Bind
 import scala.tasty._
 
 object Matcher {
@@ -31,7 +31,8 @@ object Matcher {
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
   def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] = {
-    import reflection._
+    import reflection.{Bind => BindPattern, _}
+
     // TODO improve performance
 
     /** Check that the trees match and return the contents from the pattern holes.
@@ -53,15 +54,15 @@ object Matcher {
       }
 
       def bindingMatch(sym: Symbol) =
-        Some(Tuple1(new Binding(sym.name, sym)))
+        Some(Tuple1(new Bind(sym.name, sym)))
 
-      def hasBindingTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
+      def hasBindTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
         case Annotated(tpt2, Apply(Select(New(TypeIdent("patternBindHole")), "<init>"), Nil)) => true
-        case Annotated(tpt2, _) => hasBindingTypeAnnotation(tpt2)
+        case Annotated(tpt2, _) => hasBindTypeAnnotation(tpt2)
         case _ => false
       }
 
-      def hasBindingAnnotation(sym: Symbol) =
+      def hasBindAnnotation(sym: Symbol) =
         sym.annots.exists { case Apply(Select(New(TypeIdent("patternBindHole")),"<init>"),List()) => true; case _ => true }
 
       def treesMatch(scrutinees: List[Tree], patterns: List[Tree]): Option[Tuple] =
@@ -156,7 +157,7 @@ object Matcher {
 
         case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
           val bindMatch =
-            if (hasBindingAnnotation(pattern.symbol) || hasBindingTypeAnnotation(tpt2)) bindingMatch(scrutinee.symbol)
+            if (hasBindAnnotation(pattern.symbol) || hasBindTypeAnnotation(tpt2)) bindingMatch(scrutinee.symbol)
             else Some(())
           val returnTptMatch = treeMatches(tpt1, tpt2)
           val rhsEnv = env + (scrutinee.symbol -> pattern.symbol)
@@ -169,7 +170,7 @@ object Matcher {
             if (paramss1.size != paramss2.size) None
             else foldMatchings(paramss1.zip(paramss2).map { (params1, params2) => treesMatch(params1, params2) }: _*)
           val bindMatch =
-            if (hasBindingAnnotation(pattern.symbol)) bindingMatch(scrutinee.symbol)
+            if (hasBindAnnotation(pattern.symbol)) bindingMatch(scrutinee.symbol)
             else Some(())
           val tptMatch = treeMatches(tpt1, tpt2)
           val rhsEnv =

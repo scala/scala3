@@ -8,7 +8,7 @@ object Macros {
   inline def matches[A, B](a: => A, b: => B): Unit = ${impl('a, 'b)}
 
   private def impl[A, B](a: Expr[A], b: Expr[B])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+    import reflect.{Bind => _, _}
 
     val res = scala.internal.quoted.Matcher.unapply[Tuple](a)(b, reflect).map { tup =>
       tup.toArray.toList.map {
@@ -16,8 +16,8 @@ object Macros {
           s"Expr(${r.unseal.show})"
         case r: quoted.Type[_] =>
           s"Type(${r.unseal.show})"
-        case r: Binding[_] =>
-          s"Binding(${r.name})"
+        case r: Bind[_] =>
+          s"Bind(${r.name})"
       }
     }
 

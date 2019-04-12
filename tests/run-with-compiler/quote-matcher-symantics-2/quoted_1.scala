@@ -13,7 +13,7 @@ object Macros {
 
   private def impl[T: Type](sym: Symantics[T], a: Expr[DSL])(implicit reflect: Reflection): Expr[T] = {
 
-    def lift(e: Expr[DSL])(implicit env: Map[Binding[DSL], Expr[T]]): Expr[T] = e match {
+    def lift(e: Expr[DSL])(implicit env: Map[Bind[DSL], Expr[T]]): Expr[T] = e match {
 
       case '{ LitDSL(${Literal(c)}) } => sym.value(c)
 
@@ -25,7 +25,7 @@ object Macros {
 
       case '{ val $x: DSL = $value; $body: DSL } => lift(body)(env + (x -> lift(value)))
 
-      case Binding(b) if env.contains(b) => env(b)
+      case Bind(b) if env.contains(b) => env(b)
 
       case _ =>
         import reflect._
@@ -33,7 +33,7 @@ object Macros {
         ???
     }
 
-    def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Binding[DSL], Expr[T]]): Expr[T => T] = e match {
+    def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Bind[DSL], Expr[T]]): Expr[T => T] = e match {
       case '{ ($x: DSL) => ($body: DSL) } =>
         sym.lam((y: Expr[T]) => lift(body)(env + (x -> y)))
 

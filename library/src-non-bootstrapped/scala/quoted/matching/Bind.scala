@@ -3,15 +3,15 @@ package matching
 
 import scala.tasty.Reflection // TODO do not depend on reflection directly
 
-/** Binding of an Expr[T] used to know if some Expr[T] is a reference to the binding
+/** Bind of an Expr[T] used to know if some Expr[T] is a reference to the binding
  *
  *  @param name string name of this binding
  *  @param id unique id used for equality
  */
-class Binding[T <: AnyKind] private[scala](val name: String, private[Binding] val id: Object) { self =>
+class Bind[T /*<: AnyKind*/] private[scala](val name: String, private[Bind] val id: Object) { self =>
 
   override def equals(obj: Any): Boolean = obj match {
-    case obj: Binding[_] => obj.id == id
+    case obj: Bind[_] => obj.id == id
     case _ => false
   }
 
@@ -19,14 +19,14 @@ class Binding[T <: AnyKind] private[scala](val name: String, private[Binding] va
 
 }
 
-object Binding {
+object Bind {
 
-  def unapply[T](expr: Expr[T])(implicit reflect: Reflection): Option[Binding[T]] = {
-    import reflect._
+  def unapply[T](expr: Expr[T])(implicit reflect: Reflection): Option[Bind[T]] = {
+    import reflect.{Bind => BindPattern, _}
     expr.unseal match {
       case IsIdent(ref) =>
         val sym = ref.symbol
-        Some(new Binding[T](sym.name, sym))
+        Some(new Bind[T](sym.name, sym))
       case _ => None
     }
   }
