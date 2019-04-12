@@ -1,7 +1,7 @@
 package dotty.tastydoc
 
 import scala.tasty.Reflection
-import dotty.tastydoc.comment.{CommentParser, CommentCleaner, Comment}
+import dotty.tastydoc.comment.{CommentParser, CommentCleaner, Comment, WikiComment, MarkdownComment}
 
 object representations extends CommentParser with CommentCleaner {
 
@@ -21,6 +21,7 @@ object representations extends CommentParser with CommentCleaner {
     val name : String
     val path : List[String]
     val comments: Option[String]
+    val parent = None //TODO: Temporary fix for HTMLParsers
   }
 
   trait Parents {
@@ -87,10 +88,15 @@ object representations extends CommentParser with CommentCleaner {
     Nil) filter (_ != "")
   }
 
-  private def extractComments(reflect: Reflection)(comment: Option[reflect.Comment]) : Option[String] = {
+  private def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Option[String] = {
     import reflect._
     comment match {
-      case Some(com) => Some(parse(Map.empty, clean(com.raw), com.raw).toString)
+      case Some(com) =>
+        val parsed = parse(Map.empty, clean(com.raw), com.raw)
+        if (true)
+          Some(WikiComment(rep, parsed).comment.toString)
+        else
+          Some(MarkdownComment(rep, parsed).comment.toString)
       case None => None
     }
   }
@@ -102,8 +108,8 @@ object representations extends CommentParser with CommentCleaner {
       val pidSplit = internal.pid.symbol.showCode.split("\\.")
       (pidSplit.last, pidSplit.init.toList)
     }
-    override val comments = extractComments(reflect)(internal.symbol.comment)
     override val members = internal.stats.map(convertToRepresentation(reflect)(_))
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   //TODO: Handle impliedOnly
@@ -116,7 +122,7 @@ object representations extends CommentParser with CommentCleaner {
         internal.selectors.head.toString
       }
     override val path = internal.expr.symbol.showCode.split("\\.").toList
-    override val comments = extractComments(reflect)(internal.symbol.comment)
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
@@ -124,9 +130,6 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
-    override val comments = extractComments(reflect)(internal.symbol.comment)
-    println(comments)
-
     override val members = internal.body
       .filter{x => //Filter fields which shouldn't be displayed in the doc
         !removeColorFromType(x.showCode).contains("def this") && //No constructor
@@ -159,6 +162,9 @@ object representations extends CommentParser with CommentCleaner {
     }
     override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
     override val annotations = Nil
+
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    println(comments)
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Parents with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
@@ -166,7 +172,6 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
-    override val comments = extractComments(reflect)(internal.symbol.comment)
     override val parent = None
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
@@ -180,6 +185,7 @@ object representations extends CommentParser with CommentCleaner {
     }
     override val returnValue = removeColorFromType(internal.returnTpt.tpe.showCode)
     override val annotations = Nil
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   class ValRepresentation(reflect: Reflection, internal: reflect.ValDef) extends Representation with Parents with Modifiers with ReturnValue with Annotations {
@@ -187,12 +193,12 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
-    override val comments = extractComments(reflect)(internal.symbol.comment)
     override val parent = None
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val returnValue = removeColorFromType(internal.tpt.tpe.showCode)
     override val annotations = Nil
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef) extends Representation with Modifiers with TypeParams with Annotations {
@@ -200,10 +206,10 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
-    override val comments = extractComments(reflect)(internal.symbol.comment)
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val typeParams = Nil
     override val annotations = Nil
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   class DebugRepresentation(reflect: Reflection) extends Representation {

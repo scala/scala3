@@ -16,7 +16,7 @@ import scala.math.{Ident(Pi), Ident(max)}
 sealed abstract class Documentation[T, Z <: scala.Int]
 ```
 
-Some(ParsedComment(This class is used for testing tasty doc generation,List(Bryan Abate),List(),List(),Map(),Map(c1 -> class parameter 1, c2 -> class parameter 2),Map(T -> class type parameter),List(),List(),List(),List(),List(),List(),List(create new object),List(),Map(),Map(),Map(),List(),List()))
+Some(Comment(<p>This class is used for testing tasty doc generation</p>,<p>This class is used for testing tasty doc generation</p>,List(<p>Bryan Abate</p>),List(),None,Map(),Map(c1 -> <p>class parameter 1</p>, c2 -> <p>class parameter 2</p>),Map(T -> <p>class type parameter</p>),None,None,List(),None,List(),List(),Some(<p>create new object</p>),None,Map(),Map(),Map(),List()))
 ## Annotations:
 
 
@@ -77,8 +77,9 @@ final class testObject$
 ```scala
 def methodsWithParams(x: Documentation.this.T, y: scala.Int): scala.collection.immutable.List[scala.collection.Map[scala.Int, Documentation.this.T]]
 ```
-Some(ParsedComment(Test methods with params
-,List(),List(),List(something is returned),Map(),Map(y -> parameter 2, x -> parameter 1),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+Some(Comment(<p>Test methods with params
+</p>,<p>Test methods with params
+</p>,List(),List(),Some(<p>something is returned</p>),Map(),Map(y -> <p>parameter 2</p>, x -> <p>parameter 1</p>),Map(),None,None,List(),None,List(),List(),None,None,Map(),Map(),Map(),List()))
 ```scala
 def methodsWithImplicit(x: scala.Int)(implicit imp: scala.Int, notImp: scala.Predef.String): scala.Nothing
 ```
@@ -86,8 +87,9 @@ None
 ```scala
 val v: scala.Int
 ```
-Some(ParsedComment(Test value
-,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+Some(Comment(<p>Test value
+</p>,<p>Test value
+</p>,List(),List(),None,Map(),Map(),Map(),None,None,List(),None,List(),List(),None,None,Map(),Map(),Map(),List()))
 ```scala
 protected def protectedMethod: scala.Nothing
 ```
@@ -123,18 +125,12 @@ None
 ```scala
 def docWithMd: scala.Nothing
 ```
-Some(ParsedComment(An example documention with markdown formatting
-
-**I'm bold**
-
-*I'm italic*
-
-`some code`
-```scala
+Some(Comment(<p>An example documention with markdown formatting</p><p>**I'm bold**</p><p>*I'm italic*</p><p><code>some code</code>
+<code><code><code>scala
 def someScalaCode(x: String) = println("Hello " + x)
-```
+<code><code><code>
 1. I'm a list
-,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+</code></code></code></code></code></code></p>,<p>An example documention with markdown formatting</p>,List(),List(),None,Map(),Map(),Map(),None,None,List(),None,List(),List(),None,None,Map(),Map(),Map(),List()))
 ```scala
 def functionWithType[U >: scala.Predef.String](): U
 ```
@@ -152,8 +148,9 @@ None
 ```scala
 final val Documentation: example.level2.Documentation
 ```
-Some(ParsedComment(Companion object
-,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+Some(Comment(<p>Companion object
+</p>,<p>Companion object
+</p>,List(),List(),None,Map(),Map(),Map(),None,None,List(),None,List(),List(),None,None,Map(),Map(),Map(),List()))
 
 # class Documentation$
 
@@ -163,8 +160,9 @@ Some(ParsedComment(Companion object
 final class Documentation$
 ```
 
-Some(ParsedComment(Companion object
-,List(),List(),List(),Map(),Map(),Map(),List(),List(),List(),List(),List(),List(),List(),List(),Map(),Map(),Map(),List(),List()))
+Some(Comment(<p>Companion object
+</p>,<p>Companion object
+</p>,List(),List(),None,Map(),Map(),Map(),None,None,List(),None,List(),List(),None,None,Map(),Map(),Map(),List()))
 ## Annotations:
 
 

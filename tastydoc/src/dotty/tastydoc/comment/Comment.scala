@@ -5,7 +5,7 @@ package comment
 // import dotty.tools.dotc.core.Contexts.Context
 // import dotty.tools.dotc.util.Spans._
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
-// import HtmlParsers._
+import HtmlParsers._
 import util.MemberLookup
 import representations._
 
@@ -103,7 +103,7 @@ trait MarkupConversion[T] extends MemberLookup {
   )
 }
 
-case class MarkdownComment(ent: Representation, parsed: ParsedComment)//, span: Span)
+case class MarkdownComment(ent: Representation, parsed: ParsedComment)//: Span)
 extends MarkupConversion[MarkdownNode] {
 
   def stringToMarkup(str: String) =
@@ -118,7 +118,7 @@ extends MarkupConversion[MarkdownNode] {
   def linkedExceptions(m: Map[String, String]) = {
     val inlineToHtml = InlineToHtml(ent)
     m.map { case (targetStr, body) =>
-      val link = makeRepresentationLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
+      val link = makeRepresentationLink(ent, Map(), Monospace(Text(targetStr)), targetStr) //TODO: Replace Map() with packages
       (targetStr, inlineToHtml(link))
     }
   }
@@ -134,39 +134,39 @@ extends MarkupConversion[MarkdownNode] {
       .mapValues(stringToMarkup)
 }
 
-// case class WikiComment(ent: Representation, parsed: ParsedComment, span: Span)
-// extends MarkupConversion[Body] {
+case class WikiComment(ent: Representation, parsed: ParsedComment)
+extends MarkupConversion[Body] {
 
-//   def filterEmpty(xs: Map[String,String]) =
-//     xs.mapValues(_.toWiki(ent, ctx.docbase.packages, span))
-//       .filterNot { case (_, v) => v.blocks.isEmpty }
+  def filterEmpty(xs: Map[String,String]) =
+    xs.mapValues(_.toWiki(ent, Map())) //TODO: Replace Map() with packages
+      .filterNot { case (_, v) => v.blocks.isEmpty }
 
-//   def filterEmpty(xs: List[String]) =
-//     xs.map(_.toWiki(ent, ctx.docbase.packages, span))
+  def filterEmpty(xs: List[String]) =
+    xs.map(_.toWiki(ent, Map())) //TODO: Replace Map() with packages
 
-//   def markupToHtml(t: Body) =
-//     t.show(ent)
+  def markupToHtml(t: Body) =
+    t.show(ent)
 
-//   def stringToMarkup(str: String) =
-//     str.toWiki(ent, ctx.docbase.packages, span)
+  def stringToMarkup(str: String) =
+    str.toWiki(ent, Map()) //TODO: Replace Map() with packages
 
-//   def stringToShortHtml(str: String) = {
-//     val parsed = stringToMarkup(str)
-//     parsed.summary.getOrElse(parsed).show(ent)
-//   }
+  def stringToShortHtml(str: String) = {
+    val parsed = stringToMarkup(str)
+    parsed.summary.getOrElse(parsed).show(ent)
+  }
 
-//   def linkedExceptions(m: Map[String, String]) = {
-//     m.mapValues(_.toWiki(ent, ctx.docbase.packages, span)).map { case (targetStr, body) =>
-//       val link = lookup(Some(ent), ctx.docbase.packages, targetStr)
-//       val newBody = body match {
-//         case Body(List(Paragraph(Chain(content)))) =>
-//           val descr = Text(" ") +: content
-//           val link = makeRepresentationLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
-//           Body(List(Paragraph(Chain(link +: descr))))
-//         case _ => body
-//       }
+  def linkedExceptions(m: Map[String, String]) = {
+    m.mapValues(_.toWiki(ent, Map())).map { case (targetStr, body) => //TODO: Replace Map() with packages
+      val link = lookup(Some(ent), Map(), targetStr) //TODO: Replace Map() with packages
+      val newBody = body match {
+        case Body(List(Paragraph(Chain(content)))) =>
+          val descr = Text(" ") +: content
+          val link = makeRepresentationLink(ent, Map(), Monospace(Text(targetStr)), targetStr) //TODO: Replace Map() with packages
+          Body(List(Paragraph(Chain(link +: descr))))
+        case _ => body
+      }
 
-//       (targetStr, newBody.show(ent))
-//     }
-//   }
-// }
+      (targetStr, newBody.show(ent))
+    }
+  }
+}

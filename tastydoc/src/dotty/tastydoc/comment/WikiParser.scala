@@ -17,7 +17,7 @@ private[comment] final class WikiParser(
   packages: Map[String, PackageRepresentation],
   val buffer: String,
   // span: Span,
-  site: Symbol
+  // site: Symbol
 ) extends CharReader(buffer) with MemberLookup { wiki =>
   var summaryParsed = false
 

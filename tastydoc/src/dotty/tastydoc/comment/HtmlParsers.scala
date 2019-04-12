@@ -4,12 +4,38 @@ import util.MemberLookup
 
 import dotty.tastydoc.representations._
 
+import java.util.{ Arrays }
+
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode}
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.sequence.CharSubSequence
+import com.vladsch.flexmark.parser.ParserEmulationProfile
+import com.vladsch.flexmark.ext.gfm.tables.TablesExtension
+import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
+import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
+import com.vladsch.flexmark.ext.emoji.EmojiExtension
+import com.vladsch.flexmark.ext.autolink.AutolinkExtension
+import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
+import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
+import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 object HtmlParsers {
+
+  val markdownOptions: DataHolder =
+    new MutableDataSet()
+      .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+      .set(Parser.EXTENSIONS, Arrays.asList(
+        TablesExtension.create(),
+        TaskListExtension.create(),
+        AutolinkExtension.create(),
+        AnchorLinkExtension.create(),
+        EmojiExtension.create(),
+        YamlFrontMatterExtension.create(),
+        StrikethroughExtension.create()
+      ))
+      .set(EmojiExtension.ROOT_IMAGE_PATH,
+        "https://github.global.ssl.fastly.net/images/icons/emoji/")
 
   implicit class StringToMarkdown(val text: String) extends AnyVal {
     def toMarkdown(origin: Representation): MarkdownNode = {
@@ -18,7 +44,7 @@ object HtmlParsers {
 
       val inlineToHtml = InlineToHtml(origin)
 
-      val node = Parser.builder(staticsite.Site.markdownOptions)
+      val node = Parser.builder(markdownOptions)
         .build.parse(text)
 
       def isOuter(url: String) =
@@ -33,7 +59,7 @@ object HtmlParsers {
 
       val linkVisitor = new NodeVisitor(
         new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
-          def queryToUrl(title: String, link: String) = makeRepresentationLink(origin, ctx.docbase.packages, Text(title), link).link match {
+          def queryToUrl(title: String, link: String) = makeRepresentationLink(origin, Map(), Text(title), link).link match { //TODO: Replace Map() by packages
             case Tooltip(_) => "#"
             case LinkToExternal(_, url) => url
             case LinkToRepresentation(t: Representation) => t match {
@@ -60,15 +86,15 @@ object HtmlParsers {
 
   implicit class MarkdownToHtml(val markdown: MarkdownNode) extends AnyVal {
     def show: String =
-      HtmlRenderer.builder(staticsite.Site.markdownOptions).build().render(markdown)
+      HtmlRenderer.builder(markdownOptions).build().render(markdown)
 
     def shortenAndShow: String =
       (new MarkdownShortener).shorten(markdown).show
   }
 
   implicit class StringToWiki(val text: String) extends AnyVal {
-    def toWiki(origin: Representation, packages: Map[String, Package], span: Span): Body =
-      new WikiParser(origin, packages, text, span, origin.symbol).document()
+    def toWiki(origin: Representation, packages: Map[String, PackageRepresentation]): Body =
+      new WikiParser(origin, packages, text).document()
   }
 
   implicit class BodyToHtml(val body: Body) extends AnyVal {
