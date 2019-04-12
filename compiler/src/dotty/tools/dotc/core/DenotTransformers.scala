@@ -60,11 +60,14 @@ object DenotTransformers {
   /** A transformer that only transforms SymDenotations */
   trait SymTransformer extends DenotTransformer {
 
+  	/** Tramsform the info of a denotation that is not a Symdenotation */
+    def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
+
     def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation
 
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
       case ref: SymDenotation => transformSym(ref)
-      case _ => ref
+      case _ => ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.info, ref.symbol))
     }
   }
 

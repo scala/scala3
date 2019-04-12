@@ -2,25 +2,15 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
-import ast.untpd
 import Flags._
 import Types._
-import Constants.Constant
 import Contexts.Context
 import Symbols._
 import Decorators._
-import Annotations._
-import Annotations.ConcreteAnnotation
-import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import scala.collection.mutable
 import DenotTransformers._
-import NameOps._
-import NameKinds.OuterSelectName
-import StdNames._
+import TypeUtils._
 
 object ElimOpaque {
   val name: String = "elimOpaque"
@@ -36,6 +26,9 @@ class ElimOpaque extends MiniPhase with SymTransformer {
 
   // base types of opaque aliases change
   override def changesBaseTypes = true
+
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    if (sym.isOpaqueHelper) TypeAlias(tp.extractOpaqueAlias) else tp
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.isOpaqueHelper) {

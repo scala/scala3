@@ -51,5 +51,17 @@ object TypeUtils {
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(implicit ctx: Context): Type =
       TypeOps.nestedPairs(tupleElementTypes)
+
+    /** Extract opaque alias from TypeBounds type that combines it with the reference
+     *  to the opaque type itself
+     */
+    def extractOpaqueAlias(implicit ctx: Context): Type = self match {
+      case TypeBounds(lo, _) =>
+        def extractAlias(tp: Type): Type = tp match {
+          case OrType(alias, _) => alias
+          case self: HKTypeLambda => self.derivedLambdaType(resType = extractAlias(self.resType))
+        }
+        extractAlias(lo)
+    }
   }
 }
