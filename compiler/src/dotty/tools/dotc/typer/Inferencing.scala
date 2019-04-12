@@ -79,8 +79,10 @@ object Inferencing {
    *      constrained upper bound != given upper bound and
    *      constrained lower bound == given lower bound).
    *  If (1) and (2) do not apply:
-   *   3. T is maximized if it appears only contravariantly in the given type.
-   *   4. T is minimized in all other cases.
+   *   3. T is minimized if forceDegree is minimizeAll.
+   *   4. Otherwise, T is maximized if it appears only contravariantly in the given type,
+   *      or if forceDegree is `noBottom` and T's minimized value is a bottom type.
+   *   5. Otherwise, T is minimized.
    *
    *  The instantiation is done in two phases:
    *  1st Phase: Try to instantiate minimizable type variables to
@@ -89,32 +91,30 @@ object Inferencing {
    *  to their upper bound.
    */
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
       val inst = tvar.instantiate(fromBelow)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
       inst
     }
+
     private[this] var toMaximize: Boolean = false
+
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar
       if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
         force.appliesTo(tvar) && {
-          val direction = instDirection(tvar.origin)
-          if (direction != 0) {
-            //if (direction > 0) println(s"inst $tvar dir = up")
-            instantiate(tvar, direction < 0)
-          }
-          else {
-            val minimize =
-              force.minimizeAll ||
-              variance >= 0 && !(
-                !force.allowBottom &&
-                defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
-            if (minimize) instantiate(tvar, fromBelow = true)
-            else toMaximize = true
-          }
+          val pref = tvar.origin
+          val direction = instDirection(pref)
+          def avoidBottom =
+            !force.allowBottom &&
+            defn.isBottomType(ctx.typeComparer.approximation(pref, fromBelow = true))
+          def preferMin = force.minimizeAll || variance >= 0 && !avoidBottom
+          if (direction != 0) instantiate(tvar, fromBelow = direction < 0)
+          else if (preferMin) instantiate(tvar, fromBelow = true)
+          else toMaximize = true
           foldOver(x, tvar)
         }
       case tp =>
