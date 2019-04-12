@@ -20,7 +20,7 @@ object representations extends CommentParser with CommentCleaner {
   trait Representation {
     val name : String
     val path : List[String]
-    val comments: Option[String]
+    val comments: Option[Comment]
     val parent = None //TODO: Temporary fix for HTMLParsers
   }
 
@@ -88,15 +88,15 @@ object representations extends CommentParser with CommentCleaner {
     Nil) filter (_ != "")
   }
 
-  private def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Option[String] = {
+  private def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Option[Comment] = {
     import reflect._
     comment match {
       case Some(com) =>
         val parsed = parse(Map.empty, clean(com.raw), com.raw)
-        if (true)
-          Some(WikiComment(rep, parsed).comment.toString)
+        if (true) //TODO
+          Some(WikiComment(rep, parsed).comment)
         else
-          Some(MarkdownComment(rep, parsed).comment.toString)
+          Some(MarkdownComment(rep, parsed).comment)
       case None => None
     }
   }

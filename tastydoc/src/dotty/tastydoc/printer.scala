@@ -1,12 +1,40 @@
 package dotty.tastydoc
 
 import representations._
+import comment.Comment
 
 def ParamListPrinter(paramList: ParamList) : String = paramList.list.map(x => x.title + ": " + x.tpe).mkString(
   "(" + (if(paramList.isImplicit) "implicit " else ""),
   ", ",
   ")"
 )
+
+def formatComments(comment: Option[Comment]) : String = comment match {
+  case Some(c) =>
+    c.body +
+    "\n\n" +
+    "---" +
+    "\n\n" +
+    (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") + "\n" else "") +
+    (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ") + "\n" else "") +
+    (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get + "\n" else "") +
+    (if(c.throws.nonEmpty) c.throws.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+    (if(c.valueParams.nonEmpty) c.valueParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+    (if(c.typeParams.nonEmpty) c.typeParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+    (if(c.version.isDefined) Md.bold(Md.italics("version")) + " "  + c.version.get + "\n" else "") +
+    (if(c.since.isDefined) Md.bold(Md.italics("since")) + " "  + c.since.get + "\n" else "") +
+    (if(c.todo.nonEmpty) Md.bold(Md.italics("TODO")) + " " + c.todo.mkString(", ") + "\n" else "") +
+    (if(c.deprecated.isDefined) Md.bold(Md.italics("deprecated")) + " "  + c.deprecated.get + "\n" else "") +
+    (if(c.note.nonEmpty) Md.bold(Md.italics("Note")) + " " + c.note.mkString("\n") + "\n" else "") +
+    (if(c.example.nonEmpty) Md.bold(Md.italics("Example")) + " " + c.example.mkString("\n") + "\n" else "") +
+    (if(c.constructor.isDefined) Md.bold(Md.italics("Constructor")) + " "  + c.constructor.get + "\n" else "") +
+    (if(c.group.isDefined) Md.bold(Md.italics("Group")) + " "  + c.group.get + "\n" else "") +
+    (if(c.groupDesc.nonEmpty) c.groupDesc.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+    (if(c.groupNames.nonEmpty) c.groupNames.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+    (if(c.groupPrio.nonEmpty) c.groupPrio.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
+    (if(c.hideImplicitConversions.nonEmpty) Md.bold(Md.italics("Hide Implicit Conversions")) + " " + c.hideImplicitConversions.mkString(", ") + "\n" else "")
+  case None => ""
+}
 
 def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean) : String = representation match {
   //case _ => ""
@@ -23,17 +51,17 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
 
   case r: ClassRepresentation =>
     if(insideClassOrObject){
-      Md.codeBlock((if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+      Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
       "\n" +
-      Md.italics(r.comments) +
+      formatComments(r.comments) +
       "\n"
     }else{
       Md.header1("class " + r.name) +
       "\n" +
       (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
-      Md.codeBlock((if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name + (if(r.typeParams.size > 0) r.typeParams.mkString("[", ", ", "]") else ""), "scala") +
+      Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name + (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else ""), "scala") +
       "\n" +
-      r.comments +
+      formatComments(r.comments) +
       "\n" +
       Md.header2("Annotations:") +
       "\n" +
@@ -51,33 +79,36 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
 
   case r: DefRepresentation =>
     Md.codeBlock(
-      (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
+      (if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
       "def " +
       r.name +
-      (if(r.typeParams.size > 0) r.typeParams.mkString("[", ", ", "]") else "") +
+      (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
       r.paramLists.map(ParamListPrinter).mkString("") +
       ": " +
       r.returnValue, "scala") +
-      r.comments +
+      "\n" +
+      formatComments(r.comments) +
       "\n"
 
   case r: ValRepresentation =>
     Md.codeBlock(
-      (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
+      (if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
       "val " +
       r.name +
       ": " +
       r.returnValue, "scala") +
-      r.comments +
+      "\n" +
+      formatComments(r.comments) +
       "\n"
 
   case r: TypeRepresentation =>
       Md.codeBlock(
-      (if(r.modifiers.size > 0) r.modifiers.mkString("", " ", " ") else "") +
+      (if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
       "type " +
       r.name +
       ": ", "scala") +
-      r.comments +
+      "\n" +
+      formatComments(r.comments) +
       "\n"
 
   case _ : DebugRepresentation => "=============>ERROR<==============="
