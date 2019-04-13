@@ -57,17 +57,18 @@ object DenotTransformers {
     protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = true
   }
 
-  /** A transformer that only transforms SymDenotations */
+  /** A transformer that only transforms SymDenotations.
+   *  Note: Infos of non-sym denotations are left as is. So the transformer should
+   *  be used before erasure only if this is not a problem. After erasure, all
+   *  denotations are SymDenotations, so SymTransformers can be used freely.
+   */
   trait SymTransformer extends DenotTransformer {
-
-  	/** Tramsform the info of a denotation that is not a Symdenotation */
-    def transformNonSymInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 
     def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation
 
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
       case ref: SymDenotation => transformSym(ref)
-      case _ => ref.derivedSingleDenotation(ref.symbol, transformNonSymInfo(ref.info, ref.symbol))
+      case _ => ref
     }
   }
 
