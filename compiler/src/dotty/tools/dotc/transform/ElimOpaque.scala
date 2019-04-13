@@ -28,15 +28,21 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
-    if (ref.symbol.isOpaqueHelper)
-      ref match {
-        case sym: SymDenotation =>
-          sym.copySymDenotation(
-            info = TypeAlias(sym.opaqueAlias),
-            initFlags = sym.flags &~ (Opaque | Deferred))
-        case _ =>
-          ref.derivedSingleDenotation(ref.symbol, TypeAlias(ref.info.extractOpaqueAlias))
+  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+    val sym = ref.symbol
+    ref match {
+      case ref: SymDenotation if sym.isOpaqueHelper =>
+        ref.copySymDenotation(
+          info = TypeAlias(ref.opaqueAlias),
+          initFlags = ref.flags &~ (Opaque | Deferred))
+      case ref: SymDenotation if sym.isOpaqueCompanion =>
+        val ref1 = ref.copySymDenotation(initFlags = ref.flags &~ Opaque)
+        ref1.registeredCompanion = NoSymbol
+        ref1
+      case _ if sym.isOpaqueHelper =>
+        ref.derivedSingleDenotation(sym, TypeAlias(ref.info.extractOpaqueAlias))
+      case _ =>
+        ref
     }
-    else ref
+  }
 }
