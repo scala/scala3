@@ -573,11 +573,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        val tp1a = tp1.widenDealiasKeepRefiningAnnots
+        val tp1w = tp1.widen
+        val tp1a = tp1w.dealiasKeepRefiningAnnots
         if (tp1a ne tp1)
           // Follow the alias; this might avoid truncating the search space in the either below
-          // Note that it's safe to widen here because singleton types cannot be part of `|`.
-          return recur(tp1a, tp2)
+          return recur(tp1a, tp2) || (tp1w ne tp1) && isSubType(tp1w, tp2, approx.addLow)
 
         // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
         // and analogously for T1 <: T21 | (T221 & T222)
@@ -2211,6 +2211,11 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
     traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (Config.verboseExplainSubtype) s" ${tp1.getClass} ${tp2.getClass}" else ""} $approx ${if (frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2, approx)
+    }
+
+  override def recur(tp1: Type, tp2: Type): Boolean =
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)} recur ${if (frozenConstraint) " frozen" else ""}") {
+      super.recur(tp1, tp2)
     }
 
   override def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
