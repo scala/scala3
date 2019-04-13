@@ -27,7 +27,7 @@ class ElimOpaque extends MiniPhase with SymTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+  override def transformNonSymInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     if (sym.isOpaqueHelper) TypeAlias(tp.extractOpaqueAlias) else tp
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
