@@ -19,6 +19,7 @@ import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
 import collection.mutable
+import transform.TypeUtils._
 
 import scala.annotation.internal.sharable
 
@@ -1082,16 +1083,10 @@ object SymDenotations {
      *  containing object.
      */
     def opaqueAlias(implicit ctx: Context): Type = {
-      if (isOpaqueHelper) {
+      if (isOpaqueHelper)
         owner.asClass.classInfo.selfType match {
-          case RefinedType(_, _, TypeBounds(lo, _)) =>
-            def extractAlias(tp: Type): Type = tp match {
-              case OrType(alias, _) => alias
-              case tp: HKTypeLambda => tp.derivedLambdaType(resType = extractAlias(tp.resType))
-            }
-            extractAlias(lo)
+          case RefinedType(_, _, bounds) => bounds.extractOpaqueAlias
         }
-      }
       else NoType
     }
 
