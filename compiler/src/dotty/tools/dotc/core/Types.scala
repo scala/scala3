@@ -1046,7 +1046,7 @@ object Types {
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
      */
-    def widenUnion(implicit ctx: Context): Type = this match {
+    def widenUnion(implicit ctx: Context): Type = widen match {
       case OrType(tp1, tp2) =>
         ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
           case union: OrType => union.join
@@ -1058,8 +1058,8 @@ object Types {
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>
         tp.rebind(tp.parent.widenUnion)
-      case _ =>
-        this
+      case tp =>
+        tp
     }
 
     private def dealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = this match {
