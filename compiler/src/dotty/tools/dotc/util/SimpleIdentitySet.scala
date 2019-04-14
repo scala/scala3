@@ -7,6 +7,7 @@ import collection.mutable.ListBuffer
  */
 abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def size: Int
+  def isEmpty: Boolean = size == 0
   def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E]
   def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem]
   def contains[E >: Elem <: AnyRef](x: E): Boolean
