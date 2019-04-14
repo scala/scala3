@@ -36,7 +36,11 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
           info = TypeAlias(ref.opaqueAlias),
           initFlags = ref.flags &~ (Opaque | Deferred))
       case ref: SymDenotation if sym.isOpaqueCompanion =>
-        val ref1 = ref.copySymDenotation(initFlags = ref.flags &~ Opaque)
+        val cinfo = sym.asClass.classInfo
+        val RefinedType(sourceRef, _, _) = cinfo.selfInfo
+        val ref1 = ref.copySymDenotation(
+          info = cinfo.derivedClassInfo(selfInfo = sourceRef),
+          initFlags = ref.flags &~ Opaque)
         ref1.registeredCompanion = NoSymbol
         ref1
       case _ if sym.isOpaqueHelper =>
