@@ -418,7 +418,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           case _ =>
             false
         }
-        joinOK || recur(tp11, tp2) && recur(tp12, tp2)
+        def widenOK =
+          (tp2.widenSingletons eq tp2) &&
+          (tp1.widenSingletons ne tp1) &&
+          recur(tp1.widenSingletons, tp2)
+
+        if (tp2.atoms.nonEmpty)
+          tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms)
+        else
+          widenOK || joinOK || recur(tp11, tp2) && recur(tp12, tp2)
       case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
@@ -573,6 +581,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
+        if (tp2.atoms.nonEmpty)
+          return tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms) ||
+            tp1.isRef(NothingClass)
+
         // The next clause handles a situation like the one encountered in i2745.scala.
         // We have:
         //
