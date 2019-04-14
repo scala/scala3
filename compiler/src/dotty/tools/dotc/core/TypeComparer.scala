@@ -573,11 +573,25 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
+        // The next clause handles a situation like the one encountered in i2745.scala.
+        // We have:
+        //
+        //   x: A | B, x.type <:< A | X   where X is a type variable
+        //
+        // We should instantiate X to B instead of x.type or A | B. To do this, we widen
+        // the LHS to A | B and recur *without indicating that this is a lowApprox*. The
+        // latter point is important since otherwise we would not get to instantiate X.
+        // If that succeeds, fine. If not we continue and hit the `either` below.
+        // That second path is important to handle comparisons with unions of singletons,
+        // as in `1 <:< 1 | 2`.
         val tp1w = tp1.widen
-        val tp1a = tp1w.dealiasKeepRefiningAnnots
+        if ((tp1w ne tp1) && recur(tp1w, tp2))
+          return true
+
+        val tp1a = tp1.dealiasKeepRefiningAnnots
         if (tp1a ne tp1)
-          // Follow the alias; this might avoid truncating the search space in the either below
-          return recur(tp1a, tp2) || (tp1w ne tp1) && isSubType(tp1w, tp2, approx.addLow)
+          // Follow the alias; this might lead to an OrType on the left which needs to be split
+          return recur(tp1a, tp2)
 
         // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
         // and analogously for T1 <: T21 | (T221 & T222)
