@@ -1,3 +1,4 @@
+// Implicit matches that bind parameters don't work yet.
 object `implicit-match` {
   object invariant {
     case class Box[T](value: T)
