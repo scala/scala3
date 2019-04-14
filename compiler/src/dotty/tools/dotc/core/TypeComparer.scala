@@ -1530,8 +1530,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         val t2 = mergeIfSuper(tp2, tp1, canConstrain)
         if (t2.exists) t2
         else {
-          val tp1w = tp1.widen
-          val tp2w = tp2.widen
+          def widen(tp: Type) =
+            if (ctx.scala2Mode || ctx.erasedTypes) tp.widen else tp.widenIfUnstable
+          val tp1w = widen(tp1)
+          val tp2w = widen(tp2)
           if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
           else orType(tp1w, tp2w) // no need to check subtypes again
         }
