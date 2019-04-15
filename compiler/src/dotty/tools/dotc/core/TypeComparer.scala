@@ -1525,7 +1525,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
 
-  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes || true
+  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
