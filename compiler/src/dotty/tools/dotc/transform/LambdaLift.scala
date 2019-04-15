@@ -64,7 +64,7 @@ object LambdaLift {
     /** A flag to indicate whether lifted owners have changed */
     private[this] var changedLiftedOwner: Boolean = _
 
-    private val ord: Ordering[Symbol] = Ordering.by((_: Symbol).id) // Dotty deviation: Type annotation needed. TODO: figure out why
+    private val ord: Ordering[Symbol] = Ordering.by(_.id)
     private def newSymSet = TreeSet.empty[Symbol](ord)
 
     private def symSet(f: LinkedHashMap[Symbol, SymSet], sym: Symbol): SymSet =

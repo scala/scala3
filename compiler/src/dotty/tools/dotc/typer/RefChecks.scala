@@ -483,18 +483,7 @@ object RefChecks {
         val missing = clazz.thisType.abstractTermMembers.filterNot(ignoreDeferred)
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
-        val grouped: Map[Name, Seq[SingleDenotation]] = missing groupBy (_.symbol.underlyingSymbol.name)
-          // Dotty deviation: Added type annotation for `grouped`.
-          // The inferred type is Map[Symbol#ThisName, Seq[SingleDenotation]]
-          // but then the definition of isMultiple fails with an error:
-          // RefChecks.scala:379: error: type mismatch:
-          // found   : underlying.ThisName
-          // required: dotty.tools.dotc.core.Symbols.Symbol#ThisName
-          //
-          //  val isMultiple = grouped.getOrElse(underlying.name(ctx), Nil).size > 1
-          //                                                    ^
-          // As far as I can see, the complaint is correct, even under the
-          // old reading where Symbol#ThisName means x.ThisName forSome { val x }
+        val grouped = missing.groupBy(_.symbol.underlyingSymbol.name)
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>

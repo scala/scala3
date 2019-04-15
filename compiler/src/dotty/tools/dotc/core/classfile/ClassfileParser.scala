@@ -137,11 +137,10 @@ class ClassfileParser(
       val ifaceCount = in.nextChar
       var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
         // Dotty deviation: was
-        //    var ifaces = for (i <- List.range(0 until ifaceCount)) ...
+        //    var ifaces = for (i <- List.range(0, ifaceCount)) ...
         // This does not typecheck because the type parameter of List is now lower-bounded by Int | Char.
         // Consequently, no best implicit for the "Integral" evidence parameter of "range"
-        // is found. If we treat constant subtyping specially, we might be able
-        // to do something there. But in any case, the until should be more efficient.
+        // is found. Previously, this worked because of weak conformance, which has been dropped.
 
       if (isAnnotation) ifaces = defn.ClassfileAnnotationType :: ifaces
       superType :: ifaces
