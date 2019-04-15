@@ -296,6 +296,9 @@ object Parsers {
     def deprecationWarning(msg: => Message, offset: Int = in.offset): Unit =
       ctx.deprecationWarning(msg, source.atSpan(Span(offset)))
 
+    def errorOrMigrationWarning(msg: => Message, offset: Int = in.offset): Unit =
+      ctx.errorOrMigrationWarning(msg, source.atSpan(Span(offset)))
+
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: => Message): Unit =
       ctx.incompleteInputError(msg, source.atSpan(Span(in.offset)))
@@ -1136,7 +1139,7 @@ object Parsers {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
-        deprecationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
+        errorOrMigrationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)

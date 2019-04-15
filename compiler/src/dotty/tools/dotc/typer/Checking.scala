@@ -623,7 +623,7 @@ trait Checking {
   def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
     def check(): Unit = {
       checkFeature(
-        defn.LanguageModuleClass, nme.implicitConversions,
+        nme.implicitConversions,
         i"Definition of implicit conversion $sym",
         ctx.owner.topLevelClass,
         sym.sourcePos)
@@ -660,20 +660,17 @@ trait Checking {
         defn.isPredefClass(conv.owner) ||
         conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
       if (!conversionOK)
-        checkFeature(defn.LanguageModuleClass, nme.implicitConversions,
+        checkFeature(nme.implicitConversions,
           i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
     }
 
   /** Issue a feature warning if feature is not enabled */
-  def checkFeature(base: ClassSymbol,
-                   name: TermName,
+  def checkFeature(name: TermName,
                    description: => String,
                    featureUseSite: Symbol,
                    pos: SourcePosition)(implicit ctx: Context): Unit =
-    if (!ctx.featureEnabled(base, name))
-      ctx.featureWarning(name.toString, description,
-        isScala2Feature = base.isContainedIn(defn.LanguageModuleClass),
-        featureUseSite, required = false, pos)
+    if (!ctx.featureEnabled(name))
+      ctx.featureWarning(name.toString, description, featureUseSite, required = false, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
@@ -1056,5 +1053,5 @@ trait NoChecking extends ReChecking {
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }
