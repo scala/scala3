@@ -788,12 +788,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
   class ApplyToTyped(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
-  extends TypedApply[Type](app, fun, methRef, args, resultType) {
-      // Dotty deviation: Dotc infers Untyped for the supercall. This seems to be according to the rules
-      // (of both Scala and Dotty). Untyped is legal, and a subtype of Typed, whereas TypeApply
-      // is invariant in the type parameter, so the minimal type should be inferred. But then typedArg does
-      // not match the abstract method in Application and an abstract class error results.
-    def typedArg(arg:   Tree, formal: Type): TypedArg = arg
+  extends TypedApply(app, fun, methRef, args, resultType) {
+    def typedArg(arg: Tree, formal: Type): TypedArg = arg
     def treeToArg(arg: Tree): Tree = arg
     def typeOfArg(arg: Tree): Type = arg.tpe
   }
