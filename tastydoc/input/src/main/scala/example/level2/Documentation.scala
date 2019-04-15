@@ -76,6 +76,10 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
    *  ```scala
    *  def someScalaCode(x: String) = println("Hello " + x)
    *  ```
+   *
+   *# Title of level 1
+   *# Title of level 1
+   *
    *  1. I'm a list
    */
   def docWithMd = ???

@@ -143,7 +143,6 @@ object representations extends CommentParser with CommentCleaner {
     override val members = extractMembers(reflect)(internal.body)
     override val parent = None
     override val parents = internal.parents.map(x => removeColorFromType(x.showCode))
-
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(_) => path.init ++ List(name)
