@@ -88,7 +88,7 @@ treatment of singleton types which are also widened to their underlying type
 unless explicitly specified. and the motivation is the same: inferring types
 which are "too precise" can lead to unintuitive typechecking issues later on.
 
-Note: Since this behavior severely limits the usability of union types, it might
+Note: Since this behavior limits the usability of union types, it might
 be changed in the future. For example by not widening unions that have been
 explicitly written down by the user and not inferred, or by not widening a type
 argument when the corresponding type parameter is covariant. See
@@ -149,7 +149,3 @@ the erased lub is computed as follows:
   The reason to pick last is that we prefer classes over traits that way,
   which leads to more predictable bytecode and (?) faster dynamic dispatch.
 
-## Limitations
-
-In a union type `A | B`, neither `A` nor `B` is allowed to be a singleton type.
-This is an implementation restriction that may be lifted in the future.
