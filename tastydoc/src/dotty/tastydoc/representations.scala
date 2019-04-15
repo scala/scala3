@@ -25,8 +25,8 @@ object representations extends CommentParser with CommentCleaner {
   }
 
   trait Parents {
-    val parent : Option[Representation]
-    val parents : List[Representation]
+    val parent : Option[String]
+    val parents : List[String]
   }
 
   trait Members {
@@ -79,7 +79,8 @@ object representations extends CommentParser with CommentCleaner {
   private def extractModifiers(reflect: Reflection)(flags: reflect.Flags) : List[String] = {
     import reflect._
 
-    ((if(flags.is(Flags.Private)) "private" else "") ::
+    ((if(flags.is(Flags.Override)) "override" else "") ::
+    (if(flags.is(Flags.Private)) "private" else "") ::
     (if(flags.is(Flags.Protected)) "protected" else "") ::
     (if(flags.is(Flags.Final)) "final" else "") ::
     (if(flags.is(Flags.Sealed)) "sealed" else "") ::
@@ -99,6 +100,15 @@ object representations extends CommentParser with CommentCleaner {
           Some(MarkdownComment(rep, parsed).comment)
       case None => None
     }
+  }
+
+  private def extractMembers(reflect: Reflection)(body: List[reflect.Statement]) : List[Representation] = {
+    import reflect._
+    body.filter{x => //Filter fields which shouldn't be displayed in the doc
+        !removeColorFromType(x.showCode).contains("def this") && //No constructor
+        !x.symbol.flags.is(Flags.Local) //Locally defined
+      }
+      .map(convertToRepresentation(reflect))
   }
 
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause) extends Representation with Members {
@@ -130,19 +140,15 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = internal.symbol.showCode.split("\\.").toList
-    override val members = internal.body
-      .filter{x => //Filter fields which shouldn't be displayed in the doc
-        !removeColorFromType(x.showCode).contains("def this") && //No constructor
-        !x.symbol.flags.is(Flags.Local)
-      }
-      .map(convertToRepresentation(reflect))
+    override val members = extractMembers(reflect)(internal.body)
     override val parent = None
-    override val parents = Nil
+    override val parents = internal.parents.map(x => removeColorFromType(x.showCode))
+
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(_) => path.init ++ List(name)
       case None => Nil
-      }
+    }
     override val constructors = (internal.constructor :: (internal.body
       .filter(x => removeColorFromType(x.showCode).contains("def this"))
       .flatMap{x => x match {
@@ -164,7 +170,21 @@ object representations extends CommentParser with CommentCleaner {
     override val annotations = Nil
 
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
-    println(comments)
+  }
+
+  class ObjectRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Modifiers with Members with Companion with Annotations {
+    import reflect._
+
+    override val name = internal.name
+    override val path = internal.symbol.showCode.split("\\.").toList
+    override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
+    override val members = extractMembers(reflect)(internal.body)
+    override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
+      case Some(_) => path.init ++ List(name)
+      case None => Nil
+    }
+    override val annotations = Nil
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Parents with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
@@ -225,8 +245,12 @@ object representations extends CommentParser with CommentCleaner {
 
       case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t)
 
-      case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t)
-
+      case IsClassDef(t@reflect.ClassDef(_)) =>
+        if(t.symbol.flags.is(Flags.Object)){
+          new ObjectRepresentation(reflect, t)
+        }else{
+          new ClassRepresentation(reflect, t)
+        }
       case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
 
       case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t) //TODO: contains object too, separate from Val

@@ -3,7 +3,7 @@ package dotty.tastydoc
 import representations._
 import comment.Comment
 
-def ParamListPrinter(paramList: ParamList) : String = paramList.list.map(x => x.title + ": " + x.tpe).mkString(
+def formatParamList(paramList: ParamList) : String = paramList.list.map(x => x.title + ": " + x.tpe).mkString(
   "(" + (if(paramList.isImplicit) "implicit " else ""),
   ", ",
   ")"
@@ -12,8 +12,6 @@ def ParamListPrinter(paramList: ParamList) : String = paramList.list.map(x => x.
 def formatComments(comment: Option[Comment]) : String = comment match {
   case Some(c) =>
     c.body +
-    "\n\n" +
-    "---" +
     "\n\n" +
     (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") + "\n" else "") +
     (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ") + "\n" else "") +
@@ -59,7 +57,11 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       Md.header1("class " + r.name) +
       "\n" +
       (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
-      Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name + (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else ""), "scala") +
+      Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
+        "class " +
+        r.name +
+        (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
+        (if(r.parents.nonEmpty) " extends " + r.parents.head + r.parents.tail.map(" with " + _).mkString("") else ""), "scala") +
       "\n" +
       formatComments(r.comments) +
       "\n" +
@@ -68,12 +70,49 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       r.annotations.mkString("\n") +
       "\n" +
       Md.header2("Constructors:")+
-      r.constructors.map(x=>Md.codeBlock("def this" + x.paramLists.map(ParamListPrinter(_)).mkString(""), "scala")).mkString("") +
+      r.constructors.map(x=>Md.codeBlock(r.name + x.paramLists.map(formatParamList(_)).mkString(""), "scala")).mkString("") +
       "\n" +
       Md.header2("Members:") +
       "\n" +
       Md.header3("Definitions: ") +
-      r.members.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      "\n" +
+      Md.header3("Values: ") +
+      r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      "\n" +
+      Md.header3("Types: ") +
+      r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      "\n"
+    }
+
+  case r: ObjectRepresentation =>
+    if(insideClassOrObject){
+      Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "object " + r.name, "scala") +
+      "\n" +
+      formatComments(r.comments) +
+      "\n"
+    }else{
+      Md.header1("object " + r.name) +
+      "\n" +
+      (if (r.hasCompanion) Md.header2("Companion class : " + r.companionPath.mkString(".")) + "\n" else "") +
+      Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+      "\n" +
+      formatComments(r.comments) +
+      "\n" +
+      Md.header2("Annotations:") +
+      "\n" +
+      r.annotations.mkString("\n") +
+      "\n" +
+      Md.header2("Members:") +
+      "\n" +
+      Md.header3("Definitions: ") +
+      r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      "\n" +
+      Md.header3("Values: ") +
+      r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      "\n" +
+      Md.header3("Types: ") +
+      r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
       "\n"
     }
 
@@ -83,7 +122,7 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       "def " +
       r.name +
       (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-      r.paramLists.map(ParamListPrinter).mkString("") +
+      r.paramLists.map(formatParamList).mkString("") +
       ": " +
       r.returnValue, "scala") +
       "\n" +
