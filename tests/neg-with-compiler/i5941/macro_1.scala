@@ -34,7 +34,7 @@ object Lens {
           apply($getter)(setter)
         }
       case _ =>
-        throw new QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
     }
   }
 }

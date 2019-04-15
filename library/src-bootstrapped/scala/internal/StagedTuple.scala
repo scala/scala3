@@ -1,10 +1,14 @@
-package scala
+package scala.internal
 
 import scala.quoted._
 
 object StagedTuple {
-  import Tuple._
-  import NonEmptyTuple._
+  import Tuple.Concat
+  import Tuple.Head
+  import Tuple.Tail
+  import Tuple.Size
+  import Tuple.Elem
+  import scala.runtime.DynamicTuple._
 
   private final val specialize = true
 
@@ -12,7 +16,7 @@ object StagedTuple {
     if (!specialize) '{dynamicToArray($tup)}
     else size match {
       case Some(0) =>
-        '{empty$Array}
+        '{scala.runtime.DynamicTuple.empty$Array}
       case Some(1) =>
         tup.as[Tuple1[Object]].bind(t => '{Array($t._1)})
       case Some(2) =>
@@ -113,7 +117,7 @@ object StagedTuple {
           tup.as[Tuple5[_, _, _, _, _]].bind(t => '{Tuple4($t._2, $t._3, $t._4, $t._5)})
         case Some(n) if n > 5 =>
           val arr = toArrayStaged(tup, size)
-          fromArrayStaged('{ $arr.tail }, Some(n - 1))
+          fromArrayStaged[Tail[Tup]]('{ $arr.tail }, Some(n - 1))
         case None =>
           '{dynamicTail($tup)}
       }
@@ -121,11 +125,13 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int]): Expr[Elem[Tup, N]] = {
+  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(implicit reflect: tasty.Reflection): Expr[Elem[Tup, N]] = {
+    import reflect._
+
     if (!specialize) '{dynamicApply($tup, $n)}
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
-        case Some(n) => quoted.QuoteError("index out of bounds: " + n)
+        case Some(n) => QuoteError("index out of bounds: " + n, tup)
         case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
@@ -177,7 +183,7 @@ object StagedTuple {
     }
   }
 
-  def stagedCons[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]): Expr[H *: T] =
+  def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]): Expr[H *: T] =
   if (!specialize) '{dynamic_*:[T, H]($self, $x)}
   else {
     val res = tailSize match {
@@ -199,7 +205,7 @@ object StagedTuple {
     res.as[H *: T]
   }
 
-  def stagedConcat[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int]): Expr[Concat[Self, That]] = {
+  def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int]): Expr[Concat[Self, That]] = {
     if (!specialize) '{dynamic_++[Self, That]($self, $that)}
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
@@ -211,7 +217,7 @@ object StagedTuple {
           that
         case Some(1) =>
           if (thatSize.contains(0)) self
-          else stagedCons(that, '{$self.asInstanceOf[Tuple1[_]]._1}, thatSize)
+          else consStaged(that, '{$self.asInstanceOf[Tuple1[_]]._1}, thatSize)
         case Some(2) =>
           val self2 = self.as[Tuple2[_, _]]
           thatSize match {
@@ -256,7 +262,5 @@ object StagedTuple {
       val t: U = $expr
       ${in('t)}
     }
-
   }
-
 }
