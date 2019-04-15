@@ -283,15 +283,11 @@ trait ConstraintHandling[AbstractContext] {
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
   def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type = {
-    def widenSingle(tp: Type) = {
-      val tpw = tp.widenSingletons
+    def tryWiden(tp: Type, widen: Type => Type) = {
+      val tpw = widen(tp)
       if ((tpw ne tp) && tpw <:< bound) tpw else tp
     }
-    def widenOr(tp: Type) = {
-      val tpw = tp.widenUnion
-      if ((tpw ne tp) && tpw <:< bound) tpw else tp
-    }
-    widenOr(widenSingle(inst)).dropRepeatedAnnot
+    tryWiden(tryWiden(inst, _.widenSingletons), _.widenUnion).dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
