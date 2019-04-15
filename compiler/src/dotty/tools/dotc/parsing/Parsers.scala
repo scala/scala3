@@ -2405,7 +2405,7 @@ object Parsers {
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       } else {
-        val (leadingParamss: List[List[ValDef]], flags: FlagSet) =
+        val (leadingParamss, flags) =
           if (in.token == LPAREN)
             (paramClause(prefix = true) :: Nil, Method | Extension)
           else

@@ -913,16 +913,34 @@ object desugar {
     case IdPattern(named, tpt) =>
       derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
-      val rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
-      val vars = getVariables(pat)
-      val isMatchingTuple: Tree => Boolean = {
-        case Tuple(es) => es.length == vars.length
+      def isTuplePattern(arity: Int): Boolean = pat match {
+        case Tuple(pats) if pats.size == arity =>
+          pats.forall(id => id.isInstanceOf[Ident] && isVarPattern(id))
         case _ => false
       }
+      val isMatchingTuple: Tree => Boolean = {
+        case Tuple(es) => isTuplePattern(es.length)
+        case _ => false
+      }
+
+      // We can only optimize `val pat = if (...) e1 else e2` if:
+      // - `e1` and `e2` are both tuples of arity N
+      // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
+      val tupleOptimizable = forallResults(rhs, isMatchingTuple)
+
+      val rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
+      val vars =
+        if (tupleOptimizable) // include `_`
+          pat match {
+            case Tuple(pats) =>
+            pats.map { case id: Ident => id -> TypeTree() }
+          }
+        else getVariables(pat)  // no `_`
+
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
-        if (forallResults(rhs, isMatchingTuple)) rhs
+        if (tupleOptimizable) rhs
         else Match(rhsUnchecked, caseDef :: Nil)
       vars match {
         case Nil =>
@@ -938,7 +956,7 @@ object desugar {
               .withSpan(pat.span.union(rhs.span)).withMods(patMods)
           def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
           val restDefs =
-            for (((named, tpt), n) <- vars.zipWithIndex)
+            for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
               if (mods is Lazy) derivedDefDef(original, named, tpt, selector(n), mods &~ Lazy)
               else derivedValDef(original, named, tpt, selector(n), mods)
