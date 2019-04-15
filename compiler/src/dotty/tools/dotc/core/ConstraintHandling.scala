@@ -308,6 +308,18 @@ trait ConstraintHandling[AbstractContext] {
     widenOr(widenSingle(tp)).dropRepeatedAnnot
   }
 
+  def widenInferred2(inst: Type, param: TypeParamRef)(implicit actx: AbstractContext): Type = {
+    def widenSingle(tp: Type) = {
+      val tpw = tp.widen
+      if ((tpw ne tp) && tpw <:< param) tpw else tp
+    }
+    def widenOr(tp: Type) = {
+      val tpw = tp.widenUnion
+      if ((tpw ne tp) && tpw <:< param) tpw else tp
+    }
+    widenOr(widenSingle(inst)).dropRepeatedAnnot
+  }
+
   /** The instance type of `param` in the current constraint (which contains `param`).
    *  If `fromBelow` is true, the instance type is the lub of the parameter's
    *  lower bounds; otherwise it is the glb of its upper bounds. However,
@@ -316,7 +328,7 @@ trait ConstraintHandling[AbstractContext] {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
     val inst = approximation(param, fromBelow).simplified
-    if (fromBelow) widenInferred(inst, constraint.fullUpperBound(param)) else inst
+    if (fromBelow) widenInferred2(inst, /*constraint.fullUpperBound*/(param)) else inst
   }
 
   /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have

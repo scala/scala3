@@ -1525,6 +1525,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
 
+  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes || true
+
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
    *  @note  We do not admit singleton types in or-types as lubs.
@@ -1536,7 +1538,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) return tp1
     if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) return tp2
     val atoms1 = tp1.atoms
-    if (atoms1.nonEmpty && !ctx.scala2Mode && !ctx.erasedTypes) {
+    if (atoms1.nonEmpty && !widenInUnions) {
       val atoms2 = tp2.atoms
       if (atoms2.nonEmpty) {
         if (atoms1.subsetOf(atoms2)) return tp2
@@ -1550,8 +1552,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     val t2 = mergeIfSuper(tp2, tp1, canConstrain)
     if (t2.exists) return t2
 
-    def widen(tp: Type) =
-      if (ctx.scala2Mode || ctx.erasedTypes) tp.widen else tp.widenIfUnstable
+    def widen(tp: Type) = if (widenInUnions) tp.widen else tp.widenIfUnstable
     val tp1w = widen(tp1)
     val tp2w = widen(tp2)
     if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
