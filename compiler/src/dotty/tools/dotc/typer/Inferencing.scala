@@ -406,8 +406,14 @@ trait Inferencing { this: Typer =>
    */
   def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
     val state = ctx.typerState
-    if (state.ownedVars.size > locked.size) {
-      val qualifying = state.ownedVars -- locked
+
+    // Note that some variables in `locked` might not be in `state.ownedVars`
+    // anymore if they've been garbage-collected, so we can't use
+    // `state.ownedVars.size > locked.size` as an early check to avoid computing
+    // `qualifying`.
+    val qualifying = state.ownedVars -- locked
+
+    if (!qualifying.isEmpty) {
       typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
       val resultAlreadyConstrained =
         tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
