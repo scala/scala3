@@ -13,7 +13,7 @@
 * WikiParser (just error reporting (span))
   * Span + error printing
 
-## Representation
+# Representation
 * Case class
 * Trait
 * Beautify type parameters (+ variance)
@@ -24,10 +24,10 @@
 * Make sense of the parent field
 * SuperTypes
 * Methods inherited ?
-* Annotations (+ everywhere or only where it makes sense?")
+* Annotations (+ everywhere or only where it makes sense?)
 * Verify we have everything
 
-## Output
+# Output
 * Decide between html or markdown
 * Actual output
 * Different files for each class/object

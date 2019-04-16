@@ -60,26 +60,31 @@ List()
 ## Members:
 
 ### Definitions: 
+#### companion
 ```scala
 override def companion: scala.collection.generic.GenericCompanion[[+A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[+A]]
 ```
 
 
+#### isEmpty
 ```scala
 def isEmpty: scala.Boolean
 ```
 
 
+#### head
 ```scala
 def head: List.this.A
 ```
 
 
+#### tail
 ```scala
 def tail: scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### ::
 ```scala
 def ::[B >: List.this.A](x: B): scala.collection.immutable.List[B]
 ```
@@ -90,6 +95,7 @@ def ::[B >: List.this.A](x: B): scala.collection.immutable.List[B]
          which continues with this list.</p>
 ***x*** <p>the element to prepend.</p>
 
+#### :::
 ```scala
 def :::[B >: List.this.A](prefix: scala.collection.immutable.List[B]): scala.collection.immutable.List[B]
 ```
@@ -100,6 +106,7 @@ def :::[B >: List.this.A](prefix: scala.collection.immutable.List[B]): scala.col
   list <code>prefix</code> and this list.</p>
 ***prefix*** <p>The list elements to prepend.</p>
 
+#### reverse_:::
 ```scala
 def reverse_:::[B >: List.this.A](prefix: scala.collection.immutable.List[B]): scala.collection.immutable.List[B]
 ```
@@ -112,6 +119,7 @@ def reverse_:::[B >: List.this.A](prefix: scala.collection.immutable.List[B]): s
 ***return*** <p>the concatenation of the reversed prefix and the current list.</p>
 ***prefix*** <p>the prefix to reverse and then prepend</p>
 
+#### mapConserve
 ```scala
 final def mapConserve[B >: List.this.A <: scala.AnyRef](f: scala.Function1[List.this.A, B]): scala.collection.immutable.List[B]
 ```
@@ -126,31 +134,37 @@ Like <code>xs map f</code>, but returns <code>xs</code> unchanged if function
 ***f*** <p>the function to apply to each element.</p>
 ***B*** <p>the element type of the returned collection.</p>
 
+#### ++
 ```scala
 override def ++[B >: List.this.A, That](that: scala.collection.GenTraversableOnce[B])(bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.List[List.this.A], B, That]): That
 ```
 
 
+#### +:
 ```scala
 override def +:[B >: List.this.A, That](elem: B)(bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.List[List.this.A], B, That]): That
 ```
 
 
+#### toList
 ```scala
 override def toList: scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### take
 ```scala
 override def take(n: scala.Int): scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### drop
 ```scala
 override def drop(n: scala.Int): scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### slice
 ```scala
 override def slice(from: scala.Int, until: scala.Int): scala.collection.immutable.List[List.this.A]
 ```
@@ -163,71 +177,85 @@ val letters = List('a','b','c','d','e')
 // up until index `until` (excluding index `until`.)
 letters.slice(1,3) // Returns List('b','c')</code></pre>
 
+#### takeRight
 ```scala
 override def takeRight(n: scala.Int): scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### splitAt
 ```scala
 override def splitAt(n: scala.Int): scala.Tuple2[scala.collection.immutable.List[List.this.A], scala.collection.immutable.List[List.this.A]]
 ```
 
 
+#### map
 ```scala
 override final def map[B, That](f: scala.Function1[List.this.A, B])(bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.List[List.this.A], B, That]): That
 ```
 
 
+#### collect
 ```scala
 override final def collect[B, That](pf: scala.PartialFunction[List.this.A, B])(bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.List[List.this.A], B, That]): That
 ```
 
 
+#### flatMap
 ```scala
 override final def flatMap[B, That](f: scala.Function1[List.this.A, scala.collection.GenTraversableOnce[B]])(bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.List[List.this.A], B, That]): That
 ```
 
 
+#### takeWhile
 ```scala
 override final def takeWhile(p: scala.Function1[List.this.A, scala.Boolean]): scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### dropWhile
 ```scala
 override final def dropWhile(p: scala.Function1[List.this.A, scala.Boolean]): scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### span
 ```scala
 override final def span(p: scala.Function1[List.this.A, scala.Boolean]): scala.Tuple2[scala.collection.immutable.List[List.this.A], scala.collection.immutable.List[List.this.A]]
 ```
 
 
+#### foreach
 ```scala
 override final def foreach[U](f: scala.Function1[List.this.A, U]): scala.Unit
 ```
 
 
+#### reverse
 ```scala
 override def reverse: scala.collection.immutable.List[List.this.A]
 ```
 
 
+#### foldRight
 ```scala
 override def foldRight[B](z: B)(op: scala.Function2[List.this.A, B, B]): B
 ```
 
 
+#### stringPrefix
 ```scala
 override def stringPrefix: scala.Predef.String
 ```
 
 
+#### toStream
 ```scala
 override def toStream: scala.collection.immutable.Stream[List.this.A]
 ```
 
 
+#### writeReplace
 ```scala
 protected final def writeReplace(): scala.AnyRef
 ```
@@ -264,11 +292,13 @@ final class List$
 ## Members:
 
 ### Definitions: 
+#### writeReplace
 ```scala
 private def writeReplace(): scala.AnyRef
 ```
 
 
+#### canBuildFrom
 ```scala
 implicit def canBuildFrom[A]: scala.collection.generic.CanBuildFrom[scala.collection.immutable.List.Coll, A, scala.collection.immutable.List[A]]
 ```
@@ -276,16 +306,19 @@ implicit def canBuildFrom[A]: scala.collection.generic.CanBuildFrom[scala.collec
 <p>$genericCanBuildFromInfo</p>
 
 
+#### newBuilder
 ```scala
 def newBuilder[A]: scala.collection.mutable.Builder[A, scala.collection.immutable.List[A]]
 ```
 
 
+#### empty
 ```scala
 override def empty[A]: scala.collection.immutable.List[A]
 ```
 
 
+#### apply
 ```scala
 override def apply[A](xs: scala.collection.Seq[A] @scala.annotation.internal.Repeated): scala.collection.immutable.List[A]
 ```
@@ -293,6 +326,7 @@ override def apply[A](xs: scala.collection.Seq[A] @scala.annotation.internal.Rep
 
 
 ### Values: 
+#### partialNotApplied
 ```scala
 val partialNotApplied: scala.Function1[scala.Any, scala.Any]
 ```

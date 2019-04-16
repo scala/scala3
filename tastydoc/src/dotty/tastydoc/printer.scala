@@ -75,13 +75,13 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       Md.header2("Members:") +
       "\n" +
       Md.header3("Definitions: ") +
-      r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
       "\n" +
       Md.header3("Values: ") +
-      r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
       "\n" +
       Md.header3("Types: ") +
-      r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
       "\n"
     }
 
@@ -106,13 +106,13 @@ def formatRepresentationToMarkdown(representation: Representation, insideClassOr
       Md.header2("Members:") +
       "\n" +
       Md.header3("Definitions: ") +
-      r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
       "\n" +
       Md.header3("Values: ") +
-      r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
       "\n" +
       Md.header3("Types: ") +
-      r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(formatRepresentationToMarkdown(_, true)).mkString("") +
+      r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
       "\n"
     }
 
