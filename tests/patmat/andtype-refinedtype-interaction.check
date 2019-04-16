@@ -1,6 +1,7 @@
 32: Pattern Match Exhaustivity: _: Trait & C1{x: Int}
 48: Pattern Match Exhaustivity: _: Trait & (C1 | (C2 | T1)){x: Int} & (C3 | (C4 | T2)){x: Int}, _: Clazz & (C1 | (C2 | T1)){x: Int} & (C3 | (C4 | T2)){x: Int}
 54: Pattern Match Exhaustivity: _: Trait & (C1 | (C2 | T1)){x: Int} & C3{x: Int}
+59: Pattern Match Exhaustivity: _: Trait & (C1 & C2){x: Int}
 65: Pattern Match Exhaustivity: _: Trait & (C1 | C2){x: Int} & (C3 | SubC1){x: Int}
 72: Pattern Match Exhaustivity: _: Trait & (T1 & (C1 | SubC2)){x: Int} & (T2 & (C2 | C3 | SubC1)){x: Int} &
   SubSubC1{x: Int}
