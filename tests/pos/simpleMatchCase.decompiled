@@ -1,7 +1,0 @@
-class Foo() {
-  def foo: scala.Unit = "c" match {
-    case x =>
-      scala.Predef.println("a")
-      scala.Predef.println("b")
-  }
-}

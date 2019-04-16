@@ -1,9 +1,0 @@
-object Test extends dotty.runtime.LegacyApp {
-  val a: scala.collection.immutable.List[java.lang.String] = scala.List.apply[java.lang.String]("a")
-  Test.a match {
-    case scala.Seq("a", "b", rest: _*) =>
-      scala.Predef.println("a, b, ".+(rest))
-    case scala.Seq(first, rest: _*) =>
-      scala.Predef.println("first: ".+(first).+(", rest: ").+(rest))
-  }
-}

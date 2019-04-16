@@ -1,8 +1,0 @@
-class Foo() {
-  def justdoit(f: scala.Either[scala.Int, scala.Predef.String]): scala.Predef.String = f match {
-    case scala.Left(i) =>
-      i.toString()
-    case scala.Right(s) =>
-      (s: java.lang.String)
-  }
-}

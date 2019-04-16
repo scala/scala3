@@ -1,2 +1,0 @@
-class A(a: scala.Int, val b: scala.Int, var c: scala.Int)
-class B(protected val x: scala.Int, protected[B] val y: scala.Int, private[B] val z: scala.Int)

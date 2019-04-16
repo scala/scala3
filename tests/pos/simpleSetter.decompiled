@@ -1,4 +1,0 @@
-object Test {
-  var name: scala.Predef.String = "foo"
-  Test.name = Test.name.+("123")
-}

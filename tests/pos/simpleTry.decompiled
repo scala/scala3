@@ -1,6 +1,0 @@
-class Foo() {
-  try 3 catch {
-    case e: scala.Throwable =>
-      4
-  } finally scala.Predef.println(6)
-}

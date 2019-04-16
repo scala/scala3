@@ -1,6 +1,0 @@
-package foo {
-  class A() extends foo.B
-}
-package foo {
-  class B()
-}
