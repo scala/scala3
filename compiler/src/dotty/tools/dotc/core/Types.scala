@@ -1046,7 +1046,7 @@ object Types {
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
      */
-    def widenUnion(implicit ctx: Context): Type = widen match {
+    def widenUnion(implicit ctx: Context): Type = this match {
       case OrType(tp1, tp2) =>
         ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
           case union: OrType => union.join
