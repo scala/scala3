@@ -1945,19 +1945,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             true
         }
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
-        // Unboxed xs.zip(ys).zip(zs).forall { case ((a, b), c) => f(a, b, c) }
-        def zip_zip_forall[A, B, C](xs: List[A], ys: List[B], zs: List[C])(f: (A, B, C) => Boolean): Boolean = {
-          xs match {
-            case x :: xs => ys match {
-              case y :: ys => zs match {
-                case z :: zs => f(x, y, z) && zip_zip_forall(xs, ys, zs)(f)
-                case _ => true
-              }
-              case _ => true
-            }
-            case _ => true
-          }
-        }
         def covariantIntersecting(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean = {
           intersecting(tp1, tp2) || {
             // We still need to proof that `Nothing` is not a valid
@@ -1981,7 +1968,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           }
         }
 
-        zip_zip_forall(args1, args2, tycon1.typeParams) {
+        (args1, args2, tycon1.typeParams).zipped.forall {
           (arg1, arg2, tparam) =>
             val v = tparam.paramVariance
             if (v > 0)
@@ -1994,7 +1981,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               covariantIntersecting(arg1, arg2, tparam) && (isSameType(arg1, arg2) || {
                 // We can only trust a "no" from `isSameType` when both
                 // `arg1` and `arg2` are fully instantiated.
-                val fullyInstantiated = new TypeAccumulator[Boolean] {
+                def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
                   override def apply(x: Boolean, t: Type) =
                     x && {
                       t match {
@@ -2003,9 +1990,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                         case _ => foldOver(x, t)
                       }
                     }
-                }
-                !(fullyInstantiated.apply(true, arg1) &&
-                  fullyInstantiated.apply(true, arg2))
+                }.apply(true, tp)
+                !(fullyInstantiated(arg1) && fullyInstantiated(arg2))
               })
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
