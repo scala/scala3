@@ -1975,8 +1975,8 @@ class Typer extends Namer
             patBuf += pat1
           }
         case ddef: ValOrDefDef =>
-          if (ddef.symbol.annotations.exists(_.symbol == defn.InternalQuoted_patternBindHoleAnnot)) {
-            val tpe = ddef.symbol.info match {
+          if (ddef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot)) {
+            val bindingType = ddef.symbol.info match {
               case t: ExprType => t.resType
               case t: MethodType => t.toFunctionType()
               case t: PolyType =>
@@ -1985,9 +1985,9 @@ class Typer extends Namer
                     x => t.resType.subst(t, x).toFunctionType())
               case t => t
             }
-            val exprTpe = AppliedType(defn.QuotedMatchingBindingType, tpe :: Nil)
-            val sym = ctx0.newPatternBoundSymbol(ddef.name, exprTpe, ddef.span)
-            patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(exprTpe)).withSpan(ddef.span)
+            val bindingExprTpe = AppliedType(defn.QuotedMatchingBindingType, bindingType :: Nil)
+            val sym = ctx0.newPatternBoundSymbol(ddef.name, bindingExprTpe, ddef.span)
+            patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingExprTpe)).withSpan(ddef.span)
           }
           super.transform(tree)
         case _ =>
