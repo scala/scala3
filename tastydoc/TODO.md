@@ -5,17 +5,21 @@
 * Comment
   * Span + error printing
   * Packages map
+  * Figure out ShortHtml
 * CommentParser
   * ParseWikiAtSymbol (useless?)
   * Span + error printing
 * HTMLParsers
   * Packages map
+  * Multi level list not working
 * WikiParser (just error reporting (span))
   * Span + error printing
 
 # Representation
 * Case class
 * Trait
+* All modifiers present?
+* Define wiki or markdown syntax
 * Beautify type parameters (+ variance)
 * Make type as References
   * Link them

@@ -6,6 +6,9 @@ import HtmlParsers._
 import util.MemberLookup
 import representations._
 
+import com.vladsch.flexmark.formatter.Formatter;
+import com.vladsch.flexmark.util.options.MutableDataSet;
+
 case class Comment (
   body:                    String,
   short:                   String,
@@ -60,8 +63,8 @@ trait MarkupConversion[T] extends MemberLookup {
 
   protected def linkedExceptions(m: Map[String, String]): Map[String, String]
   protected def stringToMarkup(str: String): T
-  protected def markupToHtml(t: T): String
-  protected def stringToShortHtml(str: String): String
+  protected def markupToMarkdown(t: T): String
+  protected def stringToShortHtml(str: String): String //TODO: Figure this out
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: Map[String, String]): Map[String, T]
 
@@ -77,26 +80,26 @@ trait MarkupConversion[T] extends MemberLookup {
     }
 
   final def comment: Comment = Comment(
-    body                    = markupToHtml(stringToMarkup(parsed.body)),
+    body                    = markupToMarkdown(stringToMarkup(parsed.body)),
     short                   = stringToShortHtml(parsed.body),
-    authors                 = filterEmpty(parsed.authors).map(markupToHtml),
-    see                     = filterEmpty(parsed.see).map(markupToHtml),
-    result                  = single("@result", parsed.result).map(markupToHtml),
+    authors                 = filterEmpty(parsed.authors).map(markupToMarkdown),
+    see                     = filterEmpty(parsed.see).map(markupToMarkdown),
+    result                  = single("@result", parsed.result).map(markupToMarkdown),
     throws                  = linkedExceptions(parsed.throws),
-    valueParams             = filterEmpty(parsed.valueParams).mapValues(markupToHtml),
-    typeParams              = filterEmpty(parsed.typeParams).mapValues(markupToHtml),
-    version                 = single("@version", parsed.version).map(markupToHtml),
-    since                   = single("@since", parsed.since).map(markupToHtml),
-    todo                    = filterEmpty(parsed.todo).map(markupToHtml),
-    deprecated              = single("@deprecated", parsed.deprecated, filter = false).map(markupToHtml),
-    note                    = filterEmpty(parsed.note).map(markupToHtml),
-    example                 = filterEmpty(parsed.example).map(markupToHtml),
-    constructor             = single("@constructor", parsed.constructor).map(markupToHtml),
-    group                   = single("@group", parsed.group).map(markupToHtml),
-    groupDesc               = filterEmpty(parsed.groupDesc).mapValues(markupToHtml),
-    groupNames              = filterEmpty(parsed.groupNames).mapValues(markupToHtml),
-    groupPrio               = filterEmpty(parsed.groupPrio).mapValues(markupToHtml),
-    hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(markupToHtml)
+    valueParams             = filterEmpty(parsed.valueParams).mapValues(markupToMarkdown),
+    typeParams              = filterEmpty(parsed.typeParams).mapValues(markupToMarkdown),
+    version                 = single("@version", parsed.version).map(markupToMarkdown),
+    since                   = single("@since", parsed.since).map(markupToMarkdown),
+    todo                    = filterEmpty(parsed.todo).map(markupToMarkdown),
+    deprecated              = single("@deprecated", parsed.deprecated, filter = false).map(markupToMarkdown),
+    note                    = filterEmpty(parsed.note).map(markupToMarkdown),
+    example                 = filterEmpty(parsed.example).map(markupToMarkdown),
+    constructor             = single("@constructor", parsed.constructor).map(markupToMarkdown),
+    group                   = single("@group", parsed.group).map(markupToMarkdown),
+    groupDesc               = filterEmpty(parsed.groupDesc).mapValues(markupToMarkdown),
+    groupNames              = filterEmpty(parsed.groupNames).mapValues(markupToMarkdown),
+    groupPrio               = filterEmpty(parsed.groupPrio).mapValues(markupToMarkdown),
+    hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(markupToMarkdown)
   )
 }
 
@@ -109,14 +112,15 @@ extends MarkupConversion[MarkdownNode] {
   def stringToShortHtml(str: String) =
     str.toMarkdown(ent).shortenAndShow
 
-  def markupToHtml(md: MarkdownNode) =
+  def markupToMarkdown(md: MarkdownNode) =
+    // Formatter.builder(new MutableDataSet).build().render(md);
     md.show
 
   def linkedExceptions(m: Map[String, String]) = {
-    val inlineToHtml = InlineToHtml(ent)
+    val inlineToMarkdown = InlineToMarkdown(ent)
     m.map { case (targetStr, body) =>
       val link = makeRepresentationLink(ent, Map(), Monospace(Text(targetStr)), targetStr) //TODO: Replace Map() with packages
-      (targetStr, inlineToHtml(link))
+      (targetStr, inlineToMarkdown(link))
     }
   }
 
@@ -141,7 +145,7 @@ extends MarkupConversion[Body] {
   def filterEmpty(xs: List[String]) =
     xs.map(_.toWiki(ent, Map())) //TODO: Replace Map() with packages
 
-  def markupToHtml(t: Body) =
+  def markupToMarkdown(t: Body) =
     t.show(ent)
 
   def stringToMarkup(str: String) =

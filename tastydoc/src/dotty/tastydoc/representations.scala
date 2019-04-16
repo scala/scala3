@@ -94,10 +94,12 @@ object representations extends CommentParser with CommentCleaner {
     comment match {
       case Some(com) =>
         val parsed = parse(Map.empty, clean(com.raw), com.raw)
-        if (true) //TODO
+        if (true) { //TODO
           Some(WikiComment(rep, parsed).comment)
-        else
+        }
+        else{
           Some(MarkdownComment(rep, parsed).comment)
+        }
       case None => None
     }
   }
