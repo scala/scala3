@@ -12,25 +12,24 @@ def formatParamList(paramList: ParamList) : String = paramList.list.map(x => x.t
 def formatComments(comment: Option[Comment]) : String = comment match {
   case Some(c) =>
     c.body +
-    "\n\n" +
-    (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") + "\n" else "") +
-    (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ") + "\n" else "") +
-    (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get + "\n" else "") +
-    (if(c.throws.nonEmpty) c.throws.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-    (if(c.valueParams.nonEmpty) c.valueParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-    (if(c.typeParams.nonEmpty) c.typeParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-    (if(c.version.isDefined) Md.bold(Md.italics("version")) + " "  + c.version.get + "\n" else "") +
-    (if(c.since.isDefined) Md.bold(Md.italics("since")) + " "  + c.since.get + "\n" else "") +
-    (if(c.todo.nonEmpty) Md.bold(Md.italics("TODO")) + " " + c.todo.mkString(", ") + "\n" else "") +
-    (if(c.deprecated.isDefined) Md.bold(Md.italics("deprecated")) + " "  + c.deprecated.get + "\n" else "") +
-    (if(c.note.nonEmpty) Md.bold(Md.italics("Note")) + " " + c.note.mkString("\n") + "\n" else "") +
-    (if(c.example.nonEmpty) Md.bold(Md.italics("Example")) + " " + c.example.mkString("\n") + "\n" else "") +
-    (if(c.constructor.isDefined) Md.bold(Md.italics("Constructor")) + " "  + c.constructor.get + "\n" else "") +
-    (if(c.group.isDefined) Md.bold(Md.italics("Group")) + " "  + c.group.get + "\n" else "") +
-    (if(c.groupDesc.nonEmpty) c.groupDesc.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-    (if(c.groupNames.nonEmpty) c.groupNames.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-    (if(c.groupPrio.nonEmpty) c.groupPrio.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") + "\n" else "") +
-    (if(c.hideImplicitConversions.nonEmpty) Md.bold(Md.italics("Hide Implicit Conversions")) + " " + c.hideImplicitConversions.mkString(", ") + "\n" else "")
+    (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") else "") +
+    (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ")else "") +
+    (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get else "") +
+    (if(c.throws.nonEmpty) c.throws.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+    (if(c.valueParams.nonEmpty) c.valueParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+    (if(c.typeParams.nonEmpty) c.typeParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+    (if(c.version.isDefined) Md.bold(Md.italics("version")) + " "  + c.version.get else "") +
+    (if(c.since.isDefined) Md.bold(Md.italics("since")) + " "  + c.since.get else "") +
+    (if(c.todo.nonEmpty) Md.bold(Md.italics("TODO")) + " " + c.todo.mkString(", ") else "") +
+    (if(c.deprecated.isDefined) Md.bold(Md.italics("deprecated")) + " "  + c.deprecated.get else "") +
+    (if(c.note.nonEmpty) Md.bold(Md.italics("Note")) + " " + c.note.mkString("\n") else "") +
+    (if(c.example.nonEmpty) Md.bold(Md.italics("Example")) + " " + c.example.mkString("\n") else "") +
+    (if(c.constructor.isDefined) Md.bold(Md.italics("Constructor")) + " "  + c.constructor.get else "") +
+    (if(c.group.isDefined) Md.bold(Md.italics("Group")) + " "  + c.group.get else "") +
+    (if(c.groupDesc.nonEmpty) c.groupDesc.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+    (if(c.groupNames.nonEmpty) c.groupNames.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+    (if(c.groupPrio.nonEmpty) c.groupPrio.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+    (if(c.hideImplicitConversions.nonEmpty) Md.bold(Md.italics("Hide Implicit Conversions")) + " " + c.hideImplicitConversions.mkString(", ") else "")
   case None => ""
 }
 

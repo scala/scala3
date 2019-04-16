@@ -19,23 +19,29 @@ sealed abstract class List[A] extends new scala.collection.AbstractSeq[List.this
 
 A class for immutable linked lists representing ordered collections
 of elements of type `A`.
+
 This class comes with two implementing case classes `scala.Nil`
 and `scala.::` that implement the abstract members `isEmpty`,
 `head` and `tail`.
+
 This class is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access
 pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
+
 $usesMutableState
-## Performance**Time:** `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
+
+## Performance
+**Time:** `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
 This includes the index-based lookup of elements, `length`, `append` and `reverse`.
+
 **Space:** `List` implements **structural sharing** of the tail list. This means that many operations are either
 zero- or constant-memory cost.
+
 ```scala
 val mainList = List(3, 2, 1)
 val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
 val with42 =   42 :: mainList // also re-uses mainList, cost one :: instance
 val shorter =  mainList.tail  // costs nothing as it uses the same 2::1::Nil instances as mainList
 ```
-
 ***authors*** Martin Odersky and others
 
 ***see*** ["Scala's Collection Library overview"](http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#lists)
@@ -50,6 +56,7 @@ section on `Lists` for more information.
       each reference to it. I.e. structural sharing is lost after serialization/deserialization.
 
 ***Example*** 
+
 ```scala
 // Make a list via the companion object factory
 val days = List("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
@@ -106,7 +113,6 @@ def ::[B >: List.this.A](x: B): scala.collection.immutable.List[B]
 
 Adds an element at the beginning of this list.
 
-
 ***return*** a list which contains `x` as first element and
          which continues with this list.
 
@@ -119,7 +125,6 @@ def :::[B >: List.this.A](prefix: scala.collection.immutable.List[B]): scala.col
 ```
 
 Adds the elements of a given list in front of this list.
-
 
 ***return*** a list resulting from the concatenation of the given
   list `prefix` and this list.
@@ -137,7 +142,6 @@ Adds the elements of a given list in reverse order in front of this list.
 `xs.reverse ::: ys` but is more efficient.
 
 
-
 ***return*** the concatenation of the reversed prefix and the current list.
 
 ***prefix*** the prefix to reverse and then prepend
@@ -151,7 +155,6 @@ final def mapConserve[B >: List.this.A <: scala.AnyRef](f: scala.Function1[List.
 Builds a new list by applying a function to all elements of this list.
 Like `xs map f`, but returns `xs` unchanged if function
 `f` maps all elements to themselves (as determined by `eq`).
-
 
 
 ***return*** a list resulting from applying the given function
@@ -197,9 +200,8 @@ override def drop(n: scala.Int): scala.collection.immutable.List[List.this.A]
 override def slice(from: scala.Int, until: scala.Int): scala.collection.immutable.List[List.this.A]
 ```
 
-
-
 ***Example*** 
+
 ```scala
 // Given a list
 val letters = List('a','b','c','d','e')
@@ -306,7 +308,6 @@ $factoryInfo
 
 
 
-
 # object List$
 
 ## Companion class : scala.collection.immutable.List$
@@ -316,7 +317,6 @@ final class List$
 ```
 
 $factoryInfo
-
 
 
 ## Annotations:
@@ -337,7 +337,6 @@ implicit def canBuildFrom[A]: scala.collection.generic.CanBuildFrom[scala.collec
 ```
 
 $genericCanBuildFromInfo
-
 
 
 #### newBuilder

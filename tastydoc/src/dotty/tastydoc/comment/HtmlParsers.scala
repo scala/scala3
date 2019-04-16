@@ -202,19 +202,22 @@ object HtmlParsers {
         }
       }
 
-      def blockToMarkdown(block: Block): String = block match {
-        case Title(in, 1)  => s"# ${inlineToMarkdown(in)}"
-        case Title(in, 2)  => s"## ${inlineToMarkdown(in)}"
-        case Title(in, 3)  => s"### ${inlineToMarkdown(in)}"
-        case Title(in, _)  => s"#### ${inlineToMarkdown(in)}"
-        case Paragraph(in) => s"${inlineToMarkdown(in)}\n" //TODO: Paragraph add return?
-        case Code(data)    => s"```scala\n$data\n```"
-        case UnorderedList(items) => s"${listItemsToMarkdown(items)}"
-        case OrderedList(items, listStyle) => s"${listItemsToMarkdown(items, ordered=true)}"
-        case DefinitionList(items) => //TODO: Markdown equivalent
-          s"<dl>${items map { case (t, d) => s"<dt>${inlineToMarkdown(t)}</dt><dd>${blockToMarkdown(d)}</dd>" } }</dl>"
-        case HorizontalRule() =>
-          "***"
+      def blockToMarkdown(block: Block): String = {
+        (block match {
+          case Title(in, 1)  => s"# ${inlineToMarkdown(in)}"
+          case Title(in, 2)  => s"## ${inlineToMarkdown(in)}"
+          case Title(in, 3)  => s"### ${inlineToMarkdown(in)}"
+          case Title(in, _)  => s"#### ${inlineToMarkdown(in)}"
+          case Paragraph(in) => s"${inlineToMarkdown(in)}\n" //TODO: Paragraph add return?
+          case Code(data)    => s"```scala\n$data\n```"
+          case UnorderedList(items) => s"${listItemsToMarkdown(items)}"
+          case OrderedList(items, listStyle) => s"${listItemsToMarkdown(items, ordered=true)}"
+          case DefinitionList(items) => //TODO: Markdown equivalent
+            s"<dl>${items map { case (t, d) => s"<dt>${inlineToMarkdown(t)}</dt><dd>${blockToMarkdown(d)}</dd>" } }</dl>"
+          case HorizontalRule() =>
+            "***"
+        }) +
+        "\n"
       }
 
       bodyToMarkdown(body)

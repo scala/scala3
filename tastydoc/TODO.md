@@ -11,7 +11,7 @@
   * Span + error printing
 * HTMLParsers
   * Packages map
-  * Multi level list not working
+  * Multi level list not working when ordered and unordered are combined
 * WikiParser (just error reporting (span))
   * Span + error printing
 
@@ -35,3 +35,4 @@
 * Decide between html or markdown
 * Actual output
 * Different files for each class/object
+* Source file link
