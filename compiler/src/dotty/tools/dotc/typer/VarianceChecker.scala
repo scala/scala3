@@ -26,8 +26,8 @@ object VarianceChecker {
    *  Note: this is achieved by a mechanism separate from checking class type parameters.
    *  Question: Can the two mechanisms be combined in one?
    */
-  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = tree.tpe match {
-    case tl: HKTypeLambda =>
+  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = {
+    def checkType(tl: HKTypeLambda): Unit = {
       val checkOK = new TypeAccumulator[Boolean] {
         def error(tref: TypeParamRef) = {
           val VariantName(paramName, v) = tl.paramNames(tref.paramNum).toTermName
@@ -56,7 +56,23 @@ object VarianceChecker {
         }
       }
       checkOK.apply(true, tl.resType)
-    case _ =>
+    }
+
+    (tree.tpe: @unchecked) match {
+      case tl: HKTypeLambda =>
+        checkType(tl)
+      // The type of a LambdaTypeTree can be a TypeBounds, see the documentation
+      // of `LambdaTypeTree`.
+      case TypeBounds(lo, hi: HKTypeLambda) =>
+        // Can't assume that the lower bound is a type lambda, it could also be
+        // a reference to `Nothing`.
+        lo match {
+          case lo: HKTypeLambda =>
+            checkType(lo)
+          case _ =>
+        }
+        checkType(hi)
+    }
   }
 }
 
