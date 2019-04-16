@@ -81,7 +81,7 @@ object ErrorReporting {
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
       else {
-        //new FatalError("").printStackTrace()  //DEBUG
+        if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
       }
 
