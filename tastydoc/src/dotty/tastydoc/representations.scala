@@ -231,7 +231,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class DebugRepresentation(reflect: Reflection) extends Representation {
+  class DebugRepresentation extends Representation {
     val name = "DEBUG"
     val path = Nil
     val comments = None
@@ -256,6 +256,6 @@ object representations extends CommentParser with CommentCleaner {
 
       case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t)
 
-      case _ => new DebugRepresentation(reflect)
+      case _ => new DebugRepresentation()
   }}
 }

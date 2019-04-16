@@ -91,4 +91,4 @@ final case class LinkToExternal(name: String, url: String) extends LinkTo
 final case class Tooltip(name: String) extends LinkTo
 
 /** Linking directly to entities is not picklable because of cyclic references */
-final case class LinkToRepresentation(Representation: Representation) extends LinkTo
+final case class LinkToRepresentation(representation: Representation) extends LinkTo

@@ -1,13 +1,7 @@
 package dotty.tastydoc
 package comment
 
-// import dotty.tools.dottydoc.util.syntax._
-// import dotty.tools.dotc.util.Spans._
-// import dotty.tools.dotc.core.Symbols._
-// import dotty.tools.dotc.core.Contexts.Context
-// import dotty.tools.dotc.core.Decorators._
 import scala.collection.mutable
-// import dotty.tools.dotc.config.Printers.dottydoc
 import scala.util.matching.Regex
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
 import com.vladsch.flexmark.parser.{ Parser => MarkdownParser }
@@ -15,7 +9,6 @@ import dotty.tastydoc.representations._
 
 trait CommentParser {
   import Regexes._
-  // import model.internal._
 
   /** Parses a raw comment string into a `Comment` object.
    * @param packages     all packages parsed by Scaladoc tool, used for lookup

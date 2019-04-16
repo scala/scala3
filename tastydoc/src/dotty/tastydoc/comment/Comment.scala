@@ -1,9 +1,6 @@
 package dotty.tastydoc
 package comment
 
-// import dotty.tools.dottydoc.util.syntax._
-// import dotty.tools.dotc.core.Contexts.Context
-// import dotty.tools.dotc.util.Spans._
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
 import HtmlParsers._
 import util.MemberLookup
