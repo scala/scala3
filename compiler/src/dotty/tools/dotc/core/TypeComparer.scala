@@ -2005,10 +2005,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         intersecting(tp1.tp1, tp2) || intersecting(tp1.tp2, tp2)
       case (_, tp2: OrType)  =>
         intersecting(tp1, tp2.tp1) || intersecting(tp1, tp2.tp2)
+      case (tp1: AndType, tp2: AndType) =>
+        intersecting(tp1.tp1, tp2.tp1) && intersecting(tp1.tp2, tp2.tp2) ||
+        intersecting(tp1.tp1, tp2.tp2) && intersecting(tp1.tp2, tp2.tp1)
       case (tp1: AndType, _) =>
-        intersecting(tp1.tp1, tp2) && intersecting(tp1.tp2, tp2) && intersecting(tp1.tp1, tp1.tp2)
+        intersecting(tp1.tp1, tp2) && intersecting(tp1.tp2, tp2) ||
+        intersecting(tp1.tp2, tp2) && intersecting(tp1.tp1, tp2)
       case (_, tp2: AndType) =>
-        intersecting(tp1, tp2.tp1) && intersecting(tp1, tp2.tp2) && intersecting(tp2.tp1, tp2.tp2)
+        intersecting(tp1, tp2.tp1) && intersecting(tp1, tp2.tp2) ||
+        intersecting(tp1, tp2.tp2) && intersecting(tp1, tp2.tp1)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
         intersecting(tp1.underlying, tp2) && intersecting(tp1, tp2.underlying)
       case (tp1: TypeProxy, _) =>
