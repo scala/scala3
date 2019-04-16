@@ -915,7 +915,7 @@ object desugar {
     case _ =>
       def isTuplePattern(arity: Int): Boolean = pat match {
         case Tuple(pats) if pats.size == arity =>
-          pats.forall(id => id.isInstanceOf[Ident] && isVarPattern(id))
+          pats.forall(isVarPattern)
         case _ => false
       }
       val isMatchingTuple: Tree => Boolean = {
@@ -928,7 +928,7 @@ object desugar {
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
-      val rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
+      def rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
       val vars =
         if (tupleOptimizable) // include `_`
           pat match {
