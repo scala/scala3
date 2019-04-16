@@ -6,8 +6,8 @@ object Test {
   }
 
   object B extends A {
-    inline def f() = ${'{}}  // error: may not override
-    override def g() = ()    // error: may not override
+    override inline def f() = () // error: method f of type (): Unit is an inline method, must override at least one concrete method
+    override def g() = ()
   }
 
 }

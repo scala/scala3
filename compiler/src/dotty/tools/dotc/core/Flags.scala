@@ -592,8 +592,8 @@ object Flags {
   /** Assumed to be pure */
   final val StableOrErased: FlagSet = StableRealizable | Erased
 
-  /** Labeled `private`, `final`, or `inline` */
-  final val EffectivelyFinal: FlagSet = Private | Final | Inline
+  /** Labeled `private`, or `final` */
+  final val EffectivelyFinal: FlagSet = Private | Final
 
   /** A private method */
   final val PrivateMethod: FlagConjunction = allOf(Private, Method)
