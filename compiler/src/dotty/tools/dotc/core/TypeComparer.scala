@@ -423,7 +423,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           (tp1.widenSingletons ne tp1) &&
           recur(tp1.widenSingletons, tp2)
 
-        if (tp2.atoms.nonEmpty)
+        if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
           tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms)
         else
           widenOK || joinOK || recur(tp11, tp2) && recur(tp12, tp2)
@@ -581,7 +581,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        if (tp2.atoms.nonEmpty)
+        if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
           return tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms) ||
             tp1.isRef(NothingClass)
 
@@ -1063,6 +1063,23 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
     else None
   }
+
+  /** Check whether we can compare the given set of atoms with another to determine
+   *  a subtype test between OrTypes. There is one situation where this is not
+   *  the case, which has to do with SkolemTypes. TreeChecker sometimes expects two
+   *  types to be equal that have different skolems. To account for this, we identify
+   *  two different skolems in all phases `p`, where `p.isTyper` is false.
+   *  But in that case comparing two sets of atoms that contain skolems
+   *  for equality would give the wrong result, so we should not use the sets
+   *  for comparisons.
+   */
+  def canCompare(atoms: Set[Type]): Boolean =
+    ctx.phase.isTyper || {
+      val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
+        override val stopAtStatic = true
+      }
+      !atoms.exists(hasSkolems(false, _))
+    }
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams2`.
