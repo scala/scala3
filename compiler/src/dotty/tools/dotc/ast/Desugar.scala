@@ -139,8 +139,8 @@ object desugar {
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
    */
-  def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
-    val ValDef(name, tpt, rhs) = vdef
+  def valDef(vdef0: ValDef)(implicit ctx: Context): Tree = {
+    val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
     val mods = vdef.mods
     val setterNeeded =
       (mods is Mutable) && ctx.owner.isClass && (!(mods is PrivateLocal) || (ctx.owner is Trait))
@@ -197,8 +197,8 @@ object desugar {
    *  ==>
    *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
    */
-  private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
-    val DefDef(_, tparams, vparamss, tpt, rhs) = meth
+  private def defDef(meth0: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+    val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = transformQuotedPatternName(meth0)
     val methName = normalizeName(meth, tpt).asTermName
     val mods = meth.mods
     val epbuf = new ListBuffer[ValDef]
@@ -270,6 +270,32 @@ object desugar {
         .withMods(meth1.mods | DefaultParameterized)
       Thicket(meth2 :: defGetters)
     }
+  }
+
+  /** Transforms a definition with a name starting with a `$` in a quoted pattern into a `quoted.binding.Binding` splice.
+   *
+   *  The desugaring consists in renaming the the definition and adding the `@patternBindHole` annotation. This
+   *  annotation is used during typing to perform the full transformation.
+   *
+   *  A definition
+   *  ```scala
+   *    case '{ def $a(...) = ... a() ...; ... a() ... }
+   *  ```
+   *  into
+   *  ```scala
+   *    case '{ @patternBindHole def a(...) = ... a() ...; ... a() ... }
+   *  ```
+   */
+  def transformQuotedPatternName(tree: ValOrDefDef)(implicit ctx: Context): ValOrDefDef = {
+    if (ctx.mode.is(Mode.QuotedPattern) && !tree.isBackquoted && tree.name != nme.ANON_FUN && tree.name.startsWith("$")) {
+      val name = tree.name.toString.substring(1).toTermName
+      val newTree: ValOrDefDef = tree match {
+        case tree: ValDef => cpy.ValDef(tree)(name)
+        case tree: DefDef => cpy.DefDef(tree)(name)
+      }
+      val mods = tree.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span))
+      newTree.withMods(mods)
+    } else tree
   }
 
   // Add all evidence parameters in `params` as implicit parameters to `meth` */

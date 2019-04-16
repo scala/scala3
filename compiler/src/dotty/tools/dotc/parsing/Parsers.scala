@@ -406,10 +406,12 @@ object Parsers {
     /** Convert tree to formal parameter
     */
     def convertToParam(tree: Tree, expected: String = "formal parameter"): ValDef = tree match {
-      case Ident(name) =>
-        makeParameter(name.asTermName, TypeTree()).withSpan(tree.span)
-      case Typed(Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt).withSpan(tree.span)
+      case id @ Ident(name) =>
+        makeParameter(name.asTermName, TypeTree(), isBackquoted = id.isBackquoted).withSpan(tree.span)
+      case Typed(id @ Ident(name), tpt) =>
+        makeParameter(name.asTermName, tpt, isBackquoted = id.isBackquoted).withSpan(tree.span)
+      case Typed(Splice(Ident(name)), tpt) =>
+        makeParameter(("$" + name).toTermName, tpt).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree)
@@ -2370,7 +2372,9 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil => {
+        case (id: BackquotedIdent) :: Nil if id.name.isTermName =>
+          finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
+        case Ident(name: TermName) :: Nil => {
           finalizeDef(ValDef(name, tpt, rhs), mods, start)
         } case _ =>
           PatDef(mods, lhs, tpt, rhs)
@@ -2414,10 +2418,10 @@ object Parsers {
           else
             (Nil, Method)
         val mods1 = addFlag(mods, flags)
-        val name = ident()
+        val ident = termIdent()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses() match {
-          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(name) =>
+          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(ident.name) =>
             rparams :: leadingParamss ::: rparamss
           case rparamss =>
             leadingParamss ::: rparamss
@@ -2447,7 +2451,9 @@ object Parsers {
             accept(EQUALS)
             expr()
           }
-        finalizeDef(DefDef(name, tparams, vparamss, tpt, rhs), mods1, start)
+
+        if (ident.isBackquoted) finalizeDef(BackquotedDefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
+        else finalizeDef(DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
       }
     }
 

@@ -1959,6 +1959,7 @@ class Typer extends Namer
   }
 
   def splitQuotePattern(quoted: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
+    val ctx0 = ctx
     object splitter extends tpd.TreeMap {
       val patBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
@@ -1973,6 +1974,22 @@ class Typer extends Namer
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
+        case ddef: ValOrDefDef =>
+          if (ddef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot)) {
+            val bindingType = ddef.symbol.info match {
+              case t: ExprType => t.resType
+              case t: MethodType => t.toFunctionType()
+              case t: PolyType =>
+                HKTypeLambda(t.paramNames)(
+                    x => t.paramInfos.mapConserve(_.subst(t, x).asInstanceOf[TypeBounds]),
+                    x => t.resType.subst(t, x).toFunctionType())
+              case t => t
+            }
+            val bindingExprTpe = AppliedType(defn.QuotedMatchingBindingType, bindingType :: Nil)
+            val sym = ctx0.newPatternBoundSymbol(ddef.name, bindingExprTpe, ddef.span)
+            patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingExprTpe)).withSpan(ddef.span)
+          }
+          super.transform(tree)
         case _ =>
           super.transform(tree)
       }

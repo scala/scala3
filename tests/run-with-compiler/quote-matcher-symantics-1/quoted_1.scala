@@ -14,15 +14,15 @@ object Macros {
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
       case '{ LitDSL(${ Literal(c) }) } =>
-      // case scala.runtime.quoted.Matcher.unapply[Tuple1[Expr[Int]]](Tuple1(Literal(c)))(/*implicits*/ '{ LitDSL(patternHole[Int]) }, reflect) =>
+      // case scala.internal.quoted.Matcher.unapply[Tuple1[Expr[Int]]](Tuple1(Literal(c)))(/*implicits*/ '{ LitDSL(patternHole[Int]) }, reflect) =>
         '{ $sym.value(${c.toExpr}) }
 
       case '{ ($x: DSL) + ($y: DSL) } =>
-      // case scala.runtime.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple2(x, y))(/*implicits*/ '{ patternHole[DSL] + patternHole[DSL] }, reflect) =>
+      // case scala.internal.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple2(x, y))(/*implicits*/ '{ patternHole[DSL] + patternHole[DSL] }, reflect) =>
         '{ $sym.plus(${lift(x)}, ${lift(y)}) }
 
       case '{ ($x: DSL) * ($y: DSL) } =>
-       // case scala.runtime.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple2(x, y))(/*implicits*/ '{ patternHole[DSL] * patternHole[DSL] }, reflect) =>
+       // case scala.internal.quoted.Matcher.unapply[Tuple2[Expr[DSL], Expr[DSL]]](Tuple2(x, y))(/*implicits*/ '{ patternHole[DSL] * patternHole[DSL] }, reflect) =>
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>

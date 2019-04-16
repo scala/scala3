@@ -1469,8 +1469,11 @@ trait Kernel {
 
   def Definitions_TupleClass(arity: Int): Symbol
 
-  /** Symbol of scala.runtime.Quoted.patternHole */
+  /** Symbol of scala.internal.Quoted.patternHole */
   def Definitions_InternalQuoted_patternHole: Symbol
+
+  /** Symbol of scala.internal.Quoted.patternBindHole */
+  def Definitions_InternalQuoted_patternBindHoleAnnot: Symbol
 
   def Definitions_UnitType: Type
   def Definitions_ByteType: Type
