@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
-
+import dotty.tools.dotc.reporting._
 import scala.quoted.{Expr, Type}
 import scala.quoted.Toolbox
 import java.net.URLClassLoader
@@ -61,7 +61,6 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
   def show(tpe: Type[_], settings: Toolbox.Settings): String =
     withTypeTree(tpe, doShow, settings)
 
-
   def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Toolbox.Settings): T = {
     val ctx = setToolboxSettings(setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)._2.fresh, settings)
 
@@ -95,6 +94,9 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
   private def setToolboxSettings(ctx: FreshContext, settings: Toolbox.Settings): ctx.type = {
     ctx.setSetting(ctx.settings.color, if (settings.color) "always" else "never")
     ctx.setSetting(ctx.settings.YshowRawQuoteTrees, settings.showRawTree)
+    // An error in the generated code is a bug in the compiler
+    // Setting the throwing reporter however will report any exception
+    ctx.setReporter(new ThrowingReporter(ctx.reporter))
   }
 }
 
