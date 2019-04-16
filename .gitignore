@@ -82,3 +82,6 @@ vscode-dotty/.vscode-test
 
 community-build/dotty-bootstrapped.version
 community-build/sbt-dotty-sbt
+
+# Vulpix output files
+*.check.out

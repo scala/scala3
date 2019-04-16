@@ -514,10 +514,22 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       this
     }
 
-    protected def updateCheckFile(checkFile: JFile, lines: Seq[String]): Unit = {
-      val outFile = dotty.tools.io.File(checkFile.toPath)
-      outFile.writeAll(lines.mkString("", EOL, EOL))
-      echo("Updated checkfile: " + checkFile.getPath)
+    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String]): Unit = {
+      if (updateCheckFiles) {
+        val outFile = dotty.tools.io.File(checkFile.toPath)
+        outFile.writeAll(lines.mkString("", EOL, EOL))
+        echo("Updated checkfile: " + checkFile.getPath)
+      } else {
+        val outFile = dotty.tools.io.File(checkFile.toPath.resolveSibling(checkFile.toPath.getFileName + ".out"))
+        outFile.writeAll(lines.mkString("", EOL, EOL))
+        echo(
+          s"""Test output dumped in: ${outFile.path}
+             |  See diff of the checkfile
+             |    > diff $checkFile $outFile
+             |  Replace checkfile with current output output
+             |    > mv $outFile $checkFile
+         """.stripMargin)
+      }
     }
 
     /** Returns all files in directory or the file if not a directory */
@@ -558,26 +570,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                       .mkString(EOL)
 
                     if (output.mkString(EOL) != check) {
-                      val outFile = dotty.tools.io.File(checkFile.toPath).addExtension(".out")
-                      if (updateCheckFiles) {
-                        updateCheckFile(checkFile, output)
-                      } else {
-                        outFile.writeAll(output.mkString("", EOL, ""))
-                        val msg =
-                          s"""Output differed for test $name, use the following command to see the diff:
-                             |  > diff $checkFile $outFile
-                        """.stripMargin
 
-                        echo(msg)
-                        addFailureInstruction(msg)
+                      dumpOutputToFile(checkFile, output)
 
-                        // Print build instructions to file and summary:
-                        val buildInstr = testSource.buildInstructions(0, rep.warningCount)
-                        addFailureInstruction(buildInstr)
+                      // Print build instructions to file and summary:
+                      val buildInstr = testSource.buildInstructions(0, rep.warningCount)
+                      addFailureInstruction(buildInstr)
 
-                        // Fail target:
-                        failTestSource(testSource)
-                      }
+                      // Fail target:
+                      failTestSource(testSource)
                     }
                   case _ =>
                 }
@@ -651,8 +652,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             // Fail target:
             failTestSource(testSource)
 
-            if (updateCheckFiles)
-              updateCheckFile(checkFile.get, outputLines)
+            dumpOutputToFile(checkFile.get, outputLines)
           }
         }
 
@@ -790,8 +790,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val expexted = Source.fromFile(checkFile, "UTF-8").getLines().toList
           for (msg <- diffMessage(sourceName, actual, expexted)) {
             fail(msg)
-            if (updateCheckFiles)
-              updateCheckFile(checkFile, actual)
+            dumpOutputToFile(checkFile, actual)
           }
         }
 
