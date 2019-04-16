@@ -101,7 +101,7 @@ with `with-compiler` in their name.
 
 ### From TASTy tests
 
-`testCompilation` has a additional mode to run tests that compile code from a `.tasty` file.
+`testCompilation` has an additional mode to run tests that compile code from a `.tasty` file.
  Modify blacklist and whitelists in `compiler/test/dotc` to enable or disable tests from `.tasty` files.
 
  ```bash
