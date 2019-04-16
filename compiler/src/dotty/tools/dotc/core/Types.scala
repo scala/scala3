@@ -1086,8 +1086,16 @@ object Types {
      */
     def atoms(implicit ctx: Context): Set[Type] = dealias match {
       case tp: SingletonType if tp.isStable =>
-        def normalize(tp: SingletonType): SingletonType = tp.underlying match {
-          case tp1: SingletonType => normalize(tp1)
+        def normalize(tp: Type): Type = tp match {
+          case tp: SingletonType =>
+            tp.underlying.dealias match {
+              case tp1: SingletonType => normalize(tp1)
+              case _ =>
+                tp match {
+                  case tp: TermRef => tp.derivedSelect(normalize(tp.prefix))
+                  case _ => tp
+                }
+            }
           case _ => tp
         }
         Set.empty + normalize(tp)
