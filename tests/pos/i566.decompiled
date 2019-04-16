@@ -1,5 +1,0 @@
-class Test() {
-  type T = scala.Predef.String
-  type U
-  scala.reflect.classTag[Test.this.T](scala.reflect.ClassTag.apply[Test.this.T](classOf[java.lang.String]))
-}

@@ -1,4 +1,0 @@
-object Test {
-  inline def foo(n: scala.Int): scala.Int = Test.bar(n)
-  inline def bar(n: scala.Int): scala.Int = n
-}

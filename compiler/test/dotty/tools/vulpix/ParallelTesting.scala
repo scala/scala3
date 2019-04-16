@@ -1366,7 +1366,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter, decompilationFilter: FileFilter, recompilationFilter: FileFilter)(
+  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(
       implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
     val flags = flags0 and "-Yretain-trees"
@@ -1386,8 +1386,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
        flags: TestFlags,
        outDir: JFile,
        fromTasty: Boolean = false,
-       decompilation: Boolean = false
-    ) extends JointCompilationSource(name, Array(file), flags, outDir, fromTasty, decompilation) {
+    ) extends JointCompilationSource(name, Array(file), flags, outDir, fromTasty) {
 
       override def buildInstructions(errors: Int, warnings: Int): String = {
         val runOrPos = if (file.getPath.startsWith(s"tests${JFile.separator}run${JFile.separator}")) "run" else "pos"
@@ -1411,48 +1410,27 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
     // TODO add SeparateCompilationSource from tasty?
 
-    val targets2 =
-      filteredFiles
-        .filter(f => decompilationFilter.accept(f.getName))
-        .map { f =>
-          val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-          new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath, decompilation = true)
-        }
-
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     val generateClassFiles = compileFilesInDir(f, flags0, fromTastyFilter)
-
-    val decompilationDir = outDir + sourceDir.getName + "_decompiled"
-
-    if (targets2.isEmpty)
-      new JFile(decompilationDir).mkdirs()
 
     new TastyCompilationTest(
       generateClassFiles.keepOutput,
       new CompilationTest(targets).keepOutput,
-      new CompilationTest(targets2).keepOutput,
-      recompilationFilter,
-      decompilationDir,
       shouldDelete = true
     )
   }
 
-  class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, step3: CompilationTest,
-        recompilationFilter: FileFilter, decompilationDir: String, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
+  class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
     def keepOutput: TastyCompilationTest =
-      new TastyCompilationTest(step1, step2, step3, recompilationFilter, decompilationDir, shouldDelete)
+      new TastyCompilationTest(step1, step2, shouldDelete)
 
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       step1.checkCompile() // Compile all files to generate the class files with tasty
       step2.checkCompile() // Compile from tasty
-      step3.checkCompile() // Decompile from tasty
-
-      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationFilter).keepOutput
-      step4.checkCompile() // Recompile decompiled code
 
       if (shouldDelete)
-        (step1 + step2 + step3 + step4).delete()
+        (step1 + step2).delete()
 
       this
     }
@@ -1460,13 +1438,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
       step1.checkCompile() // Compile all files to generate the class files with tasty
       step2.checkRuns() // Compile from tasty
-      step3.checkCompile() // Decompile from tasty
-
-      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationFilter).keepOutput
-      step4.checkRuns() // Recompile decompiled code
 
       if (shouldDelete)
-        (step1 + step2 + step3 + step4).delete()
+        (step1 + step2).delete()
 
       this
     }

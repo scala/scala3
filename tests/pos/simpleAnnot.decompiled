@@ -1,7 +1,0 @@
-class Foo() {
-  @annot type A = scala.Int
-  @annot val a: scala.Int = scala.Predef.???
-  val b: scala.Int @annot = scala.Predef.???
-  def c(x: scala.Int): scala.Int = (x: @annot)
-}
-class annot() extends scala.annotation.Annotation

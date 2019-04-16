@@ -1,4 +1,0 @@
-class Foo() {
-  scala.List.apply[scala.Any](1, "2", '3')
-  scala.Array.apply(1)
-}

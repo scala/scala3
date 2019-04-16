@@ -1,7 +1,0 @@
-object Test {
-  def foo[M[_$1]](x: M[scala.Int]): M[scala.Int] = x
-  type Alias[A] = scala.Tuple2[A, A]
-  val x: Test.Alias[scala.Int] = scala.Tuple2.apply[scala.Int, scala.Int](1, 2)
-  Test.foo[Test.Alias](Test.x)
-  Test.foo[[A >: scala.Nothing <: scala.Any] => scala.Tuple2[A, A]](Test.x)
-}

@@ -1,7 +1,0 @@
-class C() {
-  def this(x: scala.Int) = {
-    this()
-    class D() extends C
-    ()
-  }
-}

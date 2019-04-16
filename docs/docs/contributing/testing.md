@@ -101,7 +101,7 @@ with `with-compiler` in their name.
 
 ### From TASTy tests
 
-`testCompilation` has a additional mode to run tests that compile code from a `.tasty` file, decompile a `.tasty` file and recompile the decompiled tasty.
+`testCompilation` has an additional mode to run tests that compile code from a `.tasty` file.
  Modify blacklist and whitelists in `compiler/test/dotc` to enable or disable tests from `.tasty` files.
 
  ```bash
@@ -109,4 +109,4 @@ with `with-compiler` in their name.
  > testCompilation --from-tasty
  ```
  
- This mode can be combined with `--update-checkfiles` to update the `.decompiled` files or can be run under `dotty-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler. 
+ This mode can be run under `dotty-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler.
