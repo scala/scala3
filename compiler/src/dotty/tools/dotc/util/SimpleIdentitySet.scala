@@ -12,15 +12,12 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem]
   def contains[E >: Elem <: AnyRef](x: E): Boolean
   def foreach(f: Elem => Unit): Unit
-  def toList: List[Elem] = {
-    val buf = new ListBuffer[Elem]
-    foreach(buf += _)
-    buf.toList
-  }
+  def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
+  def toList: List[Elem]
   def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
-    ((this: SimpleIdentitySet[E]) /: that.toList)(_ + _)
+    ((this: SimpleIdentitySet[E]) /: that)(_ + _)
   def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[Elem] =
-    (this /: that.toList)(_ - _)
+    (this /: that)(_ - _)
   override def toString: String = toList.mkString("(", ", ", ")")
 }
 
@@ -33,6 +30,8 @@ object SimpleIdentitySet {
       this
     def contains[E <: AnyRef](x: E): Boolean = false
     def foreach(f: Nothing => Unit): Unit = ()
+    def /: [A, E <: AnyRef](z: A)(f: (A, E) => A): A = z
+    def toList = Nil
   }
 
   private class Set1[+Elem <: AnyRef](x0: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -43,6 +42,9 @@ object SimpleIdentitySet {
       if (x `eq` x0) empty else this
     def contains[E >: Elem <: AnyRef](x: E): Boolean = x `eq` x0
     def foreach(f: Elem => Unit): Unit = f(x0.asInstanceOf[Elem])
+    def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
+      f(z, x0.asInstanceOf[E])
+    def toList = x0.asInstanceOf[Elem] :: Nil
   }
 
   private class Set2[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -55,6 +57,9 @@ object SimpleIdentitySet {
       else this
     def contains[E >: Elem <: AnyRef](x: E): Boolean = (x `eq` x0) || (x `eq` x1)
     def foreach(f: Elem => Unit): Unit = { f(x0.asInstanceOf[Elem]); f(x1.asInstanceOf[Elem]) }
+    def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
+      f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E])
+    def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
   }
 
   private class Set3[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef, x2: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -78,6 +83,9 @@ object SimpleIdentitySet {
     def foreach(f: Elem => Unit): Unit = {
       f(x0.asInstanceOf[Elem]); f(x1.asInstanceOf[Elem]); f(x2.asInstanceOf[Elem])
     }
+    def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
+      f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
+    def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
   }
 
   private class SetN[+Elem <: AnyRef](xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
@@ -114,6 +122,13 @@ object SimpleIdentitySet {
     def foreach(f: Elem => Unit): Unit = {
       var i = 0
       while (i < size) { f(xs(i).asInstanceOf[Elem]); i += 1 }
+    }
+    def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
+      (z /: xs.asInstanceOf[Array[E]])(f)
+    def toList: List[Elem] = {
+      val buf = new ListBuffer[Elem]
+      foreach(buf += _)
+      buf.toList
     }
   }
 }
