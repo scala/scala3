@@ -413,7 +413,7 @@ trait Inferencing { this: Typer =>
 
     val ownedVars = state.ownedVars
     if (ownedVars.size > 0) {
-      val qualifying = ownedVars -- locked
+      val qualifying = if (locked.isEmpty) ownedVars else ownedVars -- locked
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
