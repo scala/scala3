@@ -2011,10 +2011,10 @@ class Typer extends Namer
         typed(innerExpr, pt)
       case expr =>
         if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
-          fullyDefinedType(pt, "quoted pattern selector", tree.span)
+          val splicePt = if (isFullyDefined(pt, ForceDegree.all)) pt else defn.AnyType
           def spliceOwner(ctx: Context): Symbol =
             if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-          val pat = typedPattern(expr, defn.QuotedExprType.appliedTo(pt))(
+          val pat = typedPattern(expr, defn.QuotedExprType.appliedTo(splicePt))(
             spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
           Splice(pat)
         }
