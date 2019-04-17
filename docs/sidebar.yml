@@ -151,6 +151,8 @@ sidebar:
           url: docs/contributing/intellij-idea.html
         - title: Testing
           url: docs/contributing/testing.html
+        - title: Release Model
+          url: docs/contributing/release.html
     - title: Internals
       subsection:
         - title: Backend
