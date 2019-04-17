@@ -18,6 +18,7 @@
 # Representation
 * Case class
 * Trait
+* Empty package (has name <empty>)
 * All modifiers present?
 * Define wiki or markdown syntax
 * Beautify type parameters (+ variance)
@@ -27,6 +28,7 @@
 * Beautify everything (parents, etc.)
 * Make sense of the parent field
 * SuperTypes
+* Known subclasses
 * Methods inherited ?
 * Annotations (+ everywhere or only where it makes sense?)
 * Verify we have everything
@@ -36,3 +38,4 @@
 * Actual output
 * Different files for each class/object
 * Source file link
+* List Package content
