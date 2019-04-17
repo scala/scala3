@@ -276,9 +276,10 @@ trait ConstraintHandling[AbstractContext] {
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
    *      widen (all) the singleton type(s), provied the result is a subtype of `bound`
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
-   *      and `bound` is not a subtype of `scala.Singleton`.
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provied the result is a subtype of `bound`.
+   *
+   *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
@@ -288,13 +289,14 @@ trait ConstraintHandling[AbstractContext] {
       val tpw = tp.widenUnion
       if ((tpw ne tp) && tpw <:< bound) tpw else tp
     }
-    def widenSingle(tp: Type) =
-      if (isSubTypeWhenFrozen(bound, defn.SingletonType)) tp
-      else {
-        val tpw = tp.widenSingletons
-        if ((tpw ne tp) && tpw <:< bound) tpw else tp
-      }
-    widenOr(widenSingle(inst)).dropRepeatedAnnot
+    def widenSingle(tp: Type) = {
+      val tpw = tp.widenSingletons
+      if ((tpw ne tp) && tpw <:< bound) tpw else tp
+    }
+    val wideInst =
+      if (isSubTypeWhenFrozen(bound, defn.SingletonType)) inst
+      else widenOr(widenSingle(inst))
+    wideInst.dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).

@@ -1033,7 +1033,8 @@ object Types {
       case _ => this
     }
 
-    /** If this type contains embedded union types, replace them by their joins.
+    /** Widen this type and if the result contains embedded union types, replace
+     *  them by their joins.
      *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
      *  If an embedded union is found, we first try to simplify or eliminate it by
      *  re-lubbing it while allowing type parameters to be constrained further.
@@ -1046,7 +1047,7 @@ object Types {
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
      */
-    def widenUnion(implicit ctx: Context): Type = this match {
+    def widenUnion(implicit ctx: Context): Type = widen match {
       case OrType(tp1, tp2) =>
         ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
           case union: OrType => union.join

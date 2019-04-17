@@ -1326,7 +1326,7 @@ class Namer { typer: Typer =>
         val tp1 = tp.widenTermRefExpr match {
           case ctp: ConstantType if isInlineVal => ctp
           case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-          case _ => tp.widen.widenUnion
+          case _ => tp.widenUnion
         }
         tp1.dropRepeatedAnnot
       }
