@@ -23,4 +23,19 @@ object Test extends App {
   aref.x = 1
   val s: String = sref.x
 
+  type Neg1[-X] = X // error
+  type Neg2[-X] >: X // error
+  type Neg3[-X] <: X // error
+
+  type Neg4 = [-X] => X // error
+  type Neg5 >: [-X] => X <: [-X] => Any // error
+  type Neg6 <: [-X] => X // error
+
+  type Pos1[+X] = Ref[X] // error
+  type Pos2[+X] >: Ref[X] // error
+  type Pos3[+X] <: Ref[X] // error
+
+  type Pos4 = [+X] => Ref[X] // error
+  type Pos5 >: [+X] => Ref[X] <: [+X] => Any // error
+  type Pos6 <: [+X] => Ref[X] // error
 }

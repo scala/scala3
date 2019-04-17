@@ -644,7 +644,29 @@ object Trees {
     def forwardTo: Tree[T] = tpt
   }
 
-  /** [typeparams] -> tpt */
+  /** [typeparams] -> tpt
+   *
+   *  Note: the type of such a tree is not necessarily a `HKTypeLambda`, it can
+   *  also be a `TypeBounds` where the upper bound is an `HKTypeLambda`, and the
+   *  lower bound is either a reference to `Nothing` or an `HKTypeLambda`,
+   *  this happens because these trees are typed by `HKTypeLambda#fromParams` which
+   *  makes sure to move bounds outside of the type lambda itself to simplify their
+   *  handling in the compiler.
+   *
+   *  You may ask: why not normalize the trees too? That way,
+   *
+   *      LambdaTypeTree(X, TypeBoundsTree(A, B))
+   *
+   *  would become,
+   *
+   *      TypeBoundsTree(LambdaTypeTree(X, A), LambdaTypeTree(X, B))
+   *
+   *  which would maintain consistency between a tree and its type. The problem
+   *  with this definition is that the same tree `X` appears twice, therefore
+   *  we'd have to create two symbols for it which makes it harder to relate the
+   *  source code written by the user with the trees used by the compiler (for
+   *  example, to make "find all references" work in the IDE).
+   */
   case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
