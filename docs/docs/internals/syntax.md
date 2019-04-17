@@ -94,7 +94,7 @@ semi             ::=  ‘;’ |  nl {nl}
 ```
 abstract  case      catch     class     def       do        else      enum
 erased    extends   false     final     finally   for       given     if
-implicit  import    instance  lazy      match     new       null      object
+implicit  implied   import    lazy      match     new       null      object
 package   private   protected override  return    super     sealed    then
 throw     trait     true      try       type      val       var       while
 with      yield
@@ -227,14 +227,14 @@ ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
                     |  Expr
 ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                                    exprs
-                    |  ‘(’ [ExprsInParens] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
+                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
 BlockExpr         ::=  ‘{’ CaseClauses | Block ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
-                    |  {Annotation} [‘implicit’ | ‘lazy’] Def
-                    |  {Annotation} {LocalModifier} TmplDef
+                    |  {Annotation [nl]} [‘implicit’ | ‘lazy’] Def
+                    |  {Annotation [nl]} {LocalModifier} TmplDef
                     |  Expr1
 
 ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)        ForYield(enums, expr)
@@ -392,6 +392,7 @@ ConstrBlock       ::=  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 
 TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
 TemplateStat      ::=  Import
+                    |  Export
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
                     |  Expr1

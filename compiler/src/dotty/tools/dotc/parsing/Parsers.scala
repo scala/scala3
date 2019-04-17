@@ -2773,10 +2773,11 @@ object Parsers {
     }
 
     /** TopStatSeq ::= TopStat {semi TopStat}
-     *  TopStat ::= Annotations Modifiers Def
+     *  TopStat ::= Import
+     *            | Export
+     *            | Annotations Modifiers Def
      *            | Packaging
      *            | package object objectDef
-     *            | Import
      *            |
      */
     def topStatSeq(): List[Tree] = {
@@ -2810,6 +2811,7 @@ object Parsers {
 
     /** TemplateStatSeq  ::= [id [`:' Type] `=>'] TemplateStat {semi TemplateStat}
      *  TemplateStat     ::= Import
+     *                     | Export
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
      *                     | Expr1
@@ -2895,7 +2897,7 @@ object Parsers {
       var mods = defAnnotsMods(localModifierTokens)
       for (imod <- implicitMods.mods) mods = addMod(mods, imod)
       if (mods.is(Final)) {
-        // A final modifier means the local definition is "class-like".
+        // A final modifier means the local definition is "class-like".  // FIXME: Deal with modifiers separately
         tmplDef(start, mods)
       } else {
         defOrDcl(start, mods)
