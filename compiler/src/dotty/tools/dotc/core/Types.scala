@@ -4973,6 +4973,14 @@ object Types {
         foldOver(n + 1, tp)
       case tp: TypeRef if tp.info.isTypeAlias =>
         apply(n, tp.superType)
+      case tp: TermRef =>
+        apply(n, tp.underlying)
+      case tp: TypeParamRef =>
+        ctx.typerState.constraint.entry(tp) match {
+          case tb: TypeBounds => foldOver(n, tb)
+          case NoType => foldOver(n, tp.underlying)
+          case inst => foldOver(n, inst)
+        }
       case _ =>
         foldOver(n, tp)
     }
@@ -4990,10 +4998,18 @@ object Types {
           foldOver(cs + sym, tp)
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(cs, tp.superType)
-        case tp: TypeBounds =>
-          foldOver(cs, tp)
-        case other =>
+        case tp: TypeRef if tp.prefix.isValueType =>
           foldOver(cs + sym, tp)
+        case tp: TermRef =>
+          apply(cs, tp.underlying)
+        case tp: TypeParamRef =>
+          ctx.typerState.constraint.entry(tp) match {
+            case tb: TypeBounds => foldOver(cs, tb)
+            case NoType => foldOver(cs, tp.underlying)
+            case inst => foldOver(cs, inst)
+          }
+        case other =>
+          foldOver(cs, tp)
       }
     }
   }
