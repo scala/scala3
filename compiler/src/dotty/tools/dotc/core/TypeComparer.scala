@@ -1920,6 +1920,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       sym.children.map(x => ctx.refineUsingParent(tp, x)).filter(_.exists)
 
     (tp1.dealias, tp2.dealias) match {
+      case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol == defn.SingletonClass || tp2.symbol == defn.SingletonClass =>
+        true
       case (tp1: ConstantType, tp2: ConstantType) =>
         tp1 == tp2
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol.isClass && tp2.symbol.isClass =>
