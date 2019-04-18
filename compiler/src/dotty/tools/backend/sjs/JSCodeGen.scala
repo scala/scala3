@@ -1184,9 +1184,9 @@ class JSCodeGen()(implicit ctx: Context) {
       genCoercion(tree, receiver, code)
     else if (code == JSPrimitives.THROW)
       genThrow(tree, args)
-    else /*if (primitives.isJSPrimitive(code))
-      genJSPrimitive(tree, receiver, args, code)
-    else*/
+    else if (JSPrimitives.isJSPrimitive(code))
+      genJSPrimitive(tree, args, code, isStat)
+    else
       throw new FatalError(s"Unknown primitive: ${tree.symbol.fullName} at: $pos")
   }
 
@@ -2196,6 +2196,171 @@ class JSCodeGen()(implicit ctx: Context) {
       case _ =>
         throw new FatalError(
             s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
+    }
+  }
+
+  /** Gen JS code for a Scala.js-specific primitive method */
+  private def genJSPrimitive(tree: Apply, args: List[Tree], code: Int,
+      isStat: Boolean): js.Tree = {
+
+    import JSPrimitives._
+
+    implicit val pos = tree.span
+
+    def genArgs1: js.Tree = {
+      assert(args.size == 1,
+          s"Expected exactly 1 argument for JS primitive $code but got " +
+          s"${args.size} at $pos")
+      genExpr(args.head)
+    }
+
+    def genArgs2: (js.Tree, js.Tree) = {
+      assert(args.size == 2,
+          s"Expected exactly 2 arguments for JS primitive $code but got " +
+          s"${args.size} at $pos")
+      (genExpr(args.head), genExpr(args.tail.head))
+    }
+
+    def genArgsVarLength: List[js.TreeOrJSSpread] =
+      genActualJSArgs(tree.symbol, args)
+
+    def resolveReifiedJSClassSym(arg: Tree): Symbol = {
+      def fail(): Symbol = {
+        ctx.error(
+            tree.symbol.name.toString + " must be called with a constant " +
+            "classOf[T] representing a class extending js.Any " +
+            "(not a trait nor an object)",
+            tree.sourcePos)
+        NoSymbol
+      }
+      arg match {
+        case Literal(value) if value.tag == Constants.ClazzTag =>
+          val classSym = value.typeValue.typeSymbol
+          if (isJSType(classSym) && !classSym.is(Trait) && !classSym.is(ModuleClass))
+            classSym
+          else
+            fail()
+        case _ =>
+          fail()
+      }
+    }
+
+    (code: @switch) match {
+      case DYNNEW =>
+        // js.Dynamic.newInstance(clazz)(actualArgs: _*)
+        val (jsClass, actualArgs) = extractFirstArg(genArgsVarLength)
+        js.JSNew(jsClass, actualArgs)
+
+      case ARR_CREATE =>
+        // js.Array(elements: _*)
+        js.JSArrayConstr(genArgsVarLength)
+
+      case CONSTRUCTOROF =>
+        // runtime.constructorOf(clazz)
+        val classSym = resolveReifiedJSClassSym(args.head)
+        if (classSym == NoSymbol)
+          js.Undefined() // compile error emitted by resolveReifiedJSClassSym
+        else
+          genLoadJSConstructor(classSym)
+
+      /*
+      case CREATE_INNER_JS_CLASS | CREATE_LOCAL_JS_CLASS =>
+        // runtime.createInnerJSClass(clazz, superClass)
+        // runtime.createLocalJSClass(clazz, superClass, fakeNewInstances)
+        val classSym = resolveReifiedJSClassSym(args(0))
+        val superClassValue = genExpr(args(1))
+        if (classSym == NoSymbol) {
+          js.Undefined() // compile error emitted by resolveReifiedJSClassSym
+        } else {
+          val captureValues = {
+            if (code == CREATE_INNER_JS_CLASS) {
+              val outer = genThis()
+              List.fill(classSym.info.decls.count(_.isClassConstructor))(outer)
+            } else {
+              val ArrayValue(_, fakeNewInstances) = args(2)
+              fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
+            }
+          }
+          js.CreateJSClass(encodeClassRef(classSym),
+              superClassValue :: captureValues)
+        }
+
+      case WITH_CONTEXTUAL_JS_CLASS_VALUE =>
+        // withContextualJSClassValue(jsclass, inner)
+        val jsClassValue = genExpr(args(0))
+        withScopedVars(
+            contextualJSClassValue := Some(jsClassValue)
+        ) {
+          genStatOrExpr(args(1), isStat)
+        }
+      */
+
+      case LINKING_INFO =>
+        // runtime.linkingInfo
+        js.JSLinkingInfo()
+
+      case DEBUGGER =>
+        // js.special.debugger()
+        js.Debugger()
+
+      case UNITVAL =>
+        // BoxedUnit.UNIT, which is the boxed version of ()
+        js.Undefined()
+
+      case JS_NATIVE =>
+        // js.native
+        ctx.error(
+            "js.native may only be used as stub implementation in facade types",
+            tree.sourcePos)
+        js.Undefined()
+
+      case TYPEOF =>
+        // js.typeOf(arg)
+        val arg = genArgs1
+        genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg), defn.StringType)
+
+      case IN =>
+        // js.special.in(arg1, arg2)
+        val (arg1, arg2) = genArgs2
+        js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg1, arg2), 'Z')
+
+      case INSTANCEOF =>
+        // js.special.instanceof(arg1, arg2)
+        val (arg1, arg2) = genArgs2
+        js.Unbox(js.JSBinaryOp(js.JSBinaryOp.instanceof, arg1, arg2), 'Z')
+
+      case DELETE =>
+        // js.special.delete(arg1, arg2)
+        val (arg1, arg2) = genArgs2
+        js.JSDelete(js.JSBracketSelect(arg1, arg2))
+
+      case FORIN =>
+        /* js.special.forin(arg1, arg2)
+         *
+         * We must generate:
+         *
+         * val obj = arg1
+         * val f = arg2
+         * for (val key in obj) {
+         *   f(key)
+         * }
+         *
+         * with temporary vals, because `arg2` must be evaluated only
+         * once, and after `arg1`.
+         */
+        val (arg1, arg2) = genArgs2
+        val objVarDef = js.VarDef(freshLocalIdent("obj"), jstpe.AnyType,
+            mutable = false, arg1)
+        val fVarDef = js.VarDef(freshLocalIdent("f"), jstpe.AnyType,
+            mutable = false, arg2)
+        val keyVarIdent = freshLocalIdent("key")
+        val keyVarRef = js.VarRef(keyVarIdent)(jstpe.AnyType)
+        js.Block(
+            objVarDef,
+            fVarDef,
+            js.ForIn(objVarDef.ref, keyVarIdent, {
+              js.JSFunctionApply(fVarDef.ref, List(keyVarRef))
+            }))
     }
   }
 
