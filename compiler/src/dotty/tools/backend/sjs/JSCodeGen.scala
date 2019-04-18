@@ -25,6 +25,8 @@ import Phases._
 import StdNames._
 
 import dotty.tools.dotc.transform.Erasure
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Spans.Span
 
 import org.scalajs.ir
 import org.scalajs.ir.{ClassKind, Position, Trees => js, Types => jstpe}
@@ -58,7 +60,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private val primitives = new JSPrimitives(ctx)
 
   private val positionConversions = new JSPositions()(ctx)
-  import positionConversions.{pos2irPos, implicitPos2irPos}
+  import positionConversions._
 
   // Some state --------------------------------------------------------------
 
@@ -207,7 +209,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genScalaClass(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.span
+    implicit val pos: SourcePosition = sym.sourcePos
 
     assert(!sym.is(Trait),
         "genScalaClass() must be called only for normal classes: "+sym)
@@ -366,6 +368,7 @@ class JSCodeGen()(implicit ctx: Context) {
       else Some(encodeClassFullNameIdent(sym.superClass))
     val jsNativeLoadSpec = {
       if (sym.is(Trait)) None
+      else if (sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) None
       else {
         val path = fullJSNameOf(sym).split('.').toList
         Some(js.JSNativeLoadSpec.Global(path.head, path.tail))
@@ -507,7 +510,7 @@ class JSCodeGen()(implicit ctx: Context) {
   }
 
   private def genRegisterReflectiveInstantiation(sym: Symbol)(
-      implicit pos: Position): Option[js.Tree] = {
+      implicit pos: SourcePosition): Option[js.Tree] = {
     if (isStaticModule(sym))
       genRegisterReflectiveInstantiationForModuleClass(sym)
     else if (sym.is(ModuleClass))
@@ -519,7 +522,7 @@ class JSCodeGen()(implicit ctx: Context) {
   }
 
   private def genRegisterReflectiveInstantiationForModuleClass(sym: Symbol)(
-      implicit pos: Position): Option[js.Tree] = {
+      implicit pos: SourcePosition): Option[js.Tree] = {
     val fqcnArg = js.StringLiteral(sym.fullName.toString)
     val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
     val loadModuleFunArg =
@@ -534,7 +537,7 @@ class JSCodeGen()(implicit ctx: Context) {
   }
 
   private def genRegisterReflectiveInstantiationForNormalClass(sym: Symbol)(
-      implicit pos: Position): Option[js.Tree] = {
+      implicit pos: SourcePosition): Option[js.Tree] = {
     val ctors =
       if (sym.is(Abstract)) Nil
       else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.is(Private | Protected))
@@ -767,13 +770,47 @@ class JSCodeGen()(implicit ctx: Context) {
     result
   }
 
+  /** Gen JS code for a tree in expression position (in the IR) or the
+   *  global scope.
+   */
+  def genExprOrGlobalScope(tree: Tree): MaybeGlobalScope = {
+    implicit def pos: SourcePosition = tree.sourcePos
+
+    tree match {
+      case _: This =>
+        val sym = tree.symbol
+        if (sym != currentClassSym.get && sym.is(Module))
+          genLoadModuleOrGlobalScope(sym)
+        else
+          MaybeGlobalScope.NotGlobalScope(genExpr(tree))
+
+      case _:Ident | _:Select =>
+        val sym = tree.symbol
+        if (sym.is(Module)) {
+          assert(!sym.is(PackageClass), "Cannot use package as value: " + tree)
+          genLoadModuleOrGlobalScope(sym)
+        } else {
+          MaybeGlobalScope.NotGlobalScope(genExpr(tree))
+        }
+
+      case Apply(fun, _) =>
+        if (fun.symbol == jsdefn.JSDynamic_global)
+          MaybeGlobalScope.GlobalScope(pos)
+        else
+          MaybeGlobalScope.NotGlobalScope(genExpr(tree))
+
+      case _ =>
+        MaybeGlobalScope.NotGlobalScope(genExpr(tree))
+    }
+  }
+
   /** Gen JS code for a tree in statement or expression position (in the IR).
    *
    *  This is the main transformation method. Each node of the Scala AST
    *  is transformed into an equivalent portion of the JS AST.
    */
   private def genStatOrExpr(tree: Tree, isStat: Boolean): js.Tree = {
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
 
     ctx.debuglog("  " + tree)
     ctx.debuglog("")
@@ -1105,7 +1142,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  * regular new
    */
   private def genApplyNew(tree: Apply): js.Tree = {
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
 
     val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
     val ctor = fun.symbol
@@ -1141,7 +1178,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  companion object.
    */
   private def genNewHijackedClass(clazz: Symbol, ctor: Symbol,
-      args: List[js.Tree])(implicit pos: Position): js.Tree = {
+      args: List[js.Tree])(implicit pos: SourcePosition): js.Tree = {
 
     val encodedName = encodeClassFullName(clazz)
     val moduleClass = clazz.companionModule.moduleClass
@@ -1245,7 +1282,7 @@ class JSCodeGen()(implicit ctx: Context) {
     import dotty.tools.backend.ScalaPrimitivesOps._
     import js.UnaryOp._
 
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
 
     val lhsIRType = toIRType(lhs.tpe)
     val rhsIRType = toIRType(rhs.tpe)
@@ -1455,7 +1492,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a universal equality test. */
   private def genUniversalEqualityOp(ltpe: Type, rtpe: Type, lhs: js.Tree, rhs: js.Tree, code: Int)(
-      implicit pos: Position): js.Tree = {
+      implicit pos: SourcePosition): js.Tree = {
 
     import dotty.tools.backend.ScalaPrimitivesOps._
 
@@ -1487,7 +1524,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a call to Any.== */
   private def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
-      implicit pos: Position): js.Tree = {
+      implicit pos: SourcePosition): js.Tree = {
     ctx.debuglog(s"$ltpe == $rtpe")
     val lsym = ltpe.widenDealias.typeSymbol.asClass
     val rsym = rtpe.widenDealias.typeSymbol.asClass
@@ -1575,7 +1612,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a call to Any.## */
   private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
 
     genModuleApplyMethod(defn.ScalaRuntimeModule.requiredMethod(nme.hash_),
         List(genExpr(receiver)))
@@ -1656,7 +1693,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen a call to the special `throw` method. */
   private def genThrow(tree: Apply, args: List[Tree]): js.Tree = {
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
     val exception = args.head
     val genException = genExpr(exception)
     js.Throw {
@@ -1697,7 +1734,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     if (isJSType(sym.owner)) {
       //if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
-        genApplyJSMethodGeneric(tree, sym, genExpr(receiver), genActualJSArgs(sym, args), isStat)
+        genApplyJSMethodGeneric(tree, sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)
       /*else
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))*/
     } else {
@@ -1717,11 +1754,11 @@ class JSCodeGen()(implicit ctx: Context) {
    *  - Setters are translated to `Assign` to `JSBracketSelect`
    */
   private def genApplyJSMethodGeneric(tree: Tree, sym: Symbol,
-      receiver: js.Tree, args: List[js.TreeOrJSSpread], isStat: Boolean,
+      receiver: MaybeGlobalScope, args: List[js.TreeOrJSSpread], isStat: Boolean,
       jsSuperClassValue: Option[js.Tree] = None)(
       implicit pos: Position): js.Tree = {
 
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
 
     def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
     val argc = args.size // meaningful only for methods that don't have varargs
@@ -1743,27 +1780,27 @@ class JSCodeGen()(implicit ctx: Context) {
     val boxedResult = sym.name match {
       case JSUnaryOpMethodName(code) if argc == 0 =>
         requireNotSuper()
-        js.JSUnaryOp(code, receiver)
+        js.JSUnaryOp(code, ruleOutGlobalScope(receiver))
 
       case JSBinaryOpMethodName(code) if argc == 1 =>
         requireNotSuper()
-        js.JSBinaryOp(code, receiver, requireNotSpread(args.head))
+        js.JSBinaryOp(code, ruleOutGlobalScope(receiver), requireNotSpread(args.head))
 
       case nme.apply if !hasExplicitJSEncoding =>
         requireNotSuper()
         if (jsdefn.isJSThisFunctionClass(sym.owner))
-          js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
+          js.JSBracketMethodApply(ruleOutGlobalScope(receiver), js.StringLiteral("call"), args)
         else
-          js.JSFunctionApply(receiver, args)
+          js.JSFunctionApply(ruleOutGlobalScope(receiver), args)
 
       case _ =>
         def jsFunName = js.StringLiteral(jsNameOf(sym))
 
         def genSuperReference(propName: js.Tree): js.Tree = {
           jsSuperClassValue.fold[js.Tree] {
-            js.JSBracketSelect(receiver, propName)
+            genJSBracketSelectOrGlobalRef(receiver, propName)
           } { superClassValue =>
-            js.JSSuperBracketSelect(superClassValue, receiver, propName)
+            js.JSSuperBracketSelect(superClassValue, ruleOutGlobalScope(receiver), propName)
           }
         }
 
@@ -1775,10 +1812,9 @@ class JSCodeGen()(implicit ctx: Context) {
 
         def genCall(methodName: js.Tree, args: List[js.TreeOrJSSpread]): js.Tree = {
           jsSuperClassValue.fold[js.Tree] {
-            js.JSBracketMethodApply(
-                receiver, methodName, args)
+            genJSBracketMethodApplyOrGlobalRefApply(receiver, methodName, args)
           } { superClassValue =>
-            js.JSSuperBracketCall(superClassValue, receiver, methodName, args)
+            js.JSSuperBracketCall(superClassValue, ruleOutGlobalScope(receiver), methodName, args)
           }
         }
 
@@ -2162,7 +2198,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen a call to a method of a Scala top-level module. */
   private def genModuleApplyMethod(methodSym: Symbol, arguments: List[js.Tree])(
-      implicit pos: Position): js.Tree = {
+      implicit pos: SourcePosition): js.Tree = {
     genApplyMethod(genLoadModule(methodSym.owner), methodSym, arguments)
   }
 
@@ -2484,7 +2520,7 @@ class JSCodeGen()(implicit ctx: Context) {
        * to perform the conversion to js.Array, then wrap in a Spread
        * operator.
        */
-      implicit val pos = arg.span
+      implicit val pos: SourcePosition = arg.sourcePos
       val jsArrayArg = genModuleApplyMethod(
           jsdefn.Runtime_toJSVarArgs,
           List(genExpr(arg)))
@@ -2551,7 +2587,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for loading a Java static field.
    */
-  private def genLoadStaticField(sym: Symbol)(implicit pos: Position): js.Tree = {
+  private def genLoadStaticField(sym: Symbol)(implicit pos: SourcePosition): js.Tree = {
     /* Actually, there is no static member in Scala.js. If we come here, that
      * is because we found the symbol in a Java-emitted .class in the
      * classpath. But the corresponding implementation in Scala.js will
@@ -2567,24 +2603,41 @@ class JSCodeGen()(implicit ctx: Context) {
     }
   }
 
-  /** Gen JS code for loading a module.
+  /** Generate loading of a module value.
    *
-   *  Can be given either the module symbol, or its module class symbol.
+   *  Can be given either the module symbol or its module class symbol.
+   *
+   *  If the module we load refers to the global scope (i.e., it is
+   *  annotated with `@JSGlobalScope`), report a compile error specifying
+   *  that a global scope object should only be used as the qualifier of a
+   *  `.`-selection.
    */
-  private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
+  private def genLoadModule(sym: Symbol)(implicit pos: SourcePosition): js.Tree =
+    ruleOutGlobalScope(genLoadModuleOrGlobalScope(sym))
+
+  /** Generate loading of a module value or the global scope.
+   *
+   *  Can be given either the module symbol of its module class symbol.
+   *
+   *  Unlike `genLoadModule`, this method does not fail if the module we load
+   *  refers to the global scope.
+   */
+  def genLoadModuleOrGlobalScope(sym0: Symbol)(
+      implicit pos: SourcePosition): MaybeGlobalScope = {
+
     require(sym0.is(Module),
         "genLoadModule called with non-module symbol: " + sym0)
     val sym = if (sym0.isTerm) sym0.moduleClass else sym0
 
-    if (isJSType(sym)) {
-      if (isScalaJSDefinedJSClass(sym))
-        js.LoadJSModule(encodeClassRef(sym))
-      /*else if (sym.derivesFrom(jsdefn.JSGlobalScopeClass))
-        genLoadJSGlobal()*/
-      else
-        genLoadNativeJSModule(sym)
+    // Does that module refer to the global scope?
+    if (sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) {
+      MaybeGlobalScope.GlobalScope(pos)
     } else {
-      js.LoadModule(encodeClassRef(sym))
+      val cls = encodeClassRef(sym)
+      val tree =
+        if (isJSType(sym)) js.LoadJSModule(cls)
+        else js.LoadModule(cls)
+      MaybeGlobalScope.NotGlobalScope(tree)
     }
   }
 
@@ -2596,21 +2649,133 @@ class JSCodeGen()(implicit ctx: Context) {
     js.LoadJSConstructor(encodeClassRef(sym))
   }
 
-  /** Gen JS code representing a native JS module. */
-  private def genLoadNativeJSModule(sym: Symbol)(
-      implicit pos: Position): js.Tree = {
-    require(sym.is(ModuleClass),
-        s"genLoadNativeJSModule called with non-module $sym")
-    fullJSNameOf(sym).split('.').foldLeft(genLoadJSGlobal()) { (memo, chunk) =>
-      js.JSBracketSelect(memo, js.StringLiteral(chunk))
+  private final val GenericGlobalObjectInformationMsg = {
+    "\n  " +
+    "See https://www.scala-js.org/doc/interoperability/global-scope.html " +
+    "for further information."
+  }
+
+  /** Rule out the `GlobalScope` case of a `MaybeGlobalScope` and extract the
+   *  value tree.
+   *
+   *  If `tree` represents the global scope, report a compile error.
+   */
+  private def ruleOutGlobalScope(tree: MaybeGlobalScope): js.Tree = {
+    tree match {
+      case MaybeGlobalScope.NotGlobalScope(t) =>
+        t
+      case MaybeGlobalScope.GlobalScope(pos) =>
+        reportErrorLoadGlobalScope()(pos)
     }
   }
 
-  /** Gen JS code to load the JavaScript global scope. */
-  private def genLoadJSGlobal()(implicit pos: Position): js.Tree = {
-    js.JSBracketSelect(
-        js.JSBracketSelect(js.JSLinkingInfo(), js.StringLiteral("envInfo")),
-        js.StringLiteral("global"))
+  /** Report a compile error specifying that the global scope cannot be
+   *  loaded as a value.
+   */
+  private def reportErrorLoadGlobalScope()(implicit pos: SourcePosition): js.Tree = {
+    ctx.error(
+        "Loading the global scope as a value (anywhere but as the " +
+        "left-hand-side of a `.`-selection) is not allowed." +
+        GenericGlobalObjectInformationMsg,
+        pos)
+    js.Undefined()
+  }
+
+  /** Gen a JS bracket select or a `JSGlobalRef`.
+   *
+   *  If the receiver is a normal value, i.e., not the global scope, then
+   *  emit a `JSBracketSelect`.
+   *
+   *  Otherwise, if the `item` is a constant string that is a valid
+   *  JavaScript identifier, emit a `JSGlobalRef`.
+   *
+   *  Otherwise, report a compile error.
+   */
+  private def genJSBracketSelectOrGlobalRef(qual: MaybeGlobalScope, item: js.Tree)(
+      implicit pos: SourcePosition): js.Tree = {
+    qual match {
+      case MaybeGlobalScope.NotGlobalScope(qualTree) =>
+        js.JSBracketSelect(qualTree, item)
+
+      case MaybeGlobalScope.GlobalScope(_) =>
+        item match {
+          case js.StringLiteral(value) =>
+            if (value == "arguments") {
+              ctx.error(
+                  "Selecting a field of the global scope whose name is " +
+                  "`arguments` is not allowed." +
+                  GenericGlobalObjectInformationMsg,
+                  pos)
+              js.JSGlobalRef(js.Ident("erroneous"))
+            } else if (js.isValidIdentifier(value)) {
+              js.JSGlobalRef(js.Ident(value))
+            } else {
+              ctx.error(
+                  "Selecting a field of the global scope whose name is " +
+                  "not a valid JavaScript identifier is not allowed." +
+                  GenericGlobalObjectInformationMsg,
+                  pos)
+              js.JSGlobalRef(js.Ident("erroneous"))
+            }
+
+          case _ =>
+            ctx.error(
+                "Selecting a field of the global scope with a dynamic " +
+                "name is not allowed." +
+                GenericGlobalObjectInformationMsg,
+                pos)
+            js.JSGlobalRef(js.Ident("erroneous"))
+        }
+    }
+  }
+
+  /** Gen a JS bracket method apply or an apply of a `GlobalRef`.
+   *
+   *  If the receiver is a normal value, i.e., not the global scope, then
+   *  emit a `JSBracketMethodApply`.
+   *
+   *  Otherwise, if the `method` is a constant string that is a valid
+   *  JavaScript identifier, emit a `JSFunctionApply(JSGlobalRef(...), ...)`.
+   *
+   *  Otherwise, report a compile error.
+   */
+  private def genJSBracketMethodApplyOrGlobalRefApply(
+      receiver: MaybeGlobalScope, method: js.Tree, args: List[js.TreeOrJSSpread])(
+      implicit pos: SourcePosition): js.Tree = {
+    receiver match {
+      case MaybeGlobalScope.NotGlobalScope(receiverTree) =>
+        js.JSBracketMethodApply(receiverTree, method, args)
+
+      case MaybeGlobalScope.GlobalScope(_) =>
+        method match {
+          case js.StringLiteral(value) =>
+            if (value == "arguments") {
+              ctx.error(
+                  "Calling a method of the global scope whose name is " +
+                  "`arguments` is not allowed." +
+                  GenericGlobalObjectInformationMsg,
+                  pos)
+              js.Undefined()
+            } else if (js.isValidIdentifier(value)) {
+              js.JSFunctionApply(js.JSGlobalRef(js.Ident(value)), args)
+            } else {
+              ctx.error(
+                  "Calling a method of the global scope whose name is not " +
+                  "a valid JavaScript identifier is not allowed." +
+                  GenericGlobalObjectInformationMsg,
+                  pos)
+              js.Undefined()
+            }
+
+          case _ =>
+            ctx.error(
+                "Calling a method of the global scope with a dynamic " +
+                "name is not allowed." +
+                GenericGlobalObjectInformationMsg,
+                pos)
+            js.Undefined()
+        }
+    }
   }
 
   /** Generate a Class[_] value (e.g. coming from classOf[T]) */
@@ -2658,6 +2823,14 @@ class JSCodeGen()(implicit ctx: Context) {
 }
 
 object JSCodeGen {
+
+  sealed abstract class MaybeGlobalScope
+
+  object MaybeGlobalScope {
+    final case class NotGlobalScope(tree: js.Tree) extends MaybeGlobalScope
+
+    final case class GlobalScope(pos: SourcePosition) extends MaybeGlobalScope
+  }
 
   /** Marker object for undefined parameters in JavaScript semantic calls.
    *

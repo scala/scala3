@@ -2,32 +2,40 @@ package dotty.tools.backend.sjs
 
 import dotty.tools.dotc.core._
 import Contexts._
-import dotty.tools.dotc.util.Spans
-import Spans.Span
+
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.Spans.Span
 
 import org.scalajs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
 class JSPositions()(implicit ctx: Context) {
 
-  /** Implicit conversion from dotty Position to ir.Position. */
-  implicit def pos2irPos(span: Span): ir.Position = {
+  private def sourceAndSpan2irPos(source: SourceFile, span: Span): ir.Position = {
     if (!span.exists) ir.Position.NoPosition
     else {
-      val source = pos2irPosCache.toIRSource(ctx.compilationUnit.source)
-      val sourcePos = ctx.compilationUnit.source.atSpan(span)
       // dotty positions are 1-based but IR positions are 0-based
-      ir.Position(source, sourcePos.line-1, sourcePos.column-1)
+      val irSource = span2irPosCache.toIRSource(source)
+      val point = span.point
+      val line = source.offsetToLine(point) - 1
+      val column = source.column(point) - 1
+      ir.Position(irSource, line, column)
     }
   }
 
-  /** Implicitly materializes an ir.Position from an implicit dotty Position. */
-  implicit def implicitPos2irPos(
-      implicit span: Span): ir.Position = {
-    pos2irPos(span)
-  }
+  /** Implicit conversion from dotty Span to ir.Position. */
+  implicit def span2irPos(span: Span): ir.Position =
+    sourceAndSpan2irPos(ctx.compilationUnit.source, span)
 
-  private[this] object pos2irPosCache { // scalastyle:ignore
+  /** Implicitly materializes an ir.Position from an implicit dotty Span. */
+  implicit def implicitSpan2irPos(implicit span: Span): ir.Position =
+    span2irPos(span)
+
+  /** Implicitly materializes an ir.Position from an implicit dotty SourcePosition. */
+  implicit def implicitSourcePos2irPos(implicit sourcePos: SourcePosition): ir.Position =
+    sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
+
+  private[this] object span2irPosCache { // scalastyle:ignore
     import dotty.tools.dotc.util._
 
     private[this] var lastDotcSource: SourceFile = null
