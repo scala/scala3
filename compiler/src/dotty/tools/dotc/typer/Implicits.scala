@@ -667,29 +667,36 @@ trait Implicits { self: Typer =>
         EmptyTree
     }
 
-    def synthesizedTypeTag(formal: Type): Tree = formal.argInfos match {
-      case arg :: Nil if !arg.typeSymbol.is(Param) =>
-        object bindFreeVars extends TypeMap {
-          var ok = true
-          def apply(t: Type) = t match {
-            case t @ TypeRef(NoPrefix, _) =>
-              inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, span) match {
-                case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
-                  tag.tpe.select(defn.QuotedType_splice)
-                case _ =>
-                  ok = false
-                  t
-              }
-            case _ => t
+    def synthesizedTypeTag(formal: Type): Tree = {
+      def quotedType(t: Type) = {
+        if (StagingContext.level == 0)
+          ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
+        ref(defn.InternalQuoted_typeQuote).appliedToType(t)
+      }
+      formal.argInfos match {
+        case arg :: Nil if !arg.typeSymbol.is(Param) =>
+          object bindFreeVars extends TypeMap {
+            var ok = true
+            def apply(t: Type) = t match {
+              case t @ TypeRef(NoPrefix, _) =>
+                inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, span) match {
+                  case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
+                    tag.tpe.select(defn.QuotedType_splice)
+                  case _ =>
+                    ok = false
+                    t
+                }
+              case _ => t
+            }
           }
-        }
-        val tag = bindFreeVars(arg)
-        if (bindFreeVars.ok) ref(defn.InternalQuoted_typeQuote).appliedToType(tag)
-        else EmptyTree
-      case arg :: Nil if ctx.inInlineMethod =>
-        ref(defn.InternalQuoted_typeQuote).appliedToType(arg)
-      case _ =>
-        EmptyTree
+          val tag = bindFreeVars(arg)
+          if (bindFreeVars.ok) quotedType(tag)
+          else EmptyTree
+        case arg :: Nil if ctx.inInlineMethod =>
+          quotedType(arg)
+        case _ =>
+          EmptyTree
+      }
     }
 
     def synthesizedTastyContext(formal: Type): Tree =

@@ -1,0 +1,13 @@
+scala> import quoted._
+scala> def fn[T : Type](v : T) = println("ok")
+def fn[T](v: T)(implicit evidence$1: quoted.Type[T]): Unit
+scala> fn("foo")
+ok
+scala> fn((1,2))
+ok
+scala> object O
+// defined object O
+scala> fn(O)
+ok
+scala> fn(1)
+ok
