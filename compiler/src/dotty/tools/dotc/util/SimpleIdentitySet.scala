@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-import collection.mutable.ListBuffer
+import collection.mutable
 
 /** A simple linked set with `eq` as the comparison, optimized for small sets.
  *  It has linear complexity for `contains`, `+`, and `-`.
@@ -15,10 +15,13 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
-  final def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+  def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] = {
+    if (this.size == 0) that
+    else if (that.size == 0) this
+    else concat(that)
+  }
+  protected def concat[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     ((this: SimpleIdentitySet[E]) /: that)(_ + _)
-  final def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[Elem] =
-    (this /: that)(_ - _)
   override def toString: String = toList.mkString("(", ", ", ")")
 }
 
@@ -96,7 +99,7 @@ object SimpleIdentitySet {
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
   }
 
-  private class SetN[+Elem <: AnyRef](xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
+  private class SetN[+Elem <: AnyRef](val xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
     def size = xs.length
     def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] =
       if (contains(x)) this
@@ -136,9 +139,37 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       (z /: xs.asInstanceOf[Array[E]])(f)
     def toList: List[Elem] = {
-      val buf = new ListBuffer[Elem]
+      val buf = new mutable.ListBuffer[Elem]
       foreach(buf += _)
       buf.toList
     }
+    override def concat [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+      that match {
+        case that: SetN[_] =>
+          var toAdd: mutable.ArrayBuffer[AnyRef] = null
+          var i = 0
+          val limit = that.xs.length
+          while (i < limit) {
+            val elem = that.xs(i)
+            if (!contains(elem)) {
+              if (toAdd == null) toAdd = new mutable.ArrayBuffer
+              toAdd += elem
+            }
+            i += 1
+          }
+          if (toAdd == null) this
+          else {
+            val numAdded = toAdd.size
+            val xs1 = new Array[AnyRef](size + numAdded)
+            System.arraycopy(xs, 0, xs1, 0, size)
+            var i = 0
+            while (i < numAdded) {
+              xs1(i + size) = toAdd(i)
+              i += 1
+            }
+            new SetN[E](xs1)
+          }
+        case _ => super.concat(that)
+      }
   }
 }
