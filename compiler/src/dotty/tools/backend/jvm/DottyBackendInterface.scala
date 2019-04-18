@@ -841,8 +841,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def addRemoteRemoteExceptionAnnotation: Unit = ()
 
-    def samMethod(): Symbol =
-      toDenot(sym).info.abstractTermMembers.headOption.getOrElse(toDenot(sym).info.member(nme.apply)).symbol
+    def samMethod(): Symbol = ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+      toDenot(sym).info.abstractTermMembers.toList match {
+        case x :: Nil => x.symbol
+        case Nil => abort(s"${sym.show} is not a functional interface. It doesn't have abstract methods")
+        case xs => abort(s"${sym.show} is not a functional interface. " +
+          s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
+      }
+    }
 
     def isFunctionClass: Boolean =
       defn.isFunctionClass(sym)
