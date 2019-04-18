@@ -153,20 +153,39 @@ object Inferencing {
   def isSkolemFree(tp: Type)(implicit ctx: Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
 
-  /** Infer constraints that should be in scope for a case body with given pattern and scrutinee types.
+  /** Derive information about a pattern type by comparing it with some variant of the
+   *  static scrutinee type. We have the following situation in case of a (dynamic) pattern match:
    *
-   * If `termPattern`, infer constraints from knowing that there exists a value which of both scrutinee
-   * and pattern types (which is the case for normal pattern matching). If not `termPattern`, instead
-   * infer constraints from knowing that `tp <: pt`.
+   *       StaticScrutineeType           PatternType
+   *                         \            /
+   *                      DynamicScrutineeType
    *
-   * If a pattern matches during normal pattern matching, we can be certain that there exists a value
-   * which is of both scrutinee and pattern types (the value we're matching on). If this value
-   * was in a variable, say `x`, then we could simply infer constraints from `x.type <: pt`. Since we might
-   * be matching on an expression as well, we take a skolem of the scrutinee, which is essentially an existential
-   * singleton type (see [[dotty.tools.dotc.core.Types.SkolemType]]).
+   *  If `PatternType` is not a subtype of `StaticScrutineeType, there's no information to be gained.
+   *  Now let's say we can prove that `PatternType <: StaticScrutineeType`.
    *
-   * Note that we need to sometimes widen type parameters of the scrutinee type to avoid unsoundness -
-   * see i3989c.scala and related issue discussion on Github.
+   *            StaticScrutineeType
+   *                  |         \
+   *                  |          \
+   *                  |           \
+   *                  |            PatternType
+   *                  |          /
+   *               DynamicScrutineeType
+   *
+   *  What can we say about the relationship of parameter types between `PatternType` and
+   *  `DynamicScrutineeType`?
+   *
+   *   - If `DynamicScrutineeType` refines the type parameters of `StaticScrutineeType`
+   *     in the same way as `PatternType` ("invariant refinement"), the subtype test
+   *     `PatternType <:< StaticScrutineeType` tells us all we need to know.
+   *   - Otherwise, if variant refinement is a possibility we can only make predictions
+   *     about invariant parameters of `StaticScrutineeType`. Hence we do a subtype test
+   *     where `PatternType <: widenVariantParams(StaticScrutineeType)`, where `widenVariantParams`
+   *     replaces all type argument of variant parameters with empty bounds.
+   *
+   *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
+   *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
+   *
+   *  @param termPattern are we dealing with a term-level or a type-level pattern?
    */
   def constrainPatternType(tp: Type, pt: Type, termPattern: Boolean)(implicit ctx: Context): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
