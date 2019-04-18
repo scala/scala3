@@ -7,16 +7,17 @@ import collection.mutable.ListBuffer
  */
 abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def size: Int
-  def isEmpty: Boolean = size == 0
+  final def isEmpty: Boolean = size == 0
   def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E]
   def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem]
   def contains[E >: Elem <: AnyRef](x: E): Boolean
   def foreach(f: Elem => Unit): Unit
+  def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
-  def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+  final def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     ((this: SimpleIdentitySet[E]) /: that)(_ + _)
-  def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[Elem] =
+  final def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[Elem] =
     (this /: that)(_ - _)
   override def toString: String = toList.mkString("(", ", ", ")")
 }
@@ -30,6 +31,7 @@ object SimpleIdentitySet {
       this
     def contains[E <: AnyRef](x: E): Boolean = false
     def foreach(f: Nothing => Unit): Unit = ()
+    def exists[E <: AnyRef](p: E => Boolean): Boolean = false
     def /: [A, E <: AnyRef](z: A)(f: (A, E) => A): A = z
     def toList = Nil
   }
@@ -42,6 +44,8 @@ object SimpleIdentitySet {
       if (x `eq` x0) empty else this
     def contains[E >: Elem <: AnyRef](x: E): Boolean = x `eq` x0
     def foreach(f: Elem => Unit): Unit = f(x0.asInstanceOf[Elem])
+    def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean =
+      p(x0.asInstanceOf[E])
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(z, x0.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: Nil
@@ -57,6 +61,8 @@ object SimpleIdentitySet {
       else this
     def contains[E >: Elem <: AnyRef](x: E): Boolean = (x `eq` x0) || (x `eq` x1)
     def foreach(f: Elem => Unit): Unit = { f(x0.asInstanceOf[Elem]); f(x1.asInstanceOf[Elem]) }
+    def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean =
+      p(x0.asInstanceOf[E]) || p(x1.asInstanceOf[E])
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
@@ -83,6 +89,8 @@ object SimpleIdentitySet {
     def foreach(f: Elem => Unit): Unit = {
       f(x0.asInstanceOf[Elem]); f(x1.asInstanceOf[Elem]); f(x2.asInstanceOf[Elem])
     }
+    def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean =
+      p(x0.asInstanceOf[E]) || p(x1.asInstanceOf[E]) || p(x2.asInstanceOf[E])
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
@@ -123,6 +131,8 @@ object SimpleIdentitySet {
       var i = 0
       while (i < size) { f(xs(i).asInstanceOf[Elem]); i += 1 }
     }
+    def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean =
+      xs.asInstanceOf[Array[E]].exists(p)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       (z /: xs.asInstanceOf[Array[E]])(f)
     def toList: List[Elem] = {
