@@ -3757,7 +3757,7 @@ object Types {
     }
   }
 
-  type TypeVars = SimpleIdentitySet[TypeVar]
+  type TypeVars = collection.immutable.Set[TypeVar]
 
   // ------ MatchType ---------------------------------------------------------------
 
