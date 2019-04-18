@@ -15,11 +15,16 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
-  def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] = {
+  def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     if (this.size == 0) that
     else if (that.size == 0) this
     else concat(that)
-  }
+  def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+    if (that.size == 0) this
+    else
+      ((SimpleIdentitySet.empty: SimpleIdentitySet[E]) /: this) { (s, x) =>
+        if (that.contains(x)) s else s + x
+      }
   protected def concat[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     ((this: SimpleIdentitySet[E]) /: that)(_ + _)
   override def toString: String = toList.mkString("(", ", ", ")")
@@ -143,7 +148,7 @@ object SimpleIdentitySet {
       foreach(buf += _)
       buf.toList
     }
-    override def concat [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+    override def concat[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
         case that: SetN[_] =>
           var toAdd: mutable.ArrayBuffer[AnyRef] = null
@@ -170,6 +175,42 @@ object SimpleIdentitySet {
             new SetN[E](xs1)
           }
         case _ => super.concat(that)
+      }
+    override def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+      that match {
+        case that: SetN[_] =>
+          // both sets are large, optimize assuming they are similar
+          // by starting from empty set and adding elements
+          var toAdd: mutable.ArrayBuffer[AnyRef] = null
+          val thisSize = this.size
+          val thatSize = that.size
+          val thatElems = that.xs
+          var i = 0
+          var searchStart = 0
+          while (i < thisSize) {
+            val elem = this.xs(i)
+            var j = searchStart    // search thatElems in round robin fashion, starting one after latest hit
+            var missing = false
+            while (!missing && elem != thatElems(j)) {
+              j = (j + 1) % thatSize
+              missing = j == searchStart
+            }
+            if (missing) {
+              if (toAdd == null) toAdd = new mutable.ArrayBuffer
+              toAdd += elem
+            }
+            else searchStart = (j + 1) % thatSize
+            i += 1
+          }
+          if (toAdd == null) empty
+          else toAdd.size match {
+            case 1 => new Set1[E](toAdd(0))
+            case 2 => new Set2[E](toAdd(0), toAdd(1))
+            case 3 => new Set3[E](toAdd(0), toAdd(1), toAdd(2))
+            case _ => new SetN[E](toAdd.toArray)
+          }
+        case _ => // this set is large, that set is small: reduce from above using `-`
+          ((this: SimpleIdentitySet[E]) /: that)(_ - _)
       }
   }
 }
