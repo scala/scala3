@@ -2011,12 +2011,16 @@ class Typer extends Namer
         typed(innerExpr, pt)
       case expr =>
         if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
-          fullyDefinedType(pt, "quoted pattern selector", tree.span)
-          def spliceOwner(ctx: Context): Symbol =
-            if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-          val pat = typedPattern(expr, defn.QuotedExprType.appliedTo(pt))(
-            spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-          Splice(pat)
+          if (isFullyDefined(pt, ForceDegree.all)) {
+            def spliceOwner(ctx: Context): Symbol =
+              if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+            val pat = typedPattern(expr, defn.QuotedExprType.appliedTo(pt))(
+              spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+            Splice(pat)
+          } else {
+            ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", expr.sourcePos)
+            tree.withType(UnspecifiedErrorType)
+          }
         }
         else
           typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext).withSpan(tree.span)
