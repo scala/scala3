@@ -410,57 +410,60 @@ trait Inferencing { this: Typer =>
     // anymore if they've been garbage-collected, so we can't use
     // `state.ownedVars.size > locked.size` as an early check to avoid computing
     // `qualifying`.
-    val qualifying = state.ownedVars -- locked
 
-    if (!qualifying.isEmpty) {
-      typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
-      val resultAlreadyConstrained =
-        tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
-      if (!resultAlreadyConstrained)
-        constrainResult(tree.symbol, tree.tpe, pt)
-          // This is needed because it could establish singleton type upper bounds. See i2998.scala.
+    val ownedVars = state.ownedVars
+    if ((ownedVars ne locked) && !ownedVars.isEmpty) {
+      val qualifying = ownedVars -- locked
+      if (!qualifying.isEmpty) {
+        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+        val resultAlreadyConstrained =
+          tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
+        if (!resultAlreadyConstrained)
+          constrainResult(tree.symbol, tree.tpe, pt)
+            // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
-      val tp = tree.tpe.widen
-      val vs = variances(tp)
+        val tp = tree.tpe.widen
+        val vs = variances(tp)
 
-      // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
-      // Reason: The errors might reflect unsatisfiable constraints. In that
-      // case interpolating without taking account the constraints risks producing
-      // nonsensical types that then in turn produce incomprehensible errors.
-      // An example is in neg/i1240.scala. Without the condition in the next code line
-      // we get for
-      //
-      //      val y: List[List[String]] = List(List(1))
-      //
-      //     i1430.scala:5: error: type mismatch:
-      //     found   : Int(1)
-      //     required: Nothing
-      //     val y: List[List[String]] = List(List(1))
-      //                                           ^
-      // With the condition, we get the much more sensical:
-      //
-      //     i1430.scala:5: error: type mismatch:
-      //     found   : Int(1)
-      //     required: String
-      //     val y: List[List[String]] = List(List(1))
-      val hasUnreportedErrors = state.reporter.hasUnreportedErrors
-      def constraint = state.constraint
-      for (tvar <- qualifying)
-        if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
-          // Needs to be checked again, since previous interpolations could already have
-          // instantiated `tvar` through unification.
-          val v = vs(tvar)
-          if (v == null) {
-            typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
-            tvar.instantiate(fromBelow = tvar.hasLowerBound)
-          }
-          else if (!hasUnreportedErrors)
-            if (v.intValue != 0) {
-              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-              tvar.instantiate(fromBelow = v.intValue == 1)
+        // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
+        // Reason: The errors might reflect unsatisfiable constraints. In that
+        // case interpolating without taking account the constraints risks producing
+        // nonsensical types that then in turn produce incomprehensible errors.
+        // An example is in neg/i1240.scala. Without the condition in the next code line
+        // we get for
+        //
+        //      val y: List[List[String]] = List(List(1))
+        //
+        //     i1430.scala:5: error: type mismatch:
+        //     found   : Int(1)
+        //     required: Nothing
+        //     val y: List[List[String]] = List(List(1))
+        //                                           ^
+        // With the condition, we get the much more sensical:
+        //
+        //     i1430.scala:5: error: type mismatch:
+        //     found   : Int(1)
+        //     required: String
+        //     val y: List[List[String]] = List(List(1))
+        val hasUnreportedErrors = state.reporter.hasUnreportedErrors
+        def constraint = state.constraint
+        for (tvar <- qualifying)
+          if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
+            // Needs to be checked again, since previous interpolations could already have
+            // instantiated `tvar` through unification.
+            val v = vs(tvar)
+            if (v == null) {
+              typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
+              tvar.instantiate(fromBelow = tvar.hasLowerBound)
             }
-            else typr.println(i"no interpolation for nonvariant $tvar in $state")
-        }
+            else if (!hasUnreportedErrors)
+              if (v.intValue != 0) {
+                typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
+                tvar.instantiate(fromBelow = v.intValue == 1)
+              }
+              else typr.println(i"no interpolation for nonvariant $tvar in $state")
+          }
+      }
     }
     tree
   }
