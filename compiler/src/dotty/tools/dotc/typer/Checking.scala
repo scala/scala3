@@ -740,8 +740,9 @@ trait Checking {
          !infixOKSinceFollowedBy(tree.right) &&
          ctx.settings.strict.value =>
         ctx.deprecationWarning(
-          i"""alphanumeric method $name is not declared @infix; should not be used as infix operator.
-             |The operation can be rewritten automatically to `$name` under -deprecation -rewrite""",
+          i"""Alphanumeric method $name is not declared @infix; it should not be used as infix operator.
+             |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
+             |Or rewrite to method syntax .$name(...) manually.""",
           tree.op.sourcePos)
         if (ctx.settings.deprecation.value) {
           patch(Span(tree.op.span.start, tree.op.span.start), "`")
