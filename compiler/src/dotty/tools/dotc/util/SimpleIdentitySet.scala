@@ -18,15 +18,13 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     if (this.size == 0) that
     else if (that.size == 0) this
-    else concat(that)
+    else ((this: SimpleIdentitySet[E]) /: that)(_ + _)
   def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     if (that.size == 0) this
     else
       ((SimpleIdentitySet.empty: SimpleIdentitySet[E]) /: this) { (s, x) =>
         if (that.contains(x)) s else s + x
       }
-  protected def concat[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
-    ((this: SimpleIdentitySet[E]) /: that)(_ + _)
   override def toString: String = toList.mkString("(", ", ", ")")
 }
 
@@ -148,7 +146,7 @@ object SimpleIdentitySet {
       foreach(buf += _)
       buf.toList
     }
-    override def concat[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+    override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
         case that: SetN[_] =>
           var toAdd: mutable.ArrayBuffer[AnyRef] = null
@@ -174,7 +172,7 @@ object SimpleIdentitySet {
             }
             new SetN[E](xs1)
           }
-        case _ => super.concat(that)
+        case _ => super.++(that)
       }
     override def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
