@@ -189,8 +189,9 @@ object SimpleIdentitySet {
             val elem = this.xs(i)
             var j = searchStart    // search thatElems in round robin fashion, starting one after latest hit
             var missing = false
-            while (!missing && elem != thatElems(j)) {
-              j = (j + 1) % thatSize
+            while (!missing && (elem ne thatElems(j))) {
+              j += 1
+              if (j == thatSize) j = 0
               missing = j == searchStart
             }
             if (missing) {
