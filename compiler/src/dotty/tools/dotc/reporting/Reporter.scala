@@ -50,12 +50,18 @@ trait Reporting { this: Context =>
 
   def reportWarning(warning: Warning): Unit =
     if (!this.settings.silentWarnings.value) {
-      if (this.settings.XfatalWarnings.value) reporter.report(warning.toError)
+      if (this.settings.XfatalWarnings.value)
+        warning match {
+          case warning: ConditionalWarning if !warning.enablingOption.value =>
+            reporter.report(warning) // conditional warnings that are not enabled are not fatal
+          case _ =>
+            reporter.report(warning.toError)
+        }
       else reporter.report(warning)
     }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.deprecation.value) reportWarning(new DeprecationWarning(msg, pos))
+    reportWarning(new DeprecationWarning(msg, pos))
 
   def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new MigrationWarning(msg, pos))
