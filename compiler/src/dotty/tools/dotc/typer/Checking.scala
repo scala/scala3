@@ -728,28 +728,47 @@ trait Checking {
   /** Check that `tree` is a valid infix operation. That is, if the
    *  operator is alphanumeric, it must be declared `@infix`.
    */
-  def checkValidInfix(tree: untpd.InfixOp, app: Tree)(implicit ctx: Context): Unit =
+  def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = {
+
+    def isInfix(sym: Symbol): Boolean =
+      sym.hasAnnotation(defn.InfixAnnot) ||
+      defn.isInfix(sym) ||
+      (sym.name == nme.unapply || sym.name == nme.unapplySeq) &&
+        sym.owner.is(Module) && sym.owner.linkedClass.is(Case) &&
+        isInfix(sym.owner.linkedClass)
+
     tree.op match {
       case _: untpd.BackquotedIdent =>
         ()
-      case Ident(name: SimpleName)
-      if !name.exists(isOperatorPart) &&
-         !app.symbol.hasAnnotation(defn.InfixAnnot) &&
-         !defn.isInfix(app.symbol) &&
-         !app.symbol.maybeOwner.is(Scala2x) &&
-         !infixOKSinceFollowedBy(tree.right) &&
-         ctx.settings.strict.value =>
-        ctx.deprecationWarning(
-          i"""Alphanumeric method $name is not declared @infix; it should not be used as infix operator.
-             |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
-             |Or rewrite to method syntax .$name(...) manually.""",
-          tree.op.sourcePos)
-        if (ctx.settings.deprecation.value) {
-          patch(Span(tree.op.span.start, tree.op.span.start), "`")
-          patch(Span(tree.op.span.end, tree.op.span.end), "`")
+      case Ident(name: Name) =>
+        name.toTermName match {
+          case name: SimpleName
+          if !name.exists(isOperatorPart) &&
+            !isInfix(meth) &&
+            !meth.maybeOwner.is(Scala2x) &&
+            !infixOKSinceFollowedBy(tree.right) &&
+            ctx.settings.strict.value =>
+            val (kind, alternative) =
+              if (ctx.mode.is(Mode.Type))
+                ("type", (n: Name) => s"prefix syntax $n[...]")
+              else if (ctx.mode.is(Mode.Pattern))
+                ("extractor", (n: Name) => s"prefix syntax $n(...)")
+              else
+                ("method", (n: Name) => s"method syntax .$n(...)")
+            ctx.deprecationWarning(
+              i"""Alphanumeric $kind $name is not declared @infix; it should not be used as infix operator.
+                 |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
+                 |Or rewrite to ${alternative(name)} manually.""",
+              tree.op.sourcePos)
+            if (ctx.settings.deprecation.value) {
+              patch(Span(tree.op.span.start, tree.op.span.start), "`")
+              patch(Span(tree.op.span.end, tree.op.span.end), "`")
+            }
+          case _ =>
         }
       case _ =>
     }
+  }
 
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(name: TermName,
@@ -1134,6 +1153,6 @@ trait NoChecking extends ReChecking {
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkValidInfix(tree: untpd.InfixOp, app: Tree)(implicit ctx: Context): Unit = ()
+  override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }

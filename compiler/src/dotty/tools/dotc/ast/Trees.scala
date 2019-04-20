@@ -719,8 +719,9 @@ object Trees {
    *    if (result.isDefined) "match patterns against result"
    */
   case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends PatternTree[T] {
+    extends ProxyTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = UnApply[T]
+    def forwardTo = fun
   }
 
   /** mods val name: tpt = rhs */

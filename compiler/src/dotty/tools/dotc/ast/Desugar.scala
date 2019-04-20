@@ -1440,13 +1440,6 @@ object desugar {
         }
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id), elems)
-      case InfixOp(l, op, r) =>
-        if (ctx.mode is Mode.Type)
-          AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
-        else {
-          assert(ctx.mode is Mode.Pattern) // expressions are handled separately by `binop`
-          Apply(op, l :: r :: Nil) // op(l, r)
-        }
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
