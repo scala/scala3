@@ -28,6 +28,7 @@ import Decorators._
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
+import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
@@ -733,7 +734,7 @@ trait Checking {
     def isInfix(sym: Symbol): Boolean =
       sym.hasAnnotation(defn.InfixAnnot) ||
       defn.isInfix(sym) ||
-      (sym.name == nme.unapply || sym.name == nme.unapplySeq) &&
+      sym.name.isUnapplyName &&
         sym.owner.is(Module) && sym.owner.linkedClass.is(Case) &&
         isInfix(sym.owner.linkedClass)
 
@@ -1038,7 +1039,7 @@ trait Checking {
   def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit =
     if (!ctx.inInlineMethod && !ctx.isInlineContext) {
       val inInlineUnapply = ctx.owner.ownersIterator.exists(owner =>
-        owner.name == nme.unapply && owner.is(Inline) && owner.is(Method))
+        owner.name.isUnapplyName && owner.is(Inline) && owner.is(Method))
       val msg =
         if (inInlineUnapply) "cannot be used in an inline unapply"
         else "can only be used in an inline method"
