@@ -766,7 +766,6 @@ trait Checking {
             }
           case _ =>
         }
-      case _ =>
     }
   }
 
