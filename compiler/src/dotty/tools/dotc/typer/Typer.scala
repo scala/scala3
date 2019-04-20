@@ -1986,7 +1986,9 @@ class Typer extends Namer
               case t => t
             }
             val bindingExprTpe = AppliedType(defn.QuotedMatchingBindingType, bindingType :: Nil)
-            val sym = ctx0.newPatternBoundSymbol(ddef.name, bindingExprTpe, ddef.span)
+            assert(ddef.name.startsWith("$"))
+            val bindName = ddef.name.toString.stripPrefix("$").toTermName
+            val sym = ctx0.newPatternBoundSymbol(bindName, bindingExprTpe, ddef.span)
             patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingExprTpe)).withSpan(ddef.span)
           }
           super.transform(tree)
