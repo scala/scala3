@@ -806,8 +806,8 @@ object SymDenotations {
     def isSkolem: Boolean = name == nme.SKOLEM
 
     def isInlineMethod(implicit ctx: Context): Boolean =
-      is(InlineMethod, butNot = Accessor) &&
-      name != nme.unapply  // unapply methods do not count as inline methods
+      is(InlineMethod, butNot = AccessorOrSynthetic) &&
+      !name.isUnapplyName  // unapply methods do not count as inline methods
                            // we need an inline flag on them only do that
                            // reduceProjection gets access to their rhs
 

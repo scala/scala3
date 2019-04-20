@@ -463,7 +463,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(OrPrec) { toText(trees, " | ") }
       case UnApply(fun, implicits, patterns) =>
         val extractor = fun match {
-          case Select(extractor, nme.unapply) => extractor
+          case Select(extractor, name) if name.isUnapplyName => extractor
           case _ => fun
         }
         toTextLocal(extractor) ~
