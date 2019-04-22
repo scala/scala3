@@ -52,6 +52,13 @@ pipeline:
       # sbt scripted tests are slow and only run on nightly or deployment
       event: [ tag, deployment ]
 
+  test_scala212:
+    group: test
+    image: lampepfl/dotty:2019-02-06
+    commands:
+      - cp -R . /tmp/5/ && cd /tmp/5/
+      - ./project/scripts/sbt ";++2.12.8 ;compile ;test"
+
   # DOCUMENTATION:
   documentation:
     image: lampepfl/dotty:2019-02-06

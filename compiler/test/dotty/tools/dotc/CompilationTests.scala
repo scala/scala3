@@ -232,7 +232,7 @@ class CompilationTests extends ParallelTesting {
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
-    val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
+    val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-3.x"), Paths.get("library/src-bootstrapped"))
     val librarySources = libraryDirs.flatMap(sources(_))
 
     val lib =

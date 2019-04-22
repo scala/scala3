@@ -65,7 +65,6 @@ object TestSources {
         .map(_.toString)
         .toList
 
-      assert(sources.nonEmpty)
       sources
     }
     finally files.close()

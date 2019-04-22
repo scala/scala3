@@ -6,7 +6,6 @@ object scalatest {
 
   def assertImpl(condition: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
     import refl._
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
     val tree = condition.unseal
     def exprStr: String = condition.show
 
