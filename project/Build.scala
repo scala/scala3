@@ -977,12 +977,9 @@ object Build {
   val updateCommunityBuild = taskKey[Unit]("Updates the community build.")
 
   lazy val `community-build` = project.in(file("community-build")).
-    settings(commonSettings).
+    dependsOn(dottyLibrary(Bootstrapped)).
+    settings(commonBootstrappedSettings).
     settings(
-      scalaVersion := referenceVersion,
-      // To be removed once we stop cross-compiling with Scala 2
-      crossScalaVersions := Seq(referenceVersion, scalacVersion),
-
       prepareCommunityBuild := {
         (publishLocal in `dotty-sbt-bridge`).value
         (publishLocal in `dotty-interfaces`).value
