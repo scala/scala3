@@ -189,7 +189,8 @@ object Build {
     // Do not append Scala versions to the generated artifacts
     crossPaths := false,
     // Do not depend on the Scala library
-    autoScalaLibrary := false
+    autoScalaLibrary := false,
+    excludeFromIDE := true
   )
 
   // Settings used when compiling dotty (both non-boostrapped and bootstrapped)
@@ -203,7 +204,8 @@ object Build {
     version := dottyNonBootstrappedVersion,
     scalaVersion := referenceVersion,
     // To be removed once we stop cross-compiling with Scala 2
-    crossScalaVersions := Seq(referenceVersion, scalacVersion)
+    crossScalaVersions := Seq(referenceVersion, scalacVersion),
+    excludeFromIDE := true
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
