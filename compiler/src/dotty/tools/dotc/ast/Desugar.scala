@@ -274,27 +274,21 @@ object desugar {
 
   /** Transforms a definition with a name starting with a `$` in a quoted pattern into a `quoted.binding.Binding` splice.
    *
-   *  The desugaring consists in renaming the the definition and adding the `@patternBindHole` annotation. This
-   *  annotation is used during typing to perform the full transformation.
+   *  The desugaring consists in adding the `@patternBindHole` annotation. This annotation is used during typing to perform the full transformation.
    *
    *  A definition
    *  ```scala
-   *    case '{ def $a(...) = ... a() ...; ... a() ... }
+   *    case '{ def $a(...) = ...; ... `$a`() ... } => a
    *  ```
    *  into
    *  ```scala
-   *    case '{ @patternBindHole def a(...) = ... a() ...; ... a() ... }
+   *    case '{ @patternBindHole def `$a`(...) = ...; ... `$a`() ... } => a
    *  ```
    */
   def transformQuotedPatternName(tree: ValOrDefDef)(implicit ctx: Context): ValOrDefDef = {
     if (ctx.mode.is(Mode.QuotedPattern) && !tree.isBackquoted && tree.name != nme.ANON_FUN && tree.name.startsWith("$")) {
-      val name = tree.name.toString.substring(1).toTermName
-      val newTree: ValOrDefDef = tree match {
-        case tree: ValDef => cpy.ValDef(tree)(name)
-        case tree: DefDef => cpy.DefDef(tree)(name)
-      }
       val mods = tree.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span))
-      newTree.withMods(mods)
+      tree.withMods(mods)
     } else tree
   }
 
