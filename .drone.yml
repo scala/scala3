@@ -20,7 +20,7 @@ pipeline:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test:
     group: test
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
       - ./project/scripts/sbt ";compile ;test"
@@ -28,7 +28,7 @@ pipeline:
 
   test_bootstrapped:
     group: test
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test; dotty-semanticdb/compile; dotty-semanticdb/test:compile;sjsSandbox/run"
@@ -36,7 +36,7 @@ pipeline:
 
   community_build:
     group: test
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     commands:
       - cp -R . /tmp/3/ && cd /tmp/3/
       - git submodule update --init --recursive --jobs 7
@@ -44,7 +44,7 @@ pipeline:
 
   test_sbt:
     group: test
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
@@ -54,14 +54,14 @@ pipeline:
 
   test_scala212:
     group: test
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     commands:
       - cp -R . /tmp/5/ && cd /tmp/5/
       - ./project/scripts/sbt ";++2.12.8 ;compile ;test"
 
   # DOCUMENTATION:
   documentation:
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     commands:
       - ./project/scripts/genDocs
     secrets: [ bot_token ]
@@ -73,7 +73,7 @@ pipeline:
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
   publish_nightly:
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     environment:
       - NIGHTLYBUILD=yes
     commands:
@@ -84,7 +84,7 @@ pipeline:
       environment: nightly
 
   publish_release:
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -108,7 +108,7 @@ pipeline:
       event: tag
 
   publish_sbt_release:
-    image: lampepfl/dotty:2019-02-06
+    image: lampepfl/dotty:2019-04-22
     environment:
       - RELEASEBUILD=yes
     commands:
