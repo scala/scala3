@@ -126,6 +126,10 @@ object factories {
 
       case tp: LazyRef =>
         expandTpe(tp.ref)
+
+      case MatchType(bound, scrutinee, cases) =>
+        // See #6295
+        ConstantReference("FIXME: MatchType support")
     }
 
     expandTpe(t)
