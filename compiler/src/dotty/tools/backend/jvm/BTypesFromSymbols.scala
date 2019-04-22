@@ -200,16 +200,21 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
 
     val finalFlag = sym.getsJavaFinalFlag
 
-    // Primitives are "abstract final" to prohibit instantiation
-    // without having to provide any implementations, but that is an
-    // illegal combination of modifiers at the bytecode level so
-    // suppress final if abstract if present.
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
       if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
       if (sym.isDeferred || sym.hasAbstractFlag) ACC_ABSTRACT else 0,
       if (sym.isInterface) ACC_INTERFACE else 0,
-      if (finalFlag && !sym.hasAbstractFlag) ACC_FINAL else 0,
+
+      if (finalFlag &&
+        // Primitives are "abstract final" to prohibit instantiation
+        // without having to provide any implementations, but that is an
+        // illegal combination of modifiers at the bytecode level so
+        // suppress final if abstract if present.
+        !sym.hasAbstractFlag &&
+        //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
+        !sym.isBridge)
+        ACC_FINAL else 0,
       if (sym.isStaticMember) ACC_STATIC else 0,
       if (sym.isBridge) ACC_BRIDGE | ACC_SYNTHETIC else 0,
       if (sym.isArtifact) ACC_SYNTHETIC else 0,
