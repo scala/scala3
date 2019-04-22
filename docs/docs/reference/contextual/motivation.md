@@ -45,7 +45,7 @@ Existing Scala programmers by and large have gotten used to the status quo and s
 
 ### The New Design
 
-The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental new constructs:
+The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental changes:
 
  1. [Implied Instances](./instance-defs.html) are a new way to define inferable terms.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
