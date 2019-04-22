@@ -82,16 +82,20 @@ object DottyIDEPlugin extends AutoPlugin {
 
     val (dottyVersions, dottyProjRefs) =
       structure.allProjectRefs.flatMap { projRef =>
-        val version = scalaVersion.in(projRef).get(settings).get
-        if (isDottyVersion(version))
-          Some((version, projRef))
-        else
-          crossScalaVersions.in(projRef).get(settings).get.filter(isDottyVersion).sorted.lastOption match {
-            case Some(v) =>
-              Some((v, projRef))
-            case _ =>
-              None
-          }
+        if (excludeFromIDE.in(projRef).get(settings) == Some(true))
+          None
+        else {
+          val version = scalaVersion.in(projRef).get(settings).get
+          if (isDottyVersion(version))
+            Some((version, projRef))
+          else
+            crossScalaVersions.in(projRef).get(settings).get.filter(isDottyVersion).sorted.lastOption match {
+              case Some(v) =>
+                Some((v, projRef))
+              case _ =>
+                None
+            }
+        }
       }.unzip
 
     if (dottyVersions.isEmpty)
