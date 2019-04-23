@@ -679,9 +679,13 @@ class JSCodeGen()(implicit ctx: Context) {
                 methodName, jsParams, jstpe.NoType,
                 Some(genStat(rhs)))(optimizerHints, None)
           } else {
-            val namespace =
+            val namespace = if (isMethodStaticInIR(sym)) {
+              if (sym.isPrivate) js.MemberNamespace.PrivateStatic
+              else js.MemberNamespace.PublicStatic
+            } else {
               if (sym.isPrivate) js.MemberNamespace.Private
               else js.MemberNamespace.Public
+            }
             val resultIRType = toIRType(patchedResultType(sym))
             genMethodDef(namespace, methodName,
                 params, resultIRType, rhs, optimizerHints)
@@ -873,16 +877,14 @@ class JSCodeGen()(implicit ctx: Context) {
         genApplyDynamic(app)*/
 
       case tree: This =>
-        if (tree.symbol == currentClassSym.get) {
-          genThis()
-        } else {
-          assert(tree.symbol.is(Module),
-              "Trying to access the this of another class: " +
-              "tree.symbol = " + tree.symbol +
-              ", class symbol = " + currentClassSym.get +
-              " span:" + pos)
+        val currentClass = currentClassSym.get
+        val symIsModuleClass = tree.symbol.is(ModuleClass)
+        assert(tree.symbol == currentClass || symIsModuleClass,
+            s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $currentClass")
+        if (symIsModuleClass && tree.symbol != currentClass)
           genLoadModule(tree.symbol)
-        }
+        else
+          genThis()
 
       case Select(qualifier, _) =>
         val sym = tree.symbol
@@ -1840,7 +1842,9 @@ class JSCodeGen()(implicit ctx: Context) {
       case _                                           => false
     }
 
-    if (isJSType(sym.owner)) {
+    if (isMethodStaticInIR(sym)) {
+      genApplyStatic(sym, genActualArgs(sym, args))
+    } else if (isJSType(sym.owner)) {
       //if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
         genApplyJSMethodGeneric(tree, sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)
       /*else
@@ -2111,9 +2115,12 @@ class JSCodeGen()(implicit ctx: Context) {
       case t @ Ident(_) => (t, Nil)
     }
     val sym = fun.symbol
+    val isStaticCall = isMethodStaticInIR(sym)
 
     val qualifier = qualifierOf(fun)
-    val allCaptureValues = qualifier :: env
+    val allCaptureValues =
+      if (isStaticCall) env
+      else qualifier :: env
 
     val formalAndActualCaptures = allCaptureValues.map { value =>
       implicit val pos = value.span
@@ -2142,9 +2149,13 @@ class JSCodeGen()(implicit ctx: Context) {
     val (formalParams, actualParams) = formalAndActualParams.unzip
 
     val genBody = {
-      val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
-      val call = genApplyMethodMaybeStatically(thisCaptureRef, sym,
-          argCaptureRefs ::: actualParams)
+      val call = if (isStaticCall) {
+        genApplyStatic(sym, formalCaptures.map(_.ref))
+      } else {
+        val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
+        genApplyMethodMaybeStatically(thisCaptureRef, sym,
+            argCaptureRefs ::: actualParams)
+      }
       box(call, sym.info.finalResultType)
     }
 
@@ -2293,8 +2304,8 @@ class JSCodeGen()(implicit ctx: Context) {
   /** Gen a call to a static method. */
   private def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
       implicit pos: Position): js.Tree = {
-    js.ApplyStatic(js.ApplyFlags.empty, encodeClassRef(method.owner),
-        encodeMethodSym(method), arguments)(
+    js.ApplyStatic(js.ApplyFlags.empty.withPrivate(method.isPrivate),
+        encodeClassRef(method.owner), encodeMethodSym(method), arguments)(
         toIRType(patchedResultType(method)))
   }
 
@@ -2885,6 +2896,9 @@ class JSCodeGen()(implicit ctx: Context) {
         }
     }
   }
+
+  private def isMethodStaticInIR(sym: Symbol): Boolean =
+    sym.is(JavaStatic, butNot = JavaDefined)
 
   /** Generate a Class[_] value (e.g. coming from classOf[T]) */
   private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree =
