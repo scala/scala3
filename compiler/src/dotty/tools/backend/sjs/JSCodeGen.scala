@@ -947,8 +947,8 @@ class JSCodeGen()(implicit ctx: Context) {
             js.Null()
           case ClazzTag =>
             genClassConstant(value.typeValue)
-          /*case EnumTag =>
-            genStaticMember(value.symbolValue)*/
+          case EnumTag =>
+            genLoadStaticField(value.symbolValue)
         }
 
       case Block(stats, expr) =>
