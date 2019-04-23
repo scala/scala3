@@ -671,6 +671,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def harmonizeArgs(args: List[Type]): List[Type] = harmonizeTypes(args)
   }
 
+  /** Special-case of ApplicableToTypes for checking overload specificity. */
+  class IsAsSpecific(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context)
+    extends ApplicableToTypes(methRef, args, resultType) {
+    override def argOK(arg: TypedArg, formal: Type): Boolean = {
+      // Simulate RepeatedClass[X] not being in subtyping relationship with any other type.
+      // This is necessary in cases when the last parameter of one method is repeated,
+      // and another is, for instance, Any - see neg/overload_repeated.scala.
+      // Note:
+      //   1) isSubType cannot special-case RepeatedClass[X] - it'd interfere with typing method bodies.
+      //   2) arg and formal cannot both be repeated - if both methods have varargs, we strip them in isAsSpecific
+      !(arg.isRepeatedParam || formal.isRepeatedParam) && super.argOK(arg, formal)
+    }
+  }
+
+
   /** Subclass of Application for type checking an Apply node, where
    *  types of arguments are either known or unknown.
    */
@@ -1293,17 +1308,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val formals1 =
           if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos.map(_.repeatedToSingle)
           else tp1.paramInfos
-
-        class IsAsSpecific(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context)
-          extends ApplicableToTypes(methRef, args, resultType) {
-          override def argOK(arg: TypedArg, formal: Type): Boolean =
-            // Simulate X* not being in subtyping relationship with any other type.
-            // This is necessary in cases when the last parameter of one method is repeated,
-            // and another is, for instance, Any - see neg/overload_repeated.scala.
-            // Note that we cannot just say that X* is really not a sub- or supertype of any other type,
-            // since that would interfere with typing method bodies.
-            !(arg.isRepeatedParam || formal.isRepeatedParam) && super.argOK(arg, formal)
-        }
 
         ctx.test(ctx => new IsAsSpecific(alt2, formals1, WildcardType)(ctx).success) ||
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
