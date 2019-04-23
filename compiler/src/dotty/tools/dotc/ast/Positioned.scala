@@ -23,8 +23,11 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
    */
   def uniqueId: Int = myUniqueId
 
-  def uniqueId_=(id: Int): Unit = {
-    //assert(id != 2523, this)
+  private def uniqueId_=(id: Int): Unit = {
+    // FOR DEBUGGING
+    // assert(id != 2523, this)
+    // if (id == 1234) new Throwable().printStackTrace()
+    
     myUniqueId = id
   }
 
