@@ -860,8 +860,8 @@ class JSCodeGen()(implicit ctx: Context) {
       case WhileDo(cond, body) =>
         js.While(genExpr(cond), genStat(body))
 
-      /*case t: Try =>
-        genTry(t, isStat)*/
+      case t: Try =>
+        genTry(t, isStat)
 
       case app: Apply =>
         genApply(app, isStat)
@@ -1012,8 +1012,8 @@ class JSCodeGen()(implicit ctx: Context) {
       case tree: Closure =>
         genClosure(tree)
 
-      /*case EmptyTree =>
-        js.Skip()*/
+      case EmptyTree =>
+        js.Skip()
 
       case _ =>
         throw new FatalError("Unexpected tree in genExpr: " +
@@ -1049,6 +1049,114 @@ class JSCodeGen()(implicit ctx: Context) {
     } { thisLocalIdent =>
       js.VarRef(thisLocalIdent)(currentClassType)
     }
+  }
+
+  /** Gen IR code for a `try..catch` or `try..finally` block.
+   *
+   *  `try..finally` blocks are compiled straightforwardly to `try..finally`
+   *  blocks of the IR.
+   *
+   *  `try..catch` blocks are a bit more subtle, as the IR does not have
+   *  type-based selection of exceptions to catch. We thus encode explicitly
+   *  the type tests, like in:
+   *
+   *  ```
+   *  try { ... }
+   *  catch (e) {
+   *    if (e.isInstanceOf[IOException]) { ... }
+   *    else if (e.isInstanceOf[Exception]) { ... }
+   *    else {
+   *      throw e; // default, re-throw
+   *    }
+   *  }
+   *  ```
+   *
+   *  In addition, there are provisions to handle catching JavaScript
+   *  exceptions (which do not extend `Throwable`) as wrapped in a
+   *  `js.JavaScriptException`.
+   */
+  private def genTry(tree: Try, isStat: Boolean): js.Tree = {
+    implicit val pos: SourcePosition = tree.sourcePos
+    val Try(block, catches, finalizer) = tree
+
+    val blockAST = genStatOrExpr(block, isStat)
+    val resultType = toIRType(tree.tpe)
+
+    val handled =
+      if (catches.isEmpty) blockAST
+      else genTryCatch(blockAST, catches, resultType, isStat)
+
+    genStat(finalizer) match {
+      case js.Skip() => handled
+      case ast       => js.TryFinally(handled, ast)
+    }
+  }
+
+  private def genTryCatch(body: js.Tree, catches: List[CaseDef],
+      resultType: jstpe.Type,
+      isStat: Boolean)(implicit pos: SourcePosition): js.Tree = {
+    val exceptIdent = freshLocalIdent("e")
+    val origExceptVar = js.VarRef(exceptIdent)(jstpe.AnyType)
+
+    val mightCatchJavaScriptException = catches.exists { caseDef =>
+      caseDef.pat match {
+        case Typed(Ident(nme.WILDCARD), tpt) =>
+          isMaybeJavaScriptException(tpt.tpe)
+        case Ident(nme.WILDCARD) =>
+          true
+        case pat @ Bind(_, _) =>
+          isMaybeJavaScriptException(pat.symbol.info)
+      }
+    }
+
+    val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
+      val valDef = js.VarDef(freshLocalIdent("e"),
+          encodeClassType(defn.ThrowableClass), mutable = false, {
+        genModuleApplyMethod(jsdefn.Runtime_wrapJavaScriptException, origExceptVar :: Nil)
+      })
+      (valDef, valDef.ref)
+    } else {
+      (js.Skip(), origExceptVar)
+    }
+
+    val elseHandler: js.Tree = js.Throw(origExceptVar)
+
+    val handler = catches.foldRight(elseHandler) { (caseDef, elsep) =>
+      implicit val pos: SourcePosition = caseDef.sourcePos
+      val CaseDef(pat, _, body) = caseDef
+
+      // Extract exception type and variable
+      val (tpe, boundVar) = (pat match {
+        case Typed(Ident(nme.WILDCARD), tpt) =>
+          (tpt.tpe, None)
+        case Ident(nme.WILDCARD) =>
+          (defn.ThrowableType, None)
+        case Bind(_, _) =>
+          (pat.symbol.info, Some(encodeLocalSym(pat.symbol)))
+      })
+
+      // Generate the body that must be executed if the exception matches
+      val bodyWithBoundVar = (boundVar match {
+        case None =>
+          genStatOrExpr(body, isStat)
+        case Some(bv) =>
+          val castException = genAsInstanceOf(exceptVar, tpe)
+          js.Block(
+              js.VarDef(bv, toIRType(tpe), mutable = false, castException),
+              genStatOrExpr(body, isStat))
+      })
+
+      // Generate the test
+      if (tpe =:= defn.ThrowableType) {
+        bodyWithBoundVar
+      } else {
+        val cond = genIsInstanceOf(exceptVar, tpe)
+        js.If(cond, bodyWithBoundVar, elsep)(resultType)
+      }
+    }
+
+    js.TryCatch(body, exceptIdent,
+        js.Block(exceptValDef, handler))(resultType)
   }
 
   /** Gen JS code for an Apply node (method call)
@@ -1915,7 +2023,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  primitive instead.)
    */
   private def genTypeApply(tree: TypeApply): js.Tree = {
-    implicit val pos = tree.span
+    implicit val pos: SourcePosition = tree.sourcePos
 
     val TypeApply(fun, targs) = tree
 
@@ -1934,7 +2042,7 @@ class JSCodeGen()(implicit ctx: Context) {
     if (sym == defn.Any_asInstanceOf) {
       genAsInstanceOf(genReceiver, to)
     } else if (sym == defn.Any_isInstanceOf) {
-      genIsInstanceOf(tree, genReceiver, to)
+      genIsInstanceOf(genReceiver, to)
     } else {
       throw new FatalError(
           s"Unexpected type application $fun with symbol ${sym.fullName}")
@@ -2131,8 +2239,8 @@ class JSCodeGen()(implicit ctx: Context) {
   }
 
   /** Gen JS code for an isInstanceOf test (for reference types only) */
-  private def genIsInstanceOf(tree: Tree, value: js.Tree, to: Type): js.Tree = {
-    implicit val pos = tree.span
+  private def genIsInstanceOf(value: js.Tree, to: Type)(
+      implicit pos: SourcePosition): js.Tree = {
     val sym = to.widenDealias.typeSymbol
 
     if (sym == defn.ObjectClass) {
@@ -2141,7 +2249,7 @@ class JSCodeGen()(implicit ctx: Context) {
       if (sym.is(Trait)) {
         ctx.error(
             s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
-            tree.sourcePos)
+            pos)
         js.BooleanLiteral(true)
       } else {
         js.Unbox(js.JSBinaryOp(
@@ -2803,6 +2911,9 @@ class JSCodeGen()(implicit ctx: Context) {
         defn.BoxedDoubleClass, defn.StringClass, jsdefn.JavaLangVoidClass
     )
   }
+
+  private def isMaybeJavaScriptException(tpe: Type): Boolean =
+    jsdefn.JavaScriptExceptionClass.isSubClass(tpe.typeSymbol)
 
   // Copied from DottyBackendInterface
 
