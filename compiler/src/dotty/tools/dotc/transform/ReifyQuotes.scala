@@ -182,14 +182,13 @@ class ReifyQuotes extends MacroTransform {
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
-          if (level == 0 && !ctx.inInlineMethod) {
+          if (level == 0) {
             val body2 =
               if (body1.isType) body1
               else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
             pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
           }
           else {
-            // In top-level splice in an inline def. Keep the tree as it is, it will be transformed at inline site.
             body
           }
       }
