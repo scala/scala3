@@ -449,8 +449,7 @@ class Typer extends Namer
       }
     case qual =>
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
-      val select = Applications.handleMeta(
-        checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
+      val select = checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
       if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
       else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
       else typedDynamicSelect(tree, Nil, pt)
@@ -2027,8 +2026,17 @@ class Typer extends Namer
             tree.withType(UnspecifiedErrorType)
           }
         }
-        else
+        else {
+          if (StagingContext.level == 0) {
+            // Mark the first inline method from the context as a macro
+            def markAsMacro(c: Context): Unit =
+              if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+              else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+              else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+            markAsMacro(ctx)
+          }
           typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext).withSpan(tree.span)
+        }
     }
   }
 
