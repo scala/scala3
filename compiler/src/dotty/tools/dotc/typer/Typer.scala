@@ -1936,8 +1936,10 @@ class Typer extends Namer
         ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case quoted if quoted.isType =>
+        ctx.compilationUnit.needsStaging = true
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext).withSpan(tree.span)
       case quoted =>
+        ctx.compilationUnit.needsStaging = true
         if (ctx.mode.is(Mode.Pattern) && level == 0) {
           val exprPt = pt.baseType(defn.QuotedExprClass)
           val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
@@ -2012,6 +2014,7 @@ class Typer extends Namer
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case expr =>
+        ctx.compilationUnit.needsStaging = true
         if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
           if (isFullyDefined(pt, ForceDegree.all)) {
             def spliceOwner(ctx: Context): Symbol =
@@ -2031,6 +2034,7 @@ class Typer extends Namer
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
   def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
+    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
   }
