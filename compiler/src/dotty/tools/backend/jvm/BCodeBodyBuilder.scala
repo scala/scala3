@@ -119,15 +119,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         // binary operation
         case rarg :: Nil =>
-          resKind = tpeTK(larg).maxType(tpeTK(rarg))
-          if (isShiftOp(code) || isBitwiseOp(code)) {
+          val isShift = isShiftOp(code)
+          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg))
+
+          if (isShift || isBitwiseOp(code)) {
             assert(resKind.isIntegralType || (resKind == BOOL),
                    s"$resKind incompatible with arithmetic modulo operation.")
           }
 
           genLoad(larg, resKind)
-          genLoad(rarg, // check .NET size of shift arguments!
-                  if (isShiftOp(code)) INT else resKind)
+          genLoad(rarg, if (isShift) INT else resKind)
 
           (code: @switch) match {
             case ADD => bc add resKind
