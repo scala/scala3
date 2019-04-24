@@ -449,8 +449,7 @@ class Typer extends Namer
       }
     case qual =>
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
-      val select = Applications.handleMeta(
-        checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt))
+      val select = checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
       if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
       else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
       else typedDynamicSelect(tree, Nil, pt)
@@ -1936,8 +1935,10 @@ class Typer extends Namer
         ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case quoted if quoted.isType =>
+        ctx.compilationUnit.needsStaging = true
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext).withSpan(tree.span)
       case quoted =>
+        ctx.compilationUnit.needsStaging = true
         if (ctx.mode.is(Mode.Pattern) && level == 0) {
           val exprPt = pt.baseType(defn.QuotedExprClass)
           val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
@@ -2012,6 +2013,7 @@ class Typer extends Namer
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case expr =>
+        ctx.compilationUnit.needsStaging = true
         if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
           if (isFullyDefined(pt, ForceDegree.all)) {
             def spliceOwner(ctx: Context): Symbol =
@@ -2024,13 +2026,23 @@ class Typer extends Namer
             tree.withType(UnspecifiedErrorType)
           }
         }
-        else
+        else {
+          if (StagingContext.level == 0) {
+            // Mark the first inline method from the context as a macro
+            def markAsMacro(c: Context): Unit =
+              if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+              else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+              else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+            markAsMacro(ctx)
+          }
           typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext).withSpan(tree.span)
+        }
     }
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
   def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
+    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
   }
