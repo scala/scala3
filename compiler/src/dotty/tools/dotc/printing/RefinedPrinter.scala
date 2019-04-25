@@ -584,6 +584,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Splice(tree) =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
+      case TypSplice(tree) =>
+        keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case tree: Applications.IntegratedTypeArgs =>
         toText(tree.app) ~ Str("(with integrated type args)").provided(ctx.settings.YprintDebug.value)
       case Thicket(trees) =>

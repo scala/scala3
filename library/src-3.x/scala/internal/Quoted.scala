@@ -24,4 +24,5 @@ object Quoted {
   /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
   class patternBindHole extends Annotation
 
+  type patternTypeHole[T] = T
 }

@@ -1,9 +1,9 @@
 object Test {
 
   val x = '{1 + 2}
-
-  def f(x: Int) = x
-  def g(x: Int, y: Int) = x * y
+//
+//  def f(x: Int) = x
+//  def g(x: Int, y: Int) = x * y
 
   def res given tasty.Reflection: quoted.Expr[Int] = x match {
     case '{1 + 2} => '{0}
@@ -30,6 +30,10 @@ object Test {
     case '{ def $ff[T](i: T): Int = $z; 2 } =>
       val a: quoted.matching.Bind[[T] => T => Int] = ff
       z
+//    case '{ poly[$t]($x); 2 } => ???
+    case '{ val x: $t = $x; (${scala.quoted.matching.Bind(t2)}: x.type); 4 } if t == t2 => ???
     case _ => '{1}
   }
+
+  def poly[T](x: T): Unit = ()
 }
