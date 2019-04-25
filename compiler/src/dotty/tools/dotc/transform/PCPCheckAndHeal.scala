@@ -114,7 +114,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           case Typed(expr, _) => splicedCode(expr)
         }
 
-        val implDef = polyDefDef(implMeth,
+        val implDef0 = polyDefDef(implMeth,
           tparams => paramss => {
             val tpMap = tree.tparams.map(_.symbol).zip(tparams).toMap
             val map = {
@@ -140,6 +140,11 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
               newOwners = implMeth :: Nil
             ).transform(splicedCode(healedRHS))
           }
+        )
+
+        val implDef = cpy.DefDef(implDef0)(
+          tparams = implDef0.tparams.map(tparam => tparam.withSpan(tparam.symbol.span)),
+          vparamss = implDef0.vparamss.map(_.map(vparam => vparam.withSpan(vparam.symbol.span)))
         ).withSpan(tree.span)
 
         val macroCall0 = ref(implMeth)
