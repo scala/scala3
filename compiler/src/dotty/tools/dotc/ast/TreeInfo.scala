@@ -367,7 +367,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** The purity level of this expression.
-   *  @return   SimplyPure  if expression has no side effects and cannot contain local definitions
+   *  @return   SimplyPure  if expression has no side effects is a path
    *            Pure        if expression has no side effects
    *            Idempotent  if running the expression a second time has no side effects
    *            Impure      otherwise
@@ -381,16 +381,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case EmptyTree
        | This(_)
        | Super(_, _)
-       | Literal(_)
-       | Closure(_, _, _) =>
+       | Literal(_) =>
       SimplyPure
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
       if (tree.symbol.is(Erased)) Pure
       else refPurity(tree).min(exprPurity(qual))
-    case New(_) =>
-      SimplyPure
+    case New(_) | Closure(_, _, _) =>
+      Pure
     case TypeApply(fn, _) =>
       if (fn.symbol.is(Erased)) Pure else exprPurity(fn)
     case Apply(fn, args) =>
