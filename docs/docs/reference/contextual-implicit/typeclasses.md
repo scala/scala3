@@ -3,9 +3,9 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Evidence definitions, extension methods and context bounds
+Implicit instances, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
-with canonical implementations defined by evidence definitions. Here are some examples of standard typeclasses:
+with canonical implementations defined by implicit instances. Here are some examples of standard typeclasses:
 
 ### Semigroups and monoids:
 
@@ -20,12 +20,12 @@ object Monoid {
   def apply[T] given Monoid[T] = the[Monoid[T]]
 }
 
-evidence for Monoid[String] {
+implicit for Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
 
-evidence for Monoid[Int] {
+implicit for Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }
@@ -48,14 +48,14 @@ trait Monad[F[_]] extends Functor[F] {
   def pure[A](x: A): F[A]
 }
 
-evidence ListMonad for Monad[List] {
+implicit ListMonad for Monad[List] {
   def (xs: List[A]) flatMap [A, B] (f: A => List[B]): List[B] =
     xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
 }
 
-evidence ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+implicit ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
   def (r: Ctx => A) flatMap [A, B] (f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =
