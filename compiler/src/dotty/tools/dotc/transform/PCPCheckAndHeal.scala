@@ -105,7 +105,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           case tp =>
             if (needsThisParam) {
               PolyType("This$".toTypeName :: Nil)(_ => TypeBounds.upper(sym.owner.typeRef) :: Nil,
-                pt => withThisParam(pt.paramRefs.head, genImplMethodType(tp))
+                pt =>
+                  withThisParam(pt.paramRefs.head,
+                    ContextualMethodType(
+                      pt.paramNames.map(n => ("tp$" + n.toString).toTermName),
+                      pt.paramRefs.map(qType),
+                      genImplMethodType(tp)
+                    )
+                  )
               )
             }
             else genImplMethodType(tp)
@@ -137,8 +144,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           tparams => paramss => {
             val tpMap = tree.tparams.map(_.symbol).zip(tparams).toMap
             val map = {
-              val paramss0 = if (needsThisParam) paramss.tail else paramss
-              val paramss1 = if (tree.tparams.isEmpty) paramss0 else paramss0.tail
+              val paramss1 =
+                if (needsThisParam) paramss.tail.tail
+                else if (tree.tparams.nonEmpty) paramss.tail
+                else paramss
               val l1 = tree.vparamss.flatten.map(_.symbol).zip(paramss1.flatten)
               val l2 = (defn.TastyReflection_macroContext -> paramss.last.head) :: l1
               l2.toMap
@@ -169,13 +178,13 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         val macroCall0 = ref(implMeth)
         val macroCall1 =
           if (tree.tparams.isEmpty && !needsThisParam) macroCall0
-          else macroCall0.appliedToTypes((if (needsThisParam) sym.owner.typeRef :: Nil else Nil ) ::: tree.tparams.map(_.symbol.typeRef))
+          else macroCall0.appliedToTypes((if (needsThisParam) ThisType.raw(sym.owner.typeRef) :: Nil else Nil ) ::: tree.tparams.map(_.symbol.typeRef))
         val macroCall2 =
-          if (needsThisParam) macroCall1.appliedTo(ref(defn.InternalQuoted_exprQuote).appliedToType(sym.owner.asClass.typeRef).appliedTo(This(sym.owner.asClass)))
+          if (needsThisParam) macroCall1.appliedTo(ref(defn.InternalQuoted_exprQuote).appliedToType(ThisType.raw(sym.owner.typeRef)).appliedTo(This(sym.owner.asClass)))
           else macroCall1
         val macroCall3 =
-          if (tree.tparams.isEmpty) macroCall2
-          else macroCall2.appliedToArgs(tree.tparams.map(x => ref(defn.InternalQuoted_typeQuote).appliedToType(x.symbol.typeRef)))
+          if (tree.tparams.isEmpty && !needsThisParam) macroCall2
+          else macroCall2.appliedToArgs((if (needsThisParam) ref(defn.InternalQuoted_typeQuote).appliedToType(ThisType.raw(sym.owner.typeRef)) :: Nil else Nil) ::: tree.tparams.map(x => ref(defn.InternalQuoted_typeQuote).appliedToType(x.symbol.typeRef)))
         val macroCall4 =
           macroCall3.appliedToArgss(tree.vparamss.map(_.map(x => if (x.symbol.is(Inline)) ref(x.symbol) else ref(defn.InternalQuoted_exprQuote).appliedToType(x.symbol.info.widenExpr).appliedTo(ref(x.symbol)))))
         val macroCall5 =
