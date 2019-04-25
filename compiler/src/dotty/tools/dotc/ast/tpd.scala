@@ -195,7 +195,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(implicit ctx: Context): ValDef =
-    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
+    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym).withSpan(sym.span)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
     ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
@@ -205,7 +205,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(
       untpd.DefDef(sym.name, tparams map TypeDef, vparamss.nestedMap(ValDef(_)),
                    TypeTree(resultType), rhs),
-      sym)
+      sym).withSpan(sym.span)
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
@@ -256,7 +256,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
+    ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym).withSpan(sym.span)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
     val firstParent :: otherParents = cls.info.parents
