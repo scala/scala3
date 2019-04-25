@@ -3006,6 +3006,11 @@ object Types {
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
+    final def newLikeThis(paramNames: List[ThisName], paramInfos: This => List[PInfo], resType: This => Type)(implicit ctx: Context): This =
+      companion(paramNames)(
+        x => paramInfos(x).mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
+        x => resType(x).subst(this, x))
+
     protected def prefixString: String
     final override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
   }

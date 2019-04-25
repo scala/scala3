@@ -12,3 +12,5 @@ object PowerMacro {
 class Num(x: Double) {
   inline def power(inline n: Long) = ${ PowerMacro.powerCode('x, n) }
 }
+
+object Num // FIXME remove this object
