@@ -1,0 +1,52 @@
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1)))
+Optimized: {
+  type t$_$1
+  ls.filter(((x: t$_$1) => x.<(3).&&(x.>(1))))
+}
+Result: List(2)
+
+Original: ls2.filter(((x: scala.Char) => x.<('c'))).filter(((x: scala.Char) => x.>('a')))
+Optimized: {
+  type t$_$1
+  ls2.filter(((x: t$_$1) => x.<('c').&&(x.>('a'))))
+}
+Result: List(b)
+
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1))).filter(((x: scala.Int) => x.==(2)))
+Optimized: {
+  type t$_$1
+  ls.filter(((x: scala.Int) => x.<(3))).filter(((x: t$_$1) => x.>(1).&&(x.==(2))))
+}
+Result: List(2)
+
+1
+2
+Original: ls.filter(((x: scala.Int) => x.<(3))).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Optimized: {
+  type t$_$3
+  ls.foreach[scala.Unit](((x: t$_$3) => if (x.<(3)) scala.Predef.println(x) else ()))
+}
+Result: ()
+
+Original: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[scala.Int, scala.collection.immutable.List[scala.Int]](((a: scala.Int) => a.*(2)))(scala.collection.immutable.List.canBuildFrom[scala.Int]).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((b: scala.Int) => b.toString()))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
+Optimized: {
+  type v$_$1
+  type t$_$2
+  scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[v$_$1, scala.collection.immutable.List[v$_$1]](((x: t$_$2) => {
+    val x$5: scala.Int = x.*(2)
+    x$5.toString()
+  }))(scala.collection.immutable.List.canBuildFrom[v$_$1])
+}
+Result: List(2, 4, 6)
+
+Original: scala.List.apply[scala.Int]((55, 67, 87: scala.<repeated>[scala.Int])).map[scala.Char, scala.collection.immutable.List[scala.Char]](((a: scala.Int) => a.toChar))(scala.collection.immutable.List.canBuildFrom[scala.Char]).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((b: scala.Char) => b.toString()))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
+Optimized: {
+  type v$_$1
+  type t$_$2
+  scala.List.apply[scala.Int]((55, 67, 87: scala.<repeated>[scala.Int])).map[v$_$1, scala.collection.immutable.List[v$_$1]](((x: t$_$2) => {
+    val x$10: scala.Char = x.toChar
+    x$10.toString()
+  }))(scala.collection.immutable.List.canBuildFrom[v$_$1])
+}
+Result: List(7, C, W)
+

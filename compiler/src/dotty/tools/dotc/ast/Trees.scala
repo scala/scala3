@@ -768,6 +768,14 @@ object Trees {
 
     /** Is this a definition of a class? */
     def isClassDef: Boolean = rhs.isInstanceOf[Template[_]]
+
+    def isBackquoted: Boolean = false
+  }
+
+  class BackquotedTypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends TypeDef[T](name, rhs) {
+    override def isBackquoted: Boolean = true
+    override def productPrefix: String = "BackquotedTypeDef"
   }
 
   /** extends parents { self => body }
@@ -982,6 +990,7 @@ object Trees {
     type ValDef = Trees.ValDef[T]
     type DefDef = Trees.DefDef[T]
     type TypeDef = Trees.TypeDef[T]
+    type BackquotedTypeDef = Trees.BackquotedTypeDef[T]
     type Template = Trees.Template[T]
     type Import = Trees.Import[T]
     type PackageDef = Trees.PackageDef[T]

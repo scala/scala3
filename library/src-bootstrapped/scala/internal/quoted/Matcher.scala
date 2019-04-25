@@ -26,16 +26,34 @@ object Matcher {
    *
    *  @param scrutineeExpr `Expr[_]` on which we are pattern matching
    *  @param patternExpr `Expr[_]` containing the pattern tree
+   *  @param hasTypeSplices `Boolean` notify if the pattern has type splices (if so we use a GADT context)
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], qctx: QuoteContext): Option[Tup] = {
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_],
+        hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
+
+    // TODO improve performance
     import qctx.tasty.{Bind => BindPattern, _}
     import Matching._
 
     type Env = Set[(Symbol, Symbol)]
 
+    class SymBinding(val sym: Symbol)
+
     inline def withEnv[T](env: Env)(body: => given Env => T): T = body given env
+
+    def hasBindTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
+      case Annotated(tpt2, annot) => isBindAnnotation(annot) || hasBindTypeAnnotation(tpt2)
+      case _ => false
+    }
+
+    def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
+
+    def isBindAnnotation(tree: Tree): Boolean = tree match {
+      case New(tpt) => tpt.symbol == kernel.Definitions_InternalQuoted_patternBindHoleAnnot
+      case annot => annot.symbol.owner == kernel.Definitions_InternalQuoted_patternBindHoleAnnot
+    }
 
     /** Check that all trees match with `mtch` and concatenate the results with && */
     def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => Matching): Matching = (l1, l2) match {
@@ -61,6 +79,7 @@ object Matcher {
       /** Normalieze the tree */
       def normalize(tree: Tree): Tree = tree match {
         case Block(Nil, expr) => normalize(expr)
+        case Block(stats1, Block(stats2, expr)) => normalize(Block(stats1 ::: stats2, expr))
         case Inlined(_, Nil, expr) => normalize(expr)
         case _ => tree
       }
@@ -78,15 +97,6 @@ object Matcher {
 
       def bindingMatch(sym: Symbol) =
         matched(new Bind(sym.name, sym))
-
-      def hasBindTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
-        case Annotated(tpt2, Apply(Select(New(TypeIdent("patternBindHole")), "<init>"), Nil)) => true
-        case Annotated(tpt2, _) => hasBindTypeAnnotation(tpt2)
-        case _ => false
-      }
-
-      def hasBindAnnotation(sym: Symbol) =
-        sym.annots.exists { case Apply(Select(New(TypeIdent("patternBindHole")),"<init>"),List()) => true; case _ => true }
 
       (scrutinee, pattern) match {
 
@@ -131,10 +141,19 @@ object Matcher {
         case (TypeApply(fn1, args1), TypeApply(fn2, args2)) if fn1.symbol == fn2.symbol =>
           fn1 =#= fn2 && args1 =##= args2
 
-        case (Block(stats1, expr1), Block(stats2, expr2)) =>
-          withEnv(the[Env] ++ stats1.map(_.symbol).zip(stats2.map(_.symbol))) {
-            stats1 =##= stats2 && expr1 =#= expr2
+        case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
+          reflection.kernel.Context_GADT_addToConstraint(the[Context])(binding.symbol :: Nil)
+          matched(new SymBinding(binding.symbol)) && Block(stats1, expr1) =#= Block(stats2, expr2)
+
+        case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
+          withEnv(the[Env] + (stat1.symbol -> stat2.symbol)) {
+            stat1 =#= stat2 && Block(stats1, expr1) =#= Block(stats2, expr2)
           }
+
+        case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
+          val bindingSymbols = typeBindings.map(_.symbol)
+          reflection.kernel.Context_GADT_addToConstraint(the[Context])(bindingSymbols)
+          bindingSymbols.foldRight(scrutinee =#= expr2)((x, acc) => matched(new SymBinding(x)) && acc)
 
         case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
           cond1 =#= cond2 && thenp1 =#= thenp2 && elsep1 =#= elsep2
@@ -159,10 +178,6 @@ object Matcher {
 
         case (Repeated(elems1, _), Repeated(elems2, _)) if elems1.size == elems2.size =>
           elems1 =##= elems2
-
-        // TODO is this case required
-        case (IsTypeTree(scrutinee @ TypeIdent(_)), IsTypeTree(pattern @ TypeIdent(_))) if scrutinee.symbol == pattern.symbol =>
-          matched
 
         case (IsTypeTree(scrutinee), IsTypeTree(pattern)) if scrutinee.tpe <:< pattern.tpe =>
           matched
@@ -313,24 +328,30 @@ object Matcher {
     }
 
     def isTypeBinding(tree: Tree): Boolean = tree match {
-      case IsTypeDef(tree) =>
-        tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.patternType")
+      case IsTypeDef(tree) => hasBindAnnotation(tree.symbol)
       case _ => false
     }
 
     implicit val env: Env = Set.empty
-    val res = patternExpr.unseal.underlyingArgument match {
-      case Block(typeBindings, pattern) if typeBindings.forall(isTypeBinding) =>
-        implicit val ctx2 = reflection.kernel.Context_GADT_setFreshGADTBounds(rootContext)
-        val bindingSymbols = typeBindings.map(_.symbol(ctx2))
-        reflection.kernel.Context_GADT_addToConstraint(ctx2)(bindingSymbols)
-        val matchings = scrutineeExpr.unseal.underlyingArgument =#= pattern
-        val constainedTypes = bindingSymbols.map(s => reflection.kernel.Context_GADT_approximation(ctx2)(s, true))
-        constainedTypes.foldRight(matchings)((x, acc) => matched(x.seal) && acc)
-      case pattern =>
-        scrutineeExpr.unseal.underlyingArgument =#= pattern
+
+    val res = {
+      if (hasTypeSplices) {
+        implicit val ctx: Context = reflection.kernel.Context_GADT_setFreshGADTBounds(rootContext)
+        val matchings = scrutineeExpr.unseal.underlyingArgument =#= patternExpr.unseal.underlyingArgument
+        // After matching and doing all subtype check, we have to aproximate all the type bindings
+        // that we have found and seal them in a quoted.Type
+        matchings.asOptionOfTuple.map { tup =>
+          Tuple.fromArray(tup.toArray.map { // TODO improve performace
+            case x: SymBinding => kernel.Context_GADT_approximation(the[Context])(x.sym, true).seal
+            case x => x
+          })
+        }
+      }
+      else {
+        scrutineeExpr.unseal.underlyingArgument =#= patternExpr.unseal.underlyingArgument
+      }
     }
-    res.asOptionOfTuple.asInstanceOf[Option[Tup]]
+    res.asInstanceOf[Option[Tup]]
   }
 
   /** Result of matching a part of an expression */

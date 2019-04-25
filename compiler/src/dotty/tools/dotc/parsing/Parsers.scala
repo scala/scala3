@@ -2644,10 +2644,15 @@ object Parsers {
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atSpan(start, nameStart) {
-        val name = ident().toTypeName
+        val nameIdent = typeIdent()
         val tparams = typeParamClauseOpt(ParamOwner.Type)
-        def makeTypeDef(rhs: Tree): Tree =
-          finalizeDef(TypeDef(name, lambdaAbstract(tparams, rhs)), mods, start)
+        def makeTypeDef(rhs: Tree): Tree = {
+          val rhs1 = lambdaAbstract(tparams, rhs)
+          val tdef =
+            if (nameIdent.isBackquoted) BackquotedTypeDef(nameIdent.name.toTypeName, rhs1)
+            else TypeDef(nameIdent.name.toTypeName, rhs1)
+          finalizeDef(tdef, mods, start)
+        }
         in.token match {
           case EQUALS =>
             in.nextToken()

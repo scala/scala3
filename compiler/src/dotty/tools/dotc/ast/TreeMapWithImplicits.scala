@@ -68,6 +68,20 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     nestedCtx
   }
 
+  private def patternScopeCtx(pattern: Tree)(implicit ctx: Context): Context = {
+    val nestedCtx = ctx.fresh.setNewScope
+    new TreeTraverser {
+      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        tree match {
+          case d: DefTree => nestedCtx.enter(d.symbol)
+          case _ =>
+        }
+        traverseChildren(tree)
+      }
+    }.traverse(pattern)
+    nestedCtx
+  }
+
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
     def localCtx =
       if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
@@ -93,6 +107,13 @@ class TreeMapWithImplicits extends tpd.TreeMap {
           Nil,
           transformSelf(self),
           transformStats(impl.body, tree.symbol))
+      case tree: CaseDef =>
+        val patCtx = patternScopeCtx(tree.pat)(ctx)
+        cpy.CaseDef(tree)(
+          transform(tree.pat),
+          transform(tree.guard)(patCtx),
+          transform(tree.body)(patCtx)
+        )
       case _ =>
         super.transform(tree)
     }
