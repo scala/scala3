@@ -367,13 +367,19 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** The purity level of this expression.
-   *  @return   SimplyPure  if expression has no side effects is a path
+   *  @return   A possibly combination of
+   *
+   *            Path        if expression is at least idempotent and is a path
+   *
    *            Pure        if expression has no side effects
    *            Idempotent  if running the expression a second time has no side effects
-   *            Impure      otherwise
    *
-   *  Note that purity and idempotency are different. References to modules and lazy
-   *  vals are impure (side-effecting) both because side-effecting code may be executed and because the first reference
+   *            Pure implies Idempotent.
+   *            Impure designates the empty combination.
+   *
+   *  Note that purity and idempotency are treated differently.
+   *  References to modules and lazy vals are impure (side-effecting) both because
+   *  side-effecting code may be executed and because the first reference
    *  takes a different code path than all to follow; but they are idempotent
    *  because running the expression a second time gives the cached result.
    */
@@ -382,12 +388,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | This(_)
        | Super(_, _)
        | Literal(_) =>
-      SimplyPure
+      PurePath
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
       if (tree.symbol.is(Erased)) Pure
-      else refPurity(tree).min(exprPurity(qual))
+      else refPurity(tree) `min` exprPurity(qual)
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
@@ -415,37 +421,38 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       Impure
   }
 
-  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ min _)
+  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ `min` _)
 
-  def isSimplyPure(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) == SimplyPure
+  def isPurePath(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) == PurePath
   def isPureExpr(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= Pure
   def isIdempotentExpr(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= Idempotent
+  def isIdempotentPath(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= IdempotentPath
 
   def isPureBinding(tree: Tree)(implicit ctx: Context): Boolean = statPurity(tree) >= Pure
 
   /** The purity level of this reference.
    *  @return
-   *    SimplyPure  if reference is (nonlazy and stable) or to a parameterized function
-   *    Idempotent  if reference is lazy and stable
-   *    Impure      otherwise
+   *    PurePath        if reference is (nonlazy and stable) or to a parameterized function
+   *    IdempotentPath  if reference is lazy and stable
+   *    Impure          otherwise
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
   def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
     val sym = tree.symbol
     if (!tree.hasType) Impure
-    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) SimplyPure
+    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
-      if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
-    else if (sym.is(Lazy)) Idempotent
-    else SimplyPure
+      if (sym.moduleClass.isNoInitsClass) PurePath else IdempotentPath
+    else if (sym.is(Lazy)) IdempotentPath
+    else PurePath
   }
 
   def isPureRef(tree: Tree)(implicit ctx: Context): Boolean =
-    refPurity(tree) == SimplyPure
+    refPurity(tree) == PurePath
   def isIdempotentRef(tree: Tree)(implicit ctx: Context): Boolean =
-    refPurity(tree) >= Idempotent
+    refPurity(tree) >= IdempotentPath
 
   /** (1) If `tree` is a constant expression, its value as a Literal,
    *  or `tree` itself otherwise.
@@ -840,12 +847,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
 object TreeInfo {
   class PurityLevel(val x: Int) extends AnyVal {
-    def >= (that: PurityLevel): Boolean = x >= that.x
-    def min(that: PurityLevel): PurityLevel = new PurityLevel(x min that.x)
+    def >= (that: PurityLevel): Boolean = (x & that.x) == that.x
+    def min(that: PurityLevel): PurityLevel = new PurityLevel(x & that.x)
   }
 
-  val SimplyPure: PurityLevel = new PurityLevel(3)
-  val Pure: PurityLevel = new PurityLevel(2)
+  val Path: PurityLevel = new PurityLevel(4)
+  val Pure: PurityLevel = new PurityLevel(3)
   val Idempotent: PurityLevel = new PurityLevel(1)
   val Impure: PurityLevel = new PurityLevel(0)
+
+  val PurePath: PurityLevel = new PurityLevel(7)
+  val IdempotentPath: PurityLevel = new PurityLevel(5)
 }

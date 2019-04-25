@@ -121,12 +121,10 @@ abstract class Lifter {
    *     val x0 = pre
    *     x0.f(...)
    *
-   *  unless `pre` is a `New` or `pre` is idempotent.
+   *  unless `pre` is idempotent.
    */
-  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case New(_) => tree
-    case _ => if (isIdempotentExpr(tree)) tree else lift(defs, tree)
-  }
+  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = 
+    if (isIdempotentExpr(tree)) tree else lift(defs, tree)
 }
 
 /** No lifting at all */
@@ -142,7 +140,7 @@ object LiftImpure extends LiftImpure
 
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
-  def noLift(expr: tpd.Tree)(implicit ctx: Context): Boolean = tpd.isSimplyPure(expr)
+  def noLift(expr: tpd.Tree)(implicit ctx: Context): Boolean = tpd.isPurePath(expr)
   override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
