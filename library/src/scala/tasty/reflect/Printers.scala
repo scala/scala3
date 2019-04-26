@@ -1631,23 +1631,24 @@ trait Printers
         case Type.IsMethodType(tpe) =>
           this += "("
           printList(tpe.paramNames.zip(tpe.paramTypes), ", ",
-            (paramName, paramType) => (this += paramName += ": ").printType(paramType))
+            (x: (String, Type)) => (this += x._1 += ": ").printType(x._2))
           this += ")"
           printType(tpe.resType)
 
         case Type.IsPolyType(tpe) =>
           this += "["
           printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
-            (paramName, paramBound) => (this += paramName += " ").printTypeOrBound(paramBound))
+            (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
           this += "]"
           printType(tpe.resType)
 
         case Type.IsTypeLambda(tpe) =>
           this += "["
           printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
-            (paramName, paramBound) => (this += paramName += " ").printTypeOrBound(paramBound))
+            (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
           this += "] => "
           printType(tpe.resType)
+
         case _ =>
           throw new MatchError(tpe.showExtractors)
       }
