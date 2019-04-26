@@ -423,10 +423,21 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ `min` _)
 
-  def isPurePath(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) == PurePath
-  def isPureExpr(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= Pure
-  def isIdempotentExpr(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= Idempotent
-  def isIdempotentPath(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= IdempotentPath
+  def isPurePath(tree: Tree)(implicit ctx: Context): Boolean = tree.tpe match {
+    case tpe: ConstantType => exprPurity(tree) >= Pure
+    case _ => exprPurity(tree) == PurePath
+  }
+
+  def isPureExpr(tree: Tree)(implicit ctx: Context): Boolean =
+    exprPurity(tree) >= Pure
+
+  def isIdempotentPath(tree: Tree)(implicit ctx: Context): Boolean = tree.tpe match {
+    case tpe: ConstantType => exprPurity(tree) >= Idempotent
+    case _ => exprPurity(tree) >= IdempotentPath
+  }
+
+  def isIdempotentExpr(tree: Tree)(implicit ctx: Context): Boolean =
+    exprPurity(tree) >= Idempotent
 
   def isPureBinding(tree: Tree)(implicit ctx: Context): Boolean = statPurity(tree) >= Pure
 
