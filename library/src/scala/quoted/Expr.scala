@@ -26,6 +26,24 @@ package quoted {
      */
     final def getValue[U >: T] given (qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
 
+    /** TODO */
+    def transform(transformations: ExprTransformer[_]*)(implicit reflect: tasty.Reflection): Expr[Any] = {
+      import reflect.{rootContext => ctx, _} // rootContext => ctx for 2.12.8 compat
+      val transformer = new TreeMap {
+        override def transformTerm(tree: reflect.Term)(implicit ctx: reflect.Context): reflect.Term = {
+          tree.tpe.widen match {
+            case Type.IsMethodType(_) | Type.IsPolyType(_) => // Not a full expression
+              super.transformTerm(tree)
+            case _ =>
+              // TODO chose which traversal order should this use
+              transformations.foldLeft(super.transformTerm(tree).seal) { (acc, transformation) =>
+                transformation.transform(acc)
+              }.unseal
+          }
+        }
+      }
+      transformer.transformTerm(expr.unseal(ctx))(ctx).seal(ctx)
+    }
   }
 
   object Expr {

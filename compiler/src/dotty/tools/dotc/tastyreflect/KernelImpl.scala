@@ -119,6 +119,7 @@ class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
 
   def matchStatement(tree: Tree) given Context: Option[Statement] = tree match {
     case tree if tree.isTerm => Some(tree)
+    case tree: Inlined => Some(tree)
     case _ => matchDefinition(tree)
   }
 
@@ -243,6 +244,7 @@ class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
   def matchTerm(tree: Tree) given Context: Option[Term] = tree match {
     case x: tpd.SeqLiteral => Some(tree)
     case _ if tree.isTerm => Some(tree)
+    case _: Inlined => Some(tree)
     case _ => None
   }
 

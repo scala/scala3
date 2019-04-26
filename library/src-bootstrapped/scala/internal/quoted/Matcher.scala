@@ -223,6 +223,12 @@ object Matcher {
         case (_, Annotated(tpt, _)) =>
           scrutinee =#= tpt
 
+        case (IsInferred(scrutinee), IsTypeTree(pattern)) if scrutinee.tpe =:= pattern.tpe =>
+          matched
+
+        case (IsTypeTree(_), IsInferred(_)) =>
+          matched
+
         // No Match
         case _ =>
           if (debug)
