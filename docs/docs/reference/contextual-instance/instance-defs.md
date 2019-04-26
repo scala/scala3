@@ -46,9 +46,9 @@ instance [T] given (ord: Ord[T]) of Ord[List[T]] { ... }
 ```
 If a  name is not given, the compiler will synthesize one from the type(s) in the `for` clause.
 
-## instance Aliases
+## Alias Instances
 
-An instance alias defines an implicit instance that is equal to some expression. E.g., assuming a global method `currentThreadPool` returning a value with a member `context`, one could define:
+An alias instance defines an implicit instance that is equal to some expression. E.g., assuming a global method `currentThreadPool` returning a value with a member `context`, one could define:
 ```scala
 instance ctx of ExecutionContext = currentThreadPool().context
 ```
@@ -59,7 +59,7 @@ Alias instances may be anonymous, e.g.
 ```scala
 instance of Position = enclosingTree.position
 ```
-An instance alias can have type and context parameters just like any other instance definition, but it can only implement a single type.
+An alias instance can have type and context parameters just like any other instance definition, but it can only implement a single type.
 
 ## Syntax
 

@@ -14,7 +14,7 @@ instance of Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
-Using an instance alias, this can be expressed more concisely as:
+Using an alias instance, this can be expressed more concisely as:
 ```scala
 instance of Conversion[String, Token] = new KeyWord(_)
 ```
