@@ -31,7 +31,9 @@ object Test {
 //      val a: quoted.matching.Bind[[T] => T => Int] = ff
 //      z
 //    case '{ poly[$t]($x); 2 } => ???
-    case '{ type $T; val x: $T = $a; val y: $T = x;  1 } => ???
+//    case '{ val x: $t = $a; val y: `$t` = x;  1 } => ???
+    case '{ type $t; val x: $t = $a; val y: $t = x;  1 } => ???
+//    case '{ type $t; val x: $t = $a; val y: $t = x;  1 } => ???
     case _ => '{1}
   }
 

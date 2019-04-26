@@ -1979,14 +1979,16 @@ class Typer extends Namer
     val ctx0 = ctx
 
     val typeBindings: collection.mutable.Map[Symbol, Bind] = collection.mutable.Map.empty
+    def getBinding(sym: Symbol): Bind =
+      typeBindings.getOrElseUpdate(sym, {
+        val bindingBounds = TypeBounds.apply(defn.NothingType, defn.AnyType) // TODO recover bounds
+        val bsym = ctx.newPatternBoundSymbol((sym.name + "$").toTypeName, bindingBounds, quoted.span)
+        Bind(bsym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span)
+      })
     def replaceTypeBindings = new TypeMap {
       def apply(tp: Type): Type = tp match {
         case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) =>
-          val bindingBounds = TypeBounds.apply(defn.NothingType, defn.AnyType) // TODO recover bounds
-          val sym = ctx.newPatternBoundSymbol((tp.name + "$").toTypeName, bindingBounds, quoted.span)
-          val bind = typeBindings.getOrElseUpdate(tp.typeSymbol,
-            Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span))
-          bind.symbol.typeRef
+          getBinding(tp.typeSymbol).symbol.typeRef
         case _ => mapOver(tp)
       }
     }
@@ -2001,18 +2003,8 @@ class Typer extends Namer
           try patternHole(tree)
           finally {
             val patType = pat.tpe.widen
-            val patType1 = replaceTypeBindings(patType.underlyingIfRepeated(isJava = false))
+            val patType1 = patType.underlyingIfRepeated(isJava = false)
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
-            println("=-=-=-============-=-=-=----=-=-=")
-            println(pat)
-            println(pat.symbol)
-            println(pat.symbol.info)
-            println()
-            println(pat1)
-            println(pat1.symbol)
-            println(pat1.symbol.info)
-            println()
-            println()
             patBuf += pat1
           }
         case ddef: ValOrDefDef =>
@@ -2033,12 +2025,21 @@ class Typer extends Namer
             patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingExprTpe)).withSpan(ddef.span)
           }
           super.transform(tree)
+        case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) =>
+          val bindingType = getBinding(tdef.symbol).symbol.typeRef
+          val bindingTypeTpe = AppliedType(defn.QuotedTypeType, bindingType :: Nil)
+          assert(tdef.name.startsWith("$"))
+          val bindName = tdef.name.toString.stripPrefix("$").toTermName
+          val sym = ctx0.newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span)
+          patBuf += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
+          super.transform(tree)
         case _ =>
           super.transform(tree)
       }
     }
     val result = splitter.transform(quoted)
-    (typeBindings.toList.map(_._2), result, splitter.patBuf.toList)
+    val patterns = splitter.patBuf.toList
+    (typeBindings.toList.map(_._2), result, patterns)
   }
 
   /** A hole the shape pattern of a quoted.Matcher.unapply, representing a splice */

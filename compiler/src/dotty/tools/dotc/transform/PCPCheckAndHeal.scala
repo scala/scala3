@@ -150,7 +150,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     /** Is a reference to a class but not `this.type` */
     def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
 
-    if (sym.exists && !sym.isStaticOwner && !isClassRef && !levelOK(sym))
+    if (sym.exists && !sym.isStaticOwner && !isClassRef && !levelOK(sym) &&
+        !sym.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) // FIXME this is a workaround
+       )
       tryHeal(sym, tp, pos)
     else
       None
