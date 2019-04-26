@@ -1943,23 +1943,29 @@ class Typer extends Namer
           val exprPt = pt.baseType(defn.QuotedExprClass)
           val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
           val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
-          val (shape, splices) = splitQuotePattern(quoted1)
-          val typeBindings = splices.collect {
-            case t if t.tpe.derivesFrom(defn.QuotedTypeClass) =>
-              t.tpe.widen.argTypesHi.head.typeSymbol
-          }
-          val inQuoteTypeBinding = typeBindings.map { sym =>
-            ctx.newSymbol(sym.owner, (sym.name + "$$$").toTypeName, // TODO remove $$$, just there for debugging
-              EmptyFlags, sym.info, coord = sym.coord)
-          }
-          val shape2 =
-            seq(inQuoteTypeBinding.map(TypeDef), shape.subst(typeBindings, inQuoteTypeBinding))
+          val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
+//          val typeBindings = splices.collect {
+//            case t if t.tpe.derivesFrom(defn.QuotedTypeClass) =>
+//              t.tpe.widen.argTypesHi.head.typeSymbol
+//          }
+//          val inQuoteTypeBinding = typeBindings.map { sym =>
+//            ctx.newSymbol(sym.owner, (sym.name + "$$$").toTypeName, // TODO remove $$$, just there for debugging
+//              EmptyFlags, sym.info, coord = sym.coord)
+//          }
+//          val shape2 =
+//            seq(inQuoteTypeBinding.map(TypeDef), shape.subst(typeBindings, inQuoteTypeBinding))
+
+
           val patType = defn.tupleType(splices.tpes.map(_.widen))
+
+          val typeBindingsTuple = tpd.tupleTypeTree(typeBindings)
+
           val splicePat = typed(untpd.Tuple(splices.map(untpd.TypedSplice(_))).withSpan(quoted.span), patType)
+
           UnApply(
-            fun = ref(defn.InternalQuotedMatcher_unapplyR).appliedToType(patType),
+            fun = ref(defn.InternalQuotedMatcher_unapplyR).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
             implicits =
-              ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape2) ::
+              ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
               implicitArgTree(defn.TastyReflectionType, tree.span) :: Nil,
             patterns = splicePat :: Nil,
             proto = pt)
@@ -1969,8 +1975,22 @@ class Typer extends Namer
     }
   }
 
-  def splitQuotePattern(quoted: Tree)(implicit ctx: Context): (Tree, List[Tree]) = {
+  def splitQuotePattern(quoted: Tree)(implicit ctx: Context): (List[Bind], Tree, List[Tree]) = {
     val ctx0 = ctx
+
+    val typeBindings: collection.mutable.Map[Symbol, Bind] = collection.mutable.Map.empty
+    def replaceTypeBindings = new TypeMap {
+      def apply(tp: Type): Type = tp match {
+        case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) =>
+          val bindingBounds = TypeBounds.apply(defn.NothingType, defn.AnyType) // TODO recover bounds
+          val sym = ctx.newPatternBoundSymbol((tp.name + "$").toTypeName, bindingBounds, quoted.span)
+          val bind = typeBindings.getOrElseUpdate(tp.typeSymbol,
+            Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span))
+          bind.symbol.typeRef
+        case _ => mapOver(tp)
+      }
+    }
+
     object splitter extends tpd.TreeMap {
       val patBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
@@ -1981,8 +2001,18 @@ class Typer extends Namer
           try patternHole(tree)
           finally {
             val patType = pat.tpe.widen
-            val patType1 = patType.underlyingIfRepeated(isJava = false)
+            val patType1 = replaceTypeBindings(patType.underlyingIfRepeated(isJava = false))
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
+            println("=-=-=-============-=-=-=----=-=-=")
+            println(pat)
+            println(pat.symbol)
+            println(pat.symbol.info)
+            println()
+            println(pat1)
+            println(pat1.symbol)
+            println(pat1.symbol.info)
+            println()
+            println()
             patBuf += pat1
           }
         case ddef: ValOrDefDef =>
@@ -2008,7 +2038,7 @@ class Typer extends Namer
       }
     }
     val result = splitter.transform(quoted)
-    (result, splitter.patBuf.toList)
+    (typeBindings.toList.map(_._2), result, splitter.patBuf.toList)
   }
 
   /** A hole the shape pattern of a quoted.Matcher.unapply, representing a splice */
@@ -2065,18 +2095,32 @@ class Typer extends Namer
       case expr =>
         if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
           if (isFullyDefined(pt, ForceDegree.all)) {
+            // TODO is this error still relevant here? probably not
             ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
             tree.withType(UnspecifiedErrorType)
           } else {
-            val bindingBounds = TypeBounds.apply(defn.NothingType, defn.AnyType)
-            val sym = ctx.newPatternBoundSymbol("ttt".toTypeName, bindingBounds, expr.span)
-            val bind = Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(expr.span)
+            expr match {
+              case Ident(name) => typedIdent(untpd.Ident(("$" + name).toTypeName), pt)
+            }
 
-            def spliceOwner(ctx: Context): Symbol =
-              if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-            val pat = typedPattern(tree.expr, defn.QuotedTypeType.appliedTo(sym.typeRef))(
-              spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-            Splice(Typed(pat, AppliedTypeTree(TypeTree(defn.QuotedTypeType), bind :: Nil)))
+//            println()
+//            println(expr)
+//            println()
+//            println()
+//            val bindingBounds = TypeBounds.apply(defn.NothingType, defn.AnyType)
+//            def getName(tree: untpd.Tree): TypeName = tree match {
+//              case tree: RefTree => ("$" + tree.name).toTypeName
+//              case tree: Typed => getName(tree.expr)
+//            }
+//            val sym = ctx.newPatternBoundSymbol(getName(expr), bindingBounds, expr.span)
+//            val bind = Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(expr.span)
+//
+//            def spliceOwner(ctx: Context): Symbol =
+//              if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+//            val pat = typedPattern(tree.expr, defn.QuotedTypeType.appliedTo(sym.typeRef))(
+//              spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+//            Splice(Typed(pat, AppliedTypeTree(TypeTree(defn.QuotedTypeType), bind :: Nil)))
+
           }
 
         } else {

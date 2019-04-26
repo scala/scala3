@@ -829,6 +829,24 @@ object desugar {
       Thicket(aliasType :: companions.toList)
     }
 
+  /** Transforms
+    *
+    *    <mods> type $T >: Low <: Hi
+    *
+    *  to
+    *
+    *    @patternBindHole <mods> type $T >: Low <: Hi
+    *
+    *  if the type is a type splice.
+    */
+  def quotedPatternTypeDef(tree: TypeDef)(implicit ctx: Context): TypeDef = {
+    assert(ctx.mode.is(Mode.QuotedPattern))
+    if (tree.name.startsWith("$") /* && !tree.isBackQuoted*/) { // TODO add backquoted TypeDef
+      val mods = tree.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span))
+      tree.withMods(mods)
+    } else tree
+  }
+
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
@@ -995,6 +1013,7 @@ object desugar {
     case tree: TypeDef =>
       if (tree.isClassDef) classDef(tree)
       else if (tree.mods.is(Opaque, butNot = Synthetic)) opaqueAlias(tree)
+      else if (ctx.mode.is(Mode.QuotedPattern)) quotedPatternTypeDef(tree)
       else tree
     case tree: DefDef =>
       if (tree.name.isConstructorName) tree // was already handled by enclosing classDef

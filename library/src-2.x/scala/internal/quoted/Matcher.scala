@@ -5,7 +5,7 @@ import scala.tasty.Reflection
 
 object Matcher {
 
-  def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] =
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] =
     throw new Exception("running on non bootstrapped library")
 
 }

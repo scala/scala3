@@ -30,7 +30,7 @@ object Matcher {
    *  @param reflection instance of the reflection API (implicitly provided by the macro)
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] = {
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] = {
     import reflection.{Bind => BindPattern, _}
 
     // TODO improve performance

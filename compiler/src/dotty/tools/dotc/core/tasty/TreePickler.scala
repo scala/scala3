@@ -472,6 +472,16 @@ class TreePickler(pickler: TastyPickler) {
         case Bind(name, body) =>
           registerDef(tree.symbol)
           writeByte(BIND)
+          println()
+          println(tree)
+          println(tree.isTerm)
+          println(name)
+          println(body)
+          println(tree.uniqueId)
+          println(tree.symbol)
+          println(tree.symbol.info)
+          println()
+          println()
           withLength {
             pickleName(name); pickleType(tree.symbol.info); pickleTree(body)
           }
