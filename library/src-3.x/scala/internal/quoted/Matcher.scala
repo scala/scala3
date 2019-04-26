@@ -239,9 +239,13 @@ object Matcher {
 
     def caseMatches(scrutinee: CaseDef, pattern: CaseDef) given Env: Option[Tuple] = {
       val (caseEnv, patternMatch) = patternMatches(scrutinee.pattern, pattern.pattern)
-      val guardMatch = treeOptMatches(scrutinee.guard, pattern.guard) given caseEnv
-      val rhsMatch = treeMatches(scrutinee.rhs, pattern.rhs) given caseEnv
-      foldMatchings(patternMatch, guardMatch, rhsMatch)
+
+      {
+        implied for Env = caseEnv
+        val guardMatch = treeOptMatches(scrutinee.guard, pattern.guard)
+        val rhsMatch = treeMatches(scrutinee.rhs, pattern.rhs)
+        foldMatchings(patternMatch, guardMatch, rhsMatch)
+      }
     }
 
     /** Check that the pattern trees match and return the contents from the pattern holes.
@@ -312,7 +316,8 @@ object Matcher {
       }
     }
 
-    (treeMatches(scrutineeExpr.unseal, patternExpr.unseal) given Set.empty).asInstanceOf[Option[Tup]]
+    implied for Env = Set.empty
+    treeMatches(scrutineeExpr.unseal, patternExpr.unseal).asInstanceOf[Option[Tup]]
   }
 
   /** Joins the mattchings into a single matching. If any matching is `None` the result is `None`.
