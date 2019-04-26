@@ -7,6 +7,7 @@ import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
 import core.{MacroClassLoader, Mode, TypeError}
+import dotty.tools.dotc.ast.Positioned
 import reporting._
 
 import scala.util.control.NonFatal
@@ -55,6 +56,7 @@ class Driver {
     val summary = CompilerCommand.distill(args)(ctx)
     ctx.setSettings(summary.sstate)
     MacroClassLoader.init(ctx)
+    Positioned.updateDebugPos(ctx)
 
     if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments)) {
       ctx.setProperty(ContextDoc, new ContextDocstrings)
