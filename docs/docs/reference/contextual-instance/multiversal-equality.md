@@ -30,7 +30,7 @@ that derives `Eql`, e.g.
 ```scala
 class T derives Eql
 ```
-Alternatively, one can also provide the derived evidence directly, like this:
+Alternatively, one can also provide the derived instance directly, like this:
 ```scala
 instance of Eql[T, T] = Eql.derived
 ```
@@ -74,7 +74,7 @@ defined as follows:
 def eqlAny[L, R]: Eql[L, R] = Eql.derived
 ```
 
-Even though `eqlAny` is not declared as `evidence`, the compiler will still
+Even though `eqlAny` is not declared as `instance`, the compiler will still
 construct an `eqlAny` instance as answer to an implicit search for the
 type `Eql[L, R]`, unless `L` or `R` have `Eql` instances
 defined on them, or the language feature `strictEquality` is enabled
@@ -140,7 +140,7 @@ The `Eql` object defines implicit instances for
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Instances are defined so that everyone of these types is has a reflexive `Eql` evidence, and the following holds:
+Instances are defined so that everyone of these types has a reflexive `Eql` instance, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).

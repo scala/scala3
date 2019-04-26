@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Implicit By-Name Parameters"
+title: "Inferable By-Name Parameters"
 ---
 
 Inferable by-name parameters can be used to avoid a divergent inferred expansion. Example:
@@ -42,7 +42,7 @@ The precise steps for constructing an inferable argument for a by-name parameter
 
  1. This instance is not immediately available as candidate for argument inference (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an inferred argument to a by-name parameter.
 
- 1. If this search succeeds with expression `E`, and `E` contains references to the evidence `lv`, replace `E` by
+ 1. If this search succeeds with expression `E`, and `E` contains references to `lv`, replace `E` by
 
 
     ```scala
