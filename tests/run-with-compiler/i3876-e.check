@@ -1,0 +1,9 @@
+
+6
+{
+  val x$1: scala.Int = {
+    scala.Predef.println()
+    3
+  }
+  x$1.+(x$1)
+}
