@@ -27,7 +27,7 @@ context query literal, `E` is converted to a context query literal by rewriting 
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
-are available as evidence in `E`.
+are available as implicits in `E`.
 
 Like query types, query literals are written with a `given` prefix. They differ from normal function literals in two ways:
 
@@ -139,9 +139,9 @@ object Test {
 ```
 **Explanations**: We use a context query type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
-`(result == 6)` will therefore have evidence of type `WrappedResult[T]` in
+`(result == 6)` will therefore have an implicit instance of type `WrappedResult[T]` in
 scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure
-that we do not get unwanted evidence types in scope (this is good practice in all cases
+that we do not get unwanted implicit instances in scope (this is good practice in all cases
 where given clauses are involved). Since `WrappedResult` is an opaque type alias, its
 values need not be boxed, and since `ensuring` is added as an extension method, its argument
 does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient
