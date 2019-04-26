@@ -137,7 +137,7 @@ Implicit classes in Scala 2 are often used to define extension methods, which ar
 
 ### Implicit Values
 
-Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an instance alias. E.g., Scala 2's
+Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an alias instance. E.g., Scala 2's
 ```scala
   lazy implicit val pos: Position = tree.sourcePos
 ```

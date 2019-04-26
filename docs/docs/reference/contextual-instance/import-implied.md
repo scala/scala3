@@ -18,7 +18,7 @@ object B {
 In the code above, the `import A._` clause of object `B` will import all members
 of `A` _except_ the instance `tc`. Conversely, the second import `import instance A._` will import _only_ that instance.
 
-Generally, a normal import clause brings all members except implicit instance values into scope whereas an `import instance` clause brings only implicit instance values into scope.
+Generally, a normal import clause brings all members except implicit instances into scope whereas an `import instance` clause brings only implicit instances into scope.
 
 There are two main benefits arising from these rules:
 
@@ -32,15 +32,15 @@ There are two main benefits arising from these rules:
 
 ### Relationship with Old-Style Implicits
 
-The rules of evidence imports above have the consequence that a library
+The rules of instance imports above have the consequence that a library
 would have to migrate in lockstep with all its users from old style implicit definitions and
-normal imports to evidence definitions and evidence imports.
+normal imports to instance definitions and instance imports.
 
 The following modifications avoid this hurdle to migration.
 
- 1. An evidence import also brings old style implicits into scope. So, in Scala 3.0
+ 1. An instance import also brings old style implicits into scope. So, in Scala 3.0
     an old-style implicit definition can be brought into scope either by a normal or
-    by an evidence import.
+    by an instance import.
 
  2. In Scala 3.1, an old-style implicits accessed implicitly through a normal import
     will give a deprecation warning.
@@ -48,6 +48,6 @@ The following modifications avoid this hurdle to migration.
  3. In some version after 3.1, an old-style implicits accessed implicitly through a normal import
     will give a compiler error.
 
-These rules mean that library users can use `import evidence` to access old-style implicits in Scala 3.0,
+These rules mean that library users can use `import instance` to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to
-evidence definitions once their user base has migrated.
+instance definitions once their user base has migrated.
