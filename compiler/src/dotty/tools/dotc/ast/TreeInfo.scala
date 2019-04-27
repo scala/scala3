@@ -367,15 +367,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** The purity level of this expression. See docs for PurityLevel for what that means
-   *  @return   A possibly combination of
-   *
-   *            Path        if expression is at least idempotent and is a path
-   *
-   *            Pure        if expression has no side effects
-   *            Idempotent  if running the expression a second time has no side effects
-   *
-   *            Pure implies Idempotent.
-   *            Impure designates the empty combination.
    *
    *  Note that purity and idempotency are treated differently.
    *  References to modules and lazy vals are impure (side-effecting) both because
