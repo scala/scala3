@@ -8,7 +8,7 @@ import scala.tasty._
 
 object Matcher {
 
-  private final val debug = false
+  private final val debug = true
 
   /** Pattern matches an the scrutineeExpr aquainsnt the patternExpr and returns a tuple
    *  with the matched holes if successful.
@@ -117,7 +117,17 @@ object Matcher {
           foldMatchings(treeMatches(fn1, fn2), treesMatch(args1, args2))
 
         case (Block(stats1, expr1), Block(stats2, expr2)) =>
-          foldMatchings(treesMatch(stats1, stats2), treeMatches(expr1, expr2))
+          def rec(scrutinees: List[Tree], patterns: List[Tree], acc: Option[Tuple]): Option[Tuple] = (scrutinees, patterns) match {
+            case (x :: xs, y :: ys) =>
+              if (y.symbol.annots.exists(_.symbol.owner.name == "patternBindHole")) {
+                println(y.show)
+                rec(x :: xs, ys, acc)
+              } else rec(xs, ys, foldMatchings(acc, treeMatches(x, y)))
+            case (Nil, Nil) =>
+              foldMatchings(acc, treeMatches(expr1, expr2))
+            case _ => None
+          }
+          rec(stats1, stats2, Some(()))
 
         case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
           foldMatchings(treeMatches(cond1, cond2), treeMatches(thenp1, thenp2), treeMatches(elsep1, elsep2))
@@ -219,7 +229,8 @@ object Matcher {
                  |
                  |${pattern.showExtractors}
                  |
-                 |
+                 |with environment
+                 |${env}
                  |
                  |
                  |""".stripMargin)

@@ -10,7 +10,7 @@ object Macros {
   private def impl[A, B](a: Expr[A], b: Expr[B])(implicit reflect: Reflection): Expr[Unit] = {
     import reflect.{Bind => _, _}
 
-    val res = scala.internal.quoted.Matcher.unapply[Tuple](a)(b, reflect).map { tup =>
+    val res = scala.internal.quoted.Matcher.unapply[Tuple, Tuple](a)(b, reflect).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
           s"Expr(${r.unseal.show})"
