@@ -366,7 +366,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       // But if we do that the repl/vars test break. Need to figure out why that's the case.
   }
 
-  /** The purity level of this expression.
+  /** The purity level of this expression. See docs for PurityLevel for what that means
    *  @return   A possibly combination of
    *
    *            Path        if expression is at least idempotent and is a path
@@ -857,16 +857,29 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 }
 
 object TreeInfo {
+  /** A purity level is represented as a bitset (expressed as an Int) */
   class PurityLevel(val x: Int) extends AnyVal {
+    /** `this` contains the bits of `that` */
     def >= (that: PurityLevel): Boolean = (x & that.x) == that.x
+
+    /** The intersection of the bits of `this` and `that` */
     def min(that: PurityLevel): PurityLevel = new PurityLevel(x & that.x)
   }
 
+  /** An expression is a stable path. Requires that expression is at least idempotent */
   val Path: PurityLevel = new PurityLevel(4)
+
+  /** The expression has no side effects */
   val Pure: PurityLevel = new PurityLevel(3)
+
+  /** Running the expression a second time has no side effects. Implied by `Pure`. */
   val Idempotent: PurityLevel = new PurityLevel(1)
+
   val Impure: PurityLevel = new PurityLevel(0)
 
-  val PurePath: PurityLevel = new PurityLevel(7)
-  val IdempotentPath: PurityLevel = new PurityLevel(5)
+  /** A stable path that is evaluated without side effects */
+  val PurePath: PurityLevel = new PurityLevel(Pure.x | Path.x)
+
+  /** A stable path that is also idempotent */
+  val IdempotentPath: PurityLevel = new PurityLevel(Idempotent.x | Path.x)
 }
