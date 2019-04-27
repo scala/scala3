@@ -98,7 +98,7 @@ class Box[T](x: T) derives Eql
 By the usual rules if [typeclass derivation](./derivation.html),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
-instance [T, U] given Eql[T, U] of Eql[Box[T], Box[U]] = Eql.derived
+instance [T, U] of Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala

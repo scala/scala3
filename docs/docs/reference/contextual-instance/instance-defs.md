@@ -19,7 +19,7 @@ instance IntOrd of Ord[Int] {
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-instance ListOrd[T] given (ord: Ord[T]) of Ord[List[T]] {
+instance ListOrd[T] of Ord[List[T]] given (ord: Ord[T]) {
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
@@ -42,9 +42,9 @@ The name of an implicit instance can be left out. So the instance definitions
 of the last section can also be expressed like this:
 ```scala
 instance of Ord[Int] { ... }
-instance [T] given (ord: Ord[T]) of Ord[List[T]] { ... }
+instance [T] of Ord[List[T]] given Ord[T] { ... }
 ```
-If a  name is not given, the compiler will synthesize one from the type(s) in the `for` clause.
+If a  name is not given, the compiler will synthesize one from the type(s) in the `of` clause.
 
 ## Alias Instances
 
@@ -67,12 +67,13 @@ Here is the new syntax of instance definitions, seen as a delta from the [standa
 ```
 TmplDef          ::=  ...
                   |  ‘instance’ InstanceDef
-InstanceDef      ::=  [id] InstanceParams InstanceBody
-InstanceParams   ::=  [DefTypeParamClause] {GivenParamClause}
+InstanceDef      ::=  [id] [DefTypeParamClause] InstanceBody
+InstanceBody     ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+                   |  ‘of’ Type {GivenParamClause} ‘=’ Expr
+ConstrApp        ::=  AnnotType {ArgumentExprs}
+                   |  ‘(’ ConstrApp {‘given’ (InfixExpr | ParArgumentExprs)} ‘)’
 GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
-InstanceBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                   |  ‘for’ Type ‘=’ Expr
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
-The identifier `id` can be omitted only if either the `for` part or the template body is present.
-If the `for` part is missing, the template body must define at least one extension method.
+The identifier `id` can be omitted only if either the `of` part or the template body is present.
+If the `of` part is missing, the template body must define at least one extension method.

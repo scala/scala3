@@ -12,7 +12,7 @@ trait Codec[T] {
 
 instance intCodec of Codec[Int] = ???
 
-instance optionCodec[T] given (ev: => Codec[T]) of Codec[Option[T]] {
+instance optionCodec[T] of Codec[Option[T]] given (ev: => Codec[T]) {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>
