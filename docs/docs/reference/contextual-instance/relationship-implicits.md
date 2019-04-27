@@ -21,7 +21,7 @@ Instance definitions can be mapped to combinations of implicit objects, classes 
     ```
  2. Parameterized instance definitions are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      instance ListOrd[T] given (ord: Ord[T]) of Ord[List[T]] { ... }
+      instance ListOrd[T] of Ord[List[T]] given (ord: Ord[T]) { ... }
     ```
     maps to
     ```scala
