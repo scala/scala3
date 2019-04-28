@@ -1200,14 +1200,15 @@ object Parsers {
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
-     *                      |  PostfixExpr [Ascription]
-     *                      |  [‘inline’] PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  Expr2
+     *                      |  [‘inline’] Expr2 `match' `{' CaseClauses `}'
      *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
-     *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
-     *  Binding           ::= (id | `_') [`:' Type]
-     *  Ascription        ::= `:' CompoundType
-     *                      | `:' Annotation {Annotation}
-     *                      | `:' `_' `*'
+     *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
+     *  Binding           ::=  (id | `_') [`:' Type]
+     *  Expr2             ::=  PostfixExpr [Ascription]
+     *  Ascription        ::=  `:' InfixType
+     *                      |  `:' Annotation {Annotation}
+     *                      |  `:' `_' `*'
      */
     val exprInParens: () => Tree = () => expr(Location.InParens)
 
@@ -1324,7 +1325,8 @@ object Parsers {
              t
          }
       case COLON =>
-        ascription(t, location)
+        val t1 = ascription(t, location)
+        if (in.token == MATCH) expr1Rest(t1, location) else t1
       case MATCH =>
         matchExpr(t, startOffset(t), Match)
       case _ =>
