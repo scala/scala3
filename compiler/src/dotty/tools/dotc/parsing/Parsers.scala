@@ -2355,13 +2355,21 @@ object Parsers {
         tmplDef(start, mods)
     }
 
-    /** PatDef ::= Pattern2 {`,' Pattern2} [`:' Type] `=' Expr
-     *  VarDef ::= PatDef | id {`,' id} `:' Type `=' `_'
-     *  ValDcl ::= id {`,' id} `:' Type
-     *  VarDcl ::= id {`,' id} `:' Type
+    /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
+     *            |  Pattern2 [‘:’ Type] ‘=’ Expr
+     *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
+     *  ValDcl  ::=  id {`,' id} `:' Type
+     *  VarDcl  ::=  id {`,' id} `:' Type
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
-      val lhs = commaSeparated(pattern2)
+      val first = pattern2()
+      val lhs = first match {
+        case id: Ident if in.token == COMMA =>
+          in.nextToken()
+          id :: commaSeparated(() => termIdent())
+        case _ =>
+          first :: Nil
+      }
       val tpt = typedOpt()
       val rhs =
         if (tpt.isEmpty || in.token == EQUALS) {
