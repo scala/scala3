@@ -1036,7 +1036,10 @@ class Typer extends Namer
         if (tree.isInline) checkInInlineContext("inline match", tree.posd)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
-        typedMatchFinish(tree, sel1, selType, tree.cases, pt)
+        val res = typedMatchFinish(tree, sel1, selType, tree.cases, pt)
+        if (tree.selector.removeAttachment(desugar.PatDefMatch).isDefined)
+          checkPatDefMatch(res, sel1.tpe)
+        res
     }
   }
 

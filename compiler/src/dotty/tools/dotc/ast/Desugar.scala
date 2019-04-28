@@ -32,6 +32,9 @@ object desugar {
    */
   val DerivingCompanion: Property.Key[SourcePosition] = new Property.Key
 
+  /** An attachment for match expressions generated from a PatDef */
+  val PatDefMatch: Property.Key[Unit] = new Property.Key
+
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
 
@@ -956,7 +959,11 @@ object desugar {
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
-      def rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
+      def rhsUnchecked = {
+        val rhs1 = makeAnnotated("scala.unchecked", rhs)
+        rhs1.pushAttachment(PatDefMatch, ())
+        rhs1
+      }
       val vars =
         if (tupleOptimizable) // include `_`
           pat match {

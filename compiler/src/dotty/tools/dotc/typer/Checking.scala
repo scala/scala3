@@ -16,6 +16,8 @@ import ProtoTypes._
 import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
+import rewrites.Rewrites.patch
+import util.Spans.Span
 
 import util.SourcePosition
 import transform.SymUtils._
@@ -592,6 +594,25 @@ trait Checking {
     val rstatus = boundsRealizability(cls.thisType)
     if (rstatus ne Realizable)
       ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
+  }
+
+  /** Check that pattern definition is either marked @unchecked or has a right
+   *  hand side with a type that conforms to the pattern's type.
+   */
+  def checkPatDefMatch(tree: Tree, pt: Type)(implicit ctx: Context): Unit = tree match {
+    case Match(_, CaseDef(pat, _, _) :: _)
+    if !pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) && !(pt <:< pat.tpe) =>
+      val pt1 = pt match {
+        case AnnotatedType(pt1, annot) if annot.matches(defn.UncheckedAnnot) => pt1
+        case _ => pt
+      }
+      ctx.errorOrMigrationWarning(
+        ex"""pattern's type ${pat.tpe.widen} is more specialized than the right hand side expression's type $pt1
+            |
+            |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the pattern.${err.rewriteNotice}""",
+        pat.sourcePos)
+      if (ctx.scala2Mode) patch(Span(pat.span.end), ": @unchecked")
+    case _ =>
   }
 
   /** Check that `path` is a legal prefix for an import or export clause */
