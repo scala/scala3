@@ -67,9 +67,13 @@ object Scanners {
 
     /** Generate an error at the given offset */
     def error(msg: String, off: Offset = offset): Unit = {
-      ctx.error(msg, source atSpan Span(off))
+      errorButContinue(msg, off)
       token = ERROR
       errOffset = off
+    }
+
+    def errorButContinue(msg: String, off: Offset = offset): Unit = {
+      ctx.error(msg, source atSpan Span(off))
     }
 
     /** signal an error where the input ended in the middle of a token */
@@ -129,19 +133,22 @@ object Scanners {
         var i = 0
         val len = strVal.length
         while (i < len) {
-          val d = digit2int(strVal charAt i, base)
-          if (d < 0) {
-            error("malformed integer number")
-            return 0
+          val c = strVal charAt i
+          if (! isNumberSeparator(c)) {
+            val d = digit2int(c, base)
+            if (d < 0) {
+              error(s"malformed integer number")
+              return 0
+            }
+            if (value < 0 ||
+              limit / (base / divider) < value ||
+              limit - (d / divider) < value * (base / divider) &&
+                !(negated && limit == value * base - 1 + d)) {
+              error("integer number too large")
+              return 0
+            }
+            value = value * base + d
           }
-          if (value < 0 ||
-            limit / (base / divider) < value ||
-            limit - (d / divider) < value * (base / divider) &&
-              !(negated && limit == value * base - 1 + d)) {
-            error("integer number too large")
-            return 0
-          }
-          value = value * base + d
           i += 1
         }
         if (negated) -value else value
@@ -153,10 +160,11 @@ object Scanners {
     /** Convert current strVal, base to double value
       */
     def floatVal(negated: Boolean): Double = {
+      val text = removeNumberSeparators(strVal)
       val limit: Double =
         if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
       try {
-        val value: Double = java.lang.Double.valueOf(strVal).doubleValue()
+        val value: Double = java.lang.Double.valueOf(text).doubleValue()
         if (value > limit)
           error("floating point number too large")
         if (negated) -value else value
@@ -168,6 +176,17 @@ object Scanners {
     }
 
     def floatVal: Double = floatVal(false)
+
+    @inline def isNumberSeparator(c: Char): Boolean = c == '_'
+
+    @inline def removeNumberSeparators(s: String): String =
+      if (s.indexOf('_') > 0) s.replaceAllLiterally("_", "") /*.replaceAll("'","")*/ else s
+
+    // disallow trailing numeric separator char, but continue lexing
+    def checkNoTrailingSeparator(): Unit = {
+      if (isNumberSeparator(litBuf.last))
+        errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
+    }
 
   }
 
@@ -911,27 +930,29 @@ object Scanners {
      */
     protected def getFraction(): Unit = {
       token = DOUBLELIT
-      while ('0' <= ch && ch <= '9') {
+      while ('0' <= ch && ch <= '9' || isNumberSeparator(ch)) {
         putChar(ch)
         nextChar()
       }
+      checkNoTrailingSeparator()
       if (ch == 'e' || ch == 'E') {
         val lookahead = lookaheadReader()
         lookahead.nextChar()
         if (lookahead.ch == '+' || lookahead.ch == '-') {
           lookahead.nextChar()
         }
-        if ('0' <= lookahead.ch && lookahead.ch <= '9') {
+        if ('0' <= lookahead.ch && lookahead.ch <= '9' || isNumberSeparator(ch)) {
           putChar(ch)
           nextChar()
           if (ch == '+' || ch == '-') {
             putChar(ch)
             nextChar()
           }
-          while ('0' <= ch && ch <= '9') {
+          while ('0' <= ch && ch <= '9' || isNumberSeparator(ch)) {
             putChar(ch)
             nextChar()
           }
+          checkNoTrailingSeparator()
         }
         token = DOUBLELIT
       }
@@ -954,15 +975,18 @@ object Scanners {
     /** Read a number into strVal and set base
     */
     protected def getNumber(): Unit = {
-      while (digit2int(ch, base) >= 0) {
+      while (isNumberSeparator(ch) || digit2int(ch, base) >= 0) {
         putChar(ch)
         nextChar()
       }
+      checkNoTrailingSeparator()
       token = INTLIT
       if (base == 10 && ch == '.') {
         val lch = lookaheadChar()
         if ('0' <= lch && lch <= '9') {
-          putChar('.'); nextChar(); getFraction()
+          putChar('.')
+          nextChar()
+          getFraction()
         }
       } else (ch: @switch) match {
         case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' =>
@@ -972,6 +996,9 @@ object Scanners {
           token = LONGLIT
         case _ =>
       }
+
+      checkNoTrailingSeparator()
+
       setStrVal()
     }
 
