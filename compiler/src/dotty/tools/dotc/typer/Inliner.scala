@@ -285,7 +285,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.dealias match {
-          case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
+          case _: SingletonType if isIdempotentPath(arg) => arg.tpe
           case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
         }
       }

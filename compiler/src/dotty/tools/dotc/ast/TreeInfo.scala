@@ -366,14 +366,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       // But if we do that the repl/vars test break. Need to figure out why that's the case.
   }
 
-  /** The purity level of this expression.
-   *  @return   SimplyPure  if expression has no side effects and cannot contain local definitions
-   *            Pure        if expression has no side effects
-   *            Idempotent  if running the expression a second time has no side effects
-   *            Impure      otherwise
+  /** The purity level of this expression. See docs for PurityLevel for what that means
    *
-   *  Note that purity and idempotency are different. References to modules and lazy
-   *  vals are impure (side-effecting) both because side-effecting code may be executed and because the first reference
+   *  Note that purity and idempotency are treated differently.
+   *  References to modules and lazy vals are impure (side-effecting) both because
+   *  side-effecting code may be executed and because the first reference
    *  takes a different code path than all to follow; but they are idempotent
    *  because running the expression a second time gives the cached result.
    */
@@ -381,16 +378,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case EmptyTree
        | This(_)
        | Super(_, _)
-       | Literal(_)
-       | Closure(_, _, _) =>
-      SimplyPure
+       | Literal(_) =>
+      PurePath
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
       if (tree.symbol.is(Erased)) Pure
-      else refPurity(tree).min(exprPurity(qual))
-    case New(_) =>
-      SimplyPure
+      else refPurity(tree) `min` exprPurity(qual)
+    case New(_) | Closure(_, _, _) =>
+      Pure
     case TypeApply(fn, _) =>
       if (fn.symbol.is(Erased)) Pure else exprPurity(fn)
     case Apply(fn, args) =>
@@ -416,37 +412,49 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       Impure
   }
 
-  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ min _)
+  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ `min` _)
 
-  def isSimplyPure(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) == SimplyPure
-  def isPureExpr(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= Pure
-  def isIdempotentExpr(tree: Tree)(implicit ctx: Context): Boolean = exprPurity(tree) >= Idempotent
+  def isPurePath(tree: Tree)(implicit ctx: Context): Boolean = tree.tpe match {
+    case tpe: ConstantType => exprPurity(tree) >= Pure
+    case _ => exprPurity(tree) == PurePath
+  }
+
+  def isPureExpr(tree: Tree)(implicit ctx: Context): Boolean =
+    exprPurity(tree) >= Pure
+
+  def isIdempotentPath(tree: Tree)(implicit ctx: Context): Boolean = tree.tpe match {
+    case tpe: ConstantType => exprPurity(tree) >= Idempotent
+    case _ => exprPurity(tree) >= IdempotentPath
+  }
+
+  def isIdempotentExpr(tree: Tree)(implicit ctx: Context): Boolean =
+    exprPurity(tree) >= Idempotent
 
   def isPureBinding(tree: Tree)(implicit ctx: Context): Boolean = statPurity(tree) >= Pure
 
   /** The purity level of this reference.
    *  @return
-   *    SimplyPure  if reference is (nonlazy and stable) or to a parameterized function
-   *    Idempotent  if reference is lazy and stable
-   *    Impure      otherwise
+   *    PurePath        if reference is (nonlazy and stable) or to a parameterized function
+   *    IdempotentPath  if reference is lazy and stable
+   *    Impure          otherwise
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
   def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
     val sym = tree.symbol
     if (!tree.hasType) Impure
-    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) SimplyPure
+    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
-      if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
-    else if (sym.is(Lazy)) Idempotent
-    else SimplyPure
+      if (sym.moduleClass.isNoInitsClass) PurePath else IdempotentPath
+    else if (sym.is(Lazy)) IdempotentPath
+    else PurePath
   }
 
   def isPureRef(tree: Tree)(implicit ctx: Context): Boolean =
-    refPurity(tree) == SimplyPure
+    refPurity(tree) == PurePath
   def isIdempotentRef(tree: Tree)(implicit ctx: Context): Boolean =
-    refPurity(tree) >= Idempotent
+    refPurity(tree) >= IdempotentPath
 
   /** (1) If `tree` is a constant expression, its value as a Literal,
    *  or `tree` itself otherwise.
@@ -840,13 +848,29 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 }
 
 object TreeInfo {
+  /** A purity level is represented as a bitset (expressed as an Int) */
   class PurityLevel(val x: Int) extends AnyVal {
-    def >= (that: PurityLevel): Boolean = x >= that.x
-    def min(that: PurityLevel): PurityLevel = new PurityLevel(x min that.x)
+    /** `this` contains the bits of `that` */
+    def >= (that: PurityLevel): Boolean = (x & that.x) == that.x
+
+    /** The intersection of the bits of `this` and `that` */
+    def min(that: PurityLevel): PurityLevel = new PurityLevel(x & that.x)
   }
 
-  val SimplyPure: PurityLevel = new PurityLevel(3)
-  val Pure: PurityLevel = new PurityLevel(2)
+  /** An expression is a stable path. Requires that expression is at least idempotent */
+  val Path: PurityLevel = new PurityLevel(4)
+
+  /** The expression has no side effects */
+  val Pure: PurityLevel = new PurityLevel(3)
+
+  /** Running the expression a second time has no side effects. Implied by `Pure`. */
   val Idempotent: PurityLevel = new PurityLevel(1)
+
   val Impure: PurityLevel = new PurityLevel(0)
+
+  /** A stable path that is evaluated without side effects */
+  val PurePath: PurityLevel = new PurityLevel(Pure.x | Path.x)
+
+  /** A stable path that is also idempotent */
+  val IdempotentPath: PurityLevel = new PurityLevel(Idempotent.x | Path.x)
 }
