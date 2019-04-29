@@ -22,7 +22,17 @@ class TastydocConsumer extends TastyConsumer {
     //println(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root), false))
 
     val representationConversion = representations.convertToRepresentation(reflect)(root)
-    DocPrinter.traverseRepresentation(representationConversion, Set[(String, String)]())
-
+    val packagesSet = DocPrinter.traverseRepresentation(representationConversion, Set[(List[String], String)]())
+    packagesSet.groupBy(x => x._1).foreach{ (k, m) =>
+      if(k.nonEmpty){
+        val file = new File("./" + DocPrinter.folderPrefix + k.mkString("/") + ".md")
+        file.getParentFile.mkdirs
+        val pw = new PrintWriter(file)
+        pw.write(Md.header1("Package " + k.last))
+        pw.write(Md.header2("Members:"))
+        m.foreach(x => pw.write(x._2 + "\n"))
+        pw.close
+      }
+    }
   }
 }

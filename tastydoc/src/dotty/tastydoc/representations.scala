@@ -76,6 +76,13 @@ object representations extends CommentParser with CommentCleaner {
     val annotations: List[String]
   }
 
+  private def extractPath(reflect: Reflection)(symbol: reflect.Symbol) : List[String] = {
+    import reflect._
+
+    val pathArray = symbol.showCode.split("\\.")
+    pathArray.view(0, pathArray.length - 1).toList
+  }
+
   private def extractModifiers(reflect: Reflection)(flags: reflect.Flags) : List[String] = {
     import reflect._
 
@@ -142,13 +149,13 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val name = internal.name
-    override val path = internal.symbol.showCode.split("\\.").toList
+    override val path = extractPath(reflect)(internal.symbol)
     override val members = extractMembers(reflect)(internal.body)
     override val parent = None
     override val parents = internal.parents.map(x => removeColorFromType(x.showCode))
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
-      case Some(_) => path.init ++ List(name)
+      case Some(x) => path.init ++ List(name)
       case None => Nil
     }
     override val constructors = (internal.constructor :: (internal.body
@@ -178,7 +185,7 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val name = internal.name
-    override val path = internal.symbol.showCode.split("\\.").toList
+    override val path = extractPath(reflect)(internal.symbol)
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val members = extractMembers(reflect)(internal.body)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
@@ -193,7 +200,7 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val name = internal.name
-    override val path = internal.symbol.showCode.split("\\.").toList
+    override val path = extractPath(reflect)(internal.symbol)
     override val parent = None
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
@@ -214,7 +221,7 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val name = internal.name
-    override val path = internal.symbol.showCode.split("\\.").toList
+    override val path = extractPath(reflect)(internal.symbol)
     override val parent = None
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
@@ -227,7 +234,7 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val name = internal.name
-    override val path = internal.symbol.showCode.split("\\.").toList
+    override val path = extractPath(reflect)(internal.symbol)
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
     override val typeParams = Nil
     override val annotations = Nil

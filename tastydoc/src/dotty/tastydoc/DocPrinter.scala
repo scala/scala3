@@ -155,19 +155,41 @@ object DocPrinter{
     case _ => ""
   }
 
-  def traverseRepresentation(representation: Representation, packagesSet: Set[(String, String)]) : Set[(String, String)] = representation match {
+  //TODO: Remove zzz
+  val folderPrefix = "tastydoc/zzz/"
+  //TOASK: Path in representation with or without name at the end?
+  def traverseRepresentation(representation: Representation, packagesSet: Set[(List[String], String)]) : Set[(List[String], String)] = representation match {
     case r: PackageRepresentation =>
-      val z = packagesSet + ((r.path.mkString("/"), "package " + Md.link(r.name, "./tastydoc/" + r.path.mkString("", "/", "/") + r.name + ".md")))
-      r.members.foldLeft(z)((acc, m) => traverseRepresentation(m, acc))
+      if(r.path.nonEmpty){
+        val z = packagesSet + ((r.path, "package " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
+        r.members.foldLeft(z)((acc, m) => traverseRepresentation(m, acc))
+      }else{
+        r.members.foldLeft(packagesSet)((acc, m) => traverseRepresentation(m, acc))
+      }
 
     case r: ClassRepresentation =>
-      val file = new File("./tastydoc/" + r.path.mkString("", "/", "/") + r.name + ".md")
+      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + r.name + ".md")
       file.getParentFile.mkdirs
-      // file.createNewFile
       val pw = new PrintWriter(file)
       pw.write(formatRepresentationToMarkdown(r, false))
       pw.close
-      packagesSet + ((r.path.mkString("/"), "class " + Md.link(r.name, r.name + ".md")))
+      if(r.path.nonEmpty){
+        packagesSet + ((r.path, "class " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
+      }else{
+        packagesSet + ((r.path, "class " + Md.link(r.name, "./" + r.name + ".md")))
+      }
+
+    case r: ObjectRepresentation =>
+      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + r.name + ".md")
+      file.getParentFile.mkdirs
+      val pw = new PrintWriter(file)
+      pw.write(formatRepresentationToMarkdown(r, false))
+      pw.close
+      if(r.path.nonEmpty){
+        packagesSet + ((r.path, "object " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
+      }else{
+        packagesSet + ((r.path, "object " + Md.link(r.name, "./" + r.name + ".md")))
+      }
     case _ => packagesSet
   }
 }
