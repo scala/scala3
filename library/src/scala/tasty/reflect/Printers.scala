@@ -1628,6 +1628,27 @@ trait Printers
         case Type.RecursiveThis(_) =>
           this += highlightTypeDef("this", color)
 
+        case Type.IsMethodType(tpe) =>
+          this += "("
+          printList(tpe.paramNames.zip(tpe.paramTypes), ", ",
+            (x: (String, Type)) => (this += x._1 += ": ").printType(x._2))
+          this += ")"
+          printType(tpe.resType)
+
+        case Type.IsPolyType(tpe) =>
+          this += "["
+          printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
+            (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
+          this += "]"
+          printType(tpe.resType)
+
+        case Type.IsTypeLambda(tpe) =>
+          this += "["
+          printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
+            (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
+          this += "] => "
+          printType(tpe.resType)
+
         case _ =>
           throw new MatchError(tpe.showExtractors)
       }
