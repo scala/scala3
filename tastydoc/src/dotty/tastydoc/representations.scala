@@ -81,6 +81,7 @@ object representations extends CommentParser with CommentCleaner {
 
     ((if(flags.is(Flags.Override)) "override" else "") ::
     (if(flags.is(Flags.Private)) "private" else "") ::
+    //TODO: Scope modifiers for private and protected
     (if(flags.is(Flags.Protected)) "protected" else "") ::
     (if(flags.is(Flags.Final)) "final" else "") ::
     (if(flags.is(Flags.Sealed)) "sealed" else "") ::
@@ -94,7 +95,7 @@ object representations extends CommentParser with CommentCleaner {
     comment match {
       case Some(com) =>
         val parsed = parse(Map.empty, clean(com.raw), com.raw)
-        if (true) { //TODO
+        if (true) { //TODO option of tool
           Some(WikiComment(rep, parsed).comment)
         }
         else{
@@ -107,7 +108,7 @@ object representations extends CommentParser with CommentCleaner {
   private def extractMembers(reflect: Reflection)(body: List[reflect.Statement]) : List[Representation] = {
     import reflect._
     body.filter{x => //Filter fields which shouldn't be displayed in the doc
-        !removeColorFromType(x.showCode).contains("def this") && //No constructor
+        !removeColorFromType(x.showCode).contains("def this(") && //No constructor
         !x.symbol.flags.is(Flags.Local) //Locally defined
       }
       .map(convertToRepresentation(reflect))
@@ -151,7 +152,7 @@ object representations extends CommentParser with CommentCleaner {
       case None => Nil
     }
     override val constructors = (internal.constructor :: (internal.body
-      .filter(x => removeColorFromType(x.showCode).contains("def this"))
+      .filter(x => removeColorFromType(x.showCode).contains("def this("))
       .flatMap{x => x match {
         case IsDefDef(d@reflect.DefDef(_)) => Some(d)
         case _ => None

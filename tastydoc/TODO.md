@@ -15,6 +15,9 @@
 * WikiParser (just error reporting (span))
   * Span + error printing
 
+## Other
+* handle things such as $genericCanBuildFromInfo
+
 # Representation
 * Case class
 * Trait

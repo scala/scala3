@@ -3,6 +3,8 @@ package dotty.tastydoc
 import representations._
 import comment.Comment
 
+import java.io._
+
 object DocPrinter{
   private def formatParamList(paramList: ParamList) : String = paramList.list.map(x => x.title + ": " + x.tpe).mkString(
     "(" + (if(paramList.isImplicit) "implicit " else ""),
@@ -35,7 +37,6 @@ object DocPrinter{
   }
 
   def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean) : String = representation match {
-    //case _ => ""
     case r : PackageRepresentation =>
       r.name +
       "\n" +
@@ -152,5 +153,21 @@ object DocPrinter{
 
     case _ : DebugRepresentation => "=============>ERROR<==============="
     case _ => ""
+  }
+
+  def traverseRepresentation(representation: Representation, packagesSet: Set[(String, String)]) : Set[(String, String)] = representation match {
+    case r: PackageRepresentation =>
+      val z = packagesSet + ((r.path.mkString("/"), "package " + Md.link(r.name, "./tastydoc/" + r.path.mkString("", "/", "/") + r.name + ".md")))
+      r.members.foldLeft(z)((acc, m) => traverseRepresentation(m, acc))
+
+    case r: ClassRepresentation =>
+      val file = new File("./tastydoc/" + r.path.mkString("", "/", "/") + r.name + ".md")
+      file.getParentFile.mkdirs
+      // file.createNewFile
+      val pw = new PrintWriter(file)
+      pw.write(formatRepresentationToMarkdown(r, false))
+      pw.close
+      packagesSet + ((r.path.mkString("/"), "class " + Md.link(r.name, r.name + ".md")))
+    case _ => packagesSet
   }
 }

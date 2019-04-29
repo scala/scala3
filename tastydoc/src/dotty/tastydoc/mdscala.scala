@@ -93,4 +93,15 @@ object Md {
   def italics(obj: Any) : String = {
     "*" + obj.toString + "*"
   }
+
+  /** Add a link to something
+   *
+   * @param obj The label of the link
+   * @param link The link
+   *
+   * @return The label linking to the desired link
+   */
+  def link(label: Any, link: String): String = {
+    "[" + label.toString + "](" + link + ")"
+  }
 }

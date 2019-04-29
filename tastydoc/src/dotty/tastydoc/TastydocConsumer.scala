@@ -4,8 +4,6 @@ import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 
 import dotty.tools.dotc.tastyreflect
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.Set
 import scala.annotation.tailrec
 
 import java.io._
@@ -23,9 +21,8 @@ class TastydocConsumer extends TastyConsumer {
     //convertToEntity(root)
     //println(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root), false))
 
-    val pw = new PrintWriter(new File("./tastydoc/docOutputTest.md" ))
-    pw.write(DocPrinter.formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root), false))
-    pw.close()
+    val representationConversion = representations.convertToRepresentation(reflect)(root)
+    DocPrinter.traverseRepresentation(representationConversion, Set[(String, String)]())
 
   }
 }
