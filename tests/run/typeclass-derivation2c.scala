@@ -305,8 +305,9 @@ object Pickler {
     }
 
   inline def unpickleProduct[T](g: Generic.Product[T])(buf: mutable.ListBuffer[Int]): T = {
-    inline val size = constValue[Tuple.Size[g.ElemTypes]]
-    val elems = new Array[Object](size)
+    // inline val size = constValue[Tuple.Size[g.ElemTypes]]
+    // val elems = new Array[Object](size)
+    val elems = new Array[Object](buf.size)
     unpickleElems[g.ElemTypes](0)(buf, elems)
     g.fromProduct(ArrayProduct(elems))
   }

@@ -2152,6 +2152,15 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case _ =>
           cas
       }
+      def widenAbstractTypes(tp: Type) = new TypeMap {
+        def apply(tp: Type) = tp match {
+          case tp: TypeRef if tp.symbol.isAbstractOrParamType | tp.symbol.isOpaqueAlias => WildcardType
+          case tp: TypeVar if !tp.isInstantiated => WildcardType
+          case _: SkolemType | _: TypeParamRef => WildcardType
+          case _ => mapOver(tp)
+        }
+      }.apply(tp)
+
       val defn.MatchCase(pat, body) = cas1
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*
@@ -2164,12 +2173,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               body
           }
         }
-      else if (intersecting(scrut, pat))
+      else if (isSubType(widenAbstractTypes(scrut), widenAbstractTypes(pat)))
         Some(NoType)
-      else
+      else if (!intersecting(scrut, pat))
         // We found a proof that `scrut` and  `pat` are incompatible.
         // The search continues.
         None
+      else
+        Some(NoType)
     }
 
     def recur(cases: List[Type]): Type = cases match {
