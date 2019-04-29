@@ -1076,7 +1076,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   def canCompare(atoms: Set[Type]): Boolean =
     ctx.phase.isTyper || {
       val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
-        override val stopAtStatic = true
+        override def stopAtStatic = true
       }
       !atoms.exists(hasSkolems(false, _))
     }

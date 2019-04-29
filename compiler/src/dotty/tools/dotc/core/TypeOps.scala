@@ -219,8 +219,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       //  2.1. If only one widening succeeds, pick that one.
       //  2.2. If the two widened types are in a subtype relationship, pick the smaller one.
       //  2.3. If exactly one of the two types is a singleton type, pick that one.
-      //  2.4. If the widened tp1 is a supertype of tp2, pick widened tp1.
-      //  2.5. If the widened tp2 is a supertype of tp1, pick widened tp2.
+      //  2.4. If the widened tp2 is a supertype of tp1, pick widened tp2.
+      //  2.5. If the widened tp1 is a supertype of tp2, pick widened tp1.
       //  2.6. Otherwise, pick tp1
       //
       // At steps 4-6 we lose possible solutions, since we have to make an
@@ -251,14 +251,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val isSingle1 = tp1.isInstanceOf[SingletonType]
         val isSingle2 = tp2.isInstanceOf[SingletonType]
         return {
-          if (tp2w eq tp2) orDominator(tp1w | tp2)
-          else if (tp1w eq tp1) orDominator(tp1 | tp2w)
-          else if (tp1w frozen_<:< tp2w) orDominator(tp1w | tp2)
-          else if (tp2w frozen_<:< tp1w) orDominator(tp1 | tp2w)
-          else if (isSingle1 && !isSingle2) orDominator(tp1w | tp2)
-          else if (isSingle2 && !isSingle1) orDominator(tp1 | tp2w)
-          else if (tp1 frozen_<:< tp2w) tp2w
-          else orDominator(tp1w | tp2)
+          if (tp2w eq tp2) orDominator(tp1w | tp2)                  // 2.1
+          else if (tp1w eq tp1) orDominator(tp1 | tp2w)             // 2.1
+          else if (tp1w frozen_<:< tp2w) orDominator(tp1w | tp2)    // 2.2
+          else if (tp2w frozen_<:< tp1w) orDominator(tp1 | tp2w)    // 2.2
+          else if (isSingle1 && !isSingle2) orDominator(tp1w | tp2) // 2.3
+          else if (isSingle2 && !isSingle1) orDominator(tp1 | tp2w) // 2.3
+          else if (tp1 frozen_<:< tp2w) tp2w                        // 2.4
+          else orDominator(tp1w | tp2)                              // 2.5 and 2.6
         }
       }
 

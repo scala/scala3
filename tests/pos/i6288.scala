@@ -9,7 +9,7 @@ object O {
   val x = 3
   opaque type T = x.type
   object T {
-    def wrap(a: x.type): T = a   // Error
+    def wrap(a: x.type): T = a   // was an error, now OK
     def unwrap(a: T): x.type = a // OK
   }
 }

@@ -1063,7 +1063,7 @@ object Types {
         tp
     }
 
-    /** Widen all top-level singletons reachable by dealising
+    /** Widen all top-level singletons reachable by dealiasing
      *  and going to the operands of & and |.
      *  Overridden and cached in OrType.
      */
