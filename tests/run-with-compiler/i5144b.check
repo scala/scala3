@@ -1,7 +1,4 @@
 {
-  def f(x: scala.Int): scala.Int = {
-    val x$1: scala.Int = 42
-    f(x$1)
-  }
+  def f(x: scala.Int): scala.Int = f(42)
   ()
 }

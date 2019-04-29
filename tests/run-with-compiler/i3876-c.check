@@ -1,11 +1,10 @@
 6
 {
-  val x$1: scala.Int = 3
   val f: scala.Function1[scala.Int, scala.Int] {
     def apply(x: scala.Int): scala.Int
   } = ((x: scala.Int) => x.+(x))
 
   (f: scala.Function1[scala.Int, scala.Int] {
     def apply(x: scala.Int): scala.Int
-  }).apply(x$1)
+  }).apply(3)
 }
