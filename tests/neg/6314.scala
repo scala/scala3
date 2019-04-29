@@ -46,3 +46,28 @@ object Test2 {
     def right(fa: Bar[L]): Int = fa // error
   }
 }
+
+
+object Test3 {
+  type Bar[A] = A match {
+    case X => String
+    case Y => Int
+  }
+
+  trait XX {
+    type Foo
+
+    val a: Bar[X & Foo] = "hello"
+    val b: Bar[Y & Foo] = 1 // error
+
+    def apply(fa: Bar[X & Foo]): Bar[Y & Foo]
+
+    def boom: Int = apply(a) // error
+  }
+
+  trait YY extends XX {
+    type Foo = X & Y
+
+    def apply(fa: Bar[X & Foo]): Bar[Y & Foo] = fa
+  }
+}
