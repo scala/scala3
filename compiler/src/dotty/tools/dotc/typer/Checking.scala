@@ -23,7 +23,7 @@ import util.SourcePosition
 import transform.SymUtils._
 import Decorators._
 import ErrorReporting.{err, errorType}
-import config.Printers.typr
+import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import Applications.unapplyArgs
 
