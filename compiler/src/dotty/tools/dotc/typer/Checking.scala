@@ -25,6 +25,7 @@ import Decorators._
 import ErrorReporting.{err, errorType}
 import config.Printers.typr
 import NameKinds.DefaultGetterName
+import Applications.unapplyArgs
 
 import collection.mutable
 import SymDenotations.{NoCompleter, NoDenotation}
@@ -596,23 +597,46 @@ trait Checking {
       ctx.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
-  /** Check that pattern definition is either marked @unchecked or has a right
-   *  hand side with a type that conforms to the pattern's type.
+  /** Check that pattern `pat` is irrefutable for scrutinee tye `pt`.
+   *  This means `pat` is either marked @unchecked or `pt` conforms to the
+   *  pattern's type. If pattern is an UnApply, do the check recursively.
    */
-  def checkPatDefMatch(tree: Tree, pt: Type)(implicit ctx: Context): Unit = tree match {
-    case Match(_, CaseDef(pat, _, _) :: _)
-    if !pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) && !(pt <:< pat.tpe) =>
-      val pt1 = pt match {
-        case AnnotatedType(pt1, annot) if annot.matches(defn.UncheckedAnnot) => pt1
-        case _ => pt
+  def checkIrrefutable(pat: Tree, pt: Type)(implicit ctx: Context): Boolean = {
+    patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
+
+    def check(pat: Tree, pt: Type): Boolean = {
+      if (pt <:< pat.tpe)
+        true
+      else {
+        ctx.errorOrMigrationWarning(
+          ex"""pattern's type ${pat.tpe} is more specialized than the right hand side expression's type ${pt.dropAnnot(defn.UncheckedAnnot)}
+              |
+              |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.${err.rewriteNotice}""",
+          pat.sourcePos)
+        false
       }
-      ctx.errorOrMigrationWarning(
-        ex"""pattern's type ${pat.tpe.widen} is more specialized than the right hand side expression's type $pt1
-            |
-            |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the pattern.${err.rewriteNotice}""",
-        pat.sourcePos)
-      if (ctx.scala2Mode) patch(Span(pat.span.end), ": @unchecked")
-    case _ =>
+    }
+
+    !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
+    pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
+      pat match {
+        case Bind(_, pat1) =>
+          checkIrrefutable(pat1, pt)
+        case UnApply(fn, _, pats) =>
+          check(pat, pt) && {
+            val argPts = unapplyArgs(fn.tpe.finalResultType, fn, pats, pat.sourcePos)
+            pats.corresponds(argPts)(checkIrrefutable)
+          }
+        case Alternative(pats) =>
+          pats.forall(checkIrrefutable(_, pt))
+        case Typed(arg, tpt) =>
+          check(pat, pt) && checkIrrefutable(arg, pt)
+        case Ident(nme.WILDCARD) =>
+          true
+        case _ =>
+          check(pat, pt)
+      }
+    }
   }
 
   /** Check that `path` is a legal prefix for an import or export clause */
