@@ -4966,14 +4966,11 @@ object Types {
   }
 
   class TypeSizeAccumulator(implicit ctx: Context) extends TypeAccumulator[Int] {
-    val seen: util.HashSet[Type] = new util.HashSet[Type](64) {
-      override def hash(x: Type): Int = System.identityHashCode(x)
-      override def isEqual(x: Type, y: Type) = x.eq(y)
-    }
+    val seen = new java.util.IdentityHashMap[Type, Type]
     def apply(n: Int, tp: Type): Int =
-      if (seen contains tp) n
+      if (seen.get(tp) != null) n
       else {
-        seen.addEntry(tp)
+        seen.put(tp, tp)
         tp match {
         case tp: AppliedType =>
           foldOver(n + 1, tp)
@@ -4981,7 +4978,7 @@ object Types {
           foldOver(n + 1, tp)
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
-        case tp: TypeParamRef if !seen(tp) =>
+        case tp: TypeParamRef =>
           apply(n, ctx.typeComparer.bounds(tp))
         case _ =>
           foldOver(n, tp)
@@ -4990,14 +4987,11 @@ object Types {
   }
 
   class CoveringSetAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[Symbol]] {
-    val seen: util.HashSet[Type] = new util.HashSet[Type](64) {
-      override def hash(x: Type): Int = System.identityHashCode(x)
-      override def isEqual(x: Type, y: Type) = x.eq(y)
-    }
+    val seen = new java.util.IdentityHashMap[Type, Type]
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] = {
-      if (seen contains tp) cs
+      if (seen.get(tp) != null) cs
       else {
-        seen.addEntry(tp)
+        seen.put(tp, tp)
         tp match {
           case tp if tp.isTopType || tp.isBottomType =>
             cs
