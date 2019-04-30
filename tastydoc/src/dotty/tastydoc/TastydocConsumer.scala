@@ -30,7 +30,7 @@ class TastydocConsumer extends TastyConsumer {
         val pw = new PrintWriter(file)
         pw.write(Md.header1("Package " + k.last))
         pw.write(Md.header2("Members:"))
-        m.foreach(x => pw.write(x._2 + "\n"))
+        m.foreach(x => pw.write(x._2 + "\n\n"))
         pw.close
       }
     }

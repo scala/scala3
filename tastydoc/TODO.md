@@ -15,14 +15,15 @@
 * WikiParser (just error reporting (span))
   * Span + error printing
 
-## Other
+# Other
 * handle things such as $genericCanBuildFromInfo
+* Main
 
 # Representation
 * Case class
 * Trait
-* Empty package (has name <empty>)
 * All modifiers present?
+* Scope modifiers
 * Define wiki or markdown syntax
 * Beautify type parameters (+ variance)
 * Make type as References
@@ -34,11 +35,12 @@
 * Known subclasses
 * Methods inherited ?
 * Annotations (+ everywhere or only where it makes sense?)
-* Verify we have everything
+* Type default
+* Fix color in showcode
+* Make sure no Entity is left
+* Verify we have every entities-like
 
 # Output
-* Decide between html or markdown
-* Actual output
-* Different files for each class/object
+* Output inner class/object if not inherited
 * Source file link
-* List Package content
+* List Package content => def/val too?

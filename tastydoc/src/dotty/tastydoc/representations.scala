@@ -5,11 +5,8 @@ import dotty.tastydoc.comment.{CommentParser, CommentCleaner, Comment, WikiComme
 
 object representations extends CommentParser with CommentCleaner {
 
-  //TOASK
+  //TODO
   //- reflect as implicit?
-
-  //Global TODO
-  //- Make sure no Entity is left
 
   def removeColorFromType(tpe: String) : String = { //TODO: This a workaround, fix this
     tpe.replaceAll("\u001B\\[[;\\d]*m", "")
@@ -225,6 +222,27 @@ object representations extends CommentParser with CommentCleaner {
     override val parent = None
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
+
+    private def test(tp: reflect.Type): String ={
+      def typeOrBoundsHandling(typeOrBounds: reflect.TypeOrBounds): String = typeOrBounds match {
+        case reflect.IsType(tpe) => test(tpe)
+        case _ => "BOUNDS"
+      }
+
+      tp match {
+        case reflect.Type.IsOrType(reflect.Type.OrType(left, right)) => test(left) + " | " + test(right)
+        case reflect.Type.IsAndType(reflect.Type.AndType(left, right)) => test(left) + " & " + test(right)
+        case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => test(tpe) + "[" + typeOrBoundsList.map(typeOrBoundsHandling).mkString(", ") + "]"
+        case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => "=> " + test(tpe)
+        case reflect.Type.IsConstantType(reflect.Type.ConstantType(typeOrBounds)) => "CONSTANT"
+        case reflect.Type.IsTypeRef(reflect.Type.TypeRef(name, qual)) => typeOrBoundsHandling(qual) + "TYPE" + name
+        case reflect.Type.IsTermRef(reflect.Type.TermRef(name, qual)) => typeOrBoundsHandling(qual) + "TERM" + name
+        case _ => "ERROR(" + tp + ")"
+      }
+    }
+    println(name + "=============")
+    println(test(internal.tpt.tpe))
+
     override val returnValue = removeColorFromType(internal.tpt.tpe.showCode)
     override val annotations = Nil
     override val comments = extractComments(reflect)(internal.symbol.comment, this)

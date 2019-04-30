@@ -33,6 +33,7 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
 
   sealed trait CaseImplementThis
   case class IAmACaseClass(x: T) extends CaseImplementThis
+  case object IAmACaseObject extends CaseImplementThis
 
   object testObject {
 
@@ -48,6 +49,10 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
   def methodsWithParams(x : T, y: Int) : List[Map[Int, T]] = ???
 
   def methodsWithImplicit(x: Int)(implicit imp: Int, notImp: String) = ???
+
+  def methodsWithCallByName(x: => Int) = ???
+
+  def methodsWithDefault(x: Int = 42) = ???
 
   /** Test value
   */
@@ -99,6 +104,7 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
 
   type typeExamle[X] >: X <: String //TypeBound
 
+  def useOfOutsideType(): ReturnTypeClass = ???
 }
 
 /** Companion object

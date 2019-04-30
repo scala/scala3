@@ -83,6 +83,12 @@ object DocPrinter{
         "\n" +
         Md.header3("Types: ") +
         r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Classes: ") +
+        r.members.flatMap{case x : ClassRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Objects: ") +
+        r.members.flatMap{case x : ObjectRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
         "\n"
       }
 
@@ -114,6 +120,12 @@ object DocPrinter{
         "\n" +
         Md.header3("Types: ") +
         r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Classes: ") +
+        r.members.flatMap{case x : ClassRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Objects: ") +
+        r.members.flatMap{case x : ObjectRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
         "\n"
       }
 
@@ -160,7 +172,7 @@ object DocPrinter{
   //TOASK: Path in representation with or without name at the end?
   def traverseRepresentation(representation: Representation, packagesSet: Set[(List[String], String)]) : Set[(List[String], String)] = representation match {
     case r: PackageRepresentation =>
-      if(r.path.nonEmpty){
+      if(r.path.nonEmpty && r.name != "<empty>"){
         val z = packagesSet + ((r.path, "package " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
         r.members.foldLeft(z)((acc, m) => traverseRepresentation(m, acc))
       }else{
