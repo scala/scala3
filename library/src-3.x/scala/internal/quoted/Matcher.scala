@@ -120,8 +120,12 @@ object Matcher {
           fn1 =#= fn2 && args1 =##= args2
 
         case (Block(stats1, expr1), Block(stats2, expr2)) =>
-          // FIXME update the environment
-          stats1 =##= stats2 && expr1 =#= expr2
+          val env = the[Env] ++ stats1.map(_.symbol).zip(stats2.map(_.symbol))
+
+          {
+            implied for Env = env
+            stats1 =##= stats2 && expr1 =#= expr2
+          }
 
         case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
           cond1 =#= cond2 && thenp1 =#= thenp2 && elsep1 =#= elsep2
