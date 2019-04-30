@@ -91,6 +91,7 @@ object Test {
     matches({ val a: Int = 45 }, { var a: Int = 45 })
     matches({ val a: Int = 45 }, { @patternBindHole var a: Int = patternHole })
     matches({ val a: Int = 45; a + a }, { val x: Int = 45; x + x })
+    matches({ val a: Int = 45; val b = a }, { val x: Int = 45; val y = x })
     matches({ val a: Int = 45; a + a }, { val x: Int = 45; x + patternHole[Int] })
     matches({ lazy val a: Int = 45 }, { val a: Int = 45 })
     matches({ lazy val a: Int = 45 }, { lazy val a: Int = 45 })

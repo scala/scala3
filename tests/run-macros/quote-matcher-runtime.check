@@ -314,6 +314,18 @@ Result: Some(List())
 
 Scrutinee: {
   val a: scala.Int = 45
+  val b: scala.Int = a
+  ()
+}
+Pattern: {
+  val x: scala.Int = 45
+  val y: scala.Int = x
+  ()
+}
+Result: Some(List())
+
+Scrutinee: {
+  val a: scala.Int = 45
   a.+(a)
 }
 Pattern: {

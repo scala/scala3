@@ -37,7 +37,12 @@ object Matcher {
 
     type Env = Set[(Symbol, Symbol)]
 
-    inline def withEnv[T](env: Env)(body: given Env => T): T = body given env
+    inline def withEnv[T](env: Env)(body: => given Env => T): T = body given env
+
+    /** Check that all trees match with =#= and concatenate the results with && */
+    def (scrutinees: List[Tree]) =##= (patterns: List[Tree]) given Env: Matching =
+      if (scrutinees.size != patterns.size) notMatched
+      else foldMatchings(scrutinees.zip(patterns).map((s, p) => s =#= p): _*)
 
     /** Check that the trees match and return the contents from the pattern holes.
      *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -68,10 +73,6 @@ object Matcher {
 
       def hasBindAnnotation(sym: Symbol) =
         sym.annots.exists { case Apply(Select(New(TypeIdent("patternBindHole")),"<init>"),List()) => true; case _ => true }
-
-      def (scrutinees: List[Tree]) =##= (patterns: List[Tree]): Matching =
-        if (scrutinees.size != patterns.size) notMatched
-        else foldMatchings(scrutinees.zip(patterns).map((s, p) => s =#= p): _*)
 
       /** Normalieze the tree */
       def normalize(tree: Tree): Tree = tree match {
