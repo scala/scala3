@@ -184,10 +184,8 @@ object Inferencing {
    *
    *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
    *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
-   *
-   *  @param termPattern are we dealing with a term-level or a type-level pattern?
    */
-  def constrainPatternType(tp: Type, pt: Type, termPattern: Boolean)(implicit ctx: Context): Boolean = {
+  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
@@ -209,7 +207,7 @@ object Inferencing {
     }
 
     val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    val narrowTp = if (termPattern) SkolemType(tp) else tp
+    val narrowTp = SkolemType(tp)
     trace(i"constraining pattern type $narrowTp <:< $widePt", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
       narrowTp <:< widePt
     }

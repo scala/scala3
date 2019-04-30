@@ -1090,7 +1090,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *   - If a type proxy P is not a reference to a class, P's supertype is in G
      */
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
-      if (constrainPatternType(subtp, tp, termPattern = true)) true
+      if (constrainPatternType(subtp, tp)) true
       else tp match {
         case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
         case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
