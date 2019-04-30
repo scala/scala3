@@ -303,6 +303,38 @@ Pattern: {
 Result: None
 
 Scrutinee: {
+  val a: scala.Int = 45
+  a.+(a)
+}
+Pattern: {
+  val x: scala.Int = 45
+  x.+(x)
+}
+Result: Some(List())
+
+Scrutinee: {
+  val a: scala.Int = 45
+  val b: scala.Int = a
+  ()
+}
+Pattern: {
+  val x: scala.Int = 45
+  val y: scala.Int = x
+  ()
+}
+Result: Some(List())
+
+Scrutinee: {
+  val a: scala.Int = 45
+  a.+(a)
+}
+Pattern: {
+  val x: scala.Int = 45
+  x.+(scala.internal.Quoted.patternHole[scala.Int])
+}
+Result: Some(List(Expr(a)))
+
+Scrutinee: {
   lazy val a: scala.Int = 45
   ()
 }
@@ -571,6 +603,26 @@ Pattern: {
   ()
 }
 Result: Some(List())
+
+Scrutinee: {
+  def a: scala.Int = a
+  a.+(a)
+}
+Pattern: {
+  def a: scala.Int = a
+  a.+(a)
+}
+Result: Some(List())
+
+Scrutinee: {
+  def a: scala.Int = a
+  a.+(a)
+}
+Pattern: {
+  def a: scala.Int = scala.internal.Quoted.patternHole[scala.Int]
+  a.+(scala.internal.Quoted.patternHole[scala.Int])
+}
+Result: Some(List(Expr(a), Expr(a)))
 
 Scrutinee: {
   lazy val a: scala.Int = a
