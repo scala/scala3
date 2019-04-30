@@ -3,7 +3,7 @@ import Macros._
 
 import scala.internal.quoted.Matcher._
 
-import scala.internal.Quoted.{patternHole, patternBindHole}
+import scala.internal.Quoted._
 
 object Test {
 
@@ -130,7 +130,7 @@ object Test {
 //    matches(try 1 catch { case _ => 2 }, try patternHole[Int] catch { case _ => patternHole[Int] })
 //    matches(try 1 finally 2, try patternHole[Int] finally patternHole[Int])
 
-    matches({ val a: Int = 3; a }, { @patternBindHole type $t; val x: $t = patternHole[$t]; x })
+    matches({ val a: Int = 3; a }, { @patternBindHole type $t; val x: patternTypeHole[$t] = patternHole[$t]; x })
 
   }
 }

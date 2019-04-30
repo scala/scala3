@@ -81,14 +81,12 @@ object Matcher {
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
         case (IsTerm(scrutinee @ Typed(s, tpt1)), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
             if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole &&
-               s.tpe <:< tpt.tpe &&
                tpt2.tpe.derivesFrom(definitions.RepeatedParamClass) =>
           Some(Tuple1(scrutinee.seal))
 
         // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
         case (IsTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-            if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole &&
-               scrutinee.tpe <:< tpt.tpe =>
+            if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole =>
           Some(Tuple1(scrutinee.seal))
 
         //
