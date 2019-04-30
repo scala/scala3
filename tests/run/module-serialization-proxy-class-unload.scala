@@ -14,6 +14,7 @@ object Test {
       // This would "java.lang.OutOfMemoryError: Java heap space" if ModuleSerializationProxy
       // prevented class unloading.
       deserializeDynamicLoadedClass()
+      System.gc()
     }
   }
 
