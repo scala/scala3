@@ -172,40 +172,33 @@ object Matcher {
           val bindMatch =
             if (hasBindAnnotation(pattern.symbol) || hasBindTypeAnnotation(tpt2)) bindingMatch(scrutinee.symbol)
             else matched
-          val returnTptMatch = tpt1 =#= tpt2
-          val rhsEnv = the[Env] + (scrutinee.symbol -> pattern.symbol)
-          val rhsMatchings = treeOptMatches(rhs1, rhs2) given rhsEnv
-          bindMatch && returnTptMatch && rhsMatchings
+          def rhsEnv = the[Env] + (scrutinee.symbol -> pattern.symbol)
+          bindMatch && tpt1 =#= tpt2 && (treeOptMatches(rhs1, rhs2) given rhsEnv)
 
         case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
-          val typeParmasMatch = typeParams1 =##= typeParams2
-          val paramssMatch = matchLists(paramss1, paramss2)(_ =##= _)
           val bindMatch =
             if (hasBindAnnotation(pattern.symbol)) bindingMatch(scrutinee.symbol)
             else matched
-          val tptMatch = tpt1 =#= tpt2
-          val rhsEnv =
+          def rhsEnv =
             the[Env] + (scrutinee.symbol -> pattern.symbol) ++
               typeParams1.zip(typeParams2).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) ++
               paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
-          val rhsMatch = (rhs1 =#= rhs2) given rhsEnv
 
-          bindMatch && typeParmasMatch && paramssMatch && tptMatch && rhsMatch
+          bindMatch &&
+          typeParams1 =##= typeParams2 &&
+          matchLists(paramss1, paramss2)(_ =##= _) &&
+          tpt1 =#= tpt2 &&
+          withEnv(rhsEnv)(rhs1 =#= rhs2)
 
         case (Lambda(_, tpt1), Lambda(_, tpt2)) =>
           // TODO match tpt1 with tpt2?
           matched
 
         case (Match(scru1, cases1), Match(scru2, cases2)) =>
-          val scrutineeMacth = scru1 =#= scru2
-          val casesMatch = matchLists(cases1, cases2)(caseMatches)
-          scrutineeMacth && casesMatch
+          scru1 =#= scru2 && matchLists(cases1, cases2)(caseMatches)
 
         case (Try(body1, cases1, finalizer1), Try(body2, cases2, finalizer2)) =>
-          val bodyMacth = body1 =#= body2
-          val casesMatch = matchLists(cases1, cases2)(caseMatches)
-          val finalizerMatch = treeOptMatches(finalizer1, finalizer2)
-          bodyMacth && casesMatch && finalizerMatch
+          body1 =#= body2 && matchLists(cases1, cases2)(caseMatches) && treeOptMatches(finalizer1, finalizer2)
 
         // Ignore type annotations
         case (Annotated(tpt, _), _) =>
@@ -247,9 +240,9 @@ object Matcher {
     def caseMatches(scrutinee: CaseDef, pattern: CaseDef) given Env: Matching = {
       val (caseEnv, patternMatch) = scrutinee.pattern =%= pattern.pattern
       withEnv(caseEnv) {
-        val guardMatch = treeOptMatches(scrutinee.guard, pattern.guard)
-        val rhsMatch = scrutinee.rhs =#= pattern.rhs
-        patternMatch && guardMatch && rhsMatch
+        patternMatch &&
+        treeOptMatches(scrutinee.guard, pattern.guard) &&
+        scrutinee.rhs =#= pattern.rhs
       }
     }
 
@@ -276,10 +269,8 @@ object Matcher {
         (body1 =%= body2) given bindEnv
 
       case (Pattern.Unapply(fun1, implicits1, patterns1), Pattern.Unapply(fun2, implicits2, patterns2)) =>
-        val funMatch = fun1 =#= fun2
-        val implicitsMatch = implicits1 =##= implicits2
         val (patEnv, patternsMatch) = foldPatterns(patterns1, patterns2)
-        (patEnv, funMatch && implicitsMatch && patternsMatch)
+        (patEnv, fun1 =#= fun2 && implicits1 =##= implicits2 && patternsMatch)
 
       case (Pattern.Alternatives(patterns1), Pattern.Alternatives(patterns2)) =>
         foldPatterns(patterns1, patterns2)
