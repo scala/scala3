@@ -40,9 +40,14 @@ object Matcher {
     inline def withEnv[T](env: Env)(body: => given Env => T): T = body given env
 
     /** Check that all trees match with =#= and concatenate the results with && */
-    def (scrutinees: List[Tree]) =##= (patterns: List[Tree]) given Env: Matching =
-      if (scrutinees.size != patterns.size) notMatched
-      else foldMatchings(scrutinees.zip(patterns).map((s, p) => s =#= p): _*)
+    def (scrutinees: List[Tree]) =##= (patterns: List[Tree]) given Env: Matching = {
+      def rec(l1: List[Tree], l2: List[Tree]): Matching = (l1, l2) match {
+        case (x :: xs, y :: ys) => x =#= y && rec(xs, ys)
+        case (Nil, Nil) => matched
+        case _ => notMatched
+      }
+      rec(scrutinees, patterns)
+    }
 
     /** Check that the trees match and return the contents from the pattern holes.
      *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
