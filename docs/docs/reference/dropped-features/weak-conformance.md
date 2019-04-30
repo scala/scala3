@@ -20,7 +20,7 @@ A less obvious example is the following one, which was also typed as a
 
     val n: Int = 3
     val c: Char = 'X'
-    val n: Double = math.sqrt(3.0)
+    val d: Double = math.sqrt(3.0)
     List(n, c, d) // used to be: List[Double], now: List[AnyVal]
 
 Here, it is less clear why the type should be widened to
