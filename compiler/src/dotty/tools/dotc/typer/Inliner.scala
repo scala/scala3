@@ -119,60 +119,60 @@ object Inliner {
   }
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
-  def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree = {
+  def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree =
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
-    else {
-      val inlinedAtSpan = inlined.call.span
-      val curSource = ctx.compilationUnit.source
+    else reposition(inlined, inlined.call.span)
 
-      // Tree copier that changes the source of all trees to `curSource`
-      val cpyWithNewSource = new TypedTreeCopier {
-        override protected def sourceFile(tree: tpd.Tree): SourceFile = curSource
-        override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier {
-          override protected def sourceFile(tree: untpd.Tree): SourceFile = curSource
-        }
+  def reposition(tree: Tree, span: Span)(implicit ctx: Context): Tree = {
+    val curSource = ctx.compilationUnit.source
+
+    // Tree copier that changes the source of all trees to `curSource`
+    val cpyWithNewSource = new TypedTreeCopier {
+      override protected def sourceFile(tree: tpd.Tree): SourceFile = curSource
+      override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier {
+        override protected def sourceFile(tree: untpd.Tree): SourceFile = curSource
       }
-
-      /** Removes all Inlined trees, replacing them with blocks.
-       *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
-       *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
-       */
-      class Reposition extends TreeMap(cpyWithNewSource) {
-        def finalize(tree: Tree, copied: untpd.Tree) =
-          copied.withSpan(tree.span).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
-
-        def reposition(tree: Tree)(implicit ctx: Context): Tree = enclosingInlineds match {
-          case call :: _ if call.symbol.source != curSource =>
-            tree match {
-              case _: EmptyTree[_] | _: EmptyValDef[_] => tree
-              case _ =>
-                // Until we implement JSR-45, we cannot represent in output positions in other source files.
-                // So, reposition inlined code from other files with the call position:
-                tree.withSpan(inlinedAtSpan)
-            }
-          case _ => tree
-        }
-
-        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-          val transformed = reposition(tree match {
-            case tree: Inlined =>
-              tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource)) : Tree
-            case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
-            case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
-            case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
-            case tree: JavaSeqLiteral => finalize(tree, untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: SeqLiteral => finalize(tree, untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: TypeTree => tpd.TypeTree(tree.tpe)(ctx.withSource(curSource)).withSpan(tree.span)
-            case tree: Bind => finalize(tree, untpd.Bind(tree.name, transform(tree.body))(curSource))
-            case _ => super.transform(tree)
-          })
-          assert(transformed.isInstanceOf[EmptyTree[_]] || transformed.isInstanceOf[EmptyValDef[_]] || transformed.source == curSource)
-          transformed
-        }
-      }
-
-      (new Reposition).transform(inlined)
     }
+
+    /** Removes all Inlined trees, replacing them with blocks.
+     *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
+     *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
+     */
+    class Reposition extends TreeMap(cpyWithNewSource) {
+      def finalize(tree: Tree, copied: untpd.Tree) =
+        copied.withSpan(tree.span).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
+
+      def reposition(tree: Tree)(implicit ctx: Context): Tree = enclosingInlineds match {
+        case call :: _ if call.symbol.source != curSource =>
+          tree match {
+            case _: EmptyTree[_] | _: EmptyValDef[_] => tree
+            case _ =>
+              // Until we implement JSR-45, we cannot represent in output positions in other source files.
+              // So, reposition inlined code from other files with the call position:
+              tree.withSpan(span)
+          }
+        case _ => tree
+      }
+
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+        val transformed = reposition(tree match {
+          case tree: Inlined =>
+            tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource)) : Tree
+          case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
+          case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
+          case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
+          case tree: JavaSeqLiteral => finalize(tree, untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
+          case tree: SeqLiteral => finalize(tree, untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
+          case tree: TypeTree => tpd.TypeTree(tree.tpe)(ctx.withSource(curSource)).withSpan(tree.span)
+          case tree: Bind => finalize(tree, untpd.Bind(tree.name, transform(tree.body))(curSource))
+          case _ => super.transform(tree)
+        })
+        assert(transformed.isInstanceOf[EmptyTree[_]] || transformed.isInstanceOf[EmptyValDef[_]] || transformed.source == curSource)
+        transformed
+      }
+    }
+
+    (new Reposition).transform(tree)
   }
 
   /** Leave only a call trace consisting of
