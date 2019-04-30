@@ -31,12 +31,13 @@ object Matcher {
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
   def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] = {
+    // TODO improve performance
     import reflection.{Bind => BindPattern, _}
     import Matching._
 
     type Env = Set[(Symbol, Symbol)]
 
-    // TODO improve performance
+    inline def withEnv[T](env: Env)(body: given Env => T): T = body given env
 
     /** Check that the trees match and return the contents from the pattern holes.
      *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -120,10 +121,7 @@ object Matcher {
           fn1 =#= fn2 && args1 =##= args2
 
         case (Block(stats1, expr1), Block(stats2, expr2)) =>
-          val env = the[Env] ++ stats1.map(_.symbol).zip(stats2.map(_.symbol))
-
-          {
-            implied for Env = env
+          withEnv(the[Env] ++ stats1.map(_.symbol).zip(stats2.map(_.symbol))) {
             stats1 =##= stats2 && expr1 =#= expr2
           }
 
@@ -247,9 +245,7 @@ object Matcher {
 
     def caseMatches(scrutinee: CaseDef, pattern: CaseDef) given Env: Matching = {
       val (caseEnv, patternMatch) = scrutinee.pattern =%= pattern.pattern
-
-      {
-        implied for Env = caseEnv
+      withEnv(caseEnv) {
         val guardMatch = treeOptMatches(scrutinee.guard, pattern.guard)
         val rhsMatch = scrutinee.rhs =#= pattern.rhs
         patternMatch && guardMatch && rhsMatch
