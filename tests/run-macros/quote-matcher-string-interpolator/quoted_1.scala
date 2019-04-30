@@ -9,7 +9,7 @@ object Macros {
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(implicit reflect: Reflection): Expr[String] = {
     self match {
-      case '{ StringContext(${Repeated(parts)}: _*) } =>
+      case '{ StringContext(${ExprSeq(parts)}: _*) } =>
         val parts2 = parts.map(x => '{ $x.reverse }).toList.toExprOfList
         '{ StringContext($parts2: _*).s($args: _*) }
       case _ =>
