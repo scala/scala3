@@ -221,7 +221,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       //  2.3. If exactly one of the two types is a singleton type, pick that one.
       //  2.4. If the widened tp2 is a supertype of tp1, pick widened tp2.
       //  2.5. If the widened tp1 is a supertype of tp2, pick widened tp1.
-      //  2.6. Otherwise, pick tp1
+      //  2.6. Otherwise, pick widened tp1
       //
       // At steps 4-6 we lose possible solutions, since we have to make an
       // arbitrary choice which side to widen. A better solution would look at
