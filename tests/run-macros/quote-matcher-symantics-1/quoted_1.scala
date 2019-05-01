@@ -13,7 +13,7 @@ object Macros {
 
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
-      case '{ LitDSL(${ Literal(c) }) } =>
+      case '{ LitDSL(${ Const(c) }) } =>
       // case scala.internal.quoted.Matcher.unapply[Tuple1[Expr[Int]]](Tuple1(Literal(c)))(/*implicits*/ '{ LitDSL(patternHole[Int]) }, reflect) =>
         '{ $sym.value(${c.toExpr}) }
 

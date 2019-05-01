@@ -15,7 +15,7 @@ object Macros {
 
     def lift(e: Expr[DSL])(implicit env: Map[Bind[DSL], Expr[T]]): Expr[T] = e match {
 
-      case '{ LitDSL(${Literal(c)}) } => sym.value(c)
+      case '{ LitDSL(${Const(c)}) } => sym.value(c)
 
       case '{ ($x: DSL) + ($y: DSL) } => sym.plus(lift(x), lift(y))
 
