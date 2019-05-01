@@ -124,4 +124,8 @@ class TabcompleteTests extends ReplTest {
     val comp = tabComplete("???.")
     assertEquals(Nil, comp)
   }
+
+  @Test def moduleCompletion = fromInitialState { implicit s =>
+    assertEquals(List("Predef"), tabComplete("object Foo { type T = Pre"))
+  }
 }

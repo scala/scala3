@@ -241,7 +241,7 @@ class ReplCompiler extends Compiler {
         PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 
-      ParseResult(expr)(state) match {
+      ParseResult(sourceFile)(state) match {
         case Parsed(_, trees) =>
           wrap(trees).result
         case SyntaxErrors(_, reported, trees) =>
