@@ -486,10 +486,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       try body
       catch {
         case ex: Throwable =>
-          println(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+          ctx.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
                       |signature: $sig
                       |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-                   """.trim)
+                   """.trim, sym.sourcePos)
           throw  ex
       }
     }
