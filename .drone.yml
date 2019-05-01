@@ -59,7 +59,7 @@ pipeline:
       - cp -R . /tmp/5/ && cd /tmp/5/
       - ./project/scripts/sbt ";++2.12.8 ;compile ;test"
     when:
-      event: [ tag, deployment ]
+      event: [ push, tag, deployment ]
 
   # DOCUMENTATION:
   documentation:
