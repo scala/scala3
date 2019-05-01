@@ -180,8 +180,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             try   { /*withCurrentUnit(item.cunit)*/(visit(item)) }
             catch {
               case ex: Throwable =>
-                ex.printStackTrace()
-                ctx.error(s"Error while emitting ${int.sourceFileFor(item.cunit)}\n${ex.getMessage}")
+                println(s"Error while emitting ${int.sourceFileFor(item.cunit)}")
+                throw ex
             }
           }
         }
@@ -414,8 +414,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
               addToQ3(item)
             } catch {
               case ex: Throwable =>
-                ex.printStackTrace()
-                ctx.error(s"Error while emitting ${item.plain.classNode.name}\n${ex.getMessage}")
+                println(s"Error while emitting ${item.plain.classNode.name}")
+                throw ex
             }
           }
         }

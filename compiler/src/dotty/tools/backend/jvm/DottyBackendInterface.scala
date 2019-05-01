@@ -482,11 +482,19 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
     import scala.tools.asm.util.CheckClassAdapter
-    def wrap(body: => Unit): Boolean =
-      try { body; true }
-      catch { case ex: Throwable => println(ex.getMessage); false }
+    def wrap(body: => Unit): Unit = {
+      try body
+      catch {
+        case ex: Throwable =>
+          ctx.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+                      |signature: $sig
+                      |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+                   """.trim, sym.sourcePos)
+          throw  ex
+      }
+    }
 
-    val valid = wrap {
+    wrap {
       if (sym.is(Flags.Method)) {
         CheckClassAdapter.checkMethodSignature(sig)
       }
@@ -496,14 +504,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else {
         CheckClassAdapter.checkClassSignature(sig)
       }
-    }
-
-    if (!valid) {
-      ctx.error(
-        i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
-            |signature: $sig
-            |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-        """.trim, sym.sourcePos)
     }
   }
 

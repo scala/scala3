@@ -852,19 +852,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     extends Test(testSources, times, threadLimit, suppressAllOutput) {
     protected def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable {
       def checkTestSource(): Unit = tryCompile(testSource) {
-        def fail(msg: String): Nothing = {
+        def fail(msg: String): Unit = {
           echo(msg)
           failTestSource(testSource)
-          ???
         }
         testSource match {
           case testSource@JointCompilationSource(_, files, flags, outDir, fromTasty, decompilation) =>
             val sourceFiles = testSource.sourceFiles
-            val reporter =
-              try compile(sourceFiles, flags, true, outDir)
-              catch {
-                case ex: Throwable => fail(s"Fatal compiler crash when compiling: ${testSource.title}")
-              }
+            val reporter = compile(sourceFiles, flags, true, outDir)
             if (reporter.compilerCrashed)
               fail(s"Compiler crashed when compiling: ${testSource.title}")
           case testSource@SeparateCompilationSource(_, dir, flags, outDir) => unsupported("NoCrashTest - SeparateCompilationSource")
