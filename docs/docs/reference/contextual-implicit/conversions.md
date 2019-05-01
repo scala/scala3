@@ -3,7 +3,7 @@ layout: doc-page
 title: "Implicit Conversions"
 ---
 
-Implicit conversions are defined by implicits for the `scala.Conversion` class.
+Implicit conversions are defined by implicit instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
 abstract class Conversion[-T, +U] extends (T => U)
@@ -14,7 +14,7 @@ implicit for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
-Using an implicit alias this can be expressed more concisely as:
+Using an alias implicit this can be expressed more concisely as:
 ```scala
 implicit for Conversion[String, Token] = new KeyWord(_)
 ```
@@ -27,9 +27,9 @@ An implicit conversion is applied automatically by the compiler in three situati
 
 In the first case, the compiler looks for an implicit value of class
 `scala.Conversion` that maps an argument of type `T` to type `S`. In the second and third
-case, it looks for an evidance value  of class `scala.Conversion` that maps an argument of type `T`
+case, it looks for an implicit value of class `scala.Conversion` that maps an argument of type `T`
 to a type that defines a member `m` which can be applied to `args` if present.
-If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`.
+If such a value `C` is found, the expression `e` is replaced by `C.apply(e)`.
 
 ## Examples
 

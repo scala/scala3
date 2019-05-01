@@ -10,16 +10,16 @@ enum Tree[T] derives Eql, Ordering, Pickling {
   case Leaf(elem: T)
 }
 ```
-The `derives` clause generates delegate delegates for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
+The `derives` clause generates delegates for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
-delegate [T: Eql]      for Eql[Tree[T]]       = Eql.derived
+delegate [T: Eql]      for Eql[Tree[T]]      = Eql.derived
 delegate [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
 delegate [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
 ```
 
 ### Deriving Types
 
-Besides for `enums`, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
+Besides for enums, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
 
  - individual case classes or case objects
  - sealed classes or traits that have only case classes and case objects as children.
@@ -234,7 +234,7 @@ there exists evidence of type `Generic[T]`. Here's a possible solution:
 The implementation of the inline method `derived` creates a delegate for `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
 `(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
-  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` evidence `(1)`, `(2)`.
+  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` `(1)`, `(2)`.
   2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, but we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
   3. If `ev.Shape` is of the form `Cases[alts]` for some tuple `alts` of alternative types, the equality test consists of comparing the ordinal values of the two mirrors `(3)` and, if they are equal, comparing the elements of the case indicated by that ordinal value. That second step is performed by code that results from the compile-time expansion of the `eqlCases` call `[4]`.
   4. If `ev.Shape` is of the form `Case[elems]` for some tuple `elems` for element types, the elements of the case are compared by code that results from the compile-time expansion of the `eqlElems` call `[5]`.

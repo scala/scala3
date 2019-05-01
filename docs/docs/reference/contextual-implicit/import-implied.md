@@ -28,22 +28,17 @@ There are two main benefits arising from these rules:
    values can be anonymous, so the usual recourse of using named imports is not
    practical.
 
-### Relationship with Old-Style Implicits
+### Migration
 
-The rules of "import implicit" above have the consequence that a library
-would have to migrate in lockstep with all its users from old style implicit definitions and
-normal imports to new style implicit definitions and `import implicit`.
+The rules as stated above would break all existing code that imports implicits, which is of course unacceptable.
+To make gradual migration possible, we adapt the following scheme.
 
-The following modifications avoid this hurdle to migration.
+ 1. In Scala 3.0, a normal import will also import implicits written in the old "implicit-as-a-modifier" style.
+    So these implicits can be brought into scope using either a normal import or an `import implicit`.
 
- 1. An `import implicit` also brings old style implicits into scope. So, in Scala 3.0
-    an old-style implicit definition can be brought into scope either by a normal import
-    or by an `import implicit`.
+ 2. In Scala 3.1, an old-style implicit accessed implicitly through a normal import will give a deprecation warning.
 
- 2. In Scala 3.1, an old-style implicits accessed implicitly through a normal import
-    will give a deprecation warning.
-
- 3. In some version after 3.1, an old-style implicits accessed implicitly through a normal import
+ 3. In some version after 3.1, an old-style implicit accessed implicitly through a normal import
     will give a compiler error.
 
 These rules mean that library users can use `import implicit` to access old-style implicits in Scala 3.0,

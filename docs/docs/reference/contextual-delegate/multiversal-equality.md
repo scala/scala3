@@ -103,7 +103,7 @@ delegate [T, U] for Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala
-new Box(1) == new Box(1L)   // ok since `Eql[Int, Long]` is represented.
+new Box(1) == new Box(1L)   // ok since there is a delegate for `Eql[Int, Long]`
 new Box(1) == new Box("a")  // error: can't compare
 new Box(1) == 1             // error: can't compare
 ```
@@ -116,7 +116,7 @@ If the `strictEquality` feature is enabled then
 a comparison using `x == y` or `x != y` between values `x: T` and `y: U`
 is legal if
 
- 1. there is representation of type `Eql[T, U]`, or
+ 1. there is a delegate for `Eql[T, U]`, or
  2. one of `T`, `U` is `Null`.
 
 In the default case where the `strictEquality` feature is not enabled the comparison is
@@ -136,7 +136,7 @@ Explanations:
 
 ## Predefined Eql Delegates
 
-The `Eql` object defines delegates for
+The `Eql` object defines delegates for comparing
  - the primitive types `Byte`, `Short`, `Char`, `Int`, `Long`, `Float`, `Double`, `Boolean`,  and `Unit`,
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.

@@ -47,11 +47,11 @@ Existing Scala programmers by and large have gotten used to the status quo and s
 
 The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental changes:
 
- 1. [Implicit Instance Definitions](./instance-defs.html) are a new way to define inferable terms.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
+ 1. [Implicit Instance Definitions](./instance-defs.html) are a new way to define basic terms that can be synthesized. They replace the old style implicit-as-a-modifier form. The core principle is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
- 2. [Given Clauses](./inferable-params.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts.
+ 2. [Given Clauses](./inferable-params.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several implicit parameter sections, and to have implicit parameters followed by normal ones.
 
- 3. [Import Implicit](./import-implied.html) are new form of import that specifically imports implicit definitions and nothing else. New-style implicit instances _must be_ imported with  `import implicit`, a plain import will no longer bring them into scope. Old-style implicit definitions can be imported with either form.
+ 3. [Import Implicit](./import-implied.html) is new form of import that specifically imports implicit definitions and nothing else. New-style implicit instances _must be_ imported with  `import implicit`, a plain import will no longer bring them into scope. Old-style implicit definitions can be imported with either form.
 
  4. [Implicit Conversions](./conversions.html) are now expressed as implicit values of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
 
@@ -63,9 +63,10 @@ This section also contains pages describing other language features that are rel
  - [Typeclass Derivation](./derivation.html) introduces constructs to automatically derive typeclasses for ADTs.
  - [Multiversal Equality](./multiversal-equality.html) introduces a special typeclass
   to support type safe equality.
- - [Context Queries](./query-types.html) _aka_ implicit function types introduce a way to abstract over implicit parameterization.
- - [Inferable By-Name Parameters](./inferable-by-name-parameters.html) are an essential tool to define recursive implicits without looping.
- - [Relationship with Scala 2 Implicits](./relationship-implicits.html) discusses the relationship between old-style and new-style implicits and how to migrate from one to the other.
+ - [Implicit Function Types](./query-types.html) introduce a way to abstract over implicit parameterization.
+ - [Implicit By-Name Parameters](./inferable-by-name-parameters.html) are an essential tool to define recursive implicits without looping.
+ - [Relationship with Scala 2 Implicits](./relationship-implicits.html) discusses the relationship between old-style and
+ new-style implicits and how to migrate from one to the other.
 
 Overall, the new design achieves a better separation of term inference from the rest of the language: There is a single way to define implicit instances instead of a multitude of forms all taking an `implicit` modifier. There is a single way to introduce implicit parameters and arguments instead of conflating implicit with normal arguments. There is a separate way to import implicits that does not allow them to hide in a sea of normal imports. And there is a single way to define an implicit conversion which is clearly marked as such and does not require special syntax.
 

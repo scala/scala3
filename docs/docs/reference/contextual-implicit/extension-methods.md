@@ -80,7 +80,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Implicits for Extension Methods
 
-An implicit instance that defines extension methods can also be defined without a `for` clause. E.g.,
+An implicit instance that define extension methods can also be defined without a `for` clause. E.g.,
 
 ```scala
 implicit StringOps {
