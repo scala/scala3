@@ -43,64 +43,65 @@ Let's define some abstractions on the possible results of this pattern matching 
 type Matching = Option[Tuple]
 type Env
 
-def noMatch = None
-def emptyMatch = Some(()) // aka Some(Tuple0())
-def match[T](x: T) = Some(Tuple1(x))
-def (x: Matching) ++ (y: Matching) = if (x == None || y == None) None else Some(x.get ++ y.get)
-def fold[T](m: Mattching*) given Env: Matching = m.fold(emptyMatch)(_ ++ _)
+def notMatched = None
+def matched = Some(()) // aka Some(Tuple0())
+def matched[T](x: T) = Some(Tuple1(x))
+def (x: Matching) && (y: Matching) = if (x == None || y == None) None else Some(x.get ++ y.get)
+def fold[T](m: Mattching*) given Env: Matching = m.fold(matched)(_ && _)
 
-def matches(scrutinee: Tree, pattern: Tree) given Env: Matching // described by cases in the tables below
+// `a =#= b` stands for `a` matches `b` 
+def (scrutinee: Tree) =#= pattern: Tree) given Env: Matching // described by cases in the tables below
 
 def envWith(equiv: (Symbol, Symbol)*) given Env: Env // Adds to the current environment the fact that s1 from the scrutinee is equivalent to s2 in the pattern
 
 def equivalent(s1: Symbol, s2: Symbol) given Env: Env
 ```
 
-The implementation of `matches`
+The implementation of `=#=`
 
 | Tree                      | Pattern                     | Returns     |
 | :-----------------------: | :-------------------------: | :---------- |
 | Term `a`                  | `patternHole[X]`            | `match(quoted.Expr[X]('a))` if type of `a` is a subtype of `X`
-| `val a: A`                | `@patternBindHole val x: X` | `match(quoted.Bind[X](a.sym)) ++ matches('{val a: A}, '{val x: X})`
-| Literal `a`               | Literal `x`                 | `emptyMatch` if value of `a` is equal to the value of `x`
-| `a`                       | `x`                         | `emptyMatch` if `equivalent(a.sym, x.sym)`
-| `a.b`                     | `x.y`                       | `matches('a, 'x)` if `equivalent(b.sym, y.sym)`
-| `a: A`                    | `x: X`                      | `matches('a, 'x) ++ matches('[A], '[X])`
-| `fa(.. ai ..)`            | `fx(.. xi ..)`              | `matches('fa, 'fx) ++ fold(.. matches('ai, 'xi) ..)`
-| `fa[.. Ai ..]`            | `fx[.. Xi ..]`              | `matches('fa, 'fx) ++ fold(.. matches('[Ai], '[Xi]) ..)`
-| `{.. ai ..}`              | `{.. xi ..}`                | `fold(.. matches('ai, 'xi) ..)`
-| `if (a) b else c`         | `if (x) y else z`           | `matches('a, 'x) ++  matches('b, 'y) ++ matches('c, 'z)`
-| `while (a) b`             | `while (x) y`               | `matches('a, 'x) ++  matches('b, 'y)`
-| Assignment `a = b`        | Assignment `x = y`          | `matches('b, 'y)` if `matches('a, 'x).nonEmpty`
-| Named argument<br>`n = a` | Named argument<br>`m = x`   | `matches('a, 'x)`
-| `Seq(.. ai ..): _*`       | `Seq(.. xi ..): _*`         | `fold(.. matches('ai, 'xi) ..)`
-| `new A`                   | `new X`                     | `matches('[A], '[X])`
-| `this`                    | `this`                      | `emptyMatch` if both refer to the same symbol
-| `a.super[B]`              | `x.super[Y]`                | `matches('a, 'x)` if `B` equals `Y`
-| `val a: A = b`<br>`lazy val a: A = b`<br>`var a: A = b` | `val x: X = y`<br>`lazy val x: X = y`<br>`var x: X = y`              | `matches('[A], '[X]) ++ matches('b, 'y) given envWith(a.sym -> b.sym)`
-| `def a[..Ai..](.. bij: Bij ..): A = c` | `def x[..Xi..](.. yij: Yij ..): X = z` | `fold(..matches('[Ai], '[Xi])..) ++ fold(.. matches('bij, 'yij) ++ matches('[Bij], '[Yij]) ..) ++ matches('[A], '[X]) ++ matches('c, 'z) given envWith(a.sym -> b.sym, .. bij.sym -> yij.sym ..)`
-| `(.. ai: Ai ..) => b` | `(.. xi: Xi ..) => y` | `fold(.. matches('ai, 'xi) ++ matches('[Ai], '[Xi]) ..) ++ matches('b, 'y) given envWith(.. ai.sym -> xi.sym ..)`
-| `a match { .. bi .. }`    | `x match { .. yi .. }`   | `matches('a, 'x) ++ fold(.. matches('bi, 'yi) ..)`
-| `try a catch { .. bi .. } finally ci`    | `try x catch { .. yi .. } finally z`   | `matches('a, 'x) ++ fold(.. matches('bi, 'yi) ..) ++ matches('c, 'z)`
+| `val a: A`                | `@patternBindHole val x: X` | `match(quoted.Bind[X](a.sym)) && '{val a: A} =#= '{val x: X}`
+| Literal `a`               | Literal `x`                 | `matched` if value of `a` is equal to the value of `x`
+| `a`                       | `x`                         | `matched` if `equivalent(a.sym, x.sym)`
+| `a.b`                     | `x.y`                       | `'a =#= 'x` if `equivalent(b.sym, y.sym)`
+| `a: A`                    | `x: X`                      | `'a =#= 'x && '[A] =#= '[X]`
+| `fa(.. ai ..)`            | `fx(.. xi ..)`              | `'fa =#= 'fx && fold(.. 'ai =#= 'xi) ..)`
+| `fa[.. Ai ..]`            | `fx[.. Xi ..]`              | `'fa =#= 'fx && fold(.. '[Ai] =#= '[Xi] ..)`
+| `{.. ai ..}`              | `{.. xi ..}`                | `fold(.. 'ai =#= 'xi ..)`
+| `if (a) b else c`         | `if (x) y else z`           | `'a =#= 'x &&  'b =#= 'y && 'c =#= 'z`
+| `while (a) b`             | `while (x) y`               | `'a =#= 'x &&  'b =#= 'y`
+| Assignment `a = b`        | Assignment `x = y`          | `'b =#= 'y` if `'a =#= 'x.nonEmpty`
+| Named argument<br>`n = a` | Named argument<br>`m = x`   | `'a =#= 'x`
+| `Seq(.. ai ..): _*`       | `Seq(.. xi ..): _*`         | `fold(.. 'ai =#= 'xi ..)`
+| `new A`                   | `new X`                     | `'[A] =#= '[X]`
+| `this`                    | `this`                      | `matched` if both refer to the same symbol
+| `a.super[B]`              | `x.super[Y]`                | `'a =#= 'x` if `B` equals `Y`
+| `val a: A = b`<br>`lazy val a: A = b`<br>`var a: A = b` | `val x: X = y`<br>`lazy val x: X = y`<br>`var x: X = y`              | `'[A] =#= '[X] && 'b =#= 'y given envWith(a.sym -> b.sym)`
+| `def a[..Ai..](.. bij: Bij ..): A = c` | `def x[..Xi..](.. yij: Yij ..): X = z` | `fold(..'[Ai] =#= '[Xi]..) && fold(.. 'bij =#= 'yij && '[Bij] =#= '[Yij] ..) && '[A] =#= '[X] && 'c =#= 'z given envWith(a.sym -> b.sym, .. bij.sym -> yij.sym ..)`
+| `(.. ai: Ai ..) => b` | `(.. xi: Xi ..) => y` | `fold(.. 'ai =#= 'xi && '[Ai] =#= '[Xi] ..) && 'b =#= 'y given envWith(.. ai.sym -> xi.sym ..)`
+| `a match { .. bi .. }`    | `x match { .. yi .. }`   | `'a =#= 'x && fold(.. 'bi =#= 'yi ..)`
+| `try a catch { .. bi .. } finally ci`    | `try x catch { .. yi .. } finally z`   | `'a =#= 'x && fold(.. 'bi =#= 'yi ..) && 'c =#= 'z`
 |                           |                          |
-| `case a if b => c`        | `case x if y => z`       | `matches('a, 'x) ++ matches('b, 'y) ++ matches(c, z)`
+| `case a if b => c`        | `case x if y => z`       | `'a =#= 'x && 'b =#= 'y && c =#= z`
 |                           |                          |
-| Inferred `A`              | Inferred `X`             | `emptyMatch` if `A <:< X`
-| `A[.. Bi ..]`             | `X[.. Yi ..]`            | `emptyMatch` if `(matches('[A], '[X]) ++ fold(.. matches('[Bi], '[Yi]) ..)).nonEmpty`
-| `A @annot`                | `X`                      | `matches('[A], '[X])`
-| `A`                       | `X @annot`               | `matches('[A], '[X])`
-|                           |                          | `noMatch`
+| Inferred `A`              | Inferred `X`             | `matched` if `A <:< X`
+| `A[.. Bi ..]`             | `X[.. Yi ..]`            | `matched` if `('[A] && '[X] && fold(.. '[Bi] =#= '[Yi] ..)).nonEmpty`
+| `A @annot`                | `X`                      | `'[A] =#= '[X]`
+| `A`                       | `X @annot`               | `'[A] && '[X]`
+|                           |                          | `notMatched`
 
 
 | Pattern inside the quote    | Pattern                     | Returns        |
 | :-------------------------: |:--------------------------: | :------------- |
-| Value `a`                   | Value `x`                   | `matches('a, 'x)`
-| `a: A`                      | `x: X`                      | `matches('[A], '[X])`
-| `a @ b`                     | `x @ y`                     | `matches('b, 'y) given envWith(a.sym -> b.sym)`
-| Unapply `a(..bi..)(..ci..)` | Unapply `x(..yi..)(..zi..)` | `matches('a, 'x) ++ fold(.. matches('bi, 'yi) ..) ++ fold(.. matches('ci, 'zi) ..)`
-| `.. | ai | ..`              | `.. | xi | ..`              | `fold(.. matches('ai, 'xi) ..)`
-| `_`                         | `_`                         | `emptyMatch`
-|                             |                             | `noMatch`
+| Value `a`                   | Value `x`                   | `'a =#= 'x`
+| `a: A`                      | `x: X`                      | `'[A] && '[X]`
+| `a @ b`                     | `x @ y`                     | `'b =#= 'y given envWith(a.sym -> b.sym)`
+| Unapply `a(..bi..)(..ci..)` | Unapply `x(..yi..)(..zi..)` | `'a =#= 'x && fold(.. 'bi =#= 'yi ..) && fold(.. 'ci =#= 'zi ..)`
+| `.. | ai | ..`              | `.. | xi | ..`              | `fold(.. 'ai =#= 'xi ..)`
+| `_`                         | `_`                         | `matched`
+|                             |                             | `notMatched`
 
 <!-- TODO spec for the environment from patterns propagated to the result -->
 
