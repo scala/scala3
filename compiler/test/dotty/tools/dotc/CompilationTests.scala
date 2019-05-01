@@ -171,7 +171,8 @@ class CompilationTests extends ParallelTesting {
     compileList("duplicate source", List(
       "tests/neg-custom-args/toplevel-samesource/S.scala",
       "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
-      defaultOptions)
+      defaultOptions) +
+    compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes)
   }.checkExpectedErrors()
 
   @Test def fuzzyAll: Unit = {

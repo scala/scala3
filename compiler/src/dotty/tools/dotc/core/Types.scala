@@ -4966,34 +4966,51 @@ object Types {
   }
 
   class TypeSizeAccumulator(implicit ctx: Context) extends TypeAccumulator[Int] {
-    def apply(n: Int, tp: Type): Int = tp match {
-      case tp: AppliedType =>
-        foldOver(n + 1, tp)
-      case tp: RefinedType =>
-        foldOver(n + 1, tp)
-      case tp: TypeRef if tp.info.isTypeAlias =>
-        apply(n, tp.superType)
-      case _ =>
-        foldOver(n, tp)
+    val seen = new java.util.IdentityHashMap[Type, Type]
+    def apply(n: Int, tp: Type): Int =
+      if (seen.get(tp) != null) n
+      else {
+        seen.put(tp, tp)
+        tp match {
+        case tp: AppliedType =>
+          foldOver(n + 1, tp)
+        case tp: RefinedType =>
+          foldOver(n + 1, tp)
+        case tp: TypeRef if tp.info.isTypeAlias =>
+          apply(n, tp.superType)
+        case tp: TypeParamRef =>
+          apply(n, ctx.typeComparer.bounds(tp))
+        case _ =>
+          foldOver(n, tp)
+      }
     }
   }
 
   class CoveringSetAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[Symbol]] {
+    val seen = new java.util.IdentityHashMap[Type, Type]
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] = {
-      val sym = tp.typeSymbol
-      tp match {
-        case tp if tp.isTopType || tp.isBottomType =>
-          cs
-        case tp: AppliedType =>
-          foldOver(cs + sym, tp)
-        case tp: RefinedType =>
-          foldOver(cs + sym, tp)
-        case tp: TypeRef if tp.info.isTypeAlias =>
-          apply(cs, tp.superType)
-        case tp: TypeBounds =>
-          foldOver(cs, tp)
-        case other =>
-          foldOver(cs + sym, tp)
+      if (seen.get(tp) != null) cs
+      else {
+        seen.put(tp, tp)
+        tp match {
+          case tp if tp.isTopType || tp.isBottomType =>
+            cs
+          case tp: AppliedType =>
+            foldOver(cs + tp.typeSymbol, tp)
+          case tp: RefinedType =>
+            foldOver(cs + tp.typeSymbol, tp)
+          case tp: TypeRef if tp.info.isTypeAlias =>
+            apply(cs, tp.superType)
+          case tp: TypeRef if tp.typeSymbol.isClass =>
+            foldOver(cs + tp.typeSymbol, tp)
+          case tp: TermRef =>
+            val tsym = if (tp.termSymbol.is(Param)) tp.underlying.typeSymbol else tp.termSymbol
+            foldOver(cs + tsym, tp)
+          case tp: TypeParamRef =>
+            apply(cs, ctx.typeComparer.bounds(tp))
+          case other =>
+            foldOver(cs, tp)
+        }
       }
     }
   }

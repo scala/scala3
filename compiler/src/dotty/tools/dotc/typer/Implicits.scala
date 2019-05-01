@@ -1413,9 +1413,10 @@ abstract class SearchHistory { outer =>
           if (cand1.ref == cand.ref) {
             val wideTp = tp.widenExpr
             lazy val wildTp = wildApprox(wideTp)
+            lazy val tpSize = wideTp.typeSize
             if (belowByname && (wildTp <:< wildPt)) false
-            else if ((wideTp.typeSize < ptSize && wideTp.coveringSet == ptCoveringSet) || (wildTp =:= wildPt)) true
-            else loop(tl, isByname(tp) || belowByname)
+            else if (tpSize > ptSize || wideTp.coveringSet != ptCoveringSet) loop(tl, isByname(tp) || belowByname)
+            else tpSize < ptSize || wildTp =:= wildPt || loop(tl, isByname(tp) || belowByname)
           }
           else loop(tl, isByname(tp) || belowByname)
       }
