@@ -5,8 +5,7 @@ title: "Implicit Instances"
 
 Implicit instances define "canonical" values of given types
 that can be synthesized by the compiler. Typically, such values are
-used as evidence for constraints in [given clauses](./inferable-params.html). Example:
-
+used as arguments to [given clauses](./inferable-params.html). Example:
 ```scala
 trait Ord[T] {
   def compare(x: T, y: T): Int
@@ -19,7 +18,7 @@ implicit IntOrd for Ord[Int] {
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-implicit ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] {
+implicit ListOrd[T] for Ord[List[T]] given (ord: Ord[T]){
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
@@ -38,27 +37,34 @@ Given clauses are further explained in the next section.
 
 ## Anonymous Implicit Instances
 
-The name of an implicit instance can be left out. So the definitions
+The name of an implicit instance can be left out. So the implicit instance definitions
 of the last section can also be expressed like this:
 ```scala
 implicit for Ord[Int] { ... }
-implicit [T] given (ord: Ord[T]) for Ord[List[T]] { ... }
+implicit [T]  or Ord[List[T]] given (ord: Ord[T]) { ... }
 ```
-If a  name is not given, the compiler will synthesize one from the type(s) in the `for` clause.
+If the name of an implicit is missing, the compiler will synthesize a name from
+the type(s) in the `for` clause.
 
-## Implicit Aliases
+## Alias Implicits
 
-An implicit alias defines an implicit value that is equal to some expression. E.g., assuming a global method `currentThreadPool` returning a value with a member `context`, one could define:
+An alias implicit defines an implicit value that is equal to some expression. E.g.:
 ```scala
-implicit ctx for ExecutionContext = currentThreadPool().context
+implicit global for ExecutionContext = new ForkJoinPool()
 ```
-This creates an implicit `ctx` of type `ExecutionContext` that resolves to the right hand side `currentThreadPool().context`. Each time an implicit for `ExecutionContext` is demanded, the result of evaluating the right-hand side expression is returned.
+This creates an implicit `global` of type `ExecutionContext` that resolves to the right hand side `new ForkJoinPool()`.
+The first time `global` is accessed, a new `ForkJoinPool` is created, which is then
+returned for this and all subsequent accesses to `global`.
 
-Implicit aliases may be anonymous, e.g.
+Alias implicits may be anonymous, e.g.
 ```scala
 implicit for Position = enclosingTree.position
 ```
-An implicit alias can have type and context parameters just like any other implicit definition, but it can only implement a single type.
+An alias implicit can have type and context parameters just like any other implicit definition, but it can only implement a single type.
+
+## Implicit Instance Creation
+
+An implicit instance without type parameters or given clause is created on-demand, the first time it is accessed. It is not required to ensure safe publication, which means that different threads might create different instances for the same `implicit` clause. If an `implicit` definition has type parameters or a given clause, a fresh instance is created for each reference.
 
 ## Syntax
 
@@ -66,11 +72,12 @@ Here is the new syntax of implicit instances, seen as a delta from the [standard
 ```
 TmplDef          ::=  ...
                   |  ‘implicit’ InstanceDef
-InstanceDef      ::=  [id] InstanceParams InstanceBody
-InstanceParams   ::=  [DefTypeParamClause] {GivenParamClause}
+InstanceDef      ::=  [id] [DefTypeParamClause] InstanceBody
+InstanceBody     ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+                   |  ‘of’ Type {GivenParamClause} ‘=’ Expr
+ConstrApp        ::=  AnnotType {ArgumentExprs}
+                   |  ‘(’ ConstrApp {‘given’ (InfixExpr | ParArgumentExprs)} ‘)’
 GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
-InstanceBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                   |  ‘for’ Type ‘=’ Expr
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
 The identifier `id` can be omitted only if either the `for` part or the template body is present.

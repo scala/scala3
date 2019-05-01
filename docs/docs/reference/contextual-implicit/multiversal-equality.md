@@ -19,18 +19,19 @@ val y = ... // of type S, but should be T
 x == y      // typechecks, will always yield false
 ```
 
-If all the program does with `y` is compare it to other values of type `T`, the program will still typecheck, since values of all types can be compared with each other.
+If `y` gets compared to other values of type `T`,
+the program will still typecheck, since values of all types can be compared with each other.
 But it will probably give unexpected results and fail at runtime.
 
 Multiversal equality is an opt-in way to make universal equality
 safer. It uses a binary typeclass `Eql` to indicate that values of
 two given types can be compared with each other.
-The example above would not typecheck if `S` or `T` was a class
+The example above report a type error if `S` or `T` was a class
 that derives `Eql`, e.g.
 ```scala
 class T derives Eql
 ```
-Alternatively, one can also provide the derived implicit directly, like this:
+Alternatively, one can also provide an `Eql` implicit directly, like this:
 ```scala
 implicit for Eql[T, T] = Eql.derived
 ```
@@ -76,11 +77,11 @@ def eqlAny[L, R]: Eql[L, R] = Eql.derived
 
 Even though `eqlAny` is not declared as an `implicit`, the compiler will still
 construct an `eqlAny` instance as answer to an implicit search for the
-type `Eql[L, R]`, unless `L` or `R` have `Eql` instances
+type `Eql[L, R]`, unless `L` or `R` have implicit `Eql` instances
 defined on them, or the language feature `strictEquality` is enabled
 
 The primary motivation for having `eqlAny` is backwards compatibility,
-if this is of no concern one can disable `eqlAny` by enabling the language
+if this is of no concern, one can disable `eqlAny` by enabling the language
 feature `strictEquality`. As for all language features this can be either
 done with an import
 
@@ -91,14 +92,14 @@ or with a command line option `-language:strictEquality`.
 
 ## Deriving Eql Instances
 
-Instead of defining `Eql` instances directly, it is often more convenient to derive them. Example:
+Instead of defining implicit `Eql` instances directly, it is often more convenient to derive them. Example:
 ```scala
 class Box[T](x: T) derives Eql
 ```
 By the usual rules if [typeclass derivation](./derivation.html),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
-implicit [T, U] given Eql[T, U] for Eql[Box[T], Box[U]] = Eql.derived
+implicit [T, U] for Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala
@@ -140,7 +141,7 @@ The `Eql` object defines implicits for comparing
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Implicits are defined so that everyone of these types is has a reflexive `Eql` implicit, and the following holds:
+Implicits are defined so that every one of these types is has a reflexive `Eql` implicit, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).

@@ -3,7 +3,7 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Traits, delegates, extension methods and context bounds
+Delegates, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
 with canonical implementations defined by delegates. Here are some examples of standard typeclasses:
 

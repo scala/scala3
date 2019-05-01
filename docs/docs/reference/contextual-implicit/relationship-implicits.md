@@ -21,20 +21,27 @@ Implicit instances can be mapped to combinations of implicit objects, classes an
     ```
  2. Parameterized implicit instances are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      implicit ListOrd[T] given (ord: Ord[T]) for Ord[List[T]] { ... }
+      implicit ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) { ... }
     ```
     maps to
     ```scala
       class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
       final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Implicit aliases map to implicit methods. E.g.,
+ 3. Alias implicits map to implicit methods. If the implicit has neither type parameters nor a given clause, the result of creating an instance is cached in a variable. If in addition the right hand side is pure and cheap to compute, a simple `val` can be used instead. E.g.,
     ```scala
-      implicit ctx for ExecutionContext = ...
+      implicit global for ExecutionContext = new ForkJoinContext()
+      implicit config for Config = default.config
     ```
-    maps to
+    map to
     ```scala
-      final implicit def ctx: ExecutionContext = ...
+      private[this] var global$cache: ExecutionContext | Null = null
+      final implicit def global: ExecutionContext = {
+        if (global$cache == null) global$cache = new ForkJoinContext()
+        global$cache
+      }
+
+      final implicit val config: Config = default.config
     ```
 
 ### Anonymous Implicits
@@ -60,9 +67,9 @@ constructor of its first parameter. For example, the implicit
 ```
 gets the synthesized name `second_of_List_T_ev`.
 
-### Inferable Parameters
+### Implicit Parameters
 
-The new inferable parameter syntax with `given` corresponds largely to Scala-2's implicit parameters. E.g.
+The new implicit parameter syntax with `given` corresponds largely to Scala-2's implicit parameters. E.g.
 ```scala
   def max[T](x: T, y: T) given (ord: Ord[T]): T
 ```
@@ -71,8 +78,8 @@ would be written
   def max[T](x: T, y: T)(implicit ord: Ord[T]): T
 ```
 in Scala 2. The main difference concerns applications of such parameters.
-Explicit arguments to inferable parameters _must_ be written using `given`,
-mirroring the definition syntax. E.g, `max(2, 3) given IntOrd`.
+Explicit arguments to parameters of given clauses _must_ be written using `given`,
+mirroring the definition syntax. E.g, `max(2, 3).given(IntOrd)`.
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
 The `the` method corresponds to `implicitly` in Scala 2.
@@ -87,7 +94,7 @@ Context bounds are the same in both language versions. They expand to the respec
 
 **Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either with `given` or
 with a normal application. Once old-style implicits are deprecated, context bounds
-will map to inferable parameters instead.
+will map to given clauses instead.
 
 ### Extension Methods
 
@@ -107,9 +114,9 @@ Extension methods in implicit instances have no direct counterpart in Scala-2. T
 
 Typeclass derivation has no direct counterpart in the Scala 2 language. Comparable functionality can be achieved by macro-based libraries such as Shapeless, Magnolia, or scalaz-deriving.
 
-### Context Query types
+### Implicit Function Types
 
-Context Query types have no analogue in Scala 2.
+Implicit function types have no analogue in Scala 2.
 
 ### Implicit By-Name Parameters
 
@@ -133,20 +140,7 @@ one can write
 
 ### Implicit Classes
 
-Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a `Conversion` implicit.
-
-
-### Implicit Values
-
-Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an implicit alias. E.g., Scala 2's
-```scala
-  lazy implicit val pos: Position = tree.sourcePos
-```
-can be expressed in Dotty as
-```scala
-  lazy val pos: Position = tree.sourcePos
-  implicit for Position = pos
-```
+Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a conversion delegate.
 
 ### Abstract Implicits
 

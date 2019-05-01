@@ -50,11 +50,11 @@ the type(s) in the `for` clause.
 
 An alias can be used to define a delegate that is equal to some expression. E.g.:
 ```scala
-delegate ctx for ExecutionContext = new ForkJoinPool()
+delegate global for ExecutionContext = new ForkJoinPool()
 ```
-This creates a delegate `ctx` of type `ExecutionContext` that resolves to the right hand side `new ForkJoinPool()`.
-The first time a delegate for `ExecutionContext` is demanded, a new `ForkJoinPool` is created, which is then
-returned for this and all subsequent accesses to `ctx`.
+This creates a delegate `global` of type `ExecutionContext` that resolves to the right hand side `new ForkJoinPool()`.
+The first time `global` is accessed, a new `ForkJoinPool` is created, which is then
+returned for this and all subsequent accesses to `global`.
 
 Alias delegates can be anonymous, e.g.
 ```scala
@@ -64,7 +64,7 @@ An alias delegate can have type and context parameters just like any other deleg
 
 ## Delegate Creation
 
-A delegate without type parameters or given clause is created on-demand, the first time it is accessed. No attempt is made to ensure safe publication, which means that different threads might create different delegates for the same `delegate` clause. If a `delegate` clause has type parameters or a given clause, a fresh delegate is created for each reference.
+A delegate without type parameters or given clause is created on-demand, the first time it is accessed. It is not required to ensure safe publication, which means that different threads might create different delegates for the same `delegate` clause. If a `delegate` clause has type parameters or a given clause, a fresh delegate is created for each reference.
 
 ## Syntax
 
