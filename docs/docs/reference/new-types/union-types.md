@@ -3,7 +3,8 @@ layout: doc-page
 title: "Union Types"
 ---
 
-Used on types, the `|` operator creates a union type.
+A union type `A | B` has as values all values of type `A` and also all values of type `B`.
+
 
 ```scala
 case class UserName(name: String) {
@@ -22,13 +23,11 @@ def help(id: UserName | Password) = {
 }
 ```
 
-Union types are dual of intersection types. Values of type `A | B` are
-all values of type `A` and all values of type `B`. `|` is _commutative_:
+Union types are duals of intersection types. `|` is _commutative_:
 `A | B` is the same type as `B | A`.
 
 The compiler will assign a union type to an expression only if such a
-type is explicitly given.
-This can be seen in the following REPL transcript:
+type is explicitly given. This can be seen in the following REPL transcript:
 
 ```scala
 scala> val password = Password(123)

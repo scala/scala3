@@ -1361,7 +1361,7 @@ class Typer extends Namer
           checkSimpleKinded(checkNoWildcard(arg)))
       else if (tpt1.symbol == defn.orType)
         checkedArgs = checkedArgs.mapconserve(arg =>
-          checkNotSingleton(checkSimpleKinded(checkNoWildcard(arg)), "in a union type"))
+          checkSimpleKinded(checkNoWildcard(arg)))
       assignType(cpy.AppliedTypeTree(tree)(tpt1, checkedArgs), tpt1, checkedArgs)
     }
   }

@@ -418,7 +418,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           case _ =>
             false
         }
-        joinOK || recur(tp11, tp2) && recur(tp12, tp2)
+        def widenOK =
+          (tp2.widenSingletons eq tp2) &&
+          (tp1.widenSingletons ne tp1) &&
+          recur(tp1.widenSingletons, tp2)
+
+        if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
+          tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms)
+        else
+          widenOK || joinOK || recur(tp11, tp2) && recur(tp12, tp2)
       case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
@@ -573,10 +581,28 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        val tp1a = tp1.widenDealiasKeepRefiningAnnots
+        if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
+          return tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms) ||
+            tp1.isRef(NothingClass)
+
+        // The next clause handles a situation like the one encountered in i2745.scala.
+        // We have:
+        //
+        //   x: A | B, x.type <:< A | X   where X is a type variable
+        //
+        // We should instantiate X to B instead of x.type or A | B. To do this, we widen
+        // the LHS to A | B and recur *without indicating that this is a lowApprox*. The
+        // latter point is important since otherwise we would not get to instantiate X.
+        // If that succeeds, fine. If not we continue and hit the `either` below.
+        // That second path is important to handle comparisons with unions of singletons,
+        // as in `1 <:< 1 | 2`.
+        val tp1w = tp1.widen
+        if ((tp1w ne tp1) && recur(tp1w, tp2))
+          return true
+
+        val tp1a = tp1.dealiasKeepRefiningAnnots
         if (tp1a ne tp1)
-          // Follow the alias; this might avoid truncating the search space in the either below
-          // Note that it's safe to widen here because singleton types cannot be part of `|`.
+          // Follow the alias; this might lead to an OrType on the left which needs to be split
           return recur(tp1a, tp2)
 
         // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
@@ -1037,6 +1063,23 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
     else None
   }
+
+  /** Check whether we can compare the given set of atoms with another to determine
+   *  a subtype test between OrTypes. There is one situation where this is not
+   *  the case, which has to do with SkolemTypes. TreeChecker sometimes expects two
+   *  types to be equal that have different skolems. To account for this, we identify
+   *  two different skolems in all phases `p`, where `p.isTyper` is false.
+   *  But in that case comparing two sets of atoms that contain skolems
+   *  for equality would give the wrong result, so we should not use the sets
+   *  for comparisons.
+   */
+  def canCompare(atoms: Set[Type]): Boolean =
+    ctx.phase.isTyper || {
+      val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
+        override def stopAtStatic = true
+      }
+      !atoms.exists(hasSkolems(false, _))
+    }
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams2`.
@@ -1499,30 +1542,38 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
 
+  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes
+
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
    *  @note  We do not admit singleton types in or-types as lubs.
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
-    if (tp1 eq tp2) tp1
-    else if (!tp1.exists) tp1
-    else if (!tp2.exists) tp2
-    else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp1
-    else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp2
-    else {
-      val t1 = mergeIfSuper(tp1, tp2, canConstrain)
-      if (t1.exists) t1
-      else {
-        val t2 = mergeIfSuper(tp2, tp1, canConstrain)
-        if (t2.exists) t2
-        else {
-          val tp1w = tp1.widen
-          val tp2w = tp2.widen
-          if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
-          else orType(tp1w, tp2w) // no need to check subtypes again
-        }
+    if (tp1 eq tp2) return tp1
+    if (!tp1.exists) return tp1
+    if (!tp2.exists) return tp2
+    if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) return tp1
+    if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) return tp2
+    val atoms1 = tp1.atoms
+    if (atoms1.nonEmpty && !widenInUnions) {
+      val atoms2 = tp2.atoms
+      if (atoms2.nonEmpty) {
+        if (atoms1.subsetOf(atoms2)) return tp2
+        if (atoms2.subsetOf(atoms1)) return tp1
+        if ((atoms1 & atoms2).isEmpty) return orType(tp1, tp2)
       }
     }
+    val t1 = mergeIfSuper(tp1, tp2, canConstrain)
+    if (t1.exists) return t1
+
+    val t2 = mergeIfSuper(tp2, tp1, canConstrain)
+    if (t2.exists) return t2
+
+    def widen(tp: Type) = if (widenInUnions) tp.widen else tp.widenIfUnstable
+    val tp1w = widen(tp1)
+    val tp2w = widen(tp2)
+    if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
+    else orType(tp1w, tp2w) // no need to check subtypes again
   }
 
   /** The least upper bound of a list of types */
@@ -2211,6 +2262,11 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
     traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (Config.verboseExplainSubtype) s" ${tp1.getClass} ${tp2.getClass}" else ""} $approx ${if (frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2, approx)
+    }
+
+  override def recur(tp1: Type, tp2: Type): Boolean =
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)} recur ${if (frozenConstraint) " frozen" else ""}") {
+      super.recur(tp1, tp2)
     }
 
   override def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =

@@ -1033,7 +1033,8 @@ object Types {
       case _ => this
     }
 
-    /** If this type contains embedded union types, replace them by their joins.
+    /** Widen this type and if the result contains embedded union types, replace
+     *  them by their joins.
      *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
      *  If an embedded union is found, we first try to simplify or eliminate it by
      *  re-lubbing it while allowing type parameters to be constrained further.
@@ -1046,7 +1047,7 @@ object Types {
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
      */
-    def widenUnion(implicit ctx: Context): Type = this match {
+    def widenUnion(implicit ctx: Context): Type = widen match {
       case OrType(tp1, tp2) =>
         ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
           case union: OrType => union.join
@@ -1058,8 +1059,50 @@ object Types {
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>
         tp.rebind(tp.parent.widenUnion)
+      case tp =>
+        tp
+    }
+
+    /** Widen all top-level singletons reachable by dealiasing
+     *  and going to the operands of & and |.
+     *  Overridden and cached in OrType.
+     */
+    def widenSingletons(implicit ctx: Context): Type = dealias match {
+      case tp: SingletonType =>
+        tp.widen
+      case tp: OrType =>
+        val tp1w = tp.widenSingletons
+        if (tp1w eq tp) this else tp1w
+      case tp: AndType =>
+        val tp1w = tp.tp1.widenSingletons
+        val tp2w = tp.tp2.widenSingletons
+        if ((tp.tp1 eq tp1w) && (tp.tp2 eq tp2w)) this else tp1w & tp2w
       case _ =>
         this
+    }
+
+    /** If this type is an alias of a disjunction of stable singleton types,
+     *  these types as a set, otherwise the empty set.
+     *  Overridden and cached in OrType.
+     */
+    def atoms(implicit ctx: Context): Set[Type] = dealias match {
+      case tp: SingletonType if tp.isStable =>
+        def normalize(tp: Type): Type = tp match {
+          case tp: SingletonType =>
+            tp.underlying.dealias match {
+              case tp1: SingletonType => normalize(tp1)
+              case _ =>
+                tp match {
+                  case tp: TermRef => tp.derivedSelect(normalize(tp.prefix))
+                  case _ => tp
+                }
+            }
+          case _ => tp
+        }
+        Set.empty + normalize(tp)
+      case tp: OrType => tp.atoms
+      case tp: AndType => tp.tp1.atoms & tp.tp2.atoms
+      case _ => Set.empty
     }
 
     private def dealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = this match {
@@ -2775,6 +2818,31 @@ object Types {
         myJoinPeriod = ctx.period
       }
       myJoin
+    }
+
+    private[this] var atomsRunId: RunId = NoRunId
+    private[this] var myAtoms: Set[Type] = _
+    private[this] var myWidened: Type = _
+
+    private def ensureAtomsComputed()(implicit ctx: Context): Unit =
+      if (atomsRunId != ctx.runId) {
+        val atoms1 = tp1.atoms
+        val atoms2 = tp2.atoms
+        myAtoms = if (atoms1.nonEmpty && atoms2.nonEmpty) atoms1 | atoms2 else Set.empty
+        val tp1w = tp1.widenSingletons
+        val tp2w = tp2.widenSingletons
+        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
+        atomsRunId = ctx.runId
+      }
+
+    override def atoms(implicit ctx: Context): Set[Type] = {
+      ensureAtomsComputed()
+      myAtoms
+    }
+
+    override def widenSingletons(implicit ctx: Context): Type = {
+      ensureAtomsComputed()
+      myWidened
     }
 
     def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =

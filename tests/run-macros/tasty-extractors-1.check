@@ -35,7 +35,7 @@ Inlined(None, Nil, Block(List(Literal(Constant.Int(1)), Literal(Constant.Int(2))
 Type.ConstantType(Constant.Int(3))
 
 Inlined(None, Nil, If(Typed(Literal(Constant.Boolean(true)), TypeIdent("Boolean")), Literal(Constant.Int(1)), Literal(Constant.Int(2))))
-Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+Type.OrType(Type.ConstantType(Constant.Int(1)), Type.ConstantType(Constant.Int(2)))
 
 Inlined(None, Nil, Match(Literal(Constant.String("a")), List(CaseDef(Pattern.Value(Literal(Constant.String("a"))), None, Block(Nil, Literal(Constant.Unit()))))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
@@ -65,13 +65,13 @@ Inlined(None, Nil, Match(Ident("Nil"), List(CaseDef(Pattern.Unapply(TypeApply(Se
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
 Inlined(None, Nil, Try(Literal(Constant.Int(1)), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant.Unit())))), None))
-Type.OrType(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+Type.OrType(Type.ConstantType(Constant.Int(1)), Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
 
 Inlined(None, Nil, Try(Literal(Constant.Int(2)), Nil, Some(Literal(Constant.Unit()))))
 Type.ConstantType(Constant.Int(2))
 
 Inlined(None, Nil, Try(Literal(Constant.Int(3)), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant.Unit())))), Some(Literal(Constant.Unit()))))
-Type.OrType(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+Type.OrType(Type.ConstantType(Constant.Int(3)), Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
 
 Inlined(None, Nil, Apply(Select(Literal(Constant.String("a")), "=="), List(Literal(Constant.String("b")))))
 Type.SymRef(IsClassDefSymbol(<scala.Boolean>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))

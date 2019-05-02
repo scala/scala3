@@ -131,7 +131,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *      class A extends C[A] with D
    *      class B extends C[B] with D with E
    *
-   *  we approximate `A | B` by `C[A | B] with D`
+   *  we approximate `A | B` by `C[A | B] with D`.
+   *
+   *  Before we do that, we try to find a common non-class supertype of T1 | ... | Tn
+   *  in a "best effort", ad-hoc way by selectively widening types in `T1, ..., Tn`
+   *  and stopping if the resulting union simplifies to a type that is not a disjunction.
    */
   def orDominator(tp: Type): Type = {
 
@@ -188,29 +192,83 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case _ => false
       }
 
+      // Step 1: Get RecTypes and ErrorTypes out of the way,
       tp1 match {
-        case tp1: RecType =>
-          tp1.rebind(approximateOr(tp1.parent, tp2))
-        case tp1: TypeProxy if !isClassRef(tp1) =>
-          orDominator(tp1.superType | tp2)
-        case err: ErrorType =>
-          err
+        case tp1: RecType => return tp1.rebind(approximateOr(tp1.parent, tp2))
+        case err: ErrorType => return err
         case _ =>
-          tp2 match {
-            case tp2: RecType =>
-              tp2.rebind(approximateOr(tp1, tp2.parent))
-            case tp2: TypeProxy if !isClassRef(tp2) =>
-              orDominator(tp1 | tp2.superType)
-            case err: ErrorType =>
-              err
-            case _ =>
-              val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
-              val doms = dominators(commonBaseClasses, Nil)
-              def baseTp(cls: ClassSymbol): Type =
-                tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
-              doms.map(baseTp).reduceLeft(AndType.apply)
-          }
       }
+      tp2 match {
+        case tp2: RecType => return tp2.rebind(approximateOr(tp1, tp2.parent))
+        case err: ErrorType => return err
+        case _ =>
+      }
+
+      // Step 2: Try to widen either side. This is tricky and incomplete.
+      // An illustration is in test pos/padTo.scala: Here we need to compute the join of
+      //
+      //   `A | C` under the constraints `B >: A` and `C <: B`
+      //
+      // where `A, B, C` are type parameters.
+      // Widening `A` to its upper bound would give `Any | C`, i.e. `Any`.
+      // But widening `C` first would give `A | B` and then `B`.
+      // So we need to widen `C` first. But how to decide this in general?
+      // In the algorithm below, we try to widen both sides (once), and then proceed as follows:
+      //
+      //  2.0. If no widening succeeds, proceed with step 3.
+      //  2.1. If only one widening succeeds, continue with that one.
+      //  2.2. If the two widened types are in a subtype relationship, continue with the smaller one.
+      //  2.3. If exactly one of the two types is a singleton type, continue with the widened singleton type.
+      //  2.4. If the widened tp2 is a supertype of tp1, return widened tp2.
+      //  2.5. If the widened tp1 is a supertype of tp2, return widened tp1.
+      //  2.6. Otherwise, continue with widened tp1
+      //
+      // At steps 4-6 we lose possible solutions, since we have to make an
+      // arbitrary choice which side to widen. A better solution would look at
+      // the constituents of each operand (if the operand is an OrType again) and
+      // try to widen them selectively in turn. But this might lead to a combinatorial
+      // explosion of possibilities.
+      //
+      // Another approach could be to store information contained in lower bounds
+      // on both sides. So if `B >: A` we'd also record that `A <: B` and therefore
+      // widening `A` would yield `B` instead of `Any`, so we'd still be on the right track.
+      // This looks feasible if lower bounds are type parameters, but tricky if they
+      // are something else. We'd have to extract the strongest possible
+      // constraint over all type parameters that is implied by a lower bound.
+      // This looks related to an algorithmic problem arising in GADT matching.
+      //
+      // However, this alone is still not enough. There are other sources of incompleteness,
+      // for instance arising from mis-aligned refinements.
+      val tp1w = tp1 match {
+        case tp1: TypeProxy if !isClassRef(tp1) => tp1.superType.widenExpr
+        case _ => tp1
+      }
+      val tp2w = tp2 match {
+        case tp2: TypeProxy if !isClassRef(tp2) => tp2.superType.widenExpr
+        case _ => tp2
+      }
+      if ((tp1w ne tp1) || (tp2w ne tp2)) {
+        val isSingle1 = tp1.isInstanceOf[SingletonType]
+        val isSingle2 = tp2.isInstanceOf[SingletonType]
+        return {
+          if (tp2w eq tp2) orDominator(tp1w | tp2)                  // 2.1
+          else if (tp1w eq tp1) orDominator(tp1 | tp2w)             // 2.1
+          else if (tp1w frozen_<:< tp2w) orDominator(tp1w | tp2)    // 2.2
+          else if (tp2w frozen_<:< tp1w) orDominator(tp1 | tp2w)    // 2.2
+          else if (isSingle1 && !isSingle2) orDominator(tp1w | tp2) // 2.3
+          else if (isSingle2 && !isSingle1) orDominator(tp1 | tp2w) // 2.3
+          else if (tp1 frozen_<:< tp2w) tp2w                        // 2.4
+          else if (tp2 frozen_<:< tp1w) tp1w                        // 2.5
+          else orDominator(tp1w | tp2)                              // 2.6
+        }
+      }
+
+      // Step 3: Intersect base classes of both sides
+      val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+      val doms = dominators(commonBaseClasses, Nil)
+      def baseTp(cls: ClassSymbol): Type =
+        tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
+      doms.map(baseTp).reduceLeft(AndType.apply)
     }
 
     tp match {

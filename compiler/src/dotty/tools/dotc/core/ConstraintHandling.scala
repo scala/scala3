@@ -272,40 +272,31 @@ trait ConstraintHandling[AbstractContext] {
     }
   }
 
-  /** Widen inferred type `tp` with upper bound `bound`, according to the following rules:
-   *   1. If `tp` is a singleton type, yet `bound` is not a singleton type, nor a subtype
-   *      of `scala.Singleton`, widen `tp`.
-   *   2. If `tp` is a union type, yet upper bound is not a union type,
-   *      approximate the union type from above by an intersection of all common base types.
+  /** Widen inferred type `inst` with upper `bound`, according to the following rules:
+   *   1. If `inst` is a singleton type, or a union containing some singleton types,
+   *      widen (all) the singleton type(s), provied the result is a subtype of `bound`
+   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
+   *   2. If `inst` is a union type, approximate the union type from above by an intersection
+   *      of all common base types, provied the result is a subtype of `bound`.
+   *
+   *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(tp: Type, bound: Type)(implicit actx: AbstractContext): Type = {
-    def isMultiSingleton(tp: Type): Boolean = tp.stripAnnots match {
-      case tp: SingletonType => true
-      case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
-      case OrType(tp1, tp2) => isMultiSingleton(tp1) & isMultiSingleton(tp2)
-      case tp: TypeRef => isMultiSingleton(tp.info.hiBound)
-      case tp: TypeVar => isMultiSingleton(tp.underlying)
-      case tp: TypeParamRef => isMultiSingleton(bounds(tp).hi)
-      case _ => false
+  def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type = {
+    def widenOr(tp: Type) = {
+      val tpw = tp.widenUnion
+      if ((tpw ne tp) && tpw <:< bound) tpw else tp
     }
-    def isOrType(tp: Type): Boolean = tp.dealias match {
-      case tp: OrType => true
-      case tp: RefinedOrRecType => isOrType(tp.parent)
-      case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
-      case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
-      case _ => false
+    def widenSingle(tp: Type) = {
+      val tpw = tp.widenSingletons
+      if ((tpw ne tp) && tpw <:< bound) tpw else tp
     }
-    def widenOr(tp: Type) =
-      if (isOrType(tp) && !isOrType(bound)) tp.widenUnion
-      else tp
-    def widenSingle(tp: Type) =
-      if (isMultiSingleton(tp) && !isMultiSingleton(bound) &&
-          !isSubTypeWhenFrozen(bound, defn.SingletonType)) tp.widen
-      else tp
-    widenOr(widenSingle(tp)).dropRepeatedAnnot
+    val wideInst =
+      if (isSubTypeWhenFrozen(bound, defn.SingletonType)) inst
+      else widenOr(widenSingle(inst))
+    wideInst.dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
@@ -316,7 +307,7 @@ trait ConstraintHandling[AbstractContext] {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
     val inst = approximation(param, fromBelow).simplified
-    if (fromBelow) widenInferred(inst, constraint.fullUpperBound(param)) else inst
+    if (fromBelow) widenInferred(inst, param) else inst
   }
 
   /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have
