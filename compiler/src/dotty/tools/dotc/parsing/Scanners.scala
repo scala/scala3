@@ -157,16 +157,42 @@ object Scanners {
 
     def intVal: Long = intVal(false)
 
+    private val zeroFloat = raw"[0.]+(?:[eE][+-]?[0-9]+)?[fFdD]?".r
+
     /** Convert current strVal, base to double value
       */
-    def floatVal(negated: Boolean): Double = {
+    def floatVal(negated: Boolean): Float = {
+      assert(token == FLOATLIT)
       val text = removeNumberSeparators(strVal)
-      val limit: Double =
-        if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
+      try {
+        val value: Float = java.lang.Float.valueOf(text).floatValue()
+        if (value > Float.MaxValue)
+          errorButContinue("floating point number too large")
+
+        if (value == 0.0f && !zeroFloat.pattern.matcher(text).matches)
+          errorButContinue("floating point number too small")
+        if (negated) -value else value
+      } catch {
+        case _: NumberFormatException =>
+          error("malformed floating point number")
+          0.0f
+      }
+    }
+
+    def floatVal: Float = floatVal(false)
+
+    /** Convert current strVal, base to double value
+      */
+    def doubleVal(negated: Boolean): Double = {
+      assert(token == DOUBLELIT)
+      val text = removeNumberSeparators(strVal)
       try {
         val value: Double = java.lang.Double.valueOf(text).doubleValue()
-        if (value > limit)
-          error("floating point number too large")
+        if (value > Double.MaxValue)
+          errorButContinue("double precision floating point number too large")
+
+        if (value == 0.0d && !zeroFloat.pattern.matcher(text).matches)
+          errorButContinue("double precision floating point number too small")
         if (negated) -value else value
       } catch {
         case _: NumberFormatException =>
@@ -175,7 +201,7 @@ object Scanners {
       }
     }
 
-    def floatVal: Double = floatVal(false)
+    def doubleVal: Double = doubleVal(false)
 
     @inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
@@ -1034,7 +1060,7 @@ object Scanners {
       case INTLIT => s"int($intVal)"
       case LONGLIT => s"long($intVal)"
       case FLOATLIT => s"float($floatVal)"
-      case DOUBLELIT => s"double($floatVal)"
+      case DOUBLELIT => s"double($doubleVal)"
       case STRINGLIT => s"string($strVal)"
       case STRINGPART => s"stringpart($strVal)"
       case INTERPOLATIONID => s"interpolationid($name)"

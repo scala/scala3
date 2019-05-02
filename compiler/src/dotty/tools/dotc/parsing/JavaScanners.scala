@@ -521,7 +521,7 @@ object JavaScanners {
       case FLOATLIT =>
         "float(" + floatVal + ")"
       case DOUBLELIT =>
-        "double(" + floatVal + ")"
+        "double(" + doubleVal + ")"
       case STRINGLIT =>
         "string(" + name + ")"
       case SEMI =>
