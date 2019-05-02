@@ -211,6 +211,19 @@ object desugar {
       case _ =>
         rhs
     }
+
+    def dropContextBounds(tparam: TypeDef): TypeDef = {
+      def dropInRhs(rhs: Tree): Tree = rhs match {
+        case ContextBounds(tbounds, _) =>
+          tbounds
+        case rhs @ LambdaTypeTree(tparams, body) =>
+          cpy.LambdaTypeTree(rhs)(tparams, dropInRhs(body))
+        case _ =>
+          rhs
+      }
+      cpy.TypeDef(tparam)(rhs = dropInRhs(tparam.rhs))
+    }
+
     val tparams1 = tparams mapConserve { tparam =>
       cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
@@ -239,17 +252,12 @@ object desugar {
     def normalizedVparamss = meth1.vparamss map (_ map (vparam =>
       cpy.ValDef(vparam)(rhs = EmptyTree)))
 
-    def dropContextBound(tparam: TypeDef) = tparam.rhs match {
-      case ContextBounds(tbounds, _) => cpy.TypeDef(tparam)(rhs = tbounds)
-      case _ => tparam
-    }
-
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
             name = DefaultGetterName(methName, n),
-            tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
+            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
             rhs = vparam.rhs
