@@ -18,7 +18,7 @@ object B {
 In the code above, the `import A._` clause of object `B` will import all members
 of `A` _except_ the representative `tc`. Conversely, the second import `import repr A._` will import _only_ that representative.
 
-Generally, a normal import clause brings all definitions except representatives into scope whereas an `import repr` clause brings only representatives into scope.
+Generally, a normal import clause brings all members except representatives into scope whereas an `import repr` clause brings only representatives into scope.
 
 There are two main benefits arising from these rules:
 
@@ -29,7 +29,7 @@ There are two main benefits arising from these rules:
    can be anonymous, so the usual recourse of using named imports is not
    practical.
 
-### Relationship with Old-Style Implicits
+### Migration
 
 The rules of representatives above have the consequence that a library
 would have to migrate in lockstep with all its users from old style implicits and
@@ -49,4 +49,4 @@ The following modifications avoid this hurdle to migration.
 
 These rules mean that library users can use `import repr` to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to
-representation clauses once their user base has migrated.
+`repr` clauses once their user base has migrated.

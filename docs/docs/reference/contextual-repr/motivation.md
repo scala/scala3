@@ -51,7 +51,7 @@ The following pages introduce a redesign of contextual abstractions in Scala. Th
 
  2. [Given Clauses](./inferable-params.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several implicit parameter sections, and to have implicit parameters followed by normal ones.
 
- 3. [Imports of Representatives](./import-implied.html) are new form of import that specifically imports representatives and nothing else. Representatives _must be_ imported with  `import repr`, a plain import will no longer bring them into scope.
+ 3. [Import Repr](./import-implied.html) is new form of import that specifically imports representatives and nothing else. Representatives _must be_ imported with  `import repr`, a plain import will no longer bring them into scope.
 
  4. [Implicit Conversions](./conversions.html) are now expressed as representatives of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
 

@@ -140,11 +140,11 @@ one can write
 
 ### Implicit Classes
 
-Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a conversion delegate.
+Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a conversion instance.
 
 ### Abstract Implicits
 
-An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an implicit alias. E.g., Scala 2's
+An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an alias implicit. E.g., Scala 2's
 ```scala
   implicit def symDeco: SymDeco
 ```

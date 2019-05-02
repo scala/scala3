@@ -52,7 +52,9 @@ An alias can be used to define a representative that is equal to some expression
 ```scala
 repr ctx of ExecutionContext = new ForkJoinPool()
 ```
-This creates a representative `ctx` of type `ExecutionContext` that resolves to the right hand side `new ForkJoinPool()`. The first time a representative of `ExecutionContext` is demanded, a new `ForkJoinPool` is created, which is then returned for this and all subsequent accesses to `ctx`.
+This creates a repreentative `global` of type `ExecutionContext` that resolves to the right hand side `new ForkJoinPool()`.
+The first time `global` is accessed, a new `ForkJoinPool` is created, which is then
+returned for this and all subsequent accesses to `global`.
 
 Alias representatives can be anonymous, e.g.
 ```scala
@@ -62,7 +64,7 @@ An alias representative can have type and context parameters just like any other
 
 ## Representative Creation
 
-A representative without type parameters or given clause is created on-demand, the first time it is accessed. No attempt is made to ensure safe publication, which means that different threads might create different representatives for the same `repr` clause. If a `repr` clause has type parameters or a given clause, a fresh representative is created for each reference.
+A representative without type parameters or given clause is created on-demand, the first time it is accessed. It is not required to ensure safe publication, which means that different threads might create different representatives for the same `repr` clause. If a `repr` clause has type parameters or a given clause, a fresh representative is created for each reference.
 
 ## Syntax
 

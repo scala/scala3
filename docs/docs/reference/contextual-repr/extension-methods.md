@@ -56,7 +56,7 @@ Then
 ```scala
 List("here", "is", "a", "list").longestStrings
 ```
-is legal everywhere `ops1` is available as a representative. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
+is legal everywhere `ops1` is eligible. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
 
 ```scala
 object ops2 extends StringSeqOps
@@ -80,7 +80,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Representatives for Extension Methods
 
-Representatives that define extension methods can also be defined without a `for` clause. E.g.,
+Representatives that define extension methods can also be defined without an `of` clause. E.g.,
 
 ```scala
 repr StringOps {
@@ -94,12 +94,12 @@ repr {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such representatives are anonymous (as in the second clause), their name is synthesized from the name
+If such a representative is anonymous (as in the second clause), its name is synthesized from the name
 of the first defined extension method.
 
 ### Operators
 
-The extension method syntax also applies to the definitions of operators.
+The extension method syntax also applies to the definition of operators.
 In each case the definition syntax mirrors the way the operator is applied.
 Examples:
 ```scala

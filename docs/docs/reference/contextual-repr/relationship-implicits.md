@@ -28,17 +28,17 @@ Representative clauses can be mapped to combinations of implicit objects, classe
       class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
       final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Alias representatives map to implicit methods. If the representatives has neither type parameters nor a given clause, the result of creating an instance is cached in a variable. If in addition the right hand side is pure and cheap to compute, a simple `val` can be used instead. E.g.,
+ 3. Alias representatives map to implicit methods. If the representative has neither type parameters nor a given clause, the result of creating an instance is cached in a variable. If in addition the right hand side is pure and cheap to compute, a simple `val` can be used instead. E.g.,
     ```scala
-      repr ec of ExecutionContext = new ForkJoinContext()
+      repr global of ExecutionContext = new ForkJoinContext()
       repr config of Config = default.config
     ```
     map to
     ```scala
-      private[this] var ec$cache: ExecutionContext | Null = null
-      final implicit def ec: ExecutionContext = {
-        if (ec$cache == null) ec$cache = new ForkJoinContext()
-        ec$cache
+      private[this] var global$cache: ExecutionContext | Null = null
+      final implicit def global: ExecutionContext = {
+        if (global$cache == null) global$cache = new ForkJoinContext()
+        global$cache
       }
 
       final implicit val config: Config = default.config

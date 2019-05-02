@@ -3,7 +3,7 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Traits, representatives, extension methods and context bounds
+Representatives, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
 with canonical implementations defined by representatives. Here are some examples of standard typeclasses:
 

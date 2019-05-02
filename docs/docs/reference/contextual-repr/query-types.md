@@ -28,7 +28,7 @@ where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
 are available as representatives in `E`.
 
-Like their types, implicit function iterals are written with a `given` prefix. They differ from normal function literals in two ways:
+Like their types, implicit function literals are written with a `given` prefix. They differ from normal function literals in two ways:
 
  1. Their parameters are implicit.
  2. Their types are implicit function types.
