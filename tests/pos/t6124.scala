@@ -8,4 +8,11 @@ trait T {
   def d = 3_14E-2_1
 
   def z = 0
+
+
+  // Examples from
+  // https://docs.oracle.com/javase/8/docs/technotes/guides/language/underscores-literals.html
+  val x2 = 5_2;              // OK (decimal literal)
+  val x4 = 5_______2;        // OK (decimal literal)
+  val x7 = 0x5_2;            // OK (hexadecimal literal)
 }

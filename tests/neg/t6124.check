@@ -1,22 +1,34 @@
-<304..304> in t6124.scala
+[490..493] in t6124.scala
+Not found: _52
+[404..406..412] in t6124.scala
+value _1415F is not a member of Int
+<594..594> in t6124.scala
+trailing separator is not allowed
+<567..567> in t6124.scala
+leading separator is not allowed
+<540..540> in t6124.scala
+trailing separator is not allowed
+<516..516> in t6124.scala
+trailing separator is not allowed
+<467..467> in t6124.scala
+trailing separator is not allowed
+<375..375> in t6124.scala
+trailing separator is not allowed
+<228..228> in t6124.scala
 double precision floating point number too small
-<273..273> in t6124.scala
+<197..197> in t6124.scala
 trailing separator is not allowed
-<235..235> in t6124.scala
+<159..159> in t6124.scala
 Invalid literal number
-<240..240> in t6124.scala
+<164..164> in t6124.scala
 trailing separator is not allowed
-<213..213> in t6124.scala
+<137..137> in t6124.scala
 trailing separator is not allowed
-<187..187> in t6124.scala
+<111..111> in t6124.scala
 trailing separator is not allowed
-<160..160> in t6124.scala
+<84..84> in t6124.scala
 trailing separator is not allowed
-<125..125> in t6124.scala
+<49..49> in t6124.scala
 Invalid literal number
-<101..101> in t6124.scala
-trailing separator is not allowed
-<67..67> in t6124.scala
-trailing separator is not allowed
-<33..33> in t6124.scala
+<25..25> in t6124.scala
 trailing separator is not allowed

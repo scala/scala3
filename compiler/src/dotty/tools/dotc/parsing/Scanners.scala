@@ -508,6 +508,8 @@ object Scanners {
             if (ch == 'x' || ch == 'X') {
               nextChar()
               base = 16
+              if (isNumberSeparator(ch))
+                errorButContinue("leading separator is not allowed", offset + 2)
             } else {
               /**
                * What should leading 0 be in the future? It is potentially dangerous
