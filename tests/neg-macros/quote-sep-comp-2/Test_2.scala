@@ -5,7 +5,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     val x = 1
-    assert2(x != 0)
+    assert2(x != 0) // error: Macro cannot be expanded in the same project as its definition
     assert2(x == 0)
   }
 }

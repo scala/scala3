@@ -1,6 +1,8 @@
 
 object Test {
 
+  import Macros._
+
   def main(args: Array[String]): Unit = {
     println(size(None))
     println(size(Some(1)))
@@ -14,15 +16,5 @@ object Test {
     println(size5(Some(None)))
     println(size5(Some(Some(6))))
   }
-
-  inline def size(inline opt: Option[Int]): Int = ${ Macros.impl(opt) }
-
-  inline def size2(inline i: Int): Int = ${ Macros.impl(None) }
-
-  inline def size3(inline i: Int): Int = ${ Macros.impl(Some(i)) }
-
-  inline def size4(inline i: Int): Int = ${ Macros.impl2(Some(Some(i))) }
-
-  inline def size5(inline opt: Option[Option[Int]]): Int = ${ Macros.impl2(opt) }
 
 }
