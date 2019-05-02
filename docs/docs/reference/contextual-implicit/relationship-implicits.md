@@ -28,12 +28,23 @@ Implicit instances can be mapped to combinations of implicit objects, classes an
       class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
       final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Alias implicits map to implicit methods. If the implicit has neither type parameters nor a given clause, the result of creating an instance is cached in a variable. If in addition the right hand side is pure and cheap to compute, a simple `val` can be used instead. E.g.,
+ 3. Alias implicits map to implicit methods. If the implicit has neither type parameters nor a given clause, the result of creating an instance is cached in a variable. There are two cases that can be optimized:
+
+  - If the right hand side is a simple reference, we can
+    use a forwarder to that reference without caching it.
+  - If the right hand side is more complex, but still known to be pure, we can
+    create a `val` that computes it ahead of time.
+
+ Examples:
+
     ```scala
       implicit global for ExecutionContext = new ForkJoinContext()
       implicit config for Config = default.config
+
+      def ctx: Context
+      implicit for Context = ctx
     ```
-    map to
+    would map to
     ```scala
       private[this] var global$cache: ExecutionContext | Null = null
       final implicit def global: ExecutionContext = {
@@ -42,6 +53,8 @@ Implicit instances can be mapped to combinations of implicit objects, classes an
       }
 
       final implicit val config: Config = default.config
+
+      final implicit def Context_repr = ctx
     ```
 
 ### Anonymous Implicits
