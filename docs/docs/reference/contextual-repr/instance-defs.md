@@ -37,7 +37,7 @@ Given clauses are further explained in the [next section](./inferable-params.htm
 
 ## Anonymous Representatives
 
-The name of a representative can be left out. So the representative definitions
+The name of a representative can be left out. So the representatives
 of the last section can also be expressed like this:
 ```scala
 repr of Ord[Int] { ... }
@@ -62,7 +62,7 @@ repr of Position = enclosingTree.position
 ```
 An alias representative can have type and context parameters just like any other representative, but it can only implement a single type.
 
-## Representative Creation
+## Creating Representatives
 
 A representative without type parameters or given clause is created on-demand, the first time it is accessed. It is not required to ensure safe publication, which means that different threads might create different representatives for the same `repr` clause. If a `repr` clause has type parameters or a given clause, a fresh representative is created for each reference.
 
