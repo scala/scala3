@@ -537,6 +537,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def companionSymbol: Symbol
     def moduleClass: Symbol
     def enclosingClassSym: Symbol
+    def originalLexicallyEnclosingClass: Symbol
     def nextOverriddenSymbol: Symbol
 
 
@@ -584,7 +585,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
      */
     def isOriginallyStaticOwner: Boolean =
-      isPackageClass || isModuleClass && originalOwner.isOriginallyStaticOwner
+      isPackageClass || isModuleClass && originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
     def samMethod(): Symbol
 

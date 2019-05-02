@@ -399,6 +399,15 @@ object SymDenotations {
     /** The name with which the denoting symbol was created */
     final def originalName(implicit ctx: Context): Name = initial.effectiveName
 
+    /** The owner with which the denoting symbol was created. */
+    final def originalOwner(implicit ctx: Context): Symbol =
+      if (exists) {
+        // There is a similar logic in DottyBackendInterface.originalLexicallyEnclosingClass (see comment there)
+        val validity = initial.validFor
+        val shiftedContext = ctx.withPhase(validity.phaseId)
+        Symbols.toDenot(symbol)(shiftedContext).maybeOwner
+      } else NoSymbol
+
     /** The encoded full path name of this denotation, where outer names and inner names
      *  are separated by `separator` strings as indicated by the given name kind.
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.

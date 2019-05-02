@@ -20,7 +20,10 @@ import interface._
     // Here used to be an `assert(!classSym.isDelambdafyFunction)`: delambdafy lambda classes are
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
-    classSym.isAnonymousClass || (classSym.originalOwner != NoSymbol && !classSym.originalOwner.isClass)
+    classSym.isAnonymousClass || {
+      val originalOwnerLexicallyEnclosingClass = classSym.originalOwner.originalLexicallyEnclosingClass
+      originalOwnerLexicallyEnclosingClass != NoSymbol && !originalOwnerLexicallyEnclosingClass.isClass
+    }
   }
 
   /**
@@ -51,9 +54,9 @@ import interface._
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (sym.isClass || sym == NoSymbol) None
       else if (sym.isMethod) Some(sym)
-      else enclosingMethod(sym.originalOwner)
+      else enclosingMethod(sym.originalOwner.originalLexicallyEnclosingClass)
     }
-    enclosingMethod(classSym.originalOwner)
+    enclosingMethod(classSym.originalOwner.originalLexicallyEnclosingClass)
   }
 
   /**
@@ -64,9 +67,9 @@ import interface._
     assert(classSym.isClass, classSym)
     def enclosingClass(sym: Symbol): Symbol = {
       if (sym.isClass) sym
-      else enclosingClass(sym.originalOwner)
+      else enclosingClass(sym.originalOwner.originalLexicallyEnclosingClass)
     }
-    enclosingClass(classSym.originalOwner)
+    enclosingClass(classSym.originalOwner.originalLexicallyEnclosingClass)
   }
 
   /*final*/ case class EnclosingMethodEntry(owner: String, name: String, methodDescriptor: String)
