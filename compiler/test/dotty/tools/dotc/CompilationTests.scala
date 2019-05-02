@@ -172,7 +172,7 @@ class CompilationTests extends ParallelTesting {
       "tests/neg-custom-args/toplevel-samesource/S.scala",
       "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
       defaultOptions) +
-    compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes)
+    compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i6312.scala", defaultOptions and "-Xfatal-warnings" and "-migration")
   }.checkExpectedErrors()
 
