@@ -30,7 +30,7 @@ max(List(1, 2, 3), Nil)
 
 ## Anonymous Implicit Parameters
 
-In many situations, the name of an implicit parameter of a method need not be mentioned explicitly at all, since it is only used as synthesized implicit for other constraints. In that case one can avoid defining a parameter name and just provide its type. Example:
+In many situations, the name of an implicit parameter of a method need not be mentioned explicitly at all, since it is only used as a synthesized argument for other implicit parameters. In that case one can avoid defining a parameter name and just provide its type. Example:
 ```scala
 def maximum[T](xs: List[T]) given Ord[T]: T =
   xs.reduceLeft(max)

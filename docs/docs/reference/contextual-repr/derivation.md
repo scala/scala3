@@ -10,7 +10,7 @@ enum Tree[T] derives Eql, Ordering, Pickling {
   case Leaf(elem: T)
 }
 ```
-The `derives` clause generates repr representatives of the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
+The `derives` clause generates representatives of the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
 repr [T: Eql]      of Eql[Tree[T]]       = Eql.derived
 repr [T: Ordering] of Ordering[Tree[T]] = Ordering.derived
@@ -19,7 +19,7 @@ repr [T: Pickling] of Pickling[Tree[T]] = Pickling.derived
 
 ### Deriving Types
 
-Besides for `enums`, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
+Besides for enums, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
 
  - individual case classes or case objects
  - sealed classes or traits that have only case classes and case objects as children.
@@ -93,8 +93,7 @@ is represented as `T *: Unit` since there is no direct syntax for such tuples: `
 
 ### The Generic Typeclass
 
-For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an representative of `Generic[C[T_1,...,T_n]]` that follows
-the outline below:
+For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` a representative of `Generic[C[T_1,...,T_n]]` that follows the outline below:
 ```scala
 repr [T_1, ..., T_n] of Generic[C[T_1,...,T_n]] {
   type Shape = ...
@@ -215,7 +214,7 @@ trait Eql[T] {
 }
 ```
 We need to implement a method `Eql.derived` that produces a representative of `Eql[T]` provided
-there exists evidence of type `Generic[T]`. Here's a possible solution:
+there exists a representative of type `Generic[T]`. Here's a possible solution:
 ```scala
   inline def derived[T] given (ev: Generic[T]): Eql[T] = new Eql[T] {
     def eql(x: T, y: T): Boolean = {
@@ -234,7 +233,7 @@ there exists evidence of type `Generic[T]`. Here's a possible solution:
 The implementation of the inline method `derived` creates a representative of `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
 `(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
-  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` evidence `(1)`, `(2)`.
+  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` `(1)`, `(2)`.
   2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, but we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
   3. If `ev.Shape` is of the form `Cases[alts]` for some tuple `alts` of alternative types, the equality test consists of comparing the ordinal values of the two mirrors `(3)` and, if they are equal, comparing the elements of the case indicated by that ordinal value. That second step is performed by code that results from the compile-time expansion of the `eqlCases` call `[4]`.
   4. If `ev.Shape` is of the form `Case[elems]` for some tuple `elems` for element types, the elements of the case are compared by code that results from the compile-time expansion of the `eqlElems` call `[5]`.
@@ -302,7 +301,7 @@ The last, and in a sense most interesting part of the derivation is the comparis
     case ev: Eql[T] =>
       ev.eql(x, y)                              // (15)
     case _ =>
-      error("No `Eql` representative was found for $T")
+      error("No `Eql` instance was found for $T")
   }
 ```
 `tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find a representative of `Eql[T]`. If a representative `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no representative is found

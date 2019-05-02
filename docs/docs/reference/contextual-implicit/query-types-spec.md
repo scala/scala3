@@ -76,4 +76,4 @@ Gist](https://gist.github.com/OlivierBlanvillain/234d3927fe9e9c6fba074b53a7bd9
 
 ### Type Checking
 
-After desugaring no additional typing rules are required for context query types.
+After desugaring no additional typing rules are required for implicit function types.

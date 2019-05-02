@@ -41,14 +41,14 @@ The name of an implicit instance can be left out. So the implicit instance defin
 of the last section can also be expressed like this:
 ```scala
 implicit for Ord[Int] { ... }
-implicit [T]  or Ord[List[T]] given (ord: Ord[T]) { ... }
+implicit [T] for Ord[List[T]] given (ord: Ord[T]) { ... }
 ```
 If the name of an implicit is missing, the compiler will synthesize a name from
 the type(s) in the `for` clause.
 
 ## Alias Implicits
 
-An alias implicit defines an implicit value that is equal to some expression. E.g.:
+An alias can be used to define an implicit value that is equal to some expression. E.g.:
 ```scala
 implicit global for ExecutionContext = new ForkJoinPool()
 ```

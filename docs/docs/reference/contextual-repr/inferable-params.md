@@ -20,7 +20,7 @@ The `max` method can be applied as follows:
 ```scala
 max(2, 3).given(IntOrd)
 ```
-The `.given(IntOrd)` part provides the `IntOrd` representative as an argument for the `ord` parameter. But the point of
+The `.given(IntOrd)` part passes `IntOrd` as an argument for the `ord` parameter. But the point of
 implicit parameters is that this argument can also be left out (and it usually is). So the following
 applications are equally valid:
 ```scala

@@ -31,7 +31,7 @@ that derives `Eql`, e.g.
 ```scala
 class T derives Eql
 ```
-Alternatively, one can also provide an `Eql` representative directly, like this:
+Alternatively, one can also define an `Eql` representative directly, like this:
 ```scala
 repr for Eql[T, T] = Eql.derived
 ```
@@ -75,7 +75,7 @@ defined as follows:
 def eqlAny[L, R]: Eql[L, R] = Eql.derived
 ```
 
-Even though `eqlAny` is not declared a representative, the compiler will still
+Even though `eqlAny` is not declared as a representative, the compiler will still
 construct an `eqlAny` instance as answer to an implicit search for the
 type `Eql[L, R]`, unless `L` or `R` have `Eql` representatives
 defined on them, or the language feature `strictEquality` is enabled
@@ -141,7 +141,7 @@ The `Eql` object defines representatives for
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Representative are defined so that every one of these types is has a reflexive `Eql` representative, and the following holds:
+Representative are defined so that every one of these types has a reflexive `Eql` representative, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).
