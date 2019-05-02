@@ -2,6 +2,7 @@ package dotty.tastydoc
 
 import scala.tasty.Reflection
 import dotty.tastydoc.comment.{CommentParser, CommentCleaner, Comment, WikiComment, MarkdownComment}
+import dotty.tastydoc.references._
 
 object representations extends CommentParser with CommentCleaner {
 
@@ -109,13 +110,17 @@ object representations extends CommentParser with CommentCleaner {
     }
   }
 
-  private def extractMembers(reflect: Reflection)(body: List[reflect.Statement]) : List[Representation] = {
+  private def extractMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol) : List[Representation] = {
     import reflect._
-    body.filter{x => //Filter fields which shouldn't be displayed in the doc
-        !removeColorFromType(x.showCode).contains("def this(") && //No constructor
-        !x.symbol.flags.is(Flags.Local) //Locally defined
+    body.flatMap{
+        case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
+        case x => Some(x)
+      }.filter{x => //Filter fields which shouldn't be displayed in the doc
+        !x.symbol.flags.is(Flags.Local) && //Locally defined
+        !x.symbol.flags.is(Flags.Private)
       }
-      .map(convertToRepresentation(reflect))
+      .map(convertToRepresentation(reflect)) ++
+    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}
   }
 
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause) extends Representation with Members {
@@ -147,7 +152,7 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
-    override val members = extractMembers(reflect)(internal.body)
+    override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val parent = None
     override val parents = internal.parents.map(x => removeColorFromType(x.showCode))
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
@@ -184,7 +189,7 @@ object representations extends CommentParser with CommentCleaner {
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
-    override val members = extractMembers(reflect)(internal.body)
+    override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(_) => path.init ++ List(name)
       case None => Nil
@@ -223,25 +228,70 @@ object representations extends CommentParser with CommentCleaner {
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
 
-    private def test(tp: reflect.Type): String ={
-      def typeOrBoundsHandling(typeOrBounds: reflect.TypeOrBounds): String = typeOrBounds match {
-        case reflect.IsType(tpe) => test(tpe)
-        case _ => "BOUNDS"
+    def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
+      import reflect._
+
+      def typeOrBoundsHandling(typeOrBounds: reflect.TypeOrBounds): Reference = typeOrBounds match {
+        case reflect.IsType(tpe) => inner(tpe)
+        case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) => BoundsReference(inner(low), inner(hi))
+        case reflect.NoPrefix() => EmptyReference
       }
 
-      tp match {
-        case reflect.Type.IsOrType(reflect.Type.OrType(left, right)) => test(left) + " | " + test(right)
-        case reflect.Type.IsAndType(reflect.Type.AndType(left, right)) => test(left) + " & " + test(right)
-        case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => test(tpe) + "[" + typeOrBoundsList.map(typeOrBoundsHandling).mkString(", ") + "]"
-        case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => "=> " + test(tpe)
-        case reflect.Type.IsConstantType(reflect.Type.ConstantType(typeOrBounds)) => "CONSTANT"
-        case reflect.Type.IsTypeRef(reflect.Type.TypeRef(name, qual)) => typeOrBoundsHandling(qual) + "TYPE" + name
-        case reflect.Type.IsTermRef(reflect.Type.TermRef(name, qual)) => typeOrBoundsHandling(qual) + "TERM" + name
-        case _ => "ERROR(" + tp + ")"
+      //Inner method to avoid passing the reflection each time
+      def inner(tp: reflect.Type): Reference = tp match {
+        case reflect.Type.IsOrType(reflect.Type.OrType(left, right)) => OrTypeReference(inner(left), inner(right))
+        case reflect.Type.IsAndType(reflect.Type.AndType(left, right)) => AndTypeReference(inner(left), inner(right))
+        case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => ByNameReference(inner(tpe))
+        case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
+        case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
+        case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
+          case TypeReference(label, link, _) =>
+            if(link == "./scala/"){
+              if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
+                val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
+                FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
+              }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
+                TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
+              }else{
+                TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
+              }
+            }else{
+              TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
+            }
+          case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue.")
+        }
+
+        case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
+          typeOrBoundsHandling(qual) match {
+            case TypeReference(label, link, xs) => TypeReference(typeName, link + label + "/", xs)
+            case EmptyReference => TypeReference(typeName, "./", Nil)
+            case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue.")
+          }
+        case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
+          typeOrBoundsHandling(qual) match {
+            case TypeReference(label, link, xs) => TypeReference(typeName, link + label + "/", xs)
+            case EmptyReference => TypeReference(typeName, "./", Nil)
+            case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue.")
+          }
+        case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
+          case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) =>
+            typeOrBoundsHandling(typeOrBounds) match {
+              case TypeReference(label, link, xs) => TypeReference(symbol.name, link + label + "/", xs)
+              case EmptyReference if symbol.name == "<root>" => TypeReference(".", "", Nil)
+              case EmptyReference => TypeReference(symbol.name, "./", Nil)
+              case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
+            }
+          case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
+        }
+        // case _ => throw Exception("No match for type in conversion to Reference")
+        case _ => EmptyReference
       }
+
+      inner(tp)
     }
-    println(name + "=============")
-    println(test(internal.tpt.tpe))
+    println(name + " =============")
+    println(internal.tpt.tpe)
+    println(convertTypeToReference(reflect)(internal.tpt.tpe))
 
     override val returnValue = removeColorFromType(internal.tpt.tpe.showCode)
     override val annotations = Nil
@@ -267,6 +317,7 @@ object representations extends CommentParser with CommentCleaner {
 
   def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree) = {
     import reflect._
+
     tree match {
       case IsPackageClause(t@reflect.PackageClause(_)) => new PackageRepresentation(reflect, t)
 
