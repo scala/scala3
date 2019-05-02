@@ -1,8 +1,5 @@
 # Closure type miss match
 eff-dependent.scala
 
-# It seems we still harmonize types in fromTasty. Not sure where this happens
-puzzle.scala
-
 # We get: class Foo needs to be abstract, since implicit val x$1: TC is not defined
 i2567.scala

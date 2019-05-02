@@ -43,7 +43,9 @@ object TestSources {
       .filter(_.nonEmpty)
       .toList
 
-    assert(list.nonEmpty)
+    if (list.isEmpty)
+      println(s"$path is empty")
+
     list
   }
 
