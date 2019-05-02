@@ -216,12 +216,12 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       // In the algorithm below, we try to widen both sides (once), and then proceed as follows:
       //
       //  2.0. If no widening succeeds, proceed with step 3.
-      //  2.1. If only one widening succeeds, pick that one.
-      //  2.2. If the two widened types are in a subtype relationship, pick the smaller one.
-      //  2.3. If exactly one of the two types is a singleton type, pick that one.
-      //  2.4. If the widened tp2 is a supertype of tp1, pick widened tp2.
-      //  2.5. If the widened tp1 is a supertype of tp2, pick widened tp1.
-      //  2.6. Otherwise, pick widened tp1
+      //  2.1. If only one widening succeeds, continue with that one.
+      //  2.2. If the two widened types are in a subtype relationship, continue with the smaller one.
+      //  2.3. If exactly one of the two types is a singleton type, continue with the widened singleton type.
+      //  2.4. If the widened tp2 is a supertype of tp1, return widened tp2.
+      //  2.5. If the widened tp1 is a supertype of tp2, return widened tp1.
+      //  2.6. Otherwise, continue with widened tp1
       //
       // At steps 4-6 we lose possible solutions, since we have to make an
       // arbitrary choice which side to widen. A better solution would look at
@@ -258,7 +258,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           else if (isSingle1 && !isSingle2) orDominator(tp1w | tp2) // 2.3
           else if (isSingle2 && !isSingle1) orDominator(tp1 | tp2w) // 2.3
           else if (tp1 frozen_<:< tp2w) tp2w                        // 2.4
-          else orDominator(tp1w | tp2)                              // 2.5 and 2.6
+          else if (tp2 frozen_<:< tp1w) tp1w                        // 2.5
+          else orDominator(tp1w | tp2)                              // 2.6
         }
       }
 
