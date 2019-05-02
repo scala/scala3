@@ -3,3 +3,6 @@ collections_1.scala
 
 # Infinite loop
 t3612.scala
+
+# Other failure
+t802.scala
