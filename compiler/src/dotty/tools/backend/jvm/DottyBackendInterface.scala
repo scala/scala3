@@ -760,10 +760,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       // used to populate the EnclosingMethod attribute.
       // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
       if (sym.exists) {
-        /* This logic is similar to SymDenotations.originalOwner, but it cannot
-         * easily be factored out because we need the `shiftedContext` when calling
-         * `lexicallyEnclosingClass`.
-         */
         val validity = toDenot(sym).initial.validFor
         val shiftedContext = ctx.withPhase(validity.phaseId)
         toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
