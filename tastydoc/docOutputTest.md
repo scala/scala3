@@ -1,4 +1,6 @@
 [link](#Title-1)
+
+[link outside file](./test#title-test)
 a
 a
 
