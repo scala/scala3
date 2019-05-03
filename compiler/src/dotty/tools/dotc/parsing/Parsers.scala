@@ -1729,20 +1729,20 @@ object Parsers {
       else {
         val pat = pattern1()
         if (in.token == EQUALS) atSpan(startOffset(pat), in.skipToken()) { GenAlias(pat, expr()) }
-        else generatorRest(pat, filtering = false)
+        else generatorRest(pat, casePat = false)
       }
 
     /** Generator   ::=  [‘case’] Pattern `<-' Expr
      */
     def generator(): Tree = {
-      val filtering =
-        if (in.token == CASE) { in.skipCASE(); true }
-        else !ctx.settings.strict.value  // don't filter under -strict
-      generatorRest(pattern1(), filtering)
+      val casePat = if (in.token == CASE) { in.skipCASE(); true } else false
+      generatorRest(pattern1(), casePat)
     }
 
-    def generatorRest(pat: Tree, filtering: Boolean): GenFrom =
-      atSpan(startOffset(pat), accept(LARROW)) { GenFrom(pat, expr(), filtering) }
+    def generatorRest(pat: Tree, casePat: Boolean): GenFrom =
+      atSpan(startOffset(pat), accept(LARROW)) {
+        GenFrom(pat, expr(), filtering = casePat || !ctx.settings.strict.value)  // don't filter under -strict
+      }
 
     /** ForExpr  ::= `for' (`(' Enumerators `)' | `{' Enumerators `}')
      *                {nl} [`yield'] Expr
@@ -1767,7 +1767,7 @@ object Parsers {
                   atSpan(lparenOffset) { makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
                 }
                 else pats.head
-              generatorRest(pat, filtering = false) :: enumeratorsRest()
+              generatorRest(pat, casePat = false) :: enumeratorsRest()
             }
           if (wrappedEnums) {
             accept(RPAREN)

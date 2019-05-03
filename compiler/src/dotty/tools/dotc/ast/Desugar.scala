@@ -1120,11 +1120,11 @@ object desugar {
    *
    *       { cases }
    *  ==>
-   *       x$1 => (x$1 @unchecked) match { cases }
+   *       x$1 => (x$1 @unchecked?) match { cases }
    *
    *  If `nparams` != 1, expand instead to
    *
-   *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked) match { cases }
+   *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
    */
   def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
@@ -1343,7 +1343,7 @@ object desugar {
       }
 
       def isIrrefutableGenFrom(gen: GenFrom): Boolean =
-        gen.isInstanceOf[IrrefutableGenFrom] ||
+        !gen.filtering ||
         IdPattern.unapply(gen.pat).isDefined ||
         isIrrefutable(gen.pat, gen.expr)
 
@@ -1370,11 +1370,11 @@ object desugar {
           val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, rhs, gen.filtering) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = pat :: pats
-          val vfrom1 = new IrrefutableGenFrom(makeTuple(allpats), rhs1)
+          val vfrom1 = new GenFrom(makeTuple(allpats), rhs1, filtering = false)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test))
-          val genFrom = new IrrefutableGenFrom(gen.pat, filtered)
+          val genFrom = new GenFrom(gen.pat, filtered, filtering = false)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
@@ -1569,7 +1569,4 @@ object desugar {
     collect(tree)
     buf.toList
   }
-
-  private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile)
-    extends GenFrom(pat, expr, false)
 }
