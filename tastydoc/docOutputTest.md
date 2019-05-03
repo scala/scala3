@@ -1,6 +1,6 @@
 [link](#Title-1)
 
-[link outside file](./test#title-test)
+[link outside file](./test.md#title-test)
 a
 a
 
