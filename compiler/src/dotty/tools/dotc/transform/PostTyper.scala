@@ -170,7 +170,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Inlined(call, _, _) =>
-          cpy.Inlined(tree)(call, Nil, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)))
+          cpy.Inlined(tree)(call, Nil, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)).withSpan(tree.span))
         case _ => super.transform(tree)
       }
     }

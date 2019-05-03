@@ -326,8 +326,19 @@ object Erasure {
     }
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
-      if (isErased(tree) && !ctx.mode.is(Mode.Type))
-        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
+      if (!ctx.mode.is(Mode.Type)) {
+        if (isErased(tree))
+          ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
+        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
+          case Some(annot) =>
+            def defaultMsg =
+              s"""Reference to ${tree.symbol.showLocated} should not have survived,
+                 |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
+            val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
+            ctx.error(message, tree.sourcePos)
+          case _ => // OK
+        }
+      }
       tree
     }
 

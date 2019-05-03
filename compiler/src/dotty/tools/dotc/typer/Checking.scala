@@ -401,8 +401,6 @@ object Checking {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
     }
-    if (sym.hasAnnotation(defn.CompileTimeOnlyParamAnnot))
-      ctx.migrationWarning("`@compileTimeOnly(msg)` will be replaced by `scala.compiletime.error(msg)`", sym.sourcePos)
     else if (sym.is(Deferred, butNot = Param) && !sym.isType && !sym.isSelfSym) {
       if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)
         fail(OnlyClassesCanHaveDeclaredButUndefinedMembers(sym))

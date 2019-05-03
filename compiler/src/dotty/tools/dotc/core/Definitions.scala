@@ -858,7 +858,7 @@ class Definitions {
   lazy val TransientParamAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.constructorOnly")
   def TransientParamAnnot(implicit ctx: Context): ClassSymbol = TransientParamAnnotType.symbol.asClass
   lazy val CompileTimeOnlyAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.compileTimeOnly")
-  def CompileTimeOnlyParamAnnot(implicit ctx: Context): ClassSymbol = CompileTimeOnlyAnnotType.symbol.asClass
+  def CompileTimeOnlyAnnot(implicit ctx: Context): ClassSymbol = CompileTimeOnlyAnnotType.symbol.asClass
   lazy val SwitchAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.switch")
   def SwitchAnnot(implicit ctx: Context): ClassSymbol = SwitchAnnotType.symbol.asClass
   lazy val ThrowsAnnotType: TypeRef = ctx.requiredClassRef("scala.throws")

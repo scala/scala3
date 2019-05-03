@@ -83,7 +83,7 @@ object DynamicTuple {
   def dynamic_*: [This <: Tuple, H] (self: Tuple, x: H): H *: This = {
     type Result = H *: This
     (self: Any) match {
-      case Unit =>
+      case () =>
         Tuple1(x).asInstanceOf[Result]
       case self: Tuple1[_] =>
         Tuple2(x, self._1).asInstanceOf[Result]
