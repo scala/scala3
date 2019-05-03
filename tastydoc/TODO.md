@@ -44,3 +44,9 @@
 * Output inner class/object if not inherited
 * Source file link
 * List Package content => def/val too?
+
+# Report
+* Goal Why we wanted to generated from tasty why to markdown
+* General architecture, same intermediate interface as dotty doc
+* intermediate representation md to xxxx
+* Difficulties, problmes with dottydoc + md libraries

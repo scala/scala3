@@ -123,6 +123,68 @@ object representations extends CommentParser with CommentCleaner {
     symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}
   }
 
+  private def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
+    import reflect._
+
+    def typeOrBoundsHandling(typeOrBounds: reflect.TypeOrBounds): Reference = typeOrBounds match {
+      case reflect.IsType(tpe) => inner(tpe)
+      case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) => BoundsReference(inner(low), inner(hi))
+      case reflect.NoPrefix() => EmptyReference
+    }
+
+    //Inner method to avoid passing the reflection each time
+    def inner(tp: reflect.Type): Reference = tp match {
+      case reflect.Type.IsOrType(reflect.Type.OrType(left, right)) => OrTypeReference(inner(left), inner(right))
+      case reflect.Type.IsAndType(reflect.Type.AndType(left, right)) => AndTypeReference(inner(left), inner(right))
+      case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => ByNameReference(inner(tpe))
+      case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
+      case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
+      case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
+        case TypeReference(label, link, _) =>
+          if(link == "./scala"){
+            if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
+              val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
+              FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
+            }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
+              TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
+            }else{
+              TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
+            }
+          }else{
+            TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
+          }
+        case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue.")
+      }
+
+      case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
+        typeOrBoundsHandling(qual) match {
+          case TypeReference(label, link, xs) => TypeReference(typeName, link + "/" + label, xs)
+          case EmptyReference => TypeReference(typeName, ".", Nil)
+          case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue.")
+        }
+      case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
+        typeOrBoundsHandling(qual) match {
+          case TypeReference(label, link, xs) => TypeReference(typeName, link + "/" + label, xs)
+          case EmptyReference => TypeReference(typeName, ".", Nil)
+          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue.")
+        }
+      case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
+        case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) =>
+          typeOrBoundsHandling(typeOrBounds) match {
+            case TypeReference(label, link, xs) => TypeReference(symbol.name, link + "/" + label, xs)
+            case EmptyReference if symbol.name == "<root>" => EmptyReference
+            case EmptyReference => TypeReference(symbol.name, ".", Nil)
+            case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
+          }
+        case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
+      }
+      // case _ => throw Exception("No match for type in conversion to Reference")
+      case _ => EmptyReference
+    }
+
+    inner(tp)
+  }
+
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause) extends Representation with Members {
     import reflect._
 
@@ -206,7 +268,7 @@ object representations extends CommentParser with CommentCleaner {
     override val parent = None
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
-    override val typeParams = internal.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
+    override val typeParams = internal.typeParams.map(convertTypeToReference(reflect)(_))
 
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
@@ -228,70 +290,33 @@ object representations extends CommentParser with CommentCleaner {
     override val parents = Nil
     override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
 
-    def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
-      import reflect._
-
-      def typeOrBoundsHandling(typeOrBounds: reflect.TypeOrBounds): Reference = typeOrBounds match {
-        case reflect.IsType(tpe) => inner(tpe)
-        case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) => BoundsReference(inner(low), inner(hi))
-        case reflect.NoPrefix() => EmptyReference
-      }
-
-      //Inner method to avoid passing the reflection each time
-      def inner(tp: reflect.Type): Reference = tp match {
-        case reflect.Type.IsOrType(reflect.Type.OrType(left, right)) => OrTypeReference(inner(left), inner(right))
-        case reflect.Type.IsAndType(reflect.Type.AndType(left, right)) => AndTypeReference(inner(left), inner(right))
-        case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => ByNameReference(inner(tpe))
-        case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
-        case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
-        case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
-          case TypeReference(label, link, _) =>
-            if(link == "./scala/"){
-              if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
-                val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
-                FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
-              }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
-                TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
-              }else{
-                TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
-              }
-            }else{
-              TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
-            }
-          case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue.")
+    def makeStringFromReferences(reference: Reference) : String = reference match {
+      case TypeReference(label, link, typeParams) =>
+        if(typeParams.isEmpty){
+          link + "#" + label
+        }else{
+          link + "#" + label + typeParams.map(makeStringFromReferences).mkString("[", ", ", "]")
         }
-
-        case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
-          typeOrBoundsHandling(qual) match {
-            case TypeReference(label, link, xs) => TypeReference(typeName, link + label + "/", xs)
-            case EmptyReference => TypeReference(typeName, "./", Nil)
-            case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue.")
-          }
-        case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
-          typeOrBoundsHandling(qual) match {
-            case TypeReference(label, link, xs) => TypeReference(typeName, link + label + "/", xs)
-            case EmptyReference => TypeReference(typeName, "./", Nil)
-            case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue.")
-          }
-        case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
-          case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) =>
-            typeOrBoundsHandling(typeOrBounds) match {
-              case TypeReference(label, link, xs) => TypeReference(symbol.name, link + label + "/", xs)
-              case EmptyReference if symbol.name == "<root>" => TypeReference(".", "", Nil)
-              case EmptyReference => TypeReference(symbol.name, "./", Nil)
-              case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
-            }
-          case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
-        }
-        // case _ => throw Exception("No match for type in conversion to Reference")
-        case _ => EmptyReference
-      }
-
-      inner(tp)
+      case OrTypeReference(left, right) =>
+        makeStringFromReferences(left) + " | " + makeStringFromReferences(right)
+      case AndTypeReference(left, right) =>
+        makeStringFromReferences(left) + " & " + makeStringFromReferences(right)
+      case FunctionReference(args, returnValue, isImplicit) =>
+        args.map(makeStringFromReferences).mkString("(", ", ", ") => ") + makeStringFromReferences(returnValue)
+      case TupleReference(args) =>
+        args.map(makeStringFromReferences).mkString("(", ", ", ")")
+      case BoundsReference(low, high) =>
+        makeStringFromReferences(low) + ">:" + makeStringFromReferences(high)
+      case ByNameReference(ref) =>
+        "=> " + makeStringFromReferences(ref)
+      case ConstantReference(label) =>
+        "Constant(" + label + ")" //TOASK: What form?
+      case EmptyReference => throw Exception("EmptyReference should never occur outside of conversion from reflect.")
     }
     println(name + " =============")
-    println(internal.tpt.tpe)
-    println(convertTypeToReference(reflect)(internal.tpt.tpe))
+    // println(internal.tpt.tpe)
+    //println(convertTypeToReference(reflect)(internal.tpt.tpe))
+    println(makeStringFromReferences(convertTypeToReference(reflect)(internal.tpt.tpe)))
 
     override val returnValue = removeColorFromType(internal.tpt.tpe.showCode)
     override val annotations = Nil
