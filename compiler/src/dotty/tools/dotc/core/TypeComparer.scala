@@ -678,7 +678,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
                 GADTusage(tp1.symbol)
             }
-            isSubType(hi1, tp2, approx.addLow) || ((tp1.symbol ne NoSymbol) && compareGADT)
+            isSubType(hi1, tp2, approx.addLow) || compareGADT
           case _ =>
             def isNullable(tp: Type): Boolean = tp.widenDealias match {
               case tp: TypeRef => tp.symbol.isNullableClass
@@ -2107,8 +2107,11 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
-    footprint += sym.typeRef
-    super.gadtBounds(sym)
+    if (sym eq NoSymbol) null
+    else {
+      footprint += sym.typeRef
+      super.gadtBounds(sym)
+    }
   }
 
   override def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = {
