@@ -33,6 +33,12 @@ import scala.collection.mutable
  */
 case class Completion(label: String, description: String, symbols: List[Symbol])
 
+/** Mode of code completion specifying which members it can see: all, explicit or implied */
+enum ImportMode { case All, Explicit, Implied }
+object ImportMode {
+  def apply(isImplied: Boolean): ImportMode = if (isImplied) ImportMode.Implied else ImportMode.Explicit
+}
+
 object Completion {
 
   import dotty.tools.dotc.ast.tpd._
@@ -121,7 +127,7 @@ object Completion {
     if (buffer.mode != Mode.None) {
       path match {
         case Select(qual, _) :: _                    => buffer.addMemberCompletions(qual)
-        case Import(_, expr, _) :: _                 => buffer.addMemberCompletions(expr) // TODO: distinguish implied from non-implied
+        case Import(isImplied, expr, _) :: _         => buffer.addMemberCompletions(expr, ImportMode(isImplied))
         case (_: Thicket) :: Import(_, expr, _) :: _ => buffer.addMemberCompletions(expr)
         case _                                       => buffer.addScopeCompletions
       }
@@ -208,14 +214,14 @@ object Completion {
      * If `info.mode` is `Import`, the members added via implicit conversion on `qual` are not
      * considered.
      */
-    def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit = {
+    def addMemberCompletions(qual: Tree, importMode: ImportMode = ImportMode.All)(implicit ctx: Context): Unit = {
       if (!qual.tpe.widenDealias.isBottomType) {
-        addAccessibleMembers(qual.tpe)
+        addAccessibleMembers(qual.tpe, importMode)
         if (!mode.is(Mode.Import) && !qual.tpe.isRef(defn.NullClass)) {
           // Implicit conversions do not kick in when importing
           // and for `NullClass` they produce unapplicable completions (for unclear reasons)
           implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
-            .foreach(addAccessibleMembers)
+            .foreach(addAccessibleMembers(_, importMode))
         }
       }
     }
@@ -248,8 +254,9 @@ object Completion {
      *   7. symbol is not a package object
      *   8. symbol is not an artifact of the compiler
      *   9. have same term/type kind as name prefix given so far
+     *  10. the implied flag of the symbol must match the type of the import (explicit or implied) conducted
      */
-    private def include(sym: Symbol, nameInScope: Name)(implicit ctx: Context): Boolean =
+    private def include(sym: Symbol, nameInScope: Name, importMode: ImportMode = ImportMode.All)(implicit ctx: Context): Boolean =
       nameInScope.startsWith(prefix) &&
       !sym.isAbsent &&
       !sym.isPrimaryConstructor &&
@@ -261,6 +268,10 @@ object Completion {
       (
            (mode.is(Mode.Term) && sym.isTerm)
         || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember))
+      ) &&
+      (importMode == ImportMode.All || (
+           importMode == ImportMode.Explicit && !sym.is(Implied)
+        || importMode == ImportMode.Implied  &&  sym.is(Implied))
       )
 
     /**
@@ -269,7 +280,7 @@ object Completion {
      * @param site The type to inspect.
      * @return The members of `site` that are accessible and pass the include filter of `info`.
      */
-    private def accessibleMembers(site: Type)(implicit ctx: Context): Seq[Symbol] = site match {
+    private def accessibleMembers(site: Type, importMode: ImportMode = ImportMode.All)(implicit ctx: Context): Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
         // Don't look inside package members -- it's too expensive.
         site.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
@@ -278,14 +289,14 @@ object Completion {
           try buf ++= site.member(name).alternatives
           catch { case ex: TypeError => }
         site.memberDenots(completionsFilter, appendMemberSyms).collect {
-          case mbr if include(mbr.symbol, mbr.symbol.name) => mbr.accessibleFrom(site, superAccess = true).symbol
+          case mbr if include(mbr.symbol, mbr.symbol.name, importMode) => mbr.accessibleFrom(site, superAccess = true).symbol
           case _ => NoSymbol
         }.filter(_.exists)
     }
 
     /** Add all the accessible members of `site` in `info`. */
-    private def addAccessibleMembers(site: Type)(implicit ctx: Context): Unit =
-      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name, mbr.name)
+    private def addAccessibleMembers(site: Type, importMode: ImportMode = ImportMode.All)(implicit ctx: Context): Unit =
+      for (mbr <- accessibleMembers(site, importMode)) addMember(site, mbr.name, mbr.name)
 
     /**
      * Add in `info` the symbols that are imported by `ctx.importInfo`. If this is a wildcard import,

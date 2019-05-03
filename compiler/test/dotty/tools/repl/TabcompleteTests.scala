@@ -132,4 +132,19 @@ class TabcompleteTests extends ReplTest {
   @Test def i6415 = fromInitialState { implicit s =>
     assertEquals(List("Predef"), tabComplete("opaque type T = Pre"))
   }
+
+  @Test def i6426 = fromInitialState { implicit state =>
+    val src = """
+     | object Foo {
+     |   val explicitVal: Int = 1
+     |   implied implicitVal for Int = 2
+     | }
+    """.stripMargin
+    run(src)
+  }.andThen { implicit state =>
+    assertEquals(Nil, tabComplete("import implied Foo.expl"))
+    assertEquals(Nil, tabComplete("import Foo.impl"))
+    assertEquals(List("implicitVal"), tabComplete("import implied Foo.impl"))
+    assertEquals(List("explicitVal"), tabComplete("import Foo.expl"))
+  }
 }
