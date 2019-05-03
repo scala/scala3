@@ -40,6 +40,7 @@ following operations would be valid because they use functionality implemented i
 
 ```scala
   val l = Logarithm(1.0)
+  val l2 = Logarithm(2.0)
   val l3 = l * l2
   val l4 = l + l2
 ```
