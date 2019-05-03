@@ -828,7 +828,7 @@ object desugar {
       val moduleName = tdef.name.toTermName
       val localRef = Select(Ident(moduleName), tdef.name)
       localRef.pushAttachment(SuppressAccessCheck, ())
-      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef))
+      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef)).withSpan(tdef.span.startPos)
       val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
 
       val companions = moduleDef(ModuleDef(
