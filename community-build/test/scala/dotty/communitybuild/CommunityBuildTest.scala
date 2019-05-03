@@ -105,7 +105,7 @@ class CommunityBuildTest {
 
   @Test def scalatest = test(
     project       = "scalatest",
-    testCommand   = "scalatest/compile",
+    testCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
     updateCommand = "scalatest/update"
   )
 
