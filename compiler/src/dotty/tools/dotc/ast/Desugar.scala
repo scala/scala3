@@ -1358,17 +1358,17 @@ object desugar {
       enums match {
         case (gen: GenFrom) :: Nil =>
           Apply(rhsSelect(gen, mapName), makeLambda(gen.pat, body))
-        case (gen: GenFrom) :: (rest @ (GenFrom(_, _) :: _)) =>
+        case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen.pat, cont))
-        case (GenFrom(pat, rhs)) :: (rest @ GenAlias(_, _) :: _) =>
+        case (gen @ GenFrom(pat, rhs, _)) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
           val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, rhs) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, rhs, gen.filtering) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = pat :: pats
           val vfrom1 = new IrrefutableGenFrom(makeTuple(allpats), rhs1)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
@@ -1376,7 +1376,7 @@ object desugar {
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test))
           val genFrom =
             if (isIrrefutableGenFrom(gen)) new IrrefutableGenFrom(gen.pat, filtered)
-            else GenFrom(gen.pat, filtered)
+            else GenFrom(gen.pat, filtered, filtering = false)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
@@ -1573,5 +1573,5 @@ object desugar {
   }
 
   private class IrrefutableGenFrom(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile)
-    extends GenFrom(pat, expr)
+    extends GenFrom(pat, expr, false)
 }

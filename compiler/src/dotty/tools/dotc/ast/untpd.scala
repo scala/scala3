@@ -99,7 +99,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class DoWhile(body: Tree, cond: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForYield(enums: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForDo(enums: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
-  case class GenFrom(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
+  case class GenFrom(pat: Tree, expr: Tree, filtering: Boolean)(implicit @constructorOnly src: SourceFile) extends Tree
   case class GenAlias(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
@@ -525,9 +525,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: ForDo if (enums eq tree.enums) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.ForDo(enums, body)(tree.source))
     }
-    def GenFrom(tree: Tree)(pat: Tree, expr: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: GenFrom if (pat eq tree.pat) && (expr eq tree.expr) => tree
-      case _ => finalize(tree, untpd.GenFrom(pat, expr)(tree.source))
+    def GenFrom(tree: Tree)(pat: Tree, expr: Tree, filtering: Boolean)(implicit ctx: Context): Tree = tree match {
+      case tree: GenFrom if (pat eq tree.pat) && (expr eq tree.expr) && (filtering == tree.filtering) => tree
+      case _ => finalize(tree, untpd.GenFrom(pat, expr, filtering)(tree.source))
     }
     def GenAlias(tree: Tree)(pat: Tree, expr: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: GenAlias if (pat eq tree.pat) && (expr eq tree.expr) => tree
@@ -589,8 +589,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ForYield(tree)(transform(enums), transform(expr))
       case ForDo(enums, body) =>
         cpy.ForDo(tree)(transform(enums), transform(body))
-      case GenFrom(pat, expr) =>
-        cpy.GenFrom(tree)(transform(pat), transform(expr))
+      case GenFrom(pat, expr, filtering) =>
+        cpy.GenFrom(tree)(transform(pat), transform(expr), filtering)
       case GenAlias(pat, expr) =>
         cpy.GenAlias(tree)(transform(pat), transform(expr))
       case ContextBounds(bounds, cxBounds) =>
@@ -644,7 +644,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, enums), expr)
       case ForDo(enums, body) =>
         this(this(x, enums), body)
-      case GenFrom(pat, expr) =>
+      case GenFrom(pat, expr, _) =>
         this(this(x, pat), expr)
       case GenAlias(pat, expr) =>
         this(this(x, pat), expr)
