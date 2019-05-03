@@ -68,6 +68,12 @@ class JSCodeGen()(implicit ctx: Context) {
   private val thisLocalVarIdent = new ScopedVar[Option[js.Ident]]
   private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
 
+  private def withNewLocalNameScope[A](body: => A): A = {
+    withScopedVars(localNames := new LocalNameGenerator) {
+      body
+    }
+  }
+
   /** Implicitly materializes the current local name generator. */
   private implicit def implicitLocalNames: LocalNameGenerator = localNames.get
 
@@ -84,6 +90,10 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Returns a new fresh local identifier. */
   private def freshLocalIdent(base: String)(implicit pos: Position): js.Ident =
+    localNames.get.freshLocalIdent(base)
+
+  /** Returns a new fresh local identifier. */
+  private def freshLocalIdent(base: TermName)(implicit pos: Position): js.Ident =
     localNames.get.freshLocalIdent(base)
 
   // Compilation unit --------------------------------------------------------
@@ -287,9 +297,31 @@ class JSCodeGen()(implicit ctx: Context) {
       Nil
     }
 
+    // Static initializer
+    val optStaticInitializer = {
+      // Initialization of reflection data, if required
+      val reflectInit = {
+        val enableReflectiveInstantiation = {
+          sym.baseClasses.exists { ancestor =>
+            ancestor.hasAnnotation(jsdefn.EnableReflectiveInstantiationAnnot)
+          }
+        }
+        if (enableReflectiveInstantiation)
+          genRegisterReflectiveInstantiation(sym)
+        else
+          None
+      }
+
+      val staticInitializerStats = reflectInit.toList
+      if (staticInitializerStats.nonEmpty)
+        Some(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
+      else
+        None
+    }
+
     // Hashed definitions of the class
     val hashedDefs =
-      ir.Hashers.hashMemberDefs(generatedMembers ++ exports)
+      ir.Hashers.hashMemberDefs(generatedMembers ++ exports ++ optStaticInitializer)
 
     // The complete class definition
     val kind =
@@ -459,6 +491,92 @@ class JSCodeGen()(implicit ctx: Context) {
       val flags = js.MemberFlags.empty.withMutable(f.is(Mutable))
       js.FieldDef(flags, name, irTpe)
     }).toList
+  }
+
+  // Static initializers -----------------------------------------------------
+
+  private def genStaticInitializerWithStats(stats: js.Tree)(
+      implicit pos: Position): js.MethodDef = {
+    js.MethodDef(
+        js.MemberFlags.empty.withNamespace(js.MemberNamespace.StaticConstructor),
+        js.Ident(ir.Definitions.StaticInitializerName),
+        Nil,
+        jstpe.NoType,
+        Some(stats))(
+        OptimizerHints.empty, None)
+  }
+
+  private def genRegisterReflectiveInstantiation(sym: Symbol)(
+      implicit pos: Position): Option[js.Tree] = {
+    if (isStaticModule(sym))
+      genRegisterReflectiveInstantiationForModuleClass(sym)
+    else if (sym.is(ModuleClass))
+      None // scala-js#3228
+    else if (sym.is(Lifted) && !sym.originalOwner.isClass)
+      None // scala-js#3227
+    else
+      genRegisterReflectiveInstantiationForNormalClass(sym)
+  }
+
+  private def genRegisterReflectiveInstantiationForModuleClass(sym: Symbol)(
+      implicit pos: Position): Option[js.Tree] = {
+    val fqcnArg = js.StringLiteral(sym.fullName.toString)
+    val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
+    val loadModuleFunArg =
+      js.Closure(arrow = true, Nil, Nil, genLoadModule(sym), Nil)
+
+    val stat = genApplyMethod(
+        genLoadModule(jsdefn.ReflectModule),
+        jsdefn.Reflect_registerLoadableModuleClass,
+        List(fqcnArg, runtimeClassArg, loadModuleFunArg))
+
+    Some(stat)
+  }
+
+  private def genRegisterReflectiveInstantiationForNormalClass(sym: Symbol)(
+      implicit pos: Position): Option[js.Tree] = {
+    val ctors =
+      if (sym.is(Abstract)) Nil
+      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.is(Private | Protected))
+
+    if (ctors.isEmpty) {
+      None
+    } else {
+      val constructorsInfos = for {
+        ctor <- ctors
+      } yield {
+        withNewLocalNameScope {
+          val (parameterTypes, formalParams, actualParams) = (for {
+            (paramName, paramInfo) <- ctor.info.paramNamess.flatten.zip(ctor.info.paramInfoss.flatten)
+          } yield {
+            val paramType = js.ClassOf(toTypeRef(paramInfo))
+            val paramDef = js.ParamDef(freshLocalIdent(paramName), jstpe.AnyType,
+                mutable = false, rest = false)
+            val actualParam = unbox(paramDef.ref, paramInfo)
+            (paramType, paramDef, actualParam)
+          }).unzip3
+
+          val paramTypesArray = js.JSArrayConstr(parameterTypes)
+
+          val newInstanceFun = js.Closure(arrow = true, Nil, formalParams, {
+            js.New(encodeClassRef(sym), encodeMethodSym(ctor), actualParams)
+          }, Nil)
+
+          js.JSArrayConstr(List(paramTypesArray, newInstanceFun))
+        }
+      }
+
+      val fqcnArg = js.StringLiteral(sym.fullName.toString)
+      val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
+      val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
+
+      val stat = genApplyMethod(
+          genLoadModule(jsdefn.ReflectModule),
+          jsdefn.Reflect_registerInstantiatableClass,
+          List(fqcnArg, runtimeClassArg, ctorsInfosArg))
+
+      Some(stat)
+    }
   }
 
   // Generate a method -------------------------------------------------------

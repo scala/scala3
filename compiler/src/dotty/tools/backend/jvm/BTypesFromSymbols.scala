@@ -147,7 +147,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = innerClassSym.originalOwner.isOriginallyStaticOwner
+      val isStaticNestedClass = innerClassSym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = innerClassSym.enclosingClassSym

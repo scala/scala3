@@ -727,18 +727,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // navigation
     def owner: Symbol = toDenot(sym).owner
     def rawowner: Symbol = {
-      originalOwner
+      originalOwner.originalLexicallyEnclosingClass
     }
-    def originalOwner: Symbol =
-      // used to populate the EnclosingMethod attribute.
-      // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
-      if (sym.exists) {
-        val original = toDenot(sym).initial
-        val validity = original.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        val r = toDenot(sym)(shiftedContext).maybeOwner.lexicallyEnclosingClass(shiftedContext)
-        r
-      } else NoSymbol
+    def originalOwner: Symbol = toDenot(sym).originalOwner
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol =  {
       val t = toDenot(sym).asClass.superClass
@@ -765,6 +756,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
       else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
     } //todo is handled specially for JavaDefined symbols in scalac
+    def originalLexicallyEnclosingClass: Symbol =
+      // used to populate the EnclosingMethod attribute.
+      // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
+      if (sym.exists) {
+        val validity = toDenot(sym).initial.validFor
+        val shiftedContext = ctx.withPhase(validity.phaseId)
+        toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
+      } else NoSymbol
     def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
 
     // members

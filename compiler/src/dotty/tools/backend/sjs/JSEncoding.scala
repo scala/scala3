@@ -66,6 +66,9 @@ object JSEncoding {
     def freshLocalIdent(base: String)(implicit pos: ir.Position): js.Ident =
       js.Ident(freshName(base), Some(base))
 
+    def freshLocalIdent(base: TermName)(implicit pos: ir.Position): js.Ident =
+      js.Ident(freshName(base.toString), Some(base.unexpandedName.toString))
+
     private def freshName(base: String = "x"): String = {
       var suffix = 1
       var longName = base
