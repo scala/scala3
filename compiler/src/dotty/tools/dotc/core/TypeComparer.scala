@@ -2107,20 +2107,17 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
-    if (!sym.exists) null
-    else {
-      footprint += sym.typeRef
-      super.gadtBounds(sym)
-    }
+    if (sym.exists) footprint += sym.typeRef
+    super.gadtBounds(sym)
   }
 
   override def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = {
-    footprint += sym.typeRef
+    if (sym.exists) footprint += sym.typeRef
     super.gadtAddLowerBound(sym, b)
   }
 
   override def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = {
-    footprint += sym.typeRef
+    if (sym.exists) footprint += sym.typeRef
     super.gadtAddUpperBound(sym, b)
   }
 
