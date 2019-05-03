@@ -1374,9 +1374,7 @@ object desugar {
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test))
-          val genFrom =
-            if (isIrrefutableGenFrom(gen)) new IrrefutableGenFrom(gen.pat, filtered)
-            else GenFrom(gen.pat, filtered, filtering = false)
+          val genFrom = new IrrefutableGenFrom(gen.pat, filtered)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
