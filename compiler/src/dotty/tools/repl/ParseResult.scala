@@ -108,15 +108,15 @@ object ParseResult {
 
   @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  private def parseStats(sourceCode: String)(implicit ctx: Context): List[untpd.Tree] = {
+  private def parseStats(implicit ctx: Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     stats
   }
 
-  /** Extract a `ParseResult` from the string `sourceCode` */
-  def apply(sourceCode: String)(implicit state: State): ParseResult =
+  def apply(source: SourceFile)(implicit state: State): ParseResult = {
+    val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
       case CommandExtract(cmd, arg) => cmd match {
@@ -132,10 +132,8 @@ object ParseResult {
       case _ =>
         implicit val ctx: Context = state.context
 
-        val source = SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode)
-
         val reporter = newStoreReporter
-        val stats = parseStats(sourceCode)(state.context.fresh.setReporter(reporter).withSource(source))
+        val stats = parseStats(state.context.fresh.setReporter(reporter).withSource(source))
 
         if (reporter.hasErrors)
           SyntaxErrors(
@@ -145,6 +143,10 @@ object ParseResult {
         else
           Parsed(source, stats)
     }
+  }
+
+  def apply(sourceCode: String)(implicit state: State): ParseResult =
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
 
   /** Check if the input is incomplete
    *
@@ -160,7 +162,7 @@ object ParseResult {
         val localCtx = ctx.fresh.setSource(source).setReporter(reporter)
         var needsMore = false
         reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(sourceCode)(localCtx)
+          parseStats(localCtx)
         }
         !reporter.hasErrors && needsMore
       }
