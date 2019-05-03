@@ -2107,7 +2107,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def gadtBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
-    if (sym eq NoSymbol) null
+    if (!sym.exists) null
     else {
       footprint += sym.typeRef
       super.gadtBounds(sym)
