@@ -16,6 +16,7 @@ import vulpix._
 class IdempotencyTests extends ParallelTesting {
   import TestConfiguration._
   import IdempotencyTests._
+  import CompilationTest.aggregateTests
 
   // Test suite configuration --------------------------------------------------
 
@@ -31,36 +32,37 @@ class IdempotencyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("idempotency")
     val opt = defaultOptions
 
-    val posIdempotency = {
-      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency1")) +
-      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency2"))
-    }
+    val posIdempotency = aggregateTests(
+      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency1")),
+      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency2")),
+    )
 
     val orderIdempotency = {
-      (for {
-        testDir <- new JFile("tests/order-idempotency").listFiles() if testDir.isDirectory
-      } yield {
-        val sources = TestSources.sources(testDir.toPath)
-        compileList(testDir.getName, sources, opt)(TestGroup("idempotency/orderIdempotency1")) +
-        compileList(testDir.getName, sources.reverse, opt)(TestGroup("idempotency/orderIdempotency2"))
-      }).reduce(_ + _)
+      val tests =
+        for {
+          testDir <- new JFile("tests/order-idempotency").listFiles() if testDir.isDirectory
+        } yield {
+          val sources = TestSources.sources(testDir.toPath)
+          aggregateTests(
+            compileList(testDir.getName, sources, opt)(TestGroup("idempotency/orderIdempotency1")),
+            compileList(testDir.getName, sources.reverse, opt)(TestGroup("idempotency/orderIdempotency2"))
+          )
+        }
+      aggregateTests(tests: _*)
     }
 
     def check(name: String) = {
       val files = List(s"tests/idempotency/$name.scala", "tests/idempotency/IdempotencyCheck.scala")
       compileList(name, files, defaultOptions)(TestGroup("idempotency/check"))
     }
-    val allChecks = {
-      check("CheckOrderIdempotency") +
+    val allChecks = aggregateTests(
+      check("CheckOrderIdempotency"),
       // Disabled until strawman is fixed
-      // check("CheckStrawmanIdempotency") +
+      // check("CheckStrawmanIdempotency"),
       check("CheckPosIdempotency")
-    }
+    )
 
-    val allTests = {
-      orderIdempotency +
-      posIdempotency
-    }
+    val allTests = aggregateTests(orderIdempotency, posIdempotency)
 
     val tests = allTests.keepOutput.checkCompile()
     allChecks.checkRuns()

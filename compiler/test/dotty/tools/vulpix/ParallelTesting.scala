@@ -848,28 +848,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def this(targets: List[TestSource]) =
       this(targets, 1, true, None, false, false)
 
-    /** Compose test targets from `this` with `other`
-     *
-     *  It does this, only if the two tests are compatible. Otherwise it throws
-     *  an `IllegalArgumentException`.
-     *
-     *  Grouping tests together like this allows us to take advantage of the
-     *  concurrency offered by this test suite as each call to an executing
-     *  method (`pos()` / `checkExpectedErrors()`/ `run()`) will spin up a thread pool with the
-     *  maximum allowed level of concurrency. Doing this for only a few targets
-     *  does not yield any real benefit over sequential compilation.
-     *
-     *  As such, each `CompilationTest` should contain as many targets as
-     *  possible.
-     */
-    def +(other: CompilationTest) = {
-      require(other.times == times, "can't combine tests that are meant to be benchmark compiled")
-      require(other.shouldDelete == shouldDelete, "can't combine tests that differ on deleting output")
-      require(other.shouldFail == shouldFail, "can't combine tests that have different expectations on outcome")
-      require(other.shouldSuppressOutput == shouldSuppressOutput, "can't combine tests that both suppress and don't suppress output")
-      new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput)
-    }
-
     /** Creates a "pos" test run, which makes sure that all tests pass
      *  compilation without generating errors and that they do not crash the
      *  compiler
@@ -1038,6 +1016,36 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case _: NoSuchFileException => // already deleted, everything's fine
       }
     }
+  }
+
+  object CompilationTest {
+
+    /** Compose test targets from `tests`
+      *
+      *  It does this, only if the two tests are compatible. Otherwise it throws
+      *  an `IllegalArgumentException`.
+      *
+      *  Grouping tests together like this allows us to take advantage of the
+      *  concurrency offered by this test suite as each call to an executing
+      *  method (`pos()` / `checkExpectedErrors()`/ `run()`) will spin up a thread pool with the
+      *  maximum allowed level of concurrency. Doing this for only a few targets
+      *  does not yield any real benefit over sequential compilation.
+      *
+      *  As such, each `CompilationTest` should contain as many targets as
+      *  possible.
+      */
+    def aggregateTests(tests: CompilationTest*): CompilationTest = {
+      assert(tests.nonEmpty)
+      def aggregate(test1: CompilationTest, test2: CompilationTest) = {
+        require(test1.times == test2.times, "can't combine tests that are meant to be benchmark compiled")
+        require(test1.shouldDelete == test2.shouldDelete, "can't combine tests that differ on deleting output")
+        require(test1.shouldFail == test2.shouldFail, "can't combine tests that have different expectations on outcome")
+        require(test1.shouldSuppressOutput == test2.shouldSuppressOutput, "can't combine tests that both suppress and don't suppress output")
+        new CompilationTest(test1.targets ++ test2.targets, test1.times, test1.shouldDelete, test1.threadLimit, test1.shouldFail, test1.shouldSuppressOutput)
+      }
+      tests.reduce(aggregate)
+    }
+
   }
 
   /** Create out directory for directory `d` */
@@ -1267,7 +1275,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       step2.checkCompile() // Compile from tasty
 
       if (shouldDelete)
-        (step1 + step2).delete()
+        CompilationTest.aggregateTests(step1, step2).delete()
 
       this
     }
@@ -1277,7 +1285,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       step2.checkRuns() // Compile from tasty
 
       if (shouldDelete)
-        (step1 + step2).delete()
+        CompilationTest.aggregateTests(step1, step2).delete()
 
       this
     }
