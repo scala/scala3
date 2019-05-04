@@ -1280,16 +1280,19 @@ object desugar {
      */
     def makeFor(mapName: TermName, flatMapName: TermName, enums: List[Tree], body: Tree): Tree = trace(i"make for ${ForYield(enums, body)}", show = true) {
 
-      /** Make a function value pat => body.
-       *  If pat is a var pattern id: T then this gives (id: T) => body
-       *  Otherwise this gives { case pat => body }, where `pat` is allowed to be
-       *  refutable only if `checkMode` is MatchCheck.None.
+      /** Let `pat` be `gen`'s pattern. Make a function value `pat => body`.
+       *  If `pat` is a var pattern `id: T` then this gives `(id: T) => body`.
+       *  Otherwise this gives `{ case pat => body }`, where `pat` is checked to be
+       *  irrefutable if `gen`'s checkMode is GenCheckMode.Check.
        */
-      def makeLambda(pat: Tree, body: Tree, checkMode: MatchCheck): Tree = pat match {
-        case IdPattern(named, tpt) =>
-          Function(derivedValDef(pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
+      def makeLambda(gen: GenFrom, body: Tree): Tree = gen.pat match {
+        case IdPattern(named, tpt) if gen.checkMode != GenCheckMode.FilterAlways =>
+          Function(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
-          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, checkMode)
+          val matchCheckMode =
+            if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
+            else MatchCheck.None
+          makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
 
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
@@ -1361,16 +1364,20 @@ object desugar {
         }
       }
 
-      def needsFilter(gen: GenFrom): Boolean =
-        gen.checkMode != GenCheckMode.Filter ||
-        IdPattern.unapply(gen.pat).isDefined ||
-        isIrrefutable(gen.pat, gen.expr)
+      def needsNoFilter(gen: GenFrom): Boolean =
+        if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
+          isIrrefutable(gen.pat, gen.expr)
+        else (
+          gen.checkMode != GenCheckMode.FilterNow ||
+          IdPattern.unapply(gen.pat).isDefined ||
+          isIrrefutable(gen.pat, gen.expr)
+        )
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
        */
       def rhsSelect(gen: GenFrom, name: TermName) = {
-        val rhs = if (needsFilter(gen)) gen.expr else makePatFilter(gen.expr, gen.pat)
+        val rhs = if (needsNoFilter(gen)) gen.expr else makePatFilter(gen.expr, gen.pat)
         Select(rhs, name)
       }
 
@@ -1380,10 +1387,10 @@ object desugar {
 
       enums match {
         case (gen: GenFrom) :: Nil =>
-          Apply(rhsSelect(gen, mapName), makeLambda(gen.pat, body, checkMode(gen)))
+          Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
-          Apply(rhsSelect(gen, flatMapName), makeLambda(gen.pat, cont, checkMode(gen)))
+          Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
@@ -1396,7 +1403,7 @@ object desugar {
           val vfrom1 = new GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
-          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test, MatchCheck.None))
+          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
           val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>

@@ -1742,8 +1742,9 @@ object Parsers {
     def generatorRest(pat: Tree, casePat: Boolean): GenFrom =
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
-          if (casePat || !ctx.settings.strict.value) GenCheckMode.Filter  // don't filter under -strict
-          else GenCheckMode.Check
+          if (casePat) GenCheckMode.FilterAlways
+          else if (ctx.settings.strict.value) GenCheckMode.Check
+          else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
         GenFrom(pat, expr(), checkMode)
       }
 

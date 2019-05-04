@@ -121,7 +121,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   object GenCheckMode {
     val Ignore = new GenCheckMode(0)  // neither filter nor check since filtering was done before
     val Check = new GenCheckMode(1)   // check that pattern is irrefutable
-    val Filter = new GenCheckMode(2)  // filter out non-matching elements
+    val FilterNow = new GenCheckMode(2)  // filter out non-matching elements since we are not in -strict
+    val FilterAlways = new GenCheckMode(3) // filter out non-matching elements since pattern is prefixed by `case`
   }
 
   // ----- Modifiers -----------------------------------------------------

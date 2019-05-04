@@ -607,7 +607,7 @@ trait Checking {
     def fail(pat: Tree, pt: Type): Boolean = {
       var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
       if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
-      val problem = if (pat.tpe <:< pt) "is more specialized than" else "does not match"
+      val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
       val fix = if (isPatDef) "`: @unchecked` after" else "`case ` before"
       ctx.errorOrMigrationWarning(
         ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
