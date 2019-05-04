@@ -1741,7 +1741,10 @@ object Parsers {
 
     def generatorRest(pat: Tree, casePat: Boolean): GenFrom =
       atSpan(startOffset(pat), accept(LARROW)) {
-        GenFrom(pat, expr(), filtering = casePat || !ctx.settings.strict.value)  // don't filter under -strict
+        val checkMode =
+          if (casePat || !ctx.settings.strict.value) GenCheckMode.Filter  // don't filter under -strict
+          else GenCheckMode.Check
+        GenFrom(pat, expr(), checkMode)
       }
 
     /** ForExpr  ::= `for' (`(' Enumerators `)' | `{' Enumerators `}')

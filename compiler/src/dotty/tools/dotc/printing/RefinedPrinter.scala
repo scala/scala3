@@ -570,8 +570,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         forText(enums, expr, keywordStr(" yield "))
       case ForDo(enums, expr) =>
         forText(enums, expr, keywordStr(" do "))
-      case GenFrom(pat, expr, filtering) =>
-        (Str("case ") provided filtering) ~ toText(pat) ~ " <- " ~ toText(expr)
+      case GenFrom(pat, expr, checkMode) =>
+        (Str("case ") provided checkMode == untpd.GenCheckMode.Filter) ~
+        toText(pat) ~ " <- " ~ toText(expr)
       case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
       case ContextBounds(bounds, cxBounds) =>

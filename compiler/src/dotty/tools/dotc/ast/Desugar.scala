@@ -1361,8 +1361,8 @@ object desugar {
         }
       }
 
-      def isIrrefutableGenFrom(gen: GenFrom): Boolean =
-        !gen.filtering ||
+      def needsFilter(gen: GenFrom): Boolean =
+        gen.checkMode != GenCheckMode.Filter ||
         IdPattern.unapply(gen.pat).isDefined ||
         isIrrefutable(gen.pat, gen.expr)
 
@@ -1370,13 +1370,13 @@ object desugar {
        *  matched against `rhs`.
        */
       def rhsSelect(gen: GenFrom, name: TermName) = {
-        val rhs = if (isIrrefutableGenFrom(gen)) gen.expr else makePatFilter(gen.expr, gen.pat)
+        val rhs = if (needsFilter(gen)) gen.expr else makePatFilter(gen.expr, gen.pat)
         Select(rhs, name)
       }
 
       def checkMode(gen: GenFrom) =
-        if (gen.filtering) MatchCheck.None // refutable paterns were already eliminated in filter step
-        else MatchCheck.IrrefutableGenFrom
+        if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
+        else MatchCheck.None // refutable paterns were already eliminated in filter step
 
       enums match {
         case (gen: GenFrom) :: Nil =>
@@ -1391,13 +1391,13 @@ object desugar {
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
           val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.filtering) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
-          val vfrom1 = new GenFrom(makeTuple(allpats), rhs1, filtering = false)
+          val vfrom1 = new GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test, MatchCheck.None))
-          val genFrom = GenFrom(gen.pat, filtered, filtering = false)
+          val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
