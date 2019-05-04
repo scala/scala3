@@ -16,7 +16,7 @@ object Test {
   for (case (x: String) <- xs; (y, z) <- xs) do () // error
   for ((x: String) <- xs; case (y, z) <- xs) do () // error
 
-  val pairs: List[Any] = List((1, 2), (3, 4))
+  val pairs: List[Any] = List((1, 2), "hello", (3, 4))
   for ((x, y) <- pairs) yield (y, x) // error
 
   for (case x: String <- xs) do ()      // OK
