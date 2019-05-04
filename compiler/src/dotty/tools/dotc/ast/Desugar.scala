@@ -33,8 +33,19 @@ object desugar {
    */
   val DerivingCompanion: Property.Key[SourcePosition] = new Property.Key
 
-  /** An attachment for match expressions generated from a PatDef */
-  val PatDefMatch: Property.Key[Unit] = new Property.Key
+  /** An attachment for match expressions generated from a PatDef or GenFrom.
+   *  Value of key == one of IrrefutablePatDef, IrrefutableGenFrom
+   */
+  val CheckIrrefutable: Property.Key[MatchCheck] = new Property.StickyKey
+
+  /** What static check should be applied to a Match (none, irrefutable, exhaustive) */
+  class MatchCheck(val n: Int) extends AnyVal
+  object MatchCheck {
+    val None = new MatchCheck(0)
+    val Exhaustive = new MatchCheck(1)
+    val IrrefutablePatDef = new MatchCheck(2)
+    val IrrefutableGenFrom = new MatchCheck(3)
+  }
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -926,6 +937,22 @@ object desugar {
     }
   }
 
+  /** The selector of a match, which depends of the given `checkMode`.
+   *  @param  sel  the original selector
+   *  @return if `checkMode` is
+   *           - None              :  sel @unchecked
+   *           - Exhaustive        :  sel
+   *           - IrrefutablePatDef,
+   *             IrrefutableGenFrom:  sel @unchecked with attachment `CheckIrrefutable -> checkMode`
+   */
+  def makeSelector(sel: Tree, checkMode: MatchCheck)(implicit ctx: Context): Tree =
+    if (checkMode == MatchCheck.Exhaustive) sel
+    else {
+      val sel1 = Annotated(sel, New(ref(defn.UncheckedAnnotType)))
+      if (checkMode != MatchCheck.None) sel1.pushAttachment(CheckIrrefutable, checkMode)
+      sel1
+    }
+
   /** If `pat` is a variable pattern,
    *
    *    val/var/lazy val p = e
@@ -960,11 +987,6 @@ object desugar {
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
-      def rhsUnchecked = {
-        val rhs1 = makeAnnotated("scala.unchecked", rhs)
-        rhs1.pushAttachment(PatDefMatch, ())
-        rhs1
-      }
       val vars =
         if (tupleOptimizable) // include `_`
           pat match {
@@ -977,7 +999,7 @@ object desugar {
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
         if (tupleOptimizable) rhs
-        else Match(rhsUnchecked, caseDef :: Nil)
+        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil =>
           matchExpr
@@ -1126,14 +1148,10 @@ object desugar {
    *
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context): Function = {
+  def makeCaseLambda(cases: List[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(implicit ctx: Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
-
-    if (unchecked)
-      Function(params, Match(Annotated(selector, New(ref(defn.UncheckedAnnotType))), cases))
-    else
-      Function(params, Match(selector, cases))
+    Function(params, Match(makeSelector(selector, checkMode), cases))
   }
 
   /** Map n-ary function `(p1, ..., pn) => body` where n != 1 to unary function as follows:
@@ -1264,13 +1282,14 @@ object desugar {
 
       /** Make a function value pat => body.
        *  If pat is a var pattern id: T then this gives (id: T) => body
-       *  Otherwise this gives { case pat => body }
+       *  Otherwise this gives { case pat => body }, where `pat` is allowed to be
+       *  refutable only if `checkMode` is MatchCheck.None.
        */
-      def makeLambda(pat: Tree, body: Tree): Tree = pat match {
+      def makeLambda(pat: Tree, body: Tree, checkMode: MatchCheck): Tree = pat match {
         case IdPattern(named, tpt) =>
           Function(derivedValDef(pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
-          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil)
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, checkMode)
       }
 
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
@@ -1316,7 +1335,7 @@ object desugar {
         val cases = List(
           CaseDef(pat, EmptyTree, Literal(Constant(true))),
           CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false))))
-        Apply(Select(rhs, nme.withFilter), makeCaseLambda(cases))
+        Apply(Select(rhs, nme.withFilter), makeCaseLambda(cases, MatchCheck.None))
       }
 
       /** Is pattern `pat` irrefutable when matched against `rhs`?
@@ -1355,26 +1374,30 @@ object desugar {
         Select(rhs, name)
       }
 
+      def checkMode(gen: GenFrom) =
+        if (gen.filtering) MatchCheck.None // refutable paterns were already eliminated in filter step
+        else MatchCheck.IrrefutableGenFrom
+
       enums match {
         case (gen: GenFrom) :: Nil =>
-          Apply(rhsSelect(gen, mapName), makeLambda(gen.pat, body))
+          Apply(rhsSelect(gen, mapName), makeLambda(gen.pat, body, checkMode(gen)))
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
-          Apply(rhsSelect(gen, flatMapName), makeLambda(gen.pat, cont))
-        case (gen @ GenFrom(pat, rhs, _)) :: (rest @ GenAlias(_, _) :: _) =>
+          Apply(rhsSelect(gen, flatMapName), makeLambda(gen.pat, cont, checkMode(gen)))
+        case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
-          val (defpat0, id0) = makeIdPat(pat)
+          val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
           val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, rhs, gen.filtering) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
-          val allpats = pat :: pats
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.filtering) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+          val allpats = gen.pat :: pats
           val vfrom1 = new GenFrom(makeTuple(allpats), rhs1, filtering = false)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
-          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test))
-          val genFrom = new GenFrom(gen.pat, filtered, filtering = false)
+          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test, MatchCheck.None))
+          val genFrom = GenFrom(gen.pat, filtered, filtering = false)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
