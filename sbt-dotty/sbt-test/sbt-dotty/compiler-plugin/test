@@ -8,6 +8,10 @@
 $ copy-file changes/build.sbt build.sbt
 > reload
 
+# Should compile with the plugin
+> clean
+> appOk/compile
+
 # Should NOT compile with the plugin
 > clean
 -> app/compile

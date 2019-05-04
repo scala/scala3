@@ -19,8 +19,8 @@ class DivideZero extends PluginPhase with StandardPlugin {
 
   val phaseName = name
 
-  override val runsAfter = Set(Pickler.name)
-  override val runsBefore = Set(Staging.name)
+  override val runsAfter = Set(Staging.name)
+  override val runsBefore = Set(Pickler.name)
 
   def init(options: List[String]): List[PluginPhase] = this :: Nil
 
