@@ -49,7 +49,7 @@ The filtering functionality can be obtained in Scala 3 by prefixing the pattern 
 
 ## Syntax Changes
 
-There are two syntax changes relative to Scala 2: First, pattern definitions can carry ascriptions such as `: unchecked`. Second, generators in for expressions may be prefixed with `case`.
+There are two syntax changes relative to Scala 2: First, pattern definitions can carry ascriptions such as `: @unchecked`. Second, generators in for expressions may be prefixed with `case`.
 ```
   PatDef         ::=  ids [‘:’ Type] ‘=’ Expr
                    |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr
