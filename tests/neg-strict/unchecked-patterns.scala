@@ -9,6 +9,8 @@ object Test {
 
   val (_: Int | _: Any) = ??? : Any  // error
 
+  val 1 = 2  // error
+
   object Positive { def unapply(i: Int): Option[Int] = Some(i).filter(_ > 0) }
   object Always1 { def unapply(i: Int): Some[Int] = Some(i) }
   object Pair { def unapply(t: (Int, Int)): t.type = t }
