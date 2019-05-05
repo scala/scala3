@@ -232,7 +232,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
         }
-        return "[applied to " ~ (Str("given ") provided tp.isContextual) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
+        return "[applied to " ~ (Str("given ") provided tp.isContextual) ~ (Str("erased ") provided tp.isErasedMethod) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
       case IgnoredProto(ignored) =>
         return "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided ctx.settings.verbose.value)
       case tp @ PolyProto(targs, resType) =>
@@ -529,10 +529,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Function(args, body) =>
         var implicitSeen: Boolean = false
         var contextual: Boolean = false
+        var isErased: Boolean = false
         def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
               if ((arg.mods is Given)) { contextual = true; "" }
+              else if ((arg.mods is Erased)) { isErased = true; "" }
               else if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
             implicitText ~ toText(name) ~ optAscription(tpt)
@@ -545,6 +547,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         changePrec(GlobalPrec) {
 		  (keywordText("given ") provided contextual) ~
+		  (keywordText("erased ") provided isErased) ~
           argsText ~ " => " ~ toText(body)
         }
       case InfixOp(l, op, r) =>

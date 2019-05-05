@@ -1159,9 +1159,10 @@ object desugar {
     Function(param :: Nil, Block(vdefs, body))
   }
 
-  def makeContextualFunction(formals: List[Type], body: Tree)(implicit ctx: Context): Tree = {
-    val params = makeImplicitParameters(formals.map(TypeTree), Given)
-    new FunctionWithMods(params, body, Modifiers(Implicit | Given))
+  def makeContextualFunction(formals: List[Type], body: Tree, isErased: Boolean)(implicit ctx: Context): Tree = {
+    val mods = if (isErased) Given | Erased else Given
+    val params = makeImplicitParameters(formals.map(TypeTree), mods)
+    new FunctionWithMods(params, body, Modifiers(Implicit | mods))
   }
 
   /** Add annotation to tree:

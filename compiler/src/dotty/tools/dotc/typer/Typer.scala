@@ -2184,7 +2184,7 @@ class Typer extends Namer
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
-    val ifun = desugar.makeContextualFunction(formals, tree)
+    val ifun = desugar.makeContextualFunction(formals, tree, defn.isErasedFunctionType(pt))
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typed(ifun, pt)
   }
