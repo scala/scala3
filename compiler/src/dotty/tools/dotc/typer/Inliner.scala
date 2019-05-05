@@ -61,7 +61,7 @@ object Inliner {
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+  def inlineCall(tree: Tree)(implicit ctx: Context): Tree = {
 
    /** Set the position of all trees logically contained in the expansion of
     *  inlined call `call` to the position of `call`. This transform is necessary
@@ -102,11 +102,11 @@ object Inliner {
 
     val tree1 = liftBindings(tree, identity)
     if (bindings.nonEmpty)
-      cpy.Block(tree)(bindings.toList, inlineCall(tree1, pt))
+      cpy.Block(tree)(bindings.toList, inlineCall(tree1))
     else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree
-      else new Inliner(tree, body).inlined(pt, tree.sourcePos)
+      else new Inliner(tree, body).inlined(tree.sourcePos)
     }
     else
       errorTree(
@@ -384,7 +384,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
   /** The Inlined node representing the inlined call */
-  def inlined(pt: Type, sourcePos: SourcePosition): Tree = {
+  def inlined(sourcePos: SourcePosition): Tree = {
 
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
@@ -509,7 +509,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
       // Run a typing pass over the inlined tree. See InlineTyper for details.
-      val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
+      val expansion1 = inlineTyper.typed(expansion)(inlineCtx)
 
       if (ctx.settings.verbose.value) {
         inlining.println(i"to inline = $rhsToInline")
