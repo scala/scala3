@@ -397,7 +397,7 @@ object SymDenotations {
         // might have been moved from different origins into the same class
 
     /** The name with which the denoting symbol was created */
-    final def originalName(implicit ctx: Context): Name = initial.effectiveName
+    final def originalName(implicit ctx: Context): Name = initial.name
 
     /** The owner with which the denoting symbol was created. */
     final def originalOwner(implicit ctx: Context): Symbol = initial.maybeOwner
