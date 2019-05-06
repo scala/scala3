@@ -138,6 +138,31 @@ object Inferencing {
     }
   }
 
+  /** For all type parameters occurring in `tp`:
+   *  If the bounds of `tp` in the current constraint are equal wrt =:=,
+   *  instantiate the type parameter to the lower bound's approximation
+   *  (approximation because of possible F-bounds).
+   */
+  def replaceSingletons(tp: Type)(implicit ctx: Context): Unit = {
+    val tr = new TypeTraverser {
+      def traverse(tp: Type): Unit = {
+        tp match {
+          case param: TypeParamRef =>
+            val constraint = ctx.typerState.constraint
+            if (constraint.contains(param) &&
+                (ctx.typerComparer.fullUpperBound(param) frozen_<:< ctx.typecomparer.fullLowerBound(param))) {
+              typr.println(i"replace singleton $param := ${ctx.typeComparer.fullLowerBound(param)}")
+              ctx.typerState.constraint = constraint.replace(param,
+                ctx.typeComparer.approximation(param, fromBelow = true))
+            }
+          case _ =>
+        }
+        traverseChildren(tp)
+      }
+    }
+    tr.traverse(tp)
+  }
+
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
   def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
     case tl: TypeLambda =>
