@@ -1180,29 +1180,34 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableType(tp: Type, targs: List[Type], args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
-    onMethod(tp, isApplicableMethodRef(_, targs, args, resultType, keepConstraint))
+    onMethod(tp, targs.nonEmpty || args.nonEmpty) {
+      isApplicableMethodRef(_, targs, args, resultType, keepConstraint)
+    }
 
   /** Is given type applicable to argument types `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableType(tp: Type, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean =
-    onMethod(tp, isApplicableMethodRef(_, args, resultType))
+    onMethod(tp, args.nonEmpty) {
+      isApplicableMethodRef(_, args, resultType)
+    }
 
   /** Is given method type applicable to type arguments `targs` and argument trees `args` without inferring views,
    *  possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
   def isDirectlyApplicableType(tp: Type, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    onMethod(tp, methRef =>
-      ctx.test(implicit ctx => new ApplicableToTreesDirectly(methRef, targs, args, resultType).success))
+    onMethod(tp, targs.nonEmpty || args.nonEmpty) { methRef =>
+      ctx.test(implicit ctx => new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
+    }
 
-  private def onMethod(tp: Type, p: TermRef => Boolean)(implicit ctx: Context): Boolean = tp match {
+  private def onMethod(tp: Type, followApply: Boolean)(p: TermRef => Boolean)(implicit ctx: Context): Boolean = tp match {
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[MethodicType] =>
       p(methRef)
     case mt: MethodicType =>
       p(mt.narrow)
     case _ =>
-      tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
+      followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
   /** Does `tp` have an extension method named `name` with this-argument `argType` and
@@ -1564,7 +1569,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             else if (numParams > numArgs + 1) hasDefault
             else isVarArgs || hasDefault
           case tp =>
-            numArgs == 0 || onMethod(tp, sizeFits)
+            numArgs == 0 || onMethod(tp, followApply = true)(sizeFits)
         }
 
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
