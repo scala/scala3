@@ -396,7 +396,7 @@ object SymDenotations {
         // need to use initial owner to disambiguate, as multiple private symbols with the same name
         // might have been moved from different origins into the same class
 
-    /** The name with which the denoting symbol was created */
+    /** The effective name with which the denoting symbol was created */
     final def originalName(implicit ctx: Context): Name = initial.effectiveName
 
     /** The owner with which the denoting symbol was created. */
