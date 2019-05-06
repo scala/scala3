@@ -1142,7 +1142,7 @@ trait Implicits { self: Typer =>
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else if (prev.level != level) prev.level - level
-        else nestedContext().test(implicit ctx => compare(prev.ref, ref))
+        else nestedContext().test(implicit ctx => compare(prev.ref, ref, followApply = false))
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an

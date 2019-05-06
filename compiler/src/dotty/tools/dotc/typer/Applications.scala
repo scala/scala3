@@ -1254,8 +1254,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  If that tournament yields a draw, a tiebreak is applied where
    *  an alternative that takes more implicit parameters wins over one
    *  that takes fewer.
+   *
+   *  @param  followApply   if true consider `apply` members when comparing with a method reference
    */
-  def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
+  def compare(alt1: TermRef, alt2: TermRef, followApply: Boolean)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
 
@@ -1279,8 +1281,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val formals1 =
           if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos.map(_.repeatedToSingle)
           else tp1.paramInfos
-        isApplicableMethodRef(alt2, formals1, WildcardType) ||
-        tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
+        val isAsSpecificMethod =
+          if (followApply) isApplicableType(alt2, formals1, WildcardType)
+          else isApplicableMethodRef(alt2, formals1, WildcardType)
+        isAsSpecificMethod || tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
         val nestedCtx = ctx.fresh.setExploreTyperState()
 
@@ -1426,12 +1430,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }}
 
-  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
+  def narrowMostSpecific(alts: List[TermRef], followApply: Boolean)(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
     alts match {
       case Nil => alts
       case _ :: Nil => alts
       case alt1 :: alt2 :: Nil =>
-        compare(alt1, alt2) match {
+        compare(alt1, alt2, followApply) match {
           case  1 => alt1 :: Nil
           case -1 => alt2 :: Nil
           case  0 => alts
@@ -1439,7 +1443,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case alt :: alts1 =>
         def survivors(previous: List[TermRef], alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
-            compare(previous.head, alt) match {
+            compare(previous.head, alt, followApply) match {
               case  1 => survivors(previous, alts1)
               case -1 => survivors(alt :: previous.tail, alts1)
               case  0 => survivors(alt :: previous, alts1)
@@ -1449,7 +1453,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val best :: rest = survivors(alt :: Nil, alts1)
         def asGood(alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
-            if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)
+            if (compare(alt, best, followApply) < 0) asGood(alts1) else alt :: asGood(alts1)
           case nil =>
             Nil
         }
@@ -1550,9 +1554,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts filter (isApplicableType(_, argTypes, resultType))
 
+    val numArgs = pt match {
+      case pt @ FunProto(args, resultType) => args.length
+      case _ => 0
+    }
+
     val candidates = pt match {
       case pt @ FunProto(args, resultType) =>
-        val numArgs = args.length
         val normArgs = args.mapConserve {
           case Block(Nil, expr) => expr
           case x => x
@@ -1660,7 +1668,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       candidates.flatMap(cloneCandidate)
     }
 
-    val found = narrowMostSpecific(candidates)
+    val found = narrowMostSpecific(candidates, followApply = numArgs != 0)
     if (found.length <= 1) found
     else pt match {
       case pt @ FunProto(_, resType: FunProto) =>

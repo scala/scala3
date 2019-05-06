@@ -24,3 +24,15 @@ object Test {
   val y1: Int = y
   val z1: Int = z
 }
+
+object Test2 {
+
+  trait A {
+    def apply(x: Any): Int =  1
+  }
+
+  object B {
+    def f(x: Any): A = new A {}
+    lazy val f: A = f(null)
+  }
+}
