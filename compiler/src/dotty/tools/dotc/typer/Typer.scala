@@ -1557,9 +1557,19 @@ class Typer extends Namer
       PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
     }
 
-    if (sym.isConstructor && !sym.isPrimaryConstructor)
+    if (sym.isConstructor && !sym.isPrimaryConstructor) {
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
+
+      def checkThisConstrCall(tree: Tree): Unit = tree match {
+        case app: Apply if untpd.isSelfConstrCall(app) =>
+          if (sym.span.start <= app.symbol.span.start)
+            ctx.error("secondary constructor must call a preceding constructor", app.sourcePos)
+        case Block(call :: _, _) => checkThisConstrCall(call)
+        case _ =>
+      }
+      checkThisConstrCall(rhs1)
+    }
 
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym).setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
