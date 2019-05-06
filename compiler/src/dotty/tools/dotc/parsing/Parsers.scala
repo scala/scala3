@@ -726,7 +726,7 @@ object Parsers {
           case INTLIT                 => in.intVal(isNegated).toInt
           case LONGLIT                => in.intVal(isNegated)
           case FLOATLIT               => in.floatVal(isNegated).toFloat
-          case DOUBLELIT              => in.floatVal(isNegated)
+          case DOUBLELIT              => in.doubleVal(isNegated)
           case STRINGLIT | STRINGPART => in.strVal
           case TRUE                   => true
           case FALSE                  => false
