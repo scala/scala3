@@ -556,6 +556,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             args match {
               case arg :: Nil if isVarArg(arg) =>
                 addTyped(arg, formal)
+              case Typed(Literal(Constant(null)), _) :: Nil =>
+                addTyped(args.head, formal)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
                 val typedArgs =
