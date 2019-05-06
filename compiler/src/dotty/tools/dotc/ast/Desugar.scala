@@ -1550,6 +1550,14 @@ object desugar {
         trees foreach collect
       case Block(Nil, expr) =>
         collect(expr)
+      case Quote(expr) =>
+        new TreeTraverser {
+          def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
+            case Splice(expr) => collect(expr)
+            case TypSplice(expr) => collect(expr)
+            case _ => traverseChildren(tree)
+          }
+        }.traverse(expr)
       case _ =>
     }
     collect(tree)
