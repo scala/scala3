@@ -204,7 +204,7 @@ final class ProperGadtConstraint private(
           }
         retrieveBounds
           //.reporting({ res => i"gadt bounds $sym: $res" }, gadts)
-          .ensuring(containsNoInternalTypes(_))
+          //.ensuring(containsNoInternalTypes(_))
     }
   }
 
