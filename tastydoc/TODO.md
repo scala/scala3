@@ -20,7 +20,6 @@
 * Main
 
 # Representation
-* Trait
 * All modifiers present?
 * Define wiki or markdown syntax
 * Beautify type parameters (+ variance)
@@ -43,6 +42,7 @@
 * Link Reference
 * Case class remove artefacts?
 * Class inside class print parents
+* Rework class output
 
 # Report
 * Goal Why we wanted to generated from tasty why to markdown

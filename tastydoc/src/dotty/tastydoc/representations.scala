@@ -49,8 +49,6 @@ object representations extends CommentParser with CommentCleaner {
   trait ParamList {
     val list: List[NamedReference]
     val isImplicit: Boolean
-
-    //override def toString = list.map(_.title).mkString("(", ",", ")")
   }
 
   trait MultipleParamList {
@@ -223,7 +221,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
+  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false, val isTrait: Boolean = false) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
 
     override val name = internal.name
@@ -339,7 +337,7 @@ object representations extends CommentParser with CommentCleaner {
         if(t.symbol.flags.is(Flags.Object)){
           new ObjectRepresentation(reflect, t, t.symbol.flags.is(Flags.Case))
         }else{
-          new ClassRepresentation(reflect, t, t.symbol.flags.is(Flags.Case))
+          new ClassRepresentation(reflect, t, t.symbol.flags.is(Flags.Case), t.symbol.flags.is(Flags.Trait))
         }
       case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
 

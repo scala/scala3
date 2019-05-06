@@ -90,6 +90,50 @@ object DocPrinter{
       r.name +
       "\n"
 
+    case r: ClassRepresentation if r.isTrait =>
+      if(insideClassOrObject){
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + "trait " + r.name, "scala") +
+        "\n" +
+        formatComments(r.comments) +
+        "\n"
+      }else{
+        Md.header1("trait " + r.name) +
+        "\n" +
+        (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) +
+          "trait " +
+          r.name +
+          (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
+          (if(r.parents.nonEmpty) " extends " + r.parents.head + r.parents.tail.map(" with " + _).mkString("") else ""), "scala") +
+        "\n" +
+        formatComments(r.comments) +
+        "\n" +
+        Md.header2("Annotations:") +
+        "\n" +
+        r.annotations.mkString("\n") +
+        "\n" +
+        Md.header2("Constructors:")+
+        r.constructors.map(x=>Md.codeBlock(r.name + x.paramLists.map(formatParamList(_)).mkString(""), "scala")).mkString("") +
+        "\n" +
+        Md.header2("Members:") +
+        "\n" +
+        Md.header3("Definitions: ") +
+        r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Values: ") +
+        r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Types: ") +
+        r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Classes: ") +
+        r.members.flatMap{case x : ClassRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n" +
+        Md.header3("Objects: ") +
+        r.members.flatMap{case x : ObjectRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true)).mkString("") +
+        "\n"
+      }
+
     case r: ClassRepresentation =>
       if(insideClassOrObject){
         Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + (if(r.isCase) "case " else "") + "class " + r.name, "scala") +
@@ -228,10 +272,13 @@ object DocPrinter{
       val pw = new PrintWriter(file)
       pw.write(formatRepresentationToMarkdown(r, false))
       pw.close
+
+      val kind = if(r.isTrait) "trait" else "class"
+
       if(r.path.nonEmpty){
-        packagesSet + ((r.path, "class " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
+        packagesSet + ((r.path, kind + " " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
       }else{
-        packagesSet + ((r.path, "class " + Md.link(r.name, "./" + r.name + ".md")))
+        packagesSet + ((r.path, kind + " " + Md.link(r.name, "./" + r.name + ".md")))
       }
 
     case r: ObjectRepresentation =>

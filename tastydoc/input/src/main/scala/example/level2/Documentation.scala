@@ -31,9 +31,9 @@ sealed abstract class Documentation[T, Z <: Int, -X, +Y](c1: String, val c2: Lis
 
   }
 
-  sealed trait CaseImplementThis
-  case class IAmACaseClass(x: T) extends CaseImplementThis
-  case object IAmACaseObject extends CaseImplementThis
+  sealed trait CaseImplementThis(id: Int)
+  case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis(id)
+  case object IAmACaseObject extends CaseImplementThis(0)
 
   object testObject {
 

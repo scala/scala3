@@ -227,4 +227,5 @@ d
 <pre><code class="language-scala">            This text is
         in a fixed-pitch
             font, and it preserves
-        both    spaces and line breaks</code></pre>
+        both    spaces and line break.
+</code></pre>
