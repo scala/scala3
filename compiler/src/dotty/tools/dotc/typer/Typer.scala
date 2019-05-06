@@ -2777,7 +2777,7 @@ class Typer extends Namer
       else if (tree.symbol.isScala2Macro) {
         if (ctx.settings.XignoreScala2Macros.value) {
           ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos)
-          tree
+          Throw(New(defn.MatchErrorType, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil)).withSpan(tree.span)
         } else if (tree.symbol eq defn.StringContext_f) {
           // As scala.StringContext.f is defined in the standard library which
           // we currently do not bootstrap we cannot implement the macro the library.
