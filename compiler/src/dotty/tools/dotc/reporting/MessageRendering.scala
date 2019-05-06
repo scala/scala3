@@ -43,6 +43,7 @@ trait MessageRendering {
     * @return (lines before error, lines after error, line numbers offset)
     */
   def sourceLines(pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): (List[String], List[String], Int) = {
+    assert(pos.exists && pos.source.file.exists)
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
       val (offset, line) = offsetAndLine
@@ -113,7 +114,9 @@ trait MessageRendering {
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
     if (pos.exists) hl(diagnosticLevel)({
-      val file = s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
+      val file =
+        if (pos.source.file.exists) s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
+        else s"${pos.source.file.toString}: offset ${pos.start} (missing source file)"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber()
@@ -145,7 +148,7 @@ trait MessageRendering {
     val sb = mutable.StringBuilder.newBuilder
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists) {
+    if (pos.exists && pos.source.file.exists) {
       val (srcBefore, srcAfter, offset) = sourceLines(pos, diagnosticLevel)
       val marker = columnMarker(pos, offset, diagnosticLevel)
       val err = errorMsg(pos, msg.msg, offset)
