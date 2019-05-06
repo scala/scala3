@@ -1563,7 +1563,7 @@ class Typer extends Namer
 
       def checkThisConstrCall(tree: Tree): Unit = tree match {
         case app: Apply if untpd.isSelfConstrCall(app) =>
-          if (sym.span.start <= app.symbol.span.start)
+          if (sym.span.exists && app.symbol.span.exists && sym.span.start <= app.symbol.span.start)
             ctx.error("secondary constructor must call a preceding constructor", app.sourcePos)
         case Block(call :: _, _) => checkThisConstrCall(call)
         case _ =>
