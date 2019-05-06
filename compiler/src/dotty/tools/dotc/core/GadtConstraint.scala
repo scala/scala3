@@ -167,6 +167,9 @@ final class ProperGadtConstraint private(
           //     class Foo[F[t] >: List[t]]
           //     type T = Foo[List]
           // precisely because Foo[List] is desugared to Foo[[A] => List[A]].
+          //
+          // Ideally we'd adapt the bound in ConstraintHandling#addOneBound,
+          // but doing it there actually interferes with type inference.
           val bound1 = bound.adaptHkVariances(oldUpperBound)
           if (isUpper) addUpperBound(symTvar.origin, bound1)
           else addLowerBound(symTvar.origin, bound1)
