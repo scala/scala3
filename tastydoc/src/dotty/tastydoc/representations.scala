@@ -223,7 +223,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
+  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
 
     override val name = internal.name
@@ -259,7 +259,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ObjectRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Modifiers with Members with Companion with Annotations {
+  class ObjectRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false) extends Representation with Modifiers with Members with Companion with Annotations {
     import reflect._
 
     override val name = internal.name
@@ -337,9 +337,9 @@ object representations extends CommentParser with CommentCleaner {
 
       case IsClassDef(t@reflect.ClassDef(_)) =>
         if(t.symbol.flags.is(Flags.Object)){
-          new ObjectRepresentation(reflect, t)
+          new ObjectRepresentation(reflect, t, t.symbol.flags.is(Flags.Case))
         }else{
-          new ClassRepresentation(reflect, t)
+          new ClassRepresentation(reflect, t, t.symbol.flags.is(Flags.Case))
         }
       case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
 

@@ -20,7 +20,6 @@
 * Main
 
 # Representation
-* Case class
 * Trait
 * All modifiers present?
 * Define wiki or markdown syntax
@@ -42,6 +41,8 @@
 * Source file link
 * List Package content => def/val too?
 * Link Reference
+* Case class remove artefacts?
+* Class inside class print parents
 
 # Report
 * Goal Why we wanted to generated from tasty why to markdown
