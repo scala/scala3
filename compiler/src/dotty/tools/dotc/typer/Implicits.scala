@@ -397,13 +397,7 @@ object Implicits {
      *  what was expected
      */
     override def clarify(tp: Type)(implicit ctx: Context): Type = {
-      val ctx0 = ctx
-      locally {
-        implicit val ctx = ctx0.fresh.setTyperState {
-          val ts = ctx0.typerState.fresh()
-          ts.constraint_=(constraint)(ctx0)
-          ts
-        }
+      def replace(implicit ctx: Context): Type = {
         val map = new TypeMap {
           def apply(t: Type): Type = t match {
             case t: TypeParamRef =>
@@ -420,6 +414,10 @@ object Implicits {
         }
         map(tp)
       }
+
+      val ctx1 = ctx.fresh.setExploreTyperState()
+      ctx1.typerState.constraint = constraint
+      replace(ctx1)
     }
 
     def explanation(implicit ctx: Context): String =
