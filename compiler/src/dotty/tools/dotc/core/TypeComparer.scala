@@ -818,7 +818,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           tycon1.dealiasKeepRefiningAnnots match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
-              canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
+               canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2.dealiasKeepRefiningAnnots match {
@@ -892,7 +892,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                     tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                     tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
                             tparams1.indices.toList.map(tl.paramRefs(_))))
-                (assumedTrue(tycon2) || tryInstantiate(tycon2, tycon1.ensureLambdaSub)) &&
+                (assumedTrue(tycon2) || isSubType(tycon1.ensureLambdaSub, tycon2)) &&
                 recur(tp1, tycon1.appliedTo(args2))
               }
             }
@@ -977,7 +977,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         case param1: TypeParamRef =>
           def canInstantiate = tp2 match {
             case AppliedType(tycon2, args2) =>
-              tryInstantiate(param1, tycon2.ensureLambdaSub) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
+              isSubType(param1, tycon2.ensureLambdaSub) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
             case _ =>
               false
           }
