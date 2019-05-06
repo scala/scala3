@@ -149,6 +149,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       this.leftRoot = tp1
     }
     else this.approx = a
+    if (savedApprox.gadt) {
+      this.approx = this.approx.addGadt
+    }
     try recur(tp1, tp2)
     catch {
       case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
@@ -840,8 +843,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                     gadtBoundsContain(tycon1sym, tycon2) ||
                     gadtBoundsContain(tycon2sym, tycon1)
                   ) &&
-                  isSubType(tycon1.prefix, tycon2.prefix) &&
-                  isSubArgs(args1, args2, tp1, tparams)
+                  isSubType(tycon1.prefix, tycon2.prefix) && {
+                    val tyconIsInjective = tycon1sym.isClass || tycon2sym.isClass
+                    isSubArgs(args1, args2, tp1, tparams, tyconIsInjective)
+                  }
                   if (res && touchedGADTs) GADTused = true
                   res
                 case _ =>
@@ -1097,7 +1102,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  @param  tp1       The applied type containing `args1`
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo], inferGadtBounds: Boolean = false): Boolean = {
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
@@ -1161,8 +1166,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               case arg1: TypeBounds =>
                 compareCaptured(arg1, arg2)
               case _ =>
-                (v > 0 || isSubType(arg2, arg1)) &&
-                (v < 0 || isSubType(arg1, arg2))
+                var nextApprox = if (inferGadtBounds) FreshApprox else FreshApprox.addGadt
+                (v > 0 || isSubType(arg2, arg1, nextApprox)) &&
+                (v < 0 || isSubType(arg1, arg2, nextApprox))
             }
         }
 
@@ -1410,7 +1416,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  Test that the resulting bounds are still satisfiable.
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
-    val boundImprecise = approx.high || approx.low
+    val boundImprecise = approx.high || approx.low || approx.gadt
     ctx.mode.is(Mode.GADTflexible) && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
@@ -2146,6 +2152,7 @@ object TypeComparer {
 
   private val LoApprox = 1
   private val HiApprox = 2
+  private val GadtApprox = 4
 
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.
@@ -2155,14 +2162,17 @@ object TypeComparer {
    */
   class ApproxState(private val bits: Int) extends AnyVal {
     override def toString: String = {
-      val lo = if ((bits & LoApprox) != 0) "LoApprox" else ""
-      val hi = if ((bits & HiApprox) != 0) "HiApprox" else ""
-      lo ++ hi
+      val lo = if (low) "LoApprox" else ""
+      val hi = if (high) "HiApprox" else ""
+      val g = if (gadt) "GadtApprox" else ""
+      lo ++ hi ++ g
     }
     def addLow: ApproxState = new ApproxState(bits | LoApprox)
     def addHigh: ApproxState = new ApproxState(bits | HiApprox)
+    def addGadt: ApproxState = new ApproxState(bits | GadtApprox)
     def low: Boolean = (bits & LoApprox) != 0
     def high: Boolean = (bits & HiApprox) != 0
+    def gadt: Boolean = (bits & GadtApprox) != 0
   }
 
   val NoApprox: ApproxState = new ApproxState(0)
@@ -2171,7 +2181,7 @@ object TypeComparer {
    *  compare (approximations of) this pair of types. It's converted to `NoApprox`
    *  in `isSubType`, but also leads to `leftRoot` being set there.
    */
-  val FreshApprox: ApproxState = new ApproxState(4)
+  val FreshApprox: ApproxState = new ApproxState(1 << 31)
 
   /** Show trace of comparison operations when performing `op` as result string */
   def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
