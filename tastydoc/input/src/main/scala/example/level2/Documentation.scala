@@ -105,6 +105,8 @@ sealed abstract class Documentation[T, Z <: Int](c1: String, val c2: List[T]) ex
   type typeExamle[X] >: X <: String //TypeBound
 
   def useOfOutsideType(): ReturnTypeClass = ???
+
+  protected[example] val variableWithScopeModifier = ???
 }
 
 /** Companion object

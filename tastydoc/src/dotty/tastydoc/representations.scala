@@ -13,8 +13,6 @@ object representations extends CommentParser with CommentCleaner {
     tpe.replaceAll("\u001B\\[[;\\d]*m", "")
   }
 
-  case class Ref(title: String, tpe: String) //TODO: This is a workaround
-
   trait Representation {
     val name : String
     val path : List[String]
@@ -33,9 +31,10 @@ object representations extends CommentParser with CommentCleaner {
 
   trait Modifiers {
     val modifiers: List[String]
+    val privateWithin: Option[Reference]
+    val protectedWithin: Option[Reference]
 
     def isPrivate: Boolean = modifiers.contains("private")
-
     def isProtected: Boolean = modifiers.contains("protected")
   }
 
@@ -48,7 +47,7 @@ object representations extends CommentParser with CommentCleaner {
   }
 
   trait ParamList {
-    val list: List[Ref] //TODO: Use Reference, currently using Ref workaround
+    val list: List[NamedReference]
     val isImplicit: Boolean
 
     //override def toString = list.map(_.title).mkString("(", ",", ")")
@@ -63,7 +62,7 @@ object representations extends CommentParser with CommentCleaner {
   }
 
   trait ReturnValue {
-    val returnValue: String //TODO: Use Reference, currently using String workaround
+    val returnValue: Reference
   }
 
   trait TypeParams {
@@ -81,18 +80,26 @@ object representations extends CommentParser with CommentCleaner {
     pathArray.view(0, pathArray.length - 1).toList
   }
 
-  private def extractModifiers(reflect: Reflection)(flags: reflect.Flags) : List[String] = {
+  private def extractModifiers(reflect: Reflection)(flags: reflect.Flags, privateWithin: Option[reflect.Type], protectedWithin: Option[reflect.Type]) : (List[String], Option[Reference], Option[Reference]) = {
     import reflect._
 
-    ((if(flags.is(Flags.Override)) "override" else "") ::
-    (if(flags.is(Flags.Private)) "private" else "") ::
-    //TODO: Scope modifiers for private and protected
+    (((if(flags.is(Flags.Override)) "override" else "") ::
+    (if(flags.is(Flags.Private)) "private" else "")::
     (if(flags.is(Flags.Protected)) "protected" else "") ::
     (if(flags.is(Flags.Final)) "final" else "") ::
     (if(flags.is(Flags.Sealed)) "sealed" else "") ::
     (if(flags.is(Flags.Implicit)) "implicit" else "") ::
     (if(flags.is(Flags.Abstract)) "abstract" else "") ::
-    Nil) filter (_ != "")
+    Nil) filter (_ != ""),
+
+    privateWithin match {
+      case Some(t) => Some(convertTypeToReference(reflect)(t))
+      case None => None
+    },
+    protectedWithin match {
+      case Some(t) => Some(convertTypeToReference(reflect)(t))
+      case None => None
+    })
   }
 
   private def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Option[Comment] = {
@@ -139,6 +146,14 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => ByNameReference(inner(tpe))
       case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
+      case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
+      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) =>
+        ConstantReference("LAMBDATYPETODO") //TODO
+        // inner(resType)
+        // TOASK What to do with this
+        // HKTypeLambda(List(+A),
+        // List(TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Nothing),TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Any))),
+        // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class collection)),class Seq),List(TypeParamRef(+A))))
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
         case TypeReference(label, link, _) =>
           if(link == "./scala"){
@@ -153,33 +168,32 @@ object representations extends CommentParser with CommentCleaner {
           }else{
             TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
           }
-        case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue.")
+        case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
       }
 
       case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
           case TypeReference(label, link, xs) => TypeReference(typeName, link + "/" + label, xs)
           case EmptyReference => TypeReference(typeName, ".", Nil)
-          case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue.")
+          case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
         }
       case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
           case TypeReference(label, link, xs) => TypeReference(typeName, link + "/" + label, xs)
           case EmptyReference => TypeReference(typeName, ".", Nil)
-          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue.")
+          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
         }
       case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
-        case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) =>
+        case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) | reflect.IsValDefSymbol(_) =>
           typeOrBoundsHandling(typeOrBounds) match {
             case TypeReference(label, link, xs) => TypeReference(symbol.name, link + "/" + label, xs)
             case EmptyReference if symbol.name == "<root>" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, ".", Nil)
-            case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
           }
-        case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue.")
+        case _ => println(symbol.show); throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
       }
-      // case _ => throw Exception("No match for type in conversion to Reference")
-      case _ => EmptyReference
+      case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
     }
 
     inner(tp)
@@ -217,7 +231,7 @@ object representations extends CommentParser with CommentCleaner {
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val parent = None
     override val parents = internal.parents.map(x => removeColorFromType(x.showCode))
-    override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(x) => path.init ++ List(name)
       case None => Nil
@@ -233,8 +247,8 @@ object representations extends CommentParser with CommentCleaner {
       new MultipleParamList {
         override val paramLists = x.paramss.map{p =>
           new ParamList {
-            override val list = p.map(x => Ref(x.name, removeColorFromType(x.tpt.tpe.showCode)))
-            override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.show.contains("Flags.Implicit") else false //TODO: Verfiy this
+            override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
+            override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.is(Flags.Implicit) else false //TODO: Verfiy this
           }
         }
       }
@@ -250,7 +264,7 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
-    override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(_) => path.init ++ List(name)
@@ -267,16 +281,16 @@ object representations extends CommentParser with CommentCleaner {
     override val path = extractPath(reflect)(internal.symbol)
     override val parent = None
     override val parents = Nil
-    override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
-    override val typeParams = internal.typeParams.map(convertTypeToReference(reflect)(_))
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
+    override val typeParams = internal.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
 
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
-        override val list = p.map(x => Ref(x.name, removeColorFromType(x.tpt.tpe.showCode)))
+        override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
         override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.show.contains("Flags.Implicit") else false //TODO: Verfiy this
       }
     }
-    override val returnValue = removeColorFromType(internal.returnTpt.tpe.showCode)
+    override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)
     override val annotations = Nil
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
@@ -288,37 +302,8 @@ object representations extends CommentParser with CommentCleaner {
     override val path = extractPath(reflect)(internal.symbol)
     override val parent = None
     override val parents = Nil
-    override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
-
-    def makeStringFromReferences(reference: Reference) : String = reference match {
-      case TypeReference(label, link, typeParams) =>
-        if(typeParams.isEmpty){
-          link + "#" + label
-        }else{
-          link + "#" + label + typeParams.map(makeStringFromReferences).mkString("[", ", ", "]")
-        }
-      case OrTypeReference(left, right) =>
-        makeStringFromReferences(left) + " | " + makeStringFromReferences(right)
-      case AndTypeReference(left, right) =>
-        makeStringFromReferences(left) + " & " + makeStringFromReferences(right)
-      case FunctionReference(args, returnValue, isImplicit) =>
-        args.map(makeStringFromReferences).mkString("(", ", ", ") => ") + makeStringFromReferences(returnValue)
-      case TupleReference(args) =>
-        args.map(makeStringFromReferences).mkString("(", ", ", ")")
-      case BoundsReference(low, high) =>
-        makeStringFromReferences(low) + ">:" + makeStringFromReferences(high)
-      case ByNameReference(ref) =>
-        "=> " + makeStringFromReferences(ref)
-      case ConstantReference(label) =>
-        "Constant(" + label + ")" //TOASK: What form?
-      case EmptyReference => throw Exception("EmptyReference should never occur outside of conversion from reflect.")
-    }
-    println(name + " =============")
-    // println(internal.tpt.tpe)
-    //println(convertTypeToReference(reflect)(internal.tpt.tpe))
-    println(makeStringFromReferences(convertTypeToReference(reflect)(internal.tpt.tpe)))
-
-    override val returnValue = removeColorFromType(internal.tpt.tpe.showCode)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
+    override val returnValue = convertTypeToReference(reflect)(internal.tpt.tpe)
     override val annotations = Nil
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
@@ -328,9 +313,11 @@ object representations extends CommentParser with CommentCleaner {
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
-    override val modifiers = extractModifiers(reflect)(internal.symbol.flags)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val typeParams = Nil
     override val annotations = Nil
+    val alias: Option[Reference] = None //TODO
+    def isAbstract: Boolean = !alias.isDefined
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 

@@ -1,16 +1,58 @@
 package dotty.tastydoc
 
 import representations._
+import references._
 import comment.Comment
 
 import java.io._
 
 object DocPrinter{
-  private def formatParamList(paramList: ParamList) : String = paramList.list.map(x => x.title + ": " + x.tpe).mkString(
+  private def makeStringFromReferences(reference: Reference) : String = reference match {
+    case TypeReference(label, link, typeParams) =>
+      if(typeParams.isEmpty){
+        link + "#" + label
+      }else{
+        link + "#" + label + typeParams.map(makeStringFromReferences).mkString("[", ", ", "]")
+      }
+    case OrTypeReference(left, right) =>
+      makeStringFromReferences(left) + " | " + makeStringFromReferences(right)
+    case AndTypeReference(left, right) =>
+      makeStringFromReferences(left) + " & " + makeStringFromReferences(right)
+    case FunctionReference(args, returnValue, isImplicit) =>
+      args.map(makeStringFromReferences).mkString("(", ", ", ") => ") + makeStringFromReferences(returnValue)
+    case TupleReference(args) =>
+      args.map(makeStringFromReferences).mkString("(", ", ", ")")
+    case BoundsReference(low, high) =>
+      makeStringFromReferences(low) + ">:" + makeStringFromReferences(high)
+    case ByNameReference(ref) =>
+      "=> " + makeStringFromReferences(ref)
+    case ConstantReference(label) =>
+      "Constant(" + label + ")" //TOASK: What form?
+    case NamedReference(name, ref, isRepeated) => name + ": " + makeStringFromReferences(ref) + (if(isRepeated) "*" else "")
+    case EmptyReference => throw Exception("EmptyReference should never occur outside of conversion from reflect.")
+  }
+
+  private def formatParamList(paramList: ParamList) : String = paramList.list.map(x => makeStringFromReferences(x)).mkString(
     "(" + (if(paramList.isImplicit) "implicit " else ""),
     ", ",
     ")"
   )
+
+  private def formatModifiers(modifiers: List[String], privateWithin: Option[Reference], protectedWithin: Option[Reference]): String = {
+    val filteredModifiers = modifiers.filter(x => x != "private" && x != "protected")
+
+    (privateWithin match {
+      case Some(r) => makeStringFromReferences(r).mkString("private[", "", "] ")
+      case None if modifiers.contains("private") => "private "
+      case None => ""
+    }) +
+    (protectedWithin match {
+      case Some(r) => makeStringFromReferences(r).mkString("private[", "", "] ")
+      case None if modifiers.contains("protected") => "protected "
+      case None => ""
+    }) +
+    (if(filteredModifiers.nonEmpty) filteredModifiers.mkString("", " ", " ") else "")
+  }
 
   private def formatComments(comment: Option[Comment]) : String = comment match {
     case Some(c) =>
@@ -50,7 +92,7 @@ object DocPrinter{
 
     case r: ClassRepresentation =>
       if(insideClassOrObject){
-        Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + "class " + r.name, "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"
@@ -58,7 +100,7 @@ object DocPrinter{
         Md.header1("class " + r.name) +
         "\n" +
         (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
-        Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) +
           "class " +
           r.name +
           (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
@@ -94,7 +136,7 @@ object DocPrinter{
 
     case r: ObjectRepresentation =>
       if(insideClassOrObject){
-        Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "object " + r.name, "scala") +
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + "object " + r.name, "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"
@@ -102,7 +144,7 @@ object DocPrinter{
         Md.header1("object " + r.name) +
         "\n" +
         (if (r.hasCompanion) Md.header2("Companion class : " + r.companionPath.mkString(".")) + "\n" else "") +
-        Md.codeBlock((if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") + "class " + r.name, "scala") +
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + "class " + r.name, "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n" +
@@ -131,31 +173,31 @@ object DocPrinter{
 
     case r: DefRepresentation =>
       Md.codeBlock(
-        (if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
+        formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) +
         "def " +
         r.name +
         (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
         r.paramLists.map(formatParamList).mkString("") +
         ": " +
-        r.returnValue, "scala") +
+        makeStringFromReferences(r.returnValue), "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"
 
     case r: ValRepresentation =>
       Md.codeBlock(
-        (if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
+        formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) +
         "val " +
         r.name +
         ": " +
-        r.returnValue, "scala") +
+        makeStringFromReferences(r.returnValue), "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"
 
     case r: TypeRepresentation =>
         Md.codeBlock(
-        (if(r.modifiers.nonEmpty) r.modifiers.mkString("", " ", " ") else "") +
+        formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) +
         "type " +
         r.name +
         ": ", "scala") +

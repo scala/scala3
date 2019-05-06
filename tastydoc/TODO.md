@@ -23,27 +23,25 @@
 * Case class
 * Trait
 * All modifiers present?
-* Scope modifiers
 * Define wiki or markdown syntax
 * Beautify type parameters (+ variance)
-* Make type as References
-  * Link them
-  * Beautify them
 * Beautify everything (parents, etc.)
 * Make sense of the parent field
 * SuperTypes
 * Known subclasses
-* Methods inherited ?
+* Methods inherited doc
 * Annotations (+ everywhere or only where it makes sense?)
 * Type default
 * Fix color in showcode
 * Make sure no Entity is left
 * Verify we have every entities-like
+* Remove showCode whenever possible
 
 # Output
 * Output inner class/object if not inherited
 * Source file link
 * List Package content => def/val too?
+* Link Reference
 
 # Report
 * Goal Why we wanted to generated from tasty why to markdown

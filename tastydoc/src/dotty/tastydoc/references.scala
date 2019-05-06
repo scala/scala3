@@ -8,8 +8,8 @@ object references {
   final case class FunctionReference(args: List[Reference], returnValue: Reference, isImplicit: Boolean) extends Reference
   final case class TupleReference(args: List[Reference]) extends Reference
   final case class BoundsReference(low: Reference, high: Reference) extends Reference
-  //final case class NamedReference(label: String, ref: Reference, isByName: Boolean = false, isRepeated: Boolean = false) extends Reference // TODO
-  final case class ByNameReference(ref: Reference) extends Reference // TODO
+  final case class NamedReference(name: String, ref: Reference, isRepeated: Boolean = false) extends Reference // TODO isRepeated
+  final case class ByNameReference(ref: Reference) extends Reference
   final case class ConstantReference(label: String) extends Reference
   case object EmptyReference extends Reference
 }
