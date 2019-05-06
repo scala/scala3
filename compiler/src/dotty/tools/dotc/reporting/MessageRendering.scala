@@ -134,9 +134,9 @@ trait MessageRendering {
   /** Explanation rendered under "Explanation" header */
   def explanation(m: Message)(implicit ctx: Context): String = {
     val sb = new StringBuilder(
-      hl"""|
-           |${Blue("Explanation")}
-           |${Blue("===========")}"""
+      s"""|
+          |${Blue("Explanation").show}
+          |${Blue("===========").show}""".stripMargin
     )
     sb.append(EOL).append(m.explanation)
     if (m.explanation.lastOption != Some(EOL)) sb.append(EOL)

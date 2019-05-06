@@ -23,7 +23,6 @@ object Formatting {
    *     against accidentally treating an interpolated value as a margin.
    */
   class StringFormatter(protected val sc: StringContext) {
-
     protected def showArg(arg: Any)(implicit ctx: Context): String = arg match {
       case arg: Showable =>
         try arg.show
@@ -207,7 +206,7 @@ object Formatting {
       lazy val maxLen = parts.map(_._1.length).max
       parts.map {
         case (leader, trailer) =>
-          val variable = hl"$leader"
+          val variable = hl(leader)
           s"""$variable${" " * (maxLen - leader.length)} $trailer"""
       }
     }
@@ -277,4 +276,8 @@ object Formatting {
       case _ => (fnd, exp)
     }
   }
+
+  /** Explicit syntax highlighting */
+  def hl(s: String)(implicit ctx: Context): String =
+    SyntaxHighlighting.highlight(s)
 }

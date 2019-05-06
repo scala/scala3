@@ -141,7 +141,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             val superCls = clazz.asClass.superClass.asClass
             if (owner != superCls && hasClassOverride(sym, superCls)) {
               ctx.error(
-                hl"""Super call cannot be emitted: the selected $sym is declared in $owner, which is not the direct superclass of $clazz.
+                em"""Super call cannot be emitted: the selected $sym is declared in $owner, which is not the direct superclass of $clazz.
                 |An unqualified super call (super.${sym.name}) would be allowed.""",
                 sel.sourcePos)
             }
