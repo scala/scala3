@@ -157,6 +157,10 @@ object ErrorReporting {
       }
       """\$\{\w*\}""".r.replaceSomeIn(raw, m => translate(m.matched.drop(2).init))
     }
+
+    def rewriteNotice: String =
+      if (ctx.scala2Mode) "\nThis patch can be inserted automatically under -rewrite."
+      else ""
   }
 
   def err(implicit ctx: Context): Errors = new Errors

@@ -150,6 +150,7 @@ class CompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions),
       compileFilesInDir("tests/neg-tailcall", defaultOptions),
+      compileFilesInDir("tests/neg-strict", defaultOptions.and("-strict")),
       compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
       compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
       compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
@@ -160,8 +161,6 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/i3246.scala", scala2Mode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")),
-      compileFile("tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")),
-      compileFile("tests/neg-custom-args/nullless.scala", defaultOptions.and("-strict")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
       compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")),
@@ -249,7 +248,9 @@ class CompilationTests extends ParallelTesting {
 
     val lib =
       compileList("src", librarySources,
-        defaultOptions.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))(libGroup)
+        defaultOptions.and("-Ycheck-reentrant",
+          //  "-strict",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
+          "-priorityclasspath", defaultOutputDir))(libGroup)
 
     val compilerSources = sources(Paths.get("compiler/src"))
     val compilerManagedSources = sources(Properties.dottyCompilerManagedSources)

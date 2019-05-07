@@ -1036,7 +1036,15 @@ class Typer extends Namer
         if (tree.isInline) checkInInlineContext("inline match", tree.posd)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
-        typedMatchFinish(tree, sel1, selType, tree.cases, pt)
+        val result = typedMatchFinish(tree, sel1, selType, tree.cases, pt)
+        result match {
+          case Match(sel, CaseDef(pat, _, _) :: _)
+          if (tree.selector.removeAttachment(desugar.PatDefMatch).isDefined) =>
+            if (!checkIrrefutable(pat, sel.tpe) && ctx.scala2Mode)
+              patch(Span(pat.span.end), ": @unchecked")
+          case _ =>
+        }
+        result
     }
   }
 
@@ -1827,8 +1835,11 @@ class Typer extends Namer
           }
         case _ => arg1
       }
-      val tpt = TypeTree(AnnotatedType(arg1.tpe.widenIfUnstable, Annotation(annot1)))
-      assignType(cpy.Typed(tree)(arg2, tpt), tpt)
+      val argType =
+        if (arg1.isInstanceOf[Bind]) arg1.tpe.widen // bound symbol is not accessible outside of Bind node
+        else arg1.tpe.widenIfUnstable
+      val annotatedTpt = TypeTree(AnnotatedType(argType, Annotation(annot1)))
+      assignType(cpy.Typed(tree)(arg2, annotatedTpt), annotatedTpt)
     }
   }
 

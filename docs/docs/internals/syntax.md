@@ -196,9 +196,10 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
-                    |  PostfixExpr [Ascription]
-                    |  [‘inline’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’       Match(expr, cases) -- point on match
+                    |  Expr2
+                    |  [‘inline’] Expr2 ‘match’ ‘{’ CaseClauses ‘}’             Match(expr, cases) -- point on match
                     |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
+Expr2             ::=  PostfixExpr [Ascription]
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ Expr
@@ -224,7 +225,7 @@ SimpleExpr1       ::=  Literal
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
-ExprInParens      ::=  PostfixExpr ‘:’ Type
+ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
 ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                                    exprs
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
@@ -358,7 +359,8 @@ Def               ::=  ‘val’ PatDef
                     |  ‘type’ {nl} TypeDcl
                     |  TmplDef
                     |  INT
-PatDef            ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr              PatDef(_, pats, tpe?, expr)
+PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
+                    |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr                PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
 DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                      DefDef(_, name, tparams, vparamss, tpe, expr)

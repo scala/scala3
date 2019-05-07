@@ -1200,14 +1200,15 @@ object Parsers {
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
-     *                      |  PostfixExpr [Ascription]
-     *                      |  [‘inline’] PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  Expr2
+     *                      |  [‘inline’] Expr2 `match' `{' CaseClauses `}'
      *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
-     *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
-     *  Binding           ::= (id | `_') [`:' Type]
-     *  Ascription        ::= `:' CompoundType
-     *                      | `:' Annotation {Annotation}
-     *                      | `:' `_' `*'
+     *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
+     *  Binding           ::=  (id | `_') [`:' Type]
+     *  Expr2             ::=  PostfixExpr [Ascription]
+     *  Ascription        ::=  `:' InfixType
+     *                      |  `:' Annotation {Annotation}
+     *                      |  `:' `_' `*'
      */
     val exprInParens: () => Tree = () => expr(Location.InParens)
 
@@ -1324,7 +1325,9 @@ object Parsers {
              t
          }
       case COLON =>
-        ascription(t, location)
+        in.nextToken()
+        val t1 = ascription(t, location)
+        if (in.token == MATCH) expr1Rest(t1, location) else t1
       case MATCH =>
         matchExpr(t, startOffset(t), Match)
       case _ =>
@@ -1332,7 +1335,6 @@ object Parsers {
     }
 
     def ascription(t: Tree, location: Location.Value): Tree = atSpan(startOffset(t)) {
-      in.skipToken()
       in.token match {
         case USCORE =>
           val uscoreStart = in.skipToken()
@@ -1801,7 +1803,10 @@ object Parsers {
      */
     def pattern1(): Tree = {
       val p = pattern2()
-      if (isVarPattern(p) && in.token == COLON) ascription(p, Location.InPattern)
+      if (isVarPattern(p) && in.token == COLON) {
+        in.nextToken()
+        ascription(p, Location.InPattern)
+      }
       else p
     }
 
@@ -2353,14 +2358,32 @@ object Parsers {
         tmplDef(start, mods)
     }
 
-    /** PatDef ::= Pattern2 {`,' Pattern2} [`:' Type] `=' Expr
-     *  VarDef ::= PatDef | id {`,' id} `:' Type `=' `_'
-     *  ValDcl ::= id {`,' id} `:' Type
-     *  VarDcl ::= id {`,' id} `:' Type
+    /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
+     *            |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr
+     *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
+     *  ValDcl  ::=  id {`,' id} `:' Type
+     *  VarDcl  ::=  id {`,' id} `:' Type
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
-      val lhs = commaSeparated(pattern2)
-      val tpt = typedOpt()
+      val first = pattern2()
+      var lhs = first match {
+        case id: Ident if in.token == COMMA =>
+          in.nextToken()
+          id :: commaSeparated(() => termIdent())
+        case _ =>
+          first :: Nil
+      }
+      def emptyType = TypeTree().withSpan(Span(in.lastOffset))
+      val tpt =
+        if (in.token == COLON) {
+          in.nextToken()
+          if (in.token == AT && lhs.tail.isEmpty) {
+            lhs = ascription(first, Location.ElseWhere) :: Nil
+            emptyType
+          }
+          else toplevelTyp()
+        }
+        else emptyType
       val rhs =
         if (tpt.isEmpty || in.token == EQUALS) {
           accept(EQUALS)
@@ -2374,9 +2397,9 @@ object Parsers {
       lhs match {
         case (id: BackquotedIdent) :: Nil if id.name.isTermName =>
           finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
-        case Ident(name: TermName) :: Nil => {
+        case Ident(name: TermName) :: Nil =>
           finalizeDef(ValDef(name, tpt, rhs), mods, start)
-        } case _ =>
+        case _ =>
           PatDef(mods, lhs, tpt, rhs)
       }
     }

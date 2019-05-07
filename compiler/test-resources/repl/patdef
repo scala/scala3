@@ -21,6 +21,3 @@ scala> val _ @ List(x) = List(1)
 val x: Int = 1
 scala> val List(_ @ List(x)) = List(List(2))
 val x: Int = 2
-scala> val B @ List(), C: List[Int] = List()
-val B: List[Int] = List()
-val C: List[Int] = List()

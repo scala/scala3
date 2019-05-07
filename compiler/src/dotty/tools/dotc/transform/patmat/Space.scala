@@ -280,11 +280,25 @@ trait SpaceLogic {
   }
 }
 
+object SpaceEngine {
+
+  /** Is the unapply irrefutable?
+   *  @param  unapp   The unapply function reference
+   */
+  def isIrrefutableUnapply(unapp: tpd.Tree)(implicit ctx: Context): Boolean = {
+    val unappResult = unapp.tpe.widen.finalResultType
+    unappResult.isRef(defn.SomeClass) ||
+    unappResult =:= ConstantType(Constant(true)) ||
+    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
+    productArity(unappResult) > 0
+  }
+}
+
 /** Scala implementation of space logic */
 class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import tpd._
+  import SpaceEngine._
 
-  private val scalaSomeClass       = ctx.requiredClass("scala.Some")
   private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
   private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List")
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
@@ -309,15 +323,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     else Typ(AndType(tp1, tp2), true)
   }
 
-  /** Whether the extractor is irrefutable */
-  def irrefutable(unapp: Tree): Boolean = {
-    // TODO: optionless patmat
-    unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
-      unapp.tpe.widen.finalResultType =:= ConstantType(Constant(true)) ||
-      (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
-      productArity(unapp.tpe.widen.finalResultType) > 0
-  }
-
   /** Return the space that represents the pattern `pat` */
   def project(pat: Tree): Space = pat match {
     case Literal(c) =>
@@ -340,12 +345,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else {
           val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapply(fun))
           else
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), irrefutable(fun))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)),isIrrefutableUnapply(fun))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
+        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), isIrrefutableUnapply(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)

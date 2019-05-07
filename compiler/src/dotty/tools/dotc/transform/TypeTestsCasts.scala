@@ -220,7 +220,7 @@ object TypeTestsCasts {
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.sourcePos)
+              if (!inMatch) ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.sourcePos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
