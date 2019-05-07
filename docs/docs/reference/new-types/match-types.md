@@ -34,7 +34,7 @@ Match types can form part of recursive type definitions. Example:
     case String => Char
     case Array[t] => LeafElem[t]
     case Iterable[t] => LeafElem[t]
-    case t <: AnyVal => t
+    case AnyVal => X
   }
 ```
 Recursive match type definitions can also be given an upper bound, like this:
