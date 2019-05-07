@@ -25,7 +25,7 @@ object Test {
   val z1: Int = z
 }
 
-object Test2 {
+object Test1 {
 
   trait A {
     def apply(x: Any): Int =  1
@@ -34,5 +34,58 @@ object Test2 {
   object B {
     def f(x: Any): A = new A {}
     lazy val f: A = f(null)
+  }
+}
+
+object Test2 {
+  trait A {
+    def apply(x: AnyRef): Int
+  }
+  object B {
+    def f(e: Any): A = ???
+    val f: A = ???
+    val g: A = f(null)
+  }
+}
+
+object Test3 {
+  trait A {
+    def apply(x: String): Int
+  }
+  object B {
+    def f(e: CharSequence): A = ???
+    val f: A = f(null)
+  }
+}
+
+
+object Test4 {
+  trait A {
+    def apply(x: Any): Int
+  }
+  object B {
+    def f(e: Any): A = ???
+    val f: A = f(null)
+  }
+}
+
+object Test5 {
+  trait A {
+    def apply(x: Any): Int
+  }
+  object B {
+    def f(e: AnyRef): A = ???
+    val f: A = f(null)
+  }
+}
+
+
+object Test6 {
+  trait A {
+    def apply(x: CharSequence): Int
+  }
+  object B {
+    def f(e: String): A = ???
+    val f: A = f(null)
   }
 }

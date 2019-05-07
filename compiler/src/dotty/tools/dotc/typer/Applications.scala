@@ -1472,17 +1472,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
+     *  If `alt`does not have method or poly type, and `followApply` is true, consider
+     *  all apply members instead. In all other cases return `true`.
      */
-    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(implicit ctx: Context): Boolean =
-      resultType.revealIgnored match {
+    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(implicit ctx: Context): Boolean = {
+      def recur(altType: Type, followApply: Boolean): Boolean = resultType.revealIgnored match {
         case resultType: ValueType =>
           altType.widen match {
-            case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
+            case tp: PolyType => recur(constrained(tp).resultType, followApply)
             case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
-            case _ => true
+            case _ => !followApply || onMethod(altType, followApply)(recur(_, followApply = false))
           }
         case _ => true
       }
+      recur(altType, followApply = true)
+    }
 
     /** If the `chosen` alternative has a result type incompatible with the expected result
      *  type `pt`, run overloading resolution again on all alternatives that do match `pt`.
