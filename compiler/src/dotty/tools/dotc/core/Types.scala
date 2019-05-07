@@ -3556,6 +3556,8 @@ object Types {
             else lo.applyIfParameterized(args)
           case _ => NoType
         }
+      case tycon: AppliedType =>
+        tycon.lowerBound.applyIfParameterized(args)
       case _ =>
         NoType
     }
