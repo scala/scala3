@@ -13,7 +13,7 @@ object Type {
 
   implicit class TypeOps[T](tpe: Type[T]) {
     /** Show a source code like representation of this type */
-    def show(implicit toolbox: Toolbox): String = toolbox.show(tpe.asInstanceOf[Type[Any]])
+    def show given StagingContext: String = the[StagingContext].show(tpe)
   }
 
   implicit def UnitTag: Type[Unit] = new TaggedType[Unit]

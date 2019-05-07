@@ -9,7 +9,7 @@ object Expr {
 
   implicit class ExprOps[T](expr: Expr[T]) {
     /** Show a source code like representation of this expression */
-    def show(implicit toolbox: Toolbox): String = toolbox.show(expr)
+    def show(implicit stCtx: StagingContext): String = stCtx.show(expr)
   }
 
   implicit class AsFunction0[R](private val f: Expr[() => R]) extends AnyVal {

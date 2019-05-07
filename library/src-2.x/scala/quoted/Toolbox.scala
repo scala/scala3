@@ -4,8 +4,8 @@ trait Toolbox {
   def run[T](code: Staged[T]): T = runImpl(code)
   protected def runImpl[T](code: StagingContext => Expr[T]): T // For Scala2 compat in ToolboxImpl
 
-  def show[T](code: Staged[T]): String = runImpl(ctx => { implicit val c: StagingContext = ctx; code(ctx).show.toExpr })
-  def show[T](code: StagedType[T]): String = runImpl(ctx => { implicit val c: StagingContext = ctx; code(ctx).show.toExpr })
+//  def show[T](code: Staged[T]): String = runImpl(ctx => { implicit val c: StagingContext = ctx; code(ctx).show.toExpr })
+//  def show[T](code: StagedType[T]): String = runImpl(ctx => { implicit val c: StagingContext = ctx; code(ctx).show.toExpr })
 }
 
 object Toolbox {

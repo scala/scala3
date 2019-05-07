@@ -2,12 +2,12 @@ package scala
 
 package object quoted {
 
-  type Staged[T] = implicit StagingContext => Expr[T]
+  type Staged[T] = given StagingContext => Expr[T]
 
-  type StagedType[T] = implicit StagingContext => Type[T]
+  type StagedType[T] = given StagingContext => Type[T]
 
   object autolift {
-    implicit def autoToExpr[T: Liftable](x: T): Expr[T] = x.toExpr
+    implicit def autoToExpr[T: Liftable](x: T) given StagingContext: Expr[T] = x.toExpr
   }
 
   implicit class LiftExprOps[T](val x: T) extends AnyVal {
