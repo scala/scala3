@@ -12,6 +12,6 @@ object X {
 }
 
 object app extends App {
-  implicitly[Tc2[X]] // ok
-  implicitly[Tc1[X]]//(X.Tc2Instance[Tc2]) // fails
+  implicitly[Tc2[X]]
+  implicitly[Tc1[X]]
 }
