@@ -185,8 +185,12 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         val macroCall3 =
           if (tree.tparams.isEmpty && !needsThisParam) macroCall2
           else macroCall2.appliedToArgs((if (needsThisParam) ref(defn.InternalQuoted_typeQuote).appliedToType(ThisType.raw(sym.owner.typeRef)) :: Nil else Nil) ::: tree.tparams.map(x => ref(defn.InternalQuoted_typeQuote).appliedToType(x.symbol.typeRef)))
-        val macroCall4 =
-          macroCall3.appliedToArgss(tree.vparamss.map(_.map(x => if (x.symbol.is(Inline)) ref(x.symbol) else ref(defn.InternalQuoted_exprQuote).appliedToType(x.symbol.info.widenExpr).appliedTo(ref(x.symbol)))))
+        def makeCallArg(x: Tree): Tree = {
+          if (!x.symbol.is(Inline)) ref(defn.InternalQuoted_exprQuote).appliedToType(x.symbol.info.widenExpr).appliedTo(ref(x.symbol))
+          else if (x.symbol.info.hasAnnotation(defn.RepeatedAnnot)) Typed(ref(x.symbol), TypeTree(defn.RepeatedParamType.appliedTo(x.symbol.info.argTypesHi.head)))
+          else ref(x.symbol)
+        }
+        val macroCall4 = macroCall3.appliedToArgss(tree.vparamss.map(_.map(makeCallArg)))
         val macroCall5 =
           macroCall4.appliedTo(ref(defn.TastyReflection_macroContext))
         val newRHS = ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpt.tpe).appliedTo(macroCall5)
