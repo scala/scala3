@@ -5,5 +5,7 @@ object Test extends App {
   val a :: as: @unchecked = List(1, 2, 3)
   val lst @ b :: bs: @unchecked = List(1, 2, 3)
   val (1, c): @unchecked = (1, 2)
-  val 1 *: cs: @unchecked = 1 *: ()        // error
+
+  object Positive { def unapply(i: Int): Option[Int] = Some(i).filter(_ > 0) }
+  val Positive(p): @unchecked = 5
 }

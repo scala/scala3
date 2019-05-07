@@ -26,6 +26,7 @@ import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import Applications.unapplyArgs
+import transform.patmat.SpaceEngine.isIrrefutableUnapply
 
 import collection.mutable
 import SymDenotations.{NoCompleter, NoDenotation}
@@ -604,18 +605,16 @@ trait Checking {
   def checkIrrefutable(pat: Tree, pt: Type)(implicit ctx: Context): Boolean = {
     patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
 
-    def check(pat: Tree, pt: Type): Boolean = {
-      if (pt <:< pat.tpe)
-        true
-      else {
-        ctx.errorOrMigrationWarning(
-          ex"""pattern's type ${pat.tpe} is more specialized than the right hand side expression's type ${pt.dropAnnot(defn.UncheckedAnnot)}
-              |
-              |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.${err.rewriteNotice}""",
-          pat.sourcePos)
-        false
-      }
+    def fail(pat: Tree, pt: Type): Boolean = {
+      ctx.errorOrMigrationWarning(
+        ex"""pattern's type ${pat.tpe} is more specialized than the right hand side expression's type ${pt.dropAnnot(defn.UncheckedAnnot)}
+            |
+            |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.${err.rewriteNotice}""",
+        pat.sourcePos)
+      false
     }
+
+    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
     !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
     pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
@@ -623,8 +622,9 @@ trait Checking {
         case Bind(_, pat1) =>
           checkIrrefutable(pat1, pt)
         case UnApply(fn, _, pats) =>
-          check(pat, pt) && {
-            val argPts = unapplyArgs(fn.tpe.finalResultType, fn, pats, pat.sourcePos)
+          check(pat, pt) &&
+          (isIrrefutableUnapply(fn) || fail(pat, pt)) && {
+            val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.sourcePos)
             pats.corresponds(argPts)(checkIrrefutable)
           }
         case Alternative(pats) =>
