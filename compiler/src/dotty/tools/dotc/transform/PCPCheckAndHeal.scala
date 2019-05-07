@@ -126,7 +126,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
         val implMeth = ctx.newSymbol(
           owner = implOwner,
-          name = (sym.name.toString + "$macro$impl$" + macroImplBuff.getOrElse(implOwner, Set.empty).size).toTermName,
+          name = (sym.name.encode.toString + "$macro$impl$" + macroImplBuff.getOrElse(implOwner, Set.empty).size).toTermName,
           flags = /* Private | */ Method,
           info = methodType,
           privateWithin = NoSymbol,
