@@ -19,15 +19,18 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
-   * Note that underlying operations perform subtype checks - for this reason, recursing on `fullBounds`
-   * of some symbol when comparing types might lead to infinite recursion. Consider `bounds` instead.
+   * @note this performs subtype checks between ordered symbols.
+   *       Using this in isSubType can lead to infinite recursion. Consider `bounds` instead.
    */
   def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds
 
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean
 
-  /** Add symbols to constraint, preserving the underlying bounds and handling inter-dependencies. */
+  /** Add symbols to constraint, correctly handling inter-dependencies.
+   *
+   * @see [[ConstraintHandling.addToConstraint]]
+   */
   def addToConstraint(syms: List[Symbol])(implicit ctx: Context): Boolean
   def addToConstraint(sym: Symbol)(implicit ctx: Context): Boolean = addToConstraint(sym :: Nil)
 
@@ -36,8 +39,7 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Is the symbol registered in the constraint?
    *
-   * Note that this is returns `true` even if `sym` is already instantiated to some type,
-   * unlike [[Constraint.contains]].
+   * @note this is true even if the symbol is constrained to be equal to another type, unlike [[Constraint.contains]].
    */
   def contains(sym: Symbol)(implicit ctx: Context): Boolean
 
@@ -81,8 +83,9 @@ final class ProperGadtConstraint private(
 
     val poly1 = PolyType(params.map { sym => DepParamName.fresh(sym.name.toTypeName) })(
       pt => params.map { param =>
-        // replace the symbols in bound type `tp` which are in dependent positions
-        // with their internal TypeParamRefs
+        // In bound type `tp`, replace the symbols in dependent positions with their internal TypeParamRefs.
+        // The replaced symbols will be later picked up in `ConstraintHandling#addToConstraint`
+        // and used as orderings.
         def substDependentSyms(tp: Type, isUpper: Boolean)(implicit ctx: Context): Type = {
           def loop(tp: Type) = substDependentSyms(tp, isUpper)
           tp match {
@@ -119,7 +122,7 @@ final class ProperGadtConstraint private(
       tv
     }
 
-    // the replaced symbols will be stripped off the bounds by `addToConstraint` and used as orderings
+    // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars).reporting({ _ =>
       i"added to constraint: $params%, %\n$debugBoundsDescription"
     }, gadts)

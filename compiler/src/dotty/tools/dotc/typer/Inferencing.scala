@@ -301,8 +301,8 @@ object Inferencing {
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
-          // since the symbols we're creating may have inter-dependencies in their bounds,
-          // we add them to the GADT constraint later, simultaneously
+          // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
+          // Instead, we simultaneously add them later on.
           val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
@@ -310,6 +310,7 @@ object Inferencing {
       }
     }
     val res = patternBound.toList
+    // We add the created symbols to GADT constraint here.
     if (res.nonEmpty) ctx.gadt.addToConstraint(res)
     res
   }
