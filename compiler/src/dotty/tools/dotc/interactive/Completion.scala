@@ -34,10 +34,12 @@ import scala.collection.mutable
 case class Completion(label: String, description: String, symbols: List[Symbol])
 
 /** Mode of code completion specifying which members it can see: all, explicit or implied */
-enum ImportMode { case All, Explicit, Implied }
-object ImportMode {
-  def apply(isImplied: Boolean): ImportMode = if (isImplied) ImportMode.Implied else ImportMode.Explicit
+object ImportMode extends Enumeration {
+  type ImportMode = Value
+  val All, Explicit, Implied = Value
+  def apply(isImplied: Boolean): ImportMode = if (isImplied) Implied else Explicit
 }
+import ImportMode.ImportMode
 
 object Completion {
 
