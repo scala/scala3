@@ -7,32 +7,32 @@ import comment.Comment
 import java.io._
 
 object DocPrinter{
-  private def makeStringFromReferences(reference: Reference) : String = reference match {
+  private def formatReferences(reference: Reference) : String = reference match {
     case TypeReference(label, link, typeParams) =>
       if(typeParams.isEmpty){
         link + "#" + label
       }else{
-        link + "#" + label + typeParams.map(makeStringFromReferences).mkString("[", ", ", "]")
+        link + "#" + label + typeParams.map(formatReferences).mkString("[", ", ", "]")
       }
     case OrTypeReference(left, right) =>
-      makeStringFromReferences(left) + " | " + makeStringFromReferences(right)
+      formatReferences(left) + " | " + formatReferences(right)
     case AndTypeReference(left, right) =>
-      makeStringFromReferences(left) + " & " + makeStringFromReferences(right)
+      formatReferences(left) + " & " + formatReferences(right)
     case FunctionReference(args, returnValue, isImplicit) =>
-      args.map(makeStringFromReferences).mkString("(", ", ", ") => ") + makeStringFromReferences(returnValue)
+      args.map(formatReferences).mkString("(", ", ", ") => ") + formatReferences(returnValue)
     case TupleReference(args) =>
-      args.map(makeStringFromReferences).mkString("(", ", ", ")")
+      args.map(formatReferences).mkString("(", ", ", ")")
     case BoundsReference(low, high) =>
-      makeStringFromReferences(low) + ">:" + makeStringFromReferences(high)
+      formatReferences(low) + ">:" + formatReferences(high)
     case ByNameReference(ref) =>
-      "=> " + makeStringFromReferences(ref)
+      "=> " + formatReferences(ref)
     case ConstantReference(label) =>
       "Constant(" + label + ")" //TOASK: What form?
-    case NamedReference(name, ref, isRepeated) => name + ": " + makeStringFromReferences(ref) + (if(isRepeated) "*" else "")
+    case NamedReference(name, ref, isRepeated) => name + ": " + formatReferences(ref) + (if(isRepeated) "*" else "")
     case EmptyReference => throw Exception("EmptyReference should never occur outside of conversion from reflect.")
   }
 
-  private def formatParamList(paramList: ParamList) : String = paramList.list.map(x => makeStringFromReferences(x)).mkString(
+  private def formatParamList(paramList: ParamList) : String = paramList.list.map(x => formatReferences(x)).mkString(
     "(" + (if(paramList.isImplicit) "implicit " else ""),
     ", ",
     ")"
@@ -42,12 +42,12 @@ object DocPrinter{
     val filteredModifiers = modifiers.filter(x => x != "private" && x != "protected")
 
     (privateWithin match {
-      case Some(r) => makeStringFromReferences(r).mkString("private[", "", "] ")
+      case Some(r) => formatReferences(r).mkString("private[", "", "] ")
       case None if modifiers.contains("private") => "private "
       case None => ""
     }) +
     (protectedWithin match {
-      case Some(r) => makeStringFromReferences(r).mkString("private[", "", "] ")
+      case Some(r) => formatReferences(r).mkString("private[", "", "] ")
       case None if modifiers.contains("protected") => "protected "
       case None => ""
     }) +
@@ -104,7 +104,7 @@ object DocPrinter{
           "trait " +
           r.name +
           (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-          (if(r.parents.nonEmpty) " extends " + makeStringFromReferences(r.parents.head) + r.parents.tail.map(" with " + makeStringFromReferences(_)).mkString("") else "")
+          (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head) + r.parents.tail.map(" with " + formatReferences(_)).mkString("") else "")
           ,"scala") +
         "\n" +
         formatComments(r.comments) +
@@ -147,7 +147,7 @@ object DocPrinter{
           "class " +
           r.name +
           (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-          (if(r.parents.nonEmpty) " extends " + makeStringFromReferences(r.parents.head) + r.parents.tail.map(" with " + makeStringFromReferences(_)).mkString("") else "")
+          (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head) + r.parents.tail.map(" with " + formatReferences(_)).mkString("") else "")
           , "scala") +
         "\n" +
         formatComments(r.comments) +
@@ -157,7 +157,7 @@ object DocPrinter{
         r.annotations.mkString("\n") +
         "\n" +
         Md.header2("Constructors:")+
-        r.constructors.map(x=>Md.codeBlock(r.name + x.paramLists.map(formatParamList(_)).mkString(""), "scala")).mkString("") +
+        r.constructors.map((ls, com) => Md.codeBlock(r.name + ls.paramLists.map(formatParamList(_)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
         "\n" +
         Md.header2("Members:") +
         "\n" +
@@ -185,7 +185,7 @@ object DocPrinter{
           (if(r.isCase) "case " else "") +
           "object " +
           r.name +
-          (if(r.parents.nonEmpty) " extends " + makeStringFromReferences(r.parents.head) + r.parents.tail.map(" with " + makeStringFromReferences(_)).mkString("") else "")
+          (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head) + r.parents.tail.map(" with " + formatReferences(_)).mkString("") else "")
           , "scala") +
         "\n" +
         formatComments(r.comments) +
@@ -229,7 +229,7 @@ object DocPrinter{
         (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
         r.paramLists.map(formatParamList).mkString("") +
         ": " +
-        makeStringFromReferences(r.returnValue), "scala") +
+        formatReferences(r.returnValue), "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"
@@ -240,7 +240,7 @@ object DocPrinter{
         "val " +
         r.name +
         ": " +
-        makeStringFromReferences(r.returnValue), "scala") +
+        formatReferences(r.returnValue), "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"

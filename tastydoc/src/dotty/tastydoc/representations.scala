@@ -56,7 +56,7 @@ object representations extends CommentParser with CommentCleaner {
   }
 
   trait Constructors {
-    val constructors: List[MultipleParamList]
+    val constructors: List[(MultipleParamList, Option[Comment])]
   }
 
   trait ReturnValue {
@@ -131,11 +131,12 @@ object representations extends CommentParser with CommentCleaner {
   private def extractParents(reflect: Reflection)(parents: List[reflect.Tree]): List[Reference] = {
     import reflect._
 
-    parents.map{
+    val parentsReferences = parents.map{
       case reflect.IsTypeTree(c) => convertTypeToReference(reflect)(c.tpe)
       case reflect.IsTerm(c) => convertTypeToReference(reflect)(c.tpe)
       case _ => throw Exception("Unhandeld case in parents. Please open an issue.")
     }
+    if(parentsReferences.nonEmpty) parentsReferences.tail else Nil //Object is always at head position and it's pointless to display it
   }
 
   private def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
@@ -244,27 +245,17 @@ object representations extends CommentParser with CommentCleaner {
       case Some(x) => path.init ++ List(name)
       case None => Nil
     }
-
-    override val constructors = (internal.constructor :: (internal.body
-      .filter{x =>
+    override val constructors = (convertToRepresentation(reflect)(internal.constructor) ::
+    (internal.body.filter{x =>
         val noColorShowCode = removeColorFromType(x.showCode)
-        noColorShowCode.contains("def this(") || noColorShowCode.contains("def this[")
-        }
-      .flatMap{x => x match {
-        case IsDefDef(d@reflect.DefDef(_)) => Some(d)
-        case _ => None
-        }
-    }))
-    .map{x =>
-      new MultipleParamList {
-        override val paramLists = x.paramss.map{p =>
-          new ParamList {
-            override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
-            override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.is(Flags.Implicit) else false //TODO: Verfiy this
-          }
-        }
+        noColorShowCode.contains("def this(") || noColorShowCode.contains("def this[") //For performance use this to filter before mapping instead of using name == "<init>"
       }
-    }
+      .map(convertToRepresentation(reflect)(_))
+    )).flatMap{r => r match {
+      case r: DefRepresentation => Some(r)
+      case _ => None
+      }
+    }.map(r => (new MultipleParamList{val paramLists = r.paramLists}, r.comments))
     override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
     override val annotations = Nil
 

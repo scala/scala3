@@ -23,7 +23,6 @@
 * All modifiers present?
 * Define wiki or markdown syntax
 * Beautify type parameters (+ variance + bound two direction)
-* Beautify everything (parents, etc.)
 * Make sense of the parent field
 * SuperTypes
 * Known subclasses
