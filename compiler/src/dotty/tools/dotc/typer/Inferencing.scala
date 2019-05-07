@@ -151,8 +151,7 @@ object Inferencing {
             val constraint = ctx.typerState.constraint
             constraint.entry(param) match {
               case TypeBounds(lo, hi)
-              if constraint.lower(param).isEmpty && constraint.upper(param).isEmpty &&
-                 (hi frozen_<:< lo) =>
+              if (hi frozen_<:< lo) =>
                 // if lower or upper is nonEmpty, the full bounds can't be equal, since
                 // common type params in lower and upper are eliminated through unification
                 val inst = ctx.typeComparer.approximation(param, fromBelow = true)
