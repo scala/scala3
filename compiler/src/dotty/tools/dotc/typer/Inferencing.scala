@@ -149,11 +149,16 @@ object Inferencing {
         tp match {
           case param: TypeParamRef =>
             val constraint = ctx.typerState.constraint
-            if (constraint.contains(param) &&
-                (ctx.typerComparer.fullUpperBound(param) frozen_<:< ctx.typecomparer.fullLowerBound(param))) {
-              typr.println(i"replace singleton $param := ${ctx.typeComparer.fullLowerBound(param)}")
-              ctx.typerState.constraint = constraint.replace(param,
-                ctx.typeComparer.approximation(param, fromBelow = true))
+            constraint.entry(param) match {
+              case TypeBounds(lo, hi)
+              if constraint.lower(param).isEmpty && constraint.upper(param).isEmpty &&
+                 (hi frozen_<:< lo) =>
+                // if lower or upper is nonEmpty, the full bounds can't be equal, since
+                // common type params in lower and upper are eliminated through unification
+                val inst = ctx.typeComparer.approximation(param, fromBelow = true)
+                typr.println(i"replace singleton $param := $inst")
+                ctx.typerState.constraint = constraint.replace(param, inst)
+              case _ =>
             }
           case _ =>
         }
