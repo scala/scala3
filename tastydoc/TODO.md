@@ -22,18 +22,20 @@
 # Representation
 * All modifiers present?
 * Define wiki or markdown syntax
-* Beautify type parameters (+ variance)
+* Beautify type parameters (+ variance + bound two direction)
 * Beautify everything (parents, etc.)
 * Make sense of the parent field
 * SuperTypes
 * Known subclasses
-* Methods inherited doc
 * Annotations (+ everywhere or only where it makes sense?)
 * Type default
-* Fix color in showcode
+* Alias type
 * Make sure no Entity is left
 * Verify we have every entities-like
 * Remove showCode whenever possible
+
+* Fix color in showcode
+* Methods inherited doc
 
 # Output
 * Output inner class/object if not inherited

@@ -22,7 +22,7 @@ object representations extends CommentParser with CommentCleaner {
 
   trait Parents {
     val parent : Option[String]
-    val parents : List[String]
+    val parents : List[Reference]
   }
 
   trait Members {
@@ -128,6 +128,16 @@ object representations extends CommentParser with CommentCleaner {
     symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}
   }
 
+  private def extractParents(reflect: Reflection)(parents: List[reflect.Tree]): List[Reference] = {
+    import reflect._
+
+    parents.map{
+      case reflect.IsTypeTree(c) => convertTypeToReference(reflect)(c.tpe)
+      case reflect.IsTerm(c) => convertTypeToReference(reflect)(c.tpe)
+      case _ => throw Exception("Unhandeld case in parents. Please open an issue.")
+    }
+  }
+
   private def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
     import reflect._
 
@@ -228,14 +238,18 @@ object representations extends CommentParser with CommentCleaner {
     override val path = extractPath(reflect)(internal.symbol)
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val parent = None
-    override val parents = internal.parents.map(x => removeColorFromType(x.showCode))
+    override val parents = extractParents(reflect)(internal.parents)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(x) => path.init ++ List(name)
       case None => Nil
     }
+
     override val constructors = (internal.constructor :: (internal.body
-      .filter(x => removeColorFromType(x.showCode).contains("def this("))
+      .filter{x =>
+        val noColorShowCode = removeColorFromType(x.showCode)
+        noColorShowCode.contains("def this(") || noColorShowCode.contains("def this[")
+        }
       .flatMap{x => x match {
         case IsDefDef(d@reflect.DefDef(_)) => Some(d)
         case _ => None
@@ -257,13 +271,15 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ObjectRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false) extends Representation with Modifiers with Members with Companion with Annotations {
+  class ObjectRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false) extends Representation with Modifiers with Members with Parents with Companion with Annotations {
     import reflect._
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
+    override val parent = None
+    override val parents = extractParents(reflect)(internal.parents)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(_) => path.init ++ List(name)
       case None => Nil
@@ -272,13 +288,11 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Parents with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
+  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
     import reflect._
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
-    override val parent = None
-    override val parents = Nil
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val typeParams = internal.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
 
@@ -293,13 +307,11 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef) extends Representation with Parents with Modifiers with ReturnValue with Annotations {
+  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef) extends Representation with Modifiers with ReturnValue with Annotations {
     import reflect._
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
-    override val parent = None
-    override val parents = Nil
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val returnValue = convertTypeToReference(reflect)(internal.tpt.tpe)
     override val annotations = Nil

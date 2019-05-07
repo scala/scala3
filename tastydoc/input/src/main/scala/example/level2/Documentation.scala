@@ -16,7 +16,7 @@ import scala.math.{Pi, max}
  * @tparam T class type parameter
  */
 @strictfp
-sealed abstract class Documentation[T, Z <: Int, -X, +Y](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable{
+sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable{
 
   /** Auxiliary constructor
    * @param ac auxiliary parameter

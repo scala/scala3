@@ -104,16 +104,14 @@ object DocPrinter{
           "trait " +
           r.name +
           (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-          (if(r.parents.nonEmpty) " extends " + r.parents.head + r.parents.tail.map(" with " + _).mkString("") else ""), "scala") +
+          (if(r.parents.nonEmpty) " extends " + makeStringFromReferences(r.parents.head) + r.parents.tail.map(" with " + makeStringFromReferences(_)).mkString("") else "")
+          ,"scala") +
         "\n" +
         formatComments(r.comments) +
         "\n" +
         Md.header2("Annotations:") +
         "\n" +
         r.annotations.mkString("\n") +
-        "\n" +
-        Md.header2("Constructors:")+
-        r.constructors.map(x=>Md.codeBlock(r.name + x.paramLists.map(formatParamList(_)).mkString(""), "scala")).mkString("") +
         "\n" +
         Md.header2("Members:") +
         "\n" +
@@ -149,7 +147,8 @@ object DocPrinter{
           "class " +
           r.name +
           (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-          (if(r.parents.nonEmpty) " extends " + r.parents.head + r.parents.tail.map(" with " + _).mkString("") else ""), "scala") +
+          (if(r.parents.nonEmpty) " extends " + makeStringFromReferences(r.parents.head) + r.parents.tail.map(" with " + makeStringFromReferences(_)).mkString("") else "")
+          , "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n" +
@@ -181,7 +180,13 @@ object DocPrinter{
 
     case r: ObjectRepresentation =>
       if(insideClassOrObject){
-        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + (if(r.isCase) "case " else "") + "object " + r.name, "scala") +
+        Md.codeBlock(
+          formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) +
+          (if(r.isCase) "case " else "") +
+          "object " +
+          r.name +
+          (if(r.parents.nonEmpty) " extends " + makeStringFromReferences(r.parents.head) + r.parents.tail.map(" with " + makeStringFromReferences(_)).mkString("") else "")
+          , "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n"
@@ -189,7 +194,7 @@ object DocPrinter{
         Md.header1("object " + r.name) +
         "\n" +
         (if (r.hasCompanion) Md.header2("Companion class : " + r.companionPath.mkString(".")) + "\n" else "") +
-        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + (if(r.isCase) "case " else "") + "class " + r.name, "scala") +
+        Md.codeBlock(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin) + (if(r.isCase) "case " else "") + "object " + r.name, "scala") +
         "\n" +
         formatComments(r.comments) +
         "\n" +
