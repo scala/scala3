@@ -110,7 +110,7 @@ object messages {
 
   /** Helper methods for messages */
   def implicitClassRestrictionsText(implicit ctx: Context): String =
-    em"""|${NoColor("For a full list of restrictions on implicit classes visit")}
+    em"""|For a full list of restrictions on implicit classes visit
          |${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}"""
 
 
@@ -726,9 +726,9 @@ object messages {
       }
 
     val msg: String =
-      em"""|${NoColor(msgPrefix)} type arguments for $prettyName$expectedArgString
+      em"""|$msgPrefix type arguments for $prettyName$expectedArgString
            |expected: $expectedArgString
-           |actual:   ${NoColor(actualArgString)}""".stripMargin
+           |actual:   $actualArgString""".stripMargin
 
     val explanation: String = {
       val tooManyTypeParams =
@@ -2301,9 +2301,9 @@ object messages {
       // The class or trait that the super-accessor should resolve too in `base`
       val otherMixin = other.owner
       // The super-call in `accMixin`
-      val superCall = i"super.$memberName"
+      val superCall = hl(i"super.$memberName")
       // The super-call that the super-accesors in `base` forwards to
-      val resolvedSuperCall = i"super[${otherMixin.name}].$memberName"
+      val resolvedSuperCall = hl(i"super[${otherMixin.name}].$memberName")
       // The super-call that we would have called if `super` in traits behaved like it
       // does in classes, i.e. followed the linearization of the trait itself.
       val staticSuperCall = {
@@ -2315,9 +2315,9 @@ object messages {
           case None => // Might be reachable under separate compilation
             "SomeParent"
         }
-        i"super[$staticSuperName].$memberName"
+        hl(i"super[$staticSuperName].$memberName")
       }
-      em"""$base cannot be defined due to a conflict between its parents when
+      ex"""$base cannot be defined due to a conflict between its parents when
           |implementing a super-accessor for $memberName in $accMixin:
           |
           |1. One of its parent (${accMixin.name}) contains a call $superCall in its body,
