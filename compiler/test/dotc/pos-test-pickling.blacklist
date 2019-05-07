@@ -1,12 +1,15 @@
 i1812.scala
 i1867.scala
 i3067.scala
-matchtype.scala
 t247.scala
 t2712-5.scala
 t284-pos.scala
 t3249
 t3486
 t3612.scala
-typelevel0.scala
 reference
+
+# Match types
+typelevel0.scala
+matchtype.scala
+6322.scala

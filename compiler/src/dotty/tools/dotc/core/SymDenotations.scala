@@ -1751,9 +1751,11 @@ object SymDenotations {
           Stats.record("computeBaseType, total")
           Stats.record(s"computeBaseType, ${tp.getClass}")
         }
+        val normed = tp.tryNormalize
+        if (normed.exists) return recur(normed)
+
         tp match {
           case tp @ TypeRef(prefix, _) =>
-
             def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
               case p :: ps1 => foldGlb(bt & recur(p), ps1)
               case _ => bt
@@ -1794,7 +1796,6 @@ object SymDenotations {
             computeTypeRef
 
           case tp @ AppliedType(tycon, args) =>
-
             def computeApplied = {
               btrCache.put(tp, NoPrefix)
               val baseTp =
@@ -1812,8 +1813,8 @@ object SymDenotations {
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
             recur(ctx.typeComparer.bounds(tp).hi)
-          case tp: TypeProxy =>
 
+          case tp: TypeProxy =>
             def computeTypeProxy = {
               val superTp = tp.superType
               val baseTp = recur(superTp)
@@ -1827,7 +1828,6 @@ object SymDenotations {
             computeTypeProxy
 
           case tp: AndOrType =>
-
             def computeAndOrType = {
               val tp1 = tp.tp1
               val tp2 = tp.tp2
@@ -1851,6 +1851,7 @@ object SymDenotations {
 
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
             this.typeRef
+
           case _ =>
             NoType
         }
