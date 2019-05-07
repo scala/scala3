@@ -5,6 +5,7 @@ package core
 import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
 import util.Spans._
+import util.Stats
 import util.SourcePosition
 import NameKinds.DepParamName
 import Decorators._
@@ -26,11 +27,34 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
+    pre match {
+      case pre: QualSkolemType =>
+        // When a selection has an unstable qualifier, the qualifier type gets
+        // wrapped in a `QualSkolemType` so that it may appear soundly as the
+        // prefix of a path in the selection type.
+        // However, we'd like to avoid referring to skolems when possible since
+        // they're an extra level of indirection we usually don't need, so we
+        // compute the type as seen from the widened prefix, and in the rare
+        // cases where this leads to an approximated type we recompute it with
+        // the skolemized prefix. See the i6199* tests for usecases.
+        val widenedAsf = new AsSeenFromMap(pre.info, cls)
+        val ret = widenedAsf.apply(tp)
+
+        if (!widenedAsf.approximated)
+          return ret
+
+        Stats.record("asSeenFrom skolem prefix required")
+      case _ =>
+    }
+
     new AsSeenFromMap(pre, cls).apply(tp)
+  }
 
   /** The TypeMap handling the asSeenFrom */
   class AsSeenFromMap(pre: Type, cls: Symbol) extends ApproximatingTypeMap {
+    /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
+    var approximated: Boolean = false
 
     def apply(tp: Type): Type = {
 
@@ -44,7 +68,19 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
-              if (variance <= 0 && !isLegalPrefix(pre)) range(defn.NothingType, pre)
+              if (variance <= 0 && !isLegalPrefix(pre)) {
+                if (variance < 0) {
+                  approximated = true
+                  defn.NothingType
+                }
+                else
+                  // Don't set the `approximated` flag yet: if this is a prefix
+                  // of a path, we might be able to dealias the path instead
+                  // (this is handled in `ApproximatingTypeMap`). If dealiasing
+                  // is not possible, then `expandBounds` will end up being
+                  // called which we override to set the `approximated` flag.
+                  range(defn.NothingType, pre)
+              }
               else pre
             else if ((pre.termSymbol is Package) && !(thiscls is Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
@@ -74,9 +110,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     override def reapply(tp: Type): Type =
       // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
+
+    override protected def expandBounds(tp: TypeBounds): Type = {
+      approximated = true
+      super.expandBounds(tp)
+    }
   }
 
-  private def isLegalPrefix(pre: Type)(implicit ctx: Context) =
+  def isLegalPrefix(pre: Type)(implicit ctx: Context): Boolean =
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
