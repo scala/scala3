@@ -1566,7 +1566,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case x => x
         }
 
-        def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
+        def sizeFits(alt: TermRef, followApply: Boolean): Boolean = alt.widen.stripPoly match {
           case tp: MethodType =>
             val ptypes = tp.paramInfos
             val numParams = ptypes.length
@@ -1577,11 +1577,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             else if (numParams > numArgs + 1) hasDefault
             else isVarArgs || hasDefault
           case tp =>
-            numArgs == 0 || onMethod(tp, followApply = true)(sizeFits)
+            numArgs == 0 ||
+            followApply && onMethod(tp, followApply = true)(sizeFits(_, followApply = false))
         }
 
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
-          alts.filter(sizeFits)
+          alts.filter(sizeFits(_, followApply = true))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
           if (normArgs exists untpd.isFunctionWithUnknownParamType)
