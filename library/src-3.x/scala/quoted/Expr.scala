@@ -21,7 +21,7 @@ object Expr {
     def show(implicit toolbox: Toolbox): String = toolbox.show(expr)
   }
 
-  implicit object BetaReduction {
+  implicit object FunctionBetaReduction {
 
     def (f: Expr[() => R]) apply[R] (): Expr[R] =
       new Exprs.FunctionAppliedTo[R](f, Array.empty)
@@ -91,7 +91,75 @@ object Expr {
 
     def (f: Expr[(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17], x18: Expr[T18], x19: Expr[T19], x20: Expr[T20], x21: Expr[T21], x22: Expr[T22]): Expr[R] =
       new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22))
+  }
 
+  implicit object ContextualFunctionBetaReduction {
+
+    def (f: Expr[given (T1) => R]) apply[T1, R](x1: Expr[T1]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1))
+
+    def (f: Expr[given (T1, T2) => R]) apply[T1, T2, R](x1: Expr[T1], x2: Expr[T2]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2))
+
+    def (f: Expr[given (T1, T2, T3) => R]) apply[T1, T2, T3, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3))
+
+    def (f: Expr[given (T1, T2, T3, T4) => R]) apply[T1, T2, T3, T4, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5) => R]) apply[T1, T2, T3, T4, T5, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6) => R]) apply[T1, T2, T3, T4, T5, T6, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7) => R]) apply[T1, T2, T3, T4, T5, T6, T7, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17], x18: Expr[T18]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17], x18: Expr[T18], x19: Expr[T19]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17], x18: Expr[T18], x19: Expr[T19], x20: Expr[T20]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17], x18: Expr[T18], x19: Expr[T19], x20: Expr[T20], x21: Expr[T21]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21))
+
+    def (f: Expr[given (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22) => R]) apply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R](x1: Expr[T1], x2: Expr[T2], x3: Expr[T3], x4: Expr[T4], x5: Expr[T5], x6: Expr[T6], x7: Expr[T7], x8: Expr[T8], x9: Expr[T9], x10: Expr[T10], x11: Expr[T11], x12: Expr[T12], x13: Expr[T13], x14: Expr[T14], x15: Expr[T15], x16: Expr[T16], x17: Expr[T17], x18: Expr[T18], x19: Expr[T19], x20: Expr[T20], x21: Expr[T21], x22: Expr[T22]): Expr[R] =
+      new Exprs.FunctionAppliedTo[R](f, Array(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22))
   }
 
 }
