@@ -6,6 +6,7 @@ class Foo {
   def B(i: Any) = i
   object B {
     def apply(i: Int) = i+1
+    def apply(b: Float) = true
   }
   def C(i: Int) = i + 1
   object C {
@@ -78,7 +79,6 @@ object Test5 {
     val f: A = f(null)
   }
 }
-
 
 object Test6 {
   trait A {
