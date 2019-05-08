@@ -12,7 +12,7 @@ From Scala 3.1 on, type checking rules will be tightened so that errors are repo
 
 ```scala
   val xs: List[Any] = List(1, 2, 3)
-  val (x: String) :: _ xs     // error: pattern's type String is more specialized
+  val (x: String) :: _ = xs   // error: pattern's type String is more specialized
                               // than the right hand side expression's type Any
 ```
 This code gives a compile-time error in Scala 3.1 (and also in Scala 3.0 under the `-strict` setting) whereas it will fail at runtime with a `ClassCastException` in Scala 2. In Scala 3.1, a pattern binding is only allowed if the pattern is _irrefutable_, that is, if the right-hand side's type conforms to the pattern's type. For instance, the following is OK:
