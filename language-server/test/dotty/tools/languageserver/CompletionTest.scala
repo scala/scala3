@@ -79,7 +79,7 @@ class CompletionTest {
     withSources(
       code"""object O { object MyObject }""",
       code"""import O.My${m1}"""
-    ).completion(m1, Set(("MyObject", Module, "O.MyObject")))
+    ).completion(m1, Set(("MyObject", Module, "O.MyObject$")))
   }
 
   @Test def importCompleteWithClassAndCompanion: Unit = {
@@ -114,7 +114,7 @@ class CompletionTest {
     ).completion(m1, Set(("myVal", Field, "Int"),
                          ("myDef", Method, "=> Int"),
                          ("myVar", Variable, "Int"),
-                         ("myObject", Module, "MyObject.myObject"),
+                         ("myObject", Module, "MyObject.myObject$"),
                          ("myClass", Class, "MyObject.myClass"),
                          ("myTrait", Class, "MyObject.myTrait")))
   }
@@ -138,7 +138,7 @@ class CompletionTest {
     code"""object O {
              val out = java.io.FileDesc${m1}
            }""".withSource
-      .completion(m1, Set(("FileDescriptor", Module, "java.io.FileDescriptor")))
+      .completion(m1, Set(("FileDescriptor", Module, "java.io.FileDescriptor$")))
   }
 
   @Test def importRename: Unit = {
@@ -197,7 +197,7 @@ class CompletionTest {
           |  object bat
           |  val bizz: ba${m1}
           |}""".withSource
-      .completion(m1, Set(("bar", Field, "Bar"), ("bat", Module, "Foo.bat")))
+      .completion(m1, Set(("bar", Field, "Bar"), ("bat", Module, "Foo.bat$")))
   }
 
   @Test def completionOnRenamedImport: Unit = {
