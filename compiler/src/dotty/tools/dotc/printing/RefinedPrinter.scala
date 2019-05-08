@@ -78,7 +78,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (ctx.settings.YdebugNames.value) name.debugString else NameTransformer.decodeIllegalChars(name.toString)
 
   override protected def simpleNameString(sym: Symbol): String =
-    nameString(if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name)
+    nameString(if (ctx.property(XprintMode).isEmpty) sym.initial.name else sym.name)
 
   override def fullNameString(sym: Symbol): String =
     if (isEmptyPrefix(sym.maybeOwner)) nameString(sym)
