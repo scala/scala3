@@ -11,20 +11,20 @@ sealed abstract class Type[T <: AnyKind] {
 /** Some basic type tags, currently incomplete */
 object Type {
 
-  implicit class TypeOps[T](tpe: Type[T]) {
+  implicit object TypeOps {
     /** Show a source code like representation of this type */
-    def show(implicit toolbox: Toolbox): String = toolbox.show(tpe.asInstanceOf[Type[Any]])
+    def (tpe: Type[T]) show[T] given Toolbox: String = the[Toolbox].show(tpe.asInstanceOf[Type[Any]])
   }
 
-  implicit def UnitTag: Type[Unit] = new TaggedType[Unit]
-  implicit def BooleanTag: Type[Boolean] = new TaggedType[Boolean]
-  implicit def ByteTag: Type[Byte] = new TaggedType[Byte]
-  implicit def CharTag: Type[Char] = new TaggedType[Char]
-  implicit def ShortTag: Type[Short] = new TaggedType[Short]
-  implicit def IntTag: Type[Int] = new TaggedType[Int]
-  implicit def LongTag: Type[Long] = new TaggedType[Long]
-  implicit def FloatTag: Type[Float] = new TaggedType[Float]
-  implicit def DoubleTag: Type[Double] = new TaggedType[Double]
+  implied UnitTag for Type[Unit] = new TaggedType[Unit]
+  implied BooleanTag for Type[Boolean] = new TaggedType[Boolean]
+  implied ByteTag for Type[Byte] = new TaggedType[Byte]
+  implied CharTag for Type[Char] = new TaggedType[Char]
+  implied ShortTag for Type[Short] = new TaggedType[Short]
+  implied IntTag for Type[Int] = new TaggedType[Int]
+  implied LongTag for Type[Long] = new TaggedType[Long]
+  implied FloatTag for Type[Float] = new TaggedType[Float]
+  implied DoubleTag for Type[Double] = new TaggedType[Double]
 }
 
 /** All implementations of Type[T].
