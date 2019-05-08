@@ -717,7 +717,7 @@ object Parsers {
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset = in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false): Tree = {
+    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
 
       def literalOf(token: Token): Literal = {
         val isNegated = negOffset < in.offset
@@ -738,7 +738,19 @@ object Parsers {
         Literal(Constant(value))
       }
 
-      atSpan(negOffset) {
+      if (inStringInterpolation) {
+        val t = in.token match {
+          case STRINGLIT | STRINGPART =>
+            val value = in.strVal
+            atSpan(negOffset, negOffset, negOffset + value.length) { Literal(Constant(value)) }
+          case _ =>
+            syntaxErrorOrIncomplete(IllegalLiteral())
+            atSpan(negOffset) { Literal(Constant(null)) }
+        }
+        in.nextToken()
+        t
+      }
+      else atSpan(negOffset) {
         if (in.token == QUOTEID) {
           if ((staged & StageKind.Spliced) != 0 && isIdentifierStart(in.name(0))) {
             val t = atSpan(in.offset + 1) {
@@ -775,10 +787,11 @@ object Parsers {
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
       val segmentBuf = new ListBuffer[Tree]
       val interpolator = in.name
+      val isTripleQuoted = in.buf(in.charOffset) == '"' && in.buf(in.charOffset + 1) == '"'
       in.nextToken()
-      while (in.token == STRINGPART) {
+      def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
-            literal(inPattern = inPattern),
+            literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
             atSpan(in.offset) {
               if (in.token == IDENTIFIER)
                 termIdent()
@@ -798,8 +811,14 @@ object Parsers {
                 EmptyTree
               }
             })
-      }
-      if (in.token == STRINGLIT) segmentBuf += literal(inPattern = inPattern)
+
+      if (in.token == STRINGPART)
+        nextSegment(in.offset + (if (isTripleQuoted) 3 else 1))
+      while (in.token == STRINGPART)
+        nextSegment(in.offset)
+      if (in.token == STRINGLIT)
+        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset, inStringInterpolation = true)
+
       InterpolatedString(interpolator, segmentBuf.toList)
     }
 
