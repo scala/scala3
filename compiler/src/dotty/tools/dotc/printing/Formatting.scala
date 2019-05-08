@@ -128,8 +128,13 @@ object Formatting {
   }
 
   private class ExplainingPrinter(seen: Seen)(_ctx: Context) extends RefinedPrinter(_ctx) {
+
+    /** True if printer should a source module instead of its module class */
+    private def useSourceModule(sym: Symbol): Boolean =
+      sym.is(ModuleClass, butNot = Package) && sym.sourceModule.exists && !_ctx.settings.YdebugNames.value
+
     override def simpleNameString(sym: Symbol): String =
-      if ((sym is ModuleClass) && sym.sourceModule.exists) simpleNameString(sym.sourceModule)
+      if (useSourceModule(sym)) simpleNameString(sym.sourceModule)
       else seen.record(super.simpleNameString(sym), sym)
 
     override def ParamRefNameString(param: ParamRef): String =
@@ -138,6 +143,11 @@ object Formatting {
     override def toTextRef(tp: SingletonType): Text = tp match {
       case tp: SkolemType => seen.record(tp.repr.toString, tp)
       case _ => super.toTextRef(tp)
+    }
+
+    override def toText(tp: Type): Text = tp match {
+      case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
+      case _ => super.toText(tp)
     }
   }
 
