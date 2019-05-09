@@ -59,9 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    implicit fromString for Conversion[String, CompletionArg] = Error(_)
-    implicit fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    implicit fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    implicit fromString     for Conversion[String, CompletionArg]               = Error(_)
+    implicit fromFuture     for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    implicit fromStatusCode for Conversion[Future[StatusCode], CompletionArg]   = Status(_)
   }
   import CompletionArg._
 

@@ -3,18 +3,18 @@ layout: doc-page
 title: Typeclass Derivation
 ---
 
-Typeclass derivation is a way to generate instances of certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
+Typeclass derivation is a way to generate implicit instances for certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
 ```scala
 enum Tree[T] derives Eql, Ordering, Pickling {
   case Branch(left: Tree[T], right: Tree[T])
   case Leaf(elem: T)
 }
 ```
-The `derives` clause generates implicits for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
+The `derives` clause generates implicit instances for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
-implicit [T: Eql]       for Eql[Tree[T]]       = Eql.derived
-implicit [T: Ordering]  for Ordering[Tree[T]] = Ordering.derived
-implicit [T: Pickling]  for Pickling[Tree[T]] = Pickling.derived
+implicit [T: Eql]      for Eql[Tree[T]]      = Eql.derived
+implicit [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
+implicit [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
 ```
 
 ### Deriving Types
@@ -42,8 +42,7 @@ A trait or class can appear in a `derives` clause if its companion object define
 ```scala
   def derived[T] given Generic[T] = ...
 ```
-That is, the `derived` method takes an implicit parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. Implicits for `Generic` are generated automatically for any type that derives a typeclass with a `derived`
-method that refers to `Generic`. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
+That is, the `derived` method takes an implicit parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. An implicit `Generic` instance is generated automatically for any type that derives a typeclass with a `derived` method that refers to `Generic`. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
 ```scala
 sealed trait ParseResult[T] derives Generic
 ```
@@ -94,7 +93,7 @@ is represented as `T *: Unit` since there is no direct syntax for such tuples: `
 
 ### The Generic Typeclass
 
-For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an implicit for `Generic[C[T_1,...,T_n]]` that follows the outline below:
+For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an implicit instance for `Generic[C[T_1,...,T_n]]` that follows the outline below:
 ```scala
 implicit [T_1, ..., T_n] for Generic[C[T_1,...,T_n]] {
   type Shape = ...
@@ -214,8 +213,8 @@ trait Eql[T] {
   def eql(x: T, y: T): Boolean
 }
 ```
-We need to implement a method `Eql.derived` that produces an implicit value of type `Eql[T]` provided
-there exists an implicit value of type `Generic[T]`. Here's a possible solution:
+We need to implement a method `Eql.derived` that produces an implicit instance of type `Eql[T]` provided
+there exists an implicit instance of type `Generic[T]`. Here's a possible solution:
 ```scala
   inline def derived[T] given (ev: Generic[T]): Eql[T] = new Eql[T] {
     def eql(x: T, y: T): Boolean = {
@@ -333,21 +332,22 @@ implicit [T] for Eql[Tree[T]] given (elemEq: Eql[T]) {
 }
 ```
 
-One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implicit value of type `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
+One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implicit instance of type `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
 
-### Derived Instances Elsewhere
+### Deriving Instances Elsewhere
 
 Sometimes one would like to derive a typeclass instance for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
-To do this, simply define an instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
+To do this, simply define an implicit instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
 ```scala
-implicit [T: Ordering]: Ordering[Option[T]] = Ordering.derived
+implicit [T: Ordering] for Ordering[Option[T]] = Ordering.derived
 ```
 Usually, the `Ordering.derived` clause has an implicit parameter of type
 `Generic[Option[T]]`. Since the `Option` trait has a `derives` clause,
-the necessary implicit is already present in the companion object of `Option`.
-If the ADT in question does not have a `derives` clause, an implicit for `Generic`
+the necessary implicit instance is already present in the companion object of `Option`.
+If the ADT in question does not have a `derives` clause, an implicit instance for `Generic`
 would still be synthesized by the compiler at the point where `derived` is called.
-This is similar to the situation with type tags or class tags: If no implicit is found, the compiler will synthesize it.
+This is similar to the situation with type tags or class tags: If no implicit instance is found,
+the compiler will synthesize one.
 
 ### Syntax
 

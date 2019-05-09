@@ -3,7 +3,7 @@ layout: doc-page
 title: "Import Implicit"
 ---
 
-A special form of import is used to import implicit values. Example:
+A special form of import is used to import implicit instances. Example:
 ```scala
 object A {
   class TC
@@ -16,16 +16,16 @@ object B {
 }
 ```
 In the code above, the `import A._` clause of object `B` will import all members
-of `A` _except_ the implicit `tc`. Conversely, the second import `import implicit A._` will import _only_ that implicit.
+of `A` _except_ the implicit `tc`. Conversely, the second import `import implicit A._` will import _only_ that implicit instance.
 
-Generally, a normal import clause brings all members except implicit values into scope whereas an `import implicit` clause brings only implicit values into scope.
+Generally, a normal import clause brings all members except implicit instances into scope whereas an `import implicit` clause brings only implicit instances into scope.
 
 There are two main benefits arising from these rules:
 
- - It is made clearer where implicit values in scope are coming from. In particular, it is not possible to hide imported implicit values in a long list of regular imports.
- - It enables importing all implicit values
+ - It is made clearer where implicit instances in scope are coming from. In particular, it is not possible to hide imported implicit instances in a long list of regular imports.
+ - It enables importing all implicit instances
    without importing anything else. This is particularly important since implicit
-   values can be anonymous, so the usual recourse of using named imports is not
+   instances can be anonymous, so the usual recourse of using named imports is not
    practical.
 
 ### Migration
@@ -40,6 +40,8 @@ To make gradual migration possible, we adapt the following scheme.
 
  3. In some version after 3.1, an old-style implicit accessed implicitly through a normal import
     will give a compiler error.
+
+New-style implicit instance definitions always need to be imported with `import implicit`.
 
 These rules mean that library users can use `import implicit` to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to

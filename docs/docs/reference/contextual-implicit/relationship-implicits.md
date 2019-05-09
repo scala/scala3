@@ -9,7 +9,7 @@ Many, but not all, of the new contextual abstraction features in Scala 3 can be 
 
 ### Implicit Instances
 
-Implicit instances can be mapped to combinations of implicit objects, classes and implicit methods.
+Implicit instances can be mapped to combinations of implicit objects and implicit methods together with normal classes.
 
  1. Implicit instances without parameters are mapped to implicit objects. E.g.,
     ```scala
@@ -57,9 +57,9 @@ Implicit instances can be mapped to combinations of implicit objects, classes an
       final implicit def Context_repr = ctx
     ```
 
-### Anonymous Implicits
+### Anonymous Implicit Instances
 
-Anonymous implicits get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` implicits above were left out, the following names would be synthesized instead:
+Anonymous implicit instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` implicits above were left out, the following names would be synthesized instead:
 ```scala
   implicit Ord_Int_ev for Ord[Int] { ... }
   implicit Ord_List_ev[T] for Ord[List[T]] { ... }
@@ -70,7 +70,7 @@ The synthesized type names are formed from
  - the simple name(s) of the toplevel argument type constructors to these types
  - the suffix `_ev`.
 
-Anonymous implicit values that define extension methods without also implementing a type
+Anonymous implicit instances that define extension methods without also implementing a type
 get their name from the name of the first extension method and the toplevel type
 constructor of its first parameter. For example, the implicit
 ```scala
@@ -139,8 +139,8 @@ Implicit by-name parameters are not supported in Scala 2, but can be emulated to
 
 ### Implicit Conversions
 
-Implicit conversion methods in Scala 2 can be expressed as implicit instances of class
-`scala.Conversion` in Dotty. E.g. instead of
+Implicit conversion methods in Scala 2 can be expressed as implicit instances of the
+`scala.Conversion` class in Dotty. E.g. instead of
 ```scala
   implicit def stringToToken(str: String): Token = new Keyword(str)
 ```
@@ -153,7 +153,7 @@ one can write
 
 ### Implicit Classes
 
-Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a conversion instance.
+Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and an implicit `Conversion` instance.
 
 ### Abstract Implicits
 

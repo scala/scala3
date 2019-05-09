@@ -9,7 +9,7 @@ Many, but not all, of the new contextual abstraction features in Scala 3 can be 
 
 ### Representatives
 
-Representative clauses can be mapped to combinations of implicit objects, classes and implicit methods.
+Representative clauses can be mapped to combinations of implicit objects and implicit methods together with normal classes.
 
  1. Representatives without parameters are mapped to implicit objects. E.g.,
     ```scala
@@ -30,7 +30,7 @@ Representative clauses can be mapped to combinations of implicit objects, classe
     ```
  3. Alias representatives map to implicit methods. If the representative has neither type parameters nor a given clause, the result of creating an instance is cached in a variable. There are two cases that can be optimized:
 
-  - If the right hand side is a simple reference, we can simply
+  - If the right hand side is a simple reference, we can
     use a forwarder to that reference without caching it.
   - If the right hand side is more complex, but still known to be pure, we can
     create a `val` that computes it ahead of time.

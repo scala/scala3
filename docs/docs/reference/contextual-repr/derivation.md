@@ -339,7 +339,7 @@ One important difference between this approach and Scala-2 typeclass derivation 
 Sometimes one would like to derive a typeclass representative for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
 To do this, simply define a representative with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
 ```scala
-repr [T: Ordering]: Ordering[Option[T]] = Ordering.derived
+repr [T: Ordering] of Ordering[Option[T]] = Ordering.derived
 ```
 Usually, the `Ordering.derived` clause has an implicit parameter of type
 `Generic[Option[T]]`. Since the `Option` trait has a `derives` clause,
