@@ -8,8 +8,8 @@ package comment
   * @note calling `shorten` **will** mutate the Markdown AST node.
   */
 class MarkdownShortener {
-  import com.vladsch.flexmark.ast._
-  import com.vladsch.flexmark.util.ast._
+  import com.vladsch.flexmark.ast.{Text, Code, Image, FencedCodeBlock, BulletList, BulletListItem, OrderedListItem}
+  import com.vladsch.flexmark.util.ast.{Node, NodeVisitor, VisitHandler, Visitor}
 
   def shorten(node: Node, maxLen: Int = 150): Node = {
     var len = 0

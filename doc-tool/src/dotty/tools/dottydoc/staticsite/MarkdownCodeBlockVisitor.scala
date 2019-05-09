@@ -3,7 +3,6 @@ package dottydoc
 package staticsite
 
 import com.vladsch.flexmark.ast._
-import com.vladsch.flexmark.util.ast._
 import com.vladsch.flexmark.util.sequence.CharSubSequence
 
 object MarkdownCodeBlockVisitor {

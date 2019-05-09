@@ -8,7 +8,7 @@ import dotc.util.Spans._
 import dotty.tools.dottydoc.util.syntax._
 import util.MemberLookup
 
-import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode}
+import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.sequence.CharSubSequence
@@ -17,8 +17,7 @@ object HtmlParsers {
 
   implicit class StringToMarkdown(val text: String) extends AnyVal {
     def toMarkdown(origin: Entity)(implicit ctx: Context): MarkdownNode = {
-      import com.vladsch.flexmark.ast.Link
-      import com.vladsch.flexmark.util.ast.{Visitor, VisitHandler, NodeVisitor }
+      import com.vladsch.flexmark.ast.{ Link, Visitor, VisitHandler, NodeVisitor }
 
       val inlineToHtml = InlineToHtml(origin)
 

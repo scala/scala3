@@ -74,7 +74,7 @@ object representations extends CommentParser with CommentCleaner {
   private def extractPath(reflect: Reflection)(symbol: reflect.Symbol) : List[String] = {
     import reflect._
 
-    val pathArray = symbol.showCode.split("\\.")
+    val pathArray = symbol.show.split("\\.")
     pathArray.view(0, pathArray.length - 1).toList
   }
 
@@ -156,7 +156,7 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
       case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
-      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(removeColorFromType(tp.showCode)) //TOFIX
+      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(removeColorFromType(tp.show)) //TOFIX
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
         case TypeReference(label, link, _, hasOwnFile) =>
           if(link == "./scala"){
@@ -213,7 +213,7 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val (name, path) = {
-      val pidSplit = internal.pid.symbol.showCode.split("\\.")
+      val pidSplit = internal.pid.symbol.show.split("\\.")
       (pidSplit.last, pidSplit.init.toList)
     }
     override val members = internal.stats.map(convertToRepresentation(reflect)(_))
@@ -229,7 +229,7 @@ object representations extends CommentParser with CommentCleaner {
       } else {
         internal.selectors.head.toString
       }
-    override val path = internal.expr.symbol.showCode.split("\\.").toList
+    override val path = internal.expr.symbol.show.split("\\.").toList
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
@@ -248,8 +248,8 @@ object representations extends CommentParser with CommentCleaner {
     }
     override val constructors = (convertToRepresentation(reflect)(internal.constructor) ::
     (internal.body.filter{x =>
-        val noColorShowCode = removeColorFromType(x.showCode)
-        noColorShowCode.contains("def this(") || noColorShowCode.contains("def this[") //For performance use this to filter before mapping instead of using name == "<init>"
+        val noColorshow = removeColorFromType(x.show)
+        noColorshow.contains("def this(") || noColorshow.contains("def this[") //For performance use this to filter before mapping instead of using name == "<init>"
       }
       .map(convertToRepresentation(reflect)(_))
     )).flatMap{r => r match {
@@ -257,7 +257,7 @@ object representations extends CommentParser with CommentCleaner {
       case _ => None
       }
     }.map(r => (new MultipleParamList{val paramLists = r.paramLists}, r.comments))
-    override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
+    override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
     override val annotations = Nil
 
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
@@ -286,12 +286,12 @@ object representations extends CommentParser with CommentCleaner {
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val typeParams = internal.typeParams.map(x => removeColorFromType(x.showCode).stripPrefix("type "))
+    override val typeParams = internal.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
 
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
         override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
-        override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.show.contains("Flags.Implicit") else false //TODO: Verfiy this
+        override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.is(Flags.Implicit) else false //TODO: Verfiy this
       }
     }
     override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)

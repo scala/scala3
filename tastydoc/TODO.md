@@ -28,6 +28,7 @@
 * Known subclasses
 * Annotations (+ everywhere or only where it makes sense?)
 * Type default
+* Type parameters definiton are .show
 * Alias type
 * Make sure no Entity is left
 * Verify we have every entities-like
@@ -46,3 +47,6 @@
 * General architecture, same intermediate interface as dotty doc
 * intermediate representation md to xxxx
 * Difficulties, problmes with dottydoc + md libraries
+
+# To Ask
+* Showcode became show?
