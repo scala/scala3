@@ -132,7 +132,7 @@ object Instances extends Common {
         println(the[D[Int]])
       }
       locally {
-        implied given Context for D[Int]
+        implied for D[Int] given Context
         println(the[D[Int]])
       }
     }
