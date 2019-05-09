@@ -49,18 +49,25 @@ class Tests {
   //     new dotty.tastydoc.TastydocConsumer
   //   )
   // }
-  @Test def testDocumentation(): Unit = {
-    ConsumeTasty(
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-      List("example.level2.Documentation"),
-      new dotty.tastydoc.TastydocConsumer
-    )
-  }
-  // @Test def testListFromLib(): Unit = {
+  // @Test def testDocumentation(): Unit = {
   //   ConsumeTasty(
   //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-  //     List("scala.collection.immutable.List"),
+  //     List("example.level2.Documentation"),
   //     new dotty.tastydoc.TastydocConsumer
   //   )
   // }
+  // @Test def testReturnTypeClass(): Unit = {
+  //   ConsumeTasty(
+  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
+  //     List("example.ReturnTypeClass"),
+  //     new dotty.tastydoc.TastydocConsumer
+  //   )
+  // }
+  @Test def testListFromLib(): Unit = {
+    ConsumeTasty(
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
+      List("scala.collection.immutable.List"),
+      new dotty.tastydoc.TastydocConsumer
+    )
+  }
 }
