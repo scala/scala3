@@ -8,12 +8,10 @@ package object quoted {
 
   implicit object ExprOps {
     def (x: T) toExpr[T] given Liftable[T]: Expr[T] = the[Liftable[T]].toExpr(x)
-  }
 
-  implicit object ListOfExprOps {
     def (list: List[Expr[T]]) toExprOfList[T] given Type[T]: Expr[List[T]] = list match {
-        case x :: xs  => '{ $x :: ${xs.toExprOfList} }
-        case Nil => '{ Nil }
+      case x :: xs  => '{ $x :: ${xs.toExprOfList} }
+      case Nil => '{ Nil }
     }
   }
 
