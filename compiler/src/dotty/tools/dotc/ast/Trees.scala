@@ -746,6 +746,10 @@ object Trees {
     assert(tpt != genericEmptyTree)
     def unforced: LazyTree = preRhs
     protected def force(x: AnyRef): Unit = preRhs = x
+
+    override def disableOverlapChecks = rawMods.is(Flags.Implied)
+      // disable order checks for implicit aliases since their given clause follows
+      // their for clause, but the two appear swapped in the DefDef.
   }
 
   class BackquotedDefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
@@ -783,6 +787,10 @@ object Trees {
 
     def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
     def derived: List[untpd.Tree] = Nil           // overridden by DerivingTemplate
+
+    override def disableOverlapChecks = true
+      // disable overlaps checks since templates of instance definitions have their
+      // `given` clause come last, which means that the constructor span can contain the parent spans.
   }
 
 
