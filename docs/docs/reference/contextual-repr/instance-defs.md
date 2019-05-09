@@ -4,8 +4,8 @@ title: "Representatives"
 ---
 
 Representatives define "canonical" values of given types
-that serve for synthesizing arguments to [given clauses](./inferable-params.html). Example:
-
+that can be synthesized by the compiler as arguments for
+[given clauses](./inferable-params.html). Example:
 ```scala
 trait Ord[T] {
   def compare(x: T, y: T): Int

@@ -4,8 +4,8 @@ title: "Implicit Instances"
 ---
 
 Implicit instances define "canonical" values of given types
-that can be synthesized by the compiler. Typically, such values are
-used as arguments to [given clauses](./inferable-params.html). Example:
+that can be synthesized by the compiler as arguments for
+[given clauses](./inferable-params.html). Example:
 ```scala
 trait Ord[T] {
   def compare(x: T, y: T): Int
@@ -18,7 +18,7 @@ implicit IntOrd for Ord[Int] {
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-implicit ListOrd[T] for Ord[List[T]] given (ord: Ord[T]){
+implicit ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) {
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
@@ -30,10 +30,10 @@ implicit ListOrd[T] for Ord[List[T]] given (ord: Ord[T]){
 }
 ```
 This code defines a trait `Ord` and two implicit definitions. `IntOrd` defines
-an implicit value of the type `Ord[Int]` whereas `ListOrd[T]` defines implicit values of types `Ord[List[T]]`
-for all types `T` that come with implicit values for `Ord[T]` themselves.
-The `given` clause in `ListOrd` defines an [implicit parameter](./inferable-params.html).
-Given clauses are further explained in the next section.
+an implicit instance of the type `Ord[Int]` whereas `ListOrd[T]` defines implicit instances of type `Ord[List[T]]`
+for all types `T` that come with an implicit instance for `Ord[T]` themselves.
+The `given` clause in `ListOrd` defines an implicit parameter.
+Given clauses are further explained in the [next section](./inferable-params.html).
 
 ## Anonymous Implicit Instances
 
@@ -43,12 +43,12 @@ of the last section can also be expressed like this:
 implicit for Ord[Int] { ... }
 implicit [T] for Ord[List[T]] given (ord: Ord[T]) { ... }
 ```
-If the name of an implicit is missing, the compiler will synthesize a name from
+If the name of an implicit instance is missing, the compiler will synthesize a name from
 the type(s) in the `for` clause.
 
 ## Alias Implicits
 
-An alias can be used to define an implicit value that is equal to some expression. E.g.:
+An alias can be used to define an implicit instance that is equal to some expression. E.g.:
 ```scala
 implicit global for ExecutionContext = new ForkJoinPool()
 ```
@@ -64,7 +64,7 @@ An alias implicit can have type and context parameters just like any other impli
 
 ## Implicit Instance Creation
 
-An implicit instance without type parameters or given clause is created on-demand, the first time it is accessed. It is not required to ensure safe publication, which means that different threads might create different instances for the same `implicit` clause. If an `implicit` definition has type parameters or a given clause, a fresh instance is created for each reference.
+An implicit instance without type parameters or given clause is created on-demand, the first time it is accessed. It is not required to ensure safe publication, which means that different threads might create different instances for the same `implicit` definition. If an `implicit` definition has type parameters or a given clause, a fresh instance is created for each reference.
 
 ## Syntax
 

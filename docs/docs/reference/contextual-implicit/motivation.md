@@ -53,14 +53,14 @@ The following pages introduce a redesign of contextual abstractions in Scala. Th
 
  3. [Import Implicit](./import-implied.html) is new form of import that specifically imports implicit definitions and nothing else. New-style implicit instances _must be_ imported with  `import implicit`, a plain import will no longer bring them into scope. Old-style implicit definitions can be imported with either form.
 
- 4. [Implicit Conversions](./conversions.html) are now expressed as implicit values of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
+ 4. [Implicit Conversions](./conversions.html) are now expressed as implicit instances of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
 
 This section also contains pages describing other language features that are related to context abstraction. These are:
 
  - [Context Bounds](./context-bounds.html), which carry over unchanged.
  - [Extension Methods](./extension-methods.html) replace implicit classes in a way that integrates better with typeclasses.
  - [Implementing Typeclasses](./typeclasses.html) demonstrates how some common typeclasses can be implemented using the new constructs.
- - [Typeclass Derivation](./derivation.html) introduces constructs to automatically derive typeclasses for ADTs.
+ - [Typeclass Derivation](./derivation.html) introduces constructs to automatically derive implicit typeclass instances for ADTs.
  - [Multiversal Equality](./multiversal-equality.html) introduces a special typeclass
   to support type safe equality.
  - [Implicit Function Types](./query-types.html) introduce a way to abstract over implicit parameterization.
@@ -79,4 +79,3 @@ Could we achieve the same goals by tweaking existing implicits? After having tri
  - Third, even if we would somehow succeed with migration, we still have the problem
  how to teach this. We cannot make existing tutorials go away. Almost all existing tutorials start with implicit conversions, which will go away; they use normal imports, which will go away, and they explain calls to methods with implicit parameters by expanding them to plain applications, which will also go away. This means that we'd have
  to add modifications and qualifications to all existing literature and courseware, likely causing more confusion with beginners instead of less. By contrast, with a new syntax there is a clear criterion: Any book or courseware that mentions `implicit` is outdated and should be updated.
-

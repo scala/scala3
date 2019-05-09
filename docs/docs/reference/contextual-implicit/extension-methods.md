@@ -36,7 +36,7 @@ When is an extension method applicable? There are two possibilities.
 
  - An extension method is applicable if it is visible under a simple name, by being defined
    or inherited or imported in a scope enclosing the application.
- - An extension method is applicable if it is a member of some implicit value at the point of the application.
+ - An extension method is applicable if it is a member of some implicit instance at the point of the application.
 
 As an example, consider an extension method `longestStrings` on `String` defined in a trait `StringSeqOps`.
 
@@ -48,7 +48,7 @@ trait StringSeqOps {
   }
 }
 ```
-We can make the extension method available by defining an implicit for `StringSeqOps`, like this:
+We can make the extension method available by defining an implicit instance for `StringSeqOps`, like this:
 ```scala
 implicit ops1 for StringSeqOps
 ```
@@ -76,7 +76,7 @@ and where `T` is the expected type. The following two rewritings are tried in or
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
 
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
-`circle` has type `Circle` and `CircleOps` is an eligible implicit value (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
+`circle` has type `Circle` and `CircleOps` is an eligible implicit (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
 ### Implicits for Extension Methods
 
@@ -144,7 +144,3 @@ to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 ```
-
-
-
-

@@ -31,7 +31,7 @@ that derives `Eql`, e.g.
 ```scala
 class T derives Eql
 ```
-Alternatively, one can also define an `Eql` implicit directly, like this:
+Alternatively, one can also define an `Eql` instance directly, like this:
 ```scala
 implicit for Eql[T, T] = Eql.derived
 ```
@@ -136,12 +136,12 @@ Explanations:
 
 ## Predefined Eql Instances
 
-The `Eql` object defines implicits for comparing
+The `Eql` object defines implicit instances for comparing
  - the primitive types `Byte`, `Short`, `Char`, `Int`, `Long`, `Float`, `Double`, `Boolean`,  and `Unit`,
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Implicits are defined so that every one of these types has a reflexive `Eql` implicit, and the following holds:
+Implicit instances are defined so that every one of these types has a reflexive `Eql` instance, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).

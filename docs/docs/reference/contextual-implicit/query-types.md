@@ -138,7 +138,7 @@ object Test {
 ```
 **Explanations**: We use a implicit function type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
-`(result == 6)` will therefore have an implicit of type `WrappedResult[T]` in
+`(result == 6)` will therefore have an implicit for `WrappedResult[T]` in
 scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure
 that we do not get unwanted implicits in scope (this is good practice in all cases
 where implicit parameters are involved). Since `WrappedResult` is an opaque type alias, its

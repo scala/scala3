@@ -33,14 +33,14 @@ if this is necessary to prevent an otherwise diverging expansion.
 
 The precise steps for synthesizing an argument for a by-name parameter of type `=> T` are as follows.
 
- 1. Create a new implicit for type `T`:
+ 1. Create a new implicit instance for type `T`:
 
     ```scala
     implicit lv for T = ???
     ```
     where `lv` is an arbitrary fresh name.
 
- 1. This implicit is not immediately available as a candidate for argument inference (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an implicit argument to a by-name parameter.
+ 1. This instance is not immediately available as a candidate implicit (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an implicit argument to a by-name parameter.
 
  1. If this search succeeds with expression `E`, and `E` contains references to the implicit `lv`, replace `E` by
 
