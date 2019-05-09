@@ -35,9 +35,8 @@
 
 # Output
 * Output inner class/object if not inherited
-* Source file link
 * List Package content => def/val too?
-* Link Reference
+* Don't link scala lib
 * Case class remove artefacts?
 * Class inside class print parents
 * Rework class output

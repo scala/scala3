@@ -17,6 +17,8 @@ object DocPrinter{
   private def makeLink(label: String, link: String, hasOwnFile: Boolean, linkScala: Boolean = false): String = {
     if(hasOwnFile){
       "<a href=\"" + link + "/" + label + ".md\">" + label + "</a>"
+    } else if(link == "") {
+      label
     } else if(link == "."){
       "<a href=\"#" + label + "\">" + label + "</a>"
     } else{
@@ -34,7 +36,15 @@ object DocPrinter{
 
       val relativeLink = {
         if(link == "."){
-          "."
+          if(hasOwnFile){
+            if(declarationPath.isEmpty){
+              "."
+            }else {
+              declarationPath.map(_ => "..").mkString("/")
+            }
+          }else{
+            ""
+          }
         }else{
           ascendPath(declarationPath, link.split("/").toList.tail)
         }
