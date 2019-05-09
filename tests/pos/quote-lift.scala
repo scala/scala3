@@ -7,7 +7,7 @@ object Test {
   {
     import Liftable._
 
-    '{ ${IntIsLiftable.toExpr(1)} }
+    '{ ${the[Liftable[Int]].toExpr(1)} }
 
     '{ ${1.toExpr} }
 
