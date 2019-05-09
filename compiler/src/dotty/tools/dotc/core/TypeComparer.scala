@@ -2150,11 +2150,20 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case _ =>
           cas
       }
-      def widenAbstractTypes(tp: Type) = new TypeMap {
+      def widenAbstractTypes(tp: Type): Type = new TypeMap {
         def apply(tp: Type) = tp match {
-          case tp: TypeRef if tp.symbol.isAbstractOrParamType | tp.symbol.isOpaqueAlias => WildcardType
+          case tp: TypeRef =>
+            if (tp.symbol.isAbstractOrParamType | tp.symbol.isOpaqueAlias)
+              WildcardType
+            else tp.info match {
+              case TypeAlias(alias) =>
+                val alias1 = widenAbstractTypes(alias)
+                if (alias1 ne alias) alias1 else tp
+              case _ => mapOver(tp)
+            }
+
           case tp: TypeVar if !tp.isInstantiated => WildcardType
-          case _: SkolemType | _: TypeParamRef => WildcardType
+          case _: TypeParamRef => WildcardType
           case _ => mapOver(tp)
         }
       }.apply(tp)

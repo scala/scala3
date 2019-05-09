@@ -71,3 +71,28 @@ object Test3 {
     def apply(fa: Bar[X & Foo]): Bar[Y & Foo] = fa
   }
 }
+
+object Test4 {
+  type Bar[A] = A match {
+    case X => String
+    case Y => Int
+  }
+
+  trait XX {
+    type Foo
+    type FooAlias = Foo
+
+    val a: Bar[X & FooAlias] = "hello"
+    val b: Bar[Y & FooAlias] = 1 // error
+
+    def apply(fa: Bar[X & FooAlias]): Bar[Y & FooAlias]
+
+    def boom: Int = apply(a) // error
+  }
+
+  trait YY extends XX {
+    type Foo = X & Y
+
+    def apply(fa: Bar[X & FooAlias]): Bar[Y & FooAlias] = fa
+  }
+}
