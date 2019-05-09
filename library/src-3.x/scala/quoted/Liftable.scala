@@ -16,44 +16,18 @@ abstract class Liftable[T] {
  */
 object Liftable {
 
-  implicit def BooleanIsLiftable: Liftable[Boolean] = new Liftable[Boolean] {
-    def toExpr(x: Boolean): Expr[Boolean] = liftedExpr(x)
-  }
+  implied for Liftable[Boolean] = new PrimitiveLifable
+  implied for Liftable[Short] = new PrimitiveLifable
+  implied for Liftable[Int] = new PrimitiveLifable
+  implied for Liftable[Long] = new PrimitiveLifable
+  implied for Liftable[Float] = new PrimitiveLifable
+  implied for Liftable[Double] = new PrimitiveLifable
+  implied for Liftable[Char] = new PrimitiveLifable
+  implied for Liftable[String] = new PrimitiveLifable
+  implied ClassIsLiftable[T] for Liftable[Class[T]] = new PrimitiveLifable // FIXME: annonymous implied with type parameter not working
 
-  implicit def ByteIsLiftable: Liftable[Byte] = new Liftable[Byte] {
-    def toExpr(x: Byte): Expr[Byte] = liftedExpr(x)
-  }
-
-  implicit def CharIsLiftable: Liftable[Char] = new Liftable[Char] {
-    def toExpr(x: Char): Expr[Char] = liftedExpr(x)
-  }
-
-  implicit def ShortIsLiftable: Liftable[Short] = new Liftable[Short] {
-    def toExpr(x: Short): Expr[Short] = liftedExpr(x)
-  }
-
-  implicit def IntIsLiftable: Liftable[Int] = new Liftable[Int] {
-    def toExpr(x: Int): Expr[Int] = liftedExpr(x)
-  }
-
-  implicit def LongIsLiftable: Liftable[Long] = new Liftable[Long] {
-    def toExpr(x: Long): Expr[Long] = liftedExpr(x)
-  }
-
-  implicit def FloatIsLiftable: Liftable[Float] = new Liftable[Float] {
-    def toExpr(x: Float): Expr[Float] = liftedExpr(x)
-  }
-
-  implicit def DoubleIsLiftable: Liftable[Double] = new Liftable[Double] {
-    def toExpr(x: Double): Expr[Double] = liftedExpr(x)
-  }
-
-  implicit def StringIsLiftable: Liftable[String] = new Liftable[String] {
-    def toExpr(x: String): Expr[String] = liftedExpr(x)
-  }
-
-  implicit def ClassIsLiftable[T]: Liftable[Class[T]] = new Liftable[Class[T]] {
-    def toExpr(x: Class[T]): Expr[Class[T]] = liftedExpr(x)
+  private class PrimitiveLifable[T] extends Liftable[T] {
+    override def toExpr(x: T): Expr[T] = liftedExpr(x)
   }
 
 }
