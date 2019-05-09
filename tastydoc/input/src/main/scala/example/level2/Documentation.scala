@@ -39,6 +39,8 @@ sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String
 
   }
 
+  def defReturningInnerClass(): innerDocumentationClass = ???
+
   /** Test methods with params
    *
    * @param x parameter 1
@@ -104,7 +106,8 @@ sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String
 
   type typeExamle[X] >: X <: String //TypeBound
 
-  def useOfOutsideType(): ReturnTypeClass = ???
+  def useOfOutsideType(): ReturnTypeClass[T] = ???
+  def useOfOutsideTypeInsideObject(): ReturnObjectWithType.returnType = ???
 
   protected[example] val valWithScopeModifier = ???
 }

@@ -33,9 +33,6 @@
 * Verify we have every entities-like
 * Remove showCode whenever possible
 
-* Fix color in showcode
-* Methods inherited doc
-
 # Output
 * Output inner class/object if not inherited
 * Source file link

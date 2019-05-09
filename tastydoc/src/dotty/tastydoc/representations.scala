@@ -156,15 +156,9 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
       case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
-      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) =>
-        ConstantReference("LAMBDATYPETODO") //TODO
-        // inner(resType)
-        // TOASK What to do with this
-        // HKTypeLambda(List(+A),
-        // List(TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Nothing),TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Any))),
-        // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class collection)),class Seq),List(TypeParamRef(+A))))
+      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(removeColorFromType(tp.showCode)) //TOFIX
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
-        case TypeReference(label, link, _) =>
+        case TypeReference(label, link, _, hasOwnFile) =>
           if(link == "./scala"){
             if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
               val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
@@ -172,35 +166,42 @@ object representations extends CommentParser with CommentCleaner {
             }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
               TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
             }else{
-              TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
+              TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
             }
           }else{
-            TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling))
+            TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
           }
         case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
       }
 
       case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
-          case TypeReference(label, link, xs) => TypeReference(typeName, link + "/" + label, xs)
-          case EmptyReference => TypeReference(typeName, ".", Nil)
+          case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true) //TODO check hasOwnFile
+          case EmptyReference => TypeReference(typeName, ".", Nil, true) //TODO check hasOwnFile
           case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
         }
       case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
-          case TypeReference(label, link, xs) => TypeReference(typeName, link + "/" + label, xs)
+          case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs)
           case EmptyReference => TypeReference(typeName, ".", Nil)
           case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
         }
       case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
+        case reflect.IsClassDefSymbol(_) =>
+          typeOrBoundsHandling(typeOrBounds) match {
+            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true) //TOASK: Should we include case as own file?
+            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference //TOASK: Not consistant root
+            case EmptyReference => TypeReference(symbol.name, ".", Nil, true)
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
+          }
         case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) | reflect.IsValDefSymbol(_) =>
           typeOrBoundsHandling(typeOrBounds) match {
-            case TypeReference(label, link, xs) => TypeReference(symbol.name, link + "/" + label, xs)
-            case EmptyReference if symbol.name == "<root>" => EmptyReference
+            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
+            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, ".", Nil)
             case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
           }
-        case _ => println(symbol.show); throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
+        case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
       }
       case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
     }

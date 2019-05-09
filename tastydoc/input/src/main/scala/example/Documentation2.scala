@@ -1,5 +1,9 @@
 package example
 
-class ReturnTypeClass {
+class ReturnTypeClass[T] {
 
+}
+
+object ReturnObjectWithType {
+  type returnType = Int
 }
