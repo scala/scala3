@@ -1458,7 +1458,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  possibly also type argument `targs` that need to be applied to each alternative
    *  to form the method type.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
-   *  if the fist finds no eligible candidates, with implicits and SAM conversions enabled.
+   *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    */
   def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
@@ -1517,7 +1517,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Try an apply method, if
      *   - the result is applied to value arguments and alternative is not a method, or
-     *   - the result is applied to type arguments and alternatuve is not polymorphic
+     *   - the result is applied to type arguments and alternative is not polymorphic
      */
     val tryApply: Type => Boolean = alt => pt match {
       case pt: FunProto => !alt.widen.stripPoly.isInstanceOf[MethodType]
@@ -1525,7 +1525,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case _ => false
     }
 
-    /** Replace each alternative by its apply members where necesssary */
+    /** Replace each alternative by its apply members where necessary */
     def applyMembers(alt: TermRef): List[TermRef] =
       if (tryApply(alt)) alt.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
       else alt :: Nil
