@@ -79,7 +79,9 @@ object NavigateAST {
           case _ => path
         }
         if ((path1 ne path) &&
-            ((bestFit eq path) || bestFit.head.span.contains(path1.head.span)))
+            ((bestFit eq path) ||
+             bestFit.head.span != path1.head.span &&
+             bestFit.head.span.contains(path1.head.span)))
           bestFit = path1
       }
       bestFit
