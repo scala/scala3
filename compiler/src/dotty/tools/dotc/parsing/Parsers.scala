@@ -2673,22 +2673,22 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** InstanceDef    ::=  [id] InstanceParams InstanceBody
+    /** InstanceDef    ::=  [id] [DefTypeParamClause] InstanceBody
      *  InstanceParams ::=  [DefTypeParamClause] {GivenParamClause}
-     *  InstanceBody   ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-     *                   |  ‘for’ Type ‘=’ Expr
+     *  InstanceBody   ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+     *                   |  ‘for’ Type {GivenParamClause} ‘=’ Expr
      */
     def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val name = if (isIdent) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val vparamss = paramClauses(ofInstance = true)
       val parents =
         if (in.token == FOR) {
           in.nextToken()
           tokenSeparated(COMMA, constrApp)
         }
         else Nil
+      val vparamss = paramClauses(ofInstance = true)
       val instDef =
         if (in.token == EQUALS && parents.length == 1 && parents.head.isType) {
           in.nextToken()
