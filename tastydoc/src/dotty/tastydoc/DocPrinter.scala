@@ -294,9 +294,6 @@ object DocPrinter{
         "\n" +
         formatComments(r.comments) +
         "\n"
-
-    case _ : DebugRepresentation => "=============>ERROR<==============="
-    case _ => ""
   }
 
   //TODO: Remove zzz

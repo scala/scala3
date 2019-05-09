@@ -12,15 +12,6 @@ class TastydocConsumer extends TastyConsumer {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
-    // println("Full tree =========================")
-    // println(root.show)
-    // println("End of full tree ==================")
-
-    println("Start convert to Representation")
-
-    //convertToEntity(root)
-    //println(formatRepresentationToMarkdown(representations.convertToRepresentation(reflect)(root), false))
-
     val representationConversion = representations.convertToRepresentation(reflect)(root)
     val packagesSet = DocPrinter.traverseRepresentation(representationConversion, Set[(List[String], String)]())
     packagesSet.groupBy(x => x._1).foreach{ (k, m) =>

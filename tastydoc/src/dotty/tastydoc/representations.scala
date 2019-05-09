@@ -323,12 +323,6 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class DebugRepresentation extends Representation {
-    val name = "DEBUG"
-    val path = Nil
-    val comments = None
-  }
-
   def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree) = {
     import reflect._
 
@@ -349,6 +343,6 @@ object representations extends CommentParser with CommentCleaner {
 
       case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t)
 
-      case _ => new DebugRepresentation()
+      case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue.")
   }}
 }
