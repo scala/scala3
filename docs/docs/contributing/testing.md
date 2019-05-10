@@ -63,7 +63,7 @@ Currently, only the `neg` (compilation must fail for the test to succeed) and `r
 Absence of a checkfile is **not** a condition for the test failure. E.g. if a `neg` test fails with the expected number of errors and there is no checkfile for it, the test still passes.
 
 #### Generating checkfiles
-If the checkfile is absent, the test framework will automatically generate it from the actual output. This is possible since an absence of the checkfile is equivalent to the presence of the checkfile matching the actual output. You can track all the checkfiles created this way by looking for the following output in the console:
+If the checkfile is absent, the test framework will automatically generate it from the actual output. This is possible since an absence of the checkfile is equivalent to the presence of the checkfile matching the actual output. The checkfile will be generated only if the actual output is not empty. You can track all the checkfiles created this way by looking for the following output in the console:
 
 ```
 Warning: diff check is not performed for out/exampleNeg/neg/Sample since checkfile does not exist. Generating the checkfile now.
