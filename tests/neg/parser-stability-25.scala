@@ -11,5 +11,5 @@ class D extends (Int => 1) {
 }
 
 class Wrap(x: Int)
-class E extends (Wrap)( // error
+class E extends (Wrap)( // error // error
 // error
