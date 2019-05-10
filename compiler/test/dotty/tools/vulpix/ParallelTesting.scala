@@ -237,8 +237,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             }
           }
           else {
-            echo(s"Warning: diff check is not performed for ${testSource} since checkfile does not exist. Generating the checkfile now.")
-            dumpOutputToFile(checkFile, actual, createNew = true, dumpEmpty = false)
+            val dumpPerformed = dumpOutputToFile(checkFile, actual, createNew = true, dumpEmpty = false)
+            if (dumpPerformed) echo(s"Warning: diff check is not performed for ${testSource} since checkfile does not exist. Generating the checkfile now.")
           }
 
         case _ =>
@@ -580,7 +580,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       this
     }
 
-    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String], createNew: Boolean = false, dumpEmpty: Boolean = true): Unit = {
+    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String], createNew: Boolean = false, dumpEmpty: Boolean = true): Boolean = {
       val output = lines.mkString(EOL)
       if (dumpEmpty || output.nonEmpty) {
         val writeToLiveFile = updateCheckFiles || (createNew && !checkFile.exists)
@@ -599,7 +599,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         
         outFile.writeAll(output)
         echo(infoMsg)
+        true
       }
+      else false
     }
 
     /** Returns all files in directory or the file if not a directory */
