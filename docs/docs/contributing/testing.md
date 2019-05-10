@@ -66,8 +66,8 @@ Absence of a checkfile is **not** a condition for the test failure. E.g. if a `n
 If the checkfile is absent, the test framework will automatically generate it from the actual output. This is possible since an absence of the checkfile is equivalent to the presence of the checkfile matching the actual output. The checkfile will be generated only if the actual output is not empty. You can track all the checkfiles created this way by looking for the following output in the console:
 
 ```
-Warning: diff check is not performed for out/exampleNeg/neg/Sample since checkfile does not exist. Generating the checkfile now.
-Created checkfile: /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check
+Created checkfile: /Users/anatolii/Projects/dotty/dotty/tests/generic-java-signatures/primitiveArrayBound.check
+Warning: diff check is not performed for out/genericJavaSignatures/generic-java-signatures/primitiveArrayBound since checkfile does not exist. Generating the checkfile now.
 ```
 
 However, if the checkfile is present and does not match the actual output, the test will fail and the actual output will be written in a file next to the checkfile. You can track these new files by looking for the following console output:
