@@ -54,6 +54,44 @@ You can also run all paths of classes of a certain name:
 > testOnly *.TreeTransformerTest
 ```
 
+### Testing with checkfiles
+#### Idea
+Some tests support checking the output of the run or the compilation against a checkfile. A checkfile is a file in which the expected output of the compilation or run is defined. A test against a checkfile fails if the actual output mismatches the expected output.
+
+Currently, only the `neg` (compilation must fail for the test to succeed) and `run` support the checkfiles. `neg`'s checkfiles contain an expected error output during compilation. `run`'s checkfiles contain an expected run output of the successfully compiled program.
+
+Absence of a checkfile is **not** a condition for the test failure. E.g. if a `neg` test fails with the expected number of errors and there is no checkfile for it, the test still passes.
+
+#### Generating checkfiles
+If the checkfile is absent, the test framework will automatically generate it from the actual output. This is possible since an absence of the checkfile is equivalent to the presence of the checkfile matching the actual output. You can track all the checkfiles created this way by looking for the following output in the console:
+
+```
+Warning: diff check is not performed for out/exampleNeg/neg/Sample since checkfile does not exist. Generating the checkfile now.
+Created checkfile: /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check
+```
+
+However, if the checkfile is present and does not match the actual output, the test will fail and the actual output will be written in a file next to the checkfile. You can track these new files by looking for the following console output:
+
+```
+Output from 'tests/playground/neg/Sample.scala' did not match check file.
+Diff (expected on the left, actual right):
+<expected>             |  <actual>
+
+Test output dumped in: /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check.out
+  See diff of the checkfile
+    > diff /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check.out
+  Replace checkfile with current output output
+    > mv /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check.out /Users/anatolii/Projects/dotty/dotty/tests/playground/neg/Sample.check
+```
+
+If you need to replace the checkfile with the actual output, you can do so by running the `mv` command from the above dump.
+
+If you have a lot of false-negatives due to large amount of bad checkfiles and you want to update them all, you can do so by setting the `-Ddotty.tests.updateCheckfiles=TRUE` property. For example:
+
+```scala
+testOnly dotty.tools.dotc.CompilationTests -- *example* -Ddotty.tests.updateCheckfiles=TRUE
+```
+
 ## Integration tests
 These tests are Scala source files expected to compile with Dotty (pos tests),
 along with their expected output (run tests) or errors (neg tests).
