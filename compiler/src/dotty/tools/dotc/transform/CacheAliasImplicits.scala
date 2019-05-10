@@ -25,7 +25,7 @@ object CacheAliasImplicits {
 
 /** This phase ensures that the right hand side of parameterless alias implicits
  *  is cached. It applies to all alias implicits that have neither type parameters
- *  not a given clause. Example: The alias
+ *  nor a given clause. Example: The alias
  *
  *      implicit a for TC = rhs
  *
