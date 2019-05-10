@@ -350,6 +350,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!ctx.settings.YprintDebug.value && fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
+        else if (tree.getAttachment(untpd.ApplyGiven).isDefined && !homogenizedView)
+          changePrec(InfixPrec) {
+            toTextLocal(fun) ~ " given " ~
+            (if (args.length == 1) toTextLocal(args.head) else "(" ~ toTextGlobal(args, ", ") ~ ")")
+          }
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
       case tree: TypeApply =>
