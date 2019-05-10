@@ -32,7 +32,7 @@ Implicit instances can be mapped to combinations of implicit objects and implici
 
   - If the right hand side is a simple reference, we can
     use a forwarder to that reference without caching it.
-  - If the right hand side is more complex, but still known to be pure, we can
+  - If the right hand side is more complex, but still known to be a pure path, we can
     create a `val` that computes it ahead of time.
 
  Examples:
