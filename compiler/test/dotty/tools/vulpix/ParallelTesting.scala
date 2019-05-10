@@ -238,7 +238,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
           else {
             echo(s"Warning: diff check is not performed for ${testSource} since checkfile does not exist. Generating the checkfile now.")
-            dumpOutputToFile(checkFile, actual, true)
+            dumpOutputToFile(checkFile, actual, createNew = true, dumpEmpty = false)
           }
 
         case _ =>
@@ -580,22 +580,25 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       this
     }
 
-    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String], createNew: Boolean = false): Unit = {
-      if (updateCheckFiles || (createNew && !checkFile.exists)) {
-        val outFile = dotty.tools.io.File(checkFile.toPath)
-        outFile.writeAll(lines.mkString("", EOL, EOL))
-        val infoMsg = if (updateCheckFiles) "Updated checkfile: " else "Created checkfile: "
-        echo(infoMsg + checkFile.getPath)
-      } else {
-        val outFile = dotty.tools.io.File(checkFile.toPath.resolveSibling(checkFile.toPath.getFileName + ".out"))
-        outFile.writeAll(lines.mkString("", EOL, EOL))
-        echo(
-          s"""Test output dumped in: ${outFile.path}
-             |  See diff of the checkfile
-             |    > diff $checkFile $outFile
-             |  Replace checkfile with current output output
-             |    > mv $outFile $checkFile
-         """.stripMargin)
+    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String], createNew: Boolean = false, dumpEmpty: Boolean = true): Unit = {
+      val output = lines.mkString(EOL)
+      if (dumpEmpty || output.nonEmpty) {
+        val writeToLiveFile = updateCheckFiles || (createNew && !checkFile.exists)
+        val outFile = dotty.tools.io.File(
+          if (writeToLiveFile) checkFile.toPath else checkFile.toPath.resolveSibling(checkFile.toPath.getFileName + ".out"))
+        val infoMsg =
+          if (writeToLiveFile)
+            (if (updateCheckFiles) "Updated checkfile: " else "Created checkfile: ") + checkFile.getPath
+          else
+            s"""Test output dumped in: ${outFile.path}
+               |  See diff of the checkfile
+               |    > diff $checkFile $outFile
+               |  Replace checkfile with current output output
+               |    > mv $outFile $checkFile
+           """.stripMargin
+        
+        outFile.writeAll(output)
+        echo(infoMsg)
       }
     }
 
