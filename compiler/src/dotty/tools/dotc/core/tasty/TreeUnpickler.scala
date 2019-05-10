@@ -632,8 +632,8 @@ class TreeUnpickler(reader: TastyReader,
           case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
           case GIVEN => addFlag(Given)
-          case PARAMsetter =>
-            addFlag(ParamAccessor)
+          case PARAMsetter => addFlag(ParamAccessor)
+          case EXPORTED => addFlag(Exported)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin(ctx)

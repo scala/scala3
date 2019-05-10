@@ -394,6 +394,9 @@ object Flags {
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum: FlagSet = commonFlag(40, "<enum>")
 
+  /** An export forwarder */
+  final val Exported: FlagSet = commonFlag(41, "exported")
+
   /** Labeled with `erased` modifier (erased value)  */
   final val Erased: FlagSet = termFlag(42, "erased")
 
