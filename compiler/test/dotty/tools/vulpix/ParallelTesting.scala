@@ -219,7 +219,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       case ts: SeparateCompilationSource =>
         Option(new JFile(ts.dir.getAbsolutePath + ".check"))
-    })
+    }).filter(f => ! f.getName.takeWhile(_ != '.').endsWith("_ignore_checkfile"))
 
     /**
      * Checks if the given actual lines are the same as the ones in the check file.
@@ -242,8 +242,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
 
         case _ =>
-          val actualOutput = actual.mkString("=== BEGIN CHECKFILE DUMP ===\n", EOL, "\n=== END CHECKFILE DUMP ===")
-          echo(s"Unable to infer the checkfile path for ${testSource}. Dumping the actual output here:\n${actualOutput}")
       }
 
     /** Entry point: runs the test */
