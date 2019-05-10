@@ -880,7 +880,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         fail(s"Neg test shouldn't have failed, but did. Reasons:\n${ reasonsForFailure(test) }")
       }
       else if (!shouldFail && test.didFail) {
-        fail("Neg test should have failed, but did not")
+        fail("Neg test should have failed, but either did not or did with unexpected errors")
       }
 
       this
